@@ -281,7 +281,7 @@ fn commasep<IN>(s: ps, b: breaks, elts: ~[IN], op: fn(ps, IN)) {
     let mut first = true;
     for elts.each |elt| {
         if first { first = false; } else { word_space(s, ~","); }
-        op(s, elt);
+        op(s, *elt);
     }
     end(s);
 }
@@ -293,12 +293,12 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: ~[IN], op: fn(ps, IN),
     let len = vec::len::<IN>(elts);
     let mut i = 0u;
     for elts.each |elt| {
-        maybe_print_comment(s, get_span(elt).hi);
-        op(s, elt);
+        maybe_print_comment(s, get_span(*elt).hi);
+        op(s, *elt);
         i += 1u;
         if i < len {
             word(s.s, ~",");
-            maybe_print_trailing_comment(s, get_span(elt),
+            maybe_print_trailing_comment(s, get_span(*elt),
                                          Some(get_span(elts[i]).hi));
             space_if_not_bol(s);
         }
@@ -314,18 +314,18 @@ fn commasep_exprs(s: ps, b: breaks, exprs: ~[@ast::expr]) {
 fn print_mod(s: ps, _mod: ast::_mod, attrs: ~[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for _mod.view_items.each |vitem| {
-        print_view_item(s, vitem);
+        print_view_item(s, *vitem);
     }
-    for _mod.items.each |item| { print_item(s, item); }
+    for _mod.items.each |item| { print_item(s, *item); }
 }
 
 fn print_foreign_mod(s: ps, nmod: ast::foreign_mod,
                      attrs: ~[ast::attribute]) {
     print_inner_attributes(s, attrs);
     for nmod.view_items.each |vitem| {
-        print_view_item(s, vitem);
+        print_view_item(s, *vitem);
     }
-    for nmod.items.each |item| { print_foreign_item(s, item); }
+    for nmod.items.each |item| { print_foreign_item(s, *item); }
 }
 
 fn print_region(s: ps, region: @ast::region, sep: ~str) {
@@ -525,7 +525,7 @@ fn print_item(s: ps, &&item: @ast::item) {
 
         bopen(s);
         for methods.each |meth| {
-           print_method(s, meth);
+           print_method(s, *meth);
         }
         bclose(s, item.span);
       }
@@ -540,7 +540,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         word(s.s, ~" ");
         bopen(s);
-        for methods.each |meth| { print_trait_method(s, meth); }
+        for methods.each |meth| {
+            print_trait_method(s, *meth);
+        }
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) => {
@@ -549,7 +551,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_ident(s, item.ident);
         cbox(s, indent_unit);
         popen(s);
-        for tts.each |tt| { print_tt(s, tt);  }
+        for tts.each |tt| {
+            print_tt(s, *tt);
+        }
         pclose(s);
         end(s);
       }
@@ -602,7 +606,7 @@ fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
         maybe_print_comment(s, v.span.lo);
         print_outer_attributes(s, v.node.attrs);
         ibox(s, indent_unit);
-        print_variant(s, v);
+        print_variant(s, *v);
         word(s.s, ~",");
         end(s);
         maybe_print_trailing_comment(s, v.span, None::<uint>);
@@ -661,7 +665,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
         }
     }
     for struct_def.methods.each |method| {
-        print_method(s, method);
+        print_method(s, *method);
     }
     bclose(s, span);
 }
@@ -675,7 +679,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
 /// expression arguments as expressions). It can be done! I think.
 fn print_tt(s: ps, tt: ast::token_tree) {
     match tt {
-      ast::tt_delim(tts) => for tts.each() |tt_elt| { print_tt(s, tt_elt); },
+      ast::tt_delim(tts) => for tts.each() |tt_elt| { print_tt(s, *tt_elt); },
       ast::tt_tok(_, tk) => {
         match tk {
           parse::token::IDENT(*) => { // don't let idents run together
@@ -688,7 +692,7 @@ fn print_tt(s: ps, tt: ast::token_tree) {
       }
       ast::tt_seq(_, tts, sep, zerok) => {
         word(s.s, ~"$(");
-        for tts.each() |tt_elt| { print_tt(s, tt_elt); }
+        for tts.each() |tt_elt| { print_tt(s, *tt_elt); }
         word(s.s, ~")");
         match sep {
           Some(tk) => word(s.s, parse::token::to_str(s.intr, tk)),
@@ -767,7 +771,7 @@ fn print_outer_attributes(s: ps, attrs: ~[ast::attribute]) {
     let mut count = 0;
     for attrs.each |attr| {
         match attr.node.style {
-          ast::attr_outer => { print_attribute(s, attr); count += 1; }
+          ast::attr_outer => { print_attribute(s, *attr); count += 1; }
           _ => {/* fallthrough */ }
         }
     }
@@ -779,7 +783,7 @@ fn print_inner_attributes(s: ps, attrs: ~[ast::attribute]) {
     for attrs.each |attr| {
         match attr.node.style {
           ast::attr_inner => {
-            print_attribute(s, attr);
+            print_attribute(s, *attr);
             if !attr.node.is_sugared_doc {
                 word(s.s, ~";");
             }
@@ -870,9 +874,9 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
 
     print_inner_attributes(s, attrs);
 
-    for blk.node.view_items.each |vi| { print_view_item(s, vi); }
+    for blk.node.view_items.each |vi| { print_view_item(s, *vi); }
     for blk.node.stmts.each |st| {
-        print_stmt(s, *st);
+        print_stmt(s, **st);
     }
     match blk.node.expr {
       Some(expr) => {
@@ -956,7 +960,7 @@ fn print_mac(s: ps, m: ast::mac) {
         print_path(s, pth, false);
         word(s.s, ~"!");
         popen(s);
-        for tts.each() |tt| { print_tt(s, tt); }
+        for tts.each() |tt| { print_tt(s, *tt); }
         pclose(s);
       }
       ast::mac_ellipsis => word(s.s, ~"..."),
@@ -1167,7 +1171,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
                 if first {
                     first = false;
                 } else { space(s.s); word_space(s, ~"|"); }
-                print_pat(s, p);
+                print_pat(s, *p);
             }
             space(s.s);
             match arm.guard {
@@ -1445,7 +1449,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     let mut first = true;
     for path.idents.each |id| {
         if first { first = false; } else { word(s.s, ~"::"); }
-        print_ident(s, id);
+        print_ident(s, *id);
     }
     if path.rp.is_some() || !path.types.is_empty() {
         if colons_before_params { word(s.s, ~"::"); }
@@ -1599,12 +1603,12 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
     box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
-        first = !print_self_ty(s, self_ty);
+        first = !print_self_ty(s, *self_ty);
     }
 
     for decl.inputs.each |arg| {
         if first { first = false; } else { word_space(s, ~","); }
-        print_arg(s, arg);
+        print_arg(s, *arg);
     }
 
     for cap_items.each |cap_item| {
@@ -1836,11 +1840,11 @@ fn print_ty_fn(s: ps, opt_proto: Option<ast::proto>, purity: ast::purity,
     box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
-        first = !print_self_ty(s, self_ty);
+        first = !print_self_ty(s, *self_ty);
     }
     for decl.inputs.each |arg| {
         if first { first = false; } else { word_space(s, ~","); }
-        print_arg(s, arg);
+        print_arg(s, *arg);
     }
     end(s);
     pclose(s);
@@ -1988,7 +1992,7 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
         for cmnt.lines.each |line| {
             // Don't print empty lines because they will end up as trailing
             // whitespace
-            if str::is_not_empty(line) { word(s.s, line); }
+            if str::is_not_empty(*line) { word(s.s, *line); }
             hardbreak(s.s);
         }
       }
@@ -2000,7 +2004,7 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
         } else {
             ibox(s, 0u);
             for cmnt.lines.each |line| {
-                if str::is_not_empty(line) { word(s.s, line); }
+                if str::is_not_empty(*line) { word(s.s, *line); }
                 hardbreak(s.s);
             }
             end(s);

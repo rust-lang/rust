@@ -95,7 +95,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     let mut sections = ~[];
 
     for lines.each |line| {
-        match parse_header(line) {
+        match parse_header(*line) {
           Some(header) => {
             if option::is_some(current_section) {
                 sections += ~[option::get(current_section)];
@@ -109,17 +109,17 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
             match copy current_section {
               Some(section) => {
                 current_section = Some({
-                    body: section.body + ~"\n" + line,
+                    body: section.body + ~"\n" + *line,
                     .. section
                 });
               }
               None => {
                 new_desc = match new_desc {
                   Some(desc) => {
-                    Some(desc + ~"\n" + line)
+                    Some(desc + ~"\n" + *line)
                   }
                   None => {
-                    Some(line)
+                    Some(*line)
                   }
                 };
               }

@@ -151,7 +151,7 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     for decl.inputs.each |a| {
         cx.map.insert(a.id,
                       node_arg(/* FIXME (#2543) */
-                          copy a, cx.local_id));
+                          copy *a, cx.local_id));
         cx.local_id += 1u;
     }
     match fk {
@@ -220,14 +220,14 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       item_impl(_, _, _, ms) => {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
-            map_method(impl_did, extend(cx, i.ident), m,
+            map_method(impl_did, extend(cx, i.ident), *m,
                        cx);
         }
       }
       item_enum(enum_definition, _) => {
         for enum_definition.variants.each |v| {
             cx.map.insert(v.node.id, node_variant(
-                /* FIXME (#2543) */ copy v, i,
+                /* FIXME (#2543) */ copy *v, i,
                 extend(cx, i.ident)));
         }
       }
@@ -238,7 +238,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         };
         for nm.items.each |nitem| {
             cx.map.insert(nitem.id,
-                          node_foreign_item(nitem, abi,
+                          node_foreign_item(*nitem, abi,
                                            /* FIXME (#2543) */
                                             if nm.sort == ast::named {
                                                 extend(cx, i.ident)
@@ -264,9 +264,9 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(p.impl_id, node_item(i, item_path));
         }
         for methods.each |tm| {
-            let id = ast_util::trait_method_to_ty_method(tm).id;
+            let id = ast_util::trait_method_to_ty_method(*tm).id;
             let d_id = ast_util::local_def(i.id);
-            cx.map.insert(id, node_trait_method(@tm, d_id, item_path));
+            cx.map.insert(id, node_trait_method(@*tm, d_id, item_path));
         }
       }
       _ => ()
@@ -310,7 +310,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
             (id, path_to_ident(pth))
           }
         };
-        cx.map.insert(id, node_export(vp, extend(cx, name)));
+        cx.map.insert(id, node_export(*vp, extend(cx, name)));
       },
       _ => ()
     }

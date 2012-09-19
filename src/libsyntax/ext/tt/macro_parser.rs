@@ -174,7 +174,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
         match m {
           {node: match_tok(_), span: _} => (),
           {node: match_seq(more_ms, _, _, _, _), span: _} => {
-            for more_ms.each() |next_m| { n_rec(p_s, next_m, res, ret_val) };
+            for more_ms.each() |next_m| { n_rec(p_s, *next_m, res, ret_val) };
           }
           {node: match_nonterminal(bind_name, _, idx), span: sp} => {
             if ret_val.contains_key(bind_name) {
@@ -186,7 +186,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
         }
     }
     let ret_val = HashMap::<uint,@named_match>();
-    for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
+    for ms.each() |m| { n_rec(p_s, *m, res, ret_val) }
     return ret_val;
 }
 

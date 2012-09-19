@@ -678,7 +678,7 @@ mod tests {
         let mut x = 0;
         for l.each |i| {
             x += 1;
-            if (i == 3) { break; }
+            if (*i == 3) { break; }
         }
         assert x == 3;
     }

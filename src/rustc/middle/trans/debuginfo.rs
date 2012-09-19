@@ -152,7 +152,7 @@ fn cached_metadata<T: Copy>(cache: metadata_cache, mdtag: int,
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
         for items.each |item| {
-            let md: T = md_from_metadata::<T>(item);
+            let md: T = md_from_metadata::<T>(*item);
             if eq(md) {
                 return option::Some(md);
             }

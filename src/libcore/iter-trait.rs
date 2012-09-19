@@ -7,7 +7,7 @@ use inst::{IMPL_T, EACH, SIZE_HINT};
 export extensions;
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {
-    pure fn each(blk: fn(A) -> bool) { EACH(self, blk) }
+    pure fn each(blk: fn(v: &A) -> bool) { EACH(self, blk) }
     pure fn size_hint() -> Option<uint> { SIZE_HINT(self) }
 }
 

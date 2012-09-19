@@ -1874,9 +1874,9 @@ mod bytes {
 // required in the slice.
 
 impl<A> &[A]: iter::BaseIter<A> {
-    pure fn each(blk: fn(A) -> bool) {
+    pure fn each(blk: fn(v: &A) -> bool) {
         for each(self) |e| {
-            if (!blk(*e)) {
+            if (!blk(e)) {
                 return;
             }
         }

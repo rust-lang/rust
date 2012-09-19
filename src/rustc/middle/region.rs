@@ -195,8 +195,8 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
     for cx.parent.each |parent_id| {
-        debug!("parent of node %d is node %d", child_id, parent_id);
-        cx.region_map.insert(child_id, parent_id);
+        debug!("parent of node %d is node %d", child_id, *parent_id);
+        cx.region_map.insert(child_id, *parent_id);
     }
 }
 
@@ -700,7 +700,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.each |tp| {
-                visitor.visit_ty(tp, cx, visitor);
+                visitor.visit_ty(*tp, cx, visitor);
             }
         }
       }

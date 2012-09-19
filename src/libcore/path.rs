@@ -203,7 +203,9 @@ impl PosixPath : GenericPath {
     pure fn push_many(cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
+            let mut ss = str::split_nonempty(
+                *e,
+                |c| windows::is_sep(c as u8));
             unsafe { vec::push_all_move(v, move ss); }
         }
         PosixPath { components: move v, ..self }
@@ -395,7 +397,9 @@ impl WindowsPath : GenericPath {
     pure fn push_many(cs: &[~str]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
+            let mut ss = str::split_nonempty(
+                *e,
+                |c| windows::is_sep(c as u8));
             unsafe { vec::push_all_move(v, move ss); }
         }
         return WindowsPath { components: move v, ..self }
@@ -430,13 +434,13 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
     unsafe {
         for components.each |c| {
             unsafe {
-                if c == ~"." && components.len() > 1 { loop; }
-                if c == ~"" { loop; }
-                if c == ~".." && cs.len() != 0 {
+                if *c == ~"." && components.len() > 1 { loop; }
+                if *c == ~"" { loop; }
+                if *c == ~".." && cs.len() != 0 {
                     vec::pop(cs);
                     loop;
                 }
-                vec::push(cs, copy c);
+                vec::push(cs, copy *c);
             }
         }
     }

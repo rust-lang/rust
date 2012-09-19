@@ -900,7 +900,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     }
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
-        for substs.tps.each |tt| { f |= get(tt).flags; }
+        for substs.tps.each |tt| { f |= get(*tt).flags; }
         substs.self_r.iter(|r| f |= rflags(r));
         return f;
     }
@@ -931,7 +931,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         flags |= get(m.ty).flags;
       }
       ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
-      ty_tup(ts) => for ts.each |tt| { flags |= get(tt).flags; },
+      ty_tup(ts) => for ts.each |tt| { flags |= get(*tt).flags; },
       ty_fn(ref f) => {
         match f.meta.proto {
             ty::proto_vstore(vstore_slice(r)) => flags |= rflags(r),
@@ -1135,12 +1135,12 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       }
       ty_enum(_, substs) | ty_class(_, substs) |
       ty_trait(_, substs, _) => {
-        for substs.tps.each |subty| { maybe_walk_ty(subty, f); }
+        for substs.tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
       ty_rec(fields) => {
         for fields.each |fl| { maybe_walk_ty(fl.mt.ty, f); }
       }
-      ty_tup(ts) => { for ts.each |tt| { maybe_walk_ty(tt, f); } }
+      ty_tup(ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
       ty_fn(ref ft) => {
         for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.sig.output, f);
@@ -1621,7 +1621,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
          }
       }
       ty_tup(elts) => {
-          for elts.each |m| { if type_needs_drop(cx, m) { accum = true; } }
+          for elts.each |m| { if type_needs_drop(cx, *m) { accum = true; } }
         accum
       }
       ty_enum(did, ref substs) => {
@@ -1629,7 +1629,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
           for vec::each(*variants) |variant| {
               for variant.args.each |aty| {
                 // Perform any type parameter substitutions.
-                let arg_ty = subst(cx, substs, aty);
+                let arg_ty = subst(cx, substs, *aty);
                 if type_needs_drop(cx, arg_ty) { accum = true; }
             }
             if accum { break; }
@@ -1692,7 +1692,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
           ty_enum(did, ref substs) => {
             for vec::each(*enum_variants(cx, did)) |v| {
                 for v.args.each |aty| {
-                    let t = subst(cx, substs, aty);
+                    let t = subst(cx, substs, *aty);
                     needs_unwind_cleanup |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
                                                    encountered_box);
@@ -2040,7 +2040,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Tuples lower to the lowest of their members.
       ty_tup(tys) => {
         let mut lowest = kind_top();
-        for tys.each |ty| { lowest = lower_kind(lowest, type_kind(cx, ty)); }
+        for tys.each |ty| { lowest = lower_kind(lowest, type_kind(cx, *ty)); }
         lowest
       }
 
@@ -2054,7 +2054,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
             for vec::each(*variants) |variant| {
                 for variant.args.each |aty| {
                     // Perform any type parameter substitutions.
-                    let arg_ty = subst(cx, substs, aty);
+                    let arg_ty = subst(cx, substs, *aty);
                     lowest = lower_kind(lowest, type_kind(cx, arg_ty));
                     if lowest == kind_noncopyable() { break; }
                 }
@@ -2273,7 +2273,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
       ty_enum(did, ref substs) => {
         for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
-                let sty = subst(cx, substs, aty);
+                let sty = subst(cx, substs, *aty);
                 if type_structurally_contains(cx, sty, test) { return true; }
             }
         }
@@ -2297,7 +2297,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
 
       ty_tup(ts) => {
         for ts.each |tt| {
-            if type_structurally_contains(cx, tt, test) { return true; }
+            if type_structurally_contains(cx, *tt, test) { return true; }
         }
         return false;
       }
@@ -2374,7 +2374,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         }
       }
       ty_tup(elts) => {
-        for elts.each |elt| { if !type_is_pod(cx, elt) { result = false; } }
+        for elts.each |elt| { if !type_is_pod(cx, *elt) { result = false; } }
       }
       ty_estr(vstore_fixed(_)) => result = true,
       ty_evec(mt, vstore_fixed(_)) | ty_unboxed_vec(mt) => {
@@ -3667,9 +3667,9 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
     if is_local(did) {
        let ms = lookup_class_method_ids(cx, did);
         for ms.each |m| {
-         if m.name == name {
-             return ast_util::local_def(m.id);
-         }
+            if m.name == name {
+                return ast_util::local_def(m.id);
+            }
        }
        cx.sess.span_fatal(sp, fmt!("Class doesn't have a method \
            named %s", cx.sess.str_of(name)));

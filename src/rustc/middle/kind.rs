@@ -316,12 +316,12 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_tup(exprs) | expr_vec(exprs, _) => {
-        for exprs.each |expr| { maybe_copy(cx, expr, None); }
+        for exprs.each |expr| { maybe_copy(cx, *expr, None); }
       }
       expr_call(f, args, _) => {
         let mut i = 0u;
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
-            match ty::arg_mode(cx.tcx, arg_t) {
+            match ty::arg_mode(cx.tcx, *arg_t) {
               by_copy => maybe_copy(cx, args[i], None),
               by_ref | by_val | by_mutbl_ref | by_move => ()
             }

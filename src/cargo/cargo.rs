@@ -325,9 +325,9 @@ fn load_crate(filename: &Path) -> Option<crate> {
                 let mut attr_from = ~"";
 
               for m.each |item| {
-                    match attr::get_meta_item_value_str(item) {
+                    match attr::get_meta_item_value_str(*item) {
                         Some(value) => {
-                            let name = attr::get_meta_item_name(item);
+                            let name = attr::get_meta_item_name(*item);
 
                             match name {
                                 ~"vers" => attr_vers = value,
@@ -530,7 +530,7 @@ fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
     match p.find(~"tags") {
         Some(json::List(js)) => {
           for (*js).each |j| {
-                match j {
+                match *j {
                     json::String(j) => vec::grow(tags, 1u, *j),
                     _ => ()
                 }
@@ -602,7 +602,7 @@ fn load_source_packages(c: &cargo, src: source) {
     match json::from_str(result::get(pkgstr)) {
         Ok(json::List(js)) => {
           for (*js).each |j| {
-                match j {
+                match *j {
                     json::Dict(p) => {
                         load_one_source_package(src, p);
                     }
@@ -715,7 +715,7 @@ fn configure(opts: options) -> cargo {
 fn for_each_package(c: &cargo, b: fn(source, package)) {
     for c.sources.each_value |v| {
         for v.packages.each |p| {
-            b(v, p);
+            b(v, *p);
         }
     }
 }
@@ -773,7 +773,7 @@ fn install_one_crate(c: &cargo, path: &Path, cf: &Path) {
              !str::starts_with(option::get(ct.filename()),
                                ~"lib")) {
             debug!("  bin: %s", ct.to_str());
-            install_to_dir(ct, &c.bindir);
+            install_to_dir(*ct, &c.bindir);
             if c.opts.mode == system_mode {
                 // FIXME (#2662): Put this file in PATH / symlink it so it can
                 // be used as a generic executable
@@ -781,7 +781,7 @@ fn install_one_crate(c: &cargo, path: &Path, cf: &Path) {
             }
         } else {
             debug!("  lib: %s", ct.to_str());
-            install_to_dir(ct, &c.libdir);
+            install_to_dir(*ct, &c.libdir);
         }
     }
 }
@@ -814,7 +814,7 @@ fn install_source(c: &cargo, path: &Path) {
     }
 
     for cratefiles.each |cf| {
-        match load_crate(&cf) {
+        match load_crate(cf) {
             None => loop,
             Some(crate) => {
               for crate.deps.each |query| {
@@ -823,15 +823,15 @@ fn install_source(c: &cargo, path: &Path) {
                     // condition")
 
                     let wd = get_temp_workdir(c);
-                    install_query(c, &wd, query);
+                    install_query(c, &wd, *query);
                 }
 
                 os::change_dir(path);
 
                 if c.opts.test {
-                    test_one_crate(c, path, &cf);
+                    test_one_crate(c, path, cf);
                 }
-                install_one_crate(c, path, &cf);
+                install_one_crate(c, path, cf);
             }
         }
     }
@@ -915,7 +915,7 @@ fn install_uuid(c: &cargo, wd: &Path, uuid: ~str) {
     }
     error(~"found multiple packages:");
     for ps.each |elt| {
-        let (sname,p) = copy elt;
+        let (sname,p) = copy *elt;
         info(~"  " + sname + ~"/" + p.uuid + ~" (" + p.name + ~")");
     }
 }
@@ -939,7 +939,7 @@ fn install_named(c: &cargo, wd: &Path, name: ~str) {
     }
     error(~"found multiple packages:");
     for ps.each |elt| {
-        let (sname,p) = copy elt;
+        let (sname,p) = copy *elt;
         info(~"  " + sname + ~"/" + p.uuid + ~" (" + p.name + ~")");
     }
 }
@@ -949,7 +949,7 @@ fn install_uuid_specific(c: &cargo, wd: &Path, src: ~str, uuid: ~str) {
         Some(s) => {
             for s.packages.each |p| {
                 if p.uuid == uuid {
-                    install_package(c, src, wd, p);
+                    install_package(c, src, wd, *p);
                     return;
                 }
             }
@@ -964,7 +964,7 @@ fn install_named_specific(c: &cargo, wd: &Path, src: ~str, name: ~str) {
         Some(s) => {
             for s.packages.each |p| {
                 if p.name == name {
-                    install_package(c, src, wd, p);
+                    install_package(c, src, wd, *p);
                     return;
                 }
             }
@@ -1002,22 +1002,22 @@ fn cmd_uninstall(c: &cargo) {
 
     if is_uuid(target) {
         for os::list_dir(lib).each |file| {
-            match str::find_str(file, ~"-" + target + ~"-") {
-              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+            match str::find_str(*file, ~"-" + target + ~"-") {
+              Some(_) => if !try_uninstall(&lib.push(*file)) { return },
               None => ()
             }
         }
         error(~"can't find package with uuid: " + target);
     } else {
         for os::list_dir(lib).each |file| {
-            match str::find_str(file, ~"lib" + target + ~"-") {
-              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+            match str::find_str(*file, ~"lib" + target + ~"-") {
+              Some(_) => if !try_uninstall(&lib.push(*file)) { return },
               None => ()
             }
         }
         for os::list_dir(bin).each |file| {
-            match str::find_str(file, target) {
-              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+            match str::find_str(*file, target) {
+              Some(_) => if !try_uninstall(&lib.push(*file)) { return },
               None => ()
             }
         }

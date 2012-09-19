@@ -400,17 +400,17 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if attr::get_meta_item_name(meta) == ~"name" {
-                match attr::get_meta_item_value_str(meta) {
+            if attr::get_meta_item_name(*meta) == ~"name" {
+                match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { name = Some(v); }
-                  None => vec::push(cmh_items, meta)
+                  None => vec::push(cmh_items, *meta)
                 }
-            } else if attr::get_meta_item_name(meta) == ~"vers" {
-                match attr::get_meta_item_value_str(meta) {
+            } else if attr::get_meta_item_name(*meta) == ~"vers" {
+                match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { vers = Some(v); }
-                  None => vec::push(cmh_items, meta)
+                  None => vec::push(cmh_items, *meta)
                 }
-            } else { vec::push(cmh_items, meta); }
+            } else { vec::push(cmh_items, *meta); }
         }
         return {name: name, vers: vers, cmh_items: cmh_items};
     }
@@ -431,8 +431,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
 
         symbol_hasher.reset();
-        for cmh_items.each |m_| {
-            let m = m_;
+        for cmh_items.each |m| {
             match m.node {
               ast::meta_name_value(key, value) => {
                 symbol_hasher.write_str(len_and_str(key));
@@ -449,7 +448,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
         }
 
         for dep_hashes.each |dh| {
-            symbol_hasher.write_str(len_and_str(dh));
+            symbol_hasher.write_str(len_and_str(*dh));
         }
 
         return truncated_hash_result(symbol_hasher);
@@ -576,7 +575,7 @@ fn mangle(sess: session, ss: path) -> ~str {
     let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.each |s| {
-        match s { path_name(s) | path_mod(s) => {
+        match *s { path_name(s) | path_mod(s) => {
           let sani = sanitize(sess.str_of(s));
           n += fmt!("%u%s", str::len(sani), sani);
         } }
@@ -696,7 +695,7 @@ fn link_binary(sess: session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { vec::push(cc_args, arg); }
+    for ula.each |arg| { vec::push(cc_args, *arg); }
 
     // # Extern library linking
 
@@ -711,7 +710,7 @@ fn link_binary(sess: session,
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    for used_libs.each |l| { vec::push(cc_args, ~"-l" + l); }
+    for used_libs.each |l| { vec::push(cc_args, ~"-l" + *l); }
 
     if sess.building_library {
         vec::push(cc_args, lib_cmd);

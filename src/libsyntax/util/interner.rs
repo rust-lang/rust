@@ -21,7 +21,7 @@ fn mk<T:Eq IterBytes Hash Const Copy>() -> interner<T> {
 
 fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: ~[T]) -> interner<T> {
     let rv = mk();
-    for init.each() |v| { rv.intern(v); }
+    for init.each() |v| { rv.intern(*v); }
     return rv;
 }
 

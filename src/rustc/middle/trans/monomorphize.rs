@@ -28,8 +28,8 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         }
     });
 
-    for real_substs.each() |s| { assert !ty::type_has_params(s); }
-    for substs.each() |s| { assert !ty::type_has_params(s); }
+    for real_substs.each() |s| { assert !ty::type_has_params(*s); }
+    for substs.each() |s| { assert !ty::type_has_params(*s); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, Some(param_uses));
     if vec::any(hash_id.params,

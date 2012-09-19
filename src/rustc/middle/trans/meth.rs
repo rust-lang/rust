@@ -104,7 +104,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr,
     // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
     // should be revoked only after all arguments have been passed.
     for temp_cleanups.each |c| {
-        revoke_clean(bcx, c)
+        revoke_clean(bcx, *c)
     }
 
     return result;

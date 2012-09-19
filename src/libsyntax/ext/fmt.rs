@@ -53,7 +53,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_flags(cx: ext_ctxt, sp: span, flags: ~[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, @~"flag_none");
             for flags.each |f| {
-                let fstr = match f {
+                let fstr = match *f {
                   FlagLeftJustify => ~"flag_left_justify",
                   FlagLeftZeroPad => ~"flag_left_zero_pad",
                   FlagSpaceForSign => ~"flag_space_for_sign",
@@ -139,7 +139,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           _ => cx.span_unimpl(sp, unsupported)
         }
         for cnv.flags.each |f| {
-            match f {
+            match *f {
               FlagLeftJustify => (),
               FlagSignAlways => {
                 if !is_signed_type(cnv) {
@@ -196,7 +196,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           _ => debug!("param: none")
         }
         for c.flags.each |f| {
-            match f {
+            match *f {
               FlagLeftJustify => debug!("flag: left justify"),
               FlagLeftZeroPad => debug!("flag: left zero pad"),
               FlagSpaceForSign => debug!("flag: left space pad"),
@@ -243,7 +243,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     let mut piece_exprs = ~[];
     let nargs = args.len();
     for pieces.each |pc| {
-        match pc {
+        match *pc {
           PieceString(s) => {
             vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s))
           }

@@ -1080,7 +1080,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         let mut first: bool = true;
         for tys.each |t| {
             if first { first = false; } else { s += ~", "; }
-            s += type_to_str_inner(names, outer, t);
+            s += type_to_str_inner(names, outer, *t);
         }
         return s;
     }
@@ -1130,7 +1130,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         let mut i: uint = 0u;
         for outer0.each |tout| {
             i += 1u;
-            if tout as int == ty as int {
+            if *tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
                 return ~"*\\" + int::str(n as int);
             }

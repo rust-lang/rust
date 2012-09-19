@@ -95,7 +95,7 @@ fn req_loans_in_expr(ex: @ast::expr,
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.adjustments.find(ex.id).each |adjustments| {
-        self.guarantee_adjustments(ex, adjustments);
+        self.guarantee_adjustments(ex, *adjustments);
     }
 
     // Special checks for various kinds of expressions:
@@ -138,7 +138,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
             for arm.pats.each |pat| {
-                self.gather_pat(cmt, pat, arm.body.node.id, ex.id);
+                self.gather_pat(cmt, *pat, arm.body.node.id, ex.id);
             }
         }
         visit::visit_expr(ex, self, vt);

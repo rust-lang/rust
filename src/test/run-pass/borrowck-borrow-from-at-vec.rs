@@ -1,6 +1,6 @@
 fn sum_slice(x: &[int]) -> int {
     let mut sum = 0;
-    for x.each |i| { sum += i; }
+    for x.each |i| { sum += *i; }
     return sum;
 }
 

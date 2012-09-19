@@ -139,7 +139,7 @@ fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
                       attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
         diag.handler().note(fmt!("meta: %s",
-              pprust::meta_item_to_str(mi,intr)));
+              pprust::meta_item_to_str(*mi,intr)));
     }
 }
 
@@ -161,7 +161,7 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
            vec::len(local_metas), vec::len(extern_metas));
 
     for local_metas.each |needed| {
-        if !attr::contains(extern_metas, needed) {
+        if !attr::contains(extern_metas, *needed) {
             return false;
         }
     }

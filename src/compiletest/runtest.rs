@@ -219,7 +219,7 @@ fn check_error_patterns(props: test_props,
     let mut next_err_pat = props.error_patterns[next_err_idx];
     let mut done = false;
     for str::split_char(procres.stderr, '\n').each |line| {
-        if str::contains(line, next_err_pat) {
+        if str::contains(*line, next_err_pat) {
             debug!("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
@@ -240,7 +240,7 @@ fn check_error_patterns(props: test_props,
                            missing_patterns[0]), procres);
     } else {
         for missing_patterns.each |pattern| {
-            error(fmt!("error pattern '%s' not found!", pattern));
+            error(fmt!("error pattern '%s' not found!", *pattern));
         }
         fatal_procres(~"multiple error patterns not found", procres);
     }
@@ -273,10 +273,10 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
-                       prefixes[i], ee.kind, ee.msg, line);
-                if (str::starts_with(line, prefixes[i]) &&
-                    str::contains(line, ee.kind) &&
-                    str::contains(line, ee.msg)) {
+                       prefixes[i], ee.kind, ee.msg, *line);
+                if (str::starts_with(*line, prefixes[i]) &&
+                    str::contains(*line, ee.kind) &&
+                    str::contains(*line, ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -285,13 +285,13 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, ~"aborting due to") {
+        if str::contains(*line, ~"aborting due to") {
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(line) {
+        if !was_expected && is_compiler_error_or_warning(*line) {
             fatal_procres(fmt!("unexpected compiler error or warning: '%s'",
-                               line),
+                               *line),
                           procres);
         }
     }

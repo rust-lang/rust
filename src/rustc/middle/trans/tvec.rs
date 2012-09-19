@@ -319,7 +319,7 @@ fn write_content(bcx: block,
             match dest {
                 Ignore => {
                     for elements.each |element| {
-                        bcx = expr::trans_into(bcx, element, Ignore);
+                        bcx = expr::trans_into(bcx, *element, Ignore);
                     }
                 }
 

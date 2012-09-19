@@ -312,7 +312,7 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
-        match trt_method {
+        match *trt_method {
           required(tm) => vec::push(reqd, tm),
           provided(m) => vec::push(provd, m)
         }
@@ -575,15 +575,23 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
-      pat_ident(_, _, Some(p)) => walk_pat(p, it),
-      pat_rec(fields, _) | pat_struct(_, fields, _) =>
-        for fields.each |f| { walk_pat(f.pat, it) },
-      pat_enum(_, Some(s)) | pat_tup(s) => for s.each |p| {
-        walk_pat(p, it)
-      },
-      pat_box(s) | pat_uniq(s) | pat_region(s) => walk_pat(s, it),
-      pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
-        | pat_enum(_, _) => ()
+        pat_ident(_, _, Some(p)) => walk_pat(p, it),
+        pat_rec(fields, _) | pat_struct(_, fields, _) => {
+            for fields.each |f| {
+                walk_pat(f.pat, it)
+            }
+        }
+        pat_enum(_, Some(s)) | pat_tup(s) => {
+            for s.each |p| {
+                walk_pat(*p, it)
+            }
+        }
+        pat_box(s) | pat_uniq(s) | pat_region(s) => {
+            walk_pat(s, it)
+        }
+        pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
+        pat_enum(_, _) => {
+        }
     }
 }
 

@@ -389,7 +389,7 @@ fn temporary_keyword_table() -> HashMap<~str, ()> {
         ~"self", ~"static",
     ];
     for keys.each |word| {
-        words.insert(word, ());
+        words.insert(*word, ());
     }
     words
 }
@@ -415,7 +415,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"while"
     ];
     for keys.each |word| {
-        words.insert(word, ());
+        words.insert(*word, ());
     }
     words
 }
@@ -426,7 +426,7 @@ fn reserved_keyword_table() -> HashMap<~str, ()> {
         ~"be"
     ];
     for keys.each |word| {
-        words.insert(word, ());
+        words.insert(*word, ());
     }
     words
 }

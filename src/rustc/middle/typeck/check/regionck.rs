@@ -199,7 +199,7 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
             }
 
             for args.each |arg| {
-                constrain_auto_ref(rcx, arg);
+                constrain_auto_ref(rcx, *arg);
             }
         }
 

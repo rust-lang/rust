@@ -92,7 +92,7 @@ fn option_flatten_map<T: Copy, U: Copy>(f: fn@(T) -> Option<U>, v: ~[T]) ->
    Option<~[U]> {
     let mut res = ~[];
     for v.each |elem| {
-        match f(elem) {
+        match f(*elem) {
           None => return None,
           Some(fv) => vec::push(res, fv)
         }
@@ -156,7 +156,7 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> Option<bindings> {
     let res = HashMap();
     //need to do this first, to check vec lengths.
     for b.literal_ast_matchers.each |sel| {
-        match sel(match_expr(e)) { None => return None, _ => () }
+        match (*sel)(match_expr(e)) { None => return None, _ => () }
     }
     let mut never_mind: bool = false;
     for b.real_binders.each |key, val| {

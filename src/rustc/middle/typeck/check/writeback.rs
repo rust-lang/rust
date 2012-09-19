@@ -36,7 +36,7 @@ fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 fcx.ccx.method_map.insert(
                     id,
-                    {self_arg: {mode: mme.self_arg.mode, ty: t},
+                    {self_arg: {mode: mme.self_arg.mode, ty: *t},
                      ..*mme});
             }
         }
@@ -93,7 +93,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
           Some(substs) => {
             let mut new_tps = ~[];
             for substs.tps.each |subst| {
-                match resolve_type_vars_in_type(fcx, sp, subst) {
+                match resolve_type_vars_in_type(fcx, sp, *subst) {
                   Some(t) => vec::push(new_tps, t),
                   None => { wbcx.success = false; return None; }
                 }

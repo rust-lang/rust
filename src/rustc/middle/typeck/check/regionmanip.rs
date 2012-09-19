@@ -33,7 +33,7 @@ fn replace_bound_regions_in_fn_ty(
     }
 
 
-    for self_ty.each |t| { vec::push(all_tys, t) }
+    for self_ty.each |t| { vec::push(all_tys, *t) }
 
     debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",

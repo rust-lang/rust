@@ -55,7 +55,7 @@ fn map<T, IT: BaseIter<T>, U, BU: buildable<U>>
     (v: IT, f: fn(T) -> U) -> BU {
     do build |push| {
         for v.each() |elem| {
-            push(f(elem));
+            push(f(*elem));
         }
     }
 }

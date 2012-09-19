@@ -137,15 +137,15 @@ impl check_loan_ctxt {
     }
 
     fn walk_loans(scope_id: ast::node_id,
-                  f: fn(loan) -> bool) {
+                  f: fn(v: &loan) -> bool) {
         let mut scope_id = scope_id;
         let region_map = self.tcx().region_map;
         let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
             for req_loan_map.find(scope_id).each |loanss| {
-                for (*loanss).each |loans| {
-                    for (*loans).each |loan| {
+                for loanss.each |loans| {
+                    for loans.each |loan| {
                         if !f(loan) { return; }
                     }
                 }
@@ -160,7 +160,7 @@ impl check_loan_ctxt {
 
     fn walk_loans_of(scope_id: ast::node_id,
                      lp: @loan_path,
-                     f: fn(loan) -> bool) {
+                     f: fn(v: &loan) -> bool) {
         for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
                 if !f(loan) { return; }
@@ -268,8 +268,8 @@ impl check_loan_ctxt {
 
         let par_scope_id = self.tcx().region_map.get(scope_id);
         for self.walk_loans(par_scope_id) |old_loan| {
-            for (*new_loanss).each |new_loans| {
-                for (*new_loans).each |new_loan| {
+            for new_loanss.each |new_loans| {
+                for new_loans.each |new_loan| {
                     if old_loan.lp != new_loan.lp { loop; }
                     match (old_loan.mutbl, new_loan.mutbl) {
                       (m_const, _) | (_, m_const) |
@@ -368,7 +368,7 @@ impl check_loan_ctxt {
         // check_for_conflicting_loans()
         for cmt.lp.each |lp| {
             self.check_for_loan_conflicting_with_assignment(
-                at, ex, cmt, lp);
+                at, ex, cmt, *lp);
         }
 
         self.bccx.add_to_mutbl_map(cmt);
@@ -517,7 +517,7 @@ impl check_loan_ctxt {
                 pc, callee, callee_id, callee_span);
             for args.each |arg| {
                 self.check_pure_callee_or_arg(
-                    pc, Some(arg), arg.id, arg.span);
+                    pc, Some(*arg), arg.id, arg.span);
             }
           }
         }

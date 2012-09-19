@@ -43,14 +43,15 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    });
 
    let pairs_sorted = sortKV(pairs);
-   
+
    let mut buffer = ~"";
 
-   pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
-      let (k,v) = kv;
-      buffer += (fmt!("%s %0.3f\n", str::to_upper(str::raw::from_bytes(k)), v));
-      return true;
-   });
+   for pairs_sorted.each |kv| {
+      let (k,v) = *kv;
+      unsafe {
+          buffer += (fmt!("%s %0.3f\n", str::to_upper(str::raw::from_bytes(k)), v));
+      }
+   }
 
    return buffer;
 }

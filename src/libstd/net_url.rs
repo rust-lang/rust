@@ -199,7 +199,7 @@ fn encode_form_urlencoded(m: HashMap<~str, @DVec<@~str>>) -> ~str {
                 first = false;
             }
 
-            out += #fmt("%s=%s", key, encode_plus(*value));
+            out += #fmt("%s=%s", key, encode_plus(**value));
         }
     }
 
@@ -328,7 +328,7 @@ fn query_from_str(rawquery: &str) -> Query {
     let mut query: Query = ~[];
     if str::len(rawquery) != 0 {
         for str::split_char(rawquery, '&').each |p| {
-            let (k, v) = split_char_first(p, '=');
+            let (k, v) = split_char_first(*p, '=');
             vec::push(query, (decode_component(k), decode_component(v)));
         };
     }
@@ -338,7 +338,7 @@ fn query_from_str(rawquery: &str) -> Query {
 fn query_to_str(+query: Query) -> ~str {
     let mut strvec = ~[];
     for query.each |kv| {
-        let (k, v) = copy kv;
+        let (k, v) = copy *kv;
         strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(v))];
     };
     return str::connect(strvec, ~"&");

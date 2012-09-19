@@ -797,7 +797,7 @@ fn compile_guard(bcx: block,
 
     // Revoke the temp cleanups now that the guard successfully executed.
     for temp_cleanups.each |llval| {
-        revoke_clean(bcx, llval);
+        revoke_clean(bcx, *llval);
     }
 
     return do with_cond(bcx, Not(bcx, val)) |bcx| {
@@ -1158,11 +1158,11 @@ fn trans_alt_inner(scope_cx: block,
         // is just to reduce code space.  See extensive comment at the start
         // of the file for more details.
         if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, arm_data, None);
+            bcx = store_non_ref_bindings(bcx, *arm_data, None);
         }
 
         // insert bindings into the lllocals map and add cleanups
-        bcx = insert_lllocals(bcx, arm_data, true);
+        bcx = insert_lllocals(bcx, *arm_data, true);
 
         bcx = controlflow::trans_block(bcx, arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
@@ -1208,7 +1208,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             }
 
             for inner.each |inner_pat| {
-                bcx = bind_irrefutable_pat(bcx, inner_pat, val, true);
+                bcx = bind_irrefutable_pat(bcx, *inner_pat, val, true);
             }
       }
         ast::pat_enum(_, sub_pats) => {

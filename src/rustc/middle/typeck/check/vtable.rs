@@ -51,7 +51,7 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                vec::push(result, lookup_vtable(fcx, expr, ty, i_ty,
+                vec::push(result, lookup_vtable(fcx, expr, *ty, i_ty,
                                                 allow_unsafe, is_early));
               }
               _ => ()

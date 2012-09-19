@@ -272,11 +272,11 @@ impl LookupContext {
             for applicable_traits.each |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
                 let opt_impl_infos =
-                    coherence_info.extension_methods.find(trait_did);
+                    coherence_info.extension_methods.find(*trait_did);
                 for opt_impl_infos.each |impl_infos| {
                     for impl_infos.each |impl_info| {
                         self.push_candidates_from_impl(
-                            &self.extension_candidates, impl_info);
+                            &self.extension_candidates, *impl_info);
                     }
                 }
             }
@@ -414,7 +414,7 @@ impl LookupContext {
         for opt_impl_infos.each |impl_infos| {
             for impl_infos.each |impl_info| {
                 self.push_candidates_from_impl(
-                    &self.inherent_candidates, impl_info);
+                    &self.inherent_candidates, *impl_info);
             }
         }
     }
@@ -633,7 +633,7 @@ impl LookupContext {
         let region = self.infcx().next_region_var(self.expr.span,
                                                   self.expr.id);
         for mutbls.each |mutbl| {
-            let autoref_ty = mk_autoref_ty(mutbl, region);
+            let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
                 None => {}
                 Some(move mme) => {
@@ -642,7 +642,7 @@ impl LookupContext {
                         @{autoderefs: autoderefs,
                           autoref: Some({kind: kind,
                                          region: region,
-                                         mutbl: mutbl})});
+                                         mutbl: *mutbl})});
                     return Some(mme);
                 }
             }

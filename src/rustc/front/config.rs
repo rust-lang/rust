@@ -142,7 +142,7 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
     if !has_cfg_metas { return true; }
 
     for cfg_metas.each |cfg_mi| {
-        if attr::contains(cfg, cfg_mi) { return true; }
+        if attr::contains(cfg, *cfg_mi) { return true; }
     }
 
     return false;

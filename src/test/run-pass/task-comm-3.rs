@@ -32,7 +32,7 @@ fn test00() {
     // Create and spawn tasks...
     let mut results = ~[];
     while i < number_of_tasks {
-        let ch = po.chan();        
+        let ch = po.chan();
         do task::task().future_result(|+r| {
             vec::push(results, r);
         }).spawn |copy i| {
@@ -53,7 +53,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for results.each |r| { future::get(&r); }
+    for results.each |r| { future::get(r); }
 
     debug!("Completed: Final number is: ");
     log(error, sum);

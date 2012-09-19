@@ -60,7 +60,7 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
     let mut seen = ~[];
     for arms.each |arm| {
         for arm.pats.each |pat| {
-            let v = ~[pat];
+            let v = ~[*pat];
             match is_useful(tcx, seen, v) {
               not_useful => {
                 tcx.sess.span_err(pat.span, ~"unreachable pattern");
@@ -449,24 +449,16 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_lit(@{node: expr_lit(@{node: lit_nil, _}), _}) => { false } // "()"
       pat_lit(_) | pat_range(_, _) => { true }
       pat_rec(fields, _) => {
-        for fields.each |it| {
-            if is_refutable(tcx, it.pat) { return true; }
-        }
-        false
+        fields.any(|f| is_refutable(tcx, f.pat))
       }
       pat_struct(_, fields, _) => {
-        for fields.each |it| {
-            if is_refutable(tcx, it.pat) { return true; }
-        }
-        false
+        fields.any(|f| is_refutable(tcx, f.pat))
       }
       pat_tup(elts) => {
-        for elts.each |elt| { if is_refutable(tcx, elt) { return true; } }
-        false
+        elts.any(|elt| is_refutable(tcx, elt))
       }
       pat_enum(_, Some(args)) => {
-        for args.each |p| { if is_refutable(tcx, p) { return true; } };
-        false
+        args.any(|a| is_refutable(tcx, a))
       }
       pat_enum(_,_) => { false }
     }
