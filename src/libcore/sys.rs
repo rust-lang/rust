@@ -92,7 +92,7 @@ pure fn pref_align_of<T>() -> uint {
 #[inline(always)]
 pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
-        let ref_ptr: *uint = unsafe::reinterpret_cast(&t);
+        let ref_ptr: *uint = cast::reinterpret_cast(&t);
         *ref_ptr - 1
     }
 }
@@ -160,7 +160,7 @@ mod tests {
 
         assert f(20) == 30;
 
-        let original_closure: Closure = unsafe::transmute(f);
+        let original_closure: Closure = cast::transmute(f);
 
         let actual_function_pointer = original_closure.code;
         let environment = original_closure.env;
@@ -170,7 +170,7 @@ mod tests {
             env: environment
         };
 
-        let new_f: fn(int) -> int = unsafe::transmute(new_closure);
+        let new_f: fn(int) -> int = cast::transmute(new_closure);
         assert new_f(20) == 30;
     }
 }

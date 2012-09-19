@@ -89,8 +89,8 @@ unsafe fn chan_from_global_ptr<T: Send>(
         // Install the channel
         log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
-            unsafe::reinterpret_cast(&global),
-            0u, unsafe::reinterpret_cast(&ch));
+            cast::reinterpret_cast(&global),
+            0u, cast::reinterpret_cast(&ch));
         log(debug,fmt!("AFTER .. swapped? %?", swapped));
 
         if swapped {
@@ -100,11 +100,11 @@ unsafe fn chan_from_global_ptr<T: Send>(
         } else {
             // Somebody else got in before we did
             comm::send(setup_ch, Abort);
-            unsafe::reinterpret_cast(&*global)
+            cast::reinterpret_cast(&*global)
         }
     } else {
         log(debug, ~"global != 0");
-        unsafe::reinterpret_cast(&*global)
+        cast::reinterpret_cast(&*global)
     }
 }
 
@@ -211,7 +211,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let po = comm::Port();
     let ch = comm::Chan(po);
     unsafe {
-        rustrt::rust_task_weaken(unsafe::reinterpret_cast(&ch));
+        rustrt::rust_task_weaken(cast::reinterpret_cast(&ch));
     }
     let _unweaken = Unweaken(ch);
     f(po);
@@ -219,7 +219,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     struct Unweaken {
       ch: comm::Chan<()>,
       drop unsafe {
-        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(&self.ch));
+        rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
       }
     }
 
@@ -309,7 +309,7 @@ struct ArcDestruct<T> {
             return; // Happens when destructing an unwrapper's handle.
         }
         do task::unkillable {
-            let data: ~ArcData<T> = unsafe::reinterpret_cast(&self.data);
+            let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
             let new_count = rustrt::rust_atomic_decrement(&mut data.count);
             assert new_count >= 0;
             if new_count == 0 {
@@ -319,14 +319,14 @@ struct ArcDestruct<T> {
                 // being here means we're the only *awake* task with the data.
                 if data.unwrapper != 0 {
                     let p: UnwrapProto =
-                        unsafe::reinterpret_cast(&data.unwrapper);
+                        cast::reinterpret_cast(&data.unwrapper);
                     let (message, response) = option::swap_unwrap(p);
                     // Send 'ready' and wait for a response.
                     pipes::send_one(move message, ());
                     // Unkillable wait. Message guaranteed to come.
                     if pipes::recv_one(move response) {
                         // Other task got the data.
-                        unsafe::forget(move data);
+                        cast::forget(move data);
                     } else {
                         // Other task was killed. drop glue takes over.
                     }
@@ -334,7 +334,7 @@ struct ArcDestruct<T> {
                     // drop glue takes over.
                 }
             } else {
-                unsafe::forget(move data);
+                cast::forget(move data);
             }
         }
     }
@@ -359,7 +359,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
                 pipes::send_one(move response, false);
                 // Either this swap_unwrap or the one below (at "Got here")
                 // ought to run.
-                unsafe::forget(option::swap_unwrap(&mut self.ptr));
+                cast::forget(option::swap_unwrap(&mut self.ptr));
             } else {
                 assert self.ptr.is_none();
                 pipes::send_one(move response, true);
@@ -368,11 +368,11 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
     }
 
     do task::unkillable {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&rc.data);
+        let ptr: ~ArcData<T> = cast::reinterpret_cast(&rc.data);
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((move c1,move p2));
-        let serverp: libc::uintptr_t = unsafe::transmute(move server);
+        let serverp: libc::uintptr_t = cast::transmute(move server);
         // Try to put our server end in the unwrapper slot.
         if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
             // Got in. Step 0: Tell destructor not to run. We are now it.
@@ -383,7 +383,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             if new_count == 0 {
                 // We were the last owner. Can unwrap immediately.
                 // Also we have to free the server endpoints.
-                let _server: UnwrapProto = unsafe::transmute(move serverp);
+                let _server: UnwrapProto = cast::transmute(move serverp);
                 option::swap_unwrap(&mut ptr.data)
                 // drop glue takes over.
             } else {
@@ -403,9 +403,9 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             }
         } else {
             // Somebody else was trying to unwrap. Avoid guaranteed deadlock.
-            unsafe::forget(move ptr);
+            cast::forget(move ptr);
             // Also we have to free the (rejected) server endpoints.
-            let _server: UnwrapProto = unsafe::transmute(move serverp);
+            let _server: UnwrapProto = cast::transmute(move serverp);
             fail ~"Another task is already unwrapping this ARC!";
         }
     }
@@ -422,7 +422,7 @@ type SharedMutableState<T: Send> = ArcDestruct<T>;
 unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
-        let ptr = unsafe::transmute(move data);
+        let ptr = cast::transmute(move data);
         ArcDestruct(ptr)
     }
 }
@@ -431,23 +431,23 @@ unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
 unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         -> &a/mut T {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
+        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
-        let r = unsafe::transmute_region(option::get_ref(&ptr.data));
-        unsafe::forget(move ptr);
-        return unsafe::transmute_mut(r);
+        let r = cast::transmute_region(option::get_ref(&ptr.data));
+        cast::forget(move ptr);
+        return cast::transmute_mut(r);
     }
 }
 #[inline(always)]
 unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         -> &a/T {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
+        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
-        let r = unsafe::transmute_region(option::get_ref(&ptr.data));
-        unsafe::forget(move ptr);
+        let r = cast::transmute_region(option::get_ref(&ptr.data));
+        cast::forget(move ptr);
         return r;
     }
 }
@@ -455,10 +455,10 @@ unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
 unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
+        let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
         assert new_count >= 2;
-        unsafe::forget(move ptr);
+        cast::forget(move ptr);
     }
     ArcDestruct((*rc).data)
 }
@@ -543,7 +543,7 @@ impl<T: Send> Exclusive<T> {
     #[inline(always)]
     unsafe fn with_imm<U>(f: fn(x: &T) -> U) -> U {
         do self.with |x| {
-            f(unsafe::transmute_immut(x))
+            f(cast::transmute_immut(x))
         }
     }
 }

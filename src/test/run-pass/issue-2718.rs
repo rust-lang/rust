@@ -1,5 +1,5 @@
 mod pipes {
-    use unsafe::{forget, transmute};
+    use cast::{forget, transmute};
 
     enum state {
         empty,
@@ -22,7 +22,7 @@ mod pipes {
     };
 
     fn packet<T: Send>() -> *packet<T> unsafe {
-        let p: *packet<T> = unsafe::transmute(~{
+        let p: *packet<T> = cast::transmute(~{
             mut state: empty,
             mut blocked_task: None::<task::Task>,
             mut payload: None::<T>
@@ -40,7 +40,7 @@ mod pipes {
     // We should consider moving this to core::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     unsafe fn uniquify<T>(+x: *T) -> ~T {
-        unsafe { unsafe::transmute(x) }
+        unsafe { cast::transmute(x) }
     }
 
     fn swap_state_acq(+dst: &mut state, src: state) -> state {
@@ -198,19 +198,19 @@ mod pingpong {
 
     fn liberate_ping(-p: ping) -> pipes::send_packet<pong> unsafe {
         let addr : *pipes::send_packet<pong> = match p {
-          ping(x) => { unsafe::transmute(ptr::addr_of(x)) }
+          ping(x) => { cast::transmute(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
-        unsafe::forget(p);
+        cast::forget(p);
         liberated_value
     }
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
         let addr : *pipes::send_packet<ping> = match p {
-          pong(x) => { unsafe::transmute(ptr::addr_of(x)) }
+          pong(x) => { cast::transmute(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
-        unsafe::forget(p);
+        cast::forget(p);
         liberated_value
     }
 

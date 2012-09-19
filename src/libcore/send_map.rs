@@ -289,7 +289,7 @@ mod linear {
                                 // inference stupidly infers a
                                 // lifetime for `ref bkt` that is
                                 // shorter than it needs to be.
-                                unsafe::copy_lifetime(self, &bkt.value)
+                                cast::copy_lifetime(self, &bkt.value)
                             };
                             Some(ptr)
                         }

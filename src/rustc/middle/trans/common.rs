@@ -1075,13 +1075,13 @@ fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
 
 fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
-        unsafe::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+        cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
         bytes.len() as c_uint, True);
 }
 
 fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
-        unsafe::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+        cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
         bytes.len() as c_uint, False);
 }
 

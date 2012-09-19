@@ -29,7 +29,7 @@ extern mod rusti {
 pure fn capacity<T>(&&v: @[const T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr =
-            ::unsafe::reinterpret_cast(&addr_of(v));
+            ::cast::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -154,13 +154,13 @@ mod raw {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: @[const T], new_len: uint) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
     unsafe fn push<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, move initval);
@@ -172,7 +172,7 @@ mod raw {
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
     unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).unboxed.data);

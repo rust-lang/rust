@@ -3,7 +3,7 @@ use io::{Writer, WriterUtil};
 use libc::c_void;
 use sys::TypeDesc;
 use to_str::ToStr;
-use unsafe::transmute;
+use cast::transmute;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use reflect::{MovePtr, MovePtrAdaptor};
 use vec::raw::{VecRepr, UnboxedVecRepr, SliceRepr};
@@ -981,7 +981,7 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = sys::get_type_desc::<T>();
-        let tydesc = unsafe::transmute(tydesc);
+        let tydesc = cast::transmute(tydesc);
 
         let repr_printer = @ReprPrinter {
             ptr: ptr,

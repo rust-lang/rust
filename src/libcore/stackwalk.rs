@@ -1,6 +1,6 @@
 // NB: Don't rely on other core mods here as this has to move into the rt
 
-use unsafe::reinterpret_cast;
+use cast::reinterpret_cast;
 use ptr::offset;
 use sys::size_of;
 

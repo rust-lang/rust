@@ -9,7 +9,7 @@ export from_srv, extract, to_str, interner;
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
-    () => (unsafe::transmute::<(uint, uint),
+    () => (cast::transmute::<(uint, uint),
            &fn(+@@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
 )
 

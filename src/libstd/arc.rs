@@ -359,7 +359,7 @@ impl<T: Const Send> &RWARC<T> {
         // Whatever region the input reference had, it will be safe to use
         // the same region for the output reference. (The only 'unsafe' part
         // of this cast is removing the mutability.)
-        let new_data = unsafe { unsafe::transmute_immut(data) };
+        let new_data = unsafe { cast::transmute_immut(data) };
         // Downgrade ensured the token belonged to us. Just a sanity check.
         assert ptr::ref_eq(&state.data, new_data);
         // Produce new token
@@ -390,7 +390,7 @@ fn unwrap_rw_arc<T: Const Send>(+arc: RWARC<T>) -> T {
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
 fn borrow_rwlock<T: Const Send>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
-    unsafe { unsafe::transmute_immut(&mut state.lock) }
+    unsafe { cast::transmute_immut(&mut state.lock) }
 }
 
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.

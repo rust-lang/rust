@@ -25,7 +25,7 @@
 export Arena, arena_with_size;
 
 use list::{List, Cons, Nil};
-use unsafe::reinterpret_cast;
+use cast::reinterpret_cast;
 use sys::TypeDesc;
 use libc::size_t;
 

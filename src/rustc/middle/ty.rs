@@ -382,9 +382,9 @@ enum t_opaque {}
 type t = *t_opaque;
 
 pure fn get(t: t) -> t_box unsafe {
-    let t2 = unsafe::reinterpret_cast::<t, t_box>(&t);
+    let t2 = cast::reinterpret_cast::<t, t_box>(&t);
     let t3 = t2;
-    unsafe::forget(move t2);
+    cast::forget(move t2);
     t3
 }
 
@@ -886,7 +886,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let key = {sty: st, o_def_id: o_def_id};
     match cx.interner.find(key) {
-      Some(t) => unsafe { return unsafe::reinterpret_cast(&t); },
+      Some(t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
     }
     let mut flags = 0u;
@@ -944,7 +944,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
-    unsafe { unsafe::reinterpret_cast(&t) }
+    unsafe { cast::reinterpret_cast(&t) }
 }
 
 fn mk_nil(cx: ctxt) -> t { mk_t(cx, ty_nil) }

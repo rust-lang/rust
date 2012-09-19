@@ -4,10 +4,10 @@ struct r {
   v: *int,
   drop unsafe {
     debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
-           unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
-           unsafe::reinterpret_cast::<**int, uint>(&ptr::addr_of(self.v)),
-           unsafe::reinterpret_cast::<*int, uint>(&self.v));
-    let v2: ~int = unsafe::reinterpret_cast(&self.v); }
+           cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
+           cast::reinterpret_cast::<**int, uint>(&ptr::addr_of(self.v)),
+           cast::reinterpret_cast::<*int, uint>(&self.v));
+    let v2: ~int = cast::reinterpret_cast(&self.v); }
 }
 
 fn r(v: *int) -> r unsafe {
@@ -23,38 +23,38 @@ enum t = {
 
 fn main() unsafe {
     let i1 = ~0;
-    let i1p = unsafe::reinterpret_cast(&i1);
-    unsafe::forget(i1);
+    let i1p = cast::reinterpret_cast(&i1);
+    cast::forget(i1);
     let i2 = ~0;
-    let i2p = unsafe::reinterpret_cast(&i2);
-    unsafe::forget(i2);
+    let i2p = cast::reinterpret_cast(&i2);
+    cast::forget(i2);
 
     let x1 = @t({
         mut next: None,
           r: {
           let rs = r(i1p);
           debug!("r = %x",
-                 unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(rs)));
+                 cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(rs)));
           rs }
     });
     
     debug!("x1 = %x, x1.r = %x",
-        unsafe::reinterpret_cast::<@t, uint>(&x1),
-        unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(x1.r)));
+        cast::reinterpret_cast::<@t, uint>(&x1),
+        cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(x1.r)));
 
     let x2 = @t({
         mut next: None,
           r: {
           let rs = r(i2p);
           debug!("r2 = %x",
-                 unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(rs)));
+                 cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(rs)));
           rs
             }
     });
     
     debug!("x2 = %x, x2.r = %x",
-           unsafe::reinterpret_cast::<@t, uint>(&x2),
-           unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(x2.r)));
+           cast::reinterpret_cast::<@t, uint>(&x2),
+           cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(x2.r)));
 
     x1.next = Some(x2);
     x2.next = Some(x1);

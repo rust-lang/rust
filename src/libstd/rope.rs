@@ -807,18 +807,18 @@ mod node {
               option::Some(x) => {
                 //FIXME (#2744): Replace with memcpy or something similar
                 let mut local_buf: ~[u8] =
-                    unsafe::reinterpret_cast(&*x.content);
+                    cast::reinterpret_cast(&*x.content);
                 let mut i = x.byte_offset;
                 while i < x.byte_len {
                     buf[offset] = local_buf[i];
                     offset += 1u;
                     i      += 1u;
                 }
-                unsafe::forget(move local_buf);
+                cast::forget(move local_buf);
               }
             }
         }
-        return unsafe::transmute(move buf);
+        return cast::transmute(move buf);
     }
 
     /**

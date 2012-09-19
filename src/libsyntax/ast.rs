@@ -34,7 +34,7 @@ type spanned<T> = {node: T, span: span};
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
-    () => (unsafe::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
+    () => (cast::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
         (-3 as uint, 0u)))
 )
 

@@ -5,7 +5,7 @@ extern mod rustrt {
 fn main() {
     unsafe {
         let x = ~[~"a", ~"b", ~"c"];
-        let p: *uint = unsafe::transmute(x);
+        let p: *uint = cast::transmute(x);
         rustrt::rust_annihilate_box(p);
     }
 }

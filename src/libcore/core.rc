@@ -41,7 +41,7 @@ export uint, u8, u16, u32, u64;
 export float, f32, f64;
 export box, char, str, ptr, vec, at_vec, bool;
 export either, option, result, iter;
-export gc, io, libc, os, run, rand, sys, unsafe, logging;
+export gc, io, libc, os, run, rand, sys, cast, logging;
 export comm, task, future, pipes;
 export extfmt;
 // The test harness links against core, so don't include runtime in tests.
@@ -228,7 +228,7 @@ mod path;
 mod rand;
 mod run;
 mod sys;
-mod unsafe;
+mod cast;
 mod mutable;
 mod flate;
 mod repr;
