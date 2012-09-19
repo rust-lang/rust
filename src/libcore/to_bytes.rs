@@ -1,3 +1,9 @@
+/*!
+
+The `ToBytes` and `IterBytes` traits
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];

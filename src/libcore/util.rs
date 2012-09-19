@@ -1,12 +1,14 @@
+/*!
+
+Miscellaneous helpers for common patterns.
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
-
-/**
- * Miscellaneous helpers for common patterns.
- */
 
 /// The identity function.
 #[inline(always)]

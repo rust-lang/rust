@@ -1,3 +1,5 @@
+//! The trait for types that can be created from strings
+
 use option::Option;
 
 trait FromStr {

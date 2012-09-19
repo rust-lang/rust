@@ -1,12 +1,16 @@
+/*!
+
+A doubly-linked list. Supports O(1) head, tail, count, push, pop, etc.
+
+# Safety note
+
+Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-
-/**
- * A doubly-linked list. Supports O(1) head, tail, count, push, pop, etc.
- *
- * Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
- */
 
 export DList;
 export new_dlist, from_elem, from_vec, extensions;

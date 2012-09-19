@@ -1,3 +1,9 @@
+/*!
+
+More runtime type reflection
+
+*/
+
 use dvec::DVec;
 use io::{Writer, WriterUtil};
 use libc::c_void;

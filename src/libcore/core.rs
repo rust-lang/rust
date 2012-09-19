@@ -82,6 +82,7 @@ const debug : u32 = 3_u32;
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
+#[doc(hidden)] // FIXME #3538
 mod core {
     const error : u32 = 0_u32;
     const warn : u32 = 1_u32;

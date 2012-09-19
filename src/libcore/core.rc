@@ -1,3 +1,27 @@
+/*!
+
+The Rust core library.
+
+The Rust core library provides runtime features required by the language,
+including the task scheduler and memory allocators, as well as library
+support for Rust built-in types, platform abstractions, and other commonly
+used features.
+
+`core` includes modules corresponding to each of the integer types, each of
+the floating point types, the `bool` type, tuples, characters, strings,
+vectors (`vec`), shared boxes (`box`), and unsafe and borrowed pointers
+(`ptr`).  Additionally, `core` provides very commonly used built-in types
+and operations, concurrency primitives, platform abstractions, I/O, and
+complete bindings to the C standard library.
+
+`core` is linked to all crates and its contents imported.  Implicitly, all
+crates behave as if they included the following prologue:
+
+    extern mod core;
+    use core::*;
+
+*/
+
 #[link(name = "core",
        vers = "0.4",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
@@ -6,27 +30,6 @@
 #[comment = "The Rust core library"];
 #[license = "MIT"];
 #[crate_type = "lib"];
-
-/*!
- * The Rust core library provides functionality that is closely tied to the
- * Rust built-in types and runtime services, or that is used in nearly every
- * non-trivial program.
- *
- * `core` includes modules corresponding to each of the integer types, each of
- * the floating point types, the `bool` type, tuples, characters, strings,
- * vectors (`vec`), shared boxes (`box`), and unsafe pointers (`ptr`).
- * Additionally, `core` provides very commonly used built-in types and
- * operations, concurrency primitives, platform abstractions, I/O, and
- * complete bindings to the C standard library.
- *
- * `core` is linked by default to all crates and the contents imported.
- * Implicitly, all crates behave as if they included the following prologue:
- *
- *     use core;
- *     import core::*;
- *
- * This behavior can be disabled with the `#[no_core]` crate attribute.
- */
 
 // Don't link to core. We are core.
 #[no_core];

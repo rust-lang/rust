@@ -1,7 +1,8 @@
 /*!
- * Helper types for interfacing with the `intrinsic::visit_ty`
- * reflection system.
- */
+
+Runtime type reflection
+
+*/
 
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;
