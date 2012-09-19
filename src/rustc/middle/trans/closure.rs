@@ -244,7 +244,6 @@ fn store_environment(bcx: block,
 fn build_closure(bcx0: block,
                  cap_vars: ~[capture::capture_var],
                  ck: ty::closure_kind,
-                 id: ast::node_id,
                  include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
@@ -255,7 +254,7 @@ fn build_closure(bcx0: block,
     let mut env_vals = ~[];
     for vec::each(cap_vars) |cap_var| {
         debug!("Building closure: captured variable %?", *cap_var);
-        let datum = expr::trans_local_var(bcx, id, cap_var.def);
+        let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             capture::cap_ref => {
                 assert ck == ty::ck_block;
@@ -370,7 +369,7 @@ fn trans_expr_fn(bcx: block,
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, |fcx| {
