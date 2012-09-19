@@ -21,7 +21,7 @@ fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
     cat {
         meows: in_x,
         how_hungry: in_y,
-        info: in_info
+        info: move in_info
     }
 }
 

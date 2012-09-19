@@ -7,7 +7,6 @@
 
 use libc::size_t;
 
-export port::{};
 export port;
 export recv;
 
@@ -65,13 +64,13 @@ fn recv<T: Send>(p: port<T>) -> T { recv_((**p).po) }
 
 /// Receive on a raw port pointer
 fn recv_<T: Send>(p: *rust_port) -> T {
-    let yield = 0u;
+    let yield = 0;
     let yieldp = ptr::addr_of(&yield);
     let mut res;
     res = rusti::init::<T>();
     rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
-    if yield != 0u {
+    if yield != 0 {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
     } else {
@@ -79,7 +78,7 @@ fn recv_<T: Send>(p: *rust_port) -> T {
         // this is a good place to yield
         task::yield();
     }
-    return res;
+    move res
 }
 
 
