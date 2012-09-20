@@ -30,6 +30,7 @@
 use cmp::Eq;
 use result::Result;
 use pipes::{stream, Chan, Port};
+use local_data_priv::{local_get, local_set};
 
 export Task;
 export TaskResult;
@@ -1209,7 +1210,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     /*######################################################################*
      * Step 1. Get spawner's taskgroup info.
      *######################################################################*/
-    let spawner_group = match unsafe { local_data::local_get(spawner,
+    let spawner_group = match unsafe { local_get(spawner,
                                                  taskgroup_key!()) } {
         None => {
             // Main task, doing first spawn ever. Lazily initialise here.
@@ -1222,7 +1223,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             let group =
                 @TCB(spawner, move tasks, AncestorList(None), true, None);
             unsafe {
-                local_data::local_set(spawner, taskgroup_key!(), group);
+                local_set(spawner, taskgroup_key!(), group);
             }
             group
         }
@@ -1351,7 +1352,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 let group = @TCB(child, move child_arc, move ancestors,
                                  is_main, move notifier);
                 unsafe {
-                    local_data::local_set(child, taskgroup_key!(), group);
+                    local_set(child, taskgroup_key!(), group);
                 }
 
                 // Run the child's body.
