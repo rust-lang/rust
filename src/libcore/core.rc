@@ -10,12 +10,14 @@ used features.
 `core` includes modules corresponding to each of the integer types, each of
 the floating point types, the `bool` type, tuples, characters, strings,
 vectors (`vec`), shared boxes (`box`), and unsafe and borrowed pointers
-(`ptr`).  Additionally, `core` provides very commonly used built-in types
-and operations, concurrency primitives, platform abstractions, I/O, and
-complete bindings to the C standard library.
+(`ptr`).  Additionally, `core` provides task management and creation (`task`),
+communication primitives (`comm` and `pipes`), an efficient vector builder
+(`dvec`), platform abstractions (`os` and `path`), basic I/O abstractions
+(`io`), common traits (`cmp`, `num`, `to_str`), and complete bindings
+to the C standard library (`libc`).
 
-`core` is linked to all crates and its contents imported.  Implicitly, all
-crates behave as if they included the following prologue:
+`core` is linked to all crates by default and its contents imported.
+Implicitly, all crates behave as if they included the following prologue:
 
     extern mod core;
     use core::*;
