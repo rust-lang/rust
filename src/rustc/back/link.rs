@@ -607,7 +607,7 @@ fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
 }
 
 fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
-    return fmt!("%s_%u", flav, ccx.names(flav));
+    return fmt!("%s_%u", flav, ccx.names(flav).repr);
 }
 
 // If the user wants an exe generated we need to invoke

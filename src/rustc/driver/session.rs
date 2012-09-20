@@ -243,7 +243,7 @@ impl session {
     fn ident_of(st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)
     }
-    fn intr() -> syntax::parse::token::ident_interner {
+    fn intr() -> @syntax::parse::token::ident_interner {
         self.parse_sess.interner
     }
 }

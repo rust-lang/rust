@@ -34,7 +34,7 @@ impl path_elt : cmp::Eq {
 type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
-fn path_to_str_with_sep(p: path, sep: ~str, itr: ident_interner) -> ~str {
+fn path_to_str_with_sep(p: path, sep: ~str, itr: @ident_interner) -> ~str {
     let strs = do vec::map(p) |e| {
         match *e {
           path_mod(s) => *itr.get(s),
@@ -44,7 +44,7 @@ fn path_to_str_with_sep(p: path, sep: ~str, itr: ident_interner) -> ~str {
     str::connect(strs, sep)
 }
 
-fn path_ident_to_str(p: path, i: ident, itr: ident_interner) -> ~str {
+fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
     if vec::is_empty(p) {
         //FIXME /* FIXME (#2543) */ copy *i
         *itr.get(i)
@@ -53,7 +53,7 @@ fn path_ident_to_str(p: path, i: ident, itr: ident_interner) -> ~str {
     }
 }
 
-fn path_to_str(p: path, itr: ident_interner) -> ~str {
+fn path_to_str(p: path, itr: @ident_interner) -> ~str {
     path_to_str_with_sep(p, ~"::", itr)
 }
 
@@ -326,7 +326,7 @@ fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
     visit::visit_stmt(stmt, cx, v);
 }
 
-fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
+fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
     match map.find(id) {
       None => {
         fmt!("unknown node (id=%d)", id)

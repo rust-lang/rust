@@ -35,7 +35,7 @@ type ctxt = {
     hash: ~str,
     os: os,
     static: bool,
-    intr: ident_interner
+    intr: @ident_interner
 };
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
@@ -135,7 +135,7 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
     }
 }
 
-fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
+fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
                       attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
         diag.handler().note(fmt!("meta: %s",
@@ -226,7 +226,7 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(intr: ident_interner,
+fn list_file_metadata(intr: @ident_interner,
                       os: os, path: &Path, out: io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
