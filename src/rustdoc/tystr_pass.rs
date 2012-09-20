@@ -333,6 +333,7 @@ fn fold_struct(
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
                 ast_map::node_item(item, _) => {
+                    let item = strip_struct_drop_block(item);
                     Some(pprust::item_to_str(item,
                                              extract::interner()))
                 }
@@ -343,10 +344,37 @@ fn fold_struct(
     }
 }
 
+/// Removes the drop block from structs so that they aren't displayed
+/// as part of the type
+fn strip_struct_drop_block(item: @ast::item) -> @ast::item {
+    let node = match item.node {
+        ast::item_class(def, tys) => {
+            let def = @{
+                dtor: None,
+                .. *def
+            };
+            ast::item_class(def, tys)
+        }
+        _ => fail ~"not a struct"
+    };
+
+    @{
+        node: node,
+        .. *item
+    }
+}
+
 #[test]
 fn should_add_struct_defs() {
     let doc = test::mk_doc(~"struct S { field: () }");
     assert doc.cratemod().structs()[0].sig.get().contains("struct S {");
+}
+
+#[test]
+fn should_not_serialize_struct_drop_blocks() {
+    // All we care about are the fields
+    let doc = test::mk_doc(~"struct S { field: (), drop { } }");
+    assert !doc.cratemod().structs()[0].sig.get().contains("drop");
 }
 
 #[cfg(test)]
