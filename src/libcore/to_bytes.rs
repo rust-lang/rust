@@ -37,6 +37,15 @@ trait IterBytes {
     pure fn iter_bytes(lsb0: bool, f: Cb);
 }
 
+impl bool: IterBytes {
+    #[inline(always)]
+    pure fn iter_bytes(_lsb0: bool, f: Cb) {
+        f([
+            self as u8
+        ]);
+    }
+}
+
 impl u8: IterBytes {
     #[inline(always)]
     pure fn iter_bytes(_lsb0: bool, f: Cb) {

@@ -877,16 +877,28 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                   fcx.llretptr);
         }
         ~"move_val" => {
+            // Create a datum reflecting the value being moved:
+            //
+            // - the datum will be by ref if the value is non-immediate;
+            //
+            // - the datum has a FromRvalue source because, that way,
+            //   the `move_to()` method does not feel compelled to
+            //   zero out the memory where the datum resides.  Zeroing
+            //   is not necessary since, for intrinsics, there is no
+            //   cleanup to concern ourselves with.
             let tp_ty = substs.tys[0];
+            let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: ByRef, source: FromLvalue};
+                             ty: tp_ty, mode: mode, source: FromRvalue};
             bcx = src.move_to(bcx, DROP_EXISTING,
                               get_param(decl, first_real_arg));
         }
         ~"move_val_init" => {
+            // See comments for `"move_val"`.
             let tp_ty = substs.tys[0];
+            let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: ByRef, source: FromLvalue};
+                             ty: tp_ty, mode: mode, source: FromRvalue};
             bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
         }
         ~"min_align_of" => {

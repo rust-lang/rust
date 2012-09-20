@@ -264,20 +264,37 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
         vec::map2(precise_param_ids, uses, |id, uses| {
             match id {
                 (a, b@Some(_)) => mono_precise(a, b),
-              (subst, None) => {
-                if uses == 0u { mono_any }
-                else if uses == type_use::use_repr &&
-                        !ty::type_needs_drop(ccx.tcx, subst) {
-                    let llty = type_of::type_of(ccx, subst);
-                    let size = shape::llsize_of_real(ccx, llty);
-                    let align = shape::llalign_of_pref(ccx, llty);
-                    // Special value for nil to prevent problems with undef
-                    // return pointers.
-                    if size == 1u && ty::type_is_nil(subst) {
-                        mono_repr(0u, 0u)
-                    } else { mono_repr(size, align) }
-                } else { mono_precise(subst, None) }
-              }
+                (subst, None) => {
+                    if uses == 0u {
+                        mono_any
+                    } else if uses == type_use::use_repr &&
+                        !ty::type_needs_drop(ccx.tcx, subst)
+                    {
+                        let llty = type_of::type_of(ccx, subst);
+                        let size = shape::llsize_of_real(ccx, llty);
+                        let align = shape::llalign_of_pref(ccx, llty);
+                        let mode = datum::appropriate_mode(subst);
+
+                        // FIXME(#3547)---scalars and floats are
+                        // treated differently in most ABIs.  But we
+                        // should be doing something more detailed
+                        // here.
+                        let is_float = match ty::get(subst).sty {
+                            ty::ty_float(_) => true,
+                            _ => false
+                        };
+
+                        // Special value for nil to prevent problems
+                        // with undef return pointers.
+                        if size == 1u && ty::type_is_nil(subst) {
+                            mono_repr(0u, 0u, is_float, mode)
+                        } else {
+                            mono_repr(size, align, is_float, mode)
+                        }
+                    } else {
+                        mono_precise(subst, None)
+                    }
+                }
             }
         })
       }

@@ -1437,10 +1437,9 @@ fn new_fn_ctxt(ccx: @crate_ctxt, path: path, llfndecl: ValueRef,
 // field of the fn_ctxt with
 fn create_llargs_for_fn_args(cx: fn_ctxt,
                              ty_self: self_arg,
-                             args: ~[ast::arg]) {
+                             args: ~[ast::arg]) -> ~[ValueRef] {
     let _icx = cx.insn_ctxt("create_llargs_for_fn_args");
-    // Skip the implicit arguments 0, and 1.
-    let mut arg_n = first_real_arg;
+
     match ty_self {
       impl_self(tt) => {
         cx.llself = Some(ValSelfData {
@@ -1459,28 +1458,22 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
       no_self => ()
     }
 
-    // Populate the llargs field of the function context with the ValueRefs
-    // that we get from llvm::LLVMGetParam for each argument.
-    for vec::each(args) |arg| {
-        let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
-        assert (llarg as int != 0);
-        // Note that this uses local_mem even for things passed by value.
-        // copy_args_to_allocas will overwrite the table entry with local_imm
-        // before it's actually used.
-        cx.llargs.insert(arg.id, local_mem(llarg));
-        arg_n += 1u;
-    }
+    // Return an array containing the ValueRefs that we get from
+    // llvm::LLVMGetParam for each argument.
+    vec::from_fn(args.len(), |i| {
+        let arg_n = first_real_arg + i;
+        llvm::LLVMGetParam(cx.llfn, arg_n as c_uint)
+    })
 }
 
-fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
-                        arg_tys: ~[ty::arg]) -> block {
+fn copy_args_to_allocas(fcx: fn_ctxt,
+                        bcx: block,
+                        args: &[ast::arg],
+                        raw_llargs: &[ValueRef],
+                        arg_tys: &[ty::arg]) -> block {
     let _icx = fcx.insn_ctxt("copy_args_to_allocas");
     let tcx = bcx.tcx();
-    let mut arg_n: uint = 0u, bcx = bcx;
-    let epic_fail = fn@() -> ! {
-        tcx.sess.bug(~"someone forgot\
-                to document an invariant in copy_args_to_allocas!");
-    };
+    let mut bcx = bcx;
 
     match fcx.llself {
       Some(copy slf) => {
@@ -1496,31 +1489,50 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
       _ => {}
     }
 
-    for vec::each(arg_tys) |arg| {
-        let id = args[arg_n].id;
-        let argval = match fcx.llargs.get(id) {
-          local_mem(v) => v,
-          _ => epic_fail()
-        };
-        match ty::resolved_mode(tcx, arg.mode) {
-          ast::by_mutbl_ref => (),
-          ast::by_move | ast::by_copy => add_clean(bcx, argval, arg.ty),
-          ast::by_val => {
-            if !ty::type_is_immediate(arg.ty) {
-                let alloc = alloc_ty(bcx, arg.ty);
-                Store(bcx, argval, alloc);
-                fcx.llargs.insert(id, local_mem(alloc));
-            } else {
-                fcx.llargs.insert(id, local_imm(argval));
+    for uint::range(0, arg_tys.len()) |arg_n| {
+        let arg_ty = &arg_tys[arg_n];
+        let raw_llarg = raw_llargs[arg_n];
+        let arg_id = args[arg_n].id;
+
+        // For certain mode/type combinations, the raw llarg values are passed
+        // by value.  However, within the fn body itself, we want to always
+        // have all locals and argumenst be by-ref so that we can cancel the
+        // cleanup and for better interaction with LLVM's debug info.  So, if
+        // the argument would be passed by value, we store it into an alloca.
+        // This alloca should be optimized away by LLVM's mem-to-reg pass in
+        // the event it's not truly needed.
+        let llarg;
+        match ty::resolved_mode(tcx, arg_ty.mode) {
+            ast::by_ref | ast::by_mutbl_ref => {
+                llarg = raw_llarg;
             }
-          }
-          ast::by_ref => ()
+            ast::by_move | ast::by_copy => {
+                // only by value if immediate:
+                if datum::appropriate_mode(arg_ty.ty).is_by_value() {
+                    let alloc = alloc_ty(bcx, arg_ty.ty);
+                    Store(bcx, raw_llarg, alloc);
+                    llarg = alloc;
+                } else {
+                    llarg = raw_llarg;
+                }
+
+                add_clean(bcx, llarg, arg_ty.ty);
+            }
+            ast::by_val => {
+                // always by value, also not owned, so don't add a cleanup:
+                let alloc = alloc_ty(bcx, arg_ty.ty);
+                Store(bcx, raw_llarg, alloc);
+                llarg = alloc;
+            }
         }
+
+        fcx.llargs.insert(arg_id, local_mem(llarg));
+
         if fcx.ccx.sess.opts.extra_debuginfo {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
         }
-        arg_n += 1u;
     }
+
     return bcx;
 }
 
@@ -1558,7 +1570,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, param_substs,
                                   Some(body.span));
-    create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
+    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
 
     // Set GC for function.
     if ccx.sess.opts.gc {
@@ -1576,7 +1588,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     let block_ty = node_id_type(bcx, body.node.id);
 
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, arg_tys);
+    bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
     maybe_load_env(fcx);
 
@@ -1648,14 +1660,14 @@ fn trans_enum_variant(ccx: @crate_ctxt,
          id: varg.id});
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id,
                                param_substs, None);
-    create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
     let ty_param_substs = match param_substs {
       Some(substs) => substs.tys,
       None => ~[]
     };
     let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
-    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, arg_tys);
+    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     // Cast the enum to a type we can GEP into.
     let llblobptr = if is_degen {
@@ -1705,11 +1717,11 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     // Make the fn context
     let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
                                Some(psubsts), Some(sp));
-    create_llargs_for_fn_args(fcx, no_self, decl.inputs);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, decl.inputs);
     let mut bcx_top = top_scope_block(fcx, body.info());
     let lltop = bcx_top.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx_top, ctor_id));
-    bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs, arg_tys);
+    bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs, raw_llargs, arg_tys);
 
     // Create a temporary for `self` that we will return at the end
     let selfdatum = datum::scratch_datum(bcx_top, rslt_ty, true);

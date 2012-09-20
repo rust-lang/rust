@@ -16,10 +16,16 @@ export type_of_non_gc_box;
 export type_of_rooted;
 
 fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
-    let arg_ty = arg.ty;
-    let llty = type_of(ccx, arg_ty);
+    let llty = type_of(ccx, arg.ty);
     match ty::resolved_mode(ccx.tcx, arg.mode) {
         ast::by_val => llty,
+        ast::by_copy | ast::by_move => {
+            if ty::type_is_immediate(arg.ty) {
+                llty
+            } else {
+                T_ptr(llty)
+            }
+        }
         _ => T_ptr(llty)
     }
 }
