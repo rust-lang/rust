@@ -333,7 +333,7 @@ fn fold_struct(
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
                 ast_map::node_item(item, _) => {
-                    let item = strip_struct_drop_block(item);
+                    let item = strip_struct_extra_stuff(item);
                     Some(pprust::item_to_str(item,
                                              extract::interner()))
                 }
@@ -344,13 +344,15 @@ fn fold_struct(
     }
 }
 
-/// Removes the drop block from structs so that they aren't displayed
-/// as part of the type
-fn strip_struct_drop_block(item: @ast::item) -> @ast::item {
+/// Removes various things from the struct item definition that
+/// shouldn't be displayed in the struct signature. Probably there
+/// should be a simple pprust::struct_to_str function that does
+/// what I actually want
+fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     let node = match item.node {
         ast::item_class(def, tys) => {
             let def = @{
-                dtor: None,
+                dtor: None, // Remove the drop { } block
                 .. *def
             };
             ast::item_class(def, tys)
@@ -359,6 +361,7 @@ fn strip_struct_drop_block(item: @ast::item) -> @ast::item {
     };
 
     @{
+        attrs: ~[], // Remove the attributes
         node: node,
         .. *item
     }
@@ -375,6 +378,13 @@ fn should_not_serialize_struct_drop_blocks() {
     // All we care about are the fields
     let doc = test::mk_doc(~"struct S { field: (), drop { } }");
     assert !doc.cratemod().structs()[0].sig.get().contains("drop");
+}
+
+#[test]
+fn should_not_serialize_struct_attrs() {
+    // All we care about are the fields
+    let doc = test::mk_doc(~"#[wut] struct S { field: () }");
+    assert !doc.cratemod().structs()[0].sig.get().contains("wut");
 }
 
 #[cfg(test)]
