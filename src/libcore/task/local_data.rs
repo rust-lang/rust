@@ -52,7 +52,7 @@ type LocalDataKey<T: Owned> = &fn(+@T);
 unsafe fn local_data_pop<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_pop(rustrt::rust_get_task(), key)
+    local_pop(rt::rust_get_task(), key)
 }
 /**
  * Retrieve a task-local data value. It will also be kept alive in the
@@ -61,7 +61,7 @@ unsafe fn local_data_pop<T: Owned>(
 unsafe fn local_data_get<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_get(rustrt::rust_get_task(), key)
+    local_get(rt::rust_get_task(), key)
 }
 /**
  * Store a value in task-local data. If this key already has a value,
@@ -70,7 +70,7 @@ unsafe fn local_data_get<T: Owned>(
 unsafe fn local_data_set<T: Owned>(
     key: LocalDataKey<T>, +data: @T) {
 
-    local_set(rustrt::rust_get_task(), key, data)
+    local_set(rt::rust_get_task(), key, data)
 }
 /**
  * Modify a task-local data value. If the function returns 'None', the
@@ -80,7 +80,7 @@ unsafe fn local_data_modify<T: Owned>(
     key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 
-    local_modify(rustrt::rust_get_task(), key, modify_fn)
+    local_modify(rt::rust_get_task(), key, modify_fn)
 }
 
 #[test]

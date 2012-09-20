@@ -1,6 +1,7 @@
 #[doc(hidden)]; // FIXME #3538
 
 use local_data::LocalDataKey;
+use rt::rust_task;
 
 trait LocalData { }
 impl<T: Owned> @T: LocalData { }
@@ -34,13 +35,13 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     // NOTE: The map's box lives in TLS invisibly referenced once. Each time
     // we retrieve it for get/set, we make another reference, which get/set
     // drop when they finish. No "re-storing after modifying" is needed.
-    let map_ptr = rustrt::rust_get_task_local_data(task);
+    let map_ptr = rt::rust_get_task_local_data(task);
     if map_ptr.is_null() {
         let map: TaskLocalMap = @dvec::DVec();
         // Use reinterpret_cast -- transmute would take map away from us also.
-        rustrt::rust_set_task_local_data(
+        rt::rust_set_task_local_data(
             task, cast::reinterpret_cast(&map));
-        rustrt::rust_task_local_data_atexit(task, cleanup_task_local_map);
+        rt::rust_task_local_data_atexit(task, cleanup_task_local_map);
         // Also need to reference it an extra time to keep it for now.
         cast::bump_box_refcount(map);
         map

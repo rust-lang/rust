@@ -222,6 +222,8 @@ mod comm;
 mod task {
     mod local_data;
     mod local_data_priv;
+    mod spawn;
+    mod rt;
 }
 mod future;
 mod pipes;
