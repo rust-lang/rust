@@ -658,9 +658,6 @@ mod tests {
     fn test_removal() {
         debug!("*** starting test_removal");
         let num_to_insert: uint = 64u;
-        assert (hash(&0u) == hash(&1u));
-        assert (hash(&2u) == hash(&3u));
-        assert (hash(&0u) != hash(&2u));
         let hm: map::HashMap<uint, uint> =
             map::HashMap::<uint, uint>();
         let mut i: uint = 0u;
