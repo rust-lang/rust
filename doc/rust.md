@@ -2045,7 +2045,7 @@ enclosing it. It is only permitted in the body of a loop.
 ### Loop expressions
 
 ~~~~~~~~{.ebnf .gram}
-again_expr : "loop" ;
+loop_expr : "loop" ;
 ~~~~~~~~
 
 Evaluating a `loop` expression immediately terminates the current iteration of
