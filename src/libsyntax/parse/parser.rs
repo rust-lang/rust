@@ -237,7 +237,7 @@ struct parser {
     mut restriction: restriction,
     mut quote_depth: uint, // not (yet) related to the quasiquoter
     reader: reader,
-    interner: interner<@~str>,
+    interner: @token::ident_interner,
     keywords: HashMap<~str, ()>,
     strict_keywords: HashMap<~str, ()>,
     reserved_keywords: HashMap<~str, ()>,

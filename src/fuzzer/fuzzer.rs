@@ -243,7 +243,7 @@ fn check_variants_T<T: Copy>(
   filename: &Path,
   thing_label: ~str,
   things: ~[T],
-  stringifier: fn@(@T, syntax::parse::token::ident_interner) -> ~str,
+  stringifier: fn@(@T, @syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {

@@ -18,7 +18,7 @@ export read_crates;
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(diag: span_handler, crate: ast::crate,
                cstore: cstore::cstore, filesearch: filesearch,
-               os: loader::os, static: bool, intr: ident_interner) {
+               os: loader::os, static: bool, intr: @ident_interner) {
     let e = @{diag: diag,
               filesearch: filesearch,
               cstore: cstore,
@@ -94,7 +94,7 @@ type env = @{diag: span_handler,
              static: bool,
              crate_cache: DVec<cache_entry>,
              mut next_crate_num: ast::crate_num,
-             intr: ident_interner};
+             intr: @ident_interner};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
     match i.node {
