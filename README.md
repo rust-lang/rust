@@ -17,7 +17,7 @@ an earlier state of development). As such, source builds require that:
 
   * Windows (7, server 2008 r2) x86 only
   * Linux 2.6.x (various distributions) x86 and x86-64
-  * OSX 10.6 ("Snow leopard") or 10.7 ("Lion") x86 and x86-64
+  * OSX 10.6 ("Snow Leopard") or 10.7 ("Lion") x86 and x86-64
 
 You may find other platforms work, but these are our "tier 1" supported build
 environments that are most likely to work. Further platforms will be added to
@@ -59,10 +59,10 @@ information on them.
 Rust is primarily distributed under the terms of the MIT license, with
 portions covered by various BSD-like licenses.
 
-See LICENSE.txt for complete terms of copyright and redistribution.
-
+See LICENSE.txt for details.
 
 ## More help
 
-The [tutorial](http://dl.rust-lang.org/doc/tutorial.html) is a good
-starting point.
+The [tutorial] is a good starting point.
+
+[tutorial]: http://dl.rust-lang.org/doc/tutorial.html
