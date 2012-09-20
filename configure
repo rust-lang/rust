@@ -400,7 +400,7 @@ then
                       | cut -d ' ' -f 2)
 
     case $CFG_CLANG_VERSION in
-        (3.0svn | 3.0 | 3.1 | 4.0)
+        (3.0svn | 3.0 | 3.1 | 4.0 | 4.1)
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
         CFG_C_COMPILER="clang"
         ;;
