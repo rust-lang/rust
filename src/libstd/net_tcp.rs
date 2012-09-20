@@ -128,7 +128,7 @@ enum TcpConnectErrData {
  * the remote host. In the event of failure, a
  * `net::tcp::tcp_connect_err_data` instance will be returned
  */
-fn connect(-input_ip: ip::IpAddr, port: uint,
+fn connect(+input_ip: ip::IpAddr, port: uint,
            iotask: IoTask)
     -> result::Result<TcpSocket, TcpConnectErrData> unsafe {
     let result_po = core::comm::Port::<ConnAttempt>();
@@ -261,7 +261,7 @@ fn connect(-input_ip: ip::IpAddr, port: uint,
  * A `result` object with a `nil` value as the `ok` variant, or a
  * `tcp_err_data` value as the `err` variant
  */
-fn write(sock: TcpSocket, raw_write_data: ~[u8])
+fn write(sock: &TcpSocket, raw_write_data: ~[u8])
     -> result::Result<(), TcpErrData> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     write_common_impl(socket_data_ptr, raw_write_data)
@@ -298,7 +298,7 @@ fn write(sock: TcpSocket, raw_write_data: ~[u8])
  * `result` object with a `nil` value as the `ok` variant, or a `tcp_err_data`
  * value as the `err` variant
  */
-fn write_future(sock: TcpSocket, raw_write_data: ~[u8])
+fn write_future(sock: &TcpSocket, raw_write_data: ~[u8])
     -> future::Future<result::Result<(), TcpErrData>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
@@ -322,7 +322,7 @@ fn write_future(sock: TcpSocket, raw_write_data: ~[u8])
  * optionally, loop on) from until `read_stop` is called, or a
  * `tcp_err_data` record
  */
-fn read_start(sock: TcpSocket)
+fn read_start(sock: &TcpSocket)
     -> result::Result<comm::Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> unsafe {
     let socket_data = ptr::addr_of(*(sock.socket_data));
@@ -336,8 +336,8 @@ fn read_start(sock: TcpSocket)
  *
  * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
  */
-fn read_stop(sock: TcpSocket,
-             -read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
+fn read_stop(sock: &TcpSocket,
+             +read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
     result::Result<(), TcpErrData> unsafe {
     log(debug, fmt!("taking the read_port out of commission %?", read_port));
     let socket_data = ptr::addr_of(*sock.socket_data);
@@ -359,7 +359,7 @@ fn read_stop(sock: TcpSocket,
  * * `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
  * read attempt. Pass `0u` to wait indefinitely
  */
-fn read(sock: TcpSocket, timeout_msecs: uint)
+fn read(sock: &TcpSocket, timeout_msecs: uint)
     -> result::Result<~[u8],TcpErrData> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     read_common_impl(socket_data, timeout_msecs)
@@ -394,7 +394,7 @@ fn read(sock: TcpSocket, timeout_msecs: uint)
  * * `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
  * read attempt. Pass `0u` to wait indefinitely
  */
-fn read_future(sock: TcpSocket, timeout_msecs: uint)
+fn read_future(sock: &TcpSocket, timeout_msecs: uint)
     -> future::Future<result::Result<~[u8],TcpErrData>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
@@ -569,9 +569,9 @@ fn accept(new_conn: TcpNewConnection)
  * successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
  * of listen exiting because of an error
  */
-fn listen(-host_ip: ip::IpAddr, port: uint, backlog: uint,
+fn listen(+host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
           +new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
@@ -586,10 +586,10 @@ fn listen(-host_ip: ip::IpAddr, port: uint, backlog: uint,
     }
 }
 
-fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
+fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
-          -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
+          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          +on_connect_cb: fn~(*uv::ll::uv_tcp_t))
     -> result::Result<(), TcpListenErrData> unsafe {
     let stream_closed_po = core::comm::Port::<()>();
     let kill_po = core::comm::Port::<Option<TcpErrData>>();
@@ -726,7 +726,7 @@ fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
  *
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
-fn socket_buf(-sock: TcpSocket) -> TcpSocketBuf {
+fn socket_buf(+sock: TcpSocket) -> TcpSocketBuf {
     TcpSocketBuf(@{ sock: move sock, mut buf: ~[] })
 }
 
@@ -734,28 +734,28 @@ fn socket_buf(-sock: TcpSocket) -> TcpSocketBuf {
 impl TcpSocket {
     fn read_start() -> result::Result<comm::Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
-        read_start(self)
+        read_start(&self)
     }
     fn read_stop(-read_port:
                  comm::Port<result::Result<~[u8], TcpErrData>>) ->
         result::Result<(), TcpErrData> {
-        read_stop(self, move read_port)
+        read_stop(&self, move read_port)
     }
     fn read(timeout_msecs: uint) ->
         result::Result<~[u8], TcpErrData> {
-        read(self, timeout_msecs)
+        read(&self, timeout_msecs)
     }
     fn read_future(timeout_msecs: uint) ->
         future::Future<result::Result<~[u8], TcpErrData>> {
-        read_future(self, timeout_msecs)
+        read_future(&self, timeout_msecs)
     }
     fn write(raw_write_data: ~[u8])
         -> result::Result<(), TcpErrData> {
-        write(self, raw_write_data)
+        write(&self, raw_write_data)
     }
     fn write_future(raw_write_data: ~[u8])
         -> future::Future<result::Result<(), TcpErrData>> {
-        write_future(self, raw_write_data)
+        write_future(&self, raw_write_data)
     }
 }
 
@@ -764,7 +764,7 @@ impl TcpSocketBuf: io::Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
-            let read_result = read(self.data.sock, 0u);
+            let read_result = read(&self.data.sock, 0u);
             if read_result.is_err() {
                 let err_data = read_result.get_err();
 
@@ -1112,7 +1112,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
 }
 
 extern fn on_alloc_cb(handle: *libc::c_void,
-                     ++suggested_size: size_t)
+                      suggested_size: size_t)
     -> uv::ll::uv_buf_t unsafe {
     log(debug, ~"tcp read on_alloc_cb!");
     let char_ptr = uv::ll::malloc_buf_base_of(suggested_size);
@@ -1470,7 +1470,7 @@ mod test {
         */
     }
 
-    fn buf_write<W:io::Writer>(+w: &W, val: ~str) {
+    fn buf_write<W:io::Writer>(+w: &W, val: &str) {
         log(debug, fmt!("BUF_WRITE: val len %?", str::len(val)));
         do str::byte_slice(val) |b_slice| {
             log(debug, fmt!("BUF_WRITE: b_slice len %?",
@@ -1486,7 +1486,7 @@ mod test {
         str::from_bytes(new_bytes)
     }
 
-    fn run_tcp_test_server(server_ip: ~str, server_port: uint, resp: ~str,
+    fn run_tcp_test_server(server_ip: &str, server_port: uint, +resp: ~str,
                           server_ch: comm::Chan<~str>,
                           cont_ch: comm::Chan<()>,
                           iotask: IoTask) -> ~str {
@@ -1524,7 +1524,7 @@ mod test {
                         let sock = result::unwrap(move accept_result);
                         log(debug, ~"SERVER: successfully accepted"+
                             ~"connection!");
-                        let received_req_bytes = read(sock, 0u);
+                        let received_req_bytes = read(&sock, 0u);
                         match received_req_bytes {
                           result::Ok(data) => {
                             log(debug, ~"SERVER: got REQ str::from_bytes..");
@@ -1533,7 +1533,7 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             log(debug, ~"SERVER: before write");
-                            tcp_write_single(sock, str::to_bytes(resp));
+                            tcp_write_single(&sock, str::to_bytes(resp));
                             log(debug, ~"SERVER: after write.. die");
                             core::comm::send(kill_ch, None);
                           }
@@ -1572,7 +1572,7 @@ mod test {
         ret_val
     }
 
-    fn run_tcp_test_server_fail(server_ip: ~str, server_port: uint,
+    fn run_tcp_test_server_fail(server_ip: &str, server_port: uint,
                           iotask: IoTask) -> TcpListenErrData {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(move server_ip_addr, server_port, 128,
@@ -1595,7 +1595,7 @@ mod test {
         }
     }
 
-    fn run_tcp_test_client(server_ip: ~str, server_port: uint, resp: ~str,
+    fn run_tcp_test_client(server_ip: &str, server_port: uint, resp: &str,
                           client_ch: comm::Chan<~str>,
                           iotask: IoTask) -> result::Result<~str,
                                                     TcpConnectErrData> {
@@ -1612,7 +1612,7 @@ mod test {
         else {
             let sock = result::unwrap(move connect_result);
             let resp_bytes = str::to_bytes(resp);
-            tcp_write_single(sock, resp_bytes);
+            tcp_write_single(&sock, resp_bytes);
             let read_result = sock.read(0u);
             if read_result.is_err() {
                 log(debug, ~"CLIENT: failure to read");
@@ -1628,7 +1628,7 @@ mod test {
         }
     }
 
-    fn tcp_write_single(sock: TcpSocket, val: ~[u8]) {
+    fn tcp_write_single(sock: &TcpSocket, val: ~[u8]) {
         let write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
         if result::is_err(write_result) {
