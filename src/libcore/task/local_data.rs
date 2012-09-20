@@ -2,15 +2,17 @@
 
 Task local data management
 
-Allows storing boxes with arbitrary types inside, to be accessed anywhere
-within a task, keyed by a pointer to a global finaliser function. Useful
-for task-spawning metadata (tracking linked failure state), dynamic
-variables, and interfacing with foreign code with bad callback interfaces.
+Allows storing boxes with arbitrary types inside, to be accessed
+anywhere within a task, keyed by a pointer to a global finaliser
+function. Useful for dynamic variables, singletons, and interfacing
+with foreign code with bad callback interfaces.
 
-To use, declare a monomorphic global function at the type to store, and use
-it as the 'key' when accessing. See the 'tls' tests below for examples.
+To use, declare a monomorphic global function at the type to store,
+and use it as the 'key' when accessing. See the 'tls' tests below for
+examples.
 
-Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation magic.
+Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
+magic.
 
 */
 
