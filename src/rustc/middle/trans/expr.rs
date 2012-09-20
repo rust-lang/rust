@@ -110,6 +110,7 @@ use syntax::print::pprust::{expr_to_str};
 use util::ppaux::ty_to_str;
 use util::common::indenter;
 use ty::{AutoPtr, AutoSlice};
+use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
 
 // The primary two functions for translating expressions:
 export trans_to_datum, trans_into;
@@ -146,6 +147,7 @@ impl Dest {
     }
 }
 
+#[cfg(stage0)]
 impl Dest : cmp::Eq {
     pure fn eq(&&other: Dest) -> bool {
         match (self, other) {
@@ -156,6 +158,19 @@ impl Dest : cmp::Eq {
         }
     }
     pure fn ne(&&other: Dest) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Dest : cmp::Eq {
+    pure fn eq(other: &Dest) -> bool {
+        match (self, (*other)) {
+            (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
+            (Ignore, Ignore) => true,
+            (SaveIn(*), _) => false,
+            (Ignore, _) => false,
+        }
+    }
+    pure fn ne(other: &Dest) -> bool { !self.eq(other) }
 }
 
 fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
@@ -596,15 +611,18 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_binary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, lhs, ~[rhs], dest);
+            return trans_overloaded_op(bcx, expr, lhs, ~[rhs], dest,
+                                       DoAutorefArg);
         }
         ast::expr_unary(_, subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, subexpr, ~[], dest);
+            return trans_overloaded_op(bcx, expr, subexpr, ~[], dest,
+                                       DontAutorefArg);
         }
         ast::expr_index(base, idx) => {
             // if not overloaded, would be RvalueDatumExpr
-            return trans_overloaded_op(bcx, expr, base, ~[idx], dest);
+            return trans_overloaded_op(bcx, expr, base, ~[idx], dest,
+                                       DontAutorefArg);
         }
         ast::expr_cast(val, _) => {
             return meth::trans_trait_cast(bcx, val, expr.id, dest);
@@ -1302,7 +1320,8 @@ fn trans_overloaded_op(bcx: block,
                        expr: @ast::expr,
                        rcvr: @ast::expr,
                        +args: ~[@ast::expr],
-                       dest: Dest) -> block
+                       dest: Dest,
+                       +autoref_arg: AutorefArg) -> block
 {
     let origin = bcx.ccx().maps.method_map.get(expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
@@ -1310,7 +1329,7 @@ fn trans_overloaded_op(bcx: block,
         bcx, expr.info(), fty,
         expr_ty(bcx, expr),
         |bcx| meth::trans_method_callee(bcx, expr.callee_id, rcvr, origin),
-        callee::ArgExprs(args), dest);
+        callee::ArgExprs(args), dest, autoref_arg);
 }
 
 fn int_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
@@ -1347,6 +1366,7 @@ enum cast_kind {
     cast_other,
 }
 
+#[cfg(stage0)]
 impl cast_kind : cmp::Eq {
     pure fn eq(&&other: cast_kind) -> bool {
         match (self, other) {
@@ -1363,6 +1383,25 @@ impl cast_kind : cmp::Eq {
         }
     }
     pure fn ne(&&other: cast_kind) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl cast_kind : cmp::Eq {
+    pure fn eq(other: &cast_kind) -> bool {
+        match (self, (*other)) {
+            (cast_pointer, cast_pointer) => true,
+            (cast_integral, cast_integral) => true,
+            (cast_float, cast_float) => true,
+            (cast_enum, cast_enum) => true,
+            (cast_other, cast_other) => true,
+            (cast_pointer, _) => false,
+            (cast_integral, _) => false,
+            (cast_float, _) => false,
+            (cast_enum, _) => false,
+            (cast_other, _) => false,
+        }
+    }
+    pure fn ne(other: &cast_kind) -> bool { !self.eq(other) }
 }
 
 fn cast_type_kind(t: ty::t) -> cast_kind {
@@ -1461,7 +1500,7 @@ fn trans_assign_op(bcx: block,
         // FIXME(#2582) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
         let bcx = trans_overloaded_op(bcx, expr, dst, ~[src],
-                                      SaveIn(scratch.val));
+                                      SaveIn(scratch.val), DoAutorefArg);
         return scratch.move_to_datum(bcx, DROP_EXISTING, dst_datum);
     }
 

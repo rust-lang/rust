@@ -36,6 +36,7 @@ enum purity_cause {
     pc_cmt(bckerr)
 }
 
+#[cfg(stage0)]
 impl purity_cause : cmp::Eq {
     pure fn eq(&&other: purity_cause) -> bool {
         match self {
@@ -54,6 +55,27 @@ impl purity_cause : cmp::Eq {
         }
     }
     pure fn ne(&&other: purity_cause) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl purity_cause : cmp::Eq {
+    pure fn eq(other: &purity_cause) -> bool {
+        match self {
+            pc_pure_fn => {
+                match (*other) {
+                    pc_pure_fn => true,
+                    _ => false
+                }
+            }
+            pc_cmt(e0a) => {
+                match (*other) {
+                    pc_cmt(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(other: &purity_cause) -> bool { !self.eq(other) }
 }
 
 fn check_loans(bccx: borrowck_ctxt,
@@ -78,11 +100,20 @@ enum assignment_type {
     at_swap
 }
 
+#[cfg(stage0)]
 impl assignment_type : cmp::Eq {
     pure fn eq(&&other: assignment_type) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: assignment_type) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl assignment_type : cmp::Eq {
+    pure fn eq(other: &assignment_type) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &assignment_type) -> bool { !self.eq(other) }
 }
 
 impl assignment_type {

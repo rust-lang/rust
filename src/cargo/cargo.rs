@@ -26,6 +26,7 @@ type package = {
     versions: ~[(~str, ~str)]
 };
 
+#[cfg(stage0)]
 impl package : cmp::Ord {
     pure fn lt(&&other: package) -> bool {
         if self.name.lt(other.name) { return true; }
@@ -46,6 +47,29 @@ impl package : cmp::Ord {
     pure fn le(&&other: package) -> bool { !other.lt(self) }
     pure fn ge(&&other: package) -> bool { !self.lt(other) }
     pure fn gt(&&other: package) -> bool { other.lt(self)  }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl package : cmp::Ord {
+    pure fn lt(other: &package) -> bool {
+        if self.name.lt(&(*other).name) { return true; }
+        if (*other).name.lt(&self.name) { return false; }
+        if self.uuid.lt(&(*other).uuid) { return true; }
+        if (*other).uuid.lt(&self.uuid) { return false; }
+        if self.url.lt(&(*other).url) { return true; }
+        if (*other).url.lt(&self.url) { return false; }
+        if self.method.lt(&(*other).method) { return true; }
+        if (*other).method.lt(&self.method) { return false; }
+        if self.description.lt(&(*other).description) { return true; }
+        if (*other).description.lt(&self.description) { return false; }
+        if self.tags.lt(&(*other).tags) { return true; }
+        if (*other).tags.lt(&self.tags) { return false; }
+        if self.versions.lt(&(*other).versions) { return true; }
+        return false;
+    }
+    pure fn le(other: &package) -> bool { !(*other).lt(&self) }
+    pure fn ge(other: &package) -> bool { !self.lt(other)     }
+    pure fn gt(other: &package) -> bool { (*other).lt(&self)  }
 }
 
 type local_package = {
@@ -97,11 +121,20 @@ type options = {
 
 enum mode { system_mode, user_mode, local_mode }
 
+#[cfg(stage0)]
 impl mode : cmp::Eq {
     pure fn eq(&&other: mode) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: mode) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl mode : cmp::Eq {
+    pure fn eq(other: &mode) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &mode) -> bool { !self.eq(other) }
 }
 
 fn opts() -> ~[getopts::Opt] {

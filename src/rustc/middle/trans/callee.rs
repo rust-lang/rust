@@ -266,7 +266,7 @@ fn trans_call(in_cx: block,
     let _icx = in_cx.insn_ctxt("trans_call");
     trans_call_inner(
         in_cx, call_ex.info(), expr_ty(in_cx, f), node_id_type(in_cx, id),
-        |cx| trans(cx, f), args, dest)
+        |cx| trans(cx, f), args, dest, DontAutorefArg)
 }
 
 fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: expr::Dest)
@@ -287,7 +287,7 @@ fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
     return callee::trans_call_inner(
         bcx, None, fty, rty,
         |bcx| trans_fn_ref_with_vtables_to_callee(bcx, did, 0, ~[], None),
-        ArgVals(args), dest);
+        ArgVals(args), dest, DontAutorefArg);
 }
 
 fn body_contains_ret(body: ast::blk) -> bool {
@@ -315,7 +315,8 @@ fn trans_call_inner(
     ret_ty: ty::t,
     get_callee: fn(block) -> Callee,
     args: CallArgs,
-    dest: expr::Dest) -> block
+    dest: expr::Dest,
+    autoref_arg: AutorefArg) -> block
 {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
         let ret_in_loop = match args {
@@ -363,7 +364,7 @@ fn trans_call_inner(
         };
 
         let args_res = trans_args(bcx, llenv, args, fn_expr_ty,
-                                  dest, ret_flag);
+                                  dest, ret_flag, autoref_arg);
         bcx = args_res.bcx;
         let mut llargs = args_res.args;
 
@@ -414,7 +415,8 @@ enum CallArgs {
 }
 
 fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
-              dest: expr::Dest, ret_flag: Option<ValueRef>)
+              dest: expr::Dest, ret_flag: Option<ValueRef>,
+              +autoref_arg: AutorefArg)
     -> {bcx: block, args: ~[ValueRef], retslot: ValueRef}
 {
     let _icx = cx.insn_ctxt("trans_args");
@@ -453,7 +455,8 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
         for vec::eachi(arg_exprs) |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx, arg_tys[i], arg_expr, &mut temp_cleanups,
-                               if i == last { ret_flag } else { None })
+                               if i == last { ret_flag } else { None },
+                               autoref_arg)
             });
             vec::push(llargs, arg_val);
         }
@@ -473,13 +476,19 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
     return {bcx: bcx, args: llargs, retslot: llretslot};
 }
 
+enum AutorefArg {
+    DontAutorefArg,
+    DoAutorefArg
+}
+
 // temp_cleanups: cleanups that should run only if failure occurs before the
 // call takes place:
 fn trans_arg_expr(bcx: block,
                   formal_ty: ty::arg,
                   arg_expr: @ast::expr,
                   temp_cleanups: &mut ~[ValueRef],
-                  ret_flag: Option<ValueRef>)
+                  ret_flag: Option<ValueRef>,
+                  +autoref_arg: AutorefArg)
     -> Result
 {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
@@ -539,38 +548,45 @@ fn trans_arg_expr(bcx: block,
         let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
         val = llvm::LLVMGetUndef(llformal_ty);
     } else {
-        match arg_mode {
-            ast::by_ref | ast::by_mutbl_ref => {
-                val = arg_datum.to_ref_llval(bcx);
-            }
-
-            ast::by_val => {
-                // NB: avoid running the take glue.
-                val = arg_datum.to_value_llval(bcx);
-            }
-
-            ast::by_copy | ast::by_move => {
-                let scratch = scratch_datum(bcx, arg_datum.ty, false);
-
-                if arg_mode == ast::by_move {
-                    // NDM---Doesn't seem like this should be necessary
-                    if !arg_datum.store_will_move() {
-                        bcx.sess().span_bug(
-                            arg_expr.span,
-                            fmt!("move mode but datum will not store: %s",
-                                 arg_datum.to_str(bcx.ccx())));
+        match autoref_arg {
+            DoAutorefArg => { val = arg_datum.to_ref_llval(bcx); }
+            DontAutorefArg => {
+                match arg_mode {
+                    ast::by_ref | ast::by_mutbl_ref => {
+                        val = arg_datum.to_ref_llval(bcx);
                     }
+
+                    ast::by_val => {
+                        // NB: avoid running the take glue.
+                        val = arg_datum.to_value_llval(bcx);
+                    }
+
+                    ast::by_copy | ast::by_move => {
+                        let scratch = scratch_datum(bcx, arg_datum.ty, false);
+
+                        if arg_mode == ast::by_move {
+                            // NDM---Doesn't seem like this should be
+                            // necessary
+                            if !arg_datum.store_will_move() {
+                                bcx.sess().span_bug(
+                                    arg_expr.span,
+                                    fmt!("move mode but datum will not \
+                                          store: %s",
+                                          arg_datum.to_str(bcx.ccx())));
+                            }
+                        }
+
+                        arg_datum.store_to_datum(bcx, INIT, scratch);
+
+                        // Technically, ownership of val passes to the callee.
+                        // However, we must cleanup should we fail before the
+                        // callee is actually invoked.
+                        scratch.add_clean(bcx);
+                        vec::push(*temp_cleanups, scratch.val);
+                        val = scratch.val;
+                  }
                 }
-
-                arg_datum.store_to_datum(bcx, INIT, scratch);
-
-                // Technically, ownership of val passes to the callee.
-                // However, we must cleanup should we fail before the
-                // callee is actually invoked.
-                scratch.add_clean(bcx);
-                vec::push(*temp_cleanups, scratch.val);
-                val = scratch.val;
-          }
+            }
         }
 
         if formal_ty.ty != arg_datum.ty {

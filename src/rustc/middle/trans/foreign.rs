@@ -40,11 +40,20 @@ enum x86_64_reg_class {
     memory_class
 }
 
+#[cfg(stage0)]
 impl x86_64_reg_class: cmp::Eq {
     pure fn eq(&&other: x86_64_reg_class) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: x86_64_reg_class) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl x86_64_reg_class : cmp::Eq {
+    pure fn eq(other: &x86_64_reg_class) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &x86_64_reg_class) -> bool { !self.eq(other) }
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {
@@ -974,7 +983,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             bcx = trans_call_inner(
                 bcx, None, fty, ty::mk_nil(bcx.tcx()),
                 |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(~[frameaddress_val]), Ignore);
+                ArgVals(~[frameaddress_val]), Ignore, DontAutorefArg);
         }
         ~"morestack_addr" => {
             // XXX This is a hack to grab the address of this particular

@@ -116,11 +116,20 @@ enum State {
     Terminated
 }
 
+#[cfg(stage0)]
 impl State: Eq {
     pure fn eq(&&other: State) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: State) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl State : Eq {
+    pure fn eq(other: &State) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &State) -> bool { !self.eq(other) }
 }
 
 struct BufferHeader {

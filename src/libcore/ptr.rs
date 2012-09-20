@@ -203,6 +203,7 @@ impl<T> *T: Ptr {
 }
 
 // Equality for pointers
+#[cfg(stage0)]
 impl<T> *const T : Eq {
     pure fn eq(&&other: *const T) -> bool unsafe {
         let a: uint = cast::reinterpret_cast(&self);
@@ -211,8 +212,19 @@ impl<T> *const T : Eq {
     }
     pure fn ne(&&other: *const T) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T> *const T : Eq {
+    pure fn eq(other: &*const T) -> bool unsafe {
+        let a: uint = cast::reinterpret_cast(&self);
+        let b: uint = cast::reinterpret_cast(&(*other));
+        return a == b;
+    }
+    pure fn ne(other: &*const T) -> bool { !self.eq(other) }
+}
 
 // Comparison for pointers
+#[cfg(stage0)]
 impl<T> *const T : Ord {
     pure fn lt(&&other: *const T) -> bool unsafe {
         let a: uint = cast::reinterpret_cast(&self);
@@ -235,19 +247,59 @@ impl<T> *const T : Ord {
         return a > b;
     }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T> *const T : Ord {
+    pure fn lt(other: &*const T) -> bool unsafe {
+        let a: uint = cast::reinterpret_cast(&self);
+        let b: uint = cast::reinterpret_cast(&(*other));
+        return a < b;
+    }
+    pure fn le(other: &*const T) -> bool unsafe {
+        let a: uint = cast::reinterpret_cast(&self);
+        let b: uint = cast::reinterpret_cast(&(*other));
+        return a <= b;
+    }
+    pure fn ge(other: &*const T) -> bool unsafe {
+        let a: uint = cast::reinterpret_cast(&self);
+        let b: uint = cast::reinterpret_cast(&(*other));
+        return a >= b;
+    }
+    pure fn gt(other: &*const T) -> bool unsafe {
+        let a: uint = cast::reinterpret_cast(&self);
+        let b: uint = cast::reinterpret_cast(&(*other));
+        return a > b;
+    }
+}
 
 // Equality for region pointers
+#[cfg(stage0)]
 impl<T:Eq> &const T : Eq {
     pure fn eq(&&other: &const T) -> bool { return *self == *other; }
     pure fn ne(&&other: &const T) -> bool { return *self != *other; }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T:Eq> &const T : Eq {
+    pure fn eq(other: & &const T) -> bool { return *self == *(*other); }
+    pure fn ne(other: & &const T) -> bool { return *self != *(*other); }
+}
 
 // Comparison for region pointers
+#[cfg(stage0)]
 impl<T:Ord> &const T : Ord {
     pure fn lt(&&other: &const T) -> bool { *self < *other }
     pure fn le(&&other: &const T) -> bool { *self <= *other }
     pure fn ge(&&other: &const T) -> bool { *self >= *other }
     pure fn gt(&&other: &const T) -> bool { *self > *other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T:Ord> &const T : Ord {
+    pure fn lt(other: & &const T) -> bool { *self < *(*other) }
+    pure fn le(other: & &const T) -> bool { *self <= *(*other) }
+    pure fn ge(other: & &const T) -> bool { *self >= *(*other) }
+    pure fn gt(other: & &const T) -> bool { *self > *(*other) }
 }
 
 #[test]

@@ -146,11 +146,20 @@ enum level {
     note,
 }
 
+#[cfg(stage0)]
 impl level : cmp::Eq {
     pure fn eq(&&other: level) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: level) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl level : cmp::Eq {
+    pure fn eq(other: &level) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &level) -> bool { !self.eq(other) }
 }
 
 fn diagnosticstr(lvl: level) -> ~str {

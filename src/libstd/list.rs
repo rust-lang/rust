@@ -148,6 +148,7 @@ fn each<T>(l: @List<T>, f: fn(T) -> bool) {
     }
 }
 
+#[cfg(stage0)]
 impl<T:Eq> List<T> : Eq {
     pure fn eq(&&other: List<T>) -> bool {
         match self {
@@ -166,6 +167,27 @@ impl<T:Eq> List<T> : Eq {
         }
     }
     pure fn ne(&&other: List<T>) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T:Eq> List<T> : Eq {
+    pure fn eq(other: &List<T>) -> bool {
+        match self {
+            Cons(e0a, e1a) => {
+                match (*other) {
+                    Cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            Nil => {
+                match (*other) {
+                    Nil => true,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(other: &List<T>) -> bool { !self.eq(other) }
 }
 
 #[cfg(test)]

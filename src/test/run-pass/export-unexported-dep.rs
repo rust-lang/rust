@@ -9,10 +9,10 @@ mod foo {
     enum t { t1, t2, }
 
     impl t : cmp::Eq {
-        pure fn eq(&&other: t) -> bool {
-            (self as uint) == (other as uint)
+        pure fn eq(other: &t) -> bool {
+            (self as uint) == ((*other) as uint)
         }
-        pure fn ne(&&other: t) -> bool { !self.eq(other) }
+        pure fn ne(other: &t) -> bool { !self.eq(other) }
     }
 
     fn f() -> t { return t1; }

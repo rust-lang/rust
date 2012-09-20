@@ -9,10 +9,10 @@ mod pipes {
     }
 
     impl state : cmp::Eq {
-        pure fn eq(&&other: state) -> bool {
-            (self as uint) == (other as uint)
+        pure fn eq(other: &state) -> bool {
+            (self as uint) == ((*other) as uint)
         }
-        pure fn ne(&&other: state) -> bool { !self.eq(other) }
+        pure fn ne(other: &state) -> bool { !self.eq(other) }
     }
 
     type packet<T: Send> = {

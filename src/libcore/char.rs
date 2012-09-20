@@ -189,9 +189,16 @@ pure fn cmp(a: char, b: char) -> int {
     else { 0 }
 }
 
+#[cfg(stage0)]
 impl char: Eq {
     pure fn eq(&&other: char) -> bool { self == other }
     pure fn ne(&&other: char) -> bool { self != other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl char : Eq {
+    pure fn eq(other: &char) -> bool { self == (*other) }
+    pure fn ne(other: &char) -> bool { self != (*other) }
 }
 
 #[test]

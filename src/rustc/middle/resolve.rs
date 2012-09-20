@@ -110,11 +110,20 @@ enum PatternBindingMode {
     IrrefutableMode
 }
 
+#[cfg(stage0)]
 impl PatternBindingMode : cmp::Eq {
     pure fn eq(&&other: PatternBindingMode) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: PatternBindingMode) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl PatternBindingMode : cmp::Eq {
+    pure fn eq(other: &PatternBindingMode) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &PatternBindingMode) -> bool { !self.eq(other) }
 }
 
 
@@ -151,11 +160,20 @@ enum Mutability {
     Immutable
 }
 
+#[cfg(stage0)]
 impl Mutability : cmp::Eq {
     pure fn eq(&&other: Mutability) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: Mutability) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Mutability : cmp::Eq {
+    pure fn eq(other: &Mutability) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &Mutability) -> bool { !self.eq(other) }
 }
 
 enum SelfBinding {
@@ -186,11 +204,20 @@ enum ImportDirectiveNS {
     AnyNS
 }
 
+#[cfg(stage0)]
 impl ImportDirectiveNS : cmp::Eq {
     pure fn eq(&&other: ImportDirectiveNS) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: ImportDirectiveNS) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ImportDirectiveNS : cmp::Eq {
+    pure fn eq(other: &ImportDirectiveNS) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &ImportDirectiveNS) -> bool { !self.eq(other) }
 }
 
 /// Contains data for specific types of import directives.
@@ -282,11 +309,20 @@ enum XrayFlag {
     Xray        //< Private items can be accessed.
 }
 
+#[cfg(stage0)]
 impl XrayFlag : cmp::Eq {
     pure fn eq(&&other: XrayFlag) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: XrayFlag) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl XrayFlag : cmp::Eq {
+    pure fn eq(other: &XrayFlag) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &XrayFlag) -> bool { !self.eq(other) }
 }
 
 enum AllowCapturingSelfFlag {
@@ -294,11 +330,20 @@ enum AllowCapturingSelfFlag {
     DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
 }
 
+#[cfg(stage0)]
 impl AllowCapturingSelfFlag : cmp::Eq {
     pure fn eq(&&other: AllowCapturingSelfFlag) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: AllowCapturingSelfFlag) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl AllowCapturingSelfFlag : cmp::Eq {
+    pure fn eq(other: &AllowCapturingSelfFlag) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &AllowCapturingSelfFlag) -> bool { !self.eq(other) }
 }
 
 enum EnumVariantOrConstResolution {
@@ -497,11 +542,20 @@ enum Privacy {
     Public
 }
 
+#[cfg(stage0)]
 impl Privacy : cmp::Eq {
     pure fn eq(&&other: Privacy) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: Privacy) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Privacy : cmp::Eq {
+    pure fn eq(other: &Privacy) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &Privacy) -> bool { !self.eq(other) }
 }
 
 // Records a possibly-private definition.

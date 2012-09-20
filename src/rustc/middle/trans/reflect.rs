@@ -10,7 +10,7 @@ use type_of::*;
 use ast::def_id;
 use util::ppaux::ty_to_str;
 use datum::*;
-use callee::ArgVals;
+use callee::{ArgVals, DontAutorefArg};
 use expr::SaveIn;
 
 enum reflector = {
@@ -74,7 +74,7 @@ impl reflector {
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx, mth_ty,
                                                       mth_idx, v),
-            ArgVals(args), SaveIn(scratch.val));
+            ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
         let next_bcx = sub_block(bcx, ~"next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);

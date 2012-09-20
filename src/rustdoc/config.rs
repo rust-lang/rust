@@ -18,11 +18,20 @@ enum OutputFormat {
     PandocHtml
 }
 
+#[cfg(stage0)]
 impl OutputFormat : cmp::Eq {
     pure fn eq(&&other: OutputFormat) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: OutputFormat) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl OutputFormat : cmp::Eq {
+    pure fn eq(other: &OutputFormat) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &OutputFormat) -> bool { !self.eq(other) }
 }
 
 /// How to organize the output
@@ -33,11 +42,20 @@ enum OutputStyle {
     DocPerMod
 }
 
+#[cfg(stage0)]
 impl OutputStyle : cmp::Eq {
     pure fn eq(&&other: OutputStyle) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: OutputStyle) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl OutputStyle : cmp::Eq {
+    pure fn eq(other: &OutputStyle) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &OutputStyle) -> bool { !self.eq(other) }
 }
 
 /// The configuration for a rustdoc session

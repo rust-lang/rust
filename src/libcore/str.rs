@@ -117,7 +117,8 @@ export
    raw,
    extensions,
    StrSlice,
-   UniqueStr;
+   UniqueStr,
+   traits;
 
 /*
 Section: Creating a string
@@ -793,6 +794,7 @@ pure fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
+#[cfg(stage0)]
 impl &str: Eq {
     #[inline(always)]
     pure fn eq(&&other: &str) -> bool {
@@ -801,7 +803,18 @@ impl &str: Eq {
     #[inline(always)]
     pure fn ne(&&other: &str) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl &str : Eq {
+    #[inline(always)]
+    pure fn eq(other: & &str) -> bool {
+        eq_slice(self, (*other))
+    }
+    #[inline(always)]
+    pure fn ne(other: & &str) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl ~str: Eq {
     #[inline(always)]
     pure fn eq(&&other: ~str) -> bool {
@@ -810,7 +823,18 @@ impl ~str: Eq {
     #[inline(always)]
     pure fn ne(&&other: ~str) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ~str : Eq {
+    #[inline(always)]
+    pure fn eq(other: &~str) -> bool {
+        eq_slice(self, (*other))
+    }
+    #[inline(always)]
+    pure fn ne(other: &~str) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl @str: Eq {
     #[inline(always)]
     pure fn eq(&&other: @str) -> bool {
@@ -819,7 +843,18 @@ impl @str: Eq {
     #[inline(always)]
     pure fn ne(&&other: @str) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl @str : Eq {
+    #[inline(always)]
+    pure fn eq(other: &@str) -> bool {
+        eq_slice(self, (*other))
+    }
+    #[inline(always)]
+    pure fn ne(other: &@str) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl ~str : Ord {
     #[inline(always)]
     pure fn lt(&&other: ~str) -> bool { lt(self, other) }
@@ -830,7 +865,20 @@ impl ~str : Ord {
     #[inline(always)]
     pure fn gt(&&other: ~str) -> bool { gt(self, other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ~str : Ord {
+    #[inline(always)]
+    pure fn lt(other: &~str) -> bool { lt(self, (*other)) }
+    #[inline(always)]
+    pure fn le(other: &~str) -> bool { le(self, (*other)) }
+    #[inline(always)]
+    pure fn ge(other: &~str) -> bool { ge(self, (*other)) }
+    #[inline(always)]
+    pure fn gt(other: &~str) -> bool { gt(self, (*other)) }
+}
 
+#[cfg(stage0)]
 impl &str : Ord {
     #[inline(always)]
     pure fn lt(&&other: &str) -> bool { lt(self, other) }
@@ -841,7 +889,20 @@ impl &str : Ord {
     #[inline(always)]
     pure fn gt(&&other: &str) -> bool { gt(self, other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl &str : Ord {
+    #[inline(always)]
+    pure fn lt(other: & &str) -> bool { lt(self, (*other)) }
+    #[inline(always)]
+    pure fn le(other: & &str) -> bool { le(self, (*other)) }
+    #[inline(always)]
+    pure fn ge(other: & &str) -> bool { ge(self, (*other)) }
+    #[inline(always)]
+    pure fn gt(other: & &str) -> bool { gt(self, (*other)) }
+}
 
+#[cfg(stage0)]
 impl @str : Ord {
     #[inline(always)]
     pure fn lt(&&other: @str) -> bool { lt(self, other) }
@@ -851,6 +912,18 @@ impl @str : Ord {
     pure fn ge(&&other: @str) -> bool { ge(self, other) }
     #[inline(always)]
     pure fn gt(&&other: @str) -> bool { gt(self, other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl @str : Ord {
+    #[inline(always)]
+    pure fn lt(other: &@str) -> bool { lt(self, (*other)) }
+    #[inline(always)]
+    pure fn le(other: &@str) -> bool { le(self, (*other)) }
+    #[inline(always)]
+    pure fn ge(other: &@str) -> bool { ge(self, (*other)) }
+    #[inline(always)]
+    pure fn gt(other: &@str) -> bool { gt(self, (*other)) }
 }
 
 /*
@@ -2159,12 +2232,26 @@ impl ~str: UniqueStr {
 }
 
 #[cfg(notest)]
-impl ~str: Add<&str,~str> {
-    #[inline(always)]
-    pure fn add(rhs: &str) -> ~str {
-        append(copy self, rhs)
+mod traits {
+    #[cfg(stage0)]
+    impl ~str: Add<&str,~str> {
+        #[inline(always)]
+        pure fn add(rhs: &str) -> ~str {
+            append(copy self, rhs)
+        }
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl ~str : Add<&str,~str> {
+        #[inline(always)]
+        pure fn add(rhs: & &str) -> ~str {
+            append(copy self, (*rhs))
+        }
     }
 }
+
+#[cfg(test)]
+mod traits {}
 
 trait StrSlice {
     fn all(it: fn(char) -> bool) -> bool;

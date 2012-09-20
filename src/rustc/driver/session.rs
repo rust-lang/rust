@@ -12,20 +12,38 @@ use middle::lint;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
+#[cfg(stage0)]
 impl os : cmp::Eq {
     pure fn eq(&&other: os) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: os) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl os : cmp::Eq {
+    pure fn eq(other: &os) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &os) -> bool { !self.eq(other) }
+}
 
 enum arch { arch_x86, arch_x86_64, arch_arm, }
 
+#[cfg(stage0)]
 impl arch: cmp::Eq {
     pure fn eq(&&other: arch) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: arch) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl arch : cmp::Eq {
+    pure fn eq(other: &arch) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &arch) -> bool { !self.eq(other) }
 }
 
 enum crate_type { bin_crate, lib_crate, unknown_crate, }
@@ -94,11 +112,20 @@ enum OptLevel {
     Aggressive // -O3
 }
 
+#[cfg(stage0)]
 impl OptLevel : cmp::Eq {
     pure fn eq(&&other: OptLevel) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: OptLevel) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl OptLevel : cmp::Eq {
+    pure fn eq(other: &OptLevel) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &OptLevel) -> bool { !self.eq(other) }
 }
 
 type options =

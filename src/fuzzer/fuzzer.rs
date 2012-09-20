@@ -8,11 +8,20 @@ use syntax::diagnostic;
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
+#[cfg(stage0)]
 impl test_mode : cmp::Eq {
     pure fn eq(&&other: test_mode) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: test_mode) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl test_mode : cmp::Eq {
+    pure fn eq(other: &test_mode) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &test_mode) -> bool { !self.eq(other) }
 }
 
 fn write_file(filename: &Path, content: ~str) {

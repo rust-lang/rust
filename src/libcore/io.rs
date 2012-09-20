@@ -329,6 +329,7 @@ enum FileFlag { Append, Create, Truncate, NoFlag, }
 // What type of writer are we?
 enum WriterType { Screen, File }
 
+#[cfg(stage0)]
 impl WriterType: Eq {
     pure fn eq(&&other: WriterType) -> bool {
         match (self, other) {
@@ -337,6 +338,17 @@ impl WriterType: Eq {
         }
     }
     pure fn ne(&&other: WriterType) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl WriterType : Eq {
+    pure fn eq(other: &WriterType) -> bool {
+        match (self, (*other)) {
+            (Screen, Screen) | (File, File) => true,
+            (Screen, _) | (File, _) => false
+        }
+    }
+    pure fn ne(other: &WriterType) -> bool { !self.eq(other) }
 }
 
 // FIXME (#2004): Seekable really should be orthogonal.
