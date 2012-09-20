@@ -2078,7 +2078,7 @@ An example a for loop:
 let v: ~[foo] = ~[a, b, c];
 
 for v.each |e| {
-    bar(e);
+    bar(*e);
 }
 ~~~~
 
