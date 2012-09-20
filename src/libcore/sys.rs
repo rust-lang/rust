@@ -1,5 +1,9 @@
 //! Misc low level stuff
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::{Eq, Ord};
 use libc::c_void;
 
@@ -97,10 +101,10 @@ pure fn refcount<T>(+t: @T) -> uint {
     }
 }
 
-pure fn log_str<T>(t: T) -> ~str {
+pure fn log_str<T>(t: &T) -> ~str {
     unsafe {
         do io::with_str_writer |wr| {
-            repr::write_repr(wr, &t)
+            repr::write_repr(wr, t)
         }
     }
 }

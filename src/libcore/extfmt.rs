@@ -349,7 +349,7 @@ mod rt {
         return unsafe { pad(cv, s, PadFloat) };
     }
     pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
-        let s = sys::log_str(v);
+        let s = sys::log_str(&v);
         return conv_str(cv, s);
     }
 
@@ -555,7 +555,7 @@ mod rt2 {
         return unsafe { pad(cv, s, PadFloat) };
     }
     pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
-        let s = sys::log_str(v);
+        let s = sys::log_str(&v);
         return conv_str(cv, s);
     }
 
