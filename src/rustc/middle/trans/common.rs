@@ -117,7 +117,6 @@ type crate_ctxt = {
      externs: HashMap<~str, ValueRef>,
      intrinsics: HashMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
-     exp_map: resolve::ExportMap,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
      item_symbols: HashMap<ast::node_id, ~str>,

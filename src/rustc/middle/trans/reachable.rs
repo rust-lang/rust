@@ -17,47 +17,33 @@ export map, find_reachable;
 
 type map = std::map::HashMap<node_id, ()>;
 
-type ctx = {exp_map: resolve::ExportMap,
+type ctx = {exp_map2: resolve::ExportMap2,
             tcx: ty::ctxt,
             method_map: typeck::method_map,
             rmap: map};
 
-fn find_reachable(crate_mod: _mod, exp_map: resolve::ExportMap,
+fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = std::map::HashMap();
-    let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
-    traverse_public_mod(cx, crate_mod);
+    let cx = {exp_map2: exp_map2, tcx: tcx,
+              method_map: method_map, rmap: rmap};
+    traverse_public_mod(cx, ast::crate_node_id, crate_mod);
     traverse_all_resources_and_impls(cx, crate_mod);
     rmap
 }
 
-fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
+fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
     let mut found_export = false;
-    for vec::each(vis) |vi| {
-        match vi.node {
-          view_item_export(vps) => {
+    match cx.exp_map2.find(mod_id) {
+      Some(exp2s) => {
+        for exp2s.each |e2| {
             found_export = true;
-            for vec::each(vps) |vp| {
-                match vp.node {
-                  view_path_simple(_, _, _, id) | view_path_glob(_, id) |
-                  view_path_list(_, _, id) => {
-                    traverse_export(cx, id);
-                  }
-                }
-            }
-          }
-          _ => ()
-        }
+            traverse_def_id(cx, e2.def_id)
+        };
+      }
+      None => ()
     }
-    found_export
-}
-
-fn traverse_export(cx: ctx, exp_id: node_id) {
-    do option::iter(cx.exp_map.find(exp_id)) |defs| {
-        for vec::each(defs) |def| {
-            traverse_def_id(cx, def.id);
-        }
-    }
+    return found_export;
 }
 
 fn traverse_def_id(cx: ctx, did: def_id) {
@@ -81,8 +67,8 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     }
 }
 
-fn traverse_public_mod(cx: ctx, m: _mod) {
-    if !traverse_exports(cx, m.view_items) {
+fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
+    if !traverse_exports(cx, mod_id) {
         // No exports, so every local item is exported
         for vec::each(m.items) |item| {
             traverse_public_item(cx, *item);
@@ -94,9 +80,9 @@ fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(item.id) { return; }
     cx.rmap.insert(item.id, ());
     match item.node {
-      item_mod(m) => traverse_public_mod(cx, m),
+      item_mod(m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(nm) => {
-          if !traverse_exports(cx, nm.view_items) {
+          if !traverse_exports(cx, item.id) {
               for vec::each(nm.items) |item| {
                   cx.rmap.insert(item.id, ());
               }
