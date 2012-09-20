@@ -82,8 +82,6 @@ macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); move y } }
 )
 
-/* Data types */
-
 /// A handle to a task
 enum Task {
     TaskHandle(task_id)
@@ -800,7 +798,7 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
     f()
 }
 
-/****************************************************************************
+/* **************************************************************************
  * Spawning & linked failure
  *
  * Several data structures are involved in task management to allow properly
@@ -1431,7 +1429,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
     }
 }
 
-/****************************************************************************
+/* **************************************************************************
  * Task local data management
  *
  * Allows storing boxes with arbitrary types inside, to be accessed anywhere
