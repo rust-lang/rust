@@ -191,7 +191,7 @@ impl ImportDirectiveNS : cmp::Eq {
 
 /// Contains data for specific types of import directives.
 enum ImportDirectiveSubclass {
-    SingleImport(Atom /* target */, Atom /* source */, ImportDirectiveNS),
+    SingleImport(ident /* target */, ident /* source */, ImportDirectiveNS),
     GlobImport
 }
 
@@ -303,29 +303,15 @@ enum EnumVariantOrConstResolution {
     EnumVariantOrConstNotFound
 }
 
-// FIXME (issue #2550): Should be a class but then it becomes not implicitly
-// copyable due to a kind bug.
-
-type Atom = uint;
-
-fn Atom(n: uint) -> Atom {
-    return n;
-}
-
-/// Creates a hash table of atoms.
-fn atom_hashmap<V:Copy>() -> HashMap<Atom,V> {
-  HashMap()
-}
-
 /// One local scope.
 struct Rib {
-    bindings: HashMap<Atom,def_like>,
+    bindings: HashMap<ident,def_like>,
     kind: RibKind,
 }
 
 fn Rib(kind: RibKind) -> Rib {
     Rib {
-        bindings: atom_hashmap(),
+        bindings: HashMap(),
         kind: kind
     }
 }
@@ -334,13 +320,13 @@ fn Rib(kind: RibKind) -> Rib {
 /// One import directive.
 struct ImportDirective {
     privacy: Privacy,
-    module_path: @DVec<Atom>,
+    module_path: @DVec<ident>,
     subclass: @ImportDirectiveSubclass,
     span: span,
 }
 
 fn ImportDirective(privacy: Privacy,
-                   module_path: @DVec<Atom>,
+                   module_path: @DVec<ident>,
                    subclass: @ImportDirectiveSubclass,
                    span: span) -> ImportDirective {
     ImportDirective {
@@ -407,7 +393,7 @@ impl ImportResolution {
 /// The link from a module up to its nearest parent node.
 enum ParentLink {
     NoParentLink,
-    ModuleParentLink(@Module, Atom),
+    ModuleParentLink(@Module, ident),
     BlockParentLink(@Module, node_id)
 }
 
@@ -416,7 +402,7 @@ struct Module {
     parent_link: ParentLink,
     mut def_id: Option<def_id>,
 
-    children: HashMap<Atom,@NameBindings>,
+    children: HashMap<ident,@NameBindings>,
     imports: DVec<@ImportDirective>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -439,10 +425,10 @@ struct Module {
     // XXX: This is about to be reworked so that exports are on individual
     // items, not names.
     //
-    // The atom is the name of the exported item, while the node ID is the
+    // The ident is the name of the exported item, while the node ID is the
     // ID of the export path.
 
-    exported_names: HashMap<Atom,node_id>,
+    exported_names: HashMap<ident,node_id>,
 
     // XXX: This is a transition measure to let us switch export-evaluation
     // logic when compiling modules that have transitioned to listing their
@@ -452,7 +438,7 @@ struct Module {
     legacy_exports: bool,
 
     // The status of resolving each import in this module.
-    import_resolutions: HashMap<Atom,@ImportResolution>,
+    import_resolutions: HashMap<ident,@ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     mut glob_count: uint,
@@ -467,12 +453,12 @@ fn Module(parent_link: ParentLink,
     Module {
         parent_link: parent_link,
         def_id: def_id,
-        children: atom_hashmap(),
+        children: HashMap(),
         imports: DVec(),
         anonymous_children: HashMap(),
-        exported_names: atom_hashmap(),
+        exported_names: HashMap(),
         legacy_exports: legacy_exports,
-        import_resolutions: atom_hashmap(),
+        import_resolutions: HashMap(),
         glob_count: 0u,
         resolved_import_count: 0u
     }
@@ -648,20 +634,20 @@ fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
-    primitive_types: HashMap<Atom,prim_ty>,
+    primitive_types: HashMap<ident,prim_ty>,
 }
 
 impl PrimitiveTypeTable {
     fn intern(intr: @ident_interner, string: @~str,
               primitive_type: prim_ty) {
-        let atom = intr.intern(string);
-        self.primitive_types.insert(atom, primitive_type);
+        let ident = intr.intern(string);
+        self.primitive_types.insert(ident, primitive_type);
     }
 }
 
 fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
     let table = PrimitiveTypeTable {
-        primitive_types: atom_hashmap()
+        primitive_types: HashMap()
     };
 
     table.intern(intr, @~"bool",    ty_bool);
@@ -743,7 +729,7 @@ fn Resolver(session: session, lang_items: LanguageItems,
         xray_context: NoXray,
         current_trait_refs: None,
 
-        self_atom: syntax::parse::token::special_idents::self_,
+        self_ident: syntax::parse::token::special_idents::self_,
         primitive_type_table: @PrimitiveTypeTable(session.
                                                   parse_sess.interner),
 
@@ -771,7 +757,7 @@ struct Resolver {
 
     unused_import_lint_level: level,
 
-    trait_info: HashMap<def_id,@HashMap<Atom,()>>,
+    trait_info: HashMap<def_id,@HashMap<ident,()>>,
     structs: HashMap<def_id,bool>,
 
     // The number of imports that are currently unresolved.
@@ -797,10 +783,10 @@ struct Resolver {
     // The trait that the current context can refer to.
     mut current_trait_refs: Option<@DVec<def_id>>,
 
-    // The atom for the keyword "self".
-    self_atom: Atom,
+    // The ident for the keyword "self".
+    self_ident: ident,
 
-    // The atoms for the primitive types.
+    // The idents for the primitive types.
     primitive_type_table: @PrimitiveTypeTable,
 
     // The four namespaces.
@@ -899,7 +885,7 @@ impl Resolver {
      * If this node does not have a module definition and we are not inside
      * a block, fails.
      */
-    fn add_child(name: Atom,
+    fn add_child(name: ident,
                  reduced_graph_parent: ReducedGraphParent,
                  // Pass in the namespaces for the child item so that we can
                  // check for duplicate items in the same namespace
@@ -981,7 +967,8 @@ impl Resolver {
         return false;
     }
 
-    fn get_parent_link(parent: ReducedGraphParent, name: Atom) -> ParentLink {
+    fn get_parent_link(parent: ReducedGraphParent,
+                       name: ident) -> ParentLink {
         match parent {
             ModuleReducedGraphParent(module_) => {
                 return ModuleParentLink(module_, name);
@@ -994,7 +981,7 @@ impl Resolver {
                                     parent: ReducedGraphParent,
                                     &&visitor: vt<ReducedGraphParent>) {
 
-        let atom = item.ident;
+        let ident = item.ident;
         let sp = item.span;
         let legacy = match parent {
           ModuleReducedGraphParent(m) => m.legacy_exports
@@ -1004,10 +991,10 @@ impl Resolver {
         match item.node {
             item_mod(module_) => {
               let legacy = has_legacy_export_attr(item.attrs);
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
+              let (name_bindings, new_parent) = self.add_child(ident, parent,
                                                        ~[ModuleNS], sp);
 
-                let parent_link = self.get_parent_link(new_parent, atom);
+                let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = { crate: 0, node: item.id };
               (*name_bindings).define_module(privacy, parent_link,
                                              Some(def_id), legacy, sp);
@@ -1021,10 +1008,10 @@ impl Resolver {
               let legacy = has_legacy_export_attr(item.attrs);
               let new_parent = match fm.sort {
                 named => {
-                  let (name_bindings, new_parent) = self.add_child(atom,
+                  let (name_bindings, new_parent) = self.add_child(ident,
                      parent, ~[ModuleNS], sp);
 
-                  let parent_link = self.get_parent_link(new_parent, atom);
+                  let parent_link = self.get_parent_link(new_parent, ident);
                   let def_id = { crate: 0, node: item.id };
                   (*name_bindings).define_module(privacy, parent_link,
                                                  Some(def_id), legacy, sp);
@@ -1041,14 +1028,14 @@ impl Resolver {
 
             // These items live in the value namespace.
             item_const(*) => {
-              let (name_bindings, _) = self.add_child(atom, parent,
+              let (name_bindings, _) = self.add_child(ident, parent,
                                                       ~[ValueNS], sp);
 
                 (*name_bindings).define_value
                     (privacy, def_const(local_def(item.id)), sp);
             }
             item_fn(_, purity, _, _) => {
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
+              let (name_bindings, new_parent) = self.add_child(ident, parent,
                                                         ~[ValueNS], sp);
 
                 let def = def_fn(local_def(item.id), purity);
@@ -1058,7 +1045,7 @@ impl Resolver {
 
             // These items live in the type namespace.
             item_ty(*) => {
-              let (name_bindings, _) = self.add_child(atom, parent,
+              let (name_bindings, _) = self.add_child(ident, parent,
                                                       ~[TypeNS], sp);
 
                 (*name_bindings).define_type
@@ -1067,7 +1054,7 @@ impl Resolver {
 
             item_enum(enum_definition, _) => {
 
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
+              let (name_bindings, new_parent) = self.add_child(ident, parent,
                                                                ~[TypeNS], sp);
 
                 (*name_bindings).define_type
@@ -1087,7 +1074,7 @@ impl Resolver {
                     match struct_definition.ctor {
                     None => {
                         let (name_bindings, new_parent) =
-                            self.add_child(atom, parent, ~[TypeNS], sp);
+                            self.add_child(ident, parent, ~[TypeNS], sp);
 
                         (*name_bindings).define_type
                             (privacy, def_ty(local_def(item.id)), sp);
@@ -1095,7 +1082,7 @@ impl Resolver {
                     }
                     Some(ctor) => {
                         let (name_bindings, new_parent) =
-                            self.add_child(atom, parent, ~[ValueNS, TypeNS],
+                            self.add_child(ident, parent, ~[ValueNS, TypeNS],
                                            sp);
 
                         (*name_bindings).define_type
@@ -1121,22 +1108,22 @@ impl Resolver {
             }
 
             item_trait(_, _, methods) => {
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
+              let (name_bindings, new_parent) = self.add_child(ident, parent,
                                                                ~[TypeNS], sp);
 
                 // Add the names of all the methods to the trait info.
-                let method_names = @atom_hashmap();
+                let method_names = @HashMap();
                 for methods.each |method| {
                     let ty_m = trait_method_to_ty_method(*method);
 
-                    let atom = ty_m.ident;
+                    let ident = ty_m.ident;
                     // Add it to the trait info if not static,
                     // add it as a name in the enclosing module otherwise.
                     match ty_m.self_ty.node {
                       sty_static => {
                         // which parent to use??
                         let (method_name_bindings, _) =
-                            self.add_child(atom, new_parent, ~[ValueNS],
+                            self.add_child(ident, new_parent, ~[ValueNS],
                                            ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
                                                     ty_m.purity);
@@ -1144,7 +1131,7 @@ impl Resolver {
                             (Public, def, ty_m.span);
                       }
                       _ => {
-                        (*method_names).insert(atom, ());
+                        (*method_names).insert(ident, ());
                       }
                     }
                 }
@@ -1176,8 +1163,8 @@ impl Resolver {
           ModuleReducedGraphParent(m) => m.legacy_exports
         };
 
-        let atom = variant.node.name;
-        let (child, _) = self.add_child(atom, parent, ~[ValueNS],
+        let ident = variant.node.name;
+        let (child, _) = self.add_child(ident, parent, ~[ValueNS],
                                         variant.span);
         let privacy = self.visibility_to_privacy(variant.node.vis, legacy);
 
@@ -1338,9 +1325,9 @@ impl Resolver {
                                 }
 
                                 for path_list_idents.each |path_list_ident| {
-                                    let atom = path_list_ident.node.name;
+                                    let ident = path_list_ident.node.name;
                                     let id = path_list_ident.node.id;
-                                    module_.exported_names.insert(atom, id);
+                                    module_.exported_names.insert(ident, id);
                                 }
                             }
                         }
@@ -1433,7 +1420,7 @@ impl Resolver {
     fn handle_external_def(def: def, modules: HashMap<def_id, @Module>,
                            child_name_bindings: @NameBindings,
                            final_ident: ~str,
-                           atom: Atom, new_parent: ReducedGraphParent) {
+                           ident: ident, new_parent: ReducedGraphParent) {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match copy child_name_bindings.module_def {
@@ -1441,7 +1428,7 @@ impl Resolver {
                 debug!("(building reduced graph for \
                         external crate) building module \
                         %s", final_ident);
-                let parent_link = self.get_parent_link(new_parent, atom);
+                let parent_link = self.get_parent_link(new_parent, ident);
 
                 match modules.find(def_id) {
                   None => {
@@ -1466,9 +1453,9 @@ impl Resolver {
                       BlockParentLink(*) => {
                         fail ~"can't happen";
                       }
-                      ModuleParentLink(parent_module, atom) => {
+                      ModuleParentLink(parent_module, ident) => {
 
-                        let name_bindings = parent_module.children.get(atom);
+                        let name_bindings = parent_module.children.get(ident);
 
                         resolution.module_target =
                             Some(Target(parent_module, name_bindings));
@@ -1478,7 +1465,7 @@ impl Resolver {
                     debug!("(building reduced graph for external crate) \
                             ... creating import resolution");
 
-                    new_parent.import_resolutions.insert(atom, resolution);
+                    new_parent.import_resolutions.insert(ident, resolution);
                   }
                 }
               }
@@ -1510,7 +1497,7 @@ impl Resolver {
                 // Nothing to do.
               }
               Some(method_names) => {
-                let interned_method_names = @atom_hashmap();
+                let interned_method_names = @HashMap();
                 for method_names.each |method_data| {
                     let (method_name, self_ty) = *method_data;
                     debug!("(building reduced graph for \
@@ -1634,7 +1621,7 @@ impl Resolver {
     /// Creates and adds an import directive to the given module.
     fn build_import_directive(privacy: Privacy,
                               module_: @Module,
-                              module_path: @DVec<Atom>,
+                              module_path: @DVec<ident>,
                               subclass: @ImportDirectiveSubclass,
                               span: span) {
 
@@ -1764,17 +1751,17 @@ impl Resolver {
         }
     }
 
-    fn atoms_to_str(atoms: ~[Atom]) -> ~str {
+    fn idents_to_str(idents: ~[ident]) -> ~str {
         // XXX: str::connect should do this.
         let mut result = ~"";
         let mut first = true;
-        for atoms.each() |atom| {
+        for idents.each() |ident| {
             if first {
                 first = false;
             } else {
                 result += ~"::";
             }
-            result += self.session.str_of(*atom);
+            result += self.session.str_of(*ident);
         }
         // XXX: Shouldn't copy here. We need string builder functionality.
         return result;
@@ -1795,7 +1782,7 @@ impl Resolver {
 
         debug!("(resolving import for module) resolving import `%s::...` in \
                 `%s`",
-               self.atoms_to_str((*module_path).get()),
+               self.idents_to_str((*module_path).get()),
                self.module_to_str(module_));
 
         // One-level renaming imports of the form `import foo = bar;` are
@@ -1882,8 +1869,8 @@ impl Resolver {
 
     fn resolve_single_import(module_: @Module,
                              containing_module: @Module,
-                             target: Atom,
-                             source: Atom)
+                             target: ident,
+                             source: ident)
                           -> ResolveResult<()> {
 
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
@@ -2072,8 +2059,8 @@ impl Resolver {
 
     fn resolve_single_module_import(module_: @Module,
                                     containing_module: @Module,
-                                    target: Atom,
-                                    source: Atom)
+                                    target: ident,
+                                    source: ident)
                                  -> ResolveResult<()> {
 
         debug!("(resolving single module import) resolving `%s` = `%s::%s` \
@@ -2229,11 +2216,11 @@ impl Resolver {
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
-                |atom, target_import_resolution| {
+                |ident, target_import_resolution| {
 
-            if !self.name_is_exported(containing_module, atom) {
+            if !self.name_is_exported(containing_module, ident) {
                 debug!("(resolving glob import) name `%s` is unexported",
-                       self.session.str_of(atom));
+                       self.session.str_of(ident));
                 loop;
             }
 
@@ -2243,7 +2230,7 @@ impl Resolver {
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
-            match module_.import_resolutions.find(atom) {
+            match module_.import_resolutions.find(ident) {
                 None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
@@ -2257,7 +2244,7 @@ impl Resolver {
                         copy target_import_resolution.type_target;
 
                     module_.import_resolutions.insert
-                        (atom, new_import_resolution);
+                        (ident, new_import_resolution);
                 }
                 Some(dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
@@ -2295,21 +2282,21 @@ impl Resolver {
         }
 
         // Add all children from the containing module.
-        for containing_module.children.each |atom, name_bindings| {
-            if !self.name_is_exported(containing_module, atom) {
+        for containing_module.children.each |ident, name_bindings| {
+            if !self.name_is_exported(containing_module, ident) {
                 debug!("(resolving glob import) name `%s` is unexported",
-                       self.session.str_of(atom));
+                       self.session.str_of(ident));
                 loop;
             }
 
             let mut dest_import_resolution;
-            match module_.import_resolutions.find(atom) {
+            match module_.import_resolutions.find(ident) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @ImportResolution(privacy,
                                                                span);
                     module_.import_resolutions.insert
-                        (atom, dest_import_resolution);
+                        (ident, dest_import_resolution);
                 }
                 Some(existing_import_resolution) => {
                     dest_import_resolution = existing_import_resolution;
@@ -2319,7 +2306,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`",
-                   self.session.str_of(atom),
+                   self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_));
 
@@ -2346,7 +2333,7 @@ impl Resolver {
     }
 
     fn resolve_module_path_from_root(module_: @Module,
-                                     module_path: @DVec<Atom>,
+                                     module_path: @DVec<ident>,
                                      index: uint,
                                      xray: XrayFlag,
                                      span: span)
@@ -2403,7 +2390,7 @@ impl Resolver {
      * the given module.
      */
     fn resolve_module_path_for_import(module_: @Module,
-                                      module_path: @DVec<Atom>,
+                                      module_path: @DVec<ident>,
                                       xray: XrayFlag,
                                       span: span)
                                    -> ResolveResult<@Module> {
@@ -2413,7 +2400,7 @@ impl Resolver {
 
         debug!("(resolving module path for import) processing `%s` rooted at \
                `%s`",
-               self.atoms_to_str((*module_path).get()),
+               self.idents_to_str((*module_path).get()),
                self.module_to_str(module_));
 
         // The first element of the module path must be in the current scope
@@ -2444,7 +2431,7 @@ impl Resolver {
     }
 
     fn resolve_item_in_lexical_scope(module_: @Module,
-                                     name: Atom,
+                                     name: ident,
                                      namespace: Namespace)
                                   -> ResolveResult<Target> {
 
@@ -2530,7 +2517,7 @@ impl Resolver {
         }
     }
 
-    fn resolve_module_in_lexical_scope(module_: @Module, name: Atom)
+    fn resolve_module_in_lexical_scope(module_: @Module, name: ident)
                                     -> ResolveResult<@Module> {
 
         match self.resolve_item_in_lexical_scope(module_, name, ModuleNS) {
@@ -2559,7 +2546,7 @@ impl Resolver {
         }
     }
 
-    fn name_is_exported(module_: @Module, name: Atom) -> bool {
+    fn name_is_exported(module_: @Module, name: ident) -> bool {
         return !module_.legacy_exports ||
             module_.exported_names.size() == 0u ||
             module_.exported_names.contains_key(name);
@@ -2571,7 +2558,7 @@ impl Resolver {
      * the name.
      */
     fn resolve_name_in_module(module_: @Module,
-                              name: Atom,
+                              name: ident,
                               namespace: Namespace,
                               xray: XrayFlag)
                            -> ResolveResult<Target> {
@@ -2863,7 +2850,7 @@ impl Resolver {
 
         self.record_exports_for_module(module_);
 
-        for module_.children.each |_atom, child_name_bindings| {
+        for module_.children.each |_ident, child_name_bindings| {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -2899,7 +2886,7 @@ impl Resolver {
 
 
     fn add_exports_of_namebindings(exports2: &mut ~[Export2],
-                                   atom: Atom,
+                                   ident: ident,
                                    namebindings: @NameBindings,
                                    reexport: bool) {
         for [ModuleNS, TypeNS, ValueNS].each |ns| {
@@ -2908,11 +2895,11 @@ impl Resolver {
                     debug!("(computing exports) YES: %s '%s' \
                             => %?",
                            if reexport { ~"reexport" } else { ~"export"},
-                           self.session.str_of(atom),
+                           self.session.str_of(ident),
                            def_id_of_def(d.def));
                     vec::push(*exports2,  Export2 {
                         reexport: reexport,
-                        name: self.session.str_of(atom),
+                        name: self.session.str_of(ident),
                         def_id: def_id_of_def(d.def)
                     });
                 }
@@ -2923,20 +2910,20 @@ impl Resolver {
 
     fn add_exports_for_module(exports2: &mut ~[Export2], module_: @Module) {
 
-        for module_.children.each_ref |atom, namebindings| {
+        for module_.children.each_ref |ident, namebindings| {
             debug!("(computing exports) maybe export '%s'",
-                   self.session.str_of(*atom));
-            self.add_exports_of_namebindings(exports2, *atom,
+                   self.session.str_of(*ident));
+            self.add_exports_of_namebindings(exports2, *ident,
                                              *namebindings, false)
         }
 
-        for module_.import_resolutions.each_ref |atom, importresolution| {
+        for module_.import_resolutions.each_ref |ident, importresolution| {
             for [ModuleNS, TypeNS, ValueNS].each |ns| {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
-                               self.session.str_of(*atom));
-                        self.add_exports_of_namebindings(exports2, *atom,
+                               self.session.str_of(*ident));
+                        self.add_exports_of_namebindings(exports2, *ident,
                                                          target.bindings,
                                                          true)
                     }
@@ -3002,7 +2989,7 @@ impl Resolver {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope(name: Option<Atom>, f: fn()) {
+    fn with_scope(name: Option<ident>, f: fn()) {
         let orig_module = self.current_module;
 
         // Move down in the graph.
@@ -3142,7 +3129,7 @@ impl Resolver {
         return Some(dl_def(def));
     }
 
-    fn search_ribs(ribs: @DVec<@Rib>, name: Atom, span: span,
+    fn search_ribs(ribs: @DVec<@Rib>, name: ident, span: span,
                    allow_capturing_self: AllowCapturingSelfFlag)
                 -> Option<def_like> {
 
@@ -3223,7 +3210,7 @@ impl Resolver {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
-                self_type_rib.bindings.insert(self.self_atom,
+                self_type_rib.bindings.insert(self.self_ident,
                                               dl_def(def_self(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
@@ -3483,7 +3470,7 @@ impl Resolver {
                 }
                 HasSelfBinding(self_node_id) => {
                     let def_like = dl_def(def_self(self_node_id));
-                    (*function_value_rib).bindings.insert(self.self_atom,
+                    (*function_value_rib).bindings.insert(self.self_ident,
                                                           def_like);
                 }
             }
@@ -3818,7 +3805,7 @@ impl Resolver {
     fn resolve_arm(arm: arm, visitor: ResolveVisitor) {
         (*self.value_ribs).push(@Rib(NormalRibKind));
 
-        let bindings_list = atom_hashmap();
+        let bindings_list = HashMap();
         for arm.pats.each |pattern| {
             self.resolve_pattern(*pattern, RefutableMode, Immutable,
                                  Some(bindings_list), visitor);
@@ -3937,7 +3924,7 @@ impl Resolver {
                        mutability: Mutability,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
-                       bindings_list: Option<HashMap<Atom,node_id>>,
+                       bindings_list: Option<HashMap<ident,node_id>>,
                        visitor: ResolveVisitor) {
 
         let pat_id = pattern.id;
@@ -3954,13 +3941,13 @@ impl Resolver {
                     // matching such a variant is simply disallowed (since
                     // it's rarely what you want).
 
-                    let atom = path.idents[0];
+                    let ident = path.idents[0];
 
-                    match self.resolve_enum_variant_or_const(atom) {
+                    match self.resolve_enum_variant_or_const(ident) {
                         FoundEnumVariant(def) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
                                     enum variant",
-                                    self.session.str_of(atom));
+                                    self.session.str_of(ident));
 
                             self.record_def(pattern.id, def);
                         }
@@ -3970,7 +3957,7 @@ impl Resolver {
                                                         shadows an enum \
                                                         that's in scope",
                                                         self.session
-                                                        .str_of(atom)));
+                                                        .str_of(ident)));
                         }
                         FoundConst => {
                             self.session.span_err(pattern.span,
@@ -3980,7 +3967,7 @@ impl Resolver {
                         }
                         EnumVariantOrConstNotFound => {
                             debug!("(resolving pattern) binding `%s`",
-                                   self.session.str_of(atom));
+                                   self.session.str_of(ident));
 
                             let is_mutable = mutability == Mutable;
 
@@ -4011,14 +3998,14 @@ impl Resolver {
 
                             match bindings_list {
                                 Some(bindings_list)
-                                if !bindings_list.contains_key(atom) => {
+                                if !bindings_list.contains_key(ident) => {
                                     let last_rib = (*self.value_ribs).last();
-                                    last_rib.bindings.insert(atom,
+                                    last_rib.bindings.insert(ident,
                                                              dl_def(def));
-                                    bindings_list.insert(atom, pat_id);
+                                    bindings_list.insert(ident, pat_id);
                                 }
                                 Some(b) => {
-                                  if b.find(atom) == Some(pat_id) {
+                                  if b.find(ident) == Some(pat_id) {
                                       // Then this is a duplicate variable
                                       // in the same disjunct, which is an
                                       // error
@@ -4032,7 +4019,7 @@ impl Resolver {
                                 }
                                 None => {
                                     let last_rib = (*self.value_ribs).last();
-                                    last_rib.bindings.insert(atom,
+                                    last_rib.bindings.insert(ident,
                                                              dl_def(def));
                                 }
                             }
@@ -4110,7 +4097,7 @@ impl Resolver {
         }
     }
 
-    fn resolve_enum_variant_or_const(name: Atom)
+    fn resolve_enum_variant_or_const(name: ident)
                                   -> EnumVariantOrConstResolution {
 
         match self.resolve_item_in_lexical_scope(self.current_module,
@@ -4205,7 +4192,7 @@ impl Resolver {
 
     // XXX: Merge me with resolve_name_in_module?
     fn resolve_definition_of_name_in_module(containing_module: @Module,
-                                            name: Atom,
+                                            name: ident,
                                             namespace: Namespace,
                                             xray: XrayFlag)
                                          -> NameDefinition {
@@ -4266,17 +4253,17 @@ impl Resolver {
         }
     }
 
-    fn intern_module_part_of_path(path: @path) -> @DVec<Atom> {
-        let module_path_atoms = @DVec();
+    fn intern_module_part_of_path(path: @path) -> @DVec<ident> {
+        let module_path_idents = @DVec();
         for path.idents.eachi |index, ident| {
             if index == path.idents.len() - 1u {
                 break;
             }
 
-            (*module_path_atoms).push(*ident);
+            (*module_path_idents).push(*ident);
         }
 
-        return module_path_atoms;
+        return module_path_idents;
     }
 
     fn resolve_module_relative_path(path: @path,
@@ -4284,19 +4271,19 @@ impl Resolver {
                                     namespace: Namespace)
                                  -> Option<def> {
 
-        let module_path_atoms = self.intern_module_part_of_path(path);
+        let module_path_idents = self.intern_module_part_of_path(path);
 
         let mut containing_module;
         match self.resolve_module_path_for_import(self.current_module,
-                                                module_path_atoms,
+                                                module_path_idents,
                                                 xray,
                                                 path.span) {
 
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `%s`",
-                                           self.atoms_to_str(
-                                               (*module_path_atoms).get())));
+                                           self.idents_to_str(
+                                               (*module_path_idents).get())));
                 return None;
             }
 
@@ -4329,13 +4316,13 @@ impl Resolver {
                                    namespace: Namespace)
                                 -> Option<def> {
 
-        let module_path_atoms = self.intern_module_part_of_path(path);
+        let module_path_idents = self.intern_module_part_of_path(path);
 
         let root_module = (*self.graph_root).get_module();
 
         let mut containing_module;
         match self.resolve_module_path_from_root(root_module,
-                                               module_path_atoms,
+                                               module_path_idents,
                                                0u,
                                                xray,
                                                path.span) {
@@ -4343,8 +4330,8 @@ impl Resolver {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `::%s`",
-                                            self.atoms_to_str
-                                              ((*module_path_atoms).get())));
+                                            self.idents_to_str
+                                              ((*module_path_idents).get())));
                 return None;
             }
 
@@ -4676,7 +4663,7 @@ impl Resolver {
         }
     }
 
-    fn search_for_traits_containing_method(name: Atom) -> @DVec<def_id> {
+    fn search_for_traits_containing_method(name: ident) -> @DVec<def_id> {
         let found_traits = @DVec();
         let mut search_module = self.current_module;
         loop {
@@ -4715,7 +4702,7 @@ impl Resolver {
 
             // Look for imports.
             for search_module.import_resolutions.each
-                    |_atom, import_resolution| {
+                    |_ident, import_resolution| {
 
                 match import_resolution.target_for_namespace(TypeNS) {
                     None => {
@@ -4761,7 +4748,7 @@ impl Resolver {
 
     fn add_trait_info_if_containing_method(found_traits: @DVec<def_id>,
                                            trait_def_id: def_id,
-                                           name: Atom) {
+                                           name: ident) {
 
         match self.trait_info.find(trait_def_id) {
             Some(trait_info) if trait_info.contains_key(name) => {
@@ -4827,7 +4814,7 @@ impl Resolver {
 
         self.check_for_unused_imports_in_module(module_);
 
-        for module_.children.each |_atom, child_name_bindings| {
+        for module_.children.each |_ident, child_name_bindings| {
             match (*child_name_bindings).get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -4876,7 +4863,7 @@ impl Resolver {
 
     /// A somewhat inefficient routine to print out the name of a module.
     fn module_to_str(module_: @Module) -> ~str {
-        let atoms = DVec();
+        let idents = DVec();
         let mut current_module = module_;
         loop {
             match current_module.parent_link {
@@ -4884,27 +4871,27 @@ impl Resolver {
                     break;
                 }
                 ModuleParentLink(module_, name) => {
-                    atoms.push(name);
+                    idents.push(name);
                     current_module = module_;
                 }
                 BlockParentLink(module_, _) => {
-                    atoms.push(syntax::parse::token::special_idents::opaque);
+                    idents.push(syntax::parse::token::special_idents::opaque);
                     current_module = module_;
                 }
             }
         }
 
-        if atoms.len() == 0u {
+        if idents.len() == 0u {
             return ~"???";
         }
 
         let mut string = ~"";
-        let mut i = atoms.len() - 1u;
+        let mut i = idents.len() - 1u;
         loop {
-            if i < atoms.len() - 1u {
+            if i < idents.len() - 1u {
                 string += ~"::";
             }
-            string += self.session.str_of(atoms.get_elt(i));
+            string += self.session.str_of(idents.get_elt(i));
 
             if i == 0u {
                 break;
