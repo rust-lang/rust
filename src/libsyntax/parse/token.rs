@@ -348,8 +348,12 @@ fn mk_ident_interner() -> ident_interner {
     let rv = interner::mk_prefill::<@~str>(init_vec);
 
     /* having multiple interners will just confuse the serializer */
-    unsafe{ assert task::local_data_get(interner_key!()).is_none() };
-    unsafe{ task::local_data_set(interner_key!(), @rv) };
+    unsafe {
+        assert task::local_data::local_data_get(interner_key!()).is_none()
+    };
+    unsafe {
+        task::local_data::local_data_set(interner_key!(), @rv)
+    };
     rv
 }
 

@@ -219,7 +219,9 @@ mod send_map;
 
 // Concurrency
 mod comm;
-mod task;
+mod task {
+    mod local_data;
+}
 mod future;
 mod pipes;
 
