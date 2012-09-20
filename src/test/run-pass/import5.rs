@@ -9,4 +9,4 @@ mod foo {
     }
 }
 
-fn main(args: ~[~str]) { bar(); }
+fn main() { bar(); }

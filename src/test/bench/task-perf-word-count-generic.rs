@@ -289,7 +289,7 @@ mod map_reduce {
     }
 }
 
-fn main(argv: ~[~str]) {
+fn main(++argv: ~[~str]) {
     if vec::len(argv) < 2u && !os::getenv(~"RUST_BENCH").is_some() {
         let out = io::stdout();
 

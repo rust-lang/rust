@@ -37,7 +37,7 @@ fn spawn_supervised_blocking(myname: &str, +f: fn~()) {
     assert x == task::Success;
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"100000"]
     } else if args.len() <= 1u {

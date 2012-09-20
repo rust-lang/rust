@@ -23,7 +23,7 @@ fn child_generation(gens_left: uint, -c: pipes::Chan<()>) {
     }
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"100000"]
     } else if args.len() <= 1u {

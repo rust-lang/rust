@@ -256,7 +256,14 @@ fn require_same_types(
     }
 }
 
-fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
+fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
+    match ty::resolved_mode(tcx, a.mode) {
+        ast::by_val => { /*ok*/ }
+        _ => {
+            return false;
+        }
+    }
+
     match ty::get(a.ty).sty {
       ty::ty_evec(mt, vstore_uniq) => {
         if mt.mutbl != ast::m_imm { return false; }
@@ -300,7 +307,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
                 tcx.sess.span_err(
                     main_span,
                     fmt!("Wrong type in main function: found `%s`, \
-                          expected `extern fn(~[str]) -> ()` \
+                          expected `extern fn(++v: ~[~str]) -> ()` \
                           or `extern fn() -> ()`",
                          ty_to_str(tcx, main_t)));
             }

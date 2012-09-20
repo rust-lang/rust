@@ -5,7 +5,7 @@ fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { return i as int; }
 
     let perm = vec::to_mut(vec::from_elem(n as uint, 0));
-    let perm1 = vec::to_mut(vec::from_fn(n as uint, perm1init));
+    let perm1 = vec::to_mut(vec::from_fn(n as uint, |i| perm1init(i)));
     let count = vec::to_mut(vec::from_elem(n as uint, 0));
     let mut f = 0;
     let mut i = 0;
@@ -56,7 +56,7 @@ fn fannkuch(n: int) -> int {
     return flips;
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"10"]
     } else if args.len() <= 1u {

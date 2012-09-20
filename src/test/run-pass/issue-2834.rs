@@ -14,7 +14,7 @@ fn rendezvous() {
     error!("%?", streams[0]);
 }
 
-fn main(args: ~[~str]) {
+fn main() {
     //os::getenv("FOO");
     rendezvous();
 }

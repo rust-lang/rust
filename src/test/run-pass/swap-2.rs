@@ -1,4 +1,4 @@
-fn swap<T>(v: ~[mut T], i: int, j: int) { v[i] <-> v[j]; }
+fn swap<T>(v: &[mut T], i: int, j: int) { v[i] <-> v[j]; }
 
 fn main() {
     let a: ~[mut int] = ~[mut 0, 1, 2, 3, 4, 5, 6];

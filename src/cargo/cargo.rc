@@ -19,6 +19,8 @@
 #[no_core];
 #[legacy_exports];
 
+#[legacy_modes];
+
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
