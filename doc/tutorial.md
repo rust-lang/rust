@@ -1237,7 +1237,7 @@ assert !crayons.is_empty();
 
 // Iterate over a vector, obtaining a pointer to each element
 for crayons.each |crayon| {
-    let delicious_crayon_wax = unwrap_crayon(crayon);
+    let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
 
