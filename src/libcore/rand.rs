@@ -206,7 +206,7 @@ impl Rng {
                 return Some(item.item);
             }
         }
-        unreachable();
+        util::unreachable();
     }
 
     /**

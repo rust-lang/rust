@@ -170,7 +170,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
     for vec::each(*variants) |v| {
         if vdef.var == v.id { return var(v.disr_val, vdef); }
     }
-    core::unreachable();
+    core::util::unreachable();
 }
 
 enum TransBindingMode {

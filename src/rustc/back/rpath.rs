@@ -106,7 +106,7 @@ fn get_rpath_relative_to_output(os: session::os,
     let prefix = match os {
         session::os_linux | session::os_freebsd => "$ORIGIN",
         session::os_macos => "@executable_path",
-        session::os_win32 => core::unreachable()
+        session::os_win32 => core::util::unreachable()
     };
 
     Path(prefix).push_rel(&get_relative_to(&os::make_absolute(output),
