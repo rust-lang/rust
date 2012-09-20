@@ -1,9 +1,9 @@
-#[doc(
-    brief = "Attribute parsing",
-    desc =
-    "The attribute parser provides methods for pulling documentation out of \
-     an AST's attributes."
-)];
+/*!
+Attribute parsing
+
+The attribute parser provides methods for pulling documentation out of
+an AST's attributes.
+*/
 
 use syntax::ast;
 use syntax::attr;

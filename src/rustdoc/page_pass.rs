@@ -1,9 +1,9 @@
 /*!
- * Divides the document tree into pages.
- *
- * Each page corresponds is a logical section. There may be pages for
- * individual modules, pages for the crate, indexes, etc.
- */
+Divides the document tree into pages.
+
+Each page corresponds is a logical section. There may be pages for
+individual modules, pages for the crate, indexes, etc.
+*/
 
 use doc::{ItemUtils, PageUtils};
 use syntax::ast;

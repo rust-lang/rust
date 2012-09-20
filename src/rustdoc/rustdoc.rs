@@ -1,4 +1,5 @@
-// Some utility interfaces
+//! Some utility interfaces
+
 use doc::ItemUtils;
 use doc::Item;
 use doc::util;
