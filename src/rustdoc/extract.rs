@@ -2,9 +2,9 @@
 
 use syntax::ast;
 use doc::ItemUtils;
+use task::local_data::local_data_get;
 
 export from_srv, extract, to_str, interner;
-
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
@@ -16,13 +16,13 @@ macro_rules! interner_key (
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
 fn to_str(id: ast::ident) -> ~str {
-    let intr = unsafe{ task::local_data_get(interner_key!()) };
+    let intr = unsafe{ local_data_get(interner_key!()) };
 
     return *(*intr.get()).get(id);
 }
 
 fn interner() -> syntax::parse::token::ident_interner {
-    return *(unsafe{ task::local_data_get(interner_key!()) }).get();
+    return *(unsafe{ local_data_get(interner_key!()) }).get();
 }
 
 fn from_srv(

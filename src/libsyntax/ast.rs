@@ -39,7 +39,9 @@ macro_rules! interner_key (
 )
 
 fn serialize_ident<S: Serializer>(s: S, i: ident) {
-    let intr = match unsafe{task::local_data_get(interner_key!())}{
+    let intr = match unsafe{
+        task::local_data::local_data_get(interner_key!())
+    } {
         None => fail ~"serialization: TLS interner not set up",
         Some(intr) => intr
     };
@@ -47,7 +49,9 @@ fn serialize_ident<S: Serializer>(s: S, i: ident) {
     s.emit_str(*(*intr).get(i));
 }
 fn deserialize_ident<D: Deserializer>(d: D) -> ident  {
-    let intr = match unsafe{task::local_data_get(interner_key!())}{
+    let intr = match unsafe{
+        task::local_data::local_data_get(interner_key!())
+    } {
         None => fail ~"deserialization: TLS interner not set up",
         Some(intr) => intr
     };
