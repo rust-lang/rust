@@ -44,11 +44,7 @@ fn doc_meta(
      * doc attribute
      */
 
-    let doc_attrs = attr::find_attrs_by_name(attrs, ~"doc");
-    let doc_metas = do doc_attrs.map |attr| {
-        attr::attr_meta(attr::desugar_doc_attr(attr))
-    };
-
+    let doc_metas = doc_metas(attrs);
     if vec::is_not_empty(doc_metas) {
         if vec::len(doc_metas) != 1u {
             warn!("ignoring %u doc attributes", vec::len(doc_metas) - 1u);
@@ -57,6 +53,19 @@ fn doc_meta(
     } else {
         None
     }
+
+}
+
+fn doc_metas(
+    attrs: ~[ast::attribute]
+) -> ~[@ast::meta_item] {
+
+    let doc_attrs = attr::find_attrs_by_name(attrs, ~"doc");
+    let doc_metas = do doc_attrs.map |attr| {
+        attr::attr_meta(attr::desugar_doc_attr(attr))
+    };
+
+    return doc_metas;
 }
 
 fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
@@ -117,8 +126,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
 }
 
 fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
-    match doc_meta(attrs) {
-      Some(meta) => {
+    do doc_metas(attrs).find |meta| {
         match attr::get_meta_item_list(meta) {
           Some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
@@ -126,14 +134,19 @@ fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
           }
           None => false
         }
-      }
-      None => false
-    }
+    }.is_some()
 }
 
 #[test]
 fn should_parse_hidden_attribute() {
     let source = ~"#[doc(hidden)]";
+    let attrs = test::parse_attributes(source);
+    assert parse_hidden(attrs) == true;
+}
+
+#[test]
+fn should_parse_hidden_attribute_with_other_docs() {
+    let source = ~"#[doc = \"foo\"] #[doc(hidden)] #[doc = \"foo\"]";
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == true;
 }
