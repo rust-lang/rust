@@ -25,7 +25,7 @@ type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: ident_interner,
+    interner: @ident_interner,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint

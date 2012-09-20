@@ -652,14 +652,14 @@ struct PrimitiveTypeTable {
 }
 
 impl PrimitiveTypeTable {
-    fn intern(intr: ident_interner, string: @~str,
+    fn intern(intr: @ident_interner, string: @~str,
               primitive_type: prim_ty) {
         let atom = intr.intern(string);
         self.primitive_types.insert(atom, primitive_type);
     }
 }
 
-fn PrimitiveTypeTable(intr: ident_interner) -> PrimitiveTypeTable {
+fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
     let table = PrimitiveTypeTable {
         primitive_types: atom_hashmap()
     };
@@ -765,7 +765,7 @@ struct Resolver {
     lang_items: LanguageItems,
     crate: @crate,
 
-    intr: ident_interner,
+    intr: @ident_interner,
 
     graph_root: @NameBindings,
 

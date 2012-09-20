@@ -25,9 +25,9 @@ use syntax::parse::token::ident_interner;
 use syntax::ast::ident;
 
 type namegen = fn@(~str) -> ident;
-fn new_namegen(intr: ident_interner) -> namegen {
+fn new_namegen(intr: @ident_interner) -> namegen {
     return fn@(prefix: ~str) -> ident {
-        return intr.gensym(@fmt!("%s_%u", prefix, intr.gensym(@prefix)))
+        return intr.gensym(@fmt!("%s_%u", prefix, intr.gensym(@prefix).repr))
     };
 }
 
@@ -1024,7 +1024,7 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(fmt!("str%u", cx.names(~"str")),
+        str::as_c_str(fmt!("str%u", cx.names(~"str").repr),
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -1086,7 +1086,8 @@ fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes_plus_null(bytes);
-    let llglobal = str::as_c_str(fmt!("shape%u", ccx.names(~"shape")), |buf| {
+    let name = fmt!("shape%u", ccx.names(~"shape").repr);
+    let llglobal = str::as_c_str(name, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);

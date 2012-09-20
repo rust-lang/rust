@@ -268,7 +268,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: cmd) -> ~[ast::def_id] {
     return ids;
 }
 
-fn item_path(intr: ident_interner, item_doc: ebml::Doc) -> ast_map::path {
+fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     let path_doc = ebml::get_doc(item_doc, tag_path);
 
     let len_doc = ebml::get_doc(path_doc, tag_path_len);
@@ -290,7 +290,7 @@ fn item_path(intr: ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     return result;
 }
 
-fn item_name(intr: ident_interner, item: ebml::Doc) -> ast::ident {
+fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
     intr.intern(@str::from_bytes(ebml::doc_data(name)))
 }
@@ -365,7 +365,7 @@ fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
     item_impl_traits(lookup_item(id, cdata.data), tcx, cdata)
 }
 
-fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
+fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                    name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
     let mut found = None;
@@ -378,7 +378,7 @@ fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
     found.get()
 }
 
-fn get_class_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
+fn get_class_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                     name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
     let mut found = None;
@@ -451,7 +451,7 @@ fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
 }
 
 /// Iterates over all the paths in the given crate.
-fn each_path(intr: ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
+fn each_path(intr: @ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
     let root = ebml::Doc(cdata.data);
     let items = ebml::get_doc(root, tag_items);
     let items_data = ebml::get_doc(items, tag_items_data);
@@ -531,7 +531,7 @@ fn each_path(intr: ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
     }
 }
 
-fn get_item_path(intr: ident_interner, cdata: cmd, id: ast::node_id)
+fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     -> ast_map::path {
     item_path(intr, lookup_item(id, cdata.data))
 }
@@ -542,7 +542,7 @@ type decode_inlined_item = fn(
     path: ast_map::path,
     par_doc: ebml::Doc) -> Option<ast::inlined_item>;
 
-fn maybe_get_item_ast(intr: ident_interner, cdata: cmd, tcx: ty::ctxt,
+fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
                       id: ast::node_id,
                       decode_inlined_item: decode_inlined_item
                      ) -> csearch::found_ast {
@@ -568,7 +568,7 @@ fn maybe_get_item_ast(intr: ident_interner, cdata: cmd, tcx: ty::ctxt,
     }
 }
 
-fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
+fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                      tcx: ty::ctxt) -> ~[ty::variant_info] {
     let data = cdata.data;
     let items = ebml::get_doc(ebml::Doc(data), tag_items);
@@ -638,7 +638,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
     }
 }
 
-fn item_impl_methods(intr: ident_interner, cdata: cmd, item: ebml::Doc,
+fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
                      base_tps: uint) -> ~[@method_info] {
     let mut rslt = ~[];
     for ebml::tagged_docs(item, tag_item_impl_method) |doc| {
@@ -654,7 +654,7 @@ fn item_impl_methods(intr: ident_interner, cdata: cmd, item: ebml::Doc,
     rslt
 }
 
-fn get_impls_for_mod(intr: ident_interner, cdata: cmd,
+fn get_impls_for_mod(intr: @ident_interner, cdata: cmd,
                      m_id: ast::node_id, name: Option<ast::ident>,
                      get_cdata: fn(ast::crate_num) -> cmd)
                   -> @~[@_impl] {
@@ -685,7 +685,7 @@ fn get_impls_for_mod(intr: ident_interner, cdata: cmd,
 }
 
 /* Works for both classes and traits */
-fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
+fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                      tcx: ty::ctxt) -> @~[ty::method] {
     let data = cdata.data;
     let item = lookup_item(id, data);
@@ -712,7 +712,7 @@ fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
 // If the item in question is a trait, returns its set of methods and
 // their self types. Otherwise, returns none. This overlaps in an
 // annoying way with get_trait_methods.
-fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
+fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
                              node_id: ast::node_id)
                           -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
@@ -742,7 +742,7 @@ fn get_item_attrs(cdata: cmd,
 }
 
 // Helper function that gets either fields or methods
-fn get_class_members(intr: ident_interner, cdata: cmd, id: ast::node_id,
+fn get_class_members(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                      p: fn(Family) -> bool) -> ~[ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data);
@@ -769,7 +769,7 @@ pure fn family_to_visibility(family: Family) -> ast::visibility {
     }
 }
 
-fn get_class_fields(intr: ident_interner, cdata: cmd, id: ast::node_id)
+fn get_class_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     -> ~[ty::field_ty] {
     get_class_members(intr, cdata, id, |f| f == PublicField
                       || f == PrivateField || f == InheritedField)
@@ -876,14 +876,14 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
     return attrs;
 }
 
-fn list_meta_items(intr: ident_interner,
+fn list_meta_items(intr: @ident_interner,
                    meta_items: ebml::Doc, out: io::Writer) {
     for get_meta_items(meta_items).each |mi| {
         out.write_str(fmt!("%s\n", pprust::meta_item_to_str(*mi, intr)));
     }
 }
 
-fn list_crate_attributes(intr: ident_interner, md: ebml::Doc, hash: ~str,
+fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: ~str,
                          out: io::Writer) {
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
@@ -901,7 +901,7 @@ fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
 type crate_dep = {cnum: ast::crate_num, name: ast::ident,
                   vers: ~str, hash: ~str};
 
-fn get_crate_deps(intr: ident_interner, data: @~[u8]) -> ~[crate_dep] {
+fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
     let cratedoc = ebml::Doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
@@ -919,7 +919,7 @@ fn get_crate_deps(intr: ident_interner, data: @~[u8]) -> ~[crate_dep] {
     return deps;
 }
 
-fn list_crate_deps(intr: ident_interner, data: @~[u8], out: io::Writer) {
+fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
     out.write_str(~"=External Dependencies=\n");
 
     for get_crate_deps(intr, data).each |dep| {
@@ -946,7 +946,7 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     };
 }
 
-fn iter_crate_items(intr: ident_interner,
+fn iter_crate_items(intr: @ident_interner,
                     cdata: cmd, proc: fn(~str, ast::def_id)) {
     for each_path(intr, cdata) |path_entry| {
         match path_entry.def_like {
@@ -958,7 +958,7 @@ fn iter_crate_items(intr: ident_interner,
     }
 }
 
-fn get_crate_module_paths(intr: ident_interner, cdata: cmd)
+fn get_crate_module_paths(intr: @ident_interner, cdata: cmd)
                                     -> ~[(ast::def_id, ~str)] {
     fn mod_of_path(p: ~str) -> ~str {
         str::connect(vec::init(str::split_str(p, ~"::")), ~"::")
@@ -985,7 +985,7 @@ fn get_crate_module_paths(intr: ident_interner, cdata: cmd)
     }
 }
 
-fn list_crate_metadata(intr: ident_interner, bytes: @~[u8],
+fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
                        out: io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = ebml::Doc(bytes);
