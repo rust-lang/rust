@@ -114,7 +114,7 @@ fn mode_str(mode: mode) -> ~str {
 fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
-    let res = test::run_tests_console(opts, tests);
+    let res = test::run_tests_console(&opts, tests);
     if !res { fail ~"Some tests failed"; }
 }
 

@@ -5,6 +5,9 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use core::cmp::Eq;
 use either::Either;
 use result::{Ok, Err};
@@ -52,13 +55,13 @@ type TestDesc = {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: ~[~str], tests: ~[TestDesc]) {
+fn test_main(args: &[~str], tests: &[TestDesc]) {
     let opts =
         match parse_opts(args) {
           either::Left(o) => o,
           either::Right(m) => fail m
         };
-    if !run_tests_console(opts, tests) { fail ~"Some tests failed"; }
+    if !run_tests_console(&opts, tests) { fail ~"Some tests failed"; }
 }
 
 type TestOpts = {filter: Option<~str>, run_ignored: bool,
@@ -67,7 +70,7 @@ type TestOpts = {filter: Option<~str>, run_ignored: bool,
 type OptRes = Either<TestOpts, ~str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: ~[~str]) -> OptRes {
+fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = vec::tail(args);
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
@@ -110,12 +113,12 @@ type ConsoleTestState =
       mut failures: ~[TestDesc]};
 
 // A simple console test runner
-fn run_tests_console(opts: TestOpts,
-                     tests: ~[TestDesc]) -> bool {
+fn run_tests_console(opts: &TestOpts,
+                     tests: &[TestDesc]) -> bool {
 
-    fn callback(event: TestEvent, st: ConsoleTestState) {
+    fn callback(event: &TestEvent, st: ConsoleTestState) {
         debug!("callback(event=%?)", event);
-        match event {
+        match *event {
           TeFiltered(filtered_tests) => {
             st.total = vec::len(filtered_tests);
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
@@ -124,7 +127,7 @@ fn run_tests_console(opts: TestOpts,
           TeWait(test) => st.out.write_str(fmt!("test %s ... ", test.name)),
           TeResult(test, result) => {
             match st.log_out {
-                Some(f) => write_log(f, result, test),
+                Some(f) => write_log(f, result, &test),
                 None => ()
             }
             match result {
@@ -170,7 +173,7 @@ fn run_tests_console(opts: TestOpts,
           mut ignored: 0u,
           mut failures: ~[]};
 
-    run_tests(opts, tests, |x| callback(x, st));
+    run_tests(opts, tests, |x| callback(&x, st));
 
     assert (st.passed + st.failed + st.ignored == st.total);
     let success = st.failed == 0u;
@@ -189,7 +192,7 @@ fn run_tests_console(opts: TestOpts,
 
     return success;
 
-    fn write_log(out: io::Writer, result: TestResult, test: TestDesc) {
+    fn write_log(out: io::Writer, result: TestResult, test: &TestDesc) {
         out.write_line(fmt!("%s %s",
                     match result {
                         TrOk => ~"ok",
@@ -210,7 +213,7 @@ fn run_tests_console(opts: TestOpts,
         write_pretty(out, ~"ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: io::Writer, word: ~str, color: u8, use_color: bool) {
+    fn write_pretty(out: io::Writer, word: &str, color: u8, use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out, color);
         }
@@ -276,7 +279,7 @@ enum TestEvent {
 
 type MonitorMsg = (TestDesc, TestResult);
 
-fn run_tests(opts: TestOpts, tests: ~[TestDesc],
+fn run_tests(opts: &TestOpts, tests: &[TestDesc],
              callback: fn@(TestEvent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
@@ -333,9 +336,9 @@ fn get_concurrency() -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn filter_tests(opts: TestOpts,
-                tests: ~[TestDesc]) -> ~[TestDesc] {
-    let mut filtered = copy tests;
+fn filter_tests(opts: &TestOpts,
+                tests: &[TestDesc]) -> ~[TestDesc] {
+    let mut filtered = vec::slice(tests, 0, tests.len());
 
     // Remove tests that don't match the test filter
     filtered = if option::is_none(opts.filter) {
@@ -347,21 +350,21 @@ fn filter_tests(opts: TestOpts,
           option::None => ~""
         };
 
-        fn filter_fn(test: TestDesc, filter_str: ~str) ->
+        fn filter_fn(test: &TestDesc, filter_str: &str) ->
             Option<TestDesc> {
             if str::contains(test.name, filter_str) {
-                return option::Some(copy test);
+                return option::Some(copy *test);
             } else { return option::None; }
         }
 
-        vec::filter_map(filtered, |x| filter_fn(x, filter_str))
+        vec::filter_map(filtered, |x| filter_fn(&x, filter_str))
     };
 
     // Maybe pull out the ignored test and unignore them
     filtered = if !opts.run_ignored {
         move filtered
     } else {
-        fn filter(test: TestDesc) -> Option<TestDesc> {
+        fn filter(test: &TestDesc) -> Option<TestDesc> {
             if test.ignore {
                 return option::Some({name: test.name,
                                   testfn: copy test.testfn,
@@ -370,7 +373,7 @@ fn filter_tests(opts: TestOpts,
             } else { return option::None; }
         };
 
-        vec::filter_map(filtered, |x| filter(x))
+        vec::filter_map(filtered, |x| filter(&x))
     };
 
     // Sort the tests alphabetically
@@ -399,12 +402,12 @@ fn run_test(+test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
             result_future = Some(move r);
         }).spawn(move testfn);
         let task_result = future::get(&option::unwrap(move result_future));
-        let test_result = calc_result(test, task_result == task::Success);
+        let test_result = calc_result(&test, task_result == task::Success);
         comm::send(monitor_ch, (copy test, test_result));
     };
 }
 
-fn calc_result(test: TestDesc, task_succeeded: bool) -> TestResult {
+fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
     if task_succeeded {
         if test.should_fail { TrFailed }
         else { TrOk }
@@ -514,7 +517,7 @@ mod tests {
                ignore: true, should_fail: false},
              {name: ~"2", testfn: fn~() { },
               ignore: false, should_fail: false}];
-        let filtered = filter_tests(opts, tests);
+        let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1u);
         assert (filtered[0].name == ~"1");
@@ -544,7 +547,7 @@ mod tests {
             }
             tests
         };
-        let filtered = filter_tests(opts, tests);
+        let filtered = filter_tests(&opts, tests);
 
         let expected =
             ~[~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
