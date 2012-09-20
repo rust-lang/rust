@@ -373,11 +373,21 @@ type region_paramd_items = HashMap<ast::node_id, region_variance>;
 type region_dep = {ambient_variance: region_variance, id: ast::node_id};
 type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
+#[cfg(stage0)]
 impl region_dep: cmp::Eq {
     pure fn eq(&&other: region_dep) -> bool {
         self.ambient_variance == other.ambient_variance && self.id == other.id
     }
     pure fn ne(&&other: region_dep) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl region_dep : cmp::Eq {
+    pure fn eq(other: &region_dep) -> bool {
+        self.ambient_variance == (*other).ambient_variance &&
+        self.id == (*other).id
+    }
+    pure fn ne(other: &region_dep) -> bool { !self.eq(other) }
 }
 
 type determine_rp_ctxt_ = {

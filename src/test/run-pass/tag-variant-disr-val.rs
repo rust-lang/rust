@@ -10,10 +10,10 @@ enum color {
 }
 
 impl color : cmp::Eq {
-    pure fn eq(&&other: color) -> bool {
-        (self as uint) == (other as uint)
+    pure fn eq(other: &color) -> bool {
+        (self as uint) == ((*other) as uint)
     }
-    pure fn ne(&&other: color) -> bool { !self.eq(other) }
+    pure fn ne(other: &color) -> bool { !self.eq(other) }
 }
 
 fn main() {

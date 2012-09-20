@@ -138,11 +138,20 @@ enum compile_upto {
     cu_everything,
 }
 
+#[cfg(stage0)]
 impl compile_upto : cmp::Eq {
     pure fn eq(&&other: compile_upto) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: compile_upto) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl compile_upto : cmp::Eq {
+    pure fn eq(other: &compile_upto) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &compile_upto) -> bool { !self.eq(other) }
 }
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,

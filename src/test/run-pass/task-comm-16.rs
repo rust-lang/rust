@@ -48,22 +48,22 @@ enum t {
 }
 
 impl t : cmp::Eq {
-    pure fn eq(&&other: t) -> bool {
+    pure fn eq(other: &t) -> bool {
         match self {
             tag1 => {
-                match other {
+                match (*other) {
                     tag1 => true,
                     _ => false
                 }
             }
             tag2(e0a) => {
-                match other {
+                match (*other) {
                     tag2(e0b) => e0a == e0b,
                     _ => false
                 }
             }
             tag3(e0a, e1a, e2a) => {
-                match other {
+                match (*other) {
                     tag3(e0b, e1b, e2b) =>
                         e0a == e0b && e1a == e1b && e2a == e2b,
                     _ => false
@@ -71,7 +71,7 @@ impl t : cmp::Eq {
             }
         }
     }
-    pure fn ne(&&other: t) -> bool { !self.eq(other) }
+    pure fn ne(other: &t) -> bool { !self.eq(other) }
 }
 
 fn test_tag() {

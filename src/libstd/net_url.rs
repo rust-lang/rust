@@ -317,11 +317,20 @@ fn userinfo_to_str(+userinfo: UserInfo) -> ~str {
     }
 }
 
+#[cfg(stage0)]
 impl UserInfo : Eq {
     pure fn eq(&&other: UserInfo) -> bool {
         self.user == other.user && self.pass == other.pass
     }
     pure fn ne(&&other: UserInfo) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl UserInfo : Eq {
+    pure fn eq(other: &UserInfo) -> bool {
+        self.user == (*other).user && self.pass == (*other).pass
+    }
+    pure fn ne(other: &UserInfo) -> bool { !self.eq(other) }
 }
 
 fn query_from_str(rawquery: &str) -> Query {
@@ -377,6 +386,7 @@ enum Input {
     Unreserved // all other legal characters
 }
 
+#[cfg(stage0)]
 impl Input: Eq {
     pure fn eq(&&other: Input) -> bool {
         match (self, other) {
@@ -389,6 +399,21 @@ impl Input: Eq {
         }
     }
     pure fn ne(&&other: Input) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Input : Eq {
+    pure fn eq(other: &Input) -> bool {
+        match (self, (*other)) {
+            (Digit, Digit) => true,
+            (Hex, Hex) => true,
+            (Unreserved, Unreserved) => true,
+            (Digit, _) => false,
+            (Hex, _) => false,
+            (Unreserved, _) => false
+        }
+    }
+    pure fn ne(other: &Input) -> bool { !self.eq(other) }
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
@@ -719,6 +744,7 @@ impl Url: to_str::ToStr {
     }
 }
 
+#[cfg(stage0)]
 impl Url: Eq {
     pure fn eq(&&other: Url) -> bool {
         self.scheme == other.scheme
@@ -731,6 +757,23 @@ impl Url: Eq {
     }
 
     pure fn ne(&&other: Url) -> bool {
+        !self.eq(other)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Url : Eq {
+    pure fn eq(other: &Url) -> bool {
+        self.scheme == (*other).scheme
+            && self.user == (*other).user
+            && self.host == (*other).host
+            && self.port == (*other).port
+            && self.path == (*other).path
+            && self.query == (*other).query
+            && self.fragment == (*other).fragment
+    }
+
+    pure fn ne(other: &Url) -> bool {
         !self.eq(other)
     }
 }

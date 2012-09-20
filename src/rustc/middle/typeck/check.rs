@@ -940,6 +940,13 @@ fn lookup_field_ty(tcx: ty::ctxt,
     }
 }
 
+// Controls whether the arguments are automatically referenced. This is useful
+// for overloaded binary and unary operators.
+enum DerefArgs {
+    DontDerefArgs,
+    DoDerefArgs
+}
+
 fn check_expr_with_unifier(fcx: @fn_ctxt,
                            expr: @ast::expr,
                            expected: Option<ty::t>,
@@ -955,7 +962,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         call_expr_id: ast::node_id,
         in_fty: ty::t,
         callee_expr: @ast::expr,
-        args: ~[@ast::expr]) -> {fty: ty::t, bot: bool} {
+        args: ~[@ast::expr],
+        deref_args: DerefArgs) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
 
@@ -1043,7 +1051,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
                 if is_block == check_blocks {
                     debug!("checking the argument");
-                    let formal_ty = formal_tys[i];
+                    let mut formal_ty = formal_tys[i];
+
+                    match deref_args {
+                        DoDerefArgs => {
+                            match ty::get(formal_ty).sty {
+                                ty::ty_rptr(_, mt) => formal_ty = mt.ty,
+                                _ => {
+                                    fcx.ccx.tcx.sess.span_bug(arg.span,
+                                                              ~"no ref");
+                                }
+                            }
+                        }
+                        DontDerefArgs => {}
+                    }
 
                     bot |= check_expr_with_unifier(
                         fcx, arg, Some(formal_ty),
@@ -1082,7 +1103,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Call the generic checker.
         let fty = {
             let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, f, args);
+                                     fn_ty, f, args, DontDerefArgs);
             bot |= r.bot;
             r.fty
         };
@@ -1138,7 +1159,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
-                        opname: ast::ident, args: ~[@ast::expr])
+                        opname: ast::ident, args: ~[@ast::expr],
+                        +deref_args: DerefArgs)
         -> Option<(ty::t, bool)>
     {
         match method::lookup(fcx, op_ex, self_ex,
@@ -1147,7 +1169,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 method_ty, op_ex, args)
+                                 method_ty, op_ex, args, deref_args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             Some((ty::ty_fn_ret(method_ty), bot))
@@ -1182,7 +1204,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
 
             let result_t = match op {
-                ast::eq | ast::ne | ast::lt | ast::le | ast::ge | ast::gt => {
+                ast::eq | ast::ne | ast::lt | ast::le | ast::ge |
+                ast::gt => {
                     ty::mk_bool(tcx)
                 }
                 _ => {
@@ -1212,7 +1235,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           Some(name) => {
             match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
                                    fcx.tcx().sess.ident_of(name),
-                                   ~[rhs]) {
+                                   ~[rhs], DoDerefArgs) {
               Some(pair) => return pair,
               _ => ()
             }
@@ -1246,7 +1269,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
         match lookup_op_method(fcx, ex, rhs_expr, rhs_t,
-                               fcx.tcx().sess.ident_of(mname), ~[]) {
+                               fcx.tcx().sess.ident_of(mname), ~[],
+                               DontDerefArgs) {
           Some((ret_ty, _)) => ret_ty,
           _ => {
             fcx.ccx.tcx.sess.span_err(
@@ -2054,7 +2078,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                                             raw_base_t);
                   match lookup_op_method(fcx, expr, base, resolved,
                                          tcx.sess.ident_of(~"index"),
-                                         ~[idx]) {
+                                         ~[idx], DontDerefArgs) {
                       Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
                       _ => {
                           tcx.sess.span_fatal(

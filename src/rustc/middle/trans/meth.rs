@@ -99,7 +99,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr,
     let self_arg = {mode: mentry.self_arg.mode,
                     ty: monomorphize_type(bcx, mentry.self_arg.ty)};
     let result = trans_arg_expr(bcx, self_arg, base,
-                                &mut temp_cleanups, None);
+                                &mut temp_cleanups, None, DontAutorefArg);
 
     // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
     // should be revoked only after all arguments have been passed.

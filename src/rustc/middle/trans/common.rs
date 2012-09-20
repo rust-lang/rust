@@ -282,6 +282,7 @@ enum cleanup {
     clean_temp(ValueRef, fn@(block) -> block, cleantype),
 }
 
+#[cfg(stage0)]
 impl cleantype : cmp::Eq {
     pure fn eq(&&other: cleantype) -> bool {
         match self {
@@ -300,6 +301,27 @@ impl cleantype : cmp::Eq {
         }
     }
     pure fn ne(&&other: cleantype) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl cleantype : cmp::Eq {
+    pure fn eq(other: &cleantype) -> bool {
+        match self {
+            normal_exit_only => {
+                match (*other) {
+                    normal_exit_only => true,
+                    _ => false
+                }
+            }
+            normal_exit_and_unwind => {
+                match (*other) {
+                    normal_exit_and_unwind => true,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(other: &cleantype) -> bool { !self.eq(other) }
 }
 
 // Used to remember and reuse existing cleanup paths
@@ -1111,6 +1133,7 @@ type mono_id_ = {def: ast::def_id, params: ~[mono_param_id]};
 
 type mono_id = @mono_id_;
 
+#[cfg(stage0)]
 impl mono_param_id: cmp::Eq {
     pure fn eq(&&other: mono_param_id) -> bool {
         match (self, other) {
@@ -1128,12 +1151,40 @@ impl mono_param_id: cmp::Eq {
     }
     pure fn ne(&&other: mono_param_id) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl mono_param_id : cmp::Eq {
+    pure fn eq(other: &mono_param_id) -> bool {
+        match (self, (*other)) {
+            (mono_precise(ty_a, ids_a), mono_precise(ty_b, ids_b)) => {
+                ty_a == ty_b && ids_a == ids_b
+            }
+            (mono_any, mono_any) => true,
+            (mono_repr(size_a, align_a), mono_repr(size_b, align_b)) => {
+                size_a == size_b && align_a == align_b
+            }
+            (mono_precise(*), _) => false,
+            (mono_any, _) => false,
+            (mono_repr(*), _) => false
+        }
+    }
+    pure fn ne(other: &mono_param_id) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl mono_id_: cmp::Eq {
     pure fn eq(&&other: mono_id_) -> bool {
         return self.def == other.def && self.params == other.params;
     }
     pure fn ne(&&other: mono_id_) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl mono_id_ : cmp::Eq {
+    pure fn eq(other: &mono_id_) -> bool {
+        return self.def == (*other).def && self.params == (*other).params;
+    }
+    pure fn ne(other: &mono_id_) -> bool { !self.eq(other) }
 }
 
 impl mono_param_id : to_bytes::IterBytes {

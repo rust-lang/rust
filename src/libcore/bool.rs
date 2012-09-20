@@ -69,9 +69,16 @@ fn all_values(blk: fn(v: bool)) {
 /// converts truth value to an 8 bit byte
 pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
+#[cfg(stage0)]
 impl bool : cmp::Eq {
     pure fn eq(&&other: bool) -> bool { self == other }
     pure fn ne(&&other: bool) -> bool { self != other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl bool : cmp::Eq {
+    pure fn eq(other: &bool) -> bool { self == (*other) }
+    pure fn ne(other: &bool) -> bool { self != (*other) }
 }
 
 #[test]

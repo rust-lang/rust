@@ -649,11 +649,20 @@ fn pick_col(m: &[@Match]) -> uint {
 
 enum branch_kind { no_branch, single, switch, compare, }
 
+#[cfg(stage0)]
 impl branch_kind : cmp::Eq {
     pure fn eq(&&other: branch_kind) -> bool {
         (self as uint) == (other as uint)
     }
     pure fn ne(&&other: branch_kind) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl branch_kind : cmp::Eq {
+    pure fn eq(other: &branch_kind) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &branch_kind) -> bool { !self.eq(other) }
 }
 
 // Compiles a comparison between two things.

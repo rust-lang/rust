@@ -36,11 +36,20 @@ extern mod rustrt {
 /// A record specifying a time value in seconds and nanoseconds.
 type Timespec = {sec: i64, nsec: i32};
 
+#[cfg(stage0)]
 impl Timespec : Eq {
     pure fn eq(&&other: Timespec) -> bool {
         self.sec == other.sec && self.nsec == other.nsec
     }
     pure fn ne(&&other: Timespec) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Timespec : Eq {
+    pure fn eq(other: &Timespec) -> bool {
+        self.sec == (*other).sec && self.nsec == (*other).nsec
+    }
+    pure fn ne(other: &Timespec) -> bool { !self.eq(other) }
 }
 
 /**
@@ -91,6 +100,7 @@ type Tm_ = {
     tm_nsec: i32, // nanoseconds
 };
 
+#[cfg(stage0)]
 impl Tm_ : Eq {
     pure fn eq(&&other: Tm_) -> bool {
         self.tm_sec == other.tm_sec &&
@@ -108,14 +118,40 @@ impl Tm_ : Eq {
     }
     pure fn ne(&&other: Tm_) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Tm_ : Eq {
+    pure fn eq(other: &Tm_) -> bool {
+        self.tm_sec == (*other).tm_sec &&
+        self.tm_min == (*other).tm_min &&
+        self.tm_hour == (*other).tm_hour &&
+        self.tm_mday == (*other).tm_mday &&
+        self.tm_mon == (*other).tm_mon &&
+        self.tm_year == (*other).tm_year &&
+        self.tm_wday == (*other).tm_wday &&
+        self.tm_yday == (*other).tm_yday &&
+        self.tm_isdst == (*other).tm_isdst &&
+        self.tm_gmtoff == (*other).tm_gmtoff &&
+        self.tm_zone == (*other).tm_zone &&
+        self.tm_nsec == (*other).tm_nsec
+    }
+    pure fn ne(other: &Tm_) -> bool { !self.eq(other) }
+}
 
 enum Tm {
     Tm_(Tm_)
 }
 
+#[cfg(stage0)]
 impl Tm : Eq {
     pure fn eq(&&other: Tm) -> bool { *self == *other }
     pure fn ne(&&other: Tm) -> bool { *self != *other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Tm : Eq {
+    pure fn eq(other: &Tm) -> bool { *self == *(*other) }
+    pure fn ne(other: &Tm) -> bool { *self != *(*other) }
 }
 
 fn empty_tm() -> Tm {

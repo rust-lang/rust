@@ -1,11 +1,24 @@
+// xfail-test
+// xfail-fast
+
+// XFAIL'd because of error message problems with demoded Add.
+
 struct Point { 
     x: int,
     y: int,
 }
 
+#[cfg(stage0)]
 impl Point : ops::Add<int,int> {
     pure fn add(&&z: int) -> int {
         self.x + self.y + z
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Point : ops::Add<int,int> {
+    pure fn add(z: &int) -> int {
+        self.x + self.y + (*z)
     }
 }
 

@@ -7,10 +7,10 @@ use std::map::*;
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl cat_type : cmp::Eq {
-    pure fn eq(&&other: cat_type) -> bool {
-        (self as uint) == (other as uint)
+    pure fn eq(other: &cat_type) -> bool {
+        (self as uint) == ((*other) as uint)
     }
-    pure fn ne(&&other: cat_type) -> bool { !self.eq(other) }
+    pure fn ne(other: &cat_type) -> bool { !self.eq(other) }
 }
 
 // Very silly -- this just returns the value of the name field

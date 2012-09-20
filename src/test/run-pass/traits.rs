@@ -33,14 +33,14 @@ trait Ord < Eq {
 }
 
 // pronounced "impl of Ord for int" -- not sold on this yet
-impl int: Ord {
-    fn lt(a: int) -> bool {
-        self < a
+impl int : Ord {
+    fn lt(a: &int) -> bool {
+        self < (*a)
     }
 
     // is this the place to put this?
-    fn eq(a: int) -> bool {
-        self == a
+    fn eq(a: &int) -> bool {
+        self == (*a)
     }
 }
 

@@ -8,6 +8,7 @@ export build_sized, build, build_sized_opt;
 export map;
 export from_fn, from_elem;
 export raw;
+export traits;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -133,13 +134,26 @@ pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
 }
 
 #[cfg(notest)]
-impl<T: Copy> @[T]: Add<&[const T],@[T]> {
-    #[inline(always)]
-    pure fn add(rhs: &[const T]) -> @[T] {
-        append(self, rhs)
+mod traits {
+    #[cfg(stage0)]
+    impl<T: Copy> @[T]: Add<&[const T],@[T]> {
+        #[inline(always)]
+        pure fn add(rhs: &[const T]) -> @[T] {
+            append(self, rhs)
+        }
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+        #[inline(always)]
+        pure fn add(rhs: & &[const T]) -> @[T] {
+            append(self, (*rhs))
+        }
     }
 }
 
+#[cfg(test)]
+mod traits {}
 
 mod raw {
     type VecRepr = vec::raw::VecRepr;

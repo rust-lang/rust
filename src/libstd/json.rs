@@ -676,6 +676,7 @@ pure fn lt(value0: Json, value1: Json) -> bool {
     }
 }
 
+#[cfg(stage0)]
 impl Error : Eq {
     pure fn eq(&&other: Error) -> bool {
         self.line == other.line &&
@@ -684,17 +685,43 @@ impl Error : Eq {
     }
     pure fn ne(&&other: Error) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Error : Eq {
+    pure fn eq(other: &Error) -> bool {
+        self.line == (*other).line &&
+        self.col == (*other).col &&
+        self.msg == (*other).msg
+    }
+    pure fn ne(other: &Error) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl Json : Eq {
     pure fn eq(&&other: Json) -> bool { eq(self, other) }
     pure fn ne(&&other: Json) -> bool { !self.eq(other) }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Json : Eq {
+    pure fn eq(other: &Json) -> bool { eq(self, (*other)) }
+    pure fn ne(other: &Json) -> bool { !self.eq(other) }
+}
 
+#[cfg(stage0)]
 impl Json : Ord {
     pure fn lt(&&other: Json) -> bool { lt(self, other) }
     pure fn le(&&other: Json) -> bool { !other.lt(self) }
     pure fn ge(&&other: Json) -> bool { !self.lt(other) }
     pure fn gt(&&other: Json) -> bool { other.lt(self)  }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Json : Ord {
+    pure fn lt(other: &Json) -> bool { lt(self, (*other))  }
+    pure fn le(other: &Json) -> bool { !(*other).lt(&self) }
+    pure fn ge(other: &Json) -> bool { !self.lt(other)     }
+    pure fn gt(other: &Json) -> bool { (*other).lt(&self)  }
 }
 
 trait ToJson { fn to_json() -> Json; }

@@ -47,77 +47,78 @@ enum expr {
 }
 
 impl an_enum : cmp::Eq {
-    pure fn eq(&&other: an_enum) -> bool {
-        self.v == other.v
+    pure fn eq(other: &an_enum) -> bool {
+        self.v == (*other).v
     }
-    pure fn ne(&&other: an_enum) -> bool { !self.eq(other) }
+    pure fn ne(other: &an_enum) -> bool { !self.eq(other) }
 }
 
 impl point : cmp::Eq {
-    pure fn eq(&&other: point) -> bool {
-        self.x == other.x && self.y == other.y
+    pure fn eq(other: &point) -> bool {
+        self.x == (*other).x && self.y == (*other).y
     }
-    pure fn ne(&&other: point) -> bool { !self.eq(other) }
+    pure fn ne(other: &point) -> bool { !self.eq(other) }
 }
 
 impl<T:cmp::Eq> quark<T> : cmp::Eq {
-    pure fn eq(&&other: quark<T>) -> bool {
+    pure fn eq(other: &quark<T>) -> bool {
         match self {
-          top(ref q) => match other {
+          top(ref q) => match (*other) {
             top(ref r) => q == r,
             bottom(_) => false
           },
-          bottom(ref q) => match other {
+          bottom(ref q) => match (*other) {
             top(_) => false,
             bottom(ref r) => q == r
           }
         }
     }
-    pure fn ne(&&other: quark<T>) -> bool { !self.eq(other) }
+    pure fn ne(other: &quark<T>) -> bool { !self.eq(other) }
 }
 
 
 impl c_like : cmp::Eq {
-    pure fn eq(&&other: c_like) -> bool {
-        self as int == other as int
+    pure fn eq(other: &c_like) -> bool {
+        self as int == (*other) as int
     }
-    pure fn ne(&&other: c_like) -> bool { !self.eq(other) }
+    pure fn ne(other: &c_like) -> bool { !self.eq(other) }
 }
 
 impl expr : cmp::Eq {
-    pure fn eq(&&other: expr) -> bool {
+    pure fn eq(other: &expr) -> bool {
         match self {
             val(e0a) => {
-                match other {
+                match (*other) {
                     val(e0b) => e0a == e0b,
                     _ => false
                 }
             }
             plus(e0a, e1a) => {
-                match other {
+                match (*other) {
                     plus(e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }
             minus(e0a, e1a) => {
-                match other {
+                match (*other) {
                     minus(e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }
         }
     }
-    pure fn ne(&&other: expr) -> bool { !self.eq(other) }
+    pure fn ne(other: &expr) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
 type spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> spanned<T> : cmp::Eq {
-    pure fn eq(&&other: spanned<T>) -> bool {
-        self.lo == other.lo && self.hi == other.hi && self.node.eq(other.node)
+    pure fn eq(other: &spanned<T>) -> bool {
+        self.lo == (*other).lo && self.hi == (*other).hi &&
+        self.node.eq(&(*other).node)
     }
-    pure fn ne(&&other: spanned<T>) -> bool { !self.eq(other) }
+    pure fn ne(other: &spanned<T>) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]

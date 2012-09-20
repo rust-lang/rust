@@ -23,6 +23,7 @@ struct cmplx {
     im: f64
 }
 
+#[cfg(stage0)]
 impl cmplx : ops::Mul<cmplx,cmplx> {
     pure fn mul(x: cmplx) -> cmplx {
         cmplx {
@@ -31,12 +32,33 @@ impl cmplx : ops::Mul<cmplx,cmplx> {
         }
     }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl cmplx : ops::Mul<cmplx,cmplx> {
+    pure fn mul(x: &cmplx) -> cmplx {
+        cmplx {
+            re: self.re*(*x).re - self.im*(*x).im,
+            im: self.re*(*x).im + self.im*(*x).re
+        }
+    }
+}
 
+#[cfg(stage0)]
 impl cmplx : ops::Add<cmplx,cmplx> {
     pure fn add(x: cmplx) -> cmplx {
         cmplx {
             re: self.re + x.re,
             im: self.im + x.im
+        }
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl cmplx : ops::Add<cmplx,cmplx> {
+    pure fn add(x: &cmplx) -> cmplx {
+        cmplx {
+            re: self.re + (*x).re,
+            im: self.im + (*x).im
         }
     }
 }

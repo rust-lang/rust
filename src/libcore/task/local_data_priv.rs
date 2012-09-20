@@ -6,6 +6,7 @@ use rt::rust_task;
 trait LocalData { }
 impl<T: Owned> @T: LocalData { }
 
+#[cfg(stage0)]
 impl LocalData: Eq {
     pure fn eq(&&other: LocalData) -> bool unsafe {
         let ptr_a: (uint, uint) = cast::reinterpret_cast(&self);
@@ -13,6 +14,16 @@ impl LocalData: Eq {
         return ptr_a == ptr_b;
     }
     pure fn ne(&&other: LocalData) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl LocalData: Eq {
+    pure fn eq(other: &@LocalData) -> bool unsafe {
+        let ptr_a: (uint, uint) = cast::reinterpret_cast(&self);
+        let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
+        return ptr_a == ptr_b;
+    }
+    pure fn ne(other: &@LocalData) -> bool { !self.eq(other) }
 }
 
 // We use dvec because it's the best data structure in core. If TLS is used

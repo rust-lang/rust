@@ -127,14 +127,28 @@ type last_use_map = HashMap<node_id, @DVec<node_id>>;
 enum Variable = uint;
 enum LiveNode = uint;
 
+#[cfg(stage0)]
 impl Variable : cmp::Eq {
     pure fn eq(&&other: Variable) -> bool { *self == *other }
     pure fn ne(&&other: Variable) -> bool { *self != *other }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Variable : cmp::Eq {
+    pure fn eq(other: &Variable) -> bool { *self == *(*other) }
+    pure fn ne(other: &Variable) -> bool { *self != *(*other) }
+}
 
+#[cfg(stage0)]
 impl LiveNode : cmp::Eq {
     pure fn eq(&&other: LiveNode) -> bool { *self == *other }
     pure fn ne(&&other: LiveNode) -> bool { *self != *other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl LiveNode : cmp::Eq {
+    pure fn eq(other: &LiveNode) -> bool { *self == *(*other) }
+    pure fn ne(other: &LiveNode) -> bool { *self != *(*other) }
 }
 
 enum LiveNodeKind {
@@ -144,6 +158,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
+#[cfg(stage0)]
 impl LiveNodeKind : cmp::Eq {
     pure fn eq(&&other: LiveNodeKind) -> bool {
         match self {
@@ -174,6 +189,39 @@ impl LiveNodeKind : cmp::Eq {
         }
     }
     pure fn ne(&&other: LiveNodeKind) -> bool { !self.eq(other) }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl LiveNodeKind : cmp::Eq {
+    pure fn eq(other: &LiveNodeKind) -> bool {
+        match self {
+            FreeVarNode(e0a) => {
+                match (*other) {
+                    FreeVarNode(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ExprNode(e0a) => {
+                match (*other) {
+                    ExprNode(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            VarDefNode(e0a) => {
+                match (*other) {
+                    VarDefNode(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ExitNode => {
+                match (*other) {
+                    ExitNode => true,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(other: &LiveNodeKind) -> bool { !self.eq(other) }
 }
 
 fn check_crate(tcx: ty::ctxt,

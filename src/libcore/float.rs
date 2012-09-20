@@ -414,16 +414,32 @@ pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
 pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
+#[cfg(stage0)]
 impl float: Eq {
     pure fn eq(&&other: float) -> bool { self == other }
     pure fn ne(&&other: float) -> bool { self != other }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl float : Eq {
+    pure fn eq(other: &float) -> bool { self == (*other) }
+    pure fn ne(other: &float) -> bool { self != (*other) }
+}
 
+#[cfg(stage0)]
 impl float: Ord {
     pure fn lt(&&other: float) -> bool { self < other }
     pure fn le(&&other: float) -> bool { self <= other }
     pure fn ge(&&other: float) -> bool { self >= other }
     pure fn gt(&&other: float) -> bool { self > other }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl float : Ord {
+    pure fn lt(other: &float) -> bool { self < (*other) }
+    pure fn le(other: &float) -> bool { self <= (*other) }
+    pure fn ge(other: &float) -> bool { self >= (*other) }
+    pure fn gt(other: &float) -> bool { self > (*other) }
 }
 
 impl float: num::Num {
