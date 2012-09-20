@@ -2042,19 +2042,19 @@ break_expr : "break" ;
 Executing a `break` expression immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop.
 
-### Again expressions
+### Loop expressions
 
 ~~~~~~~~{.ebnf .gram}
-again_expr : "again" ;
+again_expr : "loop" ;
 ~~~~~~~~
 
-Evaluating an `again` expression immediately terminates the current iteration of
+Evaluating a `loop` expression immediately terminates the current iteration of
 the innermost loop enclosing it, returning control to the loop *head*. In the
 case of a `while` loop, the head is the conditional expression controlling the
 loop. In the case of a `for` loop, the head is the call-expression controlling
 the loop.
 
-An `again` expression is only permitted in the body of a loop.
+A `loop` expression is only permitted in the body of a loop.
 
 
 ### For expressions
