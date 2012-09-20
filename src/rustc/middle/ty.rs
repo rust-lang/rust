@@ -133,6 +133,7 @@ export type_is_numeric;
 export type_is_pod;
 export type_is_scalar;
 export type_is_immediate;
+export type_is_borrowed;
 export type_is_sequence;
 export type_is_signed;
 export type_is_structural;
@@ -1090,13 +1091,21 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    return if ty::type_is_immediate(ty) {
-        ast::by_val
-    } else if tcx.legacy_modes || type_is_fn(ty) {
-        //                        ^^^^^^^^^^^^^^
+    return if type_is_fn(ty) {
+        //    ^^^^^^^^^^^^^^
         // FIXME(#2202) --- We retain by-ref by default to workaround a memory
         // leak that otherwise results when @fn is upcast to &fn.
         ast::by_ref
+    } else if tcx.legacy_modes {
+        if type_is_borrowed(ty) {
+            // the old mode default was ++ for things like &ptr, but to be
+            // forward-compatible with non-legacy, we should use +
+            ast::by_copy
+        } else if ty::type_is_immediate(ty) {
+            ast::by_val
+        } else {
+            ast::by_ref
+        }
     } else {
         ast::by_copy
     };
@@ -1104,6 +1113,18 @@ fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
     fn type_is_fn(ty: t) -> bool {
         match get(ty).sty {
             ty_fn(*) => true,
+            _ => false
+        }
+    }
+
+    fn type_is_borrowed(ty: t) -> bool {
+        match ty::get(ty).sty {
+            ty::ty_rptr(*) => true,
+            ty_evec(_, vstore_slice(_)) => true,
+            ty_estr(vstore_slice(_)) => true,
+
+            // technically, we prob ought to include
+            // &fn(), but that is treated specially due to #2202
             _ => false
         }
     }
@@ -1574,7 +1595,6 @@ fn type_is_immediate(ty: t) -> bool {
     return type_is_scalar(ty) || type_is_boxed(ty) ||
         type_is_unique(ty) || type_is_region_ptr(ty);
 }
-
 
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     match cx.needs_drop_cache.find(ty) {

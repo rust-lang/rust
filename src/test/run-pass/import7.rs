@@ -17,4 +17,4 @@ mod bar {
             #[legacy_exports]; }
     }
 }
-fn main(args: ~[~str]) { baz(); }
+fn main() { baz(); }

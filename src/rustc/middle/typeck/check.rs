@@ -2609,10 +2609,10 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub" |
       ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
       ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
-        (0u, ~[arg(ast::by_val,
+        (0u, ~[arg(ast::by_copy,
                    ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
                                    ty::mk_int(tcx))),
-               arg(ast::by_val, ty::mk_int(tcx))],
+               arg(ast::by_copy, ty::mk_int(tcx))],
          ty::mk_int(tcx))
       }
 

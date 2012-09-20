@@ -12,7 +12,7 @@ use common::mode_pretty;
 use common::mode;
 use util::logv;
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let config = parse_config(args);
     log_config(config);
     run_tests(config);

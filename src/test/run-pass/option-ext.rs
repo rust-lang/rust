@@ -1,4 +1,4 @@
-fn main(args: ~[~str]) {
+fn main() {
     let thing = ~"{{ f }}";
     let f = str::find_str(thing, ~"{{");
 

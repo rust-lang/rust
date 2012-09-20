@@ -384,7 +384,7 @@ fn validate(edges: ~[(node_id, node_id)],
     true
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"15", ~"48"]
     } else if args.len() <= 1u {

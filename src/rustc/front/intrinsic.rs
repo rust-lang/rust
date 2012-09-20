@@ -116,6 +116,6 @@ mod intrinsic {
     extern mod rusti {
         #[legacy_exports];
         fn get_tydesc<T>() -> *();
-        fn visit_tydesc(td: *TyDesc, &&tv: TyVisitor);
+        fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor);
     }
 }

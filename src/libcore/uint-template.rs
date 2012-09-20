@@ -240,7 +240,7 @@ pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
             }
 
             vec::raw::form_slice(ptr::offset(p, i),
-                                    len - i, f)
+                                 len - i, f)
         }
     }
 }

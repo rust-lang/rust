@@ -17,7 +17,7 @@ fn check_sequential(min: uint, max: uint, map: SmallIntMap<uint>) {
     }
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"100000", ~"100"]
     } else if args.len() <= 1u {

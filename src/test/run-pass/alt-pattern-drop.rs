@@ -18,6 +18,7 @@ fn foo(s: @int) {
     }
     log(debug, sys::refcount(s));
     assert (sys::refcount(s) == count + 1u);
+    let _ = sys::refcount(s); // don't get bitten by last-use.
 }
 
 fn main() {

@@ -20,7 +20,7 @@ fn collect_dvec(num: uint) -> ~[uint] {
     return dvec::unwrap(move result);
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"50000000"]
     } else if args.len() <= 1u {

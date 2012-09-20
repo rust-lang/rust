@@ -21,4 +21,4 @@ extern mod libc {
 extern mod baz {
     #[legacy_exports]; }
 
-fn main(args: ~[~str]) { }
+fn main() { }

@@ -142,7 +142,7 @@ fn empty_results() -> Results {
     }
 }
 
-fn main(args: ~[~str]) {
+fn main(++args: ~[~str]) {
     let num_keys = {
         if args.len() == 2 {
             uint::from_str(args[1]).get()
