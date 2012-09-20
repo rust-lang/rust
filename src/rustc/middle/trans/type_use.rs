@@ -27,8 +27,9 @@ use syntax::ast_map;
 use common::*;
 
 type type_uses = uint; // Bitmask
-const use_repr: uint = 1u; // Dependency on size/alignment and take/drop glue
-const use_tydesc: uint = 2u; // Takes the tydesc, or compares
+const use_repr: uint = 1u;             /* Dependency on size/alignment/mode and
+                                          take/drop glue */
+const use_tydesc: uint = 2u;           /* Takes the tydesc, or compares */
 
 type ctx = {ccx: @crate_ctxt,
             uses: ~[mut type_uses]};
@@ -46,12 +47,17 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
-      ty::ty_fn(ref fn_ty) => {
-        for vec::each(fn_ty.sig.inputs) |arg| {
-            if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
+        ty::ty_fn(ref fn_ty) => {
+            for vec::each(fn_ty.sig.inputs) |arg| {
+                match ty::resolved_mode(ccx.tcx, arg.mode) {
+                    by_val | by_move | by_copy => {
+                        type_needs(cx, use_repr, arg.ty);
+                    }
+                    by_ref | by_mutbl_ref => {}
+                }
+            }
         }
-      }
-      _ => ()
+        _ => ()
     }
 
     if fn_id_loc.crate != local_crate {

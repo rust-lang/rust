@@ -548,6 +548,7 @@ fn trans_arg_expr(bcx: block,
         let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
         val = llvm::LLVMGetUndef(llformal_ty);
     } else {
+        // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => { val = arg_datum.to_ref_llval(bcx); }
             DontAutorefArg => {
@@ -583,8 +584,16 @@ fn trans_arg_expr(bcx: block,
                         // callee is actually invoked.
                         scratch.add_clean(bcx);
                         vec::push(*temp_cleanups, scratch.val);
-                        val = scratch.val;
-                  }
+
+                        match arg_datum.appropriate_mode() {
+                            ByValue => {
+                                val = Load(bcx, scratch.val);
+                            }
+                            ByRef => {
+                                val = scratch.val;
+                            }
+                        }
+                    }
                 }
             }
         }

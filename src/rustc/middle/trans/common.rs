@@ -1125,7 +1125,10 @@ fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
 enum mono_param_id {
     mono_precise(ty::t, Option<~[mono_id]>),
     mono_any,
-    mono_repr(uint /* size */, uint /* align */),
+    mono_repr(uint /* size */,
+              uint /* align */,
+              bool /* is_float */,
+              datum::DatumMode),
 }
 
 type mono_id_ = {def: ast::def_id, params: ~[mono_param_id]};
@@ -1140,8 +1143,10 @@ impl mono_param_id: cmp::Eq {
                 ty_a == ty_b && ids_a == ids_b
             }
             (mono_any, mono_any) => true,
-            (mono_repr(size_a, align_a), mono_repr(size_b, align_b)) => {
-                size_a == size_b && align_a == align_b
+            (mono_repr(size_a, align_a, is_float_a, mode_a),
+             mono_repr(size_b, align_b, is_float_b, mode_b)) => {
+                size_a == size_b && align_a == align_b &&
+                    is_float_a == is_float_b && mode_a == mode_b
             }
             (mono_precise(*), _) => false,
             (mono_any, _) => false,
@@ -1159,8 +1164,10 @@ impl mono_param_id : cmp::Eq {
                 ty_a == ty_b && ids_a == ids_b
             }
             (mono_any, mono_any) => true,
-            (mono_repr(size_a, align_a), mono_repr(size_b, align_b)) => {
-                size_a == size_b && align_a == align_b
+            (mono_repr(size_a, align_a, is_float_a, mode_a),
+             mono_repr(size_b, align_b, is_float_b, mode_b)) => {
+                size_a == size_b && align_a == align_b &&
+                    is_float_a == is_float_b && mode_a == mode_b
             }
             (mono_precise(*), _) => false,
             (mono_any, _) => false,
@@ -1194,8 +1201,8 @@ impl mono_param_id : to_bytes::IterBytes {
 
           mono_any => 1u8.iter_bytes(lsb0, f),
 
-          mono_repr(a,b) =>
-          to_bytes::iter_bytes_3(&2u8, &a, &b, lsb0, f)
+          mono_repr(ref a, ref b, ref c, ref d) =>
+          to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
         }
     }
 }

@@ -138,6 +138,29 @@ impl DatumMode {
     }
 }
 
+#[cfg(stage0)]
+impl DatumMode: cmp::Eq {
+    pure fn eq(&&other: DatumMode) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: DatumMode) -> bool { !self.eq(other) }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl DatumMode: cmp::Eq {
+    pure fn eq(other: &DatumMode) -> bool {
+        self as uint == (*other as uint)
+    }
+    pure fn ne(other: &DatumMode) -> bool { !self.eq(other) }
+}
+
+impl DatumMode: to_bytes::IterBytes {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as uint).iter_bytes(lsb0, f)
+    }
+}
+
 /// See `Datum Sources` section at the head of this module.
 enum DatumSource {
     FromRvalue,
@@ -184,6 +207,22 @@ fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, zero);
     Datum { val: scratch, ty: ty, mode: ByRef, source: FromRvalue }
+}
+
+fn appropriate_mode(ty: ty::t) -> DatumMode {
+    /*!
+    *
+    * Indicates the "appropriate" mode for this value,
+    * which is either by ref or by value, depending
+    * on whether type is iimmediate or what. */
+
+    if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+        ByValue
+    } else if ty::type_is_immediate(ty) {
+        ByValue
+    } else {
+        ByRef
+    }
 }
 
 impl Datum {
@@ -446,19 +485,9 @@ impl Datum {
     }
 
     fn appropriate_mode() -> DatumMode {
-        /*!
-         *
-         * Indicates the "appropriate" mode for this value,
-         * which is either by ref or by value, depending
-         * on whether type is iimmediate or what. */
+        /*! See the `appropriate_mode()` function */
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
-            ByValue
-        } else if ty::type_is_immediate(self.ty) {
-            ByValue
-        } else {
-            ByRef
-        }
+        appropriate_mode(self.ty)
     }
 
     fn to_appropriate_llval(bcx: block) -> ValueRef {
