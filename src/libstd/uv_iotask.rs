@@ -5,6 +5,9 @@
  * `interact` function you can execute code in a uv callback.
  */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 export IoTask;
 export spawn_iotask;
 export interact;
@@ -25,7 +28,7 @@ enum IoTask {
     })
 }
 
-fn spawn_iotask(-task: task::TaskBuilder) -> IoTask {
+fn spawn_iotask(+task: task::TaskBuilder) -> IoTask {
 
     do listen |iotask_ch| {
 
@@ -63,7 +66,7 @@ fn spawn_iotask(-task: task::TaskBuilder) -> IoTask {
  * via ports/chans.
  */
 unsafe fn interact(iotask: IoTask,
-                   -cb: fn~(*c_void)) {
+                   +cb: fn~(*c_void)) {
     send_msg(iotask, Interaction(move cb));
 }
 
@@ -128,7 +131,7 @@ type IoTaskLoopData = {
 };
 
 fn send_msg(iotask: IoTask,
-            -msg: IoTaskMsg) unsafe {
+            +msg: IoTaskMsg) unsafe {
     iotask.op_chan.send(move msg);
     ll::async_send(iotask.async_handle);
 }
