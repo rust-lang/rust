@@ -1093,7 +1093,7 @@ const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
                                             0, 0, 0, 1 ];
 
 fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
-    let wr = io::BytesWriter();
+    let wr = @io::BytesWriter();
     let stats =
         {mut inline_bytes: 0,
          mut attr_bytes: 0,

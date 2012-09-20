@@ -687,7 +687,7 @@ struct BytesWriter {
     mut pos: uint,
 }
 
-impl @BytesWriter: Writer {
+impl BytesWriter: Writer {
     fn write(v: &[const u8]) {
         do self.buf.swap |buf| {
             let mut buf <- buf;
@@ -716,12 +716,20 @@ impl @BytesWriter: Writer {
     fn get_type() -> WriterType { File }
 }
 
-fn BytesWriter() -> @BytesWriter {
-    @BytesWriter { buf: DVec(), mut pos: 0u }
+impl @BytesWriter : Writer {
+    fn write(v: &[const u8]) { (*self).write(v) }
+    fn seek(offset: int, whence: SeekStyle) { (*self).seek(offset, whence) }
+    fn tell() -> uint { (*self).tell() }
+    fn flush() -> int { (*self).flush() }
+    fn get_type() -> WriterType { (*self).get_type() }
+}
+
+fn BytesWriter() -> BytesWriter {
+    BytesWriter { buf: DVec(), mut pos: 0u }
 }
 
 fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
-    let wr = BytesWriter();
+    let wr = @BytesWriter();
     f(wr as Writer);
     wr.buf.check_out(|buf| buf)
 }
