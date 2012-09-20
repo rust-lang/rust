@@ -55,20 +55,6 @@ fn WriteOutputFile(sess:session,
     }
 }
 
-#[cfg(stage0)]
-mod jit {
-    fn exec(_sess: session,
-            _pm: PassManagerRef,
-            _m: ModuleRef,
-            _opt: c_int,
-            _stacks: bool) {
-        fail
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 mod jit {
     #[nolink]
     #[abi = "rust-intrinsic"]

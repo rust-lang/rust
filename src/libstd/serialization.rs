@@ -1,13 +1,5 @@
 //! Support code for serialization.
 
-// XXX remove
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type serializer = Serializer;
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type deserializer = Deserializer;
-
 /*
 Core serialization interfaces.
 */
