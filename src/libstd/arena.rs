@@ -22,6 +22,9 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 export Arena, arena_with_size;
 
 use list::{List, Cons, Nil};
@@ -56,9 +59,9 @@ struct Arena {
     priv mut chunks: @List<Chunk>,
     drop {
         unsafe {
-            destroy_chunk(self.head);
+            destroy_chunk(&self.head);
             for list::each(self.chunks) |chunk| {
-                if !chunk.is_pod { destroy_chunk(chunk); }
+                if !chunk.is_pod { destroy_chunk(&chunk); }
             }
         }
     }
@@ -87,7 +90,7 @@ fn round_up_to(base: uint, align: uint) -> uint {
 
 // Walk down a chunk, running the destructors for any objects stored
 // in it.
-unsafe fn destroy_chunk(chunk: Chunk) {
+unsafe fn destroy_chunk(chunk: &Chunk) {
     let mut idx = 0;
     let buf = vec::raw::to_ptr(chunk.data);
     let fill = chunk.fill;
