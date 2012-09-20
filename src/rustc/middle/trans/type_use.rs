@@ -27,9 +27,9 @@ use syntax::ast_map;
 use common::*;
 
 type type_uses = uint; // Bitmask
-const use_repr: uint = 1u;             /* Dependency on size/alignment/mode and
-                                          take/drop glue */
-const use_tydesc: uint = 2u;           /* Takes the tydesc, or compares */
+const use_repr: uint = 1u;   /* Dependency on size/alignment/mode and
+                                take/drop glue */
+const use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
 
 type ctx = {ccx: @crate_ctxt,
             uses: ~[mut type_uses]};
