@@ -1,4 +1,4 @@
-//! Operations on shared box types
+//! Operations on managed box types
 
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];

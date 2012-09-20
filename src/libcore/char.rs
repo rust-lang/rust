@@ -69,7 +69,7 @@ pure fn is_uppercase(c: char) -> bool {
 }
 
 /**
- * Indicates whether a character is whitespace, defined in
+ * Indicates whether a character is whitespace. Whitespace is defined in
  * terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
  * additional 'Cc'-category control codes in the range [0x09, 0x0d]
  */
@@ -81,9 +81,9 @@ pure fn is_whitespace(c: char) -> bool {
 }
 
 /**
- * Indicates whether a character is alphanumeric, defined
- * in terms of the Unicode General Categories 'Nd',
- * 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+ * Indicates whether a character is alphanumeric. Alphanumericness is
+ * defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
+ * and the Derived Core Property 'Alphabetic'.
  */
 pure fn is_alphanumeric(c: char) -> bool {
     return unicode::derived_property::Alphabetic(c) ||
@@ -106,10 +106,6 @@ pure fn is_digit(c: char) -> bool {
 
 /**
  * Convert a char to the corresponding digit.
- *
- * # Safety note
- *
- * This function returns none if `c` is not a valid char
  *
  * # Return value
  *
