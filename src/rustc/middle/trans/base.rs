@@ -2504,7 +2504,6 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         diag: cx.sess.diagnostic(),
         tcx: cx.tcx,
         reachable: cx.reachable,
-        reexports: reexports(cx),
         reexports2: cx.exp_map2,
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
@@ -2512,23 +2511,6 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         cstore: cx.sess.cstore,
         encode_inlined_item: encode_inlined_item
     };
-
-    fn reexports(cx: @crate_ctxt) -> ~[(~str, ast::def_id)] {
-        let mut reexports = ~[];
-        for cx.exp_map.each |exp_id, defs| {
-            for defs.each |def| {
-                if !def.reexp { loop; }
-                let path = match cx.tcx.items.get(exp_id) {
-                  ast_map::node_export(_, path) => {
-                      ast_map::path_to_str(*path, cx.sess.parse_sess.interner)
-                  }
-                  _ => fail ~"reexports"
-                };
-                vec::push(reexports, (path, def.id));
-            }
-        }
-        return reexports;
-    }
 }
 
 fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
@@ -2564,7 +2546,6 @@ fn trans_crate(sess: session::session,
                crate: @ast::crate,
                tcx: ty::ctxt,
                output: &Path,
-               emap: resolve::ExportMap,
                emap2: resolve::ExportMap2,
                maps: astencode::maps)
             -> (ModuleRef, link_meta) {
@@ -2572,7 +2553,7 @@ fn trans_crate(sess: session::session,
     let symbol_hasher = @hash::default_state();
     let link_meta =
         link::build_link_meta(sess, *crate, output, symbol_hasher);
-    let reachable = reachable::find_reachable(crate.node.module, emap, tcx,
+    let reachable = reachable::find_reachable(crate.node.module, emap2, tcx,
                                               maps.method_map);
 
     // Append ".rc" to crate name as LLVM module identifier.
@@ -2626,7 +2607,6 @@ fn trans_crate(sess: session::session,
           externs: HashMap::<~str,ValueRef>(),
           intrinsics: intrinsics,
           item_vals: HashMap::<int,ValueRef>(),
-          exp_map: emap,
           exp_map2: emap2,
           reachable: reachable,
           item_symbols: HashMap::<int,~str>(),

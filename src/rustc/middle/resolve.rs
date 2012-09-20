@@ -91,10 +91,6 @@ type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
 // Trait method resolution
 type TraitMap = @HashMap<node_id,@DVec<def_id>>;
 
-// Export mapping
-type Export = { reexp: bool, id: def_id };
-type ExportMap = HashMap<node_id, ~[Export]>;
-
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 type ExportMap2 = HashMap<node_id, ~[Export2]>;
@@ -775,7 +771,6 @@ fn Resolver(session: session, lang_items: LanguageItems,
         namespaces: ~[ ModuleNS, TypeNS, ValueNS ],
 
         def_map: HashMap(),
-        export_map: HashMap(),
         export_map2: HashMap(),
         trait_map: @HashMap(),
 
@@ -833,7 +828,6 @@ struct Resolver {
     namespaces: ~[Namespace],
 
     def_map: DefMap,
-    export_map: ExportMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
 }
@@ -2880,8 +2874,7 @@ impl Resolver {
 
     fn record_exports_for_module(module_: @Module) {
         let mut exports2 = ~[];
-        for module_.exported_names.each |name, node_id| {
-            let mut exports = ~[];
+        for module_.exported_names.each |name, _exp_node_id| {
             for self.namespaces.each |namespace| {
                 match self.resolve_definition_of_name_in_module(module_,
                                                                 name,
@@ -2895,10 +2888,6 @@ impl Resolver {
                                 for %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(exports, {
-                            reexp: false,
-                            id: def_id_of_def(target_def)
-                        });
                         vec::push(exports2, Export2 {
                             reexport: false,
                             name: self.session.str_of(name),
@@ -2910,10 +2899,6 @@ impl Resolver {
                                 %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(exports, {
-                            reexp: true,
-                            id: def_id_of_def(target_def)
-                        });
                         vec::push(exports2, Export2 {
                             reexport: true,
                             name: self.session.str_of(name),
@@ -2922,8 +2907,6 @@ impl Resolver {
                     }
                 }
             }
-
-            self.export_map.insert(node_id, exports);
         }
 
         match copy module_.def_id {
@@ -4914,7 +4897,6 @@ impl Resolver {
 /// Entry point to crate resolution.
 fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
-                   exp_map: ExportMap,
                    exp_map2: ExportMap2,
                    trait_map: TraitMap } {
 
@@ -4922,7 +4904,6 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
     resolver.resolve(resolver);
     return {
         def_map: resolver.def_map,
-        exp_map: resolver.export_map,
         exp_map2: resolver.export_map2,
         trait_map: resolver.trait_map
     };
