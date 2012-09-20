@@ -1,10 +1,10 @@
-#[doc(
-    brief = "The attribute parsing pass",
-    desc =
-    "Traverses the document tree, pulling relevant documention out of the \
-     corresponding AST nodes. The information gathered here is the basis \
-     of the natural-language documentation for a crate."
-)];
+/*!
+The attribute parsing pass
+
+Traverses the document tree, pulling relevant documention out of the
+corresponding AST nodes. The information gathered here is the basis
+of the natural-language documentation for a crate.
+*/
 
 use doc::ItemUtils;
 use extract::to_str;

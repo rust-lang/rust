@@ -1,11 +1,11 @@
-#[doc(
-    brief = "Provides all access to AST-related, non-sendable info",
-    desc =
-    "Rustdoc is intended to be parallel, and the rustc AST is filled \
-     with shared boxes. The AST service attempts to provide a single \
-     place to query AST-related information, shielding the rest of \
-     Rustdoc from its non-sendableness."
-)];
+/*!
+Provides all access to AST-related, non-sendable info
+
+Rustdoc is intended to be parallel, and the rustc AST is filled with
+shared boxes. The AST service attempts to provide a single place to
+query AST-related information, shielding the rest of Rustdoc from its
+non-sendableness.
+*/
 
 use std::map::HashMap;
 use rustc::driver::session;
