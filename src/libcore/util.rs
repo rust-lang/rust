@@ -64,6 +64,34 @@ struct NonCopyable {
 
 fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
 
+/**
+A utility function for indicating unreachable code. It will fail if
+executed. This is occasionally useful to put after loops that never
+terminate normally, but instead directly return from a function.
+
+# Example
+
+~~~
+fn choose_weighted_item(v: &[Item]) -> Item {
+    assert v.is_not_empty();
+    let mut so_far = 0u;
+    for v.each |item| {
+        so_far += item.weight;
+        if so_far > 100 {
+            return item;
+        }
+    }
+    // The above loop always returns, so we must hint to the
+    // type checker that it isn't possible to get down here
+    util::unreachable();
+}
+~~~
+
+*/
+fn unreachable() -> ! {
+    fail ~"internal error: entered unreachable code";
+}
+
 mod tests {
     #[test]
     fn identity_crisis() {

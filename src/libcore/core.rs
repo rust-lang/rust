@@ -22,7 +22,7 @@ use ptr::Ptr;
 use to_str::ToStr;
 
 export Path, WindowsPath, PosixPath, GenericPath;
-export Option, Some, None, unreachable;
+export Option, Some, None;
 export Result, Ok, Err;
 export extensions;
 // The following exports are the extension impls for numeric types
@@ -96,13 +96,3 @@ mod std {
     extern mod std(vers = "0.4");
     use std::test;
 }
-
-/**
- * A standard function to use to indicate unreachable code. Because the
- * function is guaranteed to fail typestate will correctly identify
- * any code paths following the appearance of this function as unreachable.
- */
-fn unreachable() -> ! {
-    fail ~"Internal error: entered unreachable code";
-}
-
