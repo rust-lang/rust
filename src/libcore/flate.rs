@@ -4,6 +4,10 @@ Simple compression
 
 */
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use libc::{c_void, size_t, c_int};
 
 extern mod rustrt {
