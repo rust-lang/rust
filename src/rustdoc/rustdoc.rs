@@ -85,7 +85,7 @@ fn test_run_passes() {
 
 fn main(args: ~[~str]) {
 
-    if vec::contains(args, ~"-h") {
+    if args.contains(~"-h") || args.contains(~"--help") {
         config::usage();
         return;
     }
