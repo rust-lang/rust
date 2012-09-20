@@ -1721,7 +1721,8 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     let mut bcx_top = top_scope_block(fcx, body.info());
     let lltop = bcx_top.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx_top, ctor_id));
-    bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs, raw_llargs, arg_tys);
+    bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs,
+                                   raw_llargs, arg_tys);
 
     // Create a temporary for `self` that we will return at the end
     let selfdatum = datum::scratch_datum(bcx_top, rslt_ty, true);
