@@ -280,6 +280,8 @@ fn task() -> TaskBuilder {
         mut consumed: false,
     })
 }
+
+#[doc(hidden)] // FIXME #3538
 priv impl TaskBuilder {
     fn consume() -> TaskBuilder {
         if self.consumed {
