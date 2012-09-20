@@ -132,14 +132,14 @@ fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
 }
 
 #[test]
-fn shoulde_parse_hidden_attribute() {
+fn should_parse_hidden_attribute() {
     let source = ~"#[doc(hidden)]";
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == true;
 }
 
 #[test]
-fn shoulde_not_parse_non_hidden_attribute() {
+fn should_not_parse_non_hidden_attribute() {
     let source = ~"#[doc = \"\"]";
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == false;
