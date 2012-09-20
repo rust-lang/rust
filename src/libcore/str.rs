@@ -2046,7 +2046,7 @@ mod raw {
       from_c_str,
       from_c_str_len,
       from_bytes,
-      form_slice,
+      buf_as_slice,
       slice_bytes,
       view_bytes,
       push_byte,
