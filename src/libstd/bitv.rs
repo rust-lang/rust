@@ -1,3 +1,6 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use vec::{to_mut, from_elem};
 
 export Bitv, from_bytes, from_bools, from_fn;
@@ -95,7 +98,7 @@ struct BigBitv {
     mut storage: ~[mut uint]
 }
 
-fn BigBitv(-storage: ~[mut uint]) -> BigBitv {
+fn BigBitv(+storage: ~[mut uint]) -> BigBitv {
     BigBitv {storage: storage}
 }
 
