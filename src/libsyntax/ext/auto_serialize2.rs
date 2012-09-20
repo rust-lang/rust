@@ -437,12 +437,16 @@ fn mk_deser_fields(
     f: fn(~[ast::field]) -> @ast::expr
 ) -> @ast::expr {
     let fields = do fields.mapi |idx, field| {
-        // ast for `|| deserialize(__d)`
+        // ast for `|| std::serialization2::deserialize(__d)`
         let expr_lambda = cx.lambda(
             cx.expr_blk(
                 cx.expr_call(
                     span,
-                    cx.expr_var(span, ~"deserialize"),
+                    cx.expr_path(span, ~[
+                        cx.ident_of(~"std"),
+                        cx.ident_of(~"serialization2"),
+                        cx.ident_of(~"deserialize"),
+                    ]),
                     ~[cx.expr_var(span, ~"__d")]
                 )
             )
@@ -635,11 +639,15 @@ fn mk_enum_deser_variant_nary(
     args: ~[ast::variant_arg]
 ) -> @ast::expr {
     let args = do args.mapi |idx, _arg| {
-        // ast for `|| deserialize(__d)`
+        // ast for `|| std::serialization2::deserialize(__d)`
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
-                cx.expr_var(span, ~"deserialize"),
+                cx.expr_path(span, ~[
+                    cx.ident_of(~"std"),
+                    cx.ident_of(~"serialization2"),
+                    cx.ident_of(~"deserialize"),
+                ]),
                 ~[cx.expr_var(span, ~"__d")]
             )
         );
