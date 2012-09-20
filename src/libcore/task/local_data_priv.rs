@@ -1,3 +1,5 @@
+#[doc(hidden)]; // FIXME #3538
+
 use local_data::LocalDataKey;
 
 trait LocalData { }
