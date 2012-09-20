@@ -221,6 +221,7 @@ mod send_map;
 mod comm;
 mod task {
     mod local_data;
+    mod local_data_priv;
 }
 mod future;
 mod pipes;
