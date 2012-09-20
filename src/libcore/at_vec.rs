@@ -1,4 +1,4 @@
-//! Shared Vectors
+//! Managed vectors
 
 use ptr::addr_of;
 
