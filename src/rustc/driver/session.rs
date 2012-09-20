@@ -144,6 +144,10 @@ type options =
      addl_lib_search_paths: ~[Path],
      maybe_sysroot: Option<Path>,
      target_triple: ~str,
+     // User-specified cfg meta items. The compiler itself will add additional
+     // items to the crate config, and during parsing the entire crate config
+     // will be added to the crate AST node.  This should not be used for
+     // anything except building the full crate config prior to parsing.
      cfg: ast::crate_cfg,
      binary: ~str,
      test: bool,
