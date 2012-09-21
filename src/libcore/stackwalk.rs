@@ -1,5 +1,9 @@
 #[doc(hidden)]; // FIXME #3538
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cast::reinterpret_cast;
 use ptr::offset;
 use sys::size_of;
