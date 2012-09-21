@@ -742,7 +742,7 @@ fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
 
 fn get_item_attrs(cdata: cmd,
                   node_id: ast::node_id,
-                  f: fn(~[@ast::meta_item])) {
+                  f: fn(~[ast::meta_item])) {
 
     let item = lookup_item(node_id, cdata.data);
     for ebml::tagged_docs(item, tag_attributes) |attributes| {
@@ -841,8 +841,8 @@ fn item_family_to_str(fam: Family) -> ~str {
     }
 }
 
-fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
-    let mut items: ~[@ast::meta_item] = ~[];
+fn get_meta_items(md: ebml::Doc) -> ~[ast::meta_item] {
+    let mut items: ~[ast::meta_item] = ~[];
     for ebml::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = ebml::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(ebml::doc_data(nd));
@@ -877,7 +877,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             vec::push(attrs,
-                      {node: {style: ast::attr_outer, value: *meta_item,
+                      {node: {style: ast::attr_outer, value: meta_item,
                               is_sugared_doc: false},
                        span: ast_util::dummy_sp()});
         };

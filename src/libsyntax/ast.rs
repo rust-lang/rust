@@ -388,7 +388,7 @@ impl def : cmp::Eq {
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
-type crate_cfg = ~[@meta_item];
+type crate_cfg = ~[meta_item];
 
 type crate = spanned<crate_>;
 
@@ -420,7 +420,7 @@ type meta_item = spanned<meta_item_>;
 #[auto_serialize]
 enum meta_item_ {
     meta_word(~str),
-    meta_list(~str, ~[@meta_item]),
+    meta_list(~str, ~[meta_item]),
     meta_name_value(~str, lit),
 }
 
@@ -1859,7 +1859,7 @@ type view_item = {node: view_item_, attrs: ~[attribute],
 
 #[auto_serialize]
 enum view_item_ {
-    view_item_use(ident, ~[@meta_item], node_id),
+    view_item_use(ident, ~[meta_item], node_id),
     view_item_import(~[@view_path]),
     view_item_export(~[@view_path])
 }

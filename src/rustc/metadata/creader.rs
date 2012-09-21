@@ -41,7 +41,7 @@ type cache_entry = {
     cnum: int,
     span: span,
     hash: ~str,
-    metas: @~[@ast::meta_item]
+    metas: @~[ast::meta_item]
 };
 
 fn dump_crates(crate_cache: DVec<cache_entry>) {
@@ -150,7 +150,7 @@ fn visit_item(e: env, i: @ast::item) {
         }
 
         for link_args.each |a| {
-            match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
+            match attr::get_meta_item_value_str(&attr::attr_meta(*a)) {
               Some(linkarg) => {
                 cstore::add_used_link_args(cstore, linkarg);
               }
@@ -162,8 +162,8 @@ fn visit_item(e: env, i: @ast::item) {
     }
 }
 
-fn metas_with(ident: ~str, key: ~str, metas: ~[@ast::meta_item])
-    -> ~[@ast::meta_item] {
+fn metas_with(ident: ~str, key: ~str, metas: ~[ast::meta_item])
+    -> ~[ast::meta_item] {
     let name_items = attr::find_meta_items_by_name(metas, key);
     if name_items.is_empty() {
         vec::append_one(metas, attr::mk_name_value_item_str(key, ident))
@@ -172,12 +172,12 @@ fn metas_with(ident: ~str, key: ~str, metas: ~[@ast::meta_item])
     }
 }
 
-fn metas_with_ident(ident: ~str, metas: ~[@ast::meta_item])
-    -> ~[@ast::meta_item] {
+fn metas_with_ident(ident: ~str, metas: ~[ast::meta_item])
+    -> ~[ast::meta_item] {
     metas_with(ident, ~"name", metas)
 }
 
-fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
+fn existing_match(e: env, metas: ~[ast::meta_item], hash: ~str) ->
     Option<int> {
 
     for e.crate_cache.each |c| {
@@ -189,7 +189,7 @@ fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
     return None;
 }
 
-fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
+fn resolve_crate(e: env, ident: ast::ident, metas: ~[ast::meta_item],
                  hash: ~str, span: span) -> ast::crate_num {
     let metas = metas_with_ident(*e.intr.get(ident), metas);
 
