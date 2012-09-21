@@ -1,5 +1,9 @@
 #[doc(hidden)];
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use libc::{c_char, c_void, intptr_t, uintptr_t};
 use ptr::{mut_null, null, to_unsafe_ptr};
 use repr::BoxRepr;
