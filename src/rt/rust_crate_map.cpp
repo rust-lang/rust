@@ -12,13 +12,13 @@ void iter_crate_map(const cratemap* map,
                     void (*fn)(const mod_entry* map, void *cookie),
                     void *cookie) {
     // First iterate this crate
-    iter_module_map(map->entries, fn, cookie);
+    iter_module_map(map->entries(), fn, cookie);
     // Then recurse on linked crates
     // FIXME (#2673) this does double work in diamond-shaped deps. could
     //   keep a set of visited addresses, if it turns out to be actually
     //   slow
-    for (size_t i = 0; map->children[i]; i++) {
-        iter_crate_map(map->children[i], fn, cookie);
+    for (cratemap::iterator i = map->begin(), e = map->end(); i != e; ++i) {
+        iter_crate_map(*i, fn, cookie);
     }
 }
 
