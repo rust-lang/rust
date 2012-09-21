@@ -215,8 +215,8 @@ impl ext_ctxt: ext_ctxt_ast_builder {
             style: ast::attr_outer,
             value: respan(self.empty_span(),
                           ast::meta_list(~"allow", ~[
-                              respan(self.empty_span(),
-                                     ast::meta_word(~"non_camel_case_types"))
+                              @respan(self.empty_span(),
+                                      ast::meta_word(~"non_camel_case_types"))
                           ])),
             is_sugared_doc: false
         });

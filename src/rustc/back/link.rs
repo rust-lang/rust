@@ -385,23 +385,23 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
     type provided_metas =
         {name: Option<~str>,
          vers: Option<~str>,
-         cmh_items: ~[ast::meta_item]};
+         cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
         let mut name: Option<~str> = None;
         let mut vers: Option<~str> = None;
-        let mut cmh_items: ~[ast::meta_item] = ~[];
+        let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if attr::get_meta_item_name(meta) == ~"name" {
-                match attr::get_meta_item_value_str(meta) {
+            if attr::get_meta_item_name(*meta) == ~"name" {
+                match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { name = Some(v); }
                   None => vec::push(cmh_items, *meta)
                 }
-            } else if attr::get_meta_item_name(meta) == ~"vers" {
-                match attr::get_meta_item_value_str(meta) {
+            } else if attr::get_meta_item_name(*meta) == ~"vers" {
+                match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { vers = Some(v); }
                   None => vec::push(cmh_items, *meta)
                 }

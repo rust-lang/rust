@@ -159,7 +159,7 @@ fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
     }
 }
 
-fn meta_item_to_str(mi: ast::meta_item, intr: ident_interner) -> ~str {
+fn meta_item_to_str(mi: @ast::meta_item, intr: ident_interner) -> ~str {
     to_str(mi, print_meta_item, intr)
 }
 
@@ -800,11 +800,11 @@ fn print_attribute(s: ps, attr: ast::attribute) {
     maybe_print_comment(s, attr.span.lo);
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
-        let comment = attr::get_meta_item_value_str(&meta).get();
+        let comment = attr::get_meta_item_value_str(meta).get();
         word(s.s, comment);
     } else {
         word(s.s, ~"#[");
-        print_meta_item(s, attr.node.value);
+        print_meta_item(s, @attr.node.value);
         word(s.s, ~"]");
     }
 }
@@ -1701,7 +1701,7 @@ fn print_type_params(s: ps, &&params: ~[ast::ty_param]) {
     }
 }
 
-fn print_meta_item(s: ps, &&item: ast::meta_item) {
+fn print_meta_item(s: ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
       ast::meta_word(name) => word(s.s, name),
