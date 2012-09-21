@@ -236,11 +236,11 @@ void update_crate_map(const cratemap* map, log_directive* dirs,
 }
 
 void print_crate_log_map(const cratemap* map) {
-    for (const mod_entry* cur = map->entries; cur->name; cur++) {
+    for (const mod_entry* cur = map->entries(); cur->name; cur++) {
         printf("  %s\n", cur->name);
     }
-    for (size_t i = 0; map->children[i]; i++) {
-        print_crate_log_map(map->children[i]);
+    for (cratemap::iterator i = map->begin(), e = map->end(); i != e; ++i) {
+        print_crate_log_map(*i);
     }
 }
 

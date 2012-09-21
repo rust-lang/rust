@@ -2478,7 +2478,7 @@ fn decl_crate_map(sess: session::session, mapmeta: link_meta,
     } else { ~"toplevel" };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct(~[int_type, arrtype]);
+    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
     let map = str::as_c_str(sym_name, |buf| {
         llvm::LLVMAddGlobal(llmod, maptype, buf)
     });
@@ -2502,9 +2502,25 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
         i += 1;
     }
     vec::push(subcrates, C_int(ccx, 0));
+
+    let llannihilatefn;
+    let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn.get();
+    if annihilate_def_id.crate == ast::local_crate {
+        llannihilatefn = get_item_val(ccx, annihilate_def_id.node);
+    } else {
+        let annihilate_fn_type = csearch::get_type(ccx.tcx,
+                                                   annihilate_def_id).ty;
+        llannihilatefn = trans_external_path(ccx,
+                                             annihilate_def_id,
+                                             annihilate_fn_type);
+    }
+
     llvm::LLVMSetInitializer(map, C_struct(
-        ~[p2i(ccx, create_module_map(ccx)),
-         C_array(ccx.int_type, subcrates)]));
+        ~[C_i32(1),
+          lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
+                                                T_ptr(T_i8())),
+          p2i(ccx, create_module_map(ccx)),
+          C_array(ccx.int_type, subcrates)]));
 }
 
 fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)

@@ -2,15 +2,71 @@
 #define RUST_CRATE_MAP_H
 
 #include "rust_log.h"
+#include <stdint.h>
 
 struct mod_entry {
     const char* name;
     uint32_t* state;
 };
 
-struct cratemap {
-    const mod_entry* entries;
-    const cratemap* children[1];
+class cratemap;
+
+class cratemap_v0 {
+    friend class cratemap;
+    const mod_entry *m_entries;
+    const cratemap* m_children[1];
+};
+
+class cratemap {
+private:
+    int32_t m_version;
+    const void *m_annihilate_fn;
+    const mod_entry* m_entries;
+    const cratemap* m_children[1];
+
+    inline int32_t version() const {
+        switch (m_version) {
+        case 1:     return 1;
+        default:    return 0;
+        }
+    }
+
+public:
+    typedef const cratemap *const *iterator;
+
+    inline const void *annihilate_fn() const {
+        switch (version()) {
+        case 0: return NULL;
+        case 1: return m_annihilate_fn;
+        default: assert(false && "Unknown crate map version!");
+        }
+    }
+
+    inline const mod_entry *entries() const {
+        switch (version()) {
+        case 0: return reinterpret_cast<const cratemap_v0 *>(this)->m_entries;
+        case 1: return m_entries;
+        default: assert(false && "Unknown crate map version!");
+        }
+    }
+
+    inline const iterator begin() const {
+        switch (version()) {
+        case 0:
+            return &reinterpret_cast<const cratemap_v0 *>(this)->
+                m_children[0];
+        case 1:
+            return &m_children[1];
+        default: assert(false && "Unknown crate map version!");
+        }
+    }
+
+    inline const iterator end() const {
+        iterator i = begin();
+        while (*i)
+            i++;
+        return i;
+    }
 };
 
 void iter_module_map(const mod_entry* map,
