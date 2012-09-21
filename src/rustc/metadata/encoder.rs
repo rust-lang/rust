@@ -947,7 +947,7 @@ fn encode_meta_item(ebml_w: ebml::Writer, mi: meta_item) {
         ebml_w.writer.write(str::to_bytes(name));
         ebml_w.end_tag();
         for items.each |inner_item| {
-            encode_meta_item(ebml_w, *inner_item);
+            encode_meta_item(ebml_w, **inner_item);
         }
         ebml_w.end_tag();
       }
@@ -970,7 +970,7 @@ fn encode_attributes(ebml_w: ebml::Writer, attrs: ~[attribute]) {
 // them in anyway with default values.
 fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 
-    fn synthesize_link_attr(ecx: @encode_ctxt, items: ~[meta_item]) ->
+    fn synthesize_link_attr(ecx: @encode_ctxt, items: ~[@meta_item]) ->
        attribute {
 
         assert (ecx.link_meta.name != ~"");

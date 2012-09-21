@@ -127,7 +127,7 @@ fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[ast::meta_item]) -> bool {
+fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
 
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
@@ -136,13 +136,13 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[ast::meta_item]) -> bool {
     // so we can match against them. This is the list of configurations for
     // which the item is valid
     let cfg_metas = vec::concat(vec::filter_map(cfg_metas,
-        |&&i| attr::get_meta_item_list(&i) ));
+        |&&i| attr::get_meta_item_list(i) ));
 
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
     if !has_cfg_metas { return true; }
 
     for cfg_metas.each |cfg_mi| {
-        if attr::contains(cfg, cfg_mi) { return true; }
+        if attr::contains(cfg, *cfg_mi) { return true; }
     }
 
     return false;

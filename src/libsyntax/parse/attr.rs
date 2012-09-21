@@ -18,9 +18,9 @@ trait parser_attr {
         ast::attribute;
     fn parse_inner_attrs_and_next() ->
         {inner: ~[ast::attribute], next: ~[ast::attribute]};
-    fn parse_meta_item() -> ast::meta_item;
-    fn parse_meta_seq() -> ~[ast::meta_item];
-    fn parse_optional_meta() -> ~[ast::meta_item];
+    fn parse_meta_item() -> @ast::meta_item;
+    fn parse_meta_seq() -> ~[@ast::meta_item];
+    fn parse_optional_meta() -> ~[@ast::meta_item];
 }
 
 impl parser: parser_attr {
@@ -91,7 +91,7 @@ impl parser: parser_attr {
         let meta_item = self.parse_meta_item();
         self.expect(token::RBRACKET);
         let mut hi = self.span.hi;
-        return spanned(lo, hi, {style: style, value: meta_item,
+        return spanned(lo, hi, {style: style, value: *meta_item,
                              is_sugared_doc: false});
     }
 
@@ -143,7 +143,7 @@ impl parser: parser_attr {
         return {inner: inner_attrs, next: next_outer_attrs};
     }
 
-    fn parse_meta_item() -> ast::meta_item {
+    fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
         let name = *self.id_to_str(self.parse_ident());
         match self.token {
@@ -151,27 +151,27 @@ impl parser: parser_attr {
             self.bump();
             let lit = self.parse_lit();
             let mut hi = self.span.hi;
-            return spanned(lo, hi, ast::meta_name_value(name, lit));
+            return @spanned(lo, hi, ast::meta_name_value(name, lit));
           }
           token::LPAREN => {
             let inner_items = self.parse_meta_seq();
             let mut hi = self.span.hi;
-            return spanned(lo, hi, ast::meta_list(name, inner_items));
+            return @spanned(lo, hi, ast::meta_list(name, inner_items));
           }
           _ => {
             let mut hi = self.span.hi;
-            return spanned(lo, hi, ast::meta_word(name));
+            return @spanned(lo, hi, ast::meta_word(name));
           }
         }
     }
 
-    fn parse_meta_seq() -> ~[ast::meta_item] {
+    fn parse_meta_seq() -> ~[@ast::meta_item] {
         return self.parse_seq(token::LPAREN, token::RPAREN,
                            seq_sep_trailing_disallowed(token::COMMA),
                            |p| p.parse_meta_item()).node;
     }
 
-    fn parse_optional_meta() -> ~[ast::meta_item] {
+    fn parse_optional_meta() -> ~[@ast::meta_item] {
         match self.token {
           token::LPAREN => return self.parse_meta_seq(),
           _ => return ~[]

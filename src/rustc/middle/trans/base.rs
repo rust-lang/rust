@@ -2368,10 +2368,10 @@ fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
                 let attr_metas = attr::attr_metas(
                     attr::find_attrs_by_name(item.attrs, ~"rt"));
                 for vec::each(attr_metas) |attr_meta| {
-                    match attr::get_meta_item_list(attr_meta) {
+                    match attr::get_meta_item_list(*attr_meta) {
                         Some(list) => {
                             let head = vec::head(list);
-                            let name = attr::get_meta_item_name(&head);
+                            let name = attr::get_meta_item_name(head);
                             push_rtcall(ccx, name, {crate: ast::local_crate,
                                                     node: item.id});
                         }
