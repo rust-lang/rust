@@ -25,6 +25,10 @@ with destructors.
 
 */
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use stackwalk::Word;
 use libc::size_t;
 use libc::uintptr_t;
