@@ -1,5 +1,9 @@
 //! Logging
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 export console_on, console_off;
 
 #[nolink]
