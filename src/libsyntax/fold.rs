@@ -78,8 +78,8 @@ type ast_fold_precursor = @{
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
 //used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
-fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
-    return @{node:
+fn fold_meta_item_(&&mi: meta_item, fld: ast_fold) -> meta_item {
+    return {node:
               match mi.node {
                 meta_word(id) => meta_word(id),
                 meta_list(id, mis) => {
@@ -97,7 +97,7 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
 fn fold_attribute_(at: attribute, fld: ast_fold) ->
    attribute {
     return {node: {style: at.node.style,
-                value: *fold_meta_item_(@at.node.value, fld),
+                value: fold_meta_item_(at.node.value, fld),
                 is_sugared_doc: at.node.is_sugared_doc },
          span: fld.new_span(at.span)};
 }

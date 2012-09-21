@@ -152,7 +152,7 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, ~"ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
-        |&&i| attr::get_meta_item_list(i) ));
+        |&&i| attr::get_meta_item_list(&i) ));
     return if vec::is_not_empty(ignoreitems) {
         config::metas_in_cfg(cx.crate.node.config, cfg_metas)
     } else {

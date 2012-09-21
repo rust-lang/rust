@@ -37,7 +37,7 @@ mod test {
 
 fn doc_meta(
     attrs: ~[ast::attribute]
-) -> Option<@ast::meta_item> {
+) -> Option<ast::meta_item> {
 
     /*!
      * Given a vec of attributes, extract the meta_items contained in the \
@@ -58,7 +58,7 @@ fn doc_meta(
 
 fn doc_metas(
     attrs: ~[ast::attribute]
-) -> ~[@ast::meta_item] {
+) -> ~[ast::meta_item] {
 
     let doc_attrs = attr::find_attrs_by_name(attrs, ~"doc");
     let doc_metas = do doc_attrs.map |attr| {
@@ -103,7 +103,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
 fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     match doc_meta(attrs) {
       Some(meta) => {
-        attr::get_meta_item_value_str(meta)
+        attr::get_meta_item_value_str(&meta)
       }
       None => None
     }
@@ -127,7 +127,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
 
 fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     do doc_metas(attrs).find |meta| {
-        match attr::get_meta_item_list(meta) {
+        match attr::get_meta_item_list(&meta) {
           Some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
             vec::is_not_empty(hiddens)

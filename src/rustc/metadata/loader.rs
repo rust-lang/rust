@@ -31,7 +31,7 @@ type ctxt = {
     filesearch: filesearch,
     span: span,
     ident: ast::ident,
-    metas: ~[@ast::meta_item],
+    metas: ~[ast::meta_item],
     hash: ~str,
     os: os,
     static: bool,
@@ -120,11 +120,11 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
+fn crate_name_from_metas(metas: ~[ast::meta_item]) -> ~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
       Some(i) => {
-        match attr::get_meta_item_value_str(i) {
+        match attr::get_meta_item_value_str(&i) {
           Some(n) => n,
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
@@ -143,7 +143,7 @@ fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
     }
 }
 
-fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
+fn crate_matches(crate_data: @~[u8], metas: ~[ast::meta_item],
                  hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
@@ -154,14 +154,14 @@ fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
     metadata_matches(linkage_metas, metas)
 }
 
-fn metadata_matches(extern_metas: ~[@ast::meta_item],
-                    local_metas: ~[@ast::meta_item]) -> bool {
+fn metadata_matches(extern_metas: ~[ast::meta_item],
+                    local_metas: ~[ast::meta_item]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",
            vec::len(local_metas), vec::len(extern_metas));
 
     for local_metas.each |needed| {
-        if !attr::contains(extern_metas, *needed) {
+        if !attr::contains(extern_metas, needed) {
             return false;
         }
     }

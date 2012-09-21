@@ -208,7 +208,7 @@ impl LanguageItemCollector {
 
                 do get_item_attrs(crate_store, def_id) |meta_items| {
                     for meta_items.each |meta_item| {
-                        self.match_and_collect_meta_item(def_id, **meta_item);
+                        self.match_and_collect_meta_item(def_id, *meta_item);
                     }
                 }
             }

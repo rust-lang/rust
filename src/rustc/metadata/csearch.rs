@@ -108,7 +108,7 @@ fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
 
 fn get_item_attrs(cstore: cstore::cstore,
                   def_id: ast::def_id,
-                  f: fn(~[@ast::meta_item])) {
+                  f: fn(~[ast::meta_item])) {
 
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::get_item_attrs(cdata, def_id.node, f)

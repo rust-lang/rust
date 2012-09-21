@@ -279,7 +279,7 @@ fn assume_source_method(url: ~str) -> ~str {
     ~"curl"
 }
 
-fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
+fn load_link(mis: ~[ast::meta_item]) -> (Option<~str>,
                                          Option<~str>,
                                          Option<~str>) {
     let mut name = None;
@@ -358,9 +358,9 @@ fn load_crate(filename: &Path) -> Option<crate> {
                 let mut attr_from = ~"";
 
               for m.each |item| {
-                    match attr::get_meta_item_value_str(*item) {
+                    match attr::get_meta_item_value_str(item) {
                         Some(value) => {
-                            let name = attr::get_meta_item_name(*item);
+                            let name = attr::get_meta_item_name(item);
 
                             match name {
                                 ~"vers" => attr_vers = value,
