@@ -41,36 +41,37 @@ use option::{Some, None};
  */
 
 // Functions used by the fmt extension at compile time
-pub mod ct {
-    pub enum Signedness { pub Signed, pub Unsigned, }
-    pub enum Caseness { pub CaseUpper, pub CaseLower, }
-    pub enum Ty {
-        pub TyBool,
-        pub TyStr,
-        pub TyChar,
-        pub TyInt(Signedness),
-        pub TyBits,
-        pub TyHex(Caseness),
-        pub TyOctal,
-        pub TyFloat,
-        pub TyPoly,
+mod ct {
+    #[legacy_exports];
+    enum Signedness { Signed, Unsigned, }
+    enum Caseness { CaseUpper, CaseLower, }
+    enum Ty {
+        TyBool,
+        TyStr,
+        TyChar,
+        TyInt(Signedness),
+        TyBits,
+        TyHex(Caseness),
+        TyOctal,
+        TyFloat,
+        TyPoly,
     }
-    pub enum Flag {
-        pub FlagLeftJustify,
-        pub FlagLeftZeroPad,
-        pub FlagSpaceForSign,
-        pub FlagSignAlways,
-        pub FlagAlternate,
+    enum Flag {
+        FlagLeftJustify,
+        FlagLeftZeroPad,
+        FlagSpaceForSign,
+        FlagSignAlways,
+        FlagAlternate,
     }
-    pub enum Count {
-        pub CountIs(int),
-        pub CountIsParam(int),
-        pub CountIsNextParam,
-        pub CountImplied,
+    enum Count {
+        CountIs(int),
+        CountIsParam(int),
+        CountIsNextParam,
+        CountImplied,
     }
 
     // A formatted conversion from an expression to a string
-    pub type Conv =
+    type Conv =
         {param: Option<int>,
          flags: ~[Flag],
          width: Count,
@@ -79,10 +80,10 @@ pub mod ct {
 
 
     // A fragment of the output sequence
-    pub enum Piece { PieceString(~str), PieceConv(Conv), }
-    pub type ErrorFn = fn@(~str) -> ! ;
+    enum Piece { PieceString(~str), PieceConv(Conv), }
+    type ErrorFn = fn@(~str) -> ! ;
 
-    pub fn parse_fmt_string(s: ~str, error: ErrorFn) -> ~[Piece] {
+    fn parse_fmt_string(s: ~str, error: ErrorFn) -> ~[Piece] {
         let mut pieces: ~[Piece] = ~[];
         let lim = str::len(s);
         let mut buf = ~"";
@@ -272,26 +273,21 @@ pub mod ct {
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
-pub mod rt {
-    pub const flag_none: u32 = 0u32;
-    pub const flag_left_justify : u32 = 0b00000000000000000000000000000001u32;
-    pub const flag_left_zero_pad: u32 = 0b00000000000000000000000000000010u32;
-    pub const flag_space_for_sign:u32 = 0b00000000000000000000000000000100u32;
-    pub const flag_sign_always  : u32 = 0b00000000000000000000000000001000u32;
-    pub const flag_alternate    : u32 = 0b00000000000000000000000000010000u32;
+mod rt {
+    #[legacy_exports];
+    const flag_none : u32 = 0u32;
+    const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
+    const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
+    const flag_space_for_sign : u32 = 0b00000000000000000000000000000100u32;
+    const flag_sign_always    : u32 = 0b00000000000000000000000000001000u32;
+    const flag_alternate      : u32 = 0b00000000000000000000000000010000u32;
 
-    pub enum Count { pub CountIs(int), pub CountImplied, }
-    pub enum Ty {
-        pub TyDefault,
-        pub TyBits,
-        pub TyHexUpper,
-        pub TyHexLower,
-        pub TyOctal
-    }
+    enum Count { CountIs(int), CountImplied, }
+    enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
-    pub type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
+    type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
 
-    pub pure fn conv_int(cv: Conv, i: int) -> ~str {
+    pure fn conv_int(cv: Conv, i: int) -> ~str {
         let radix = 10u;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
@@ -304,7 +300,7 @@ pub mod rt {
         }
         return unsafe { pad(cv, s, PadSigned) };
     }
-    pub pure fn conv_uint(cv: Conv, u: uint) -> ~str {
+    pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
         let mut rs =
             match cv.ty {
@@ -316,17 +312,17 @@ pub mod rt {
             };
         return unsafe { pad(cv, rs, PadUnsigned) };
     }
-    pub pure fn conv_bool(cv: Conv, b: bool) -> ~str {
+    pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         return conv_str(cv, s);
     }
-    pub pure fn conv_char(cv: Conv, c: char) -> ~str {
+    pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pub pure fn conv_str(cv: Conv, s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -339,7 +335,7 @@ pub mod rt {
         };
         return unsafe { pad(cv, unpadded, PadNozero) };
     }
-    pub pure fn conv_float(cv: Conv, f: float) -> ~str {
+    pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str, 6u)
@@ -354,7 +350,7 @@ pub mod rt {
         }
         return unsafe { pad(cv, s, PadFloat) };
     }
-    pub pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
+    pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
         let s = sys::log_str(&v);
         return conv_str(cv, s);
     }
