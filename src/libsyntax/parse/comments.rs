@@ -117,7 +117,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
 fn read_to_eol(rdr: string_reader) -> ~str {
     let mut val = ~"";
     while rdr.curr != '\n' && !is_eof(rdr) {
-        str::push_char(val, rdr.curr);
+        str::push_char(&mut val, rdr.curr);
         bump(rdr);
     }
     if rdr.curr == '\n' { bump(rdr); }
@@ -242,7 +242,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
             curr_line = ~"";
             bump(rdr);
         } else {
-            str::push_char(curr_line, rdr.curr);
+            str::push_char(&mut curr_line, rdr.curr);
             if rdr.curr == '/' && nextch(rdr) == '*' {
                 bump(rdr);
                 bump(rdr);

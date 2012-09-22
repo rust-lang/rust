@@ -255,14 +255,14 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
         // indent past |name:## | and the 0-offset column location
         let mut left = str::len(fm.name) + digits + lo.col + 3u;
         let mut s = ~"";
-        while left > 0u { str::push_char(s, ' '); left -= 1u; }
+        while left > 0u { str::push_char(&mut s, ' '); left -= 1u; }
 
         s += ~"^";
         let hi = codemap::lookup_char_pos(cm, sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let mut width = hi.col - lo.col - 1u;
-            while width > 0u { str::push_char(s, '~'); width -= 1u; }
+            while width > 0u { str::push_char(&mut s, '~'); width -= 1u; }
         }
         io::stderr().write_str(s + ~"\n");
     }

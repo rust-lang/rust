@@ -14,7 +14,7 @@ impl &[u8]: ToBase64 {
 
         let len = self.len();
         let mut s = ~"";
-        str::reserve(s, ((len + 3u) / 4u) * 3u);
+        str::reserve(&mut s, ((len + 3u) / 4u) * 3u);
 
         let mut i = 0u;
 
@@ -24,10 +24,10 @@ impl &[u8]: ToBase64 {
                     (self[i + 2u] as uint);
 
             // This 24-bit number gets separated into four 6-bit numbers.
-            str::push_char(s, chars[(n >> 18u) & 63u]);
-            str::push_char(s, chars[(n >> 12u) & 63u]);
-            str::push_char(s, chars[(n >> 6u) & 63u]);
-            str::push_char(s, chars[n & 63u]);
+            str::push_char(&mut s, chars[(n >> 18u) & 63u]);
+            str::push_char(&mut s, chars[(n >> 12u) & 63u]);
+            str::push_char(&mut s, chars[(n >> 6u) & 63u]);
+            str::push_char(&mut s, chars[n & 63u]);
 
             i += 3u;
         }
@@ -38,17 +38,17 @@ impl &[u8]: ToBase64 {
           0 => (),
           1 => {
             let n = (self[i] as uint) << 16u;
-            str::push_char(s, chars[(n >> 18u) & 63u]);
-            str::push_char(s, chars[(n >> 12u) & 63u]);
-            str::push_char(s, '=');
-            str::push_char(s, '=');
+            str::push_char(&mut s, chars[(n >> 18u) & 63u]);
+            str::push_char(&mut s, chars[(n >> 12u) & 63u]);
+            str::push_char(&mut s, '=');
+            str::push_char(&mut s, '=');
           }
           2 => {
             let n = (self[i] as uint) << 16u | (self[i + 1u] as uint) << 8u;
-            str::push_char(s, chars[(n >> 18u) & 63u]);
-            str::push_char(s, chars[(n >> 12u) & 63u]);
-            str::push_char(s, chars[(n >> 6u) & 63u]);
-            str::push_char(s, '=');
+            str::push_char(&mut s, chars[(n >> 18u) & 63u]);
+            str::push_char(&mut s, chars[(n >> 12u) & 63u]);
+            str::push_char(&mut s, chars[(n >> 6u) & 63u]);
+            str::push_char(&mut s, '=');
           }
           _ => fail ~"Algebra is broken, please alert the math police"
         }

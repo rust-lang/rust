@@ -214,7 +214,7 @@ fn consume_any_line_comment(rdr: string_reader)
                 let start_chpos = rdr.chpos - 2u;
                 let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
-                    str::push_char(acc, rdr.curr);
+                    str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
                 return Some({
@@ -253,7 +253,7 @@ fn consume_block_comment(rdr: string_reader)
         let start_chpos = rdr.chpos - 2u;
         let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            str::push_char(acc, rdr.curr);
+            str::push_char(&mut acc, rdr.curr);
             bump(rdr);
         }
         if is_eof(rdr) {
@@ -288,11 +288,11 @@ fn scan_exponent(rdr: string_reader) -> Option<~str> {
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
-        str::push_char(rslt, c);
+        str::push_char(&mut rslt, c);
         bump(rdr);
         c = rdr.curr;
         if c == '-' || c == '+' {
-            str::push_char(rslt, c);
+            str::push_char(&mut rslt, c);
             bump(rdr);
         }
         let exponent = scan_digits(rdr, 10u);
@@ -309,7 +309,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
         if c == '_' { bump(rdr); loop; }
         match char::to_digit(c, radix) {
           Some(_) => {
-            str::push_char(rslt, c);
+            str::push_char(&mut rslt, c);
             bump(rdr);
           }
           _ => return rslt
@@ -447,7 +447,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             || (c >= '0' && c <= '9')
             || c == '_'
             || (c > 'z' && char::is_XID_continue(c)) {
-            str::push_char(accum_str, c);
+            str::push_char(&mut accum_str, c);
             bump(rdr);
             c = rdr.curr;
         }
@@ -599,28 +599,31 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                 let escaped = rdr.curr;
                 bump(rdr);
                 match escaped {
-                  'n' => str::push_char(accum_str, '\n'),
-                  'r' => str::push_char(accum_str, '\r'),
-                  't' => str::push_char(accum_str, '\t'),
-                  '\\' => str::push_char(accum_str, '\\'),
-                  '\'' => str::push_char(accum_str, '\''),
-                  '"' => str::push_char(accum_str, '"'),
+                  'n' => str::push_char(&mut accum_str, '\n'),
+                  'r' => str::push_char(&mut accum_str, '\r'),
+                  't' => str::push_char(&mut accum_str, '\t'),
+                  '\\' => str::push_char(&mut accum_str, '\\'),
+                  '\'' => str::push_char(&mut accum_str, '\''),
+                  '"' => str::push_char(&mut accum_str, '"'),
                   '\n' => consume_whitespace(rdr),
                   'x' => {
-                    str::push_char(accum_str, scan_numeric_escape(rdr, 2u));
+                    str::push_char(&mut accum_str,
+                                   scan_numeric_escape(rdr, 2u));
                   }
                   'u' => {
-                    str::push_char(accum_str, scan_numeric_escape(rdr, 4u));
+                    str::push_char(&mut accum_str,
+                                   scan_numeric_escape(rdr, 4u));
                   }
                   'U' => {
-                    str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
+                    str::push_char(&mut accum_str,
+                                   scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
                     rdr.fatal(fmt!("unknown string escape: %d", c2 as int));
                   }
                 }
               }
-              _ => str::push_char(accum_str, ch)
+              _ => str::push_char(&mut accum_str, ch)
             }
         }
         bump(rdr);

@@ -18,12 +18,12 @@ fn main() {
     assert (!str::is_utf8(~[0xc0_u8, 0x10_u8]));
 
     let mut stack = ~"a×c€";
-    assert (str::pop_char(stack) == '€');
-    assert (str::pop_char(stack) == 'c');
-    str::push_char(stack, 'u');
+    assert (str::pop_char(&mut stack) == '€');
+    assert (str::pop_char(&mut stack) == 'c');
+    str::push_char(&mut stack, 'u');
     assert (stack == ~"a×u");
-    assert (str::shift_char(stack) == 'a');
-    assert (str::shift_char(stack) == '×');
-    str::unshift_char(stack, 'ß');
+    assert (str::shift_char(&mut stack) == 'a');
+    assert (str::shift_char(&mut stack) == '×');
+    str::unshift_char(&mut stack, 'ß');
     assert (stack == ~"ßu");
 }
