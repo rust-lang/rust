@@ -28,11 +28,11 @@ fn create<T: Copy>() -> Deque<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: Copy>(nelts: uint, lo: uint, +elts: ~[mut Cell<T>])
-      -> ~[mut Cell<T>] {
-        let elts = move elts;
+    fn grow<T: Copy>(nelts: uint, lo: uint, +elts: ~[Cell<T>])
+      -> ~[Cell<T>] {
+        let mut elts = move elts;
         assert (nelts == vec::len(elts));
-        let mut rv = ~[mut];
+        let mut rv = ~[];
 
         let mut i = 0u;
         let nalloc = uint::next_power_of_two(nelts + 1u);
@@ -62,7 +62,7 @@ fn create<T: Copy>() -> Deque<T> {
                 self.lo = self.elts.len() - 1u;
             } else { self.lo -= 1u; }
             if self.lo == self.hi {
-                self.elts.swap_mut(|v| grow(self.nelts, oldlo, move v));
+                self.elts.swap(|v| grow(self.nelts, oldlo, move v));
                 self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
@@ -71,7 +71,7 @@ fn create<T: Copy>() -> Deque<T> {
         }
         fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
-                self.elts.swap_mut(|v| grow(self.nelts, self.lo, move v));
+                self.elts.swap(|v| grow(self.nelts, self.lo, move v));
                 self.lo = 0u;
                 self.hi = self.nelts;
             }

@@ -66,7 +66,7 @@ impl reflector {
         debug!("passing %u args:", vec::len(args));
         let bcx = self.bcx;
         for args.eachi |i, a| {
-            debug!("arg %u: %s", i, val_str(bcx.ccx().tn, a));
+            debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
         }
         let bool_ty = ty::mk_bool(tcx);
         let scratch = scratch_datum(bcx, bool_ty, false);
@@ -171,7 +171,7 @@ impl reflector {
                 for tys.eachi |i, t| {
                     self.visit(~"tup_field",
                                ~[self.c_uint(i),
-                                 self.c_tydesc(t)]);
+                                 self.c_tydesc(*t)]);
                 }
             }
           }
@@ -263,7 +263,7 @@ impl reflector {
                         for v.args.eachi |j, a| {
                             self.visit(~"enum_variant_field",
                                        ~[self.c_uint(j),
-                                         self.c_tydesc(a)]);
+                                         self.c_tydesc(*a)]);
                         }
                     }
                 }

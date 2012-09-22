@@ -1,4 +1,4 @@
-fn inc(&&x: uint) -> uint { x + 1u }
+fn inc(x: &uint) -> uint { *x + 1u }
 
 fn main() {
     assert [1u, 3u]/_.map_to_vec(inc) == ~[2u, 4u];

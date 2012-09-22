@@ -1057,8 +1057,8 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
     let mut temp_cleanups = ~[];
     for vec::eachi(elts) |i, e| {
         let dest = GEPi(bcx, addr, [0u, i]);
-        let e_ty = expr_ty(bcx, e);
-        bcx = trans_into(bcx, e, SaveIn(dest));
+        let e_ty = expr_ty(bcx, *e);
+        bcx = trans_into(bcx, *e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
         vec::push(temp_cleanups, dest);
     }

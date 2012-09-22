@@ -91,7 +91,7 @@ impl message: gen_send {
                          this.proto.name,
                          self.name(),
                          str::connect(vec::append_one(
-                           arg_names.map(|x| ~"move " + cx.str_of(x)),
+                           arg_names.map(|x| ~"move " + cx.str_of(*x)),
                              ~"move s"), ~", "));
 
             if !try {
@@ -144,7 +144,7 @@ impl message: gen_send {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| ~"move " + x),
+                    ~"(" + str::connect(arg_names.map(|x| ~"move " + *x),
                                         ~", ") + ~")"
                 };
 

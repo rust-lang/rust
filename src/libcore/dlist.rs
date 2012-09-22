@@ -437,13 +437,12 @@ impl<T: Copy> DList<T> {
     /// Get data at the list's tail, failing if empty. O(1).
     pure fn tail() -> T { self.tail_n().data }
     /// Get the elements of the list as a vector. O(n).
-    pure fn to_vec() -> ~[mut T] {
-        let mut v = ~[mut];
+    pure fn to_vec() -> ~[T] {
+        let mut v = vec::with_capacity(self.size);
         unsafe {
-            vec::reserve(v, self.size);
             // Take this out of the unchecked when iter's functions are pure
             for self.eachi |index,data| {
-                v[index] = data;
+                v[index] = *data;
             }
         }
         move v

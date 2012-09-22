@@ -16,7 +16,7 @@ fn main() {
     assert any_negative;
 
     // Higher precedence than unary operations:
-    let abs_v = do vec::map(v) |e| { float::abs(e) };
+    let abs_v = do vec::map(v) |e| { float::abs(*e) };
     assert do vec::all(abs_v) |e| { float::is_nonnegative(e) };
     assert !do vec::any(abs_v) |e| { float::is_negative(e) };
 

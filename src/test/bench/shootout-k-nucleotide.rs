@@ -142,13 +142,14 @@ fn main(args: ~[~str]) {
    let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
    let from_child = vec::map (sizes, |_sz| comm::Port() );
    let to_parent  = vec::mapi(sizes, |ii, _sz| comm::Chan(from_child[ii]) );
-   let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::Chan<~[u8]> {
-       return do task::spawn_listener |from_parent| {
+   let to_child   = vec::mapi(sizes, |ii, sz| {
+       let ii = ii;
+       let sz = *sz;
+       do task::spawn_listener |from_parent| {
          make_sequence_processor(sz, from_parent, to_parent[ii]);
-      };
+       }
    });
-         
-   
+
    // latch stores true after we've started
    // reading the sequence of interest
    let mut proc_mode = false;

@@ -236,7 +236,7 @@ fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
 }
 
 fn tys_to_str(cx: ctxt, ts: ~[t]) -> ~str {
-    let tstrs = ts.map(|t| ty_to_str(cx, t));
+    let tstrs = ts.map(|t| ty_to_str(cx, *t));
     fmt!("[%s]", str::connect(tstrs, ", "))
 }
 
@@ -394,7 +394,7 @@ fn parameterized(cx: ctxt,
     };
 
     if vec::len(tps) > 0u {
-        let strs = vec::map(tps, |t| ty_to_str(cx, t) );
+        let strs = vec::map(tps, |t| ty_to_str(cx, *t));
         fmt!("%s%s<%s>", base, r_str, str::connect(strs, ~","))
     } else {
         fmt!("%s%s", base, r_str)

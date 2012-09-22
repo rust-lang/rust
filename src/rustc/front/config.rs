@@ -55,7 +55,7 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
     let view_item_filter = |a| filter_view_item(cx, a);
     let filtered_view_items = vec::filter_map(m.view_items, view_item_filter);
     return {
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
+        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         items: vec::filter_map(filtered_items, |x| fld.fold_item(x))
     };
 }
@@ -76,7 +76,7 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
         nm.view_items, view_item_filter);
     return {
         sort: nm.sort,
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
+        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         items: filtered_items
     };
 }
@@ -103,7 +103,7 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
     let filter = |a| filter_stmt(cx, a);
     let filtered_stmts = vec::filter_map(b.stmts, filter);
     return {view_items: b.view_items,
-         stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(x)),
+         stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
          expr: option::map(b.expr, |x| fld.fold_expr(x)),
          id: b.id,
          rules: b.rules};

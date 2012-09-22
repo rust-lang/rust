@@ -88,15 +88,15 @@ fn write_markdown(
     // we don't want to spawn too many pandoc processes
     do doc.pages.map |page| {
         let ctxt = {
-            w: writer_factory(page)
+            w: writer_factory(*page)
         };
         write_page(ctxt, page)
     };
 }
 
-fn write_page(ctxt: Ctxt, page: doc::Page) {
-    write_title(ctxt, page);
-    match page {
+fn write_page(ctxt: Ctxt, page: &doc::Page) {
+    write_title(ctxt, *page);
+    match *page {
       doc::CratePage(doc) => {
         write_crate(ctxt, doc);
       }
@@ -236,7 +236,7 @@ fn header_name(doc: doc::ItemTag) -> ~str {
             } else {
                 trait_part += ~", ";
             }
-            trait_part += trait_type;
+            trait_part += *trait_type;
         }
         fmt!("%s for %s", trait_part, self_ty)
       }
@@ -513,7 +513,7 @@ fn write_sig(ctxt: Ctxt, sig: Option<~str>) {
 
 fn code_block_indent(s: ~str) -> ~str {
     let lines = str::lines_any(s);
-    let indented = vec::map(lines, |line| fmt!("    %s", line) );
+    let indented = vec::map(lines, |line| fmt!("    %s", *line) );
     str::connect(indented, ~"\n")
 }
 

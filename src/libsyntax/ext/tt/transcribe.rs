@@ -29,7 +29,7 @@ type tt_reader = @{
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::HashMap<ident, @named_match>,
-    mut repeat_idx: ~[mut uint],
+    mut repeat_idx: ~[uint],
     mut repeat_len: ~[uint],
     /* cached: */
     mut cur_tok: token,
@@ -50,7 +50,8 @@ fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
                 None => std::map::HashMap::<uint,@named_match>(),
                 Some(x) => x
               },
-              mut repeat_idx: ~[mut], mut repeat_len: ~[],
+              mut repeat_idx: ~[],
+              mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
               mut cur_span: ast_util::mk_sp(0u,0u)

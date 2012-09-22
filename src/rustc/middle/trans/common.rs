@@ -192,9 +192,9 @@ type param_substs = {tys: ~[ty::t],
 
 fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
     fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
-         substs.tys.map(|t| ty_to_str(tcx, t)),
+         substs.tys.map(|t| ty_to_str(tcx, *t)),
          substs.vtables.map(|vs| vs.map(|v| v.to_str(tcx))),
-         substs.bounds.map(|b| ty::param_bounds_to_str(tcx, b)))
+         substs.bounds.map(|b| ty::param_bounds_to_str(tcx, *b)))
 }
 
 // Function context.  Every LLVM function we create will have one of
@@ -1265,7 +1265,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     match bcx.fcx.param_substs {
       Some(substs) => {
-        vec::map(params, |t| ty::subst_tps(tcx, substs.tys, t))
+        vec::map(params, |t| ty::subst_tps(tcx, substs.tys, *t))
       }
       _ => params
     }
@@ -1280,7 +1280,7 @@ fn node_vtables(bcx: block, id: ast::node_id) -> Option<typeck::vtable_res> {
 fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res
 {
-    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, d))
+    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, *d))
 }
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should
@@ -1293,7 +1293,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
         typeck::vtable_static(trait_id, tys, sub) => {
             let tys = match fcx.param_substs {
                 Some(substs) => {
-                    vec::map(tys, |t| ty::subst_tps(tcx, substs.tys, t))
+                    vec::map(tys, |t| ty::subst_tps(tcx, substs.tys, *t))
                 }
                 _ => tys
             };

@@ -265,7 +265,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn variant(name: ident,
                span: span,
                +tys: ~[@ast::ty]) -> ast::variant {
-        let args = tys.map(|ty| {ty: ty, id: self.next_id()});
+        let args = tys.map(|ty| {ty: *ty, id: self.next_id()});
 
         {node: {name: name,
                 attrs: ~[],

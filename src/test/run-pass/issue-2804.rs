@@ -54,7 +54,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: std::map::HashMap<~str, 
         std::json::List(interfaces) =>
         {
           do vec::map(*interfaces) |interface| {
-                add_interface(store, managed_ip, interface)
+                add_interface(store, managed_ip, *interface)
           }
         }
         _ =>

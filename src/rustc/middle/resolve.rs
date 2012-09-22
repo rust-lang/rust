@@ -1287,7 +1287,7 @@ impl Resolver {
 
                             for full_path.idents.eachi |i, ident| {
                                 if i != path_len - 1u {
-                                    (*module_path).push(ident);
+                                    (*module_path).push(*ident);
                                 }
                             }
                         }
@@ -3762,8 +3762,8 @@ impl Resolver {
     fn check_consistent_bindings(arm: arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
-        for arm.pats.eachi() |i, p: @pat| {
-            let map_i = self.binding_mode_map(p);
+        for arm.pats.eachi() |i, p| {
+            let map_i = self.binding_mode_map(*p);
 
             for map_0.each |key, binding_0| {
                 match map_i.find(key) {
@@ -3894,7 +3894,7 @@ impl Resolver {
                         debug!("(resolving type) writing resolution for `%s` \
                                 (id %d)",
                                connect(path.idents.map(
-                                   |x| self.session.str_of(x)), ~"::"),
+                                   |x| self.session.str_of(*x)), ~"::"),
                                path_id);
                         self.record_def(path_id, def);
                     }
@@ -3902,7 +3902,7 @@ impl Resolver {
                         self.session.span_err
                             (ty.span, fmt!("use of undeclared type name `%s`",
                                            connect(path.idents.map(
-                                               |x| self.session.str_of(x)),
+                                               |x| self.session.str_of(*x)),
                                                    ~"::")));
                     }
                 }
@@ -4080,7 +4080,7 @@ impl Resolver {
                                 path.span,
                                 fmt!("`%s` does not name a structure",
                                      connect(path.idents.map(
-                                         |x| self.session.str_of(x)),
+                                         |x| self.session.str_of(*x)),
                                              ~"::")));
                         }
                     }
@@ -4256,7 +4256,7 @@ impl Resolver {
                 break;
             }
 
-            (*module_path_atoms).push(ident);
+            (*module_path_atoms).push(*ident);
         }
 
         return module_path_atoms;
@@ -4482,13 +4482,13 @@ impl Resolver {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
                                connect(path.idents.map(
-                                   |x| self.session.str_of(x)), ~"::"));
+                                   |x| self.session.str_of(*x)), ~"::"));
                         self.record_def(expr.id, def);
                     }
                     None => {
                         let wrong_name =
                             connect(path.idents.map(
-                                |x| self.session.str_of(x)), ~"::") ;
+                                |x| self.session.str_of(*x)), ~"::") ;
                         if self.name_exists_in_scope_class(wrong_name) {
                             self.session.span_err(expr.span,
                                         fmt!("unresolved name: `%s`. \
@@ -4550,7 +4550,7 @@ impl Resolver {
                             path.span,
                             fmt!("`%s` does not name a structure",
                                  connect(path.idents.map(
-                                     |x| self.session.str_of(x)),
+                                     |x| self.session.str_of(*x)),
                                          ~"::")));
                     }
                 }

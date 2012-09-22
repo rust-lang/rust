@@ -420,7 +420,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     let llfn = decl(fnty);
 
     for vec::eachi(tys.attrs) |i, a| {
-        match a {
+        match *a {
             option::Some(attr) => {
                 let llarg = get_param(llfn, i);
                 llvm::LLVMAddAttribute(llarg, attr as c_uint);
@@ -650,7 +650,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             match tys.x86_64_tys {
                 Some(x86_64) => {
                   for vec::eachi(x86_64.attrs) |i, a| {
-                        match a {
+                        match *a {
                             Some(attr) => {
                                 llvm::LLVMAddInstrAttribute(
                                     llretval, (i + 1u) as c_uint,

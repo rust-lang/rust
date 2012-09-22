@@ -426,7 +426,7 @@ annotation:
 ~~~~
 // The type of this vector will be inferred based on its use.
 let x = [];
-# vec::map(x, fn&(&&_y:int) -> int { _y });
+# vec::map(x, fn&(_y: &int) -> int { *_y });
 // Explicitly say this is a vector of zero integers.
 let y: [int * 0] = [];
 ~~~~
@@ -1242,7 +1242,7 @@ for crayons.each |crayon| {
 }
 
 // Map vector elements
-let crayon_names = crayons.map(|v| crayon_to_str(v));
+let crayon_names = crayons.map(|v| crayon_to_str(*v));
 let favorite_crayon_name = crayon_names[0];
 
 // Remove whitespace from before and after the string
@@ -1298,7 +1298,7 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-(~[1, 2, 3]).map(|x| if x > max { max = x });
+(~[1, 2, 3]).map(|x| if *x > max { max = *x });
 ~~~~
 
 Stack closures are very efficient because their environment is

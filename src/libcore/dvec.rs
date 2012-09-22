@@ -117,7 +117,7 @@ priv impl<A> DVec<A> {
 impl<A> DVec<A> {
     /// Reserves space for N elements
     fn reserve(count: uint) {
-        vec::reserve(self.data, count)
+        vec::reserve(&mut self.data, count)
     }
 
     /**
@@ -243,7 +243,7 @@ impl<A: Copy> DVec<A> {
         do self.swap |v| {
             let mut v <- v;
             let new_len = vec::len(v) + to_idx - from_idx;
-            vec::reserve(v, new_len);
+            vec::reserve(&mut v, new_len);
             let mut i = from_idx;
             while i < to_idx {
                 vec::push(v, ts[i]);
@@ -313,9 +313,9 @@ impl<A: Copy> DVec<A> {
      */
     fn grow_set_elt(idx: uint, initval: A, val: A) {
         do self.swap |v| {
-            let mut v = vec::to_mut(move v);
+            let mut v = move v;
             vec::grow_set(v, idx, initval, val);
-            move vec::from_mut(v)
+            move v
         }
     }
 
@@ -334,14 +334,28 @@ impl<A: Copy> DVec<A> {
 
     /// Iterates over the elements in reverse order
     #[inline(always)]
-    fn reach(f: fn(A) -> bool) {
-        do self.swap |v| { vec::reach(v, f); move v }
+    fn rev_each(f: fn(v: &A) -> bool) {
+        do self.swap |v| {
+            // FIXME(#2263)---we should be able to write
+            // `vec::rev_each(v, f);` but we cannot write now
+            for vec::rev_each(v) |e| {
+                if !f(e) { break; }
+            }
+            move v
+        }
     }
 
     /// Iterates over the elements and indices in reverse order
     #[inline(always)]
-    fn reachi(f: fn(uint, A) -> bool) {
-        do self.swap |v| { vec::reachi(v, f); move v }
+    fn rev_eachi(f: fn(uint, v: &A) -> bool) {
+        do self.swap |v| {
+            // FIXME(#2263)---we should be able to write
+            // `vec::rev_eachi(v, f);` but we cannot write now
+            for vec::rev_eachi(v) |i, e| {
+                if !f(i, e) { break; }
+            }
+            move v
+        }
     }
 }
 

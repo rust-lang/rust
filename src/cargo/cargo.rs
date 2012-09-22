@@ -195,17 +195,17 @@ fn is_uuid(id: ~str) -> bool {
 
             match i {
                 0u => {
-                    if str::len(part) == 8u {
+                    if part.len() == 8u {
                         correct += 1u;
                     }
                 }
                 1u | 2u | 3u => {
-                    if str::len(part) == 4u {
+                    if part.len() == 4u {
                         correct += 1u;
                     }
                 }
                 4u => {
-                    if str::len(part) == 12u {
+                    if part.len() == 12u {
                         correct += 1u;
                     }
                 }

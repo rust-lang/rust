@@ -299,8 +299,10 @@ fn main(argv: ~[~str]) {
     }
 
     let readers: ~[fn~() -> word_reader]  = if argv.len() >= 2 {
-        vec::view(argv, 1u, argv.len()).map(
-            |f| fn~() -> word_reader { file_word_reader(f) } )
+        vec::view(argv, 1u, argv.len()).map(|f| {
+            let f = *f;
+            fn~() -> word_reader { file_word_reader(f) }
+        })
     }
     else {
         let num_readers = 50;

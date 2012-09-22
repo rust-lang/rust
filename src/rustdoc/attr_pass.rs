@@ -209,7 +209,7 @@ fn merge_method_attrs(
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             vec::map(methods, |method| {
-                match method {
+                match *method {
                   ast::required(ty_m) => {
                     (to_str(ty_m.ident), attr_parser::parse_desc(ty_m.attrs))
                   }

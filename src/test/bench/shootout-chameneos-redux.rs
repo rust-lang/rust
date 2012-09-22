@@ -31,7 +31,7 @@ fn show_color_list(set: ~[color]) -> ~str {
     let mut out = ~"";
     for vec::eachi(set) |_ii, col| {
         out += ~" ";
-        out += show_color(col);
+        out += show_color(*col);
     }
     return out;
 }
@@ -131,16 +131,16 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // these channels will allow us to talk to each creature by 'name'/index
     let to_creature: ~[comm::Chan<Option<creature_info>>] =
-        vec::mapi(set,
-            fn@(ii: uint, col: color) -> comm::Chan<Option<creature_info>> {
-                // create each creature as a listener with a port, and
-                // give us a channel to talk to each
-                return do task::spawn_listener |from_rendezvous| {
-                    creature(ii, col, from_rendezvous, to_rendezvous,
-                             to_rendezvous_log);
-                };
+        vec::mapi(set, |ii, col| {
+            // create each creature as a listener with a port, and
+            // give us a channel to talk to each
+            let ii = ii;
+            let col = *col;
+            do task::spawn_listener |from_rendezvous, move ii, move col| {
+                creature(ii, col, from_rendezvous, to_rendezvous,
+                         to_rendezvous_log);
             }
-        );
+        });
 
     let mut creatures_met = 0;
 
@@ -157,7 +157,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // tell each creature to stop
     for vec::eachi(to_creature) |_ii, to_one| {
-        comm::send(to_one, None);
+        comm::send(*to_one, None);
     }
 
     // save each creature's meeting stats

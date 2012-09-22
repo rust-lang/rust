@@ -93,7 +93,7 @@ fn get_rpaths_relative_to_output(os: session::os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[Path] {
     vec::map(libs, |a| {
-        get_rpath_relative_to_output(os, output, &a)
+        get_rpath_relative_to_output(os, output, a)
     })
 }
 
@@ -148,7 +148,7 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
 }
 
 fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
-    vec::map(libs, |a| get_absolute_rpath(&a) )
+    vec::map(libs, |a| get_absolute_rpath(a) )
 }
 
 fn get_absolute_rpath(lib: &Path) -> Path {

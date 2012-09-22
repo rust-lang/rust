@@ -189,7 +189,7 @@ fn variantdocs_from_variants(
     vec::map(variants, variantdoc_from_variant)
 }
 
-fn variantdoc_from_variant(variant: ast::variant) -> doc::VariantDoc {
+fn variantdoc_from_variant(variant: &ast::variant) -> doc::VariantDoc {
 
     {
         name: to_str(variant.node.name),
@@ -218,7 +218,7 @@ fn traitdoc_from_trait(
     {
         item: itemdoc,
         methods: do vec::map(methods) |method| {
-            match method {
+            match *method {
               ast::required(ty_m) => {
                 {
                     name: to_str(ty_m.ident),

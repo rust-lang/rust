@@ -669,8 +669,8 @@ pure fn lines(s: &str) -> ~[~str] { split_char(s, '\n') }
  */
 pure fn lines_any(s: &str) -> ~[~str] {
     vec::map(lines(s), |s| {
-        let l = len(s);
-        let mut cp = copy s;
+        let l = len(*s);
+        let mut cp = copy *s;
         if l > 0u && s[l - 1u] == '\r' as u8 {
             unsafe { raw::set_len(&mut cp, l - 1u); }
         }
@@ -1984,7 +1984,7 @@ pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
 fn reserve(s: &const ~str, n: uint) {
     unsafe {
         let v: *mut ~[u8] = cast::transmute(copy s);
-        vec::reserve(*v, n + 1);
+        vec::reserve(&mut *v, n + 1);
     }
 }
 
@@ -2077,10 +2077,8 @@ mod raw {
 
     /// Create a Rust string from a *u8 buffer of the given length
     unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
-        let mut v: ~[mut u8] = ~[mut];
-        vec::reserve(v, len + 1u);
-        vec::as_imm_buf(v, |vbuf, _len| {
-            let vbuf = ::cast::transmute_mut_unsafe(vbuf);
+        let mut v: ~[u8] = vec::with_capacity(len + 1);
+        vec::as_mut_buf(v, |vbuf, _len| {
             ptr::memcpy(vbuf, buf as *u8, len)
         });
         vec::raw::set_len(v, len);
@@ -2132,8 +2130,7 @@ mod raw {
             assert (begin <= end);
             assert (end <= n);
 
-            let mut v = ~[];
-            vec::reserve(v, end - begin + 1u);
+            let mut v = vec::with_capacity(end - begin + 1u);
             unsafe {
                 do vec::as_imm_buf(v) |vbuf, _vlen| {
                     let vbuf = ::cast::transmute_mut_unsafe(vbuf);

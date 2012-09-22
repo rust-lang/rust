@@ -22,9 +22,9 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {
-        match normalize_for_monomorphization(ccx.tcx, t) {
+        match normalize_for_monomorphization(ccx.tcx, *t) {
           Some(t) => { must_cast = true; t }
-          None => t
+          None => *t
         }
     });
 
@@ -40,8 +40,8 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     #debug["monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?, \
            hash_id = %?",
            fn_id, ty::item_path_str(ccx.tcx, fn_id),
-           real_substs.map(|s| ty_to_str(ccx.tcx, s)),
-           substs.map(|s| ty_to_str(ccx.tcx, s)), hash_id];
+           real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
+           substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id];
 
     match ccx.monomorphized.find(hash_id) {
       Some(val) => {
@@ -256,7 +256,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
         })
       }
       None => {
-        vec::map(substs, |subst| (subst, None))
+        vec::map(substs, |subst| (*subst, None))
       }
     };
     let param_ids = match param_uses {
@@ -298,8 +298,12 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
             }
         })
       }
-      None => precise_param_ids.map(|x| { let (a, b) = x;
-                mono_precise(a, b) })
+      None => {
+          precise_param_ids.map(|x| {
+              let (a, b) = *x;
+              mono_precise(a, b)
+          })
+      }
     };
     @{def: item, params: param_ids}
 }

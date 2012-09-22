@@ -262,11 +262,11 @@ fn wrong_occurs(cx: ext_ctxt, l: ident, l_c: uint, r: ident, r_c: uint)
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */
 fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
-                    recur: fn@(&&@expr) -> @expr,
+                    recur: fn@(&&v: @expr) -> @expr,
                     exprs: ~[@expr]) -> ~[@expr] {
     match elts_to_ell(cx, exprs) {
       {pre: pre, rep: repeat_me_maybe, post: post} => {
-        let mut res = vec::map(pre, recur);
+        let mut res = vec::map(pre, |x| recur(*x));
         match repeat_me_maybe {
           None => (),
           Some(repeat_me) => {
@@ -314,7 +314,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
             }
           }
         }
-        res = vec::append(res, vec::map(post, recur));
+        res = vec::append(res, vec::map(post, |x| recur(*x)));
         return res;
       }
     }

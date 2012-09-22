@@ -237,7 +237,7 @@ fn check_fn(ccx: @crate_ctxt,
     let ret_ty = fn_ty.sig.output;
 
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
-           arg_tys.map(|a| ty_to_str(tcx, a)),
+           arg_tys.map(|a| ty_to_str(tcx, *a)),
            ty_to_str(tcx, ret_ty),
            option::map(self_info, |s| ty_to_str(tcx, s.self_ty)));
 
@@ -1067,8 +1067,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     }
 
                     bot |= check_expr_with_unifier(
-                        fcx, arg, Some(formal_ty),
-                        || demand::assign(fcx, arg.span, formal_ty, arg)
+                        fcx, *arg, Some(formal_ty),
+                        || demand::assign(fcx, arg.span, formal_ty, *arg)
                     );
                 }
             }
@@ -1419,7 +1419,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             _ => ()
         }
 
-        let tps = vec::map(tys, |ty| fcx.to_ty(ty));
+        let tps = vec::map(tys, |ty| fcx.to_ty(*ty));
 
         match method::lookup(fcx, expr, base, expr.id,
                              field, expr_t, tps) {
@@ -1853,16 +1853,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, t);
       }
       ast::expr_tup(elts) => {
-        let mut elt_ts = ~[];
-        vec::reserve(elt_ts, vec::len(elts));
         let flds = unpack_expected(fcx, expected, |sty| {
             match sty { ty::ty_tup(flds) => Some(flds), _ => None }
         });
-        for elts.eachi |i, e| {
-            check_expr(fcx, e, flds.map(|fs| fs[i]));
-            let ety = fcx.expr_ty(e);
-            vec::push(elt_ts, ety);
-        }
+        let elt_ts = do elts.mapi |i, e| {
+            check_expr(fcx, *e, flds.map(|fs| fs[i]));
+            fcx.expr_ty(*e)
+        };
         let typ = ty::mk_tup(tcx, elt_ts);
         fcx.write_ty(id, typ);
       }
@@ -1886,7 +1883,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         });
         match base {
           None => {
-            fn get_node(f: spanned<field>) -> field { f.node }
+            fn get_node(f: &spanned<field>) -> field { f.node }
             let typ = ty::mk_rec(tcx, vec::map(fields_t, get_node));
             fcx.write_ty(id, typ);
             /* Check for duplicate fields */
@@ -2491,7 +2488,7 @@ fn instantiate_path(fcx: @fn_ctxt,
             (span, ~"not enough type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
-        pth.types.map(|aty| fcx.to_ty(aty))
+        pth.types.map(|aty| fcx.to_ty(*aty))
     };
 
     let substs = {self_r: self_r, self_ty: None, tps: tps};
@@ -2576,7 +2573,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         });
 
     for tps_used.eachi |i, b| {
-        if !b {
+        if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",
                            ccx.tcx.sess.str_of(tps[i].ident)));

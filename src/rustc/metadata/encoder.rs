@@ -1026,7 +1026,7 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Writer,
         type numdep = decoder::crate_dep;
 
         // Pull the cnums and name,vers,hash out of cstore
-        let mut deps: ~[mut numdep] = ~[mut];
+        let mut deps: ~[numdep] = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
             let dep = {cnum: key, name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),

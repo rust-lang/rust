@@ -320,7 +320,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
                           argument_gram).get(arg_nm) {
           @matched_seq(s, _) => {
             do s.map() |lf| {
-                match lf {
+                match *lf {
                   @matched_nonterminal(parse::token::nt_expr(arg)) =>
                     arg, /* whew! list of exprs, here we come! */
                   _ => fail ~"badly-structured parse result"

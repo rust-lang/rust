@@ -63,9 +63,9 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
             partition(crate_cache.map_to_vec(|entry| {
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
-                    Left(entry)
+                    Left(*entry)
                 } else {
-                    Right(entry)
+                    Right(*entry)
                 }
             }));
 

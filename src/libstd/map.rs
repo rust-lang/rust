@@ -391,13 +391,11 @@ fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, +key: K) -> bool {
 
 /// Convert a set into a vector.
 fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
-    let mut v = ~[];
-    vec::reserve(v, s.size());
-    do s.each_key() |k| {
-        vec::push(v, k);
-        true
-    };
-    v
+    do vec::build_sized(s.size()) |push| {
+        for s.each_key() |k| {
+            push(k);
+        }
+    }
 }
 
 /// Construct a hashmap from a vector

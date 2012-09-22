@@ -43,7 +43,7 @@ fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     let vec_ty = ty::expr_ty(cx.tcx, e);
     let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
-    let v = C_array(llunitty, es.map(|e| const_expr(cx, e)));
+    let v = C_array(llunitty, es.map(|e| const_expr(cx, *e)));
     let unit_sz = shape::llsize_of(cx, llunitty);
     let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
     return (v, sz, llunitty);
@@ -286,7 +286,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         gv
       }
       ast::expr_tup(es) => {
-        C_struct(es.map(|e| const_expr(cx, e)))
+        C_struct(es.map(|e| const_expr(cx, *e)))
       }
       ast::expr_rec(fs, None) => {
           C_struct([C_struct(

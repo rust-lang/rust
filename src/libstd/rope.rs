@@ -864,7 +864,7 @@ mod node {
     fn bal(node: @Node) -> Option<@Node> {
         if height(node) < hint_max_node_height { return option::None; }
         //1. Gather all leaves as a forest
-        let mut forest = ~[mut];
+        let mut forest = ~[];
         let it = leaf_iterator::start(node);
         loop {
             match (leaf_iterator::next(&it)) {

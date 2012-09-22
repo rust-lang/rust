@@ -1235,7 +1235,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
          self_ty: substs.self_ty.map(|t| fldop(t)),
-         tps: substs.tps.map(|t| fldop(t))}
+         tps: substs.tps.map(|t| fldop(*t))}
     }
 
     match *sty {
@@ -1269,7 +1269,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             ty_rec(new_fields)
         }
         ty_tup(ts) => {
-            let new_ts = vec::map(ts, |tt| fldop(tt));
+            let new_ts = vec::map(ts, |tt| fldop(*tt));
             ty_tup(new_ts)
         }
         ty_fn(ref f) => {
@@ -1332,7 +1332,7 @@ fn fold_regions_and_ty(
 
         {self_r: substs.self_r.map(|r| fldr(r)),
          self_ty: substs.self_ty.map(|t| fldt(t)),
-         tps: substs.tps.map(|t| fldt(t))}
+         tps: substs.tps.map(|t| fldt(*t))}
     }
 
     let tb = ty::get(ty);
@@ -1476,7 +1476,7 @@ fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
 }
 
 fn param_bounds_to_str(cx: ctxt, pbs: param_bounds) -> ~str {
-    fmt!("%?", pbs.map(|pb| param_bound_to_str(cx, &pb)))
+    fmt!("%?", pbs.map(|pb| param_bound_to_str(cx, pb)))
 }
 
 fn subst(cx: ctxt,
@@ -3487,11 +3487,11 @@ fn substd_enum_variants(cx: ctxt,
                         substs: &substs) -> ~[variant_info] {
     do vec::map(*enum_variants(cx, id)) |variant_info| {
         let substd_args = vec::map(variant_info.args,
-                                   |aty| subst(cx, substs, aty));
+                                   |aty| subst(cx, substs, *aty));
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @{args: substd_args, ctor_ty: substd_ctor_ty,.. *variant_info}
+        @{args: substd_args, ctor_ty: substd_ctor_ty, ..**variant_info}
     }
 }
 

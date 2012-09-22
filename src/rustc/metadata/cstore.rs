@@ -171,7 +171,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[~str] {
     for sorted.each |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
-    fn mapper(ch: crate_hash) -> ~str { return ch.hash; }
+    fn mapper(ch: &crate_hash) -> ~str { return ch.hash; }
     return vec::map(sorted, mapper);
 }
 

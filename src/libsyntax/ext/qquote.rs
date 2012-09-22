@@ -28,7 +28,7 @@ enum fragment {
 }
 
 fn ids_ext(cx: ext_ctxt, strs: ~[~str]) -> ~[ast::ident] {
-    strs.map(|str| cx.parse_sess().interner.intern(@str))
+    strs.map(|str| cx.parse_sess().interner.intern(@*str))
 }
 fn id_ext(cx: ext_ctxt, str: ~str) -> ast::ident {
     cx.parse_sess().interner.intern(@str)

@@ -85,7 +85,7 @@ fn emit_from_vec<S: Serializer, T>(s: S, v: ~[T], f: fn(T)) {
     do s.emit_vec(vec::len(v)) {
         for vec::eachi(v) |i,e| {
             do s.emit_vec_elt(i) {
-                f(e)
+                f(*e)
             }
         }
     }

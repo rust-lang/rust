@@ -83,7 +83,7 @@ fn classify(e: @expr,
 
               ast::expr_tup(es) |
               ast::expr_vec(es, ast::m_imm) => {
-                join_all(vec::map(es, |e| classify(e, def_map, tcx)))
+                join_all(vec::map(es, |e| classify(*e, def_map, tcx)))
               }
 
               ast::expr_vstore(e, vstore) => {
