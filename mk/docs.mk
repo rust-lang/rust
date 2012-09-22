@@ -113,6 +113,16 @@ doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html d
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
+DOCS += doc/tutorial-tasks.html
+doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=html --css=rust.css \
+	   --include-before-body=doc/version_info.html \
+           --output=$@
+
   endif
 endif
 
