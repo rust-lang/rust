@@ -4204,7 +4204,7 @@ impl Resolver {
         match containing_module.children.find(name) {
             Some(child_name_bindings) => {
                 match (*child_name_bindings).def_for_namespace(namespace) {
-                    Some(def) if def.privacy == Public => {
+                    Some(def) if def.privacy == Public || xray == Xray => {
                         // Found it. Stop the search here.
                         return ChildNameDefinition(def.def);
                     }
