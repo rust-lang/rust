@@ -271,7 +271,10 @@ mod tests {
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
-            while i < 100000 { str::push_str(rs, ~"aaaaaaaaaa"); i += 1; }
+            while i < 100000 {
+                str::push_str(&mut rs, ~"aaaaaaaaaa");
+                i += 1;
+            }
             return rs;
         }
         // Test messages from FIPS 180-1

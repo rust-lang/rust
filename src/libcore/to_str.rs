@@ -83,10 +83,10 @@ impl<A: ToStr> ~[A]: ToStr {
         let mut acc = ~"[", first = true;
         for vec::each(self) |elt| {
             if first { first = false; }
-            else { str::push_str(acc, ~", "); }
-            str::push_str(acc, elt.to_str());
+            else { str::push_str(&mut acc, ~", "); }
+            str::push_str(&mut acc, elt.to_str());
         }
-        str::push_char(acc, ']');
+        str::push_char(&mut acc, ']');
         move acc
     }
 }

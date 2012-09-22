@@ -548,10 +548,10 @@ fn sanitize(s: ~str) -> ~str {
           'a' .. 'z'
           | 'A' .. 'Z'
           | '0' .. '9'
-          | '_' => str::push_char(result,c),
+          | '_' => str::push_char(&mut result, c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {
-                str::push_char(result,c);
+                str::push_char(&mut result, c);
             }
           }
         }

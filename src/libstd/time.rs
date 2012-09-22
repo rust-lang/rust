@@ -800,7 +800,7 @@ fn strftime(format: &str, +tm: Tm) -> ~str {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), &tm),
-                ch => str::push_char(buf, ch)
+                ch => str::push_char(&mut buf, ch)
             }
         }
     }

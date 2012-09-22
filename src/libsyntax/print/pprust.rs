@@ -2093,13 +2093,13 @@ fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
     match opt_purity {
       Some(ast::impure_fn) => { }
       Some(purity) => {
-        str::push_str(s, purity_to_str(purity));
-        str::push_char(s, ' ');
+        str::push_str(&mut s, purity_to_str(purity));
+        str::push_char(&mut s, ' ');
       }
       None => {}
     }
 
-    str::push_str(s, opt_proto_to_str(opt_p));
+    str::push_str(&mut s, opt_proto_to_str(opt_p));
 
     return s;
 }

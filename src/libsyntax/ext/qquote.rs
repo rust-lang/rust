@@ -236,11 +236,11 @@ fn finish<T: qq_helper>
             str2 += repl;
         }
         match copy state {
-          active => str::push_char(str2, ch),
+          active => str::push_char(&mut str2, ch),
           skip(1u) => state = blank,
           skip(sk) => state = skip (sk-1u),
-          blank if is_space(ch) => str::push_char(str2, ch),
-          blank => str::push_char(str2, ' ')
+          blank if is_space(ch) => str::push_char(&mut str2, ch),
+          blank => str::push_char(&mut str2, ' ')
         }
         i += 1u;
         if (j < g_len && i == cx.gather[j].hi) {
