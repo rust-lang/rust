@@ -2086,7 +2086,7 @@ fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
     let mut s = visibility_qualified(vis, ~"");
 
     match opt_sty {
-        Some(ast::sty_static) => str::push_str(s, ~"static "),
+        Some(ast::sty_static) => str::push_str(&mut s, ~"static "),
         _ => ()
     };
 
