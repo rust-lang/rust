@@ -69,7 +69,7 @@
                     "if" "use"
                     "let" "log" "loop"
                     "move" "new"
-                    "pure"
+                    "pure" "pub" "priv"
                     "return" "static"
                     "unchecked" "unsafe"
                     "while"))
