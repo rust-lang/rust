@@ -179,6 +179,11 @@ doc-tutorial-borrowed-ptr-extract$(1):
 	$$(Q)rm -f $(1)/test/doc-tutorial-borrowed-ptr/*.rs
 	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/tutorial-borrowed-ptr.md $(1)/test/doc-tutorial-borrowed-ptr
 
+doc-tutorial-tasks-extract$(1):
+	@$$(call E, extract: tutorial-tasks tests)
+	$$(Q)rm -f $(1)/test/doc-tutorial-tasks/*.rs
+	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/tutorial-tasks.md $(1)/test/doc-tutorial-tasks
+
 doc-ref-extract$(1):
 	@$$(call E, extract: ref tests)
 	$$(Q)rm -f $(1)/test/doc-ref/*.rs
@@ -229,6 +234,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-ffi  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-macros  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-borrowed-ptr  \
+    check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-tasks  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-ref
 
 check-stage$(1)-T-$(2)-H-$(3)-core:				\
@@ -297,6 +303,9 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-macros: \
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-borrowed-ptr: \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-borrowed-ptr-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-tasks: \
+	check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-tasks-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-ref: \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-ref-dummy
@@ -485,6 +494,12 @@ DOC_TUTORIAL_BORROWED_PTR_ARGS$(1)-T-$(2)-H-$(3) :=	\
         --build-base $(3)/test/doc-tutorial-borrowed-ptr/ \
         --mode run-pass
 
+DOC_TUTORIAL_TASKS_ARGS$(1)-T-$(2)-H-$(3) :=	\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
+        --src-base $(3)/test/doc-tutorial-tasks/	\
+        --build-base $(3)/test/doc-tutorial-tasks/ \
+        --mode run-pass
+
 DOC_REF_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $(3)/test/doc-ref/			\
@@ -610,6 +625,14 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-borrowed-ptr-dummy:       \
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
                 $$(DOC_TUTORIAL_BORROWED_PTR_ARGS$(1)-T-$(2)-H-$(3)) \
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-borrowed-ptr.log
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-tasks-dummy:       \
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+                doc-tutorial-tasks-extract$(3)
+	@$$(call E, run doc-tutorial-tasks: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+                $$(DOC_TUTORIAL_TASKS_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-tasks.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-ref-dummy:            \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
@@ -748,6 +771,9 @@ check-stage$(1)-H-$(2)-doc-tutorial-macros:			\
 check-stage$(1)-H-$(2)-doc-tutorial-borrowed-ptr:		\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-doc-tutorial-borrowed-ptr)
+check-stage$(1)-H-$(2)-doc-tutorial-tasks:		\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-doc-tutorial-tasks)
 check-stage$(1)-H-$(2)-doc-ref:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-doc-ref)
@@ -859,6 +885,7 @@ check-stage$(1)-doc-tutorial: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial
 check-stage$(1)-doc-tutorial-ffi: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-ffi
 check-stage$(1)-doc-tutorial-macros: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-macros
 check-stage$(1)-doc-tutorial-borrowed-ptr: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-borrowed-ptr
+check-stage$(1)-doc-tutorial-tasks: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-tasks
 check-stage$(1)-doc-ref: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-ref
 
 endef

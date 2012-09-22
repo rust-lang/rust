@@ -7,9 +7,11 @@
 This is a tutorial for the Rust programming language. It assumes the
 reader is familiar with the basic concepts of programming, and has
 programmed in one or more other languages before. It will often make
-comparisons to other languages in the C family. The tutorial covers
-the whole language, though not with the depth and precision of the
-[language reference](rust.html).
+comparisons to other languages in the C family. This tutorial covers
+the fundamentals of the language, including the syntax, the type
+system and memory model, and generics.
+[Additional tutorials](#what-next) cover specific language features in
+greater depth.
 
 ## Language overview
 
@@ -2078,257 +2080,30 @@ This makes it possible to rebind a variable without actually mutating
 it, which is mostly useful for destructuring (which can rebind, but
 not assign).
 
-# Tasks
+# What next?
 
-Rust supports a system of lightweight tasks, similar to what is found
-in Erlang or other actor systems. Rust tasks communicate via messages
-and do not share data. However, it is possible to send data without
-copying it by making use of [the exchange heap](#unique-boxes), which
-allow the sending task to release ownership of a value, so that the
-receiving task can keep on using it.
+Now that you know the essentials, check out any of the additional
+tutorials on individual topics.
 
-> ***Note:*** As Rust evolves, we expect the task API to grow and
-> change somewhat.  The tutorial documents the API as it exists today.
+* [Borrowed pointers][borrow]
+* [Tasks and communication][tasks]
+* [Macros][macros]
+* [The foreign function interface][ffi]
 
-## Spawning a task
+There is further documentation on the [wiki], including articles about
+[unit testing] in Rust, [documenting][rustdoc] and [packaging][cargo]
+Rust code, and a discussion of the [attributes] used to apply metada
+to code.
 
-Spawning a task is done using the various spawn functions in the
-module `task`.  Let's begin with the simplest one, `task::spawn()`:
+[borrow]: tutorial-borrowed-ptr.html
+[tasks]: tutorial-tasks.html
+[macros]: tutorial-macros.html
+[ffi]: tutorial-ffi.html
 
-~~~~
-use task::spawn;
-use io::println;
+[wiki]: https://github.com/mozilla/rust/wiki/Docs
+[unit testing]: https://github.com/mozilla/rust/wiki/Doc-unit-testing
+[rustdoc]: https://github.com/mozilla/rust/wiki/Doc-using-rustdoc
+[cargo]: https://github.com/mozilla/rust/wiki/Doc-using-cargo-to-manage-packages
+[attributes]: https://github.com/mozilla/rust/wiki/Doc-attributes
 
-let some_value = 22;
-
-do spawn {
-    println(~"This executes in the child task.");
-    println(fmt!("%d", some_value));
-}
-~~~~
-
-The argument to `task::spawn()` is a [unique
-closure](#unique-closures) of type `fn~()`, meaning that it takes no
-arguments and generates no return value. The effect of `task::spawn()`
-is to fire up a child task that will execute the closure in parallel
-with the creator.
-
-## Communication
-
-Now that we have spawned a child task, it would be nice if we could
-communicate with it. This is done using *pipes*. Pipes are simply a
-pair of endpoints, with one for sending messages and another for
-receiving messages. The easiest way to create a pipe is to use
-`pipes::stream`.  Imagine we wish to perform two expensive
-computations in parallel.  We might write something like:
-
-~~~~
-use task::spawn;
-use pipes::{stream, Port, Chan};
-
-let (chan, port) = stream();
-
-do spawn {
-    let result = some_expensive_computation();
-    chan.send(result);
-}
-
-some_other_expensive_computation();
-let result = port.recv();
-
-# fn some_expensive_computation() -> int { 42 }
-# fn some_other_expensive_computation() {}
-~~~~
-
-Let's walk through this code line-by-line.  The first line creates a
-stream for sending and receiving integers:
-
-~~~~ {.ignore}
-# use pipes::stream;
-let (chan, port) = stream();
-~~~~
-
-This port is where we will receive the message from the child task
-once it is complete.  The channel will be used by the child to send a
-message to the port.  The next statement actually spawns the child:
-
-~~~~
-# use task::{spawn};
-# use comm::{Port, Chan};
-# fn some_expensive_computation() -> int { 42 }
-# let port = Port();
-# let chan = port.chan();
-do spawn {
-    let result = some_expensive_computation();
-    chan.send(result);
-}
-~~~~
-
-This child will perform the expensive computation send the result
-over the channel.  (Under the hood, `chan` was captured by the
-closure that forms the body of the child task.  This capture is
-allowed because channels are sendable.)
-
-Finally, the parent continues by performing
-some other expensive computation and then waiting for the child's result
-to arrive on the port:
-
-~~~~
-# use pipes::{stream, Port, Chan};
-# fn some_other_expensive_computation() {}
-# let (chan, port) = stream::<int>();
-# chan.send(0);
-some_other_expensive_computation();
-let result = port.recv();
-~~~~
-
-## Creating a task with a bi-directional communication path
-
-A very common thing to do is to spawn a child task where the parent
-and child both need to exchange messages with each other. The
-function `std::comm::DuplexStream()` supports this pattern.  We'll
-look briefly at how it is used.
-
-To see how `spawn_conversation()` works, we will create a child task
-that receives `uint` messages, converts them to a string, and sends
-the string in response.  The child terminates when `0` is received.
-Here is the function that implements the child task:
-
-~~~~
-# use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
-fn stringifier(channel: &DuplexStream<~str, uint>) {
-    let mut value: uint;
-    loop {
-        value = channel.recv();
-        channel.send(uint::to_str(value, 10u));
-        if value == 0u { break; }
-    }
-}
-~~~~
-
-The implementation of `DuplexStream` supports both sending and
-receiving. The `stringifier` function takes a `DuplexStream` that can
-send strings (the first type parameter) and receive `uint` messages
-(the second type parameter). The body itself simply loops, reading
-from the channel and then sending its response back.  The actual
-response itself is simply the strified version of the received value,
-`uint::to_str(value)`.
-
-Here is the code for the parent task:
-
-~~~~
-# use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
-# use task::spawn;
-# fn stringifier(channel: &DuplexStream<~str, uint>) {
-#     let mut value: uint;
-#     loop {
-#         value = channel.recv();
-#         channel.send(uint::to_str(value, 10u));
-#         if value == 0u { break; }
-#     }
-# }
-# fn main() {
-
-let (from_child, to_child) = DuplexStream();
-
-do spawn || {
-    stringifier(&to_child);
-};
-
-from_child.send(22u);
-assert from_child.recv() == ~"22";
-
-from_child.send(23u);
-from_child.send(0u);
-
-assert from_child.recv() == ~"23";
-assert from_child.recv() == ~"0";
-
-# }
-~~~~
-
-The parent task first calls `DuplexStream` to create a pair of bidirectional endpoints. It then uses `task::spawn` to create the child task, which captures one end of the communication channel.  As a result, both parent
-and child can send and receive data to and from the other.
-
-# Testing
-
-The Rust language has a facility for testing built into the language.
-Tests can be interspersed with other code, and annotated with the
-`#[test]` attribute.
-
-~~~~{.xfail-test}
-# // FIXME: xfailed because test_twice is a #[test] function it's not
-# // getting compiled
-extern mod std;
-
-fn twice(x: int) -> int { x + x }
-
-#[test]
-fn test_twice() {
-    let mut i = -100;
-    while i < 100 {
-        assert twice(i) == 2 * i;
-        i += 1;
-    }
-}
-~~~~
-
-When you compile the program normally, the `test_twice` function will
-not be included. To compile and run such tests, compile with the
-`--test` flag, and then run the result:
-
-~~~~ {.notrust}
-> rustc --test twice.rs
-> ./twice
-running 1 tests
-test test_twice ... ok
-result: ok. 1 passed; 0 failed; 0 ignored
-~~~~
-
-Or, if we change the file to fail, for example by replacing `x + x`
-with `x + 1`:
-
-~~~~ {.notrust}
-running 1 tests
-test test_twice ... FAILED
-failures:
-    test_twice
-result: FAILED. 0 passed; 1 failed; 0 ignored
-~~~~
-
-You can pass a command-line argument to a program compiled with
-`--test` to run only the tests whose name matches the given string. If
-we had, for example, test functions `test_twice`, `test_once_1`, and
-`test_once_2`, running our program with `./twice test_once` would run
-the latter two, and running it with `./twice test_once_2` would run
-only the last.
-
-To indicate that a test is supposed to fail instead of pass, you can
-give it a `#[should_fail]` attribute.
-
-~~~~
-extern mod std;
-
-fn divide(a: float, b: float) -> float {
-    if b == 0f { fail; }
-    a / b
-}
-
-#[test]
-#[should_fail]
-fn divide_by_zero() { divide(1f, 0f); }
-
-# fn main() { }
-~~~~
-
-To disable a test completely, add an `#[ignore]` attribute. Running a
-test runner (the program compiled with `--test`) with an `--ignored`
-command-line flag will cause it to also run the tests labelled as
-ignored.
-
-A program compiled as a test runner will have the configuration flag
-`test` defined, so that you can add code that won't be included in a
-normal compile with the `#[cfg(test)]` attribute (for a full explanation
-of attributes, see the [language reference](rust.html)).
+[pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
