@@ -53,6 +53,9 @@ fn run(config: Config) {
             escape_pass::mk_pass(),
             // Remove things marked doc(hidden)
             prune_hidden_pass::mk_pass(),
+            // Remove things that are private
+            // XXX enable this after 'export' is removed in favor of 'pub'
+            // prune_private_pass::mk_pass(),
             // Extract brief documentation from the full descriptions
             desc_to_brief_pass::mk_pass(),
             // Massage the text to remove extra indentation

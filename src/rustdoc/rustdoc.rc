@@ -49,3 +49,4 @@ mod sort_item_type_pass;
 mod page_pass;
 mod sectionalize_pass;
 mod escape_pass;
+mod prune_private_pass;
