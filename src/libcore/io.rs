@@ -52,14 +52,13 @@ trait ReaderUtil {
 
 impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
-        let mut buf = ~[mut];
-        vec::reserve(buf, len);
+        let mut buf = vec::with_capacity(len);
         unsafe { vec::raw::set_len(buf, len); }
 
         let count = self.read(buf, len);
 
         unsafe { vec::raw::set_len(buf, count); }
-        vec::from_mut(move buf)
+        move buf
     }
     fn read_line() -> ~str {
         let mut buf = ~[];
@@ -696,7 +695,7 @@ impl BytesWriter: Writer {
             let buf_len = buf.len();
 
             let count = uint::max(buf_len, self.pos + v_len);
-            vec::reserve(buf, count);
+            vec::reserve(&mut buf, count);
             unsafe { vec::raw::set_len(buf, count); }
 
             let view = vec::mut_view(buf, self.pos, count);
@@ -910,7 +909,7 @@ mod tests {
                     assert(vec::len(res) == len);
                 }
                 assert(vec::slice(ivals, 0u, vec::len(res)) ==
-                       vec::map(res, |x| x as int));
+                       vec::map(res, |x| *x as int));
             }
         }
         let mut i = 0u;

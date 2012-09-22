@@ -15,7 +15,7 @@ trait BaseIter<A> {
 }
 
 trait ExtendedIter<A> {
-    pure fn eachi(blk: fn(uint, A) -> bool);
+    pure fn eachi(blk: fn(uint, v: &A) -> bool);
     pure fn all(blk: fn(A) -> bool) -> bool;
     pure fn any(blk: fn(A) -> bool) -> bool;
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
@@ -36,7 +36,7 @@ trait TimesIx{
 
 trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
-    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
+    pure fn map_to_vec<B>(op: fn(v: &A) -> B) -> ~[B];
     pure fn to_vec() -> ~[A];
     pure fn find(p: fn(A) -> bool) -> Option<A>;
 }
@@ -66,10 +66,10 @@ trait Buildable<A> {
                                 builder: fn(push: pure fn(+A))) -> self;
 }
 
-pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
+pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, v: &A) -> bool) {
     let mut i = 0u;
     for self.each |a| {
-        if !blk(i, *a) { break; }
+        if !blk(i, a) { break; }
         i += 1u;
     }
 }
@@ -97,11 +97,11 @@ pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: IA,
     }
 }
 
-pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
+pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: IA, op: fn(v: &A) -> B)
     -> ~[B] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            push(op(*a));
+            push(op(a));
         }
     }
 }

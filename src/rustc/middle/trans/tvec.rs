@@ -329,7 +329,7 @@ fn write_content(bcx: block,
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index %? with lleltptr=%?",
                                i, bcx.val_str(lleltptr));
-                        bcx = expr::trans_into(bcx, element,
+                        bcx = expr::trans_into(bcx, *element,
                                                SaveIn(lleltptr));
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
                         vec::push(temp_cleanups, lleltptr);

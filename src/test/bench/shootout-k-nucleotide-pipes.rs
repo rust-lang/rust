@@ -147,6 +147,7 @@ fn main(args: ~[~str]) {
     let streams = vec::to_mut(streams);
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
+        let sz = *sz;
         let mut stream = None;
         stream <-> streams[ii];
         let (to_parent_, from_child_) = option::unwrap(stream);

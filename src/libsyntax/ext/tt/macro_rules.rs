@@ -72,7 +72,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         let itr = cx.parse_sess().interner;
 
         for lhses.eachi() |i, lhs| { // try each arm's matchers
-            match lhs {
+            match *lhs {
               @matched_nonterminal(nt_matchers(mtcs)) => {
                 // `none` is because we're not interpolating
                 let arg_rdr = new_tt_reader(s_d, itr, None, arg) as reader;

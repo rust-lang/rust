@@ -85,7 +85,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     }
 
     do graph.map() |v| {
-        map::vec_from_set(v)
+        map::vec_from_set(*v)
     }
 }
 
@@ -173,7 +173,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         log(info, fmt!("PBFS iteration %?", i));
         i += 1u;
         colors = do colors.mapi() |i, c| {
-            let c : color = c;
+            let c : color = *c;
             match c {
               white => {
                 let i = i as node_id;
@@ -200,7 +200,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 
     // Convert the results.
     do vec::map(colors) |c| {
-        match c {
+        match *c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail ~"Found remaining gray nodes in BFS" }
@@ -305,7 +305,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     let mut status = true;
     let level = do tree.map() |parent| {
-        let mut parent = parent;
+        let mut parent = *parent;
         let mut path = ~[];
 
         if parent == -1i64 {
@@ -427,7 +427,7 @@ fn main(args: ~[~str]) {
 
         if do_sequential {
             let start = time::precise_time_s();
-            let bfs_tree = bfs(graph, root);
+            let bfs_tree = bfs(graph, *root);
             let stop = time::precise_time_s();
             
             //total_seq += stop - start;
@@ -438,7 +438,7 @@ fn main(args: ~[~str]) {
             
             if do_validate {
                 let start = time::precise_time_s();
-                assert(validate(edges, root, bfs_tree));
+                assert(validate(edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
@@ -447,7 +447,7 @@ fn main(args: ~[~str]) {
             }
             
             let start = time::precise_time_s();
-            let bfs_tree = bfs2(graph, root);
+            let bfs_tree = bfs2(graph, *root);
             let stop = time::precise_time_s();
             
             total_seq += stop - start;
@@ -458,7 +458,7 @@ fn main(args: ~[~str]) {
             
             if do_validate {
                 let start = time::precise_time_s();
-                assert(validate(edges, root, bfs_tree));
+                assert(validate(edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
@@ -468,7 +468,7 @@ fn main(args: ~[~str]) {
         }
         
         let start = time::precise_time_s();
-        let bfs_tree = pbfs(graph_arc, root);
+        let bfs_tree = pbfs(graph_arc, *root);
         let stop = time::precise_time_s();
 
         total_par += stop - start;
@@ -478,7 +478,7 @@ fn main(args: ~[~str]) {
 
         if do_validate {
             let start = time::precise_time_s();
-            assert(validate(edges, root, bfs_tree));
+            assert(validate(edges, *root, bfs_tree));
             let stop = time::precise_time_s();
             
             io::stdout().write_line(fmt!("Validation completed in %? seconds.",

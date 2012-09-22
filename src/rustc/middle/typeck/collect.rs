@@ -164,7 +164,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
 
 fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
-                        stuff: ~[T], f: fn@(T) -> ty::method) {
+                        stuff: ~[T], f: fn@(v: &T) -> ty::method) {
         ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
@@ -213,7 +213,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
       ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
             let trait_bounds = ty_param_bounds(ccx, params);
-            let ty_m = trait_method_to_ty_method(m);
+            let ty_m = trait_method_to_ty_method(*m);
             let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd);
             if ty_m.self_ty.node == ast::sty_static {
                 make_static_method_ty(ccx, ty_m, region_paramd,
@@ -226,7 +226,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
         store_methods::<@ast::method>(ccx, id, struct_def.methods, |m| {
-            ty_of_method(ccx, m, region_paramd)
+            ty_of_method(ccx, *m, region_paramd)
         });
       }
       _ => { /* Ignore things that aren't traits or classes */ }
@@ -413,7 +413,7 @@ fn convert_methods(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     do vec::map(ms) |m| {
         let bounds = ty_param_bounds(ccx, m.tps);
-        let mty = ty_of_method(ccx, m, rp);
+        let mty = ty_of_method(ccx, *m, rp);
         let fty = ty::mk_fn(tcx, mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
@@ -500,7 +500,7 @@ fn convert_struct(ccx: @crate_ctxt,
     do option::iter(struct_def.ctor) |ctor| {
         // Write the ctor type
         let t_args = ctor.node.dec.inputs.map(
-            |a| ty_of_arg(ccx, type_rscope(rp), a, None) );
+            |a| ty_of_arg(ccx, type_rscope(rp), *a, None) );
         let t_res = ty::mk_class(
             tcx, local_def(id),
             {self_r: rscope::bound_self_region(rp),
@@ -772,7 +772,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
 
     let bounds = ty_param_bounds(ccx, ty_params);
     let rb = in_binding_rscope(empty_rscope);
-    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, a, None) );
+    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, *a, None) );
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, FnTyBase {

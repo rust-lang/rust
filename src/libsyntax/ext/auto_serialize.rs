@@ -183,7 +183,7 @@ impl ext_ctxt: ext_ctxt_helpers {
              -output: @ast::ty) -> @ast::ty {
         let args = do vec::map(input_tys) |ty| {
             {mode: ast::expl(ast::by_ref),
-             ty: ty,
+             ty: *ty,
              ident: parse::token::special_idents::invalid,
              id: self.next_id()}
         };
@@ -333,7 +333,7 @@ fn ser_path(cx: ext_ctxt, tps: ser_tps_map, path: @ast::path,
                 cx.helper_path(path, ~"serialize")));
 
     let ty_args = do vec::map(path.types) |ty| {
-        let sv_stmts = ser_ty(cx, tps, ty, cx.clone(s), #ast{ __v });
+        let sv_stmts = ser_ty(cx, tps, *ty, cx.clone(s), #ast{ __v });
         let sv = cx.expr(path.span,
                          ast::expr_block(cx.blk(path.span, sv_stmts)));
         cx.at(ty.span, #ast{ |__v| $(sv) })
@@ -588,7 +588,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
         vec::append(~[{ident: cx.ident_of(~"__S"),
                       id: cx.next_id(),
                       bounds: ser_bnds}],
-                    vec::map(tps, |tp| cx.clone_ty_param(tp)));
+                    vec::map(tps, |tp| cx.clone_ty_param(*tp)));
 
     let ser_output: @ast::ty = @{id: cx.next_id(),
                                  node: ast::ty_nil,
@@ -624,7 +624,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
                 cx.helper_path(path, ~"deserialize")));
 
     let ty_args = do vec::map(path.types) |ty| {
-        let dv_expr = deser_ty(cx, tps, ty, cx.clone(d));
+        let dv_expr = deser_ty(cx, tps, *ty, cx.clone(d));
         cx.lambda(cx.expr_blk(dv_expr))
     };
 
@@ -795,7 +795,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
                       id: cx.next_id(),
                       bounds: deser_bnds}],
                     vec::map(tps, |tp| {
-                        let cloned = cx.clone_ty_param(tp);
+                        let cloned = cx.clone_ty_param(*tp);
                         {bounds: @(vec::append(*cloned.bounds,
                                                ~[ast::bound_copy])),
                          .. cloned}

@@ -174,7 +174,7 @@ fn trans_fn_ref_with_vtables(
     debug!("trans_fn_ref_with_vtables(bcx=%s, def_id=%?, ref_id=%?, \
             type_params=%?, vtables=%?)",
            bcx.to_str(), def_id, ref_id,
-           type_params.map(|t| bcx.ty_to_str(t)),
+           type_params.map(|t| bcx.ty_to_str(*t)),
            vtables);
     let _indenter = indenter();
 
@@ -454,7 +454,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
         let last = arg_exprs.len() - 1u;
         for vec::eachi(arg_exprs) |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
-                trans_arg_expr(bcx, arg_tys[i], arg_expr, &mut temp_cleanups,
+                trans_arg_expr(bcx, arg_tys[i], *arg_expr, &mut temp_cleanups,
                                if i == last { ret_flag } else { None },
                                autoref_arg)
             });

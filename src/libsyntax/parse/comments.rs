@@ -89,7 +89,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
         }
 
         return do lines.map |line| {
-            let chars = str::chars(line);
+            let chars = str::chars(*line);
             if i > chars.len() {
                 ~""
             } else {

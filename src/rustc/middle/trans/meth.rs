@@ -330,9 +330,9 @@ fn combine_impl_and_methods_tps(bcx: block,
                       vec::tailn(node_substs,
                                  node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);
-    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(t)));
-    debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(t)));
-    debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(t)));
+    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
+    debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(*t)));
+    debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(*t)));
 
     return ty_substs;
 }
@@ -462,7 +462,7 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
         }
         typeck::vtable_trait(trait_id, substs) => {
             @{def: trait_id,
-              params: vec::map(substs, |t| mono_precise(t, None))}
+              params: vec::map(substs, |t| mono_precise(*t, None))}
         }
         // can't this be checked at the callee?
         _ => fail ~"vtable_id"

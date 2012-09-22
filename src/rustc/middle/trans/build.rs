@@ -144,7 +144,7 @@ fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
     cx.terminated = true;
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, a)),
+           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, *a)),
                         ~", "));
     unsafe {
         count_insn(cx, "invoke");
@@ -677,7 +677,7 @@ fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
 
         debug!("Call(Fn=%s, Args=%?)",
                val_str(cx.ccx().tn, Fn),
-               Args.map(|arg| val_str(cx.ccx().tn, arg)));
+               Args.map(|arg| val_str(cx.ccx().tn, *arg)));
 
         do vec::as_imm_buf(Args) |ptr, len| {
             llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())

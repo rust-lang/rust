@@ -12,7 +12,7 @@ impl<A> IMPL_T<A>: iter::BaseIter<A> {
 }
 
 impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
-    pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
+    pure fn eachi(blk: fn(uint, v: &A) -> bool) { iter::eachi(self, blk) }
     pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
@@ -32,7 +32,7 @@ impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
     pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
-    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(op: fn(v: &A) -> B) -> ~[B] {
         iter::map_to_vec(self, op)
     }
     pure fn to_vec() -> ~[A] { iter::to_vec(self) }

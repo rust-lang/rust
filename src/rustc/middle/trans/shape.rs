@@ -72,7 +72,7 @@ impl nominal_id_ : to_bytes::IterBytes {
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
                  parent_id: Option<ast::def_id>,
                  tps: ~[ty::t]) -> nominal_id {
-    let tps_norm = tps.map(|t| ty::normalize_ty(tcx, t));
+    let tps_norm = tps.map(|t| ty::normalize_ty(tcx, *t));
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 

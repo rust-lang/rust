@@ -637,7 +637,7 @@ fn list_dir(p: &Path) -> ~[~str] {
  * This version prepends each entry with the directory.
  */
 fn list_dir_path(p: &Path) -> ~[~Path] {
-    os::list_dir(p).map(|f| ~p.push(f))
+    os::list_dir(p).map(|f| ~p.push(*f))
 }
 
 /// Removes a directory at the specified path
@@ -721,9 +721,8 @@ fn copy_file(from: &Path, to: &Path) -> bool {
             fclose(istream);
             return false;
         }
-        let mut buf : ~[mut u8] = ~[mut];
         let bufsize = 8192u;
-        vec::reserve(buf, bufsize);
+        let mut buf = vec::with_capacity::<u8>(bufsize);
         let mut done = false;
         let mut ok = true;
         while !done {

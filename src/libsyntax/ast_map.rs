@@ -58,7 +58,7 @@ type path = ~[path_elt];
 /* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: ~str, itr: ident_interner) -> ~str {
     let strs = do vec::map(p) |e| {
-        match e {
+        match *e {
           path_mod(s) => *itr.get(s),
           path_name(s) => *itr.get(s)
         }

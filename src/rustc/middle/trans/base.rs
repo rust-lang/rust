@@ -206,7 +206,7 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     assert ix < variant.args.len();
 
     let arg_lltys = vec::map(variant.args, |aty| {
-        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, aty))
+        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, *aty))
     });
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
@@ -560,7 +560,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_tup(args) => {
         for vec::eachi(args) |i, arg| {
             let llfld_a = GEPi(cx, av, [0u, i]);
-            cx = f(cx, llfld_a, arg);
+            cx = f(cx, llfld_a, *arg);
         }
       }
       ty::ty_enum(tid, substs) => {
@@ -1113,17 +1113,17 @@ fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for vec::reach(cleanups) |cu| {
-            match cu {
-              clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
+    for vec::rev_each(cleanups) |cu| {
+        match *cu {
+            clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
                 // landing pads because they can be freed en mass later
                 if cleanup_type == normal_exit_and_unwind || !is_lpad {
                     bcx = cfn(bcx);
                 }
-              }
             }
         }
+    }
     return bcx;
 }
 

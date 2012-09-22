@@ -163,7 +163,7 @@ impl vtable_origin {
             vtable_trait(def_id, ref tys) => {
                 fmt!("vtable_trait(%?:%s, %?)",
                      def_id, ty::item_path_str(tcx, def_id),
-                     tys.map(|t| ty_to_str(tcx, t)))
+                     tys.map(|t| ty_to_str(tcx, *t)))
             }
         }
     }
@@ -202,7 +202,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
                        +substs: ~[ty::t]) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
-               substs.map(|t| ty_to_str(tcx, t)));
+               substs.map(|t| ty_to_str(tcx, *t)));
         tcx.node_type_substs.insert(node_id, substs);
     }
 }

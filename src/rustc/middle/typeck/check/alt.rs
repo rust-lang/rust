@@ -145,7 +145,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             let vinfo =
                 ty::enum_variant_with_id(
                     tcx, v_def_ids.enm, v_def_ids.var);
-            vinfo.args.map(|t| { ty::subst(tcx, expected_substs, t) })
+            vinfo.args.map(|t| { ty::subst(tcx, expected_substs, *t) })
         };
         let arg_len = arg_types.len(), subpats_len = match subpats {
             None => arg_len,

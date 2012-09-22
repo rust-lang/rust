@@ -20,7 +20,7 @@ fn main() {
     assert d.len() == exp.len();
 
     for d.eachi |i, e| {
-        assert e == exp[i];
+        assert *e == exp[i];
     }
 
     let v = dvec::unwrap(move d);

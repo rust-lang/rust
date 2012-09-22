@@ -76,7 +76,7 @@ fn map_slices<A: Copy Send, B: Copy Send>(
 fn map<A: Copy Send, B: Copy Send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
-            vec::map(slice, |x| f(x))
+            vec::map(slice, |x| f(*x))
         }
     }))
 }
@@ -87,7 +87,7 @@ fn mapi<A: Copy Send, B: Copy Send>(xs: ~[A],
     let slices = map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
             vec::mapi(slice, |i, x| {
-                f(i + base, x)
+                f(i + base, *x)
             })
         }
     });
@@ -109,7 +109,7 @@ fn mapi_factory<A: Copy Send, B: Copy Send>(
         let f = f();
         fn~(base: uint, slice : &[A], move f) -> ~[B] {
             vec::mapi(slice, |i, x| {
-                f(i + base, x)
+                f(i + base, *x)
             })
         }
     });

@@ -283,9 +283,7 @@ fn item_path(intr: ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     let len_doc = ebml::get_doc(path_doc, tag_path_len);
     let len = ebml::doc_as_u32(len_doc) as uint;
 
-    let mut result = ~[];
-    vec::reserve(result, len);
-
+    let mut result = vec::with_capacity(len);
     for ebml::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = ebml::doc_as_str(elt_doc);

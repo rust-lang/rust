@@ -95,14 +95,14 @@ fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     return mitems;
 }
 
-fn desugar_doc_attr(attr: ast::attribute) -> ast::attribute {
+fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
     if attr.node.is_sugared_doc {
         let comment = get_meta_item_value_str(@attr.node.value).get();
         let meta = mk_name_value_item_str(~"doc",
                                      strip_doc_comment_decoration(comment));
         return mk_attr(meta);
     } else {
-        attr
+        *attr
     }
 }
 

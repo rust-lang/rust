@@ -39,7 +39,7 @@ fn replace_bound_regions_in_fn_ty(
                 all_tys=%?)",
            self_ty.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
-           all_tys.map(|t| ty_to_str(tcx, t)));
+           all_tys.map(|t| ty_to_str(tcx, *t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {

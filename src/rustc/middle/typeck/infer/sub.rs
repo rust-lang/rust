@@ -139,10 +139,7 @@ impl Sub: combine {
                 // anything to do with the region variable that's created
                 // for it.  The only thing we're doing with `br` here is
                 // using it in the debug message.
-                //
-                // NDM--we should not be used dummy_sp() here, but
-                // rather passing in the span or something like that.
-                let rvar = self.infcx.next_region_var_nb(dummy_sp());
+                let rvar = self.infcx.next_region_var_nb(self.span);
                 debug!("Bound region %s maps to %s",
                        bound_region_to_str(self.infcx.tcx, br),
                        region_to_str(self.infcx.tcx, rvar));

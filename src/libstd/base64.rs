@@ -79,8 +79,7 @@ impl ~[u8]: FromBase64 {
             if self[len - 2u] == '=' as u8 { padding += 1u; }
         }
 
-        let mut r = ~[];
-        vec::reserve(r, (len / 4u) * 3u - padding);
+        let mut r = vec::with_capacity((len / 4u) * 3u - padding);
 
         let mut i = 0u;
         while i < len {

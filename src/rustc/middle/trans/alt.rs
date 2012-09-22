@@ -210,14 +210,14 @@ struct Match {
 fn match_to_str(bcx: block, m: &Match) -> ~str {
     if bcx.sess().verbose() {
         // for many programs, this just take too long to serialize
-        fmt!("%?", m.pats.map(|p| pat_to_str(p, bcx.sess().intr())))
+        fmt!("%?", m.pats.map(|p| pat_to_str(*p, bcx.sess().intr())))
     } else {
         fmt!("%u pats", m.pats.len())
     }
 }
 
 fn matches_to_str(bcx: block, m: &[@Match]) -> ~str {
-    fmt!("%?", m.map(|n| match_to_str(bcx, n)))
+    fmt!("%?", m.map(|n| match_to_str(bcx, *n)))
 }
 
 fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
@@ -256,7 +256,7 @@ fn expand_nested_bindings(bcx: block, m: &[@Match/&r],
                 @Match {pats: pats, data: br.data}
             }
             _ => {
-                br
+                *br
             }
         }
     }
@@ -789,7 +789,7 @@ fn compile_guard(bcx: block,
            bcx.to_str(),
            bcx.expr_to_str(guard_expr),
            matches_to_str(bcx, m),
-           vals.map(|v| bcx.val_str(v)));
+           vals.map(|v| bcx.val_str(*v)));
     let _indenter = indenter();
 
     let mut bcx = bcx;
@@ -840,7 +840,7 @@ fn compile_submatch(bcx: block,
     debug!("compile_submatch(bcx=%s, m=%s, vals=%?)",
            bcx.to_str(),
            matches_to_str(bcx, m),
-           vals.map(|v| bcx.val_str(v)));
+           vals.map(|v| bcx.val_str(*v)));
     let _indenter = indenter();
 
     /*
@@ -895,7 +895,7 @@ fn compile_submatch(bcx: block,
         let pat_ty = node_id_type(bcx, pat_id);
         do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
             let rec_vals = rec_fields.map(|field_name| {
-                let ix = ty::field_idx_strict(tcx, field_name, field_tys);
+                let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
                 GEPi(bcx, val, struct_field(ix))
             });
             compile_submatch(
@@ -1227,7 +1227,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             for sub_pats.each |sub_pat| {
                 for vec::eachi(args.vals) |i, argval| {
                     bcx = bind_irrefutable_pat(bcx, sub_pat[i],
-                                               argval, make_copy);
+                                               *argval, make_copy);
                 }
             }
         }
@@ -1245,7 +1245,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         ast::pat_tup(elems) => {
             for vec::eachi(elems) |i, elem| {
                 let fldptr = GEPi(bcx, val, [0u, i]);
-                bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
+                bcx = bind_irrefutable_pat(bcx, *elem, fldptr, make_copy);
             }
         }
         ast::pat_box(inner) | ast::pat_uniq(inner) |

@@ -553,7 +553,7 @@ fn build_session_options(binary: ~str,
 
     let addl_lib_search_paths =
         getopts::opt_strs(matches, ~"L")
-        .map(|s| Path(s));
+        .map(|s| Path(*s));
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
     let test = opt_present(matches, ~"test");
     let sopts: @session::options =

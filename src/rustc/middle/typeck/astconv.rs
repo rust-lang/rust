@@ -125,7 +125,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Owned>(
             fmt!("wrong number of type arguments: expected %u but found %u",
                  (*decl_bounds).len(), path.types.len()));
     }
-    let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, a_t));
+    let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, *a_t));
 
     let substs = {self_r:self_r, self_ty:None, tps:tps};
     {substs: substs, ty: ty::subst(tcx, &substs, decl_ty)}
@@ -295,7 +295,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
                         |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {
-        let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, t));
+        let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, *t));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_rec(fields) => {
@@ -489,7 +489,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
                 // were supplied
                 if i < e.inputs.len() {Some(e.inputs[i])} else {None}
             };
-            ty_of_arg(self, rb, a, expected_arg_ty)
+            ty_of_arg(self, rb, *a, expected_arg_ty)
         };
 
         let expected_ret_ty = expected_tys.map(|e| e.output);

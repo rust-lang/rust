@@ -40,8 +40,7 @@ fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     }
 
     fn merge<T: Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
-        let mut rs = ~[];
-        vec::reserve(rs, len(a) + len(b));
+        let mut rs = vec::with_capacity(len(a) + len(b));
         let a_len = len(a);
         let mut a_ix = 0u;
         let b_len = len(b);

@@ -269,8 +269,7 @@ impl<T: Copy, E: Copy> Result<T, E> {
 fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: fn((&T)) -> Result<V,U>) -> Result<~[V],U> {
 
-    let mut vs: ~[V] = ~[];
-    vec::reserve(vs, vec::len(ts));
+    let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
     for vec::each(ts) |t| {
         match op(t) {
           Ok(v) => vec::push(vs, v),
@@ -306,8 +305,7 @@ fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
-    let mut vs = ~[];
-    vec::reserve(vs, n);
+    let mut vs = vec::with_capacity(n);
     let mut i = 0u;
     while i < n {
         match op(ss[i],ts[i]) {

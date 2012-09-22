@@ -224,10 +224,10 @@ fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     // the copy keywords prevent recursive use of dvec
     let states = do (copy proto.states).map_to_vec |s| {
         let messages = do (copy s.messages).map_to_vec |m| {
-            let message(name, span, tys, this, next) = m;
+            let message(name, span, tys, this, next) = *m;
             visitor.visit_message(name, span, tys, this, next)
         };
-        visitor.visit_state(s, messages)
+        visitor.visit_state(*s, messages)
     };
     visitor.visit_proto(proto, states)
 }

@@ -80,11 +80,11 @@ fn new_sem<Q: Send>(count: int, +q: Q) -> Sem<Q> {
 #[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint)
         -> Sem<~[mut Waitqueue]> {
-    let mut queues = ~[mut];
+    let mut queues = ~[];
     for num_condvars.times {
         vec::push(queues, new_waitqueue());
     }
-    new_sem(count, move queues)
+    new_sem(count, vec::to_mut(move queues))
 }
 
 #[doc(hidden)]

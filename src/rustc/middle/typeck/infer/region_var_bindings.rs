@@ -877,8 +877,7 @@ impl RegionVarBindings {
         });
 
         // It would be nice to write this using map():
-        let mut edges = ~[];
-        vec::reserve(edges, num_edges);
+        let mut edges = vec::with_capacity(num_edges);
         for self.constraints.each_ref |constraint, span| {
             vec::push(edges, GraphEdge {
                 next_edge: [mut uint::max_value, uint::max_value],
