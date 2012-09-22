@@ -67,7 +67,7 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
               }
               _ => ()
             }
-            if option::is_none(arm.guard) { vec::push(seen, v); }
+            if arm.guard.is_none() { vec::push(seen, v); }
         }
     }
 }
@@ -233,7 +233,7 @@ fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: ~[@pat], ctor: ctor,
                           arity: uint, lty: ty::t) -> useful {
     let ms = vec::filter_map(m, |r| specialize(tcx, r, ctor, arity, lty) );
     let could_be_useful = is_useful(
-        tcx, ms, option::get(specialize(tcx, v, ctor, arity, lty)));
+        tcx, ms, specialize(tcx, v, ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       u => u
@@ -287,7 +287,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
       ty::ty_enum(eid, _) => {
         let mut found = ~[];
         for m.each |r| {
-            do option::iter(pat_ctor_id(tcx, r[0])) |id| {
+            do option::iter(&pat_ctor_id(tcx, r[0])) |id| {
                 if !vec::contains(found, id) { vec::push(found, id); }
             }
         }

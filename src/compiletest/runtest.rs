@@ -102,7 +102,7 @@ fn run_rpass_test(config: config, props: test_props, testfile: &Path) {
 }
 
 fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
-    if option::is_some(props.pp_exact) {
+    if props.pp_exact.is_some() {
         logv(config, ~"testing for exact pretty-printing");
     } else { logv(config, ~"testing for converging pretty-printing"); }
 
@@ -135,7 +135,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
         };
     let mut actual = srcs[vec::len(srcs) - 1u];
 
-    if option::is_some(props.pp_exact) {
+    if props.pp_exact.is_some() {
         // Now we have to care about line endings
         let cr = ~"\r";
         actual = str::replace(actual, cr, ~"");
@@ -575,7 +575,7 @@ fn aux_output_dir_name(config: config, testfile: &Path) -> Path {
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path(option::get(testfile.filestem()))
+    Path(testfile.filestem().get())
 }
 
 fn output_base_name(config: config, testfile: &Path) -> Path {

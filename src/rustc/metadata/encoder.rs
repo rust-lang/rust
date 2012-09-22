@@ -602,7 +602,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
                                         struct_def.fields, struct_def.methods,
                                         index);
         /* Encode the dtor */
-        do option::iter(struct_def.dtor) |dtor| {
+        do struct_def.dtor.iter |dtor| {
             vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
           encode_info_for_ctor(ecx, ebml_w, dtor.node.id,
                                ecx.tcx.sess.ident_of(
@@ -635,7 +635,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         }
         /* Encode the dtor */
         /* Encode id for dtor */
-        do option::iter(struct_def.dtor) |dtor| {
+        do struct_def.dtor.iter |dtor| {
             do ebml_w.wr_tag(tag_item_dtor) {
                 encode_def_id(ebml_w, local_def(dtor.node.id));
             }

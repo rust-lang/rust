@@ -74,8 +74,8 @@ fn pandoc_writer(
     config: config::Config,
     page: doc::Page
 ) -> Writer {
-    assert option::is_some(config.pandoc_cmd);
-    let pandoc_cmd = option::get(config.pandoc_cmd);
+    assert config.pandoc_cmd.is_some();
+    let pandoc_cmd = config.pandoc_cmd.get();
     let filename = make_local_filename(config, page);
 
     let pandoc_args = ~[

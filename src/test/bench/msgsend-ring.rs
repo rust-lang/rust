@@ -30,8 +30,8 @@ fn main(args: ~[~str]) {
         args
     };        
 
-    let num_tasks = option::get(uint::from_str(args[1]));
-    let msg_per_task = option::get(uint::from_str(args[2]));
+    let num_tasks = uint::from_str(args[1]).get();
+    let msg_per_task = uint::from_str(args[2]).get();
 
     let num_port = Port();
     let mut num_chan = Chan(num_port);

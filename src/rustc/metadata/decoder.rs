@@ -92,7 +92,7 @@ fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
 }
 
 fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
-    return option::get(maybe_find_item(item_id, items));
+    return maybe_find_item(item_id, items).get();
 }
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
@@ -202,7 +202,7 @@ fn each_reexport(d: ebml::Doc, f: fn(ebml::Doc) -> bool) {
 fn field_mutability(d: ebml::Doc) -> ast::class_mutability {
     // Use maybe_get_doc in case it's a method
     option::map_default(
-        ebml::maybe_get_doc(d, tag_class_mut),
+        &ebml::maybe_get_doc(d, tag_class_mut),
         ast::class_immutable,
         |d| {
             match ebml::doc_as_u8(d) as char {
@@ -213,7 +213,7 @@ fn field_mutability(d: ebml::Doc) -> ast::class_mutability {
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
-    do option::chain(ebml::maybe_get_doc(d, tag_disr_val)) |val_doc| {
+    do option::chain(&ebml::maybe_get_doc(d, tag_disr_val)) |val_doc| {
         int::parse_bytes(ebml::doc_data(val_doc), 10u)
     }
 }
@@ -384,7 +384,7 @@ fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
             found = Some(translate_def_id(cdata, m_did));
         }
     }
-    option::get(found)
+    found.get()
 }
 
 fn get_class_method(intr: ident_interner, cdata: cmd, id: ast::node_id,

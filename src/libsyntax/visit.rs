@@ -222,7 +222,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     match p.node {
       pat_enum(path, children) => {
         visit_path(path, e, v);
-        do option::iter(children) |children| {
+        do option::iter(&children) |children| {
             for children.each |child| { v.visit_pat(*child, e, v); }}
       }
       pat_rec(fields, _) => for fields.each |f| {
@@ -241,7 +241,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
           v.visit_pat(inner, e, v),
       pat_ident(_, path, inner) => {
           visit_path(path, e, v);
-          do option::iter(inner) |subpat| { v.visit_pat(subpat, e, v)};
+          do option::iter(&inner) |subpat| { v.visit_pat(subpat, e, v)};
       }
       pat_lit(ex) => v.visit_expr(ex, e, v),
       pat_range(e1, e2) => { v.visit_expr(e1, e, v); v.visit_expr(e2, e, v); }
@@ -341,10 +341,10 @@ fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
     for sd.traits.each |p| {
         visit_path(p.path, e, v);
     }
-    do option::iter(sd.ctor) |ctor| {
+    do option::iter(&sd.ctor) |ctor| {
       visit_class_ctor_helper(ctor, nm, tps, ast_util::local_def(id), e, v);
     };
-    do option::iter(sd.dtor) |dtor| {
+    do option::iter(&sd.dtor) |dtor| {
       visit_class_dtor_helper(dtor, tps, ast_util::local_def(id), e, v)
     };
 }
@@ -395,7 +395,7 @@ fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
 fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
     match m.node {
       ast::mac_invoc(_, arg, _) => {
-        option::map(arg, |arg| v.visit_expr(arg, e, v)); }
+        option::map(&arg, |arg| v.visit_expr(arg, e, v)); }
       ast::mac_invoc_tt(*) => { /* no user-serviceable parts inside */ }
       ast::mac_ellipsis => (),
       ast::mac_aq(*) => { /* FIXME: maybe visit (Issue #2340) */ }

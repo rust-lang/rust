@@ -31,8 +31,8 @@ fn run(args: ~[~str]) {
     let (from_child, to_child) = do task::spawn_conversation |po, ch| {
         server(po, ch);
     };
-    let size = option::get(uint::from_str(args[1]));
-    let workers = option::get(uint::from_str(args[2]));
+    let size = uint::from_str(args[1]).get();
+    let workers = uint::from_str(args[2]).get();
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0u, workers) |_i| {

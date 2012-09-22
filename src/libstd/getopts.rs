@@ -303,8 +303,8 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                       Some(id) => last_valid_opt_id = option::Some(id),
                       None => {
                         let arg_follows =
-                            option::is_some(last_valid_opt_id) &&
-                            match opts[option::get(last_valid_opt_id)]
+                            last_valid_opt_id.is_some() &&
+                            match opts[last_valid_opt_id.get()]
                               .hasarg {
 
                               Yes | Maybe => true,
@@ -331,23 +331,23 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                 };
                 match opts[optid].hasarg {
                   No => {
-                    if !option::is_none::<~str>(i_arg) {
+                    if !i_arg.is_none() {
                         return Err(UnexpectedArgument(name_str(nm)));
                     }
                     vec::push(vals[optid], Given);
                   }
                   Maybe => {
-                    if !option::is_none::<~str>(i_arg) {
-                        vec::push(vals[optid], Val(option::get(i_arg)));
+                    if !i_arg.is_none() {
+                        vec::push(vals[optid], Val(i_arg.get()));
                     } else if name_pos < vec::len::<Name>(names) ||
                                   i + 1u == l || is_arg(args[i + 1u]) {
                         vec::push(vals[optid], Given);
                     } else { i += 1u; vec::push(vals[optid], Val(args[i])); }
                   }
                   Yes => {
-                    if !option::is_none::<~str>(i_arg) {
+                    if !i_arg.is_none() {
                         vec::push(vals[optid],
-                                  Val(option::get::<~str>(i_arg)));
+                                  Val(i_arg.get()));
                     } else if i + 1u == l {
                         return Err(ArgumentMissing(name_str(nm)));
                     } else { i += 1u; vec::push(vals[optid], Val(args[i])); }

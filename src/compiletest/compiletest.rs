@@ -56,7 +56,7 @@ fn parse_config(args: ~[~str]) -> config {
              if vec::len(matches.free) > 0u {
                  option::Some(matches.free[0])
              } else { option::None },
-         logfile: option::map(getopts::opt_maybe_str(matches,
+         logfile: option::map(&getopts::opt_maybe_str(matches,
                                                      ~"logfile"),
                               |s| Path(s)),
          runtool: getopts::opt_maybe_str(matches, ~"runtool"),
@@ -155,7 +155,7 @@ fn is_test(config: config, testfile: &Path) -> bool {
           _ => ~[~".rc", ~".rs"]
         };
     let invalid_prefixes = ~[~".", ~"#", ~"~"];
-    let name = option::get(testfile.filename());
+    let name = testfile.filename().get();
 
     let mut valid = false;
 

@@ -32,7 +32,7 @@ fn run(
 }
 
 fn maybe_apply_op(op: Op, s: Option<~str>) -> Option<~str> {
-    option::map(s, |s| op(s) )
+    s.map(|s| op(s) )
 }
 
 fn fold_item(fold: fold::Fold<Op>, doc: doc::ItemDoc) -> doc::ItemDoc {

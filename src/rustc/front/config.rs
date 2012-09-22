@@ -104,7 +104,7 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
     let filtered_stmts = vec::filter_map(b.stmts, filter);
     return {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
-         expr: option::map(b.expr, |x| fld.fold_expr(x)),
+         expr: option::map(&b.expr, |x| fld.fold_expr(x)),
          id: b.id,
          rules: b.rules};
 }

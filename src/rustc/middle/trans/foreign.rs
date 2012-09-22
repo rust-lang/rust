@@ -392,7 +392,7 @@ fn x86_64_tys(atys: ~[TypeRef],
     }
     let mut (ret_ty, ret_attr) = x86_64_ty(rty, is_ret_bysret,
                                        StructRetAttribute);
-    let sret = option::is_some(ret_attr);
+    let sret = ret_attr.is_some();
     if sret {
         arg_tys = vec::append(~[ret_ty], arg_tys);
         ret_ty = { cast:  false,
@@ -623,7 +623,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                             let arg_ptr = BitCast(bcx, arg_ptr,
                                               T_ptr(atys[i].ty));
                             Load(bcx, arg_ptr)
-                        } else if option::is_some(attrs[i]) {
+                        } else if attrs[i].is_some() {
                             GEPi(bcx, llargbundle, [0u, i])
                         } else {
                             load_inbounds(bcx, llargbundle, [0u, i])
@@ -938,7 +938,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
             out_sz = shape::llsize_of_real(ccx, llout_ty);
           if tp_sz != out_sz {
-              let sp = match ccx.tcx.items.get(option::get(ref_id)) {
+              let sp = match ccx.tcx.items.get(ref_id.get()) {
                   ast_map::node_expr(e) => e.span,
                   _ => fail ~"reinterpret_cast or forget has non-expr arg"
               };
@@ -1105,7 +1105,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                     let n = vec::len(atys);
                     while i < n {
                         let mut argval = get_param(llwrapfn, i + j);
-                        if option::is_some(attrs[i]) {
+                        if attrs[i].is_some() {
                             argval = Load(bcx, argval);
                             store_inbounds(bcx, argval, llargbundle,
                                            [0u, i]);

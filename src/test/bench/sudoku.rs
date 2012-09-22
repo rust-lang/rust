@@ -37,9 +37,9 @@ fn read_grid(f: io::Reader) -> grid_t {
     while !f.eof() {
         let comps = str::split_char(str::trim(f.read_line()), ',');
         if vec::len(comps) >= 3u {
-            let row     = option::get(uint::from_str(comps[0])) as u8;
-            let col     = option::get(uint::from_str(comps[1])) as u8;
-            g[row][col] = option::get(uint::from_str(comps[2])) as u8;
+            let row     = uint::from_str(comps[0]).get() as u8;
+            let col     = uint::from_str(comps[1]).get() as u8;
+            g[row][col] = uint::from_str(comps[2]).get() as u8;
         }
     }
     return grid_ctor(g);

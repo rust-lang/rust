@@ -279,7 +279,7 @@ fn build_closure(bcx0: block,
 
     // If this is a `for` loop body, add two special environment
     // variables:
-    do option::iter(include_ret_handle) |flagptr| {
+    do option::iter(&include_ret_handle) |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: flagptr, ty: ty::mk_bool(tcx),
                                 mode: ByRef, source: FromLvalue};
@@ -375,9 +375,9 @@ fn trans_expr_fn(bcx: block,
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, |fcx| {
             load_environment(fcx, cdata_ty, cap_vars,
-                             option::is_some(ret_handle), ck);
+                             ret_handle.is_some(), ck);
                       }, |bcx| {
-            if option::is_some(is_loop_body) {
+            if is_loop_body.is_some() {
                 Store(bcx, C_bool(true), bcx.fcx.llretptr);
             }
         });

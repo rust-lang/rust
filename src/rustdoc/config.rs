@@ -159,16 +159,16 @@ fn config_from_opts(
     let result = result::Ok(config);
     let result = do result::chain(result) |config| {
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
-        let output_dir = option::map(output_dir, |s| Path(s));
+        let output_dir = output_dir.map(|s| Path(s));
         result::Ok({
-            output_dir: option::get_default(output_dir, config.output_dir),
+            output_dir: output_dir.get_default(config.output_dir),
             .. config
         })
     };
     let result = do result::chain(result) |config| {
         let output_format = getopts::opt_maybe_str(
             matches, opt_output_format());
-        do option::map_default(output_format, result::Ok(config))
+        do output_format.map_default(result::Ok(config))
             |output_format| {
             do result::chain(parse_output_format(output_format))
                 |output_format| {
@@ -183,7 +183,7 @@ fn config_from_opts(
     let result = do result::chain(result) |config| {
         let output_style =
             getopts::opt_maybe_str(matches, opt_output_style());
-        do option::map_default(output_style, result::Ok(config))
+        do output_style.map_default(result::Ok(config))
             |output_style| {
             do result::chain(parse_output_style(output_style))
                 |output_style| {
@@ -251,7 +251,7 @@ fn maybe_find_pandoc(
         output.status == 0
     };
 
-    if option::is_some(pandoc) {
+    if pandoc.is_some() {
         result::Ok(pandoc)
     } else {
         result::Err(~"couldn't find pandoc")

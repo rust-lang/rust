@@ -176,7 +176,7 @@ trait get_and_find_region {
 
 impl isr_alist: get_and_find_region {
     fn get(br: ty::bound_region) -> ty::region {
-        option::get(self.find(br))
+        self.find(br).get()
     }
 
     fn find(br: ty::bound_region) -> Option<ty::region> {
@@ -227,7 +227,7 @@ fn check_fn(ccx: @crate_ctxt,
     // the node_id of the body block.
 
     let {isr, self_info, fn_ty} = {
-        let old_isr = option::map_default(old_fcx, @Nil,
+        let old_isr = option::map_default(&old_fcx, @Nil,
                                          |fcx| fcx.in_scope_regions);
         replace_bound_regions_in_fn_ty(tcx, old_isr, self_info, fn_ty,
                                        |br| ty::re_free(body.node.id, br))
@@ -239,7 +239,7 @@ fn check_fn(ccx: @crate_ctxt,
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
            arg_tys.map(|a| ty_to_str(tcx, *a)),
            ty_to_str(tcx, ret_ty),
-           option::map(self_info, |s| ty_to_str(tcx, s.self_ty)));
+           option::map(&self_info, |s| ty_to_str(tcx, s.self_ty)));
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
@@ -258,7 +258,7 @@ fn check_fn(ccx: @crate_ctxt,
         };
 
         let indirect_ret_ty = if indirect_ret {
-            let ofcx = option::get(old_fcx);
+            let ofcx = old_fcx.get();
             match ofcx.indirect_ret_ty {
               Some(t) => Some(t),
               None => Some(ofcx.ret_ty)
@@ -316,7 +316,7 @@ fn check_fn(ccx: @crate_ctxt,
     // force any remaining type vars to be resolved.
     // If we have an enclosing function scope, our type variables will be
     // resolved when the enclosing scope finishes up.
-    if option::is_none(old_fcx) {
+    if old_fcx.is_none() {
         vtable::resolve_in_block(fcx, body);
         regionck::regionck_fn(fcx, decl, body);
         writeback::resolve_type_vars_in_fn(fcx, decl, body, self_info);
@@ -451,7 +451,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let tcx = ccx.tcx;
     let self_ty = ty::node_id_to_type(tcx, id);
 
-    do option::iter(struct_def.ctor) |ctor| {
+    do option::iter(&struct_def.ctor) |ctor| {
         let class_t = {self_ty: self_ty,
                        self_id: ctor.node.self_id,
                        def_id: local_def(id),
@@ -463,7 +463,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                       Some(class_t));
     }
 
-    do option::iter(struct_def.dtor) |dtor| {
+    do option::iter(&struct_def.dtor) |dtor| {
         let class_t = {self_ty: self_ty,
                        self_id: dtor.node.self_id,
                        def_id: local_def(id),
@@ -935,7 +935,7 @@ fn lookup_field_ty(tcx: ty::ctxt,
                    substs: &ty::substs) -> Option<ty::t> {
 
     let o_field = vec::find(items, |f| f.ident == fieldname);
-    do option::map(o_field) |f| {
+    do o_field.map() |f| {
         ty::lookup_field_type(tcx, class_id, f.id, substs)
     }
 }
@@ -1864,7 +1864,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) => {
-        option::iter(base, |b| { check_expr(fcx, b, expected); });
+        option::iter(&base, |b| { check_expr(fcx, b, expected); });
         let expected = if expected.is_none() && base.is_some() {
             Some(fcx.expr_ty(base.get()))
         } else { expected };

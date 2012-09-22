@@ -95,8 +95,8 @@ fn main(args: ~[~str]) {
     if opts.stress {
         stress(2);
     } else {
-        let max = option::get(uint::parse_bytes(str::to_bytes(args[1]),
-                                                10u)) as int;
+        let max = uint::parse_bytes(str::to_bytes(args[1]),
+                                                10u).get() as int;
 
         let num_trials = 10;
 

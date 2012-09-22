@@ -375,7 +375,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
       lit_int_unsuffixed(n) => const_int(n),
-      lit_float(n, _) => const_float(option::get(float::from_str(*n)) as f64),
+      lit_float(n, _) => const_float(float::from_str(*n).get() as f64),
       lit_nil => const_int(0i64),
       lit_bool(b) => const_bool(b)
     }

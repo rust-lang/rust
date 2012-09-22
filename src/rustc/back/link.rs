@@ -688,7 +688,7 @@ fn link_binary(sess: session,
         }
         let dir = cratepath.dirname();
         if dir != ~"" { vec::push(cc_args, ~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, option::get(cratepath.filestem()));
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem().get());
         vec::push(cc_args, ~"-l" + libarg);
     }
 
@@ -717,7 +717,7 @@ fn link_binary(sess: session,
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             vec::push(cc_args, ~"-Wl,-install_name,@rpath/"
-                      + option::get(output.filename()));
+                      + output.filename().get());
         }
     }
 

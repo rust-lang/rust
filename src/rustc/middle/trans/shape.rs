@@ -351,11 +351,11 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
             // same as records, unless there's a dtor
             let tps = substs.tps;
             let m_dtor_did = ty::ty_dtor(ccx.tcx, did);
-            let mut s = if option::is_some(m_dtor_did) {
+            let mut s = if m_dtor_did.is_some() {
                 ~[shape_res]
             }
             else { ~[shape_struct] }, sub = ~[];
-            do option::iter(m_dtor_did) |dtor_did| {
+            do m_dtor_did.iter |dtor_did| {
                 let ri = @{did: dtor_did, parent_id: Some(did), tps: tps};
                 let id = ccx.shape_cx.resources.intern(ri);
                 add_u16(s, id as u16);
@@ -601,7 +601,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     for uint::range(0u, len) |i| {
         let ri = ccx.shape_cx.resources.get(i);
         for ri.tps.each() |s| { assert !ty::type_has_params(*s); }
-        do option::iter(ri.parent_id) |id| {
+        do ri.parent_id.iter |id| {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
     }
@@ -630,7 +630,7 @@ fn force_declare_tydescs(ccx: @crate_ctxt) {
     for uint::range(0u, len) |i| {
         let ri = ccx.shape_cx.resources.get(i);
         for ri.tps.each() |s| { assert !ty::type_has_params(*s); }
-        do option::iter(ri.parent_id) |id| {
+        do ri.parent_id.iter |id| {
             trans::base::get_res_dtor(ccx, ri.did, id, ri.tps);
         }
     }
@@ -782,7 +782,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           // Reduce a class type to a record type in which all the fields are
           // simplified
           ty::ty_class(did, ref substs) => {
-            let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
+            let simpl_fields = (if ty::ty_dtor(tcx, did).is_some() {
                 // remember the drop flag
                   ~[{ident: syntax::parse::token::special_idents::dtor,
                      mt: {ty: ty::mk_u8(tcx),

@@ -114,7 +114,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
              match m.node {
                mac_invoc(pth, arg, body) => {
                  mac_invoc(fld.fold_path(pth),
-                           option::map(arg, |x| fld.fold_expr(x)), body)
+                           option::map(&arg, |x| fld.fold_expr(x)), body)
                }
                mac_invoc_tt(*) => m.node,
                mac_ellipsis => mac_ellipsis,
@@ -241,7 +241,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_enum(ast::enum_def({
                 variants: vec::map(enum_definition.variants,
                                    |x| fld.fold_variant(*x)),
-                common: option::map(enum_definition.common,
+                common: option::map(&enum_definition.common,
                                     |x| fold_struct_def(x, fld))
             }), fold_ty_params(typms, fld))
           }
@@ -286,7 +286,7 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
             });
         }
     }
-    let dtor = do option::map(struct_def.dtor) |dtor| {
+    let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
         {node: {body: dtor_body,
@@ -331,7 +331,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
 fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
     return {view_items: vec::map(b.view_items, |x| fld.fold_view_item(*x)),
          stmts: vec::map(b.stmts, |x| fld.fold_stmt(*x)),
-         expr: option::map(b.expr, |x| fld.fold_expr(x)),
+         expr: option::map(&b.expr, |x| fld.fold_expr(x)),
          id: fld.new_id(b.id),
          rules: b.rules};
 }
@@ -346,7 +346,7 @@ fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
 
 fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
     return {pats: vec::map(a.pats, |x| fld.fold_pat(*x)),
-         guard: option::map(a.guard, |x| fld.fold_expr(x)),
+         guard: option::map(&a.guard, |x| fld.fold_expr(x)),
          body: fld.fold_block(a.body)};
 }
 
@@ -356,11 +356,11 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_ident(binding_mode, pth, sub) => {
             pat_ident(binding_mode,
                       fld.fold_path(pth),
-                      option::map(sub, |x| fld.fold_pat(x)))
+                      option::map(&sub, |x| fld.fold_pat(x)))
           }
           pat_lit(e) => pat_lit(fld.fold_expr(e)),
           pat_enum(pth, pats) => {
-              pat_enum(fld.fold_path(pth), option::map(pats,
+              pat_enum(fld.fold_path(pth), option::map(&pats,
                        |pats| vec::map(pats, |x| fld.fold_pat(*x))))
           }
           pat_rec(fields, etc) => {
@@ -433,7 +433,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_repeat(fld.fold_expr(expr), fld.fold_expr(count), mutt),
           expr_rec(fields, maybe_expr) => {
             expr_rec(vec::map(fields, |x| fold_field(*x)),
-                     option::map(maybe_expr, |x| fld.fold_expr(x)))
+                     option::map(&maybe_expr, |x| fld.fold_expr(x)))
           }
           expr_tup(elts) => expr_tup(vec::map(elts, |x| fld.fold_expr(*x))),
           expr_call(f, args, blk) => {
@@ -452,14 +452,14 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_addr_of(m, ohs) => expr_addr_of(m, fld.fold_expr(ohs)),
           expr_if(cond, tr, fl) => {
             expr_if(fld.fold_expr(cond), fld.fold_block(tr),
-                    option::map(fl, |x| fld.fold_expr(x)))
+                    option::map(&fl, |x| fld.fold_expr(x)))
           }
           expr_while(cond, body) => {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
           }
           expr_loop(body, opt_ident) => {
               expr_loop(fld.fold_block(body),
-                        option::map(opt_ident, |x| fld.fold_ident(x)))
+                        option::map(&opt_ident, |x| fld.fold_ident(x)))
           }
           expr_match(expr, arms) => {
             expr_match(fld.fold_expr(expr),
@@ -501,12 +501,12 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_index(fld.fold_expr(el), fld.fold_expr(er))
           }
           expr_path(pth) => expr_path(fld.fold_path(pth)),
-          expr_fail(e) => expr_fail(option::map(e, |x| fld.fold_expr(x))),
+          expr_fail(e) => expr_fail(option::map(&e, |x| fld.fold_expr(x))),
           expr_break(opt_ident) =>
-            expr_break(option::map(opt_ident, |x| fld.fold_ident(x))),
+            expr_break(option::map(&opt_ident, |x| fld.fold_ident(x))),
           expr_again(opt_ident) =>
-            expr_again(option::map(opt_ident, |x| fld.fold_ident(x))),
-          expr_ret(e) => expr_ret(option::map(e, |x| fld.fold_expr(x))),
+            expr_again(option::map(&opt_ident, |x| fld.fold_ident(x))),
+          expr_ret(e) => expr_ret(option::map(&e, |x| fld.fold_expr(x))),
           expr_log(i, lv, e) => expr_log(i, fld.fold_expr(lv),
                                          fld.fold_expr(e)),
           expr_assert(e) => expr_assert(fld.fold_expr(e)),
@@ -514,7 +514,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_struct(path, fields, maybe_expr) => {
             expr_struct(fld.fold_path(path),
                         vec::map(fields, |x| fold_field(*x)),
-                        option::map(maybe_expr, |x| fld.fold_expr(x)))
+                        option::map(&maybe_expr, |x| fld.fold_expr(x)))
           }
         }
 }
@@ -573,7 +573,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
             kind = tuple_variant_kind(vec::map(variant_args,
                                                |x| fold_variant_arg(*x))),
         struct_variant_kind(struct_def) => {
-            let dtor = do option::map(struct_def.dtor) |dtor| {
+            let dtor = do option::map(&struct_def.dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
                 {node: {body: dtor_body,
@@ -593,7 +593,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
         enum_variant_kind(enum_definition) => {
             let variants = vec::map(enum_definition.variants,
                                     |x| fld.fold_variant(*x));
-            let common = option::map(enum_definition.common,
+            let common = option::map(&enum_definition.common,
                                      |x| fold_struct_def(x, fld));
             kind = enum_variant_kind(ast::enum_def({ variants: variants,
                                                      common: common }));

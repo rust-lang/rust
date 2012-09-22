@@ -652,7 +652,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
     }
     bopen(s);
     hardbreak_if_not_bol(s);
-    do option::iter(struct_def.ctor) |ctor| {
+    do struct_def.ctor.iter |ctor| {
       maybe_print_comment(s, ctor.span.lo);
       print_outer_attributes(s, ctor.node.attrs);
       // Doesn't call head because there shouldn't be a space after new.
@@ -664,7 +664,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
       space(s.s);
       print_block(s, ctor.node.body);
     }
-    do option::iter(struct_def.dtor) |dtor| {
+    do struct_def.dtor.iter |dtor| {
       hardbreak_if_not_bol(s);
       maybe_print_comment(s, dtor.span.lo);
       print_outer_attributes(s, dtor.node.attrs);
@@ -979,7 +979,7 @@ fn print_mac(s: ps, m: ast::mac) {
           Some(@{node: ast::expr_vec(_, _), _}) => (),
           _ => word(s.s, ~" ")
         }
-        option::iter(arg, |a| print_expr(s, a));
+        arg.iter(|a| print_expr(s, a));
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_invoc_tt(pth, tts) => {
@@ -1177,7 +1177,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
         print_block(s, blk);
       }
       ast::expr_match(expr, arms) => {
@@ -1360,12 +1360,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"loop");
         space(s.s);
-        option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
@@ -1920,7 +1920,7 @@ fn maybe_print_trailing_comment(s: ps, span: codemap::span,
 fn print_remaining_comments(s: ps) {
     // If there aren't any remaining comments, then we need to manually
     // make sure there is a line break at the end.
-    if option::is_none(next_comment(s)) { hardbreak(s.s); }
+    if next_comment(s).is_none() { hardbreak(s.s); }
     loop {
         match next_comment(s) {
           Some(cmnt) => { print_comment(s, cmnt); s.cur_cmnt += 1u; }

@@ -146,7 +146,7 @@ fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_trait(_, _, _) => false,
               ty::ty_enum(did, substs) => {
-                if option::is_none(list::find(enums_seen, |id| *id == did)) {
+                if option::is_none(&list::find(enums_seen, |id| *id == did)) {
                     let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
@@ -234,10 +234,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        do option::iter(cx.ccx.maps.method_map.find(e.id)) |mth| {
+        do option::iter(&cx.ccx.maps.method_map.find(e.id)) |mth| {
             match mth.origin {
               typeck::method_static(did) => {
-                do option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) |ts| {
+                do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
                     do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
                         |uses, subst| { type_needs(cx, uses, subst)}
                 }
@@ -289,7 +289,7 @@ fn handle_body(cx: ctx, body: blk) {
         },
         visit_block: |b, cx, v| {
             visit::visit_block(b, cx, v);
-            do option::iter(b.node.expr) |e| {
+            do option::iter(&b.node.expr) |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },

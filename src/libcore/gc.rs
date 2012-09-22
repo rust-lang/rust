@@ -328,7 +328,7 @@ fn cleanup_stack_for_failure() {
         let mut roots = ~RootSet();
         for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
-            if option::is_some(roots.find(&*root)) {
+            if roots.find(&*root).is_some() {
                 loop;
             }
             roots.insert(*root, ());

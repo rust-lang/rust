@@ -2743,7 +2743,7 @@ impl parser {
                             token_to_str(self.reader, self.token)));
         }
 
-        let actual_dtor = do option::map(the_dtor) |dtor| {
+        let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = dtor;
             {node: {id: self.get_id(),
                     attrs: d_attrs,
@@ -3111,7 +3111,7 @@ impl parser {
             }
         }
         self.bump();
-        let mut actual_dtor = do option::map(the_dtor) |dtor| {
+        let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = dtor;
             {node: {id: self.get_id(),
                     attrs: d_attrs,

@@ -74,7 +74,7 @@ fn search<T: Copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
         for os::list_dir_path(lib_search_path).each |path| {
             debug!("testing %s", path.to_str());
             let maybe_picked = pick(*path);
-            if option::is_some(maybe_picked) {
+            if maybe_picked.is_some() {
                 debug!("picked %s", path.to_str());
                 rslt = maybe_picked;
                 break;
@@ -82,7 +82,7 @@ fn search<T: Copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
                 debug!("rejected %s", path.to_str());
             }
         }
-        if option::is_some(rslt) { break; }
+        if rslt.is_some() { break; }
     }
     return rslt;
 }

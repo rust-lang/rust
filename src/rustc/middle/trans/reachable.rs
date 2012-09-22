@@ -104,14 +104,14 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_class(struct_def, tps) => {
-        do option::iter(struct_def.ctor) |ctor| {
+        do option::iter(&struct_def.ctor) |ctor| {
             cx.rmap.insert(ctor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(ctor.node.attrs)
                      != attr::ia_none {
                 traverse_inline_body(cx, ctor.node.body);
             }
         }
-        do option::iter(struct_def.dtor) |dtor| {
+        do option::iter(&struct_def.dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
                      != attr::ia_none {

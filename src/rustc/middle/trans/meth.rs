@@ -206,7 +206,7 @@ fn trans_static_method_callee(bcx: block,
 
 fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     -> ast::def_id {
-  local_def(option::get(vec::find(ms, |m| m.ident == name)).id)
+  local_def(option::get(&vec::find(ms, |m| m.ident == name)).id)
 }
 
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,

@@ -707,7 +707,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                None => cx.span_fatal(sp, ~"macro definition must have " +
                                      ~"at least one clause")
              },
-         ext: normal({expander: ext, span: Some(option::get(arg).span)})};
+         ext: normal({expander: ext, span: Some(arg.get().span)})};
 
     fn generic_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body,

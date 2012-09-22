@@ -62,7 +62,7 @@ pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
 
 /// Returns true if the map contains a value for the specified key
 fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
-    return !option::is_none(find(self, key));
+    return !find(self, key).is_none();
 }
 
 /// Implements the map::map interface for smallintmap
