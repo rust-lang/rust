@@ -2,4 +2,5 @@
 
 // asterisk is bogus
 #[attr*]
-mod m { }
+mod m {
+    #[legacy_exports]; }

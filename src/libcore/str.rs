@@ -2040,6 +2040,7 @@ pure fn escape_unicode(s: &str) -> ~str {
 
 /// Unsafe operations
 mod raw {
+    #[legacy_exports];
    export
       from_buf,
       from_buf_len,
@@ -2233,6 +2234,7 @@ impl ~str: UniqueStr {
 
 #[cfg(notest)]
 mod traits {
+    #[legacy_exports];
     #[cfg(stage0)]
     impl ~str: Add<&str,~str> {
         #[inline(always)]
@@ -2251,7 +2253,8 @@ mod traits {
 }
 
 #[cfg(test)]
-mod traits {}
+mod traits {
+    #[legacy_exports];}
 
 trait StrSlice {
     fn all(it: fn(char) -> bool) -> bool;
@@ -2396,6 +2399,7 @@ impl &str: StrSlice {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     use libc::c_char;
 

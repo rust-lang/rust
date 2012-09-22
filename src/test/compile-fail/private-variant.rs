@@ -1,4 +1,5 @@
 mod a {
+    #[legacy_exports];
     enum Waffle {
         Belgian,
         Brussels,

@@ -16,6 +16,7 @@ use task::TaskBuilder;
 use either::{Left, Right};
 
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
@@ -112,6 +113,7 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *comm::Chan<bool>;

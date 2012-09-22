@@ -4,8 +4,10 @@
 #[attr1]
 #[path = "crate-attributes-src"]
 mod m {
+    #[legacy_exports];
   #[attr_inner];
 
   #[attr2]
+    #[legacy_exports]
   mod foo;
 }

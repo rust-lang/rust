@@ -10,6 +10,7 @@ extern mod std;
 // an llvm intrinsic.
 #[nolink]
 extern mod libc {
+    #[legacy_exports];
     fn sqrt(n: float) -> float;
 }
 
@@ -30,6 +31,7 @@ fn main(args: ~[~str]) {
 }
 
 mod NBodySystem {
+    #[legacy_exports];
 
     fn make() -> ~[Body::props] {
         let bodies: ~[Body::props] =
@@ -128,6 +130,7 @@ mod NBodySystem {
 }
 
 mod Body {
+    #[legacy_exports];
 
     const PI: float = 3.141592653589793;
     const SOLAR_MASS: float = 39.478417604357432;

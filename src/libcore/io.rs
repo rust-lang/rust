@@ -17,6 +17,7 @@ type fd_t = c_int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_get_stdin() -> *libc::FILE;
     fn rust_get_stdout() -> *libc::FILE;
     fn rust_get_stderr() -> *libc::FILE;
@@ -781,6 +782,7 @@ fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 mod fsync {
+    #[legacy_exports];
 
     enum Level {
         // whatever fsync does on that platform
@@ -863,6 +865,7 @@ mod fsync {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test_simple() {

@@ -105,6 +105,7 @@ pure fn is_finite(x: f32) -> bool {
 
 /* Module: consts */
 mod consts {
+    #[legacy_exports];
 
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.

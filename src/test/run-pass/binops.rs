@@ -73,6 +73,7 @@ fn test_ptr() unsafe {
 #[abi = "cdecl"]
 #[nolink]
 extern mod test {
+    #[legacy_exports];
     fn rust_get_sched_id() -> libc::intptr_t;
     fn get_task_id() -> libc::intptr_t;
 }

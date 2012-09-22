@@ -1,10 +1,12 @@
 // Test that we use fully-qualified type names in error messages.
 
 mod x {
+    #[legacy_exports];
     enum foo { }
 }
 
 mod y {
+    #[legacy_exports];
     enum foo { }
 }
 

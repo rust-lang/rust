@@ -93,6 +93,7 @@ fn unreachable() -> ! {
 }
 
 mod tests {
+    #[legacy_exports];
     #[test]
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?

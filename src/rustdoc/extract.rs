@@ -328,6 +328,7 @@ fn should_extract_struct_fields() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
 
     fn mk_doc(source: ~str) -> doc::Doc {
         let ast = parse::from_str(source);
@@ -377,7 +378,8 @@ mod test {
     fn extract_fns() {
         let doc = mk_doc(
             ~"fn a() { } \
-             mod b { fn c() { } }");
+             mod b {
+                 #[legacy_exports]; fn c() { } }");
         assert doc.cratemod().fns()[0].name() == ~"a";
         assert doc.cratemod().mods()[0].fns()[0].name() == ~"c";
     }

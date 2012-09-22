@@ -5,6 +5,7 @@ export rust;
 use name_pool::add;
 
 mod name_pool {
+    #[legacy_exports];
 
     type name_pool = ();
 
@@ -19,6 +20,7 @@ mod name_pool {
 }
 
 mod rust {
+    #[legacy_exports];
 
     import name_pool::add;
     // FIXME #3155: this is a hack

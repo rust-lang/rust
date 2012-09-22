@@ -22,6 +22,7 @@ export
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn get_time(&sec: i64, &nsec: i32);
     fn precise_time_ns(&ns: u64);
 
@@ -884,6 +885,7 @@ impl Tm {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test_get_time() {

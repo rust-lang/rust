@@ -17,6 +17,7 @@
 #[crate_type = "bin"];
 
 #[no_core];
+#[legacy_exports];
 
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
@@ -29,4 +30,5 @@ extern mod syntax(vers = "0.4");
 
 use core::*;
 
+#[legacy_exports]
 mod pgp;

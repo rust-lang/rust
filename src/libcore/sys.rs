@@ -38,6 +38,7 @@ struct Closure {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn get_tydesc<T>() -> *();
     fn size_of<T>() -> uint;
     fn pref_align_of<T>() -> uint;
@@ -111,6 +112,7 @@ pure fn log_str<T>(t: &T) -> ~str {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn size_of_basic() {

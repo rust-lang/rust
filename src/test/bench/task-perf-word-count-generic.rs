@@ -109,6 +109,7 @@ fn box<T>(+x: T) -> box<T> {
 }
 
 mod map_reduce {
+    #[legacy_exports];
     export putter;
     export getter;
     export mapper;

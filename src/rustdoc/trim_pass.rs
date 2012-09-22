@@ -16,12 +16,14 @@ fn mk_pass() -> Pass {
 #[test]
 fn should_trim_text() {
     let doc = test::mk_doc(~"#[doc = \" desc \"] \
-                            mod m { }");
+                            mod m {
+                                #[legacy_exports]; }");
     assert doc.cratemod().mods()[0].desc() == Some(~"desc");
 }
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

@@ -2,6 +2,7 @@
 // that are not exported, allowing for a sort of poor-man's ADT
 
 mod foo {
+    #[legacy_exports];
     export f;
     export g;
 

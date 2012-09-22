@@ -15,6 +15,7 @@ export traits;
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                  ++v: **vec::raw::VecRepr,
                                  ++n: libc::size_t);
@@ -22,6 +23,7 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
@@ -135,6 +137,7 @@ pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
 
 #[cfg(notest)]
 mod traits {
+    #[legacy_exports];
     #[cfg(stage0)]
     impl<T: Copy> @[T]: Add<&[const T],@[T]> {
         #[inline(always)]
@@ -153,9 +156,11 @@ mod traits {
 }
 
 #[cfg(test)]
-mod traits {}
+mod traits {
+    #[legacy_exports];}
 
 mod raw {
+    #[legacy_exports];
     type VecRepr = vec::raw::VecRepr;
     type SliceRepr = vec::raw::SliceRepr;
 

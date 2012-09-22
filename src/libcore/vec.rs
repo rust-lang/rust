@@ -97,6 +97,7 @@ export traits;
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **raw::VecRepr,
                           ++n: libc::size_t);
@@ -104,6 +105,7 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
@@ -1535,6 +1537,7 @@ impl<T: Ord> @[T] : Ord {
 
 #[cfg(notest)]
 mod traits {
+    #[legacy_exports];
     #[cfg(stage0)]
     impl<T: Copy> ~[T]: Add<&[const T],~[T]> {
         #[inline(always)]
@@ -1570,7 +1573,8 @@ mod traits {
 }
 
 #[cfg(test)]
-mod traits {}
+mod traits {
+    #[legacy_exports];}
 
 trait ConstVector {
     pure fn is_empty() -> bool;
@@ -1744,6 +1748,7 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
 
 /// Unsafe operations
 mod raw {
+    #[legacy_exports];
     // FIXME: This should have crate visibility (#1893 blocks that)
 
     /// The internal representation of a (boxed) vector
@@ -1888,6 +1893,7 @@ mod raw {
 
 /// Operations on `[u8]`
 mod bytes {
+    #[legacy_exports];
     export cmp;
     export lt, le, eq, ne, ge, gt;
     export memcpy, memmove;
@@ -2017,6 +2023,7 @@ impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     fn square(n: uint) -> uint { return n * n; }
 

@@ -2,6 +2,7 @@
 // sort of ADT.
 
 mod foo {
+    #[legacy_exports];
     export t;
     export f;
 

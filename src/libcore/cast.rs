@@ -8,6 +8,7 @@ export copy_lifetime, copy_lifetime_vec;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn forget<T>(-x: T);
     fn reinterpret_cast<T, U>(e: T) -> U;
 }
@@ -97,6 +98,7 @@ unsafe fn copy_lifetime_vec<S,T>(_ptr: &a/[S], ptr: &T) -> &a/T {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test_reinterpret_cast() {

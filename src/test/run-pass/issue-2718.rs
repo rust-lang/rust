@@ -1,4 +1,5 @@
 mod pipes {
+    #[legacy_exports];
     use cast::{forget, transmute};
 
     enum state {
@@ -32,6 +33,7 @@ mod pipes {
 
     #[abi = "rust-intrinsic"]
     mod rusti {
+        #[legacy_exports];
       fn atomic_xchg(_dst: &mut int, _src: int) -> int { fail; }
       fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { fail; }
       fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail; }
@@ -193,6 +195,7 @@ mod pipes {
 }
 
 mod pingpong {
+    #[legacy_exports];
     enum ping = pipes::send_packet<pong>;
     enum pong = pipes::send_packet<ping>;
 
@@ -219,6 +222,7 @@ mod pingpong {
     }
 
     mod client {
+        #[legacy_exports];
         type ping = pipes::send_packet<pingpong::ping>;
         type pong = pipes::recv_packet<pingpong::pong>;
 
@@ -239,6 +243,7 @@ mod pingpong {
     }
 
     mod server {
+        #[legacy_exports];
         type ping = pipes::recv_packet<pingpong::ping>;
         type pong = pipes::send_packet<pingpong::pong>;
 

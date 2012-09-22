@@ -1,4 +1,5 @@
 mod bar {
+    #[legacy_exports];
     enum foo {
         alpha,
         beta,

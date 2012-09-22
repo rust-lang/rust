@@ -83,6 +83,7 @@ trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
 }
 
 mod util {
+    #[legacy_exports];
     type Rational = {num: int, den: int}; // : int::positive(*.den);
 
     pure fn rational_leq(x: Rational, y: Rational) -> bool {
@@ -96,6 +97,7 @@ mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 mod chained {
+    #[legacy_exports];
     export T, mk, HashMap;
 
     const initial_capacity: uint = 32u; // 2^5
@@ -518,6 +520,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test_simple() {

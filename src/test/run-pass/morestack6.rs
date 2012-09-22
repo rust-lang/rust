@@ -2,6 +2,7 @@
 // external symbols as close to the red zone as possible.
 
 extern mod rustrt {
+    #[legacy_exports];
     fn debug_get_stk_seg() -> *u8;
 
     fn rust_get_sched_id() -> libc::intptr_t;

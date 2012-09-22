@@ -2,6 +2,7 @@ use to_str::*;
 use to_str::ToStr;
 
 mod kitty {
+    #[legacy_exports];
 
 struct cat {
   priv mut meows : uint,

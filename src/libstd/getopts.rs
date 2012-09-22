@@ -496,6 +496,7 @@ impl FailType : Eq {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     use opt = getopts;
     use result::{Err, Ok};
 

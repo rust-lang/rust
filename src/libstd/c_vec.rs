@@ -138,6 +138,7 @@ unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     use libc::*;
 
     fn malloc(n: size_t) -> CVec<u8> {

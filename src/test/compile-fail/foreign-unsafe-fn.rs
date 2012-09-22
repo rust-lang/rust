@@ -2,6 +2,7 @@
 
 #[abi = "cdecl"]
 extern mod test {
+    #[legacy_exports];
     unsafe fn free();
 }
 

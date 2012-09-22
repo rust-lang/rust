@@ -24,6 +24,7 @@ export Eq;
 // Awful hack to work around duplicate lang items in core test.
 #[cfg(notest)]
 mod nounittest {
+    #[legacy_exports];
     /**
      * Trait for values that can be compared for a sort-order.
      *
@@ -75,10 +76,12 @@ mod nounittest {
 }
 
 #[cfg(test)]
-mod nounittest {}
+mod nounittest {
+    #[legacy_exports];}
 
 #[cfg(test)]
 mod unittest {
+    #[legacy_exports];
     #[cfg(stage0)]
     trait Ord {
         pure fn lt(&&other: self) -> bool;
@@ -111,7 +114,8 @@ mod unittest {
 }
 
 #[cfg(notest)]
-mod unittest {}
+mod unittest {
+    #[legacy_exports];}
 
 #[cfg(stage0)]
 pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {

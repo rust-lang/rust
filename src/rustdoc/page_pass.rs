@@ -160,6 +160,7 @@ fn should_remove_foreign_mods_from_containing_mods() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc_(
         output_style: config::OutputStyle,
         source: ~str

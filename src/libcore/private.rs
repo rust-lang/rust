@@ -16,6 +16,7 @@ use task::TaskBuilder;
 use task::atomically;
 
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_task_weaken(ch: rust_port_id);
     fn rust_task_unweaken(ch: rust_port_id);
 
@@ -558,6 +559,7 @@ fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn exclusive_arc() {

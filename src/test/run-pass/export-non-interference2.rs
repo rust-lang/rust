@@ -1,8 +1,10 @@
 mod foo {
+    #[legacy_exports];
 
     export bar;
 
     mod bar {
+        #[legacy_exports];
         fn y() { x(); }
     }
 

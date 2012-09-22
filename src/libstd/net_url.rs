@@ -786,6 +786,7 @@ impl Url: IterBytes {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     #[test]
     fn test_split_char_first() {
         let (u,v) = split_char_first(~"hello, sweet world", ',');

@@ -1,13 +1,19 @@
 // xfail-win32 don't understand what's wrong
 // Test that crates and directory modules can contain code
+#[legacy_exports];
 
 #[path = "companionmod-src"]
 mod a {
+    #[legacy_exports];
     mod b {
+        #[legacy_exports];
+        #[legacy_exports]
         mod x;
     }
     #[path = "d"]
     mod c {
+        #[legacy_exports];
+        #[legacy_exports]
         mod x;
     }
 }

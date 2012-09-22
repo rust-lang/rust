@@ -44,6 +44,7 @@ export walk_dir;
 export as_c_charp, fill_charp_buf;
 
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_getcwd() -> ~str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
@@ -78,6 +79,7 @@ fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 mod win32 {
+    #[legacy_exports];
     use dword = libc::types::os::arch::extra::DWORD;
 
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
@@ -131,6 +133,7 @@ fn env() -> ~[(~str,~str)] {
 }
 
 mod global_env {
+    #[legacy_exports];
     //! Internal module for serializing access to getenv/setenv
 
     export getenv;
@@ -138,6 +141,7 @@ mod global_env {
     export env;
 
     extern mod rustrt {
+        #[legacy_exports];
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
     }
 
@@ -204,7 +208,9 @@ mod global_env {
     }
 
     mod impl_ {
+        #[legacy_exports];
         extern mod rustrt {
+            #[legacy_exports];
             fn rust_env_pairs() -> ~[~str];
         }
 
@@ -791,6 +797,7 @@ fn family() -> ~str { ~"windows" }
 
 #[cfg(target_os = "macos")]
 mod consts {
+    #[legacy_exports];
     fn sysname() -> ~str { ~"macos" }
     fn exe_suffix() -> ~str { ~"" }
     fn dll_suffix() -> ~str { ~".dylib" }
@@ -798,6 +805,7 @@ mod consts {
 
 #[cfg(target_os = "freebsd")]
 mod consts {
+    #[legacy_exports];
     fn sysname() -> ~str { ~"freebsd" }
     fn exe_suffix() -> ~str { ~"" }
     fn dll_suffix() -> ~str { ~".so" }
@@ -805,6 +813,7 @@ mod consts {
 
 #[cfg(target_os = "linux")]
 mod consts {
+    #[legacy_exports];
     fn sysname() -> ~str { ~"linux" }
     fn exe_suffix() -> ~str { ~"" }
     fn dll_suffix() -> ~str { ~".so" }
@@ -812,6 +821,7 @@ mod consts {
 
 #[cfg(target_os = "win32")]
 mod consts {
+    #[legacy_exports];
     fn sysname() -> ~str { ~"win32" }
     fn exe_suffix() -> ~str { ~".exe" }
     fn dll_suffix() -> ~str { ~".dll" }
@@ -829,6 +839,7 @@ fn arch() -> str { ~"arm" }
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn last_os_error() {

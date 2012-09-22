@@ -4,6 +4,7 @@
 extern mod std;
 
 mod m {
+    #[legacy_exports];
     export exported;
 
     fn exported() { }

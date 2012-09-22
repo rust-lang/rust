@@ -1,14 +1,17 @@
 // This test is brittle!
 // xfail-pretty - the pretty tests lose path information, breaking #include
+#[legacy_exports];
 
 mod m1 {
+    #[legacy_exports];
     mod m2 {
+        #[legacy_exports];
         fn where_am_i() -> ~str { module_path!() }
     }
 }
 
 fn main() {
-    assert(line!() == 11u);
+    assert(line!() == 14u);
     assert(col!() == 11u);
     assert(file!().ends_with(~"syntax-extension-source-utils.rs"));
     assert(stringify!((2*3) + 5) == ~"2 * 3 + 5");

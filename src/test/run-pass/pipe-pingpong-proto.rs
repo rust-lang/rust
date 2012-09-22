@@ -13,6 +13,7 @@ proto! pingpong (
 )
 
 mod test {
+    #[legacy_exports];
     use pipes::recv;
     use pingpong::{ping, pong};
 

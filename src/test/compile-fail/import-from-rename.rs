@@ -3,6 +3,7 @@
 use baz = foo::{bar};
 
 mod foo {
+    #[legacy_exports];
     fn bar() {}
 }
 

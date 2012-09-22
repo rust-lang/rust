@@ -8,6 +8,7 @@
 extern mod std;
 
 extern mod rustrt {
+    #[legacy_exports];
     fn last_os_error() -> ~str;
 }
 

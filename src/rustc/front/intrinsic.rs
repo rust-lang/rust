@@ -2,6 +2,7 @@
 // and injected into each crate the compiler builds. Keep it small.
 
 mod intrinsic {
+    #[legacy_exports];
 
     pub use rusti::visit_tydesc;
 
@@ -113,6 +114,7 @@ mod intrinsic {
 
     #[abi = "rust-intrinsic"]
     extern mod rusti {
+        #[legacy_exports];
         fn get_tydesc<T>() -> *();
         fn visit_tydesc(td: *TyDesc, &&tv: TyVisitor);
     }

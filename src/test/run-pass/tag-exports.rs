@@ -1,6 +1,7 @@
 use alder::*;
 
 mod alder {
+    #[legacy_exports];
   export burnside;
   export couch;
   export everett;

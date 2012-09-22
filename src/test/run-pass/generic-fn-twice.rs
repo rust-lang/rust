@@ -3,6 +3,7 @@
 
 // -*- rust -*-
 mod foomod {
+    #[legacy_exports];
     fn foo<T>() { }
 }
 

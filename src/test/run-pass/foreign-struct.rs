@@ -5,6 +5,7 @@ enum void { }
 
 #[nolink]
 extern mod bindgen {
+    #[legacy_exports];
     fn printf(++v: void);
 }
 

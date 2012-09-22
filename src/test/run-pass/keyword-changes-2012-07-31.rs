@@ -6,6 +6,7 @@ fn main() {
 }
 
 mod foo {
+    #[legacy_exports];
 }
 
 fn bar() -> int {

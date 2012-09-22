@@ -745,6 +745,7 @@ fn list_metadata(sess: session, path: &Path, out: io::Writer) {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]

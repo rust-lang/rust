@@ -87,6 +87,7 @@ fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn(K, V)) {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn init_treemap() { let _m = TreeMap::<int, int>(); }

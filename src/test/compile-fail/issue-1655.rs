@@ -1,5 +1,6 @@
 // error-pattern:expected item
 mod blade_runner {
+    #[legacy_exports];
     #~[doc(
         brief = "Blade Runner is probably the best movie ever",
         desc = "I like that in the world of Blade Runner it is always

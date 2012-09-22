@@ -484,6 +484,7 @@ fn test_double_slash_collapsing()
 }
 
 mod posix {
+    #[legacy_exports];
 
     #[cfg(test)]
     fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
@@ -574,6 +575,7 @@ mod posix {
 
 // Various windows helpers, and tests for the impl.
 mod windows {
+    #[legacy_exports];
 
     #[inline(always)]
     pure fn is_sep(u: u8) -> bool {

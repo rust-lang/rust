@@ -1,4 +1,5 @@
 mod kitties {
+    #[legacy_exports];
 
 struct cat<U> {
   priv mut info : ~[U],

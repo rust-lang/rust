@@ -1,6 +1,7 @@
 
 
 mod m1 {
+    #[legacy_exports];
     enum foo { foo1, foo2, }
 }
 

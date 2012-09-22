@@ -1,4 +1,5 @@
 mod cat {
+    #[legacy_exports];
     struct Cat {
         priv meows: uint
     }

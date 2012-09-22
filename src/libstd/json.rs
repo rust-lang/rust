@@ -858,6 +858,7 @@ impl Error: to_str::ToStr {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     fn mk_dict(items: &[(~str, Json)]) -> Json {
         let d = map::HashMap();
 
