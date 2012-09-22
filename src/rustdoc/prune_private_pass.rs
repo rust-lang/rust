@@ -1,5 +1,7 @@
 //! Prune things that are private
 
+#[legacy_exports];
+
 export mk_pass;
 
 fn mk_pass() -> Pass {
@@ -55,7 +57,7 @@ fn should_prune_items_without_pub_modifier() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
