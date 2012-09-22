@@ -1,6 +1,7 @@
 
 
 mod foo {
+    #[legacy_exports];
     fn bar(offset: uint) { }
 }
 

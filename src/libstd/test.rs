@@ -29,6 +29,7 @@ export run_tests_console;
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_sched_threads() -> libc::size_t;
 }
 
@@ -428,6 +429,7 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn do_not_run_ignored_tests() {

@@ -2,6 +2,7 @@
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
 }
@@ -10,6 +11,7 @@ extern mod rusti {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 mod m {
+    #[legacy_exports];
     #[cfg(target_arch = "x86")]
     fn main() {
         assert rusti::pref_align_of::<u64>() == 8u;
@@ -25,6 +27,7 @@ mod m {
 
 #[cfg(target_os = "win32")]
 mod m {
+    #[legacy_exports];
     #[cfg(target_arch = "x86")]
     fn main() {
         assert rusti::pref_align_of::<u64>() == 8u;

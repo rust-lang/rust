@@ -181,6 +181,7 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(~[Path("path1"),

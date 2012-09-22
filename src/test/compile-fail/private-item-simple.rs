@@ -1,4 +1,5 @@
 mod a {
+    #[legacy_exports];
     priv fn f() {}
 }
 

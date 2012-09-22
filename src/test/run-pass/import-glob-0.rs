@@ -2,6 +2,7 @@ use module_of_many_things::*;
 use dug::too::greedily::and::too::deep::*;
 
 mod module_of_many_things {
+    #[legacy_exports];
     export f1;
     export f2;
     export f4;
@@ -12,11 +13,17 @@ mod module_of_many_things {
 }
 
 mod dug {
+    #[legacy_exports];
     mod too {
+        #[legacy_exports];
         mod greedily {
+            #[legacy_exports];
             mod and {
+                #[legacy_exports];
                 mod too {
+                    #[legacy_exports];
                     mod deep {
+                        #[legacy_exports];
                         fn nameless_fear() { debug!("Boo!"); }
                         fn also_redstone() { debug!("Whatever."); }
                     }

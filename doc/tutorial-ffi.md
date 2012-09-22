@@ -123,7 +123,9 @@ null pointers.
 The `sha1` function is the most obscure part of the program.
 
 ~~~~
-# mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
+# pub mod crypto {
+#   pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
+# }
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 fn sha1(data: ~str) -> ~str {
     unsafe {
@@ -166,7 +168,9 @@ Rust's safety mechanisms.
 Let's look at our `sha1` function again.
 
 ~~~~
-# mod crypto { fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out } }
+# pub mod crypto {
+#     pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
+# }
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 # fn x(data: ~str) -> ~str {
 # unsafe {

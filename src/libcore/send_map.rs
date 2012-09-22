@@ -28,6 +28,7 @@ trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 mod linear {
+    #[legacy_exports];
     export LinearMap, linear_map, linear_map_with_capacity, public_methods;
 
     const initial_capacity: uint = 32u; // 2^5
@@ -362,6 +363,7 @@ mod linear {
 
 #[test]
 mod test {
+    #[legacy_exports];
 
     use linear::LinearMap;
 

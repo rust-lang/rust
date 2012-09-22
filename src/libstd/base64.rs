@@ -137,6 +137,7 @@ impl ~str: FromBase64 {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     #[test]
     fn test_to_base64() {
         assert (~"").to_base64()       == ~"";

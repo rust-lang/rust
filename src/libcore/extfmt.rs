@@ -42,6 +42,7 @@ use option::{Some, None};
 
 // Functions used by the fmt extension at compile time
 mod ct {
+    #[legacy_exports];
     enum Signedness { Signed, Unsigned, }
     enum Caseness { CaseUpper, CaseLower, }
     enum Ty {
@@ -273,6 +274,7 @@ mod ct {
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
 mod rt {
+    #[legacy_exports];
     const flag_none : u32 = 0u32;
     const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
     const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
@@ -479,6 +481,7 @@ mod rt {
 
 // XXX remove after snapshots
 mod rt2 {
+    #[legacy_exports];
     const flag_none : u32 = 0u32;
     const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
     const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
@@ -685,6 +688,7 @@ mod rt2 {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn fmt_slice() {
         let s = "abc";

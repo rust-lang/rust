@@ -6,6 +6,7 @@
 extern mod crateresolve2(vers = "0.1");
 
 mod m {
+    #[legacy_exports];
     extern mod crateresolve2(vers = "0.2");
 }
 

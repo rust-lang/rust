@@ -1,5 +1,7 @@
 // cargo.rs - Rust package manager
 
+#[legacy_exports];
+
 use syntax::{ast, codemap, parse, visit, attr};
 use syntax::diagnostic::span_handler;
 use codemap::span;

@@ -1,4 +1,5 @@
 mod argparse {
+    #[legacy_exports];
     extern mod std;
 
     use either::{Either, Left, Right};

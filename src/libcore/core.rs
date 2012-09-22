@@ -2,6 +2,8 @@
 
 // Export various ubiquitous types, constructors, methods.
 
+#[legacy_exports];
+
 use option::{Some, None};
 use Option = option::Option;
 use result::{Result, Ok, Err};
@@ -84,6 +86,7 @@ const debug : u32 = 3_u32;
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
 mod core {
+    #[legacy_exports];
     const error : u32 = 0_u32;
     const warn : u32 = 1_u32;
     const info : u32 = 2_u32;
@@ -93,6 +96,7 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
+    #[legacy_exports];
     extern mod std(vers = "0.4");
     use std::test;
 }

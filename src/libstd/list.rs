@@ -192,6 +192,7 @@ impl<T:Eq> List<T> : Eq {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test_is_empty() {

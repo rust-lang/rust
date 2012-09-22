@@ -19,6 +19,7 @@ type CrateAttrs = {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
 
     fn parse_attributes(source: ~str) -> ~[ast::attribute] {
         use syntax::parse;

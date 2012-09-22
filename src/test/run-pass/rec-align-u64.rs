@@ -3,6 +3,7 @@
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
 }
@@ -24,14 +25,17 @@ type outer = {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 mod m {
+    #[legacy_exports];
     #[cfg(target_arch = "x86")]
     mod m {
+        #[legacy_exports];
         fn align() -> uint { 4u }
         fn size() -> uint { 12u }
     }
 
     #[cfg(target_arch = "x86_64")]
     mod m {
+        #[legacy_exports];
         fn align() -> uint { 8u }
         fn size() -> uint { 16u }
     }
@@ -39,8 +43,10 @@ mod m {
 
 #[cfg(target_os = "win32")]
 mod m {
+    #[legacy_exports];
     #[cfg(target_arch = "x86")]
     mod m {
+        #[legacy_exports];
         fn align() -> uint { 8u }
         fn size() -> uint { 16u }
     }

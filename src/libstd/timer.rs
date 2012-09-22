@@ -147,6 +147,7 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn test_gl_timer_simple_sleep_test() {
         let hl_loop = uv::global_loop::get();

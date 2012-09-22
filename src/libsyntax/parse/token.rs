@@ -279,6 +279,7 @@ pure fn is_bar(t: token) -> bool {
 
 
 mod special_idents {
+    #[legacy_exports];
     use ast::ident;
     const underscore : ident = 0u;
     const anon : ident = 1u;

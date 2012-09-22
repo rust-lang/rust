@@ -65,9 +65,11 @@ fn WriteOutputFile(sess:session,
 }
 
 mod jit {
+    #[legacy_exports];
     #[nolink]
     #[abi = "rust-intrinsic"]
     extern mod rusti {
+        #[legacy_exports];
         fn morestack_addr() -> *();
     }
 
@@ -99,6 +101,7 @@ mod jit {
 }
 
 mod write {
+    #[legacy_exports];
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
                ot == output_type_exe {

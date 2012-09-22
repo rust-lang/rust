@@ -244,6 +244,7 @@ fn should_name_mod_file_names_by_path() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);

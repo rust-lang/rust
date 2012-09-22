@@ -131,18 +131,22 @@ export access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
 
 
 mod types {
+    #[legacy_exports];
 
     // Types tend to vary *per architecture* so we pull their definitions out
     // into this module.
 
     // Standard types that are opaque or common, so are not per-target.
     mod common {
+        #[legacy_exports];
         mod c95 {
+            #[legacy_exports];
             enum c_void {}
             enum FILE {}
             enum fpos_t {}
         }
         mod c99 {
+            #[legacy_exports];
             type int8_t = i8;
             type int16_t = i16;
             type int32_t = i32;
@@ -153,21 +157,28 @@ mod types {
             type uint64_t = u64;
         }
         mod posix88 {
+            #[legacy_exports];
             enum DIR {}
             enum dirent {}
         }
-        mod posix01 { }
-        mod posix08 { }
-        mod bsd44 { }
+        mod posix01 {
+            #[legacy_exports]; }
+        mod posix08 {
+            #[legacy_exports]; }
+        mod bsd44 {
+            #[legacy_exports]; }
     }
 
     // Standard types that are scalar but vary by OS and arch.
 
     #[cfg(target_os = "linux")]
     mod os {
+        #[legacy_exports];
         #[cfg(target_arch = "x86")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -186,12 +197,14 @@ mod types {
                 type wchar_t = i32;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i32;
                 type dev_t = u64;
                 type ino_t = u32;
@@ -202,16 +215,22 @@ mod types {
                 type mode_t = u32;
                 type ssize_t = i32;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
             }
         }
 
         #[cfg(target_arch = "x86_64")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -230,12 +249,14 @@ mod types {
                 type wchar_t = i32;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i64;
                 type dev_t = u64;
                 type ino_t = u64;
@@ -246,19 +267,26 @@ mod types {
                 type mode_t = u32;
                 type ssize_t = i64;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
             }
         }
     }
 
     #[cfg(target_os = "freebsd")]
     mod os {
+        #[legacy_exports];
         #[cfg(target_arch = "x86_64")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -277,12 +305,14 @@ mod types {
                 type wchar_t = i32;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i64;
                 type dev_t = u32;
                 type ino_t = u32;
@@ -293,19 +323,26 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i64;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
             }
         }
     }
 
     #[cfg(target_os = "win32")]
     mod os {
+        #[legacy_exports];
         #[cfg(target_arch = "x86")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -324,12 +361,14 @@ mod types {
                 type wchar_t = u16;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i32;
                 type dev_t = u32;
                 type ino_t = i16;
@@ -338,10 +377,14 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i32;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
                 type BOOL = c_int;
                 type BYTE = u8;
                 type CCHAR = c_char;
@@ -377,9 +420,12 @@ mod types {
 
     #[cfg(target_os = "macos")]
     mod os {
+        #[legacy_exports];
         #[cfg(target_arch = "x86")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -398,12 +444,14 @@ mod types {
                 type wchar_t = i32;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i64;
                 type dev_t = i32;
                 type ino_t = u64;
@@ -414,16 +462,22 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i32;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
             }
         }
 
         #[cfg(target_arch = "x86_64")]
         mod arch {
+            #[legacy_exports];
             mod c95 {
+                #[legacy_exports];
                 type c_char = i8;
                 type c_schar = i8;
                 type c_uchar = u8;
@@ -442,12 +496,14 @@ mod types {
                 type wchar_t = i32;
             }
             mod c99 {
+                #[legacy_exports];
                 type c_longlong = i64;
                 type c_ulonglong = u64;
                 type intptr_t = int;
                 type uintptr_t = uint;
             }
             mod posix88 {
+                #[legacy_exports];
                 type off_t = i64;
                 type dev_t = i32;
                 type ino_t = u64;
@@ -458,23 +514,30 @@ mod types {
                 type mode_t = u16;
                 type ssize_t = i64;
             }
-            mod posix01 { }
-            mod posix08 { }
-            mod bsd44 { }
+            mod posix01 {
+                #[legacy_exports]; }
+            mod posix08 {
+                #[legacy_exports]; }
+            mod bsd44 {
+                #[legacy_exports]; }
             mod extra {
+                #[legacy_exports];
             }
         }
     }
 }
 
 mod consts {
+    #[legacy_exports];
 
     // Consts tend to vary per OS so we pull their definitions out
     // into this module.
 
     #[cfg(target_os = "win32")]
     mod os {
+        #[legacy_exports];
         mod c95 {
+            #[legacy_exports];
             const EXIT_FAILURE : int = 1;
             const EXIT_SUCCESS : int = 0;
             const RAND_MAX : int = 32767;
@@ -491,8 +554,10 @@ mod consts {
             const L_tmpnam : uint = 16_u;
             const TMP_MAX : uint = 32767_u;
         }
-        mod c99 { }
+        mod c99 {
+            #[legacy_exports]; }
         mod posix88 {
+            #[legacy_exports];
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
             const O_RDWR : int = 2;
@@ -521,10 +586,14 @@ mod consts {
             const STDOUT_FILENO : int = 1;
             const STDERR_FILENO : int = 2;
         }
-        mod posix01 { }
-        mod posix08 { }
-        mod bsd44 { }
+        mod posix01 {
+            #[legacy_exports]; }
+        mod posix08 {
+            #[legacy_exports]; }
+        mod bsd44 {
+            #[legacy_exports]; }
         mod extra {
+            #[legacy_exports];
             const O_TEXT : int = 16384;
             const O_BINARY : int = 32768;
             const O_NOINHERIT: int = 128;
@@ -537,7 +606,9 @@ mod consts {
 
     #[cfg(target_os = "linux")]
     mod os {
+        #[legacy_exports];
         mod c95 {
+            #[legacy_exports];
             const EXIT_FAILURE : int = 1;
             const EXIT_SUCCESS : int = 0;
             const RAND_MAX : int = 2147483647;
@@ -554,8 +625,10 @@ mod consts {
             const L_tmpnam : uint = 20_u;
             const TMP_MAX : uint = 238328_u;
         }
-        mod c99 { }
+        mod c99 {
+            #[legacy_exports]; }
         mod posix88 {
+            #[legacy_exports];
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
             const O_RDWR : int = 2;
@@ -588,10 +661,14 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
-        mod posix01 { }
-        mod posix08 { }
-        mod bsd44 { }
+        mod posix01 {
+            #[legacy_exports]; }
+        mod posix08 {
+            #[legacy_exports]; }
+        mod bsd44 {
+            #[legacy_exports]; }
         mod extra {
+            #[legacy_exports];
             const O_RSYNC : int = 1052672;
             const O_DSYNC : int = 4096;
             const O_SYNC : int = 1052672;
@@ -600,7 +677,9 @@ mod consts {
 
     #[cfg(target_os = "freebsd")]
     mod os {
+        #[legacy_exports];
         mod c95 {
+            #[legacy_exports];
             const EXIT_FAILURE : int = 1;
             const EXIT_SUCCESS : int = 0;
             const RAND_MAX : int = 2147483647;
@@ -617,8 +696,10 @@ mod consts {
             const L_tmpnam : uint = 1024_u;
             const TMP_MAX : uint = 308915776_u;
         }
-        mod c99 { }
+        mod c99 {
+            #[legacy_exports]; }
         mod posix88 {
+            #[legacy_exports];
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
             const O_RDWR : int = 2;
@@ -651,10 +732,14 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
-        mod posix01 { }
-        mod posix08 { }
-        mod bsd44 { }
+        mod posix01 {
+            #[legacy_exports]; }
+        mod posix08 {
+            #[legacy_exports]; }
+        mod bsd44 {
+            #[legacy_exports]; }
         mod extra {
+            #[legacy_exports];
             const O_SYNC : int = 128;
             const CTL_KERN: int = 1;
             const KERN_PROC: int = 14;
@@ -664,7 +749,9 @@ mod consts {
 
     #[cfg(target_os = "macos")]
     mod os {
+        #[legacy_exports];
         mod c95 {
+            #[legacy_exports];
             const EXIT_FAILURE : int = 1;
             const EXIT_SUCCESS : int = 0;
             const RAND_MAX : int = 2147483647;
@@ -681,8 +768,10 @@ mod consts {
             const L_tmpnam : uint = 1024_u;
             const TMP_MAX : uint = 308915776_u;
         }
-        mod c99 { }
+        mod c99 {
+            #[legacy_exports]; }
         mod posix88 {
+            #[legacy_exports];
             const O_RDONLY : int = 0;
             const O_WRONLY : int = 1;
             const O_RDWR : int = 2;
@@ -715,10 +804,14 @@ mod consts {
             const F_TLOCK : int = 2;
             const F_ULOCK : int = 0;
         }
-        mod posix01 { }
-        mod posix08 { }
-        mod bsd44 { }
+        mod posix01 {
+            #[legacy_exports]; }
+        mod posix08 {
+            #[legacy_exports]; }
+        mod bsd44 {
+            #[legacy_exports]; }
         mod extra {
+            #[legacy_exports];
             const O_DSYNC : int = 4194304;
             const O_SYNC : int = 128;
             const F_FULLFSYNC : int = 51;
@@ -728,15 +821,18 @@ mod consts {
 
 
 mod funcs {
+    #[legacy_exports];
 
     // Thankfull most of c95 is universally available and does not vary by OS
     // or anything. The same is not true of POSIX.
 
     mod c95 {
+        #[legacy_exports];
 
         #[nolink]
         #[abi = "cdecl"]
         extern mod ctype {
+            #[legacy_exports];
             fn isalnum(c: c_int) -> c_int;
             fn isalpha(c: c_int) -> c_int;
             fn iscntrl(c: c_int) -> c_int;
@@ -755,6 +851,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod stdio {
+            #[legacy_exports];
 
             fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
             fn freopen(filename: *c_char, mode: *c_char,
@@ -799,6 +896,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod stdlib {
+            #[legacy_exports];
             fn abs(i: c_int) -> c_int;
             fn labs(i: c_long) -> c_long;
             // Omitted: div, ldiv (return type incomplete).
@@ -824,6 +922,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod string {
+            #[legacy_exports];
 
             fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
             fn strncpy(dst: *c_char, src: *c_char, n: size_t) -> *c_char;
@@ -858,10 +957,12 @@ mod funcs {
 
     #[cfg(target_os = "win32")]
     mod posix88 {
+        #[legacy_exports];
 
         #[nolink]
         #[abi = "cdecl"]
         extern mod stat {
+            #[legacy_exports];
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -872,6 +973,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod stdio {
+            #[legacy_exports];
             #[link_name = "_popen"]
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
@@ -888,6 +990,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod fcntl {
+            #[legacy_exports];
             #[link_name = "_open"]
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
@@ -898,12 +1001,14 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod dirent {
+            #[legacy_exports];
             // Not supplied at all.
         }
 
         #[nolink]
         #[abi = "cdecl"]
         extern mod unistd {
+            #[legacy_exports];
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
 
@@ -968,10 +1073,12 @@ mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     mod posix88 {
+        #[legacy_exports];
 
         #[nolink]
         #[abi = "cdecl"]
         extern mod stat {
+            #[legacy_exports];
             fn chmod(path: *c_char, mode: mode_t) -> c_int;
             fn fchmod(fd: c_int, mode: mode_t) -> c_int;
             fn mkdir(path: *c_char, mode: mode_t) -> c_int;
@@ -981,6 +1088,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod stdio {
+            #[legacy_exports];
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
             fn pclose(stream: *FILE) -> c_int;
             fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
@@ -990,6 +1098,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod fcntl {
+            #[legacy_exports];
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
             fn creat(path: *c_char, mode: mode_t) -> c_int;
             fn fcntl(fd: c_int, cmd: c_int) -> c_int;
@@ -998,6 +1107,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod dirent {
+            #[legacy_exports];
             fn opendir(dirname: *c_char) -> *DIR;
             fn closedir(dirp: *DIR) -> c_int;
             fn readdir(dirp: *DIR) -> *dirent;
@@ -1009,6 +1119,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod unistd {
+            #[legacy_exports];
             fn access(path: *c_char, amode: c_int) -> c_int;
             fn alarm(seconds: c_uint) -> c_uint;
             fn chdir(dir: *c_char) -> c_int;
@@ -1058,10 +1169,12 @@ mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     mod posix01 {
+        #[legacy_exports];
 
         #[nolink]
         #[abi = "cdecl"]
         extern mod unistd {
+            #[legacy_exports];
             fn readlink(path: *c_char, buf: *mut c_char,
                         bufsz: size_t) -> ssize_t;
 
@@ -1079,6 +1192,7 @@ mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         extern mod wait {
+            #[legacy_exports];
             fn waitpid(pid: pid_t, status: *mut c_int,
                        options: c_int) -> pid_t;
         }
@@ -1086,8 +1200,10 @@ mod funcs {
 
     #[cfg(target_os = "win32")]
     mod posix01 {
+        #[legacy_exports];
         #[nolink]
-        extern mod unistd { }
+        extern mod unistd {
+            #[legacy_exports]; }
     }
 
 
@@ -1096,8 +1212,10 @@ mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     mod posix08 {
+        #[legacy_exports];
         #[nolink]
-        extern mod unistd { }
+        extern mod unistd {
+            #[legacy_exports]; }
     }
 
 
@@ -1106,6 +1224,7 @@ mod funcs {
     #[nolink]
     #[abi = "cdecl"]
     extern mod bsd44 {
+        #[legacy_exports];
 
         fn sysctl(name: *c_int, namelen: c_uint,
                   oldp: *mut c_void, oldlenp: *mut size_t,
@@ -1123,6 +1242,7 @@ mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "win32")]
     mod bsd44 {
+        #[legacy_exports];
     }
 
 
@@ -1130,23 +1250,28 @@ mod funcs {
     #[nolink]
     #[abi = "cdecl"]
     extern mod extra {
+        #[legacy_exports];
         fn _NSGetExecutablePath(buf: *mut c_char,
                                 bufsize: *mut u32) -> c_int;
     }
 
     #[cfg(target_os = "freebsd")]
-    mod extra { }
+    mod extra {
+        #[legacy_exports]; }
 
     #[cfg(target_os = "linux")]
-    mod extra { }
+    mod extra {
+        #[legacy_exports]; }
 
 
     #[cfg(target_os = "win32")]
     mod extra {
+        #[legacy_exports];
         use types::os::arch::extra::*;
 
         #[abi = "stdcall"]
         extern mod kernel32 {
+            #[legacy_exports];
             fn GetEnvironmentVariableW(n: LPCWSTR,
                                        v: LPWSTR,
                                        nsize: DWORD) -> DWORD;
@@ -1171,6 +1296,7 @@ mod funcs {
         #[abi = "cdecl"]
         #[nolink]
         extern mod msvcrt {
+            #[legacy_exports];
             #[link_name = "_commit"]
             fn commit(fd: c_int) -> c_int;
         }

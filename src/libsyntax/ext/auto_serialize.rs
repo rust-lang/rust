@@ -78,6 +78,7 @@ export expand;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
+    #[legacy_exports];
     pub use ext;
     pub use parse;
 }

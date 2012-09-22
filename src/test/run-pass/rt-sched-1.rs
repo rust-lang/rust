@@ -9,6 +9,7 @@ type task = *libc::c_void;
 type closure = *libc::c_void;
 
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_task_in_sched(id: sched_id) -> task_id;

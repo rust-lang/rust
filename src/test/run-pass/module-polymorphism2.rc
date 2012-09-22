@@ -1,8 +1,10 @@
 #[path = "module-polymorphism2-files"]
 mod mystd {
+    #[legacy_exports];
 
     #[path = "float-template"]
     mod float {
+        #[legacy_exports];
         // The type of the float
         use inst::T;
 
@@ -12,16 +14,19 @@ mod mystd {
 
         // Define T as float
         #[path = "inst_float.rs"]
+        #[legacy_exports]
         mod inst;
 
         // Add in the implementation from a single source file
         #[path = "template.rs"]
+        #[legacy_exports]
         mod template;
     }
 
 
     #[path = "float-template"]
     mod f64 {
+        #[legacy_exports];
 
         use inst::T;
 
@@ -31,16 +36,19 @@ mod mystd {
 
         // Define T as f64
         #[path = "inst_f64.rs"]
+        #[legacy_exports]
         mod inst;
 
         // Use the implementation for the same source file!
         #[path = "template.rs"]
+        #[legacy_exports]
         mod template;
 
     }
 
     #[path = "float-template"]
     mod f32 {
+        #[legacy_exports];
         use inst::T;
 
         // Unfortunate
@@ -48,9 +56,11 @@ mod mystd {
         export plus;
 
         #[path = "inst_f32.rs"]
+        #[legacy_exports]
         mod inst;
 
         #[path = "template.rs"]
+        #[legacy_exports]
         mod template;
 
     }

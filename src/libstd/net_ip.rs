@@ -118,6 +118,7 @@ fn get_addr(node: &str, iotask: iotask)
 }
 
 mod v4 {
+    #[legacy_exports];
     /**
      * Convert a str to `ip_addr`
      *
@@ -204,6 +205,7 @@ mod v4 {
     }
 }
 mod v6 {
+    #[legacy_exports];
     /**
      * Convert a str to `ip_addr`
      *
@@ -310,6 +312,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = ~"127.0.0.1";

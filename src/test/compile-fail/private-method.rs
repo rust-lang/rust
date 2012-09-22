@@ -1,6 +1,7 @@
 // error-pattern:method `nap` is private
 
 mod kitties {
+    #[legacy_exports];
 struct cat {
   priv mut meows : uint,
 

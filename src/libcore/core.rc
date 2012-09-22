@@ -85,43 +85,54 @@ export private;
 /// Operations and constants for `int`
 #[path = "int-template"]
 mod int {
+    #[legacy_exports];
     use inst::{ pow };
     export pow;
     #[path = "int.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i8`
 #[path = "int-template"]
 mod i8 {
+    #[legacy_exports];
     #[path = "i8.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i16`
 #[path = "int-template"]
 mod i16 {
+    #[legacy_exports];
     #[path = "i16.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i32`
 #[path = "int-template"]
 mod i32 {
+    #[legacy_exports];
     #[path = "i32.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i64`
 #[path = "int-template"]
 mod i64 {
+    #[legacy_exports];
     #[path = "i64.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `uint`
 #[path = "uint-template"]
 mod uint {
+    #[legacy_exports];
     use inst::{
         div_ceil, div_round, div_floor, iterate,
         next_power_of_two
@@ -130,135 +141,208 @@ mod uint {
     next_power_of_two;
 
     #[path = "uint.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u8`
 #[path = "uint-template"]
 mod u8 {
+    #[legacy_exports];
     use inst::is_ascii;
     export is_ascii;
 
     #[path = "u8.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u16`
 #[path = "uint-template"]
 mod u16 {
+    #[legacy_exports];
     #[path = "u16.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u32`
 #[path = "uint-template"]
 mod u32 {
+    #[legacy_exports];
     #[path = "u32.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u64`
 #[path = "uint-template"]
 mod u64 {
+    #[legacy_exports];
     #[path = "u64.rs"]
+    #[legacy_exports]
     mod inst;
 }
 
 
+#[legacy_exports]
 mod box;
+#[legacy_exports]
 mod char;
+#[legacy_exports]
 mod float;
+#[legacy_exports]
 mod f32;
+#[legacy_exports]
 mod f64;
+#[legacy_exports]
 mod str;
+#[legacy_exports]
 mod ptr;
+#[legacy_exports]
 mod vec;
+#[legacy_exports]
 mod at_vec;
+#[legacy_exports]
 mod bool;
+#[legacy_exports]
 mod tuple;
+#[legacy_exports]
 mod unit;
+#[legacy_exports]
 mod uniq;
 
 // Ubiquitous-utility-type modules
 
 #[cfg(notest)]
+#[legacy_exports]
 mod ops;
+#[legacy_exports]
 mod cmp;
+#[legacy_exports]
 mod num;
+#[legacy_exports]
 mod hash;
+#[legacy_exports]
 mod either;
+#[legacy_exports]
 mod iter;
+#[legacy_exports]
 mod logging;
+#[legacy_exports]
 mod option;
 #[path="iter-trait"]
 mod option_iter {
+    #[legacy_exports];
     #[path = "option.rs"]
+    #[legacy_exports]
     mod inst;
 }
+#[legacy_exports]
 mod result;
+#[legacy_exports]
 mod to_str;
+#[legacy_exports]
 mod to_bytes;
+#[legacy_exports]
 mod from_str;
+#[legacy_exports]
 mod util;
 
 // Data structure modules
 
+#[legacy_exports]
 mod dvec;
 #[path="iter-trait"]
 mod dvec_iter {
+    #[legacy_exports];
     #[path = "dvec.rs"]
+    #[legacy_exports]
     mod inst;
 }
+#[legacy_exports]
 mod dlist;
 #[path="iter-trait"]
 mod dlist_iter {
+    #[legacy_exports];
     #[path ="dlist.rs"]
+    #[legacy_exports]
     mod inst;
 }
+#[legacy_exports]
 mod send_map;
 
 // Concurrency
+#[legacy_exports]
 mod comm;
+#[legacy_exports]
 mod task {
+    #[legacy_exports];
+    #[legacy_exports]
     mod local_data;
+    #[legacy_exports]
     mod local_data_priv;
+    #[legacy_exports]
     mod spawn;
+    #[legacy_exports]
     mod rt;
 }
+#[legacy_exports]
 mod future;
+#[legacy_exports]
 mod pipes;
 
 // Runtime and language-primitive support
 
+#[legacy_exports]
 mod gc;
+#[legacy_exports]
 mod io;
+#[legacy_exports]
 mod libc;
+#[legacy_exports]
 mod os;
+#[legacy_exports]
 mod path;
+#[legacy_exports]
 mod rand;
+#[legacy_exports]
 mod run;
+#[legacy_exports]
 mod sys;
+#[legacy_exports]
 mod cast;
+#[legacy_exports]
 mod mutable;
+#[legacy_exports]
 mod flate;
+#[legacy_exports]
 mod repr;
+#[legacy_exports]
 mod cleanup;
+#[legacy_exports]
 mod reflect;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
 
+#[legacy_exports]
 mod extfmt;
 // The test harness links against core, so don't include runtime in tests.
 #[cfg(notest)]
+#[legacy_exports]
 mod rt;
 
 
 // For internal use, not exported
 
+#[legacy_exports]
 mod unicode;
+#[legacy_exports]
 mod private;
+#[legacy_exports]
 mod cmath;
+#[legacy_exports]
 mod stackwalk;
 
 // Local Variables:

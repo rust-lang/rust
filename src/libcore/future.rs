@@ -180,6 +180,7 @@ proto! future_pipe (
 
 #[allow(non_implicitly_copyable_typarams)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn test_from_value() {
         let f = from_value(~"snail");

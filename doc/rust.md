@@ -875,7 +875,8 @@ declaration replaces the default export with the export specified.
 An example of an export:
 
 ~~~~~~~~
-mod foo {
+pub mod foo {
+	#[legacy_exports];
     export primary;
 
     fn primary() {

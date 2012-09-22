@@ -83,6 +83,7 @@ fn should_promote_impl_method_desc() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

@@ -3,6 +3,7 @@ type floats = { a: f64, b: u8, c: f64 };
 
 #[nolink]
 extern mod rustrt {
+    #[legacy_exports];
     fn debug_abi_1(++q: quad) -> quad;
     fn debug_abi_2(++f: floats) -> floats;
 }

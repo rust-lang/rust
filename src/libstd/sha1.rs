@@ -262,6 +262,7 @@ fn sha1() -> Sha1 {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
 
     #[test]
     fn test() unsafe {

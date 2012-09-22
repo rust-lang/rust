@@ -18,6 +18,7 @@ use comm::recv;
 fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
+    #[legacy_exports];
     export putter;
     export mapper;
     export map_reduce;

@@ -101,6 +101,7 @@ impl<A: ToStr> ~A: ToStr {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    #[legacy_exports];
     #[test]
     fn test_simple_types() {
         assert 1.to_str() == ~"1";

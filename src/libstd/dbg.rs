@@ -14,6 +14,7 @@ export breakpoint;
 
 #[abi = "cdecl"]
 extern mod rustrt {
+    #[legacy_exports];
     fn debug_tydesc(td: *sys::TypeDesc);
     fn debug_opaque(td: *sys::TypeDesc, x: *());
     fn debug_box(td: *sys::TypeDesc, x: *());

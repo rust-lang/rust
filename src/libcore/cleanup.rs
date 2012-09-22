@@ -121,6 +121,7 @@ pub unsafe fn annihilate() {
 
 /// Bindings to the runtime
 extern mod rustrt {
+    #[legacy_exports];
     #[rust_stack]
     /*priv*/ fn rust_get_task() -> *c_void;
 }

@@ -1178,6 +1178,7 @@ fn test_spawn_sched_childs_on_same_sched() {
 #[nolink]
 #[cfg(test)]
 extern mod testrt {
+    #[legacy_exports];
     fn rust_dbg_lock_create() -> *libc::c_void;
     fn rust_dbg_lock_destroy(lock: *libc::c_void);
     fn rust_dbg_lock_lock(lock: *libc::c_void);

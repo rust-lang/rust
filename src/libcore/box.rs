@@ -10,6 +10,7 @@ use intrinsic::TyDesc;
 export ptr_eq, raw;
 
 mod raw {
+    #[legacy_exports];
 
     struct BoxHeaderRepr {
         ref_count: uint,

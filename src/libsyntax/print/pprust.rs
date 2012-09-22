@@ -127,7 +127,7 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
               params: ~[ast::ty_param], intr: ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, params, None);
+        print_fn(s, decl, None, name, params, None, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -420,7 +420,8 @@ fn print_foreign_item(s: ps, item: @ast::foreign_item) {
     print_outer_attributes(s, item.attrs);
     match item.node {
       ast::foreign_item_fn(decl, purity, typarams) => {
-        print_fn(s, decl, Some(purity), item.ident, typarams, None);
+        print_fn(s, decl, Some(purity), item.ident, typarams, None,
+                 ast::inherited);
         end(s); // end head-ibox
         word(s.s, ~";");
         end(s); // end the outer fn box
@@ -444,7 +445,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     s.ann.pre(ann_node);
     match item.node {
       ast::item_const(ty, expr) => {
-        head(s, ~"const");
+        head(s, visibility_qualified(item.vis, ~"const"));
         print_ident(s, item.ident);
         word_space(s, ~":");
         print_type(s, ty);
@@ -458,12 +459,13 @@ fn print_item(s: ps, &&item: @ast::item) {
 
       }
       ast::item_fn(decl, purity, typarams, body) => {
-        print_fn(s, decl, Some(purity), item.ident, typarams, None);
+        print_fn(s, decl, Some(purity), item.ident, typarams, None,
+                 item.vis);
         word(s.s, ~" ");
         print_block_with_attrs(s, body, item.attrs);
       }
       ast::item_mod(_mod) => {
-        head(s, ~"mod");
+        head(s, visibility_qualified(item.vis, ~"mod"));
         print_ident(s, item.ident);
         nbsp(s);
         bopen(s);
@@ -471,7 +473,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_foreign_mod(nmod) => {
-        head(s, ~"extern");
+        head(s, visibility_qualified(item.vis, ~"extern"));
         match nmod.sort {
             ast::named => {
                 word_nbsp(s, ~"mod");
@@ -614,6 +616,30 @@ fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
     bclose(s, span);
 }
 
+fn visibility_to_str(vis: ast::visibility) -> ~str {
+    match vis {
+        ast::private => ~"priv",
+        ast::public => ~"pub",
+        ast::inherited => ~""
+    }
+}
+
+fn visibility_qualified(vis: ast::visibility, s: ~str) -> ~str {
+    match vis {
+        ast::private | ast::public =>
+        visibility_to_str(vis) + " " + s,
+        ast::inherited => s
+    }
+}
+
+fn print_visibility(s: ps, vis: ast::visibility) {
+    match vis {
+        ast::private | ast::public =>
+        word_nbsp(s, visibility_to_str(vis)),
+        ast::inherited => ()
+    }
+}
+
 fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 ident: ast::ident, span: ast::span) {
     print_ident(s, ident);
@@ -651,9 +677,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
             ast::named_field(ident, mutability, visibility) => {
                 hardbreak_if_not_bol(s);
                 maybe_print_comment(s, field.span.lo);
-                if visibility == ast::private {
-                    word_nbsp(s, ~"priv");
-                }
+                print_visibility(s, visibility);
                 if mutability == ast::class_mutable {
                     word_nbsp(s, ~"mut");
                 }
@@ -710,6 +734,7 @@ fn print_tt(s: ps, tt: ast::token_tree) {
 }
 
 fn print_variant(s: ps, v: ast::variant) {
+    print_visibility(s, v.node.vis);
     match v.node.kind {
         ast::tuple_variant_kind(args) => {
             print_ident(s, v.node.name);
@@ -762,7 +787,8 @@ fn print_method(s: ps, meth: @ast::method) {
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
     print_fn(s, meth.decl, Some(meth.purity),
-             meth.ident, meth.tps, Some(meth.self_ty.node));
+             meth.ident, meth.tps, Some(meth.self_ty.node),
+             meth.vis);
     word(s.s, ~" ");
     print_block_with_attrs(s, meth.body, meth.attrs);
 }
@@ -1224,7 +1250,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
-        word(s.s, fn_header_info_to_str(None, None, Some(proto)));
+        word(s.s, fn_header_info_to_str(None, None, Some(proto),
+                                        ast::inherited));
         print_fn_args_and_ret(s, decl, *cap_clause, None);
         space(s.s);
         print_block(s, body);
@@ -1587,8 +1614,9 @@ fn print_self_ty(s: ps, self_ty: ast::self_ty_) -> bool {
 fn print_fn(s: ps, decl: ast::fn_decl, purity: Option<ast::purity>,
             name: ast::ident,
             typarams: ~[ast::ty_param],
-            opt_self_ty: Option<ast::self_ty_>) {
-    head(s, fn_header_info_to_str(opt_self_ty, purity, None));
+            opt_self_ty: Option<ast::self_ty_>,
+            vis: ast::visibility) {
+    head(s, fn_header_info_to_str(opt_self_ty, purity, None, vis));
     print_ident(s, name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
@@ -1758,6 +1786,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
+    print_visibility(s, item.vis);
     match item.node {
       ast::view_item_use(id, mta, _) => {
         head(s, ~"extern mod");
@@ -1827,7 +1856,8 @@ fn print_ty_fn(s: ps, opt_proto: Option<ast::proto>, purity: ast::purity,
                tps: Option<~[ast::ty_param]>,
                opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);
-    word(s.s, fn_header_info_to_str(opt_self_ty, Some(purity), opt_proto));
+    word(s.s, fn_header_info_to_str(opt_self_ty, Some(purity), opt_proto,
+                                    ast::inherited));
     print_bounds(s, bounds);
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
     match tps { Some(tps) => print_type_params(s, tps), _ => () }
@@ -2050,10 +2080,14 @@ fn next_comment(s: ps) -> Option<comments::cmnt> {
 
 fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
                          opt_purity: Option<ast::purity>,
-                         opt_p: Option<ast::proto>) -> ~str {
-    let mut s = match opt_sty {
-      Some(ast::sty_static) => ~"static ",
-      _ => ~ ""
+                         opt_p: Option<ast::proto>,
+                         vis: ast::visibility) -> ~str {
+
+    let mut s = visibility_qualified(vis, ~"");
+
+    match opt_sty {
+        Some(ast::sty_static) => str::push_str(s, ~"static "),
+        _ => ()
     };
 
     match opt_purity {

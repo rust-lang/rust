@@ -4,9 +4,11 @@
 // Modified to not use export since it's going away. --pcw
 
 mod foo {
+    #[legacy_exports];
     use bar::*;
     export a;
     mod bar {
+        #[legacy_exports];
         const a : int = 10;
     }
 }

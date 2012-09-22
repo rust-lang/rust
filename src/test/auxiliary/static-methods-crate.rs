@@ -2,7 +2,7 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
-
+#[legacy_exports];
 export read, readMaybe;
 
 trait read {

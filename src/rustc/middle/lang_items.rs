@@ -50,6 +50,7 @@ struct LanguageItems {
 }
 
 mod LanguageItems {
+    #[legacy_exports];
     fn make() -> LanguageItems {
         LanguageItems {
             const_trait: None,

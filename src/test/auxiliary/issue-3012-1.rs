@@ -2,6 +2,7 @@
 #[crate_type = "lib"];
 
 mod socket {
+    #[legacy_exports];
 
 export socket_handle;
 

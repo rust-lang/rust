@@ -1,4 +1,5 @@
 mod a {
+    #[legacy_exports];
     struct Foo {
         priv x: int
     }

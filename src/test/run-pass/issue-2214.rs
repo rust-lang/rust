@@ -12,6 +12,7 @@ fn lgamma(n: c_double, value: &mut int) -> c_double {
 #[link_name = "m"]
 #[abi = "cdecl"]
 extern mod m {
+    #[legacy_exports];
     #[cfg(unix)]
     #[link_name="lgamma_r"] fn lgamma(n: c_double, sign: &mut c_int)
       -> c_double;

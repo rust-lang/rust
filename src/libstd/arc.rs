@@ -444,6 +444,7 @@ impl<T: Const Send> &RWReadMode<T> {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     use comm::*;
 
     #[test]

@@ -61,7 +61,8 @@ fn should_write_modules_last() {
     let markdown = test::render(
         ~"mod a { }\
          fn b() { }\
-         mod c { }\
+         mod c {
+             #[legacy_exports]; }\
          fn d() { }"
     );
 
@@ -334,7 +335,8 @@ fn should_write_sections() {
         ~"#[doc = \"\
          # Header\n\
          Body\"]\
-         mod a { }");
+         mod a {
+             #[legacy_exports]; }");
     assert str::contains(markdown, ~"#### Header\n\nBody\n\n");
 }
 
@@ -795,6 +797,7 @@ fn should_write_struct_header() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);

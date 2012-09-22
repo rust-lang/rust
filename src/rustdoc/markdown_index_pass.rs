@@ -226,6 +226,7 @@ fn should_index_foreign_mod_contents() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc(output_style: config::OutputStyle, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let config = {

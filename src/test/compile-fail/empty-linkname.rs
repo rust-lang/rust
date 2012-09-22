@@ -2,4 +2,5 @@
 
 #[link_name = ""]
 extern mod foo {
+    #[legacy_exports];
 }

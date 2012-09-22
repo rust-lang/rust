@@ -34,10 +34,12 @@ use libc::size_t;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn move_val_init<T>(&dst: T, -src: T);
     fn needs_drop<T>() -> bool;
 }
 extern mod rustrt {
+    #[legacy_exports];
     #[rust_stack]
     fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
 }

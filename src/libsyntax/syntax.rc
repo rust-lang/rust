@@ -9,6 +9,7 @@
 #[no_core];
 
 #[legacy_modes];
+#[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
@@ -18,19 +19,31 @@ extern mod std(vers = "0.4");
 
 use core::*;
 
+#[legacy_exports]
 mod attr;
+#[legacy_exports]
 mod diagnostic;
+#[legacy_exports]
 mod codemap;
+#[legacy_exports]
 mod ast;
+#[legacy_exports]
 mod ast_util;
+#[legacy_exports]
 mod ast_map;
+#[legacy_exports]
 mod visit;
+#[legacy_exports]
 mod fold;
+#[legacy_exports]
 mod util {
+    #[legacy_exports];
+    #[legacy_exports]
     mod interner;
 }
 
 mod parse {
+    #[legacy_exports];
     export parser;
     export common;
     export lexer;
@@ -40,61 +53,100 @@ mod parse {
     export classify;
     export attr;
 
+    #[legacy_exports]
     mod eval;
+    #[legacy_exports]
     mod lexer;
+    #[legacy_exports]
     mod parser;
+    #[legacy_exports]
     mod token;
+    #[legacy_exports]
     mod comments;
+    #[legacy_exports]
     mod attr;
+    #[legacy_exports]
 
     /// Common routines shared by parser mods
+    #[legacy_exports]
     mod common;
 
     /// Functions dealing with operator precedence
+    #[legacy_exports]
     mod prec;
 
     /// Routines the parser uses to classify AST nodes
+    #[legacy_exports]
     mod classify;
 
     /// Reporting obsolete syntax
+    #[legacy_exports]
     mod obsolete;
 }
 
 mod print {
+    #[legacy_exports];
+    #[legacy_exports]
     mod pp;
+    #[legacy_exports]
     mod pprust;
 }
 
 mod ext {
+    #[legacy_exports];
+    #[legacy_exports]
     mod base;
+    #[legacy_exports]
     mod expand;
+    #[legacy_exports]
     mod qquote;
+    #[legacy_exports]
     mod build;
 
     mod tt {
+        #[legacy_exports];
+        #[legacy_exports]
         mod transcribe;
+        #[legacy_exports]
         mod macro_parser;
+        #[legacy_exports]
         mod macro_rules;
     }
 
 
+    #[legacy_exports]
     mod simplext;
+    #[legacy_exports]
     mod fmt;
+    #[legacy_exports]
     mod env;
+    #[legacy_exports]
     mod concat_idents;
+    #[legacy_exports]
     mod ident_to_str;
+    #[legacy_exports]
     mod log_syntax;
+    #[legacy_exports]
     mod auto_serialize;
+    #[legacy_exports]
     mod source_util;
 
     mod pipes {
+        #[legacy_exports];
+        #[legacy_exports]
         mod ast_builder;
+        #[legacy_exports]
         mod parse_proto;
+        #[legacy_exports]
         mod pipec;
+        #[legacy_exports]
         mod proto;
+        #[legacy_exports]
         mod check;
+        #[legacy_exports]
         mod liveness;
     }
 
+    #[legacy_exports]
     mod trace_macros;
 }

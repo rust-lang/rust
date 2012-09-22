@@ -120,6 +120,7 @@ fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
+    #[legacy_exports];
     #[test]
     fn test_simple() {
         let d: deque::Deque<int> = deque::create::<int>();

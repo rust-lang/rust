@@ -1,6 +1,7 @@
 // error-pattern: unresolved
 
 mod circ1 {
+    #[legacy_exports];
     use circ1::*;
     export f1;
     export f2;
@@ -10,6 +11,7 @@ mod circ1 {
 }
 
 mod circ2 {
+    #[legacy_exports];
     use circ2::*;
     export f1;
     export f2;
@@ -19,6 +21,7 @@ mod circ2 {
 }
 
 mod test {
+    #[legacy_exports];
     use circ1::*;
 
     fn test() { f1066(); }

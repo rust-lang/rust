@@ -483,6 +483,13 @@ struct Module {
 
     exported_names: HashMap<Atom,node_id>,
 
+    // XXX: This is a transition measure to let us switch export-evaluation
+    // logic when compiling modules that have transitioned to listing their
+    // pub/priv qualifications on items, explicitly, rather than using the
+    // old export rule.
+
+    legacy_exports: bool,
+
     // The status of resolving each import in this module.
     import_resolutions: HashMap<Atom,@ImportResolution>,
 
@@ -493,7 +500,9 @@ struct Module {
     mut resolved_import_count: uint,
 }
 
-fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
+fn Module(parent_link: ParentLink,
+          def_id: Option<def_id>,
+          legacy_exports: bool) -> Module {
     Module {
         parent_link: parent_link,
         def_id: def_id,
@@ -501,6 +510,7 @@ fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
         imports: DVec(),
         anonymous_children: HashMap(),
         exported_names: atom_hashmap(),
+        legacy_exports: legacy_exports,
         import_resolutions: atom_hashmap(),
         glob_count: 0u,
         resolved_import_count: 0u
@@ -577,10 +587,12 @@ struct NameBindings {
 impl NameBindings {
 
     /// Creates a new module in this set of name bindings.
-    fn define_module(parent_link: ParentLink, def_id: Option<def_id>,
+    fn define_module(parent_link: ParentLink,
+                     def_id: Option<def_id>,
+                     legacy_exports: bool,
                      sp: span) {
         if self.module_def.is_none() {
-            let module_ = @Module(parent_link, def_id);
+            let module_ = @Module(parent_link, def_id, legacy_exports);
             self.module_def = ModuleDef(module_);
             self.module_span = Some(sp);
         }
@@ -728,6 +740,18 @@ fn namespace_to_str(ns: Namespace) -> ~str {
     }
 }
 
+fn has_legacy_export_attr(attrs: &[syntax::ast::attribute]) -> bool {
+    for attrs.each |attribute| {
+        match attribute.node.value.node {
+          syntax::ast::meta_word(w) if w == ~"legacy_exports" => {
+            return true;
+          }
+          _ => {}
+        }
+    }
+    return false;
+}
+
 fn Resolver(session: session, lang_items: LanguageItems,
             crate: @crate) -> Resolver {
 
@@ -735,6 +759,7 @@ fn Resolver(session: session, lang_items: LanguageItems,
 
     (*graph_root).define_module(NoParentLink,
                                 Some({ crate: 0, node: 0 }),
+                                has_legacy_export_attr(crate.node.attrs),
                                 crate.span);
 
     let current_module = (*graph_root).get_module();
@@ -885,10 +910,18 @@ impl Resolver {
         }));
     }
 
-    fn visibility_to_privacy(visibility: visibility) -> Privacy {
-        match visibility {
-            inherited | public => Public,
-            private => Private
+    fn visibility_to_privacy(visibility: visibility,
+                             legacy_exports: bool) -> Privacy {
+        if legacy_exports {
+            match visibility {
+              inherited | public => Public,
+              private => Private
+            }
+        } else {
+            match visibility {
+              public => Public,
+              inherited | private => Private
+            }
         }
     }
 
@@ -1009,16 +1042,20 @@ impl Resolver {
 
         let atom = item.ident;
         let sp = item.span;
+        let legacy = match parent {
+          ModuleReducedGraphParent(m) => m.legacy_exports
+        };
 
         match item.node {
             item_mod(module_) => {
+              let legacy = has_legacy_export_attr(item.attrs);
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                        ~[ModuleNS], sp);
 
                 let parent_link = self.get_parent_link(new_parent, atom);
                 let def_id = { crate: 0, node: item.id };
               (*name_bindings).define_module(parent_link, Some(def_id),
-                                             sp);
+                                             legacy, sp);
 
                 let new_parent =
                     ModuleReducedGraphParent((*name_bindings).get_module());
@@ -1026,6 +1063,7 @@ impl Resolver {
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
             item_foreign_mod(fm) => {
+              let legacy = has_legacy_export_attr(item.attrs);
               let new_parent = match fm.sort {
                 named => {
                   let (name_bindings, new_parent) = self.add_child(atom,
@@ -1034,7 +1072,7 @@ impl Resolver {
                   let parent_link = self.get_parent_link(new_parent, atom);
                   let def_id = { crate: 0, node: item.id };
                   (*name_bindings).define_module(parent_link, Some(def_id),
-                                                 sp);
+                                                 legacy, sp);
 
                   ModuleReducedGraphParent((*name_bindings).get_module())
                 }
@@ -1052,7 +1090,7 @@ impl Resolver {
                                                       ~[ValueNS], sp);
 
                 (*name_bindings).define_value
-                    (self.visibility_to_privacy(item.vis),
+                    (self.visibility_to_privacy(item.vis, legacy),
                      def_const(local_def(item.id)),
                      sp);
             }
@@ -1062,7 +1100,7 @@ impl Resolver {
 
                 let def = def_fn(local_def(item.id), purity);
                 (*name_bindings).define_value
-                    (self.visibility_to_privacy(item.vis), def, sp);
+                    (self.visibility_to_privacy(item.vis, legacy), def, sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1072,7 +1110,7 @@ impl Resolver {
                                                       ~[TypeNS], sp);
 
                 (*name_bindings).define_type
-                    (self.visibility_to_privacy(item.vis),
+                    (self.visibility_to_privacy(item.vis, legacy),
                      def_ty(local_def(item.id)),
                      sp);
             }
@@ -1083,7 +1121,7 @@ impl Resolver {
                                                                ~[TypeNS], sp);
 
                 (*name_bindings).define_type
-                    (self.visibility_to_privacy(item.vis),
+                    (self.visibility_to_privacy(item.vis, legacy),
                      def_ty(local_def(item.id)),
                      sp);
 
@@ -1104,7 +1142,7 @@ impl Resolver {
                             self.add_child(atom, parent, ~[TypeNS], sp);
 
                         (*name_bindings).define_type
-                            (self.visibility_to_privacy(item.vis),
+                            (self.visibility_to_privacy(item.vis, legacy),
                              def_ty(local_def(item.id)),
                              sp);
                         new_parent
@@ -1114,7 +1152,8 @@ impl Resolver {
                             self.add_child(atom, parent, ~[ValueNS, TypeNS],
                                            sp);
 
-                        let privacy = self.visibility_to_privacy(item.vis);
+                        let privacy = self.visibility_to_privacy(item.vis,
+                                                                 legacy);
 
                         (*name_bindings).define_type
                             (privacy, def_ty(local_def(item.id)), sp);
@@ -1171,7 +1210,7 @@ impl Resolver {
                 self.trait_info.insert(def_id, method_names);
 
                 (*name_bindings).define_type
-                    (self.visibility_to_privacy(item.vis),
+                    (self.visibility_to_privacy(item.vis, legacy),
                      def_ty(def_id),
                      sp);
                 visit_item(item, new_parent, visitor);
@@ -1190,10 +1229,14 @@ impl Resolver {
                                        parent: ReducedGraphParent,
                                        &&visitor: vt<ReducedGraphParent>) {
 
+        let legacy = match parent {
+          ModuleReducedGraphParent(m) => m.legacy_exports
+        };
+
         let atom = variant.node.name;
         let (child, _) = self.add_child(atom, parent, ~[ValueNS],
                                         variant.span);
-        let privacy = self.visibility_to_privacy(variant.node.vis);
+        let privacy = self.visibility_to_privacy(variant.node.vis, legacy);
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
@@ -1228,6 +1271,7 @@ impl Resolver {
     fn build_reduced_graph_for_view_item(view_item: @view_item,
                                          parent: ReducedGraphParent,
                                          &&_visitor: vt<ReducedGraphParent>) {
+
         match view_item.node {
             view_item_import(view_paths) => {
                 for view_paths.each |view_path| {
@@ -1368,6 +1412,7 @@ impl Resolver {
 
                         (*child_name_bindings).define_module(parent_link,
                                                              Some(def_id),
+                                                             false,
                                                              view_item.span);
                         self.build_reduced_graph_for_external_crate
                             ((*child_name_bindings).get_module());
@@ -1424,7 +1469,7 @@ impl Resolver {
 
             let parent_module = self.get_module_from_parent(parent);
             let new_module = @Module(BlockParentLink(parent_module, block_id),
-                                     None);
+                                     None, false);
             parent_module.anonymous_children.insert(block_id, new_module);
             new_parent = ModuleReducedGraphParent(new_module);
         } else {
@@ -1451,6 +1496,7 @@ impl Resolver {
                   None => {
                     child_name_bindings.define_module(parent_link,
                                                       Some(def_id),
+                                                      false,
                                                       dummy_sp());
                     modules.insert(def_id,
                                    child_name_bindings.get_module());
@@ -1594,7 +1640,8 @@ impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         (*child_name_bindings).define_module(parent_link,
-                                                       None, dummy_sp());
+                                                       None, false,
+                                                             dummy_sp());
                     }
                     ModuleDef(_) => { /* Fall through. */ }
                 }
@@ -2554,8 +2601,9 @@ impl Resolver {
     }
 
     fn name_is_exported(module_: @Module, name: Atom) -> bool {
-        return module_.exported_names.size() == 0u ||
-                module_.exported_names.contains_key(name);
+        return !module_.legacy_exports ||
+            module_.exported_names.size() == 0u ||
+            module_.exported_names.contains_key(name);
     }
 
     /**

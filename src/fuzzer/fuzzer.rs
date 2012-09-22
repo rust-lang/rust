@@ -1,3 +1,5 @@
+#[legacy_exports];
+
 use io::WriterUtil;
 
 use syntax::{ast, ast_util, fold, visit, codemap};

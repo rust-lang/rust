@@ -61,6 +61,7 @@ fn read_board_grid<rdr: Owned io::Reader>(+in: rdr) -> ~[~[square]] {
 }
 
 mod test {
+    #[legacy_exports];
     #[test]
     fn trivial_to_str() {
         assert lambda.to_str() == "\\"

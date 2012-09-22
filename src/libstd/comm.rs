@@ -66,6 +66,7 @@ fn DuplexStream<T: Send, U: Send>()
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     #[test]
     fn DuplexStream1() {
         let (left, right) = DuplexStream();

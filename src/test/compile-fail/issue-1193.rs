@@ -1,5 +1,6 @@
 // error-pattern: pattern variable conflicts
 mod foo {
+    #[legacy_exports];
     type t = u8;
 
     const a : t = 0u8;

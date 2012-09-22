@@ -1,5 +1,6 @@
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[legacy_exports];
     fn move_val_init<T>(&dst: T, -src: T);
     fn move_val<T>(&dst: T, -src: T);
 }

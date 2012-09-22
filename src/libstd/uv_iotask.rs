@@ -171,6 +171,7 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, fmt!("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)

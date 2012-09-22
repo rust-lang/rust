@@ -9,9 +9,11 @@
 #[link_name= "m"]
 #[link_args="-foo"]             // this could have been elided.
 extern mod m1 {
+    #[legacy_exports];
 }
 
 #[link_name= "m"]
 #[link_args="-bar"]             // this is the actual error trigger.
 extern mod m2 {
+    #[legacy_exports];
 }

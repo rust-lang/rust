@@ -5,6 +5,7 @@
 // want to change eventually.
 
 mod foo {
+    #[legacy_exports];
 
     export bar;
 

@@ -3,6 +3,7 @@
 use module_of_many_things::*;
 
 mod module_of_many_things {
+    #[legacy_exports];
     export f1;
     export f2;
     export f4;

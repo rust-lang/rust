@@ -4,6 +4,7 @@ extern mod std;
 #[nolink]
 #[abi = "cdecl"]
 extern mod libc {
+    #[legacy_exports];
     #[link_name = "strlen"]
     fn my_strlen(str: *u8) -> uint;
 }

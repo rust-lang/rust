@@ -37,102 +37,188 @@ use middle_ = middle;
 use back_ = back;
 
 mod middle {
+    #[legacy_exports];
     mod trans {
+        #[legacy_exports];
+        #[legacy_exports]
         mod inline;
+        #[legacy_exports]
         mod monomorphize;
+        #[legacy_exports]
         mod controlflow;
+        #[legacy_exports]
         mod glue;
+        #[legacy_exports]
         mod datum;
+        #[legacy_exports]
         mod callee;
+        #[legacy_exports]
         mod expr;
+        #[legacy_exports]
         mod common;
+        #[legacy_exports]
         mod consts;
+        #[legacy_exports]
         mod type_of;
+        #[legacy_exports]
         mod build;
+        #[legacy_exports]
         mod base;
+        #[legacy_exports]
         mod alt;
+        #[legacy_exports]
         mod uniq;
+        #[legacy_exports]
         mod closure;
+        #[legacy_exports]
         mod tvec;
+        #[legacy_exports]
         mod meth;
+        #[legacy_exports]
         mod foreign;
+        #[legacy_exports]
         mod reflect;
+        #[legacy_exports]
         mod shape;
+        #[legacy_exports]
         mod debuginfo;
+        #[legacy_exports]
         mod type_use;
+        #[legacy_exports]
         mod reachable;
     }
+    #[legacy_exports]
     mod ty;
+    #[legacy_exports]
     mod resolve;
     mod typeck {
+        #[legacy_exports];
         mod check {
+            #[legacy_exports];
+            #[legacy_exports]
             mod alt;
+            #[legacy_exports]
             mod vtable;
+            #[legacy_exports]
             mod writeback;
+            #[legacy_exports]
             mod regionmanip;
+            #[legacy_exports]
             mod regionck;
+            #[legacy_exports]
             mod demand;
+            #[legacy_exports]
             mod method;
         }
+        #[legacy_exports]
         mod rscope;
+        #[legacy_exports]
         mod astconv;
         mod infer {
+            #[legacy_exports];
+            #[legacy_exports]
             mod assignment;
+            #[legacy_exports]
             mod combine;
+            #[legacy_exports]
             mod glb;
+            #[legacy_exports]
             mod integral;
+            #[legacy_exports]
             mod lattice;
+            #[legacy_exports]
             mod lub;
+            #[legacy_exports]
             mod region_var_bindings;
+            #[legacy_exports]
             mod resolve;
+            #[legacy_exports]
             mod sub;
+            #[legacy_exports]
             mod to_str;
+            #[legacy_exports]
             mod unify;
         }
+        #[legacy_exports]
         mod collect;
+        #[legacy_exports]
         mod coherence;
     }
+    #[legacy_exports]
     mod check_loop;
+    #[legacy_exports]
     mod check_alt;
+    #[legacy_exports]
     mod check_const;
+    #[legacy_exports]
     mod lint;
     mod borrowck {
+        #[legacy_exports];
+        #[legacy_exports]
         mod check_loans;
+        #[legacy_exports]
         mod gather_loans;
+        #[legacy_exports]
         mod loan;
+        #[legacy_exports]
         mod preserve;
     }
+    #[legacy_exports]
     mod mem_categorization;
+    #[legacy_exports]
     mod liveness;
+    #[legacy_exports]
     mod kind;
+    #[legacy_exports]
     mod freevars;
+    #[legacy_exports]
     mod capture;
+    #[legacy_exports]
     mod pat_util;
+    #[legacy_exports]
     mod region;
+    #[legacy_exports]
     mod const_eval;
+    #[legacy_exports]
     mod astencode;
+    #[legacy_exports]
     mod lang_items;
+    #[legacy_exports]
     mod privacy;
 }
 
 mod front {
+    #[legacy_exports];
+    #[legacy_exports]
     mod config;
+    #[legacy_exports]
     mod test;
+    #[legacy_exports]
     mod core_inject;
+    #[legacy_exports]
     mod intrinsic_inject;
 }
 
 mod back {
+    #[legacy_exports];
+    #[legacy_exports]
     mod link;
+    #[legacy_exports]
     mod abi;
+    #[legacy_exports]
     mod upcall;
+    #[legacy_exports]
     mod x86;
+    #[legacy_exports]
     mod x86_64;
+    #[legacy_exports]
     mod rpath;
+    #[legacy_exports]
     mod target_strs;
 }
 
 mod metadata {
+    #[legacy_exports];
     export encoder;
     export creader;
     export cstore;
@@ -144,29 +230,47 @@ mod metadata {
     export loader;
     export filesearch;
 
+    #[legacy_exports]
     mod common;
+    #[legacy_exports]
     mod tyencode;
+    #[legacy_exports]
     mod tydecode;
+    #[legacy_exports]
     mod encoder;
+    #[legacy_exports]
     mod decoder;
+    #[legacy_exports]
     mod creader;
+    #[legacy_exports]
     mod cstore;
+    #[legacy_exports]
     mod csearch;
+    #[legacy_exports]
     mod loader;
+    #[legacy_exports]
     mod filesearch;
 }
 
 mod driver {
+    #[legacy_exports];
+    #[legacy_exports]
     mod driver;
+    #[legacy_exports]
     mod session;
 }
 
 mod util {
+    #[legacy_exports];
+    #[legacy_exports]
     mod common;
+    #[legacy_exports]
     mod ppaux;
 }
 
 mod lib {
+    #[legacy_exports];
+    #[legacy_exports]
     mod llvm;
 }
 

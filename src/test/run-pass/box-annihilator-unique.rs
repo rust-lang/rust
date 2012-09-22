@@ -1,4 +1,5 @@
 extern mod rustrt {
+    #[legacy_exports];
     fn rust_annihilate_box(ptr: *uint);
 }
 

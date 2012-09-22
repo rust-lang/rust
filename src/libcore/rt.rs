@@ -14,6 +14,7 @@ use gc::{cleanup_stack_for_failure, gc, Word};
 type rust_task = c_void;
 
 extern mod rustrt {
+    #[legacy_exports];
     #[rust_stack]
     fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
 

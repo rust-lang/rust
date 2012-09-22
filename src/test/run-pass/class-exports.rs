@@ -4,6 +4,7 @@
 use kitty::*;
 
 mod kitty {
+    #[legacy_exports];
   export cat;
   struct cat {
     meows: uint,

@@ -1,6 +1,7 @@
 // error-pattern: unresolved name
 
 mod foo {
+    #[legacy_exports];
     export x;
 
     fn x() { }

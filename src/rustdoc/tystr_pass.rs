@@ -389,6 +389,7 @@ fn should_not_serialize_struct_attrs() {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

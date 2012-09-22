@@ -3,6 +3,7 @@
 use y::x;
 
 mod y {
+    #[legacy_exports];
     import x;
     export x;
 }

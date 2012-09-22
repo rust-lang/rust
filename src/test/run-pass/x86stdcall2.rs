@@ -7,6 +7,7 @@ type BOOL = u8;
 #[cfg(target_os = "win32")]
 #[abi = "stdcall"]
 extern mod kernel32 {
+    #[legacy_exports];
        fn GetProcessHeap() -> HANDLE;
        fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
        fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;

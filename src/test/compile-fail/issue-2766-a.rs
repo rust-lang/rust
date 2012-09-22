@@ -1,6 +1,8 @@
 mod stream {
+    #[legacy_exports];
     enum stream<T: Send> { send(T, server::stream<T>), }
     mod server {
+        #[legacy_exports];
         impl<T: Send> stream<T> {
             fn recv() -> extern fn(+stream<T>) -> stream::stream<T> {
               // resolve really should report just one error here.

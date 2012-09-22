@@ -3,10 +3,12 @@
 
 #[path = "module-polymorphism3-files"]
 mod mystd {
+    #[legacy_exports];
 
     // The template is specified in float-template.rs
     #[path = "float-template"]
     mod float {
+        #[legacy_exports];
         // The type of the float
         use inst::T;
 
@@ -18,6 +20,7 @@ mod mystd {
     // Use the same template
     #[path = "float-template"]
     mod f64 {
+        #[legacy_exports];
 
         use inst::T;
 
@@ -28,6 +31,7 @@ mod mystd {
 
     #[path = "float-template"]
     mod f32 {
+        #[legacy_exports];
         use inst::T;
 
         #[path = "inst_f32.rs"]

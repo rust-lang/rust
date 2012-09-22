@@ -1820,6 +1820,7 @@ explicitly import it, you must refer to it by its long name,
 `farm::chicken`.
 
 ~~~~
+#[legacy_exports]
 mod farm {
     fn chicken() -> ~str { ~"cluck cluck" }
     fn cow() -> ~str { ~"mooo" }
@@ -2004,6 +2005,7 @@ Rust uses three different namespaces: one for modules, one for types,
 and one for values. This means that this code is valid:
 
 ~~~~
+#[legacy_exports]
 mod buffalo {
     type buffalo = int;
     fn buffalo<buffalo>(+buffalo: buffalo) -> buffalo { buffalo }
