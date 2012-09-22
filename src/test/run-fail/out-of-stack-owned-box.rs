@@ -7,6 +7,5 @@ fn main() {
 fn eat(
     +a: ~int
 ) {
-    // Prevent this from being optimized to nothing
     eat(move a)
 }
