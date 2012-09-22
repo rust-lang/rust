@@ -10,11 +10,10 @@
 #[crate_type = "bin"];
 
 #[no_core];
-
 #[legacy_modes];
 
-#[allow(vecs_implicitly_copyable,
-        non_implicitly_copyable_typarams)];
+#[allow(vecs_implicitly_copyable)];
+#[allow(non_implicitly_copyable_typarams)];
 
 extern mod core(vers = "0.4");
 extern mod std(vers = "0.4");
@@ -24,6 +23,7 @@ extern mod syntax(vers = "0.4");
 use core::*;
 use std::par;
 
+mod pass;
 mod config;
 mod parse;
 mod extract;
