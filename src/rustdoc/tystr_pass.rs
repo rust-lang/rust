@@ -117,10 +117,10 @@ fn fold_enum(
                   ast_map::node_item(@{
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
-                    let ast_variant = option::get(
+                    let ast_variant =
                         do vec::find(enum_definition.variants) |v| {
                             to_str(v.node.name) == variant.name
-                        });
+                        }.get();
 
                     pprust::variant_to_str(ast_variant, extract::interner())
                   }

@@ -274,8 +274,8 @@ fn should_sort_failures_before_printing_them() {
         print_failures(st);
     };
 
-    let apos = option::get(str::find_str(s, ~"a"));
-    let bpos = option::get(str::find_str(s, ~"b"));
+    let apos = str::find_str(s, ~"a").get();
+    let bpos = str::find_str(s, ~"b").get();
     assert apos < bpos;
 }
 
@@ -351,7 +351,7 @@ fn filter_tests(opts: &TestOpts,
     let mut filtered = vec::slice(tests, 0, tests.len());
 
     // Remove tests that don't match the test filter
-    filtered = if option::is_none(opts.filter) {
+    filtered = if opts.filter.is_none() {
         move filtered
     } else {
         let filter_str =
@@ -503,7 +503,7 @@ mod tests {
           either::Left(o) => o,
           _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
         };
-        assert ~"filter" == option::get(opts.filter);
+        assert ~"filter" == opts.filter.get();
     }
 
     #[test]

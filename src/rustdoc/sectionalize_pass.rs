@@ -84,11 +84,11 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
      * and remove each header and accompanying text into section records.
      */
 
-    if option::is_none(desc) {
+    if desc.is_none() {
         return (None, ~[]);
     }
 
-    let lines = str::lines(option::get(desc));
+    let lines = str::lines(desc.get());
 
     let mut new_desc = None::<~str>;
     let mut current_section = None;
@@ -97,8 +97,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     for lines.each |line| {
         match parse_header(*line) {
           Some(header) => {
-            if option::is_some(current_section) {
-                sections += ~[option::get(current_section)];
+            if current_section.is_some() {
+                sections += ~[current_section.get()];
             }
             current_section = Some({
                 header: header,
@@ -128,8 +128,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
         }
     }
 
-    if option::is_some(current_section) {
-        sections += ~[option::get(current_section)];
+    if current_section.is_some() {
+        sections += ~[current_section.get()];
     }
 
     (new_desc, sections)
@@ -190,10 +190,10 @@ fn should_remove_section_text_from_main_desc() {
          mod a {
              #[legacy_exports]; }");
     assert !str::contains(
-        option::get(doc.cratemod().mods()[0].desc()),
+        doc.cratemod().mods()[0].desc().get(),
         ~"Header");
     assert !str::contains(
-        option::get(doc.cratemod().mods()[0].desc()),
+        doc.cratemod().mods()[0].desc().get(),
         ~"Body");
 }
 

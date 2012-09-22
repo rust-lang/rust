@@ -805,7 +805,7 @@ fn install_one_crate(c: &cargo, path: &Path, cf: &Path) {
         if (exec_suffix != ~"" && str::ends_with(ct.to_str(),
                                                  exec_suffix)) ||
             (exec_suffix == ~"" &&
-             !str::starts_with(option::get(ct.filename()),
+             !str::starts_with(ct.filename().get(),
                                ~"lib")) {
             debug!("  bin: %s", ct.to_str());
             install_to_dir(*ct, &c.bindir);
@@ -874,8 +874,8 @@ fn install_source(c: &cargo, path: &Path) {
 
 fn install_git(c: &cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd.to_str()]);
-    if option::is_some(reference) {
-        let r = option::get(reference);
+    if reference.is_some() {
+        let r = reference.get();
         os::change_dir(wd);
         run::run_program(~"git", ~[~"checkout", r]);
     }
@@ -1597,7 +1597,7 @@ fn cmd_search(c: &cargo) {
 }
 
 fn install_to_dir(srcfile: &Path, destdir: &Path) {
-    let newfile = destdir.push(option::get(srcfile.filename()));
+    let newfile = destdir.push(srcfile.filename().get());
 
     let status = run::run_program(~"cp", ~[~"-r", srcfile.to_str(),
                                            newfile.to_str()]);

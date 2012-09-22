@@ -1466,7 +1466,7 @@ pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
  * * needle - The string to look for
  */
 pure fn contains(haystack: &a/str, needle: &b/str) -> bool {
-    option::is_some(find_str(haystack, needle))
+    find_str(haystack, needle).is_some()
 }
 
 /**
@@ -1478,7 +1478,7 @@ pure fn contains(haystack: &a/str, needle: &b/str) -> bool {
  * * needle - The char to look for
  */
 pure fn contains_char(haystack: &str, needle: char) -> bool {
-    option::is_some(find_char(haystack, needle))
+    find_char(haystack, needle).is_some()
 }
 
 /**

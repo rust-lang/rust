@@ -248,7 +248,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     };
 
     // Handle any kind bounds on type parameters
-    do option::iter(cx.tcx.node_type_substs.find(id_to_use)) |ts| {
+    do option::iter(&cx.tcx.node_type_substs.find(id_to_use)) |ts| {
         let bounds = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
@@ -373,7 +373,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
 fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     match aty.node {
       ty_path(_, id) => {
-        do option::iter(cx.tcx.node_type_substs.find(id)) |ts| {
+        do option::iter(&cx.tcx.node_type_substs.find(id)) |ts| {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             do vec::iter2(ts, *bounds) |ty, bound| {

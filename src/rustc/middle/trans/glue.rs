@@ -316,7 +316,7 @@ fn call_tydesc_glue_full(++bcx: block, v: ValueRef, tydesc: ValueRef,
 
     // When static type info is available, avoid casting parameter because the
     // function already has the right type. Otherwise cast to generic pointer.
-    let llrawptr = if is_none(static_ti) || is_none(static_glue_fn) {
+    let llrawptr = if static_ti.is_none() || static_glue_fn.is_none() {
         PointerCast(bcx, v, T_ptr(T_i8()))
     } else {
         v
@@ -397,7 +397,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_class(did, ref substs) => {
         // Call the dtor if there is one
-        do option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
+        do option::map_default(&ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
             trans_class_drop(bcx, v, dt_id, did, substs)
         }
       }

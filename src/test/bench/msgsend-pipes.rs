@@ -48,8 +48,8 @@ fn run(args: &[~str]) {
     let from_parent = PortSet();
     from_parent.add(from_parent_);
 
-    let size = option::get(uint::from_str(args[1]));
-    let workers = option::get(uint::from_str(args[2]));
+    let size = uint::from_str(args[1]).get();
+    let workers = uint::from_str(args[2]).get();
     let num_bytes = 100;
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];

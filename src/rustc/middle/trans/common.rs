@@ -1333,7 +1333,7 @@ fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
         }
         i += 1u;
     }
-    option::get(ps.vtables)[vtable_off]
+    ps.vtables.get()[vtable_off]
 }
 
 fn dummy_substs(tps: ~[ty::t]) -> ty::substs {

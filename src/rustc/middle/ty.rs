@@ -1691,7 +1691,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_class(did, ref substs) => {
          // Any class with a dtor needs a drop
-         option::is_some(ty_dtor(cx, did)) || {
+         ty_dtor(cx, did).is_some() || {
              for vec::each(ty::class_items_as_fields(cx, did, substs)) |f| {
                  if type_needs_drop(cx, f.mt.ty) { accum = true; }
              }
@@ -3454,7 +3454,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
                         _},
                     _)) => {
 
-               do option::map_default(opt_trait, ~[]) |trait_ref| {
+               do option::map_default(&opt_trait, ~[]) |trait_ref| {
                        ~[node_id_to_type(cx, trait_ref.ref_id)]
                    }
            }
@@ -3519,7 +3519,7 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> Option<def_id> {
 }
 
 fn has_dtor(cx: ctxt, class_id: def_id) -> bool {
-    option::is_some(ty_dtor(cx, class_id))
+    ty_dtor(cx, class_id).is_some()
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {

@@ -66,10 +66,10 @@ fn should_write_modules_last() {
          fn d() { }"
     );
 
-    let idx_a = option::get(str::find_str(markdown, ~"# Module `a`"));
-    let idx_b = option::get(str::find_str(markdown, ~"## Function `b`"));
-    let idx_c = option::get(str::find_str(markdown, ~"# Module `c`"));
-    let idx_d = option::get(str::find_str(markdown, ~"## Function `d`"));
+    let idx_a = str::find_str(markdown, ~"# Module `a`").get();
+    let idx_b = str::find_str(markdown, ~"## Function `b`").get();
+    let idx_c = str::find_str(markdown, ~"# Module `c`").get();
+    let idx_d = str::find_str(markdown, ~"## Function `d`").get();
 
     assert idx_b < idx_d;
     assert idx_d < idx_a;
@@ -227,8 +227,8 @@ fn header_name(doc: doc::ItemTag) -> ~str {
         fullpath
       }
       doc::ImplTag(doc) => {
-        assert option::is_some(doc.self_ty);
-        let self_ty = option::get(doc.self_ty);
+        assert doc.self_ty.is_some();
+        let self_ty = doc.self_ty.get();
         let mut trait_part = ~"";
         for doc.trait_types.eachi |i, trait_type| {
             if i == 0 {
@@ -345,8 +345,8 @@ fn write_mod_contents(
     doc: doc::ModDoc
 ) {
     write_common(ctxt, doc.desc(), doc.sections());
-    if option::is_some(doc.index) {
-        write_index(ctxt, option::get(doc.index));
+    if doc.index.is_some() {
+        write_index(ctxt, doc.index.get());
     }
 
     for doc.items.each |itemTag| {
@@ -405,9 +405,9 @@ fn write_index(ctxt: Ctxt, index: doc::Index) {
     for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
-        if option::is_some(entry.brief) {
+        if entry.brief.is_some() {
             ctxt.w.write_line(fmt!("* [%s](%s) - %s",
-                                   header, id, option::get(entry.brief)));
+                                   header, id, entry.brief.get()));
         } else {
             ctxt.w.write_line(fmt!("* [%s](%s)", header, id));
         }
@@ -448,8 +448,8 @@ fn should_write_index_for_foreign_mods() {
 
 fn write_nmod(ctxt: Ctxt, doc: doc::NmodDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
-    if option::is_some(doc.index) {
-        write_index(ctxt, option::get(doc.index));
+    if doc.index.is_some() {
+        write_index(ctxt, doc.index.get());
     }
 
     for doc.fns.each |FnDoc| {
@@ -623,8 +623,8 @@ fn write_variants(
 }
 
 fn write_variant(ctxt: Ctxt, doc: doc::VariantDoc) {
-    assert option::is_some(doc.sig);
-    let sig = option::get(doc.sig);
+    assert doc.sig.is_some();
+    let sig = doc.sig.get();
     match doc.desc {
       Some(desc) => {
         ctxt.w.write_line(fmt!("* `%s` - %s", sig, desc));

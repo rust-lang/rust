@@ -99,7 +99,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
 
     ccx.stats.n_monos += 1;
 
-    let depth = option::get_default(ccx.monomorphizing.find(fn_id), 0u);
+    let depth = option::get_default(&ccx.monomorphizing.find(fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be
     // causing an infinite expansion.
@@ -132,13 +132,13 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       }
       ast_map::node_foreign_item(i, _, _) => {
           let d = mk_lldecl();
-          foreign::trans_intrinsic(ccx, d, i, pt, option::get(psubsts),
+          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(),
                                 ref_id);
           d
       }
       ast_map::node_variant(v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
-        let this_tv = option::get(vec::find(*tvs, |tv| {
+        let this_tv = option::get(&vec::find(*tvs, |tv| {
             tv.id.node == fn_id.node}));
         let d = mk_lldecl();
         set_inline_hint(d);
@@ -166,7 +166,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         let d = mk_lldecl();
         let tp_tys = ty::ty_params_to_tys(ccx.tcx, tps);
         trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, d,
-               option::get_default(psubsts,
+               option::get_default(&psubsts,
                         {tys:tp_tys, vtables: None, bounds: @~[]}),
                          fn_id.node, parent_id, ctor.span);
         d

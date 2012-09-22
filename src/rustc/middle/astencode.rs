@@ -719,7 +719,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
     debug!("Encoding side tables for id %d", id);
 
-    do option::iter(tcx.def_map.find(id)) |def| {
+    do option::iter(&tcx.def_map.find(id)) |def| {
         do ebml_w.tag(c::tag_table_def) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -727,7 +727,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             }
         }
     }
-    do option::iter((*tcx.node_types).find(id as uint)) |ty| {
+    do option::iter(&(*tcx.node_types).find(id as uint)) |ty| {
         do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -736,7 +736,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.node_type_substs.find(id)) |tys| {
+    do option::iter(&tcx.node_type_substs.find(id)) |tys| {
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -745,7 +745,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.freevars.find(id)) |fv| {
+    do option::iter(&tcx.freevars.find(id)) |fv| {
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -757,7 +757,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     }
 
     let lid = {crate: ast::local_crate, node: id};
-    do option::iter(tcx.tcache.find(lid)) |tpbt| {
+    do option::iter(&tcx.tcache.find(lid)) |tpbt| {
         do ebml_w.tag(c::tag_table_tcache) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -766,7 +766,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.ty_param_bounds.find(id)) |pbs| {
+    do option::iter(&tcx.ty_param_bounds.find(id)) |pbs| {
         do ebml_w.tag(c::tag_table_param_bounds) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -789,13 +789,13 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
     //    }
     //}
 
-    do option::iter(maps.mutbl_map.find(id)) |_m| {
+    do option::iter(&maps.mutbl_map.find(id)) |_m| {
         do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
     }
 
-    do option::iter(maps.last_use_map.find(id)) |m| {
+    do option::iter(&maps.last_use_map.find(id)) |m| {
         do ebml_w.tag(c::tag_table_last_use) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -806,7 +806,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(maps.method_map.find(id)) |mme| {
+    do option::iter(&maps.method_map.find(id)) |mme| {
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -815,7 +815,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(maps.vtable_map.find(id)) |dr| {
+    do option::iter(&maps.vtable_map.find(id)) |dr| {
         do ebml_w.tag(c::tag_table_vtable_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -824,7 +824,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.adjustments.find(id)) |adj| {
+    do option::iter(&tcx.adjustments.find(id)) |adj| {
         do ebml_w.tag(c::tag_table_adjustments) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {

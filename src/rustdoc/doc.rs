@@ -635,7 +635,7 @@ impl IndexEntry : cmp::Eq {
 
 impl Doc {
     fn CrateDoc() -> CrateDoc {
-        option::get(vec::foldl(None, self.pages, |_m, page| {
+        option::get(&vec::foldl(None, self.pages, |_m, page| {
             match page {
               doc::CratePage(doc) => Some(doc),
               _ => None

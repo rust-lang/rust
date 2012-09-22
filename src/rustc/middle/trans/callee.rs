@@ -394,8 +394,8 @@ fn trans_call_inner(
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
-            bcx = do with_cond(bcx, Load(bcx, option::get(ret_flag))) |bcx| {
-                do option::iter(copy bcx.fcx.loop_ret) |lret| {
+            bcx = do with_cond(bcx, Load(bcx, ret_flag.get())) |bcx| {
+                do option::iter(&copy bcx.fcx.loop_ret) |lret| {
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }

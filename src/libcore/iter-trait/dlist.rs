@@ -10,8 +10,8 @@ type IMPL_T<A> = dlist::DList<A>;
  */
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(v: &A) -> bool) {
     let mut link = self.peek_n();
-    while option::is_some(link) {
-        let nobe = option::get(link);
+    while option::is_some(&link) {
+        let nobe = option::get(&link);
         assert nobe.linked;
         if !f(&nobe.data) { break; }
         // Check (weakly) that the user didn't do a remove.

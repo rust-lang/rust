@@ -45,7 +45,7 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
         let val = comm::recv(page_port);
-        if option::is_some(val) {
+        if val.is_some() {
             pages += ~[option::unwrap(val)];
         } else {
             break;

@@ -73,7 +73,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
-    let companionmod = option::map(input.filestem(), |s| Path(s));
+    let companionmod = input.filestem().map(|s| Path(s));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, &prefix, &companionmod);
     let mut hi = p.span.hi;

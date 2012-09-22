@@ -497,7 +497,7 @@ fn convert_struct(ccx: @crate_ctxt,
                   tpt: ty::ty_param_bounds_and_ty,
                   id: ast::node_id) {
     let tcx = ccx.tcx;
-    do option::iter(struct_def.ctor) |ctor| {
+    do option::iter(&struct_def.ctor) |ctor| {
         // Write the ctor type
         let t_args = ctor.node.dec.inputs.map(
             |a| ty_of_arg(ccx, type_rscope(rp), *a, None) );
@@ -522,7 +522,7 @@ fn convert_struct(ccx: @crate_ctxt,
                            ty: t_ctor});
     }
 
-    do option::iter(struct_def.dtor) |dtor| {
+    do option::iter(&struct_def.dtor) |dtor| {
         // Write the dtor type
         let t_dtor = ty::mk_fn(
             tcx,

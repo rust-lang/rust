@@ -308,7 +308,7 @@ fn userinfo_from_str(uinfo: &str) -> UserInfo {
 }
 
 fn userinfo_to_str(+userinfo: UserInfo) -> ~str {
-    if option::is_some(userinfo.pass) {
+    if option::is_some(&userinfo.pass) {
         return str::concat(~[copy userinfo.user, ~":",
                           option::unwrap(copy userinfo.pass),
                           ~"@"]);
@@ -708,7 +708,7 @@ impl Url : FromStr {
  *
  */
 fn to_str(+url: Url) -> ~str {
-    let user = if option::is_some(url.user) {
+    let user = if url.user.is_some() {
       userinfo_to_str(option::unwrap(copy url.user))
     } else {
        ~""
@@ -723,7 +723,7 @@ fn to_str(+url: Url) -> ~str {
     } else {
         str::concat(~[~"?", query_to_str(url.query)])
     };
-    let fragment = if option::is_some(url.fragment) {
+    let fragment = if url.fragment.is_some() {
         str::concat(~[~"#", encode_component(
             option::unwrap(copy url.fragment))])
     } else {
@@ -805,21 +805,21 @@ mod tests {
         assert u == option::Some({user: ~"user",
                                   pass: option::Some(~"pass")});
         assert h == ~"rust-lang.org";
-        assert option::is_none(p);
+        assert p.is_none();
         assert r == ~"/something";
 
         let (u, h, p, r) = result::unwrap(get_authority(
             ~"//rust-lang.org:8000?something"));
-        assert option::is_none(u);
+        assert u.is_none();
         assert h == ~"rust-lang.org";
         assert p == option::Some(~"8000");
         assert r == ~"?something";
 
         let (u, h, p, r) = result::unwrap(get_authority(
             ~"//rust-lang.org#blah"));
-        assert option::is_none(u);
+        assert u.is_none();
         assert h == ~"rust-lang.org";
-        assert option::is_none(p);
+        assert p.is_none();
         assert r == ~"#blah";
 
         // ipv6 tests

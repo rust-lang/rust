@@ -27,7 +27,7 @@ fn check_item(sess: session, ast_map: ast_map::map,
       }
       item_enum(enum_definition, _) => {
         for enum_definition.variants.each |var| {
-            do option::iter(var.node.disr_expr) |ex| {
+            do option::iter(&var.node.disr_expr) |ex| {
                 v.visit_expr(ex, true, v);
             }
         }

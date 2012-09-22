@@ -354,7 +354,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
         match p.node {
             ast::pat_enum(_, subpats) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
-                    Some(option::get_default(subpats,
+                    Some(option::get_default(&subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
                 } else {
@@ -872,12 +872,12 @@ fn compile_submatch(bcx: block,
     /*
       For an empty match, a fall-through case must exist
      */
-    assert(m.len() > 0u || is_some(chk));
+    assert(m.len() > 0u || chk.is_some());
     let _icx = bcx.insn_ctxt("alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
     if m.len() == 0u {
-        Br(bcx, option::get(chk)());
+        Br(bcx, chk.get()());
         return;
     }
     if m[0].pats.len() == 0u {
@@ -1019,7 +1019,7 @@ fn compile_submatch(bcx: block,
     };
 
     let defaults = enter_default(else_cx, dm, m, col, val);
-    let exhaustive = option::is_none(chk) && defaults.len() == 0u;
+    let exhaustive = chk.is_none() && defaults.len() == 0u;
     let len = opts.len();
     let mut i = 0u;
 

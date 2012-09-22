@@ -89,9 +89,9 @@ fn run(lib_path: ~str,
 }
 
 fn writeclose(fd: c_int, s: Option<~str>) {
-    if option::is_some(s) {
+    if s.is_some() {
         let writer = io::fd_writer(fd, false);
-        writer.write_str(option::get(s));
+        writer.write_str(s.get());
     }
 
     os::close(fd);

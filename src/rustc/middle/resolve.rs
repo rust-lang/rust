@@ -1168,7 +1168,7 @@ impl Resolver {
 
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id),
-                                    is_some(struct_definition.ctor));
+                                    struct_definition.ctor.is_some());
 
                 visit_item(item, new_parent, visitor);
             }
@@ -1607,7 +1607,7 @@ impl Resolver {
         let modules = HashMap();
 
         // Create all the items reachable by paths.
-        for each_path(self.session.cstore, get(root.def_id).crate)
+        for each_path(self.session.cstore, root.def_id.get().crate)
                 |path_entry| {
 
             debug!("(building reduced graph for external crate) found path \

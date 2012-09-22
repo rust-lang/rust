@@ -438,7 +438,7 @@ fn self_exe_path() -> Option<Path> {
         }
     }
 
-    do option::map(load_self()) |pth| {
+    do load_self().map |pth| {
         Path(pth).dir_path()
     }
 }
@@ -512,7 +512,7 @@ fn tmpdir() -> Path {
     #[cfg(unix)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(getenv_nonempty("TMPDIR"),
+        option::get_default(&getenv_nonempty("TMPDIR"),
                             Path("/tmp"))
     }
 
@@ -520,7 +520,7 @@ fn tmpdir() -> Path {
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         option::get_default(
-                    option::or(getenv_nonempty("TMP"),
+                    &option::or(getenv_nonempty("TMP"),
                     option::or(getenv_nonempty("TEMP"),
                     option::or(getenv_nonempty("USERPROFILE"),
                                getenv_nonempty("WINDIR")))),
@@ -848,7 +848,7 @@ mod tests {
     fn make_rand_name() -> ~str {
         let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
-        assert option::is_none(getenv(n));
+        assert getenv(n).is_none();
         n
     }
 
@@ -889,8 +889,8 @@ mod tests {
     #[test]
     fn test_self_exe_path() {
         let path = os::self_exe_path();
-        assert option::is_some(path);
-        let path = option::get(path);
+        assert path.is_some();
+        let path = path.get();
         log(debug, path);
 
         // Hard to test this function
@@ -909,7 +909,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert option::is_none(v2) || v2 == option::Some(v);
+            assert v2.is_none() || v2 == option::Some(v);
         }
     }
 
@@ -946,7 +946,7 @@ mod tests {
         setenv(~"HOME", ~"");
         assert os::homedir().is_none();
 
-        option::iter(oldhome, |s| setenv(~"HOME", s));
+        oldhome.iter(|s| setenv(~"HOME", s));
     }
 
     #[test]

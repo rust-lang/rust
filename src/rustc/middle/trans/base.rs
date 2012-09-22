@@ -777,7 +777,7 @@ fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
     loop {
         match bcx.kind {
           block_scope(inf) => {
-            if inf.cleanups.len() > 0u || is_none(bcx.parent) {
+            if inf.cleanups.len() > 0u || bcx.parent.is_none() {
                 f(inf); return;
             }
           }
@@ -1042,7 +1042,7 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
     let bcx = mk_block(llbb, parent, move kind, is_lpad, opt_node_info, cx);
-    do option::iter(parent) |cx| {
+    do option::iter(&parent) |cx| {
         if cx.unreachable { Unreachable(bcx); }
     };
     return bcx;
@@ -1164,12 +1164,12 @@ fn cleanup_and_leave(bcx: block, upto: Option<BasicBlockRef>,
         }
         cur = match cur.parent {
           Some(next) => next,
-          None => { assert is_none(upto); break; }
+          None => { assert upto.is_none(); break; }
         };
     }
     match leave {
       Some(target) => Br(bcx, target),
-      None => { Resume(bcx, Load(bcx, option::get(bcx.fcx.personality))); }
+      None => { Resume(bcx, Load(bcx, bcx.fcx.personality.get())); }
     }
 }
 
@@ -1251,7 +1251,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        do option::iter(simple_name) |name| {
+        do option::iter(&simple_name) |name| {
             str::as_c_str(cx.ccx().sess.str_of(name), |buf| {
                 llvm::LLVMSetValueName(val, buf)
             });
@@ -1601,7 +1601,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
        /* avoids the need for special cases to assign a type to
           the constructor body (since it has no explicit return) */
       &&
-      (option::is_none(body.node.expr) ||
+      (body.node.expr.is_none() ||
        ty::type_is_bot(block_ty) ||
        ty::type_is_nil(block_ty))  {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
@@ -1728,7 +1728,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     let selfdatum = datum::scratch_datum(bcx_top, rslt_ty, true);
 
     // Initialize dtor flag (if any) to 1
-    if option::is_some(ty::ty_dtor(bcx_top.tcx(), parent_id)) {
+    if ty::ty_dtor(bcx_top.tcx(), parent_id).is_some() {
         let flag = GEPi(bcx_top, selfdatum.val, [0, 1]);
         Store(bcx_top, C_u8(1), flag);
     }
@@ -1761,7 +1761,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   /* Look up the parent class's def_id */
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
   /* Substitute in the class type if necessary */
-    do option::iter(psubsts) |ss| {
+    do option::iter(&psubsts) |ss| {
     class_ty = ty::subst_tps(tcx, ss.tys, class_ty);
   }
 
@@ -1779,7 +1779,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
 
   /* If we're monomorphizing, register the monomorphized decl
      for the dtor */
-    do option::iter(hash_id) |h_id| {
+    do option::iter(&hash_id) |h_id| {
     ccx.monomorphized.insert(h_id, lldecl);
   }
   /* Translate the dtor body */
@@ -1889,12 +1889,12 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
       let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
                      vtables: None,
                      bounds: @~[]};
-      do option::iter(struct_def.ctor) |ctor| {
+      do option::iter(&struct_def.ctor) |ctor| {
         trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
                          get_item_val(ccx, ctor.node.id), psubsts,
                          ctor.node.id, local_def(id), ctor.span);
       }
-      do option::iter(struct_def.dtor) |dtor| {
+      do option::iter(&struct_def.dtor) |dtor| {
          trans_class_dtor(ccx, *path, dtor.node.body,
            dtor.node.id, None, None, local_def(id));
       };
@@ -2070,7 +2070,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(id) {
      Some(s) => s,
-     None if is_none(substs) => {
+     None if substs.is_none() => {
        let s = mangle_exported_name(
            ccx,
            vec::append(path, ~[path_name(ccx.names(~"dtor"))]),

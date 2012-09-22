@@ -254,7 +254,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     time(time_passes, ~"lint checking", || lint::check_crate(ty_cx, crate));
 
     if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
-    let outputs = option::get(outputs);
+    let outputs = outputs.get();
 
     let maps = {mutbl_map: mutbl_map,
                 root_map: root_map,
@@ -353,7 +353,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     let ann = match ppm {
       ppm_typed => {
         {pre: ann_paren_for_expr,
-         post: |a| ann_typed_post(option::get(tcx), a) }
+         post: |a| ann_typed_post(tcx.get(), a) }
       }
       ppm_identified | ppm_expanded_identified => {
         {pre: ann_paren_for_expr, post: ann_identified_post}
@@ -516,7 +516,7 @@ fn build_session_options(binary: ~str,
     let extra_debuginfo = opt_present(matches, ~"xg");
     let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
-    let sysroot_opt = option::map(sysroot_opt, |m| Path(m));
+    let sysroot_opt = sysroot_opt.map(|m| Path(m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
     match output_type {
@@ -695,7 +695,7 @@ fn build_output_filenames(input: input,
         };
 
         let stem = match input {
-          file_input(ifile) => option::get(ifile.filestem()),
+          file_input(ifile) => ifile.filestem().get(),
           str_input(_) => ~"rust_out"
         };
 

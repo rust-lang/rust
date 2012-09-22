@@ -152,13 +152,13 @@ fn should_index_mod_contents() {
         config::DocPerCrate,
         ~"mod a { } fn b() { }"
     );
-    assert option::get(doc.cratemod().index).entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"#module-a"
     };
-    assert option::get(doc.cratemod().index).entries[1] == {
+    assert doc.cratemod().index.get().entries[1] == {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -172,13 +172,13 @@ fn should_index_mod_contents_multi_page() {
         config::DocPerMod,
         ~"mod a { } fn b() { }"
     );
-    assert option::get(doc.cratemod().index).entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"a.html"
     };
-    assert option::get(doc.cratemod().index).entries[1] == {
+    assert doc.cratemod().index.get().entries[1] == {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -192,7 +192,7 @@ fn should_index_foreign_mod_pages() {
         config::DocPerMod,
         ~"extern mod a { }"
     );
-    assert option::get(doc.cratemod().index).entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == {
         kind: ~"Foreign module",
         name: ~"a",
         brief: None,
@@ -206,7 +206,7 @@ fn should_add_brief_desc_to_index() {
         config::DocPerMod,
         ~"#[doc = \"test\"] mod a { }"
     );
-    assert option::get(doc.cratemod().index).entries[0].brief
+    assert doc.cratemod().index.get().entries[0].brief
         == Some(~"test");
 }
 
@@ -216,7 +216,7 @@ fn should_index_foreign_mod_contents() {
         config::DocPerCrate,
         ~"extern mod a { fn b(); }"
     );
-    assert option::get(doc.cratemod().nmods()[0].index).entries[0] == {
+    assert doc.cratemod().nmods()[0].index.get().entries[0] == {
         kind: ~"Function",
         name: ~"b",
         brief: None,
