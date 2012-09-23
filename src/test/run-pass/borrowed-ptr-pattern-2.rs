@@ -1,10 +1,11 @@
-fn foo<T>(s: &str) {
+fn foo(s: &~str) -> bool {
     match s {
-        &"kitty" => fail ~"cat",
-        _ => ()
+        &~"kitty" => true,
+        _ => false
     }
 }
 
 fn main() {
-
+    assert foo(&~"kitty");
+    assert !foo(&~"gata");
 }
