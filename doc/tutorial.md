@@ -354,67 +354,40 @@ grow on you (hopefully).
 
 ## Types
 
-The basic types are written like this:
+The basic types include the usual boolean, integral, and floating point types.
 
-`()`
-  : Nil, the type that has only a single value.
-
-`bool`
-  : Boolean type, with values `true` and `false`.
-
-`int`
-  : A machine-pointer-sized integer.
-
-`uint`
-  : A machine-pointer-sized unsigned integer.
-
-`i8`, `i16`, `i32`, `i64`
-  : Signed integers with a specific size (in bits).
-
-`u8`, `u16`, `u32`, `u64`
-  : Unsigned integers with a specific size.
-
-`float`
-  : The largest floating-point type efficiently supported on the target
-    machine.
-
-`f32`, `f64`
-  : Floating-point types with a specific size.
-
-`char`
-  : A Unicode character (32 bits).
+------------------------- -----------------------------------------------
+`()`                      Nil, the type that has only a single value
+`bool`                    Boolean type, with values `true` and `false`
+`int`, `uint`             Machine-pointer-sized signed and unsigned integers
+`i8`, `i16`, `i32`, `i64` Signed integers with a specific size (in bits)
+`u8`, `u16`, `u32`, `u64` Unsigned integers with a specific size
+`float`                   The largest floating-point type efficiently supported on the target machine
+`f32`, `f64`              Floating-point types with a specific size.
+`char`                    A Unicode character (32 bits).
+------------------------- -----------------------------------------------
 
 These can be combined in composite types, which will be described in
 more detail later on (the `T`s here stand for any other type):
 
-`[T * N]`
-  : Vector (like an array in other languages) with N elements.
-
-`[mut T * N]`
-  : Mutable vector with N elements.
-
-`(T1, T2)`
-  : Tuple type. Any arity above 1 is supported.
-
-`@T`, `~T`, `&T`
-  : Pointer types. See [Boxes and pointers](#boxes-and-pointers) for an explanation of what `@`, `~`, and `&` mean.
+------------------------- -----------------------------------------------
+`[T * N]`                 Vector (like an array in other languages) with N elements
+`[mut T * N]`             Mutable vector with N elements
+`(T1, T2)`                Tuple type. Any arity above 1 is supported
+`@T`, `~T`, `&T`          [Pointer types](#boxes-and-pointers)
+------------------------- -----------------------------------------------
 
 Some types can only be manipulated by pointer, never directly. For instance,
 you cannot refer to a string (`str`); instead you refer to a pointer to a
 string (`@str`, `~str`, or `&str`). These *dynamically-sized* types consist
 of:
 
-`fn(arg1: T1, arg2: T2) -> T3`
-  : Function types.
-
-`str`
-  : String type (in UTF-8).
-
-`[T]`
-  : Vector with unknown size (also called a slice).
-
-`[mut T]`
-  : Mutable vector with unknown size.
+------------------------- -----------------------------------------------
+`fn(a: T1, b: T2) -> T3`  Function types
+`str`                     String type (in UTF-8)
+`[T]`                     Vector with unknown size (also called a slice)
+`[mut T]`                 Mutable vector with unknown size
+------------------------- -----------------------------------------------
 
 Types can be given names with `type` declarations:
 
