@@ -2,79 +2,52 @@
 
 # Introduction
 
-## Scope
-
-This is a tutorial for the Rust programming language. It assumes the
-reader is familiar with the basic concepts of programming, and has
-programmed in one or more other languages before. It will often make
-comparisons to other languages in the C family. This tutorial covers
-the fundamentals of the language, including the syntax, the type
-system and memory model, and generics.
-[Additional tutorials](#what-next) cover specific language features in
-greater depth.
-
-## Language overview
-
-Rust is a systems programming language with a focus on type safety,
-memory safety, concurrency and performance. It is intended for writing
-large, high-performance applications while preventing several classes
-of errors commonly found in languages like C++. Rust has a
-sophisticated memory model that makes possible many of the efficient
-data structures used in C++, while disallowing invalid memory accesses
-that would otherwise cause segmentation faults. Like other systems
-languages, it is statically typed and compiled ahead of time.
+Rust is a programming language with a focus on type safety, memory
+safety, concurrency and performance. It is intended for writing
+large-scale, high-performance software while preventing several
+classes of common errors. Rust has a sophisticated memory model that
+encourages efficient data structures and safe concurrency patterns,
+forbidding invalid memory accesses that would otherwise cause
+segmentation faults. It is statically typed and compiled ahead of
+time.
 
 As a multi-paradigm language, Rust supports writing code in
-procedural, functional and object-oriented styles. Some of its nice
-high-level features include:
+procedural, functional and object-oriented styles. Some of its
+pleasant high-level features include:
 
-* **Pattern matching and algebraic data types (enums).** Common in
-  functional languages, pattern matching on ADTs provides a compact
-  and expressive way to encode program logic.
+* **Pattern matching and algebraic data types (enums).** As
+  popularized by functional languages, pattern matching on ADTs
+  provides a compact and expressive way to encode program logic.
+* **Type inference.** Type annotations on local variable
+  declarations are optional.
 * **Task-based concurrency.** Rust uses lightweight tasks that do
   not share memory.
-* **Higher-order functions.** Rust functions may take closures as
-  arguments or return closures as return values.  Closures in Rust are
-  very powerful and used pervasively.
-* **Trait polymorphism.** Rust's type system features a unique
-  combination of Java-style interfaces and Haskell-style typeclasses
-  called _traits_.
+* **Higher-order functions.** Rust's efficient and flexible closures
+  are heavily relied on to provide iteration and other control
+  structures
 * **Parametric polymorphism (generics).** Functions and types can be
-  parameterized over type variables with optional type constraints.
-* **Type inference.** Type annotations on local variable
-  declarations can be omitted.
+  parameterized over type variables with optional trait-based type
+  constraints.
+* **Trait polymorphism.** Rust's type system features a unique
+  combination of type classes and object-oriented interfaces.
 
-## First impressions
+## Scope
 
-As a curly-brace language in the tradition of C, C++, and JavaScript,
-Rust looks a lot like other languages you may be familiar with.
+This is an introductory tutorial for the Rust programming language. It
+covers the fundamentals of the language, including the syntax, the
+type system and memory model, and generics.  [Additional
+tutorials](#what-next) cover specific language features in greater
+depth.
 
-~~~~
-fn boring_old_factorial(n: int) -> int {
-    let mut result = 1, i = 1;
-    while i <= n {
-        result *= i;
-        i += 1;
-    }
-    return result;
-}
-~~~~
-
-Several differences from C stand out. Types do not come before, but
-after variable names (preceded by a colon). For local variables
-(introduced with `let`), types are optional, and will be inferred when
-left off. Constructs like `while` and `if` do not require parentheses
-around the condition (though they allow them).
-
-You should, however, not conclude that Rust is simply an evolution of
-C. As will become clear in the rest of this tutorial, it goes in quite
-a different direction, with efficient, strongly-typed and memory-safe
-support for many high-level idioms.
+It assumes the reader is familiar with the basic concepts of
+programming, and has programmed in one or more other languages
+before. It will often make comparisons to other languages,
+particularly those in the C family.
 
 ## Conventions
 
 Throughout the tutorial, words that indicate language keywords or
-identifiers defined in the example code are displayed in `code font`.
+identifiers defined in example code are displayed in `code font`.
 
 Code snippets are indented, and also shown in a monospaced font. Not
 all snippets constitute whole programs. For brevity, we'll often show
