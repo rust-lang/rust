@@ -355,18 +355,30 @@ endif
 # Add RUSTFLAGS_STAGEN values to the build command
 EXTRAFLAGS_STAGE$(1) = $$(RUSTFLAGS_STAGE$(1))
 
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
+
+# XXX: Terrible hack. No time to explain! Remove after snapshot.
+ifeq ($(1),0)
+ifeq ($(3),i686-unknown-linux-gnu)
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+endif
+ifeq ($(3),i686-apple-darwin)
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+endif
+endif
+
 STAGE$(1)_T_$(2)_H_$(3) := 						\
 	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
 		$$(CFG_VALGRIND_COMPILE$(1)) 			\
 		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
-		--cfg stage$(1)					\
+		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2))
 
 PERF_STAGE$(1)_T_$(2)_H_$(3) := 				\
 	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
 		$$(CFG_PERF_TOOL) 						\
 		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
-		--cfg stage$(1)					\
+		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2))
 
 endef
