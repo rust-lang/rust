@@ -61,41 +61,41 @@ they don't contain references to things that aren't actually defined.
 
 # Getting started
 
-## Installation
+The Rust compiler currently must be built from a [tarball], unless you
+are on Windows, in which case using the [installer][win-exe] is
+recommended.
 
-The Rust compiler currently must be built from a [tarball][]. We hope
-to be distributing binary packages for various operating systems in
-the future.
+Since the Rust compiler is written in Rust, it must be built by
+a precompiled "snapshot" version of itself (made in an earlier state
+of development). As such, source builds require a connection to
+the Internet, to fetch snapshots, and an OS that can execute the
+available snapshot binaries.
 
-The Rust compiler is slightly unusual in that it is written in Rust
-and therefore must be built by a precompiled "snapshot" version of
-itself (made in an earlier state of development). As such, source
-builds require that:
+Snapshot binaries are currently built and tested on several platforms:
 
-  * You are connected to the internet, to fetch snapshots.
-  * You can at least execute snapshot binaries of one of the forms we
-    offer them in. Currently we build and test snapshots on:
-    * Windows (7, server 2008 r2) x86 only
-    * Linux (various distributions) x86 and x86-64
-    * OSX 10.6 ("Snow Leopard") or 10.7 ("Lion") x86 and x86-64
+* Windows (7, Server 2008 R2), x86 only
+* Linux (various distributions), x86 and x86-64
+* OSX 10.6 ("Snow Leopard") or 10.7 ("Lion"), x86 and x86-64
 
-You may find other platforms work, but these are our "tier 1" supported
-build environments that are most likely to work. Further platforms will
-be added to the list in the future via cross-compilation.
+You may find that other platforms work, but these are our "tier 1"
+supported build environments that are most likely to work.
+
+> ***Note:*** Windows users should read the detailed
+> [getting started][wiki-start] notes on the wiki. Even when using
+> the binary installer the windows build requires a MinGW installation,
+> the precise details of which are not discussed in this tutorial.
 
 To build from source you will also need the following prerequisite
 packages:
 
-  * g++ 4.4 or clang++ 3.x
-  * python 2.6 or later
-  * perl 5.0 or later
-  * gnu make 3.81 or later
-  * curl
+* g++ 4.4 or clang++ 3.x
+* python 2.6 or later (but not 3.x)
+* perl 5.0 or later
+* gnu make 3.81 or later
+* curl
 
 Assuming you're on a relatively modern *nix system and have met the
-prerequisites, something along these lines should work. Building from
-source on Windows requires some extra steps: please see the [getting
-started][wiki-get-started] page on the Rust wiki.
+prerequisites, something along these lines should work.
 
 ~~~~ {.notrust}
 $ wget http://dl.rust-lang.org/dist/rust-0.4.tar.gz
@@ -118,8 +118,9 @@ When complete, `make install` will place the following programs into
   * `rustdoc`, the API-documentation tool
   * `cargo`, the Rust package manager
 
-[wiki-get-started]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
+[win-exe]: http://dl.rust-lang.org/dist/rust-0.4-install.exe
 
 ## Compiling your first program
 
@@ -128,91 +129,137 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    io::println("hello world!");
+    io::println("hello? yes, this is rust");
 }
 ~~~~
 
 If the Rust compiler was installed successfully, running `rustc
-hello.rs` will produce a binary called `hello` (or `hello.exe`).
+hello.rs` will produce an executable called `hello` (or `hello.exe` on
+Windows) which, upon running, will likely do exactly what you expect
+(unless you are on Windows, in which case what it does is subject
+to local weather conditions).
 
-If you modify the program to make it invalid (for example, by changing
- `io::println` to some nonexistent function), and then compile it,
- you'll see an error message like this:
+> ***Note:*** That may or may not be hyperbole, but there are some
+> 'gotchas' to be aware of on Windows. First, the MinGW environment
+> must be set up perfectly. Please read [the
+> wiki][wiki-started]. Second, `rustc` may need to be [referred to as
+> `rustc.exe`][bug-3319]. It's a bummer, I know, and I am so very
+> sorry.
+
+[bug-3319]: https://github.com/mozilla/rust/issues/3319
+[wiki-started]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+
+The Rust compiler tries to provide useful information when it runs
+into an error. If you modify the program to make it invalid (for
+example, by changing `io::println` to some nonexistent function), and
+then compile it, you'll see an error message like this:
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_it
-hello.rs:2     io::print_it("hello world!");
+hello.rs:2     io::print_it("hello? yes, this is rust");
                ^~~~~~~~~~~~
 ~~~~
 
-The Rust compiler tries to provide useful information when it runs
-into an error.
-
-## Anatomy of a Rust program
-
-In its simplest form, a Rust program is a `.rs` file with some
-types and functions defined in it. If it has a `main` function, it can
-be compiled to an executable. Rust does not allow code that's not a
+In its simplest form, a Rust program is a `.rs` file with some types
+and functions defined in it. If it has a `main` function, it can be
+compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file—all statements must
-live inside a function.
-
-Rust programs can also be compiled as libraries, and included in other
-programs. The `extern mod std` directive that appears at the top of a lot of
-examples imports the [standard library][std]. This is described in more
-detail [later on](#modules-and-crates).
+live inside a function.  Rust programs can also be compiled as
+libraries, and included in other programs. The `extern mod std`
+directive that appears at the top of many examples imports the
+[standard library][std], described in more detail [later
+on](#modules-and-crates).
 
 [std]: http://doc.rust-lang.org/doc/std
 
 ## Editing Rust code
 
-There are Vim highlighting and indentation scripts in the Rust source
-distribution under `src/etc/vim/`, and an emacs mode under
-`src/etc/emacs/`. There is a package for Sublime Text 2 at
-[github.com/dbp/sublime-rust](http://github.com/dbp/sublime-rust), also
-available through [package control](http://wbond.net/sublime_packages/package_control).
+There are vim highlighting and indentation scripts in the Rust source
+distribution under `src/etc/vim/`. There is an emacs mode under
+`src/etc/emacs/` called `rust-mode`, but do read the instructions
+included in that directory. In particular, if you are running emacs
+24, then using emacs's internal package manager to install `rust-mode`
+is the easiest way to keep it up to date. There is also a package for
+Sublime Text 2, available both [standalone][sublime] and through
+[Sublime Package Control][sublime-pkg].
 
 Other editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
+[sublime]: http://github.com/dbp/sublime-rust
+[sublime-pkg]: http://wbond.net/sublime_packages/package_control
+
 # Syntax Basics
 
-## Braces
-
 Assuming you've programmed in any C-family language (C++, Java,
-JavaScript, C#, or PHP), Rust will feel familiar. The main surface
-difference to be aware of is that the bodies of `if` statements and of
-`while` loops *have* to be wrapped in brackets. Single-statement,
-bracket-less bodies are not allowed.
+JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
+in blocks delineated by curly braces; there are control structures
+for branching and looping, like the familiar `if` and `when`; function
+calls are written `myfunc(arg1, arg2)`; operators are written the same
+and mostly have the same precedence as in C; comments are again like C.
 
-Accounting for these differences, the surface syntax of Rust
-statements and expressions is C-like. Function calls are written
-`myfunc(arg1, arg2)`, operators have mostly the same name and
-precedence that they have in C, comments look the same, and constructs
-like `if` and `while` are available:
+The main surface difference to be aware of is that the condition at
+the head of control structures like `if` and `while` do not require
+paretheses, while their bodies *must* be wrapped in
+brackets. Single-statement, bracket-less bodies are not allowed.
 
 ~~~~
-# fn it_works() {}
-# fn abort() {}
+# fn calibrate_universe() -> bool { true }
+# fn party_on() {}
+# fn panic() {}
 fn main() {
-    while true {
-        /* Ensure that basic math works. */
+    while calibrate_universe() {
+        /* Ensure that basic math still operates is expected */
         if 2*20 > 30 {
-            // Everything is OK.
-            it_works();
+            party_on(); // That's a relief
         } else {
-            abort();
+            panic();
         }
-        break;
     }
 }
 ~~~~
+
+The `let` keyword, introduces a local variable. By default, variables
+are immutable. `let mut` can be used to introduce a local variable
+that can be reassigned.
+
+~~~~
+let hi = "hi";
+let mut count = 0;
+
+while count < 10 {
+    io::println(hi);
+    count += 1;
+}
+~~~~
+
+Although Rust can almost always infer the types of local variables, it
+can help readability to specify a variable's type by following it with
+a colon, then the type name. Local variables may shadow earlier
+declarations, making the earlier variables inaccessible.
+
+~~~~
+let my_favorite_value: float = 57.8;
+let my_favorite_value: int = my_favorite_value as int;
+~~~~
+
+Rust identifiers follow the same rules as C; they start with an alphabetic
+character or an underscore, and after that may contain any sequence of
+alphabetic characters, numbers, or underscores. The preferred style is to
+begin function, variable, and module names with a lowercase letter, using
+underscores where they help readability, while writing types in camel case.
+
+~~~
+let my_variable = 100;
+type MyType = int; // built-in types though are _not_ camel case
+~~~
 
 ## Expression syntax
 
 Though it isn't apparent in all code, there is a fundamental
 difference between Rust's syntax and its predecessors in this family
 of languages. Many constructs that are statements in C are expressions
-in Rust. This allows Rust to be more expressive. For example, you might
+in Rust, allowing code to be more concise. For example, you might
 write a piece of code like this:
 
 ~~~~
@@ -231,16 +278,20 @@ But, in Rust, you don't have to repeat the name `price`:
 
 ~~~~
 # let item = "salad";
-let price = if item == "salad" { 3.50 }
-            else if item == "muffin" { 2.25 }
-            else { 2.00 };
+let price = if item == "salad" {
+    3.50
+} else if item == "muffin" {
+    2.25
+} else {
+    2.00
+};
 ~~~~
 
-Both pieces of code are exactly equivalent—they assign a value to `price`
-depending on the condition that holds. Note that the semicolons are omitted
-from the second snippet. This is important; the lack of a semicolon after the
-last statement in a braced block gives the whole block the value of that last
-expression.
+Both pieces of code are exactly equivalent—they assign a value to
+`price` depending on the condition that holds. Note that the
+semicolons are omitted from the blocks in the second snippet. This is
+important; the lack of a semicolon after the last statement in a
+braced block gives the whole block the value of that last expression.
 
 Put another way, the semicolon in Rust *ignores the value of an expression*.
 Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
@@ -248,14 +299,16 @@ would simply assign nil (void) to `price`. But without the semicolon, each
 branch has a different value, and `price` gets the value of the branch that
 was taken.
 
-This feature also works for function bodies. This function returns a boolean:
-
-~~~~
-fn is_four(x: int) -> bool { x == 4 }
-~~~~
-
 In short, everything that's not a declaration (`let` for variables,
-`fn` for functions, et cetera) is an expression.
+`fn` for functions, et cetera) is an expression, including function bodies.
+
+~~~~
+fn is_four(x: int) -> bool {
+   // No need for a return statement. The result of the expression
+   // is used as the return value.
+   x == 4
+}
+~~~~
 
 If all those things are expressions, you might conclude that you have
 to add a terminating semicolon after *every* statement, even ones that
@@ -264,48 +317,40 @@ That is not the case, though. Expressions that end in a block only
 need a semicolon if that block contains a trailing expression. `while`
 loops do not allow trailing expressions, and `if` statements tend to
 only have a trailing expression when you want to use their value for
-something—in which case you'll have embedded it in a bigger statement,
-like the `let x = ...` example above.
+something—in which case you'll have embedded it in a bigger statement.
 
-## Identifiers
+~~~
+# fn foo() -> bool { true }
+# fn bar() -> bool { true }
+# fn baz() -> bool { true }
 
-Rust identifiers follow the same rules as C; they start with an alphabetic
-character or an underscore, and after that may contain any sequence of
-alphabetic characters, numbers, or underscores. The preferred style is to
-begin function, variable, and module names with a lowercase letter, using
-underscores where they help readability, while beginning types with a capital
-letter.
+// `let` is not an expression, so it is semi-colon terminated;
+let x = foo();
 
-The double-colon (`::`) is used as a module separator, so
-`io::println` means 'the thing named `println` in the module
-named `io`.
+// When used in statement position, bracy expressions do not
+// usually need to be semicolon terminated
+if x {
+    bar();
+} else {
+    baz();
+} // No semi-colon
 
-## Variable declaration
+// Although, if `bar` and `baz` have non-nil return types, and
+// we try to use them as the tail expressions, rustc will
+// make us terminate the expression.
+if x {
+    bar()
+} else {
+    baz()
+}; // Semi-colon to ignore non-nil block type
 
-The `let` keyword, as we've seen, introduces a local variable. Local
-variables are immutable by default: `let mut` can be used to introduce
-a local variable that can be reassigned.  Global constants can be
-defined with `const`:
+// An `if` embedded in `let` again requires a semicolon to terminate
+// the `let` statement
+let y = if x { foo() } else { bar() };
+~~~
 
-~~~~
-const REPEAT: int = 5;
-fn main() {
-    let hi = "Hi!";
-    let mut count = 0;
-    while count < REPEAT {
-        io::println(hi);
-        count += 1;
-    }
-}
-~~~~
-
-Local variables may shadow earlier declarations, making the earlier variables
-inaccessible.
-
-~~~~
-let my_favorite_value: float = 57.8;
-let my_favorite_value: int = my_favorite_value as int;
-~~~~
+This may sound a bit intricate, but it is super-useful, and it will
+grow on you (hopefully).
 
 ## Types
 
