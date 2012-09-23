@@ -204,7 +204,7 @@ paretheses, while their bodies *must* be wrapped in
 brackets. Single-statement, bracket-less bodies are not allowed.
 
 ~~~~
-# fn calibrate_universe() -> bool { true }
+# fn calibrate_universe() -> bool { false }
 # fn party_on() {}
 # fn panic() {}
 fn main() {
