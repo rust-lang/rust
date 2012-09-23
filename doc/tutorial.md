@@ -408,34 +408,30 @@ error. Read about [single-variant enums](#single_variant_enum)
 further on if you need to create a type name that's not just a
 synonym.
 
-## Numeric literals
+## Literals
 
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
-binary (`0b10010000`) base.
+binary (`0b10010000`) base. Each integral type has a corresponding literal
+suffix that can be used to indicate the type of a literal: `i` for `int`,
+`u` for `uint`, and `i8` for the `i8` type, etc.
 
-If you write an integer literal without a suffix (`3`, `-500`, etc.),
-the Rust compiler will try to infer its type based on type annotations
-and function signatures in the surrounding program. In the absence of any type
-annotations at all, Rust will assume that an unsuffixed integer literal has
-type `int`. It's also possible to avoid any type ambiguity by writing integer
-literals with a suffix. For example:
+In the absense of an integer literal suffix, Rust will infer the
+integer type based on type annotations and function signatures in the
+surrounding program. In the absence of any type information at all,
+Rust will assume that an unsuffixed integer literal has type
+`int`.
 
 ~~~~
-let x = 50;
-log(error, x); // x is an int
-let y = 100u;
-log(error, y); // y is an uint
+let a = 1;       // a is an int
+let b = 10i;     // b is an int, due to the 'i' suffix
+let c = 100u;    // c as a uint
+let d = 1000i32; // d is an i32
 ~~~~
-
-Note that, in Rust, no implicit conversion between integer types
-happens. If you are adding one to a variable of type `uint`, saying
-`+= 1u8` will give you a type error.
 
 Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
-a suffix, the literal is assumed to be of type `float`. Suffixes `f` (32-bit)
-and `l` (64-bit) can be used to create literals of a specific type.
-
-## Other literals
+a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
+(32-bit) and `f64` (64-bit) can be used to create literals of a
+specific type.
 
 The nil literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
