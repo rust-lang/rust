@@ -340,9 +340,7 @@ mod rt;
 mod unicode;
 #[legacy_exports]
 mod private;
-#[legacy_exports]
 mod cmath;
-#[legacy_exports]
 mod stackwalk;
 
 // Local Variables:

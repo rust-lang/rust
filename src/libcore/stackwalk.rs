@@ -8,19 +8,19 @@ use cast::reinterpret_cast;
 use ptr::offset;
 use sys::size_of;
 
-type Word = uint;
+pub type Word = uint;
 
-struct Frame {
+pub struct Frame {
     fp: *Word
 }
 
-fn Frame(fp: *Word) -> Frame {
+pub fn Frame(fp: *Word) -> Frame {
     Frame {
         fp: fp
     }
 }
 
-fn walk_stack(visit: fn(Frame) -> bool) {
+pub fn walk_stack(visit: fn(Frame) -> bool) {
 
     debug!("beginning stack walk");
 
