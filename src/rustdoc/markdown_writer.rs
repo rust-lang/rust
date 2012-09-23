@@ -14,7 +14,7 @@ enum WriteInstr {
     Done
 }
 
-type Writer = fn~(+WriteInstr);
+type Writer = fn~(+v: WriteInstr);
 type WriterFactory = fn~(page: doc::Page) -> Writer;
 
 trait WriterUtils {

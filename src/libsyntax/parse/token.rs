@@ -331,7 +331,7 @@ type ident_interner = util::interner::interner<@~str>;
  * so we have to use a unique number. See taskgroup_key! in task.rs
  * for another case of this. */
 macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
+    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
         (-3 as uint, 0u)))
 )
 

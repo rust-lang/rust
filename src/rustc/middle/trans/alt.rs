@@ -487,6 +487,31 @@ fn enter_uniq(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
+fn enter_region(bcx: block, dm: DefMap, m: &[@Match/&r],
+                col: uint, val: ValueRef)
+    -> ~[@Match/&r]
+{
+    debug!("enter_region(bcx=%s, m=%s, col=%u, val=%?)",
+           bcx.to_str(),
+           matches_to_str(bcx, m),
+           col,
+           bcx.val_str(val));
+    let _indenter = indenter();
+
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    do enter_match(bcx, dm, m, col, val) |p| {
+        match p.node {
+            ast::pat_region(sub) => {
+                Some(~[sub])
+            }
+            _ => {
+                assert_is_binding_or_wild(bcx, p);
+                Some(~[dummy])
+            }
+        }
+    }
+}
+
 fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
         if set.any(|l| opt_eq(tcx, &l, &val)) {return;}
@@ -585,34 +610,35 @@ fn root_pats_as_necessary(bcx: block, m: &[@Match],
     }
 }
 
-fn any_box_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
-        match br.pats[col].node {
-          ast::pat_box(_) => return true,
-          _ => ()
-        }
+// Macro for deciding whether any of the remaining matches fit a given kind of
+// pattern.  Note that, because the macro is well-typed, either ALL of the
+// matches should fit that sort of pattern or NONE (however, some of the
+// matches may be wildcards like _ or identifiers).
+macro_rules! any_pat (
+    ($m:expr, $pattern:pat) => {
+        vec::any($m, |br| {
+            match br.pats[col].node {
+                $pattern => true,
+                _ => false
+            }
+        })
     }
-    return false;
+)
+
+fn any_box_pat(m: &[@Match], col: uint) -> bool {
+    any_pat!(m, ast::pat_box(_))
 }
 
 fn any_uniq_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
-        match br.pats[col].node {
-          ast::pat_uniq(_) => return true,
-          _ => ()
-        }
-    }
-    return false;
+    any_pat!(m, ast::pat_uniq(_))
+}
+
+fn any_region_pat(m: &[@Match], col: uint) -> bool {
+    any_pat!(m, ast::pat_region(_))
 }
 
 fn any_tup_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
-        match br.pats[col].node {
-          ast::pat_tup(_) => return true,
-          _ => ()
-        }
-    }
-    return false;
+    any_pat!(m, ast::pat_tup(_))
 }
 
 type mk_fail = fn@() -> BasicBlockRef;
@@ -940,6 +966,13 @@ fn compile_submatch(bcx: block,
         return;
     }
 
+    if any_region_pat(m, col) {
+        let loaded_val = Load(bcx, val);
+        compile_submatch(bcx, enter_region(bcx, dm, m, col, val),
+                         vec::append(~[loaded_val], vals_left), chk);
+        return;
+    }
+
     // Decide what kind of branch we need
     let opts = get_options(ccx, m, col);
     let mut kind = no_branch;
@@ -1248,11 +1281,14 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                 bcx = bind_irrefutable_pat(bcx, *elem, fldptr, make_copy);
             }
         }
-        ast::pat_box(inner) | ast::pat_uniq(inner) |
-        ast::pat_region(inner) => {
+        ast::pat_box(inner) | ast::pat_uniq(inner) => {
             let llbox = Load(bcx, val);
             let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
             bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
+        }
+        ast::pat_region(inner) => {
+            let loaded_val = Load(bcx, val);
+            bcx = bind_irrefutable_pat(bcx, inner, loaded_val, true);
         }
         ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()
     }
