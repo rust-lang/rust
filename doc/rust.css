@@ -82,3 +82,15 @@ blockquote {
     margin: 1em;
     padding: 0.5em 1em 0.5em 1em;
 }
+
+/* Make the table under the tutorial's 'Types' section look nicer */
+table {
+    border-top: 1px solid silver;
+    border-bottom: 1px solid silver;
+    padding: 0.8em;
+    font-size: smaller;
+}
+/* Also for the benefit of the type table
+td {
+    padding-right: 1em;
+}
