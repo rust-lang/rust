@@ -539,7 +539,7 @@ impl &RWlock {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+RWlockWriteMode) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(+v: RWlockWriteMode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
         let mut _release = None;

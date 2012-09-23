@@ -351,8 +351,8 @@ fn ser_variant(cx: ext_ctxt,
                span: span,
                -s: @ast::expr,
                pfn: fn(~[@ast::pat]) -> ast::pat_,
-               bodyfn: fn(-@ast::expr, ast::blk) -> @ast::expr,
-               argfn: fn(-@ast::expr, uint, ast::blk) -> @ast::expr)
+               bodyfn: fn(-v: @ast::expr, ast::blk) -> @ast::expr,
+               argfn: fn(-v: @ast::expr, uint, ast::blk) -> @ast::expr)
     -> ast::arm {
     let vnames = do vec::from_fn(vec::len(tys)) |i| {
         cx.parse_sess().interner.intern(@fmt!("__v%u", i))
@@ -535,7 +535,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
 fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
              tps: ~[ast::ty_param],
              f: fn(ext_ctxt, ser_tps_map,
-                   -@ast::expr, -@ast::expr) -> ~[@ast::stmt])
+                   -v: @ast::expr, -v: @ast::expr) -> ~[@ast::stmt])
     -> @ast::item {
     let ext_cx = cx; // required for #ast
 
@@ -747,7 +747,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
 fn mk_deser_fn(cx: ext_ctxt, span: span,
                name: ast::ident, tps: ~[ast::ty_param],
-               f: fn(ext_ctxt, deser_tps_map, -@ast::expr) -> @ast::expr)
+               f: fn(ext_ctxt, deser_tps_map, -v: @ast::expr) -> @ast::expr)
     -> @ast::item {
     let ext_cx = cx; // required for #ast
 

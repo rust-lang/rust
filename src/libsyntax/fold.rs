@@ -20,27 +20,27 @@ export extensions;
 
 trait ast_fold {
     fn fold_crate(crate) -> crate;
-    fn fold_crate_directive(&&@crate_directive) -> @crate_directive;
-    fn fold_view_item(&&@view_item) -> @view_item;
-    fn fold_foreign_item(&&@foreign_item) -> @foreign_item;
-    fn fold_item(&&@item) -> Option<@item>;
-    fn fold_struct_field(&&@struct_field) -> @struct_field;
+    fn fold_crate_directive(&&v: @crate_directive) -> @crate_directive;
+    fn fold_view_item(&&v: @view_item) -> @view_item;
+    fn fold_foreign_item(&&v: @foreign_item) -> @foreign_item;
+    fn fold_item(&&v: @item) -> Option<@item>;
+    fn fold_struct_field(&&v: @struct_field) -> @struct_field;
     fn fold_item_underscore(item_) -> item_;
-    fn fold_method(&&@method) -> @method;
+    fn fold_method(&&v: @method) -> @method;
     fn fold_block(blk) -> blk;
-    fn fold_stmt(&&@stmt) -> @stmt;
+    fn fold_stmt(&&v: @stmt) -> @stmt;
     fn fold_arm(arm) -> arm;
-    fn fold_pat(&&@pat) -> @pat;
-    fn fold_decl(&&@decl) -> @decl;
-    fn fold_expr(&&@expr) -> @expr;
-    fn fold_ty(&&@ty) -> @ty;
+    fn fold_pat(&&v: @pat) -> @pat;
+    fn fold_decl(&&v: @decl) -> @decl;
+    fn fold_expr(&&v: @expr) -> @expr;
+    fn fold_ty(&&v: @ty) -> @ty;
     fn fold_mod(_mod) -> _mod;
     fn fold_foreign_mod(foreign_mod) -> foreign_mod;
     fn fold_variant(variant) -> variant;
-    fn fold_ident(&&ident) -> ident;
-    fn fold_path(&&@path) -> @path;
-    fn fold_local(&&@local) -> @local;
-    fn map_exprs(fn@(&&@expr) -> @expr, ~[@expr]) -> ~[@expr];
+    fn fold_ident(&&v: ident) -> ident;
+    fn fold_path(&&v: @path) -> @path;
+    fn fold_local(&&v: @local) -> @local;
+    fn map_exprs(fn@(&&v: @expr) -> @expr, ~[@expr]) -> ~[@expr];
     fn new_id(node_id) -> node_id;
     fn new_span(span) -> span;
 }
@@ -53,11 +53,11 @@ type ast_fold_precursor = @{
     fold_crate_directive: fn@(crate_directive_, span,
                               ast_fold) -> (crate_directive_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
-    fold_foreign_item: fn@(&&@foreign_item, ast_fold) -> @foreign_item,
-    fold_item: fn@(&&@item, ast_fold) -> Option<@item>,
-    fold_struct_field: fn@(&&@struct_field, ast_fold) -> @struct_field,
+    fold_foreign_item: fn@(&&v: @foreign_item, ast_fold) -> @foreign_item,
+    fold_item: fn@(&&v: @item, ast_fold) -> Option<@item>,
+    fold_struct_field: fn@(&&v: @struct_field, ast_fold) -> @struct_field,
     fold_item_underscore: fn@(item_, ast_fold) -> item_,
-    fold_method: fn@(&&@method, ast_fold) -> @method,
+    fold_method: fn@(&&v: @method, ast_fold) -> @method,
     fold_block: fn@(blk_, span, ast_fold) -> (blk_, span),
     fold_stmt: fn@(stmt_, span, ast_fold) -> (stmt_, span),
     fold_arm: fn@(arm, ast_fold) -> arm,
@@ -68,10 +68,10 @@ type ast_fold_precursor = @{
     fold_mod: fn@(_mod, ast_fold) -> _mod,
     fold_foreign_mod: fn@(foreign_mod, ast_fold) -> foreign_mod,
     fold_variant: fn@(variant_, span, ast_fold) -> (variant_, span),
-    fold_ident: fn@(&&ident, ast_fold) -> ident,
+    fold_ident: fn@(&&v: ident, ast_fold) -> ident,
     fold_path: fn@(path, ast_fold) -> path,
     fold_local: fn@(local_, span, ast_fold) -> (local_, span),
-    map_exprs: fn@(fn@(&&@expr) -> @expr, ~[@expr]) -> ~[@expr],
+    map_exprs: fn@(fn@(&&v: @expr) -> @expr, ~[@expr]) -> ~[@expr],
     new_id: fn@(node_id) -> node_id,
     new_span: fn@(span) -> span};
 
@@ -643,7 +643,7 @@ fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
 
 /* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
-fn noop_map_exprs(f: fn@(&&@expr) -> @expr, es: ~[@expr]) -> ~[@expr] {
+fn noop_map_exprs(f: fn@(&&v: @expr) -> @expr, es: ~[@expr]) -> ~[@expr] {
     return vec::map(es, |x| f(*x));
 }
 
@@ -773,7 +773,7 @@ impl ast_fold_precursor: ast_fold {
         let (n, s) = self.fold_local(x.node, x.span, self as ast_fold);
         return @{node: n, span: self.new_span(s)};
     }
-    fn map_exprs(f: fn@(&&@expr) -> @expr, e: ~[@expr]) -> ~[@expr] {
+    fn map_exprs(f: fn@(&&v: @expr) -> @expr, e: ~[@expr]) -> ~[@expr] {
         self.map_exprs(f, e)
     }
     fn new_id(node_id: ast::node_id) -> node_id {

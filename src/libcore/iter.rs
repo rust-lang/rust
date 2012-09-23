@@ -63,7 +63,7 @@ trait Buildable<A> {
      *             onto the sequence being constructed.
      */
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+A))) -> self;
+                                builder: fn(push: pure fn(+v: A))) -> self;
 }
 
 pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, v: &A) -> bool) {
@@ -223,7 +223,7 @@ pure fn find<A: Copy,IA:BaseIter<A>>(self: IA,
  *             onto the sequence being constructed.
  */
 #[inline(always)]
-pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
+pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(+v: A))) -> B {
     build_sized(4, builder)
 }
 
@@ -243,7 +243,7 @@ pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
 #[inline(always)]
 pure fn build_sized_opt<A,B: Buildable<A>>(
     size: Option<uint>,
-    builder: fn(push: pure fn(+A))) -> B {
+    builder: fn(push: pure fn(+v: A))) -> B {
 
     build_sized(size.get_default(4), builder)
 }

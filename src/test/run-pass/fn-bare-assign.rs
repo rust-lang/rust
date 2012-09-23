@@ -3,7 +3,7 @@ fn f(i: int, &called: bool) {
     called = true;
 }
 
-fn g(f: extern fn(int, &bool), &called: bool) {
+fn g(f: extern fn(int, &v: bool), &called: bool) {
     f(10, called);
 }
 

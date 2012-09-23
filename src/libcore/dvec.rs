@@ -93,7 +93,7 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn check_out<B>(f: fn(-~[A]) -> B) -> B {
+    fn check_out<B>(f: fn(-v: ~[A]) -> B) -> B {
         unsafe {
             let mut data = cast::reinterpret_cast(&null::<()>());
             data <-> self.data;
@@ -126,7 +126,7 @@ impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap(f: fn(-~[A]) -> ~[A]) {
+    fn swap(f: fn(-v: ~[A]) -> ~[A]) {
         self.check_out(|v| self.give_back(f(move v)))
     }
 
@@ -136,7 +136,7 @@ impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap_mut(f: fn(-~[mut A]) -> ~[mut A]) {
+    fn swap_mut(f: fn(-v: ~[mut A]) -> ~[mut A]) {
         do self.swap |v| {
             vec::from_mut(f(vec::to_mut(move v)))
         }

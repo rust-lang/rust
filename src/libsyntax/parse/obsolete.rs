@@ -21,7 +21,8 @@ pub enum ObsoleteSyntax {
     ObsoleteWith,
     ObsoleteClassMethod,
     ObsoleteClassTraits,
-    ObsoletePrivSection
+    ObsoletePrivSection,
+    ObsoleteModeInFnType
 }
 
 #[cfg(stage0)]
@@ -98,6 +99,11 @@ impl parser : ObsoleteReporter {
                 "private section",
                 "the `priv` keyword is applied to individual items, methods, \
                  and fields"
+            ),
+            ObsoleteModeInFnType => (
+                "mode without identifier in fn type",
+                "to use a (deprecated) mode in a fn type, you should \
+                 give the argument an explicit name (like `&&v: int`)"
             ),
         };
 

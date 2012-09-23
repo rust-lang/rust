@@ -167,7 +167,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 // When we enter a module, record it, for the sake of `module!`
 fn expand_item(exts: HashMap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
-               orig: fn@(&&@ast::item, ast_fold) -> Option<@ast::item>)
+               orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
     -> Option<@ast::item>
 {
     let is_mod = match it.node {

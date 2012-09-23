@@ -235,7 +235,8 @@ pure fn with_capacity<T>(capacity: uint) -> ~[T] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
+pure fn build_sized<A>(size: uint,
+                       builder: fn(push: pure fn(+v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
     builder(|+x| unsafe { push(vec, move x) });
     move vec
@@ -252,7 +253,7 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
+pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> ~[A] {
     build_sized(4, builder)
 }
 
@@ -270,7 +271,7 @@ pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
  */
 #[inline(always)]
 pure fn build_sized_opt<A>(size: Option<uint>,
-                           builder: fn(push: pure fn(+A))) -> ~[A] {
+                           builder: fn(push: pure fn(+v: A))) -> ~[A] {
     build_sized(size.get_default(4), builder)
 }
 
@@ -506,7 +507,7 @@ fn unshift<T>(&v: ~[T], +x: T) {
     }
 }
 
-fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
+fn consume<T>(+v: ~[T], f: fn(uint, +v: T)) unsafe {
     do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);
@@ -517,7 +518,7 @@ fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
     raw::set_len(v, 0);
 }
 
-fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
+fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +v: T)) unsafe {
     do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);
@@ -748,7 +749,7 @@ pure fn map<T, U>(v: &[T], f: fn(v: &T) -> U) -> ~[U] {
     move result
 }
 
-fn map_consume<T, U>(+v: ~[T], f: fn(+T) -> U) -> ~[U] {
+fn map_consume<T, U>(+v: ~[T], f: fn(+v: T) -> U) -> ~[U] {
     let mut result = ~[];
     do consume(move v) |_i, x| {
         vec::push(result, f(move x));
@@ -1808,7 +1809,7 @@ mod raw {
      * not bytes).
      */
     #[inline(always)]
-    unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&& &[T]) -> U) -> U {
+    unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&&v: &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
         let v : *(&blk/[T]) =
             ::cast::reinterpret_cast(&ptr::addr_of(pair));

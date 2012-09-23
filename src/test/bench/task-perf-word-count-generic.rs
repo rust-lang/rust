@@ -80,7 +80,7 @@ fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
     loop { match get() { Some(_) => { count += 1; } None => { break; } } }
-    
+
     io::println(fmt!("%s\t%?", word, count));
 }
 
@@ -89,7 +89,7 @@ struct box<T> {
 }
 
 impl<T> box<T> {
-    fn swap(f: fn(+T) -> T) {
+    fn swap(f: fn(+v: T) -> T) {
         let mut tmp = None;
         self.contents <-> tmp;
         self.contents = Some(f(option::unwrap(tmp)));

@@ -50,7 +50,8 @@ pure fn capacity<T>(&&v: @[const T]) -> uint {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
+pure fn build_sized<A>(size: uint,
+                       builder: fn(push: pure fn(+v: A))) -> @[A] {
     let mut vec = @[];
     unsafe { raw::reserve(vec, size); }
     builder(|+x| unsafe { raw::push(vec, move x) });
@@ -68,7 +69,7 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
+pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> @[A] {
     build_sized(4, builder)
 }
 
@@ -86,7 +87,7 @@ pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
  */
 #[inline(always)]
 pure fn build_sized_opt<A>(size: Option<uint>,
-                           builder: fn(push: pure fn(+A))) -> @[A] {
+                           builder: fn(push: pure fn(+v: A))) -> @[A] {
     build_sized(size.get_default(4), builder)
 }
 

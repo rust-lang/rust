@@ -37,7 +37,7 @@ macro_rules! move_it (
 )
 
 fn switch<T: Send, U>(+endp: pipes::RecvPacket<T>,
-                      f: fn(+Option<T>) -> U) -> U {
+                      f: fn(+v: Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 
