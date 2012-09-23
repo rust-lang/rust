@@ -389,6 +389,12 @@ of:
 `[mut T]`                 Mutable vector with unknown size
 ------------------------- -----------------------------------------------
 
+In function types, the return type is specified with an arrow, as in
+the type `fn() -> bool` or the function declaration `fn foo() -> bool
+{ }`.  For functions that do not return a meaningful value, you can
+optionally write `-> ()`, but usually the return annotation is simply
+left off, as in `fn main() { ... }`.
+
 Types can be given names with `type` declarations:
 
 ~~~~
@@ -401,28 +407,6 @@ interchangeably, and using one where the other is expected is not a type
 error. Read about [single-variant enums](#single_variant_enum)
 further on if you need to create a type name that's not just a
 synonym.
-
-## Using types
-
-The `-> bool` in the `is_four` example is the way a function's return
-type is written. For functions that do not return a meaningful value,
-you can optionally say `-> ()`, but usually the return annotation is simply
-left off, as in the `fn main() { ... }` examples we've seen earlier.
-
-Every argument to a function must have its type declared (for example,
-`x: int`). Inside the function, type inference will be able to
-automatically deduce the type of most locals (generic functions, which
-we'll come back to later, will occasionally need additional
-annotation). Locals can be written either with or without a type
-annotation:
-
-~~~~
-// The type of this vector will be inferred based on its use.
-let x = [];
-# vec::map(x, fn&(_y: &int) -> int { *_y });
-// Explicitly say this is a vector of zero integers.
-let y: [int * 0] = [];
-~~~~
 
 ## Numeric literals
 
