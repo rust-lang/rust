@@ -19,7 +19,8 @@ use obsolete::{
     ObsoleteReporter, ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
-    ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits
+    ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
+    ObsoleteModeInFnType
 };
 use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
@@ -617,6 +618,15 @@ impl parser {
                 name
             } else { special_idents::invalid }
         };
+
+        match m {
+            expl(_) => {
+                if i == special_idents::invalid {
+                    self.obsolete(copy self.span, ObsoleteModeInFnType);
+                }
+            }
+            _ => {}
+        }
 
         let t = self.parse_ty(false);
 
@@ -1585,7 +1595,7 @@ impl parser {
     }
 
     fn parse_sugary_call_expr(keyword: ~str,
-                              ctor: fn(+@expr) -> expr_) -> @expr {
+                              ctor: fn(+v: @expr) -> expr_) -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
@@ -2400,7 +2410,7 @@ impl parser {
                                     fn(parser) -> arg_or_capture_item)
                             -> (self_ty, fn_decl, capture_clause) {
 
-        fn maybe_parse_self_ty(cnstr: fn(+mutability) -> ast::self_ty_,
+        fn maybe_parse_self_ty(cnstr: fn(+v: mutability) -> ast::self_ty_,
                                p: parser) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type
             if p.token_is_keyword(~"self", p.look_ahead(1)) ||

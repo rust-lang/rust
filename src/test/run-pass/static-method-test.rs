@@ -26,27 +26,27 @@ impl int: bool_like {
 // A trait for sequences that can be constructed imperatively.
 trait buildable<A> {
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+A))) -> self;
+                                builder: fn(push: pure fn(+v: A))) -> self;
 }
 
 
 impl<A> @[A]: buildable<A> {
     #[inline(always)]
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+A))) -> @[A] {
+                                builder: fn(push: pure fn(+v: A))) -> @[A] {
          at_vec::build_sized(size, builder)
      }
 }
 impl<A> ~[A]: buildable<A> {
     #[inline(always)]
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+A))) -> ~[A] {
+                                builder: fn(push: pure fn(+v: A))) -> ~[A] {
          vec::build_sized(size, builder)
      }
 }
 
 #[inline(always)]
-pure fn build<A, B: buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
+pure fn build<A, B: buildable<A>>(builder: fn(push: pure fn(+v: A))) -> B {
     build_sized(4, builder)
 }
 

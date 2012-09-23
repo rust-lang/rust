@@ -82,7 +82,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert was_present;
 }
-fn taskset_each(tasks: &TaskSet, blk: fn(+*rust_task) -> bool) {
+fn taskset_each(tasks: &TaskSet, blk: fn(+v: *rust_task) -> bool) {
     tasks.each_key(|k| blk(*k))
 }
 

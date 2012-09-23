@@ -77,9 +77,9 @@ trait ext_ctxt_ast_builder {
     fn item_ty(name: ident, span: span, ty: @ast::ty) -> @ast::item;
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty];
     fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field;
-    fn ty_rec(+~[ast::ty_field]) -> @ast::ty;
+    fn ty_rec(+v: ~[ast::ty_field]) -> @ast::ty;
     fn field_imm(name: ident, e: @ast::expr) -> ast::field;
-    fn rec(+~[ast::field]) -> @ast::expr;
+    fn rec(+v: ~[ast::field]) -> @ast::expr;
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk;
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;

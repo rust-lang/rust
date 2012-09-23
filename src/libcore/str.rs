@@ -2109,7 +2109,8 @@ mod raw {
     unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
 
     /// Form a slice from a *u8 buffer of the given length without copying.
-    unsafe fn buf_as_slice<T>(buf: *u8, len: uint, f: fn(&& &str) -> T) -> T {
+    unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
+                              f: fn(&&v: &str) -> T) -> T {
         let v = (buf, len + 1);
         assert is_utf8(::cast::reinterpret_cast(&v));
         f(::cast::transmute(move v))

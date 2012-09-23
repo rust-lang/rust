@@ -70,7 +70,7 @@ impl<T: Copy> cat<T> : Map<int, T> {
     }
   }
 
-  pure fn each(f: fn(+int, +T) -> bool) {
+  pure fn each(f: fn(+v: int, +v: T) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {
         if !f(n, self.name) { break; }
@@ -78,10 +78,10 @@ impl<T: Copy> cat<T> : Map<int, T> {
     }
   }
 
-  pure fn each_key(&&f: fn(+int) -> bool) {
+  pure fn each_key(&&f: fn(+v: int) -> bool) {
     for self.each |k, _v| { if !f(k) { break; } loop;};
   }
-  pure fn each_value(&&f: fn(+T) -> bool) {
+  pure fn each_value(&&f: fn(+v: T) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } loop;};
   }
 

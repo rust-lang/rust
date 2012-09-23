@@ -4,7 +4,7 @@ mod stream {
     mod server {
         #[legacy_exports];
         impl<T: Send> stream<T> {
-            fn recv() -> extern fn(+stream<T>) -> stream::stream<T> {
+            fn recv() -> extern fn(+v: stream<T>) -> stream::stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.
               fn recv(+pipe: stream<T>) -> stream::stream<T> { //~ ERROR attempt to use a type argument out of scope

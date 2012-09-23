@@ -43,7 +43,7 @@ use local_data_priv::{
  *
  * These two cases aside, the interface is safe.
  */
-type LocalDataKey<T: Owned> = &fn(+@T);
+type LocalDataKey<T: Owned> = &fn(+v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the

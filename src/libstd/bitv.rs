@@ -140,7 +140,7 @@ impl BigBitv {
     }
 
     #[inline(always)]
-     fn each_storage(op: fn(&uint) -> bool) {
+     fn each_storage(op: fn(&v: uint) -> bool) {
         for uint::range(0, self.storage.len()) |i| {
             let mut w = self.storage[i];
             let b = !op(w);

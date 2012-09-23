@@ -340,7 +340,7 @@ impl<T: Const Send> &RWARC<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+RWWriteMode<T>) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(+v: RWWriteMode<T>) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_downgrade |write_mode| {
             check_poison(false, state.failed);

@@ -69,7 +69,7 @@ pure fn map_ref<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     match *opt { Some(ref x) => Some(f(x)), None => None }
 }
 
-pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+T) -> U) -> Option<U> {
+pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+v: T) -> U) -> Option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
@@ -107,7 +107,7 @@ pure fn or<T>(+opta: Option<T>, +optb: Option<T>) -> Option<T> {
 }
 
 #[inline(always)]
-pure fn while_some<T>(+x: Option<T>, blk: fn(+T) -> Option<T>) {
+pure fn while_some<T>(+x: Option<T>, blk: fn(+v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
     let mut opt <- x;
@@ -248,7 +248,7 @@ impl<T: Copy> Option<T> {
      */
     pure fn expect(reason: ~str) -> T { expect(self, reason) }
     /// Applies a function zero or more times until the result is none.
-    pure fn while_some(blk: fn(+T) -> Option<T>) { while_some(self, blk) }
+    pure fn while_some(blk: fn(+v: T) -> Option<T>) { while_some(self, blk) }
 }
 
 #[cfg(stage0)]

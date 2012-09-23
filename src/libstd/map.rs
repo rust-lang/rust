@@ -33,7 +33,7 @@ trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      *
      * Returns true if the key did not already exist in the map
      */
-    fn insert(+K, +V) -> bool;
+    fn insert(+v: K, +v: V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
     fn contains_key(+key: K) -> bool;

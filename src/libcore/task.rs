@@ -338,7 +338,7 @@ type TaskOpts = {
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
 enum TaskBuilder = {
     opts: TaskOpts,
-    gen_body: fn@(+fn~()) -> fn~(),
+    gen_body: fn@(+v: fn~()) -> fn~(),
     can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
 };
@@ -466,7 +466,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(blk: fn(+future::Future<TaskResult>)) -> TaskBuilder {
+    fn future_result(blk: fn(+v: future::Future<TaskResult>)) -> TaskBuilder {
         // FIXME (#1087, #1857): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -528,7 +528,7 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(wrapper: fn@(+fn~()) -> fn~()) -> TaskBuilder {
+    fn add_wrapper(wrapper: fn@(+v: fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
         let notify_chan = if self.opts.notify_chan.is_none() {
             None
@@ -578,7 +578,7 @@ impl TaskBuilder {
         spawn::spawn_raw(move opts, x.gen_body(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Send>(+arg: A, +f: fn~(+A)) {
+    fn spawn_with<A: Send>(+arg: A, +f: fn~(+v: A)) {
         let arg = ~mut Some(move arg);
         do self.spawn |move arg, move f|{
             f(option::swap_unwrap(arg))
@@ -705,7 +705,7 @@ fn spawn_supervised(+f: fn~()) {
     task().supervised().spawn(move f)
 }
 
-fn spawn_with<A:Send>(+arg: A, +f: fn~(+A)) {
+fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -1246,7 +1246,7 @@ fn test_spawn_sched_blocking() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: fn(+fn~())) {
+fn avoid_copying_the_body(spawnfn: fn(+v: fn~())) {
     let p = comm::Port::<uint>();
     let ch = comm::Chan(p);
 
