@@ -204,16 +204,13 @@ paretheses, while their bodies *must* be wrapped in
 brackets. Single-statement, bracket-less bodies are not allowed.
 
 ~~~~
-# fn calibrate_universe() -> bool { false }
-# fn party_on() {}
-# fn panic() {}
+# fn recalibrate_universe() -> bool { true }
 fn main() {
-    while calibrate_universe() {
-        /* Ensure that basic math still operates is expected */
-        if 2*20 > 30 {
-            party_on(); // That's a relief
-        } else {
-            panic();
+    /* A simple loop */
+    loop {
+        // A tricky calculation
+        if recalibrate_universe() {
+            return;
         }
     }
 }
@@ -438,10 +435,9 @@ The nil literal is written just like the type: `()`. The keywords
 
 Character literals are written between single quotes, as in `'x'`. Just as in
 C, Rust understands a number of character escapes, using the backslash
-character, `\n`, `\r`, and `\t` being the most common.
-
-String literals allow the same escape sequences. They are written
-between double quotes (`"hello"`). Rust strings may contain newlines.
+character, `\n`, `\r`, and `\t` being the most common. String literals,
+written between double quotes, allow the same escape sequences. Rust strings
+may contain newlines.
 
 ## Operators
 
@@ -482,13 +478,18 @@ a syntax extension is being used, the names of all syntax extensions end with
 which is `fmt!`, a `sprintf`-style text formatter that is expanded at compile
 time.
 
-~~~~
-io::println(fmt!("%s is %d", ~"the answer", 42));
-~~~~
-
 `fmt!` supports most of the directives that [printf][pf] supports, but
 will give you a compile-time error when the types of the directives
 don't match the types of the arguments.
+
+~~~~
+# let mystery_object = ();
+
+io::println(fmt!("%s is %d", "the answer", 43));
+
+// %? will conveniently print any type
+io::println(fmt!("what is this thing: %?", mystery_object));
+~~~~
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 
@@ -505,11 +506,11 @@ compulsory, an optional `else` clause can be appended, and multiple
 
 ~~~~
 if false {
-    io::println(~"that's odd");
+    io::println("that's odd");
 } else if true {
-    io::println(~"right");
+    io::println("right");
 } else {
-    io::println(~"neither true nor false");
+    io::println("neither true nor false");
 }
 ~~~~
 
