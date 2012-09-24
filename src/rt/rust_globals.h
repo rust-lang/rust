@@ -101,4 +101,6 @@ static size_t const BUF_BYTES = 2048;
 // (writing), a port (reading) or a task (waiting).
 struct rust_cond { };
 
+extern void* global_crate_map;
+
 #endif /* RUST_GLOBALS_H */
