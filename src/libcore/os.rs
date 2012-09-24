@@ -973,8 +973,8 @@ mod tests {
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
         assert os::homedir() == Some(Path("/home/MountainView"));
 
-        option::iter(oldhome, |s| setenv(~"HOME", s));
-        option::iter(olduserprofile,
+        option::iter(&oldhome, |s| setenv(~"HOME", s));
+        option::iter(&olduserprofile,
                                |s| setenv(~"USERPROFILE", s));
     }
 
