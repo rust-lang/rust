@@ -127,7 +127,12 @@ fn pandoc_header_id(header: ~str) -> ~str {
         return s;
     }
     fn replace_with_hyphens(s: ~str) -> ~str {
-        str::replace(s, ~" ", ~"-")
+        // Collapse sequences of whitespace to a single dash
+        // XXX: Hacky implementation here that only covers
+        // one or two spaces.
+        let s = str::replace(s, ~"  ", ~"-");
+        let s = str::replace(s, ~" ", ~"-");
+        return s;
     }
     fn convert_to_lowercase(s: ~str) -> ~str { str::to_lower(s) }
     fn remove_up_to_first_letter(s: ~str) -> ~str { s }
@@ -144,6 +149,8 @@ fn should_remove_punctuation_from_headers() {
         == ~"impl-of-numnum-for-int";
     assert pandoc_header_id(~"impl of num::num for ^int")
         == ~"impl-of-numnum-for-int";
+    assert pandoc_header_id(~"impl for & condvar")
+        == ~"impl-for-condvar";
 }
 
 #[test]
