@@ -67,25 +67,6 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
     }
 }
 
-#[cfg(stage0)]
-impl<A: Eq, B: Eq> (A, B): Eq {
-    pure fn eq(&&other: (A, B)) -> bool {
-        // XXX: This would be a lot less wordy with ref bindings, but I don't
-        // trust that they work yet.
-        match self {
-            (self_a, self_b) => {
-                match other {
-                    (other_a, other_b) => {
-                        self_a.eq(other_a) && self_b.eq(other_b)
-                    }
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: (A, B)) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<A: Eq, B: Eq> (A, B) : Eq {
     pure fn eq(other: &(A, B)) -> bool {
         // XXX: This would be a lot less wordy with ref bindings, but I don't
@@ -103,28 +84,6 @@ impl<A: Eq, B: Eq> (A, B) : Eq {
     pure fn ne(other: &(A, B)) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl<A: Ord, B: Ord> (A, B): Ord {
-    pure fn lt(&&other: (A, B)) -> bool {
-        match self {
-            (self_a, self_b) => {
-                match other {
-                    (other_a, other_b) => {
-                        if self_a.lt(other_a) { return true; }
-                        if other_a.lt(self_a) { return false; }
-                        if self_b.lt(other_b) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    pure fn le(&&other: (A, B)) -> bool { !other.lt(self) }
-    pure fn ge(&&other: (A, B)) -> bool { !self.lt(other) }
-    pure fn gt(&&other: (A, B)) -> bool { other.lt(self)  }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<A: Ord, B: Ord> (A, B) : Ord {
     pure fn lt(other: &(A, B)) -> bool {
         match self {
@@ -145,27 +104,6 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
     pure fn gt(other: &(A, B)) -> bool { (*other).lt(&self)  }
 }
 
-#[cfg(stage0)]
-impl<A: Eq, B: Eq, C: Eq> (A, B, C): Eq {
-    pure fn eq(&&other: (A, B, C)) -> bool {
-        // XXX: This would be a lot less wordy with ref bindings, but I don't
-        // trust that they work yet.
-        match self {
-            (self_a, self_b, self_c) => {
-                match other {
-                    (other_a, other_b, other_c) => {
-                        self_a.eq(other_a) &&
-                        self_b.eq(other_b) &&
-                        self_c.eq(other_c)
-                    }
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: (A, B, C)) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
     pure fn eq(other: &(A, B, C)) -> bool {
         // XXX: This would be a lot less wordy with ref bindings, but I don't
@@ -185,30 +123,6 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
     pure fn ne(other: &(A, B, C)) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl<A: Ord, B: Ord, C: Ord> (A, B, C): Ord {
-    pure fn lt(&&other: (A, B, C)) -> bool {
-        match self {
-            (self_a, self_b, self_c) => {
-                match other {
-                    (other_a, other_b, other_c) => {
-                        if self_a.lt(other_a) { return true; }
-                        if other_a.lt(self_a) { return false; }
-                        if self_b.lt(other_b) { return true; }
-                        if other_b.lt(self_b) { return false; }
-                        if self_c.lt(other_c) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    pure fn le(&&other: (A, B, C)) -> bool { !other.lt(self) }
-    pure fn ge(&&other: (A, B, C)) -> bool { !self.lt(other) }
-    pure fn gt(&&other: (A, B, C)) -> bool { other.lt(self)  }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
     pure fn lt(other: &(A, B, C)) -> bool {
         match self {

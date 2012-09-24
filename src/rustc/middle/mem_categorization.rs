@@ -55,71 +55,6 @@ enum categorization {
     cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
 }
 
-#[cfg(stage0)]
-impl categorization : cmp::Eq {
-    pure fn eq(&&other: categorization) -> bool {
-        match self {
-            cat_rvalue => {
-                match other {
-                    cat_rvalue => true,
-                    _ => false
-                }
-            }
-            cat_special(e0a) => {
-                match other {
-                    cat_special(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_local(e0a) => {
-                match other {
-                    cat_local(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_binding(e0a) => {
-                match other {
-                    cat_binding(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_arg(e0a) => {
-                match other {
-                    cat_arg(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_stack_upvar(e0a) => {
-                match other {
-                    cat_stack_upvar(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_deref(e0a, e1a, e2a) => {
-                match other {
-                    cat_deref(e0b, e1b, e2b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
-            cat_comp(e0a, e1a) => {
-                match other {
-                    cat_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            cat_discr(e0a, e1a) => {
-                match other {
-                    cat_discr(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: categorization) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl categorization : cmp::Eq {
     pure fn eq(other: &categorization) -> bool {
         match self {
@@ -191,40 +126,6 @@ enum ptr_kind {
     unsafe_ptr
 }
 
-#[cfg(stage0)]
-impl ptr_kind : cmp::Eq {
-    pure fn eq(&&other: ptr_kind) -> bool {
-        match self {
-            uniq_ptr => {
-                match other {
-                    uniq_ptr => true,
-                    _ => false
-                }
-            }
-            gc_ptr => {
-                match other {
-                    gc_ptr => true,
-                    _ => false
-                }
-            }
-            region_ptr(e0a) => {
-                match other {
-                    region_ptr(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            unsafe_ptr => {
-                match other {
-                    unsafe_ptr => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: ptr_kind) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl ptr_kind : cmp::Eq {
     pure fn eq(other: &ptr_kind) -> bool {
         match self {
@@ -268,40 +169,6 @@ enum comp_kind {
                ast::mutability)  // mutability of vec content
 }
 
-#[cfg(stage0)]
-impl comp_kind : cmp::Eq {
-    pure fn eq(&&other: comp_kind) -> bool {
-        match self {
-            comp_tuple => {
-                match other {
-                    comp_tuple => true,
-                    _ => false
-                }
-            }
-            comp_variant(e0a) => {
-                match other {
-                    comp_variant(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            comp_field(e0a, e1a) => {
-                match other {
-                    comp_field(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            comp_index(e0a, e1a) => {
-                match other {
-                    comp_index(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: comp_kind) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl comp_kind : cmp::Eq {
     pure fn eq(other: &comp_kind) -> bool {
         match self {
@@ -342,15 +209,6 @@ enum special_kind {
     sk_heap_upvar
 }
 
-#[cfg(stage0)]
-impl special_kind : cmp::Eq {
-    pure fn eq(&&other: special_kind) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: special_kind) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl special_kind : cmp::Eq {
     pure fn eq(other: &special_kind) -> bool {
         (self as uint) == ((*other) as uint)
@@ -370,20 +228,6 @@ type cmt_ = {id: ast::node_id,        // id of expr/pat producing this value
 
 type cmt = @cmt_;
 
-#[cfg(stage0)]
-impl cmt_ : cmp::Eq {
-    pure fn eq(&&other: cmt_) -> bool {
-        self.id == other.id &&
-        self.span == other.span &&
-        self.cat == other.cat &&
-        self.lp == other.lp &&
-        self.mutbl == other.mutbl &&
-        self.ty == other.ty
-    }
-    pure fn ne(&&other: cmt_) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl cmt_ : cmp::Eq {
     pure fn eq(other: &cmt_) -> bool {
         self.id == (*other).id &&
@@ -406,40 +250,6 @@ enum loan_path {
     lp_comp(@loan_path, comp_kind)
 }
 
-#[cfg(stage0)]
-impl loan_path : cmp::Eq {
-    pure fn eq(&&other: loan_path) -> bool {
-        match self {
-            lp_local(e0a) => {
-                match other {
-                    lp_local(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            lp_arg(e0a) => {
-                match other {
-                    lp_arg(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            lp_deref(e0a, e1a) => {
-                match other {
-                    lp_deref(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            lp_comp(e0a, e1a) => {
-                match other {
-                    lp_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: loan_path) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl loan_path : cmp::Eq {
     pure fn eq(other: &loan_path) -> bool {
         match self {

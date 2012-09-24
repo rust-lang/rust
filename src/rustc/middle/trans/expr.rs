@@ -147,20 +147,6 @@ impl Dest {
     }
 }
 
-#[cfg(stage0)]
-impl Dest : cmp::Eq {
-    pure fn eq(&&other: Dest) -> bool {
-        match (self, other) {
-            (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
-            (Ignore, Ignore) => true,
-            (SaveIn(*), _) => false,
-            (Ignore, _) => false,
-        }
-    }
-    pure fn ne(&&other: Dest) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Dest : cmp::Eq {
     pure fn eq(other: &Dest) -> bool {
         match (self, (*other)) {
@@ -1366,26 +1352,6 @@ enum cast_kind {
     cast_other,
 }
 
-#[cfg(stage0)]
-impl cast_kind : cmp::Eq {
-    pure fn eq(&&other: cast_kind) -> bool {
-        match (self, other) {
-            (cast_pointer, cast_pointer) => true,
-            (cast_integral, cast_integral) => true,
-            (cast_float, cast_float) => true,
-            (cast_enum, cast_enum) => true,
-            (cast_other, cast_other) => true,
-            (cast_pointer, _) => false,
-            (cast_integral, _) => false,
-            (cast_float, _) => false,
-            (cast_enum, _) => false,
-            (cast_other, _) => false,
-        }
-    }
-    pure fn ne(&&other: cast_kind) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl cast_kind : cmp::Eq {
     pure fn eq(other: &cast_kind) -> bool {
         match (self, (*other)) {

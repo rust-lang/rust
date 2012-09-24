@@ -107,28 +107,6 @@ fn mkname(nm: &str) -> Name {
         } else { Long(unm) };
 }
 
-#[cfg(stage0)]
-impl Name : Eq {
-    pure fn eq(&&other: Name) -> bool {
-        match self {
-            Long(e0a) => {
-                match other {
-                    Long(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            Short(e0a) => {
-                match other {
-                    Short(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: Name) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Name : Eq {
     pure fn eq(other: &Name) -> bool {
         match self {
@@ -149,15 +127,6 @@ impl Name : Eq {
     pure fn ne(other: &Name) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl Occur : Eq {
-    pure fn eq(&&other: Occur) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: Occur) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Occur : Eq {
     pure fn eq(other: &Occur) -> bool {
         (self as uint) == ((*other) as uint)
@@ -478,15 +447,6 @@ enum FailType {
     UnexpectedArgument_,
 }
 
-#[cfg(stage0)]
-impl FailType : Eq {
-    pure fn eq(&&other: FailType) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: FailType) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl FailType : Eq {
     pure fn eq(other: &FailType) -> bool {
         (self as uint) == ((*other) as uint)

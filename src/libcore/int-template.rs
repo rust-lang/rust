@@ -68,15 +68,6 @@ pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
-#[cfg(stage0)]
-impl T: Ord {
-    pure fn lt(&&other: T) -> bool { return self < other; }
-    pure fn le(&&other: T) -> bool { return self <= other; }
-    pure fn ge(&&other: T) -> bool { return self >= other; }
-    pure fn gt(&&other: T) -> bool { return self > other; }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl T : Ord {
     pure fn lt(other: &T) -> bool { return self < (*other); }
     pure fn le(other: &T) -> bool { return self <= (*other); }
@@ -84,13 +75,6 @@ impl T : Ord {
     pure fn gt(other: &T) -> bool { return self > (*other); }
 }
 
-#[cfg(stage0)]
-impl T: Eq {
-    pure fn eq(&&other: T) -> bool { return self == other; }
-    pure fn ne(&&other: T) -> bool { return self != other; }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl T : Eq {
     pure fn eq(other: &T) -> bool { return self == (*other); }
     pure fn ne(other: &T) -> bool { return self != (*other); }

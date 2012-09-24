@@ -70,16 +70,6 @@ impl PosixPath : ToStr {
     }
 }
 
-#[cfg(stage0)]
-impl PosixPath : Eq {
-    pure fn eq(&&other: PosixPath) -> bool {
-        return self.is_absolute == other.is_absolute &&
-            self.components == other.components;
-    }
-    pure fn ne(&&other: PosixPath) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl PosixPath : Eq {
     pure fn eq(other: &PosixPath) -> bool {
         return self.is_absolute == (*other).is_absolute &&
@@ -88,18 +78,6 @@ impl PosixPath : Eq {
     pure fn ne(other: &PosixPath) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl WindowsPath : Eq {
-    pure fn eq(&&other: WindowsPath) -> bool {
-        return self.host == other.host &&
-            self.device == other.device &&
-            self.is_absolute == other.is_absolute &&
-            self.components == other.components;
-    }
-    pure fn ne(&&other: WindowsPath) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl WindowsPath : Eq {
     pure fn eq(other: &WindowsPath) -> bool {
         return self.host == (*other).host &&

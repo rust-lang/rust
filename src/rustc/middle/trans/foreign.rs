@@ -40,15 +40,6 @@ enum x86_64_reg_class {
     memory_class
 }
 
-#[cfg(stage0)]
-impl x86_64_reg_class: cmp::Eq {
-    pure fn eq(&&other: x86_64_reg_class) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: x86_64_reg_class) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl x86_64_reg_class : cmp::Eq {
     pure fn eq(other: &x86_64_reg_class) -> bool {
         (self as uint) == ((*other) as uint)

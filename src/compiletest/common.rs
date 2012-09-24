@@ -1,14 +1,5 @@
 enum mode { mode_compile_fail, mode_run_fail, mode_run_pass, mode_pretty, }
 
-#[cfg(stage0)]
-impl mode : cmp::Eq {
-    pure fn eq(&&other: mode) -> bool {
-        other as int == self as int
-    }
-    pure fn ne(&&other: mode) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl mode : cmp::Eq {
     pure fn eq(other: &mode) -> bool {
         (*other) as int == self as int

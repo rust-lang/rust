@@ -510,15 +510,6 @@ enum EnumVisitState {
     Degenerate      // This is a degenerate enum (exactly 1 variant)
 }
 
-#[cfg(stage0)]
-impl EnumVisitState : cmp::Eq {
-    pure fn eq(&&other: EnumVisitState) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: EnumVisitState) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl EnumVisitState : cmp::Eq {
     pure fn eq(other: &EnumVisitState) -> bool {
         (self as uint) == ((*other) as uint)
