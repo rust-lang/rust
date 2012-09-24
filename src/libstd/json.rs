@@ -6,10 +6,7 @@
 //! json serialization
 
 use core::cmp::{Eq, Ord};
-use result::{Result, Ok, Err};
 use io::{WriterUtil, ReaderUtil};
-use map::HashMap;
-use map::Map;
 use send_map::linear;
 use sort::Sort;
 
