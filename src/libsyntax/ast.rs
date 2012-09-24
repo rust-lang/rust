@@ -265,8 +265,8 @@ type crate_ =
      config: crate_cfg};
 
 enum crate_directive_ {
-    cdir_src_mod(ident, ~[attribute]),
-    cdir_dir_mod(ident, ~[@crate_directive], ~[attribute]),
+    cdir_src_mod(visibility, ident, ~[attribute]),
+    cdir_dir_mod(visibility, ident, ~[@crate_directive], ~[attribute]),
 
     // NB: cdir_view_item is *not* processed by the rest of the compiler, the
     // attached view_items are sunk into the crate's module during parsing,

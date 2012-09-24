@@ -96,8 +96,8 @@ fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
 
 fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
     match cd.node {
-      cdir_src_mod(_, _) => (),
-      cdir_dir_mod(_, cdirs, _) => for cdirs.each |cdir| {
+      cdir_src_mod(_, _, _) => (),
+      cdir_dir_mod(_, _, cdirs, _) => for cdirs.each |cdir| {
         visit_crate_directive(*cdir, e, v);
       },
       cdir_view_item(vi) => v.visit_view_item(vi, e, v),

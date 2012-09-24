@@ -85,7 +85,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                         &view_items: ~[@ast::view_item],
                         &items: ~[@ast::item]) {
     match cdir.node {
-      ast::cdir_src_mod(id, attrs) => {
+      ast::cdir_src_mod(vis, id, attrs) => {
         let file_path = Path(cdir_path_opt(
             cx.sess.interner.get(id) + ~".rs", attrs));
         let full_path = if file_path.is_absolute {
@@ -103,13 +103,13 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
 
         let i = p0.mk_item(cdir.span.lo, cdir.span.hi,
                            /* FIXME (#2543) */ copy id,
-                           ast::item_mod(m0), ast::public, mod_attrs);
+                           ast::item_mod(m0), vis, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         vec::push(items, i);
       }
-      ast::cdir_dir_mod(id, cdirs, attrs) => {
+      ast::cdir_dir_mod(vis, id, cdirs, attrs) => {
         let path = Path(cdir_path_opt(*cx.sess.interner.get(id), attrs));
         let full_path = if path.is_absolute {
             copy path
@@ -123,7 +123,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
               attrs: vec::append(attrs, a0),
               id: cx.sess.next_id,
               node: ast::item_mod(m0),
-              vis: ast::public,
+              vis: vis,
               span: cdir.span};
         cx.sess.next_id += 1;
         vec::push(items, i);

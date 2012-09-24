@@ -3601,6 +3601,7 @@ impl parser {
         let expect_mod = vec::len(outer_attrs) > 0u;
 
         let lo = self.span.lo;
+        let vis = self.parse_visibility();
         if expect_mod || self.is_keyword(~"mod") {
 
             self.expect_keyword(~"mod");
@@ -3611,7 +3612,7 @@ impl parser {
               token::SEMI => {
                 let mut hi = self.span.hi;
                 self.bump();
-                return spanned(lo, hi, cdir_src_mod(id, outer_attrs));
+                return spanned(lo, hi, cdir_src_mod(vis, id, outer_attrs));
               }
               // mod x = "foo_dir" { ...directives... }
               token::LBRACE => {
@@ -3624,7 +3625,7 @@ impl parser {
                 let mut hi = self.span.hi;
                 self.expect(token::RBRACE);
                 return spanned(lo, hi,
-                            cdir_dir_mod(id, cdirs, mod_attrs));
+                            cdir_dir_mod(vis, id, cdirs, mod_attrs));
               }
               _ => self.unexpected()
             }
