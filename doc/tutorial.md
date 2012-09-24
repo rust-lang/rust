@@ -742,8 +742,6 @@ struct Stack {
 With a value of such a type, you can do `mystack.head += 1`. If `mut` were
 omitted from the type, such an assignment would result in a type error.
 
-## Struct patterns
-
 Structs can be destructured in `match` patterns. The basic syntax is
 `Name {fieldname: pattern, ...}`:
 ~~~~
@@ -845,8 +843,6 @@ let my_gizmo_id = GizmoId(10);
 let id_int: int = *my_gizmo_id;
 ~~~~
 
-## Enum patterns
-
 For enum types with multiple variants, destructuring is the only way to
 get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
@@ -862,7 +858,10 @@ fn area(sh: Shape) -> float {
 }
 ~~~~
 
-Another example, matching nullary enum variants:
+Like other patterns, a lone underscore ignores individual fields.
+Ignoring all fields of a variant can be written `Circle(*)`. As in
+their introductory form, nullary enum patterns are written without
+parentheses.
 
 ~~~~
 # type Point = {x: float, y: float};
