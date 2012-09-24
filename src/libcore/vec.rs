@@ -1370,15 +1370,6 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
     return true;
 }
 
-#[cfg(stage0)]
-impl<T: Eq> &[T]: Eq {
-    #[inline(always)]
-    pure fn eq(&&other: &[T]) -> bool { eq(self, other) }
-    #[inline(always)]
-    pure fn ne(&&other: &[T]) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Eq> &[T] : Eq {
     #[inline(always)]
     pure fn eq(other: & &[T]) -> bool { eq(self, (*other)) }
@@ -1386,15 +1377,6 @@ impl<T: Eq> &[T] : Eq {
     pure fn ne(other: & &[T]) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl<T: Eq> ~[T]: Eq {
-    #[inline(always)]
-    pure fn eq(&&other: ~[T]) -> bool { eq(self, other) }
-    #[inline(always)]
-    pure fn ne(&&other: ~[T]) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Eq> ~[T] : Eq {
     #[inline(always)]
     pure fn eq(other: &~[T]) -> bool { eq(self, (*other)) }
@@ -1402,15 +1384,6 @@ impl<T: Eq> ~[T] : Eq {
     pure fn ne(other: &~[T]) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0)]
-impl<T: Eq> @[T]: Eq {
-    #[inline(always)]
-    pure fn eq(&&other: @[T]) -> bool { eq(self, other) }
-    #[inline(always)]
-    pure fn ne(&&other: @[T]) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Eq> @[T] : Eq {
     #[inline(always)]
     pure fn eq(other: &@[T]) -> bool { eq(self, (*other)) }
@@ -1439,19 +1412,6 @@ pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
 pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
-#[cfg(stage0)]
-impl<T: Ord> &[T]: Ord {
-    #[inline(always)]
-    pure fn lt(&&other: &[T]) -> bool { lt(self, other) }
-    #[inline(always)]
-    pure fn le(&&other: &[T]) -> bool { le(self, other) }
-    #[inline(always)]
-    pure fn ge(&&other: &[T]) -> bool { ge(self, other) }
-    #[inline(always)]
-    pure fn gt(&&other: &[T]) -> bool { gt(self, other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Ord> &[T] : Ord {
     #[inline(always)]
     pure fn lt(other: & &[T]) -> bool { lt(self, (*other)) }
@@ -1463,19 +1423,6 @@ impl<T: Ord> &[T] : Ord {
     pure fn gt(other: & &[T]) -> bool { gt(self, (*other)) }
 }
 
-#[cfg(stage0)]
-impl<T: Ord> ~[T]: Ord {
-    #[inline(always)]
-    pure fn lt(&&other: ~[T]) -> bool { lt(self, other) }
-    #[inline(always)]
-    pure fn le(&&other: ~[T]) -> bool { le(self, other) }
-    #[inline(always)]
-    pure fn ge(&&other: ~[T]) -> bool { ge(self, other) }
-    #[inline(always)]
-    pure fn gt(&&other: ~[T]) -> bool { gt(self, other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Ord> ~[T] : Ord {
     #[inline(always)]
     pure fn lt(other: &~[T]) -> bool { lt(self, (*other)) }
@@ -1487,19 +1434,6 @@ impl<T: Ord> ~[T] : Ord {
     pure fn gt(other: &~[T]) -> bool { gt(self, (*other)) }
 }
 
-#[cfg(stage0)]
-impl<T: Ord> @[T]: Ord {
-    #[inline(always)]
-    pure fn lt(&&other: @[T]) -> bool { lt(self, other) }
-    #[inline(always)]
-    pure fn le(&&other: @[T]) -> bool { le(self, other) }
-    #[inline(always)]
-    pure fn ge(&&other: @[T]) -> bool { ge(self, other) }
-    #[inline(always)]
-    pure fn gt(&&other: @[T]) -> bool { gt(self, other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Ord> @[T] : Ord {
     #[inline(always)]
     pure fn lt(other: &@[T]) -> bool { lt(self, (*other)) }
@@ -1514,16 +1448,6 @@ impl<T: Ord> @[T] : Ord {
 #[cfg(notest)]
 mod traits {
     #[legacy_exports];
-    #[cfg(stage0)]
-    impl<T: Copy> ~[T]: Add<&[const T],~[T]> {
-        #[inline(always)]
-        pure fn add(rhs: &[const T]) -> ~[T] {
-            append(copy self, rhs)
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> ~[T] {
@@ -1531,16 +1455,6 @@ mod traits {
         }
     }
 
-    #[cfg(stage0)]
-    impl<T: Copy> ~[mut T]: Add<&[const T],~[mut T]> {
-        #[inline(always)]
-        pure fn add(rhs: &[const T]) -> ~[mut T] {
-            append_mut(copy self, rhs)
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> ~[mut T] {

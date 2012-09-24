@@ -329,28 +329,6 @@ enum Constraint {
     ConstrainVarSubReg(RegionVid, region)
 }
 
-#[cfg(stage0)]
-impl Constraint: cmp::Eq {
-    pure fn eq(&&other: Constraint) -> bool {
-        match (self, other) {
-            (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
-                v0a == v0b && v1a == v1b
-            }
-            (ConstrainRegSubVar(ra, va), ConstrainRegSubVar(rb, vb)) => {
-                ra == rb && va == vb
-            }
-            (ConstrainVarSubReg(va, ra), ConstrainVarSubReg(vb, rb)) => {
-                va == vb && ra == rb
-            }
-            (ConstrainVarSubVar(*), _) => false,
-            (ConstrainRegSubVar(*), _) => false,
-            (ConstrainVarSubReg(*), _) => false
-        }
-    }
-    pure fn ne(&&other: Constraint) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Constraint : cmp::Eq {
     pure fn eq(other: &Constraint) -> bool {
         match (self, (*other)) {
@@ -391,15 +369,6 @@ struct TwoRegions {
     b: region,
 }
 
-#[cfg(stage0)]
-impl TwoRegions: cmp::Eq {
-    pure fn eq(&&other: TwoRegions) -> bool {
-        self.a == other.a && self.b == other.b
-    }
-    pure fn ne(&&other: TwoRegions) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl TwoRegions : cmp::Eq {
     pure fn eq(other: &TwoRegions) -> bool {
         self.a == (*other).a && self.b == (*other).b
@@ -786,15 +755,6 @@ priv impl RegionVarBindings {
 
 enum Direction { Incoming = 0, Outgoing = 1 }
 
-#[cfg(stage0)]
-impl Direction : cmp::Eq {
-    pure fn eq(&&other: Direction) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: Direction) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Direction : cmp::Eq {
     pure fn eq(other: &Direction) -> bool {
         (self as uint) == ((*other) as uint)
@@ -804,15 +764,6 @@ impl Direction : cmp::Eq {
 
 enum Classification { Expanding, Contracting }
 
-#[cfg(stage0)]
-impl Classification : cmp::Eq {
-    pure fn eq(&&other: Classification) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: Classification) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Classification : cmp::Eq {
     pure fn eq(other: &Classification) -> bool {
         (self as uint) == ((*other) as uint)

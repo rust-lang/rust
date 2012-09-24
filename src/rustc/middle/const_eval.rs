@@ -189,23 +189,6 @@ enum const_val {
     const_bool(bool)
 }
 
-#[cfg(stage0)]
-impl const_val: cmp::Eq {
-    pure fn eq(&&other: const_val) -> bool {
-        match (self, other) {
-            (const_float(a), const_float(b)) => a == b,
-            (const_int(a), const_int(b)) => a == b,
-            (const_uint(a), const_uint(b)) => a == b,
-            (const_str(a), const_str(b)) => a == b,
-            (const_bool(a), const_bool(b)) => a == b,
-            (const_float(_), _) | (const_int(_), _) | (const_uint(_), _) |
-            (const_str(_), _) | (const_bool(_), _) => false
-        }
-    }
-    pure fn ne(&&other: const_val) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl const_val : cmp::Eq {
     pure fn eq(other: &const_val) -> bool {
         match (self, (*other)) {

@@ -5,20 +5,6 @@ use ast_builder::{path, append_types};
 
 enum direction { send, recv }
 
-#[cfg(stage0)]
-impl direction : cmp::Eq {
-    pure fn eq(&&other: direction) -> bool {
-        match (self, other) {
-            (send, send) => true,
-            (recv, recv) => true,
-            (send, _) => false,
-            (recv, _) => false,
-        }
-    }
-    pure fn ne(&&other: direction) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl direction : cmp::Eq {
     pure fn eq(other: &direction) -> bool {
         match (self, (*other)) {

@@ -66,15 +66,6 @@ enum lint {
     // dead_assignment
 }
 
-#[cfg(stage0)]
-impl lint : cmp::Eq {
-    pure fn eq(&&other: lint) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: lint) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl lint : cmp::Eq {
     pure fn eq(other: &lint) -> bool {
         (self as uint) == ((*other) as uint)
@@ -95,15 +86,6 @@ enum level {
     allow, warn, deny, forbid
 }
 
-#[cfg(stage0)]
-impl level : cmp::Eq {
-    pure fn eq(&&other: level) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: level) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl level : cmp::Eq {
     pure fn eq(other: &level) -> bool {
         (self as uint) == ((*other) as uint)

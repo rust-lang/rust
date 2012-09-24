@@ -26,15 +26,6 @@ enum output_type {
     output_type_exe,
 }
 
-#[cfg(stage0)]
-impl output_type : cmp::Eq {
-    pure fn eq(&&other: output_type) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: output_type) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl output_type : cmp::Eq {
     pure fn eq(other: &output_type) -> bool {
         (self as uint) == ((*other) as uint)

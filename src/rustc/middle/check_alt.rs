@@ -124,25 +124,6 @@ enum ctor {
     range(const_val, const_val),
 }
 
-#[cfg(stage0)]
-impl ctor: cmp::Eq {
-    pure fn eq(&&other: ctor) -> bool {
-        match (self, other) {
-            (single, single) => true,
-            (variant(did_self), variant(did_other)) => did_self == did_other,
-            (val(cv_self), val(cv_other)) => cv_self == cv_other,
-            (range(cv0_self, cv1_self), range(cv0_other, cv1_other)) => {
-                cv0_self == cv0_other && cv1_self == cv1_other
-            }
-            (single, _) | (variant(_), _) | (val(_), _) | (range(*), _) => {
-                false
-            }
-        }
-    }
-    pure fn ne(&&other: ctor) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl ctor : cmp::Eq {
     pure fn eq(other: &ctor) -> bool {
         match (self, (*other)) {

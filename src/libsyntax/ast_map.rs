@@ -11,28 +11,6 @@ enum path_elt {
     path_name(ident)
 }
 
-#[cfg(stage0)]
-impl path_elt : cmp::Eq {
-    pure fn eq(&&other: path_elt) -> bool {
-        match self {
-            path_mod(e0a) => {
-                match other {
-                    path_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            path_name(e0a) => {
-                match other {
-                    path_name(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: path_elt) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl path_elt : cmp::Eq {
     pure fn eq(other: &path_elt) -> bool {
         match self {

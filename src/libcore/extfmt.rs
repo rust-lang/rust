@@ -388,24 +388,6 @@ mod rt {
 
     enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
-#[cfg(stage0)]
-    impl PadMode: Eq {
-        pure fn eq(&&other: PadMode) -> bool {
-            match (self, other) {
-                (PadSigned, PadSigned) => true,
-                (PadUnsigned, PadUnsigned) => true,
-                (PadNozero, PadNozero) => true,
-                (PadFloat, PadFloat) => true,
-                (PadSigned, _) => false,
-                (PadUnsigned, _) => false,
-                (PadNozero, _) => false,
-                (PadFloat, _) => false
-            }
-        }
-        pure fn ne(&&other: PadMode) -> bool { !self.eq(other) }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl PadMode : Eq {
         pure fn eq(other: &PadMode) -> bool {
             match (self, (*other)) {
@@ -595,24 +577,6 @@ mod rt2 {
 
     enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
-#[cfg(stage0)]
-    impl PadMode: Eq {
-        pure fn eq(&&other: PadMode) -> bool {
-            match (self, other) {
-                (PadSigned, PadSigned) => true,
-                (PadUnsigned, PadUnsigned) => true,
-                (PadNozero, PadNozero) => true,
-                (PadFloat, PadFloat) => true,
-                (PadSigned, _) => false,
-                (PadUnsigned, _) => false,
-                (PadNozero, _) => false,
-                (PadFloat, _) => false
-            }
-        }
-        pure fn ne(&&other: PadMode) -> bool { !self.eq(other) }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl PadMode : Eq {
         pure fn eq(other: &PadMode) -> bool {
             match (self, (*other)) {

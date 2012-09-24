@@ -255,28 +255,6 @@ impl<T: Copy> Option<T> {
     pure fn while_some(blk: fn(+v: T) -> Option<T>) { while_some(self, blk) }
 }
 
-#[cfg(stage0)]
-impl<T: Eq> Option<T> : Eq {
-    pure fn eq(&&other: Option<T>) -> bool {
-        match self {
-            None => {
-                match other {
-                    None => true,
-                    Some(_) => false
-                }
-            }
-            Some(self_contents) => {
-                match other {
-                    None => false,
-                    Some(other_contents) => self_contents.eq(other_contents)
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: Option<T>) -> bool { !self.eq(other) }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<T: Eq> Option<T> : Eq {
     pure fn eq(other: &Option<T>) -> bool {
         match self {

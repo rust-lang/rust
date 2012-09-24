@@ -2,14 +2,6 @@
 
 enum foo = ~uint;
 
-#[cfg(stage0)]
-impl foo: Add<foo, foo> {
-    pure fn add(f: foo) -> foo {
-        foo(~(**self + **f))
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl foo : Add<foo, foo> {
     pure fn add(f: &foo) -> foo {
         foo(~(**self + **(*f)))

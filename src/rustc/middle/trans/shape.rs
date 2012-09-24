@@ -26,24 +26,6 @@ type nominal_id_ = {did: ast::def_id, parent_id: Option<ast::def_id>,
                     tps: ~[ty::t]};
 type nominal_id = @nominal_id_;
 
-#[cfg(stage0)]
-impl nominal_id_ : core::cmp::Eq {
-    pure fn eq(&&other: nominal_id_) -> bool {
-        if self.did != other.did ||
-            self.parent_id != other.parent_id {
-            false
-        } else {
-            do vec::all2(self.tps, other.tps) |m_tp, n_tp| {
-                ty::type_id(m_tp) == ty::type_id(n_tp)
-            }
-        }
-    }
-    pure fn ne(&&other: nominal_id_) -> bool {
-        ! (self == other)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl nominal_id_ : core::cmp::Eq {
     pure fn eq(other: &nominal_id_) -> bool {
         if self.did != other.did ||

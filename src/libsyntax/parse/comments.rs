@@ -17,17 +17,6 @@ enum cmnt_style {
     blank_line, // Just a manual blank line "\n\n", for layout
 }
 
-#[cfg(stage0)]
-impl cmnt_style : cmp::Eq {
-    pure fn eq(&&other: cmnt_style) -> bool {
-        (self as uint) == (other as uint)
-    }
-    pure fn ne(&&other: cmnt_style) -> bool {
-        (self as uint) != (other as uint)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl cmnt_style : cmp::Eq {
     pure fn eq(other: &cmnt_style) -> bool {
         (self as uint) == ((*other) as uint)
