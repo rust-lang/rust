@@ -918,9 +918,9 @@ garbage-collected heap to manage all of the objects. This approach is
 straightforward both in concept and in implementation, but has
 significant costs. Languages that take this approach tend to
 aggressively pursue ways to ameliorate allocation costs (think the
-Java Virtual Machine). Rust supports this strategy with _shared
-boxes_: memory allocated on the heap that may be referred to (shared)
-by multiple variables.
+Java Virtual Machine). Rust supports this strategy with _managed
+boxes_: memory allocated on the heap whose lifetime is managed
+by the garbage collector.
 
 By comparison, languages like C++ offer very precise control over
 where objects are allocated. In particular, it is common to put them
@@ -950,7 +950,7 @@ inefficient for large data structures.  Because of this, Rust also
 employs a global _exchange heap_. Objects allocated in the exchange
 heap have _ownership semantics_, meaning that there is only a single
 variable that refers to them. For this reason, they are referred to as
-_unique boxes_. All tasks may allocate objects on the exchange heap,
+_owned boxes_. All tasks may allocate objects on the exchange heap,
 then transfer ownership of those objects to other tasks, avoiding
 expensive copies.
 
@@ -958,8 +958,8 @@ expensive copies.
 
 Rust has three "realms" in which objects can be allocated: the stack,
 the local heap, and the exchange heap. These realms have corresponding
-pointer types: the borrowed pointer (`&T`), the shared box (`@T`),
-and the unique box (`~T`). These three sigils will appear
+pointer types: the borrowed pointer (`&T`), the managed box (`@T`),
+and the owned box (`~T`). These three sigils will appear
 repeatedly as we explore the language. Learning the appropriate role
 of each is key to using Rust effectively.
 
@@ -978,17 +978,22 @@ records with mutable fields, it can be useful to have a single copy on
 the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The safe pointer types are
-`@T` for shared boxes allocated on the local heap, `~T`, for
+`@T` for managed boxes allocated on the local heap, `~T`, for
 uniquely-owned boxes allocated on the exchange heap, and `&T`, for
 borrowed pointers, which may point to any memory, and whose lifetimes
 are governed by the call stack.
 
 All pointer types can be dereferenced with the `*` unary operator.
 
-## Shared boxes
+> ***Note***: You may also hear managed boxes referred to as 'shared
+> boxes' or 'shared pointers', and owned boxes as 'unique boxes/pointers'.
+> Borrowed pointers are sometimes called 'region pointers'. The preferred
+> terminology is as presented here.
 
-Shared boxes are pointers to heap-allocated, garbage collected memory.
-Creating a shared box is done by simply applying the unary `@`
+## Managed boxes
+
+Managed boxes are pointers to heap-allocated, garbage collected memory.
+Creating a managed box is done by simply applying the unary `@`
 operator to an expression. The result of the expression will be boxed,
 resulting in a box of the right type. Copying a shared box, as happens
 during assignment, only copies a pointer, never the contents of the
@@ -1000,22 +1005,24 @@ let y = x; // Copy the pointer, increase refcount
 // When x and y go out of scope, refcount goes to 0, box is freed
 ~~~~
 
-Shared boxes never cross task boundaries.
+Managed boxes never cross task boundaries.
 
-> ***Note:*** shared boxes are currently reclaimed through reference
+> ***Note:*** managed boxes are currently reclaimed through reference
 > counting and cycle collection, but we will switch to a tracing
-> garbage collector.
+> garbage collector eventually.
 
-## Unique boxes
+## Owned boxes
 
-In contrast to shared boxes, unique boxes have a single owner and thus
-two unique boxes may not refer to the same memory. All unique boxes
-across all tasks are allocated on a single _exchange heap_, where
-their uniquely owned nature allows them to be passed between tasks.
+In contrast to maneged boxes, owned boxes have a single owning memory
+slot and thus two owned boxes may not refer to the same memory. All
+owned boxes across all tasks are allocated on a single _exchange
+heap_, where their uniquely owned nature allows them to be passed
+between tasks.
 
-Because unique boxes are uniquely owned, copying them involves allocating
-a new unique box and duplicating the contents. Copying unique boxes
-is expensive so the compiler will complain if you do.
+Because owned boxes are uniquely owned, copying them involves allocating
+a new owned box and duplicating the contents. Copying owned boxes
+is expensive so the compiler will complain if you do so without writing
+the word `copy`.
 
 ~~~~
 let x = ~10;
@@ -1029,15 +1036,15 @@ let x = ~10;
 let y = copy x;
 ~~~~
 
-This is where the 'move' (`<-`) operator comes in. It is similar to
-`=`, but it de-initializes its source. Thus, the unique box can move
+This is where the 'move' operator comes in. It is similar to
+`copy`, but it de-initializes its source. Thus, the owned box can move
 from `x` to `y`, without violating the constraint that it only has a
 single owner (if you used assignment instead of the move operator, the
 box would, in principle, be copied).
 
 ~~~~
 let x = ~10;
-let y <- x;
+let y = move x;
 ~~~~
 
 > ***Note:*** this discussion of copying vs moving does not account
@@ -1045,7 +1052,7 @@ let y <- x;
 > to moves. This is an evolving area of the language that will
 > continue to change.
 
-Unique boxes, when they do not contain any shared boxes, can be sent
+Owned boxes, when they do not contain any managed boxes, can be sent
 to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
@@ -1054,7 +1061,7 @@ become the sole owner of the box.
 
 Rust borrowed pointers are a general purpose reference/pointer type,
 similar to the C++ reference type, but guaranteed to point to valid
-memory. In contrast to unique pointers, where the holder of a unique
+memory. In contrast to owned pointers, where the holder of a unique
 pointer is the owner of the pointed-to memory, borrowed pointers never
 imply ownership. Pointers may be borrowed from any type, in which case
 the pointer is guaranteed not to outlive the value it points to.
@@ -1095,11 +1102,12 @@ fn increase_contents(pt: @mut int) {
 }
 ~~~~
 
-# Vectors
+# Vectors and strings
 
 Vectors are a contiguous section of memory containing zero or more
 values of the same type. Like other types in Rust, vectors can be
-stored on the stack, the local heap, or the exchange heap.
+stored on the stack, the local heap, or the exchange heap. Borrowed
+pointers to vectors are also called 'slices'.
 
 ~~~
 enum Crayon {
@@ -1108,23 +1116,18 @@ enum Crayon {
     BananaMania, Beaver, Bittersweet
 }
 
-// A stack vector of crayons
+// A fixed-size stack vector
+let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
+
+// A borrowed pointer to stack allocated vector
 let stack_crayons: &[Crayon] = &[Almond, AntiqueBrass, Apricot];
-// A local heap (shared) vector of crayons
+
+// A local heap (managed) vector of crayons
 let local_crayons: @[Crayon] = @[Aquamarine, Asparagus, AtomicTangerine];
-// An exchange heap (unique) vector of crayons
+
+// An exchange heap (owned) vector of crayons
 let exchange_crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
 ~~~
-
-> ***Note:*** Until recently Rust only had unique vectors, using the
-> unadorned `[]` syntax for literals. This syntax is still supported
-> but is deprecated. In the future it will probably represent some
-> "reasonable default" vector type.
->
-> Unique vectors are the currently-recommended vector type for general
-> use as they are the most tested and well-supported by existing
-> libraries. There will be a gradual shift toward using more
-> stack and local vectors in the coming releases.
 
 Vector literals are enclosed in square brackets and dereferencing is
 also done with square brackets (zero-based):
@@ -1135,7 +1138,7 @@ also done with square brackets (zero-based):
 #               BananaMania, Beaver, Bittersweet };
 # fn draw_scene(c: Crayon) { }
 
-let crayons = ~[BananaMania, Beaver, Bittersweet];
+let crayons = [BananaMania, Beaver, Bittersweet];
 match crayons[0] {
     Bittersweet => draw_scene(crayons[0]),
     _ => ()
@@ -1143,8 +1146,8 @@ match crayons[0] {
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
-The type written as `~[mut T]` is a vector with mutable
-elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
+The type written as `[mut T]` is a vector with mutable
+elements. Mutable vector literals are written `[mut]` (empty) or `[mut
 1, 2, 3]` (with elements).
 
 ~~~~
@@ -1152,7 +1155,7 @@ elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
 
-let crayons = ~[mut BananaMania, Beaver, Bittersweet];
+let crayons = [mut BananaMania, Beaver, Bittersweet];
 crayons[0] = AtomicTangerine;
 ~~~~
 
@@ -1183,7 +1186,30 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 my_crayons += your_crayons;
 ~~~~
 
-## Vector and string methods
+> ***Note:*** The above examples of vector addition use owned
+> vectors. Some operations on slices and stack vectors are
+> not well supported yet, owned vectors are often the most
+> usable.
+
+Strings are simply vectors of `[u8]`, though they have a distinct
+type. They support most of the same allocation aptions as
+vectors, though the string literal without a storage sigil, e.g.
+`"foo"` is treated differently than a comparable vector (`[foo]`).
+Where
+
+~~~
+// A plain string is a slice to read-only (static) memory
+let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
+
+// The same thing, but without
+let stack_crayons: &str = &"Almond, AntiqueBrass, Apricot";
+
+// A local heap (managed) string
+let local_crayons: @str = @"Aquamarine, Asparagus, AtomicTangerine";
+
+// An exchange heap (owned) string
+let exchange_crayons: ~str = ~"BananaMania, Beaver, Bittersweet";
+~~~
 
 Both vectors and strings support a number of useful
 [methods](#implementation).  While we haven't covered methods yet,
@@ -1202,7 +1228,7 @@ brief look at a few common ones.
 # fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
 # fn crayon_to_str(c: Crayon) -> ~str { ~"" }
 
-let crayons = ~[Almond, AntiqueBrass, Apricot];
+let crayons = &[Almond, AntiqueBrass, Apricot];
 
 // Check the length of the vector
 assert crayons.len() == 3;
@@ -1282,7 +1308,7 @@ position and cannot be stored in structures nor returned from
 functions. Despite the limitations stack closures are used
 pervasively in Rust code.
 
-## Shared closures
+## Managed closures
 
 When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
@@ -1290,7 +1316,7 @@ this purpose, Rust provides a type of closure that has an arbitrary
 lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
 type described earlier).
 
-A boxed closure does not directly access its environment, but merely
+A managed closure does not directly access its environment, but merely
 copies out the values that it closes over into a private data
 structure. This means that it can not assign to these variables, and
 will not 'see' updates to them.
@@ -1315,7 +1341,7 @@ This example uses the long closure syntax, `fn@(s: ~str) ...`,
 making the fact that we are declaring a box closure explicit. In
 practice boxed closures are usually defined with the short closure
 syntax introduced earlier, in which case the compiler will infer
-the type of closure. Thus our boxed closure example could also
+the type of closure. Thus our managed closure example could also
 be written:
 
 ~~~~
@@ -1324,13 +1350,13 @@ fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
 }
 ~~~~
 
-## Unique closures
+## Owned closures
 
-Unique closures, written `fn~` in analogy to the `~` pointer type,
+Owned closures, written `fn~` in analogy to the `~` pointer type,
 hold on to things that can safely be sent between
-processes. They copy the values they close over, much like boxed
+processes. They copy the values they close over, much like managed
 closures, but they also 'own' them—meaning no other code can access
-them. Unique closures are used in concurrent code, particularly
+them. Owned closures are used in concurrent code, particularly
 for spawning [tasks](#tasks).
 
 ## Closure compatibility
@@ -1346,11 +1372,15 @@ that callers have the flexibility to pass whatever they want.
 fn call_twice(f: fn()) { f(); f(); }
 call_twice(|| { ~"I am an inferred stack closure"; } );
 call_twice(fn&() { ~"I am also a stack closure"; } );
-call_twice(fn@() { ~"I am a boxed closure"; });
-call_twice(fn~() { ~"I am a unique closure"; });
+call_twice(fn@() { ~"I am a managed closure"; });
+call_twice(fn~() { ~"I am a owned closure"; });
 fn bare_function() { ~"I am a plain function"; }
 call_twice(bare_function);
 ~~~~
+
+> ***Note:*** Both the syntax and the semantics will be changing
+> in small ways. At the moment they can be unsound in multiple
+> scenarios, particularly with non-copyable types.
 
 ## Do syntax
 
@@ -1360,7 +1390,7 @@ functions to simulate control structures like `if` and
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
-fn each(v: ~[int], op: fn(v: &int)) {
+fn each(v: &[int], op: fn(v: &int)) {
    let mut n = 0;
    while n < v.len() {
        op(&v[n]);
@@ -1378,9 +1408,9 @@ closure to provide the final operator argument, we can write it in a
 way that has a pleasant, block-like structure.
 
 ~~~~
-# fn each(v: ~[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: int) { }
-each(~[1, 2, 3], |n| {
+each(&[1, 2, 3], |n| {
     debug!("%i", *n);
     do_some_work(*n);
 });
@@ -1390,9 +1420,9 @@ This is such a useful pattern that Rust has a special form of function
 call that can be written more like a built-in control structure:
 
 ~~~~
-# fn each(v: ~[int], op: fn(v: &int)) { }
+# fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: int) { }
-do each(~[1, 2, 3]) |n| {
+do each(&[1, 2, 3]) |n| {
     debug!("%i", *n);
     do_some_work(*n);
 }
@@ -1438,7 +1468,7 @@ Consider again our `each` function, this time improved to
 break early when the iteratee returns `false`:
 
 ~~~~
-fn each(v: ~[int], op: fn(v: &int) -> bool) {
+fn each(v: &[int], op: fn(v: &int) -> bool) {
    let mut n = 0;
    while n < v.len() {
        if !op(&v[n]) {
@@ -1454,7 +1484,7 @@ And using this function to iterate over a vector:
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-each(~[2, 4, 8, 5, 16], |n| {
+each(&[2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println(~"found odd number!");
         false
@@ -1471,7 +1501,7 @@ to the next iteration, write `again`.
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-for each(~[2, 4, 8, 5, 16]) |n| {
+for each(&[2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println(~"found odd number!");
         break;
@@ -1486,7 +1516,7 @@ function, not just the loop body.
 
 ~~~~
 # use each = vec::each;
-fn contains(v: ~[int], elt: int) -> bool {
+fn contains(v: &[int], elt: int) -> bool {
     for each(v) |x| {
         if (*x == elt) { return true; }
     }
