@@ -5,7 +5,7 @@ CodeMirror.defineMode("rust", function() {
     "do": "else-style", "return": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
     "let": "let", "fn": "fn", "for": "for", "match": "match", "trait": "trait",
-    "impl": "impl", "type": "type", "enum": "enum", "class": "atom", "mod": "mod",
+    "impl": "impl", "type": "type", "enum": "enum", "struct": "atom", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
     "export": "else-style", "copy": "op", "log": "op",
