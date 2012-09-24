@@ -1528,12 +1528,9 @@ fn contains(v: &[int], elt: int) -> bool {
 
 # Generics
 
-## Generic functions
-
 Throughout this tutorial, we've been defining functions that act only on
-single data types. It's a burden to define such functions again and again for
-every type they apply to. Thus, Rust allows functions and datatypes to have
-type parameters.
+single data types. With type parameters we can also define functions that
+may be invoked on multiple types.
 
 ~~~~
 fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
@@ -1545,9 +1542,10 @@ fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
 }
 ~~~~
 
-When defined with type parameters, this function can be applied to any
-type of vector, as long as the type of `function`'s argument and the
-type of the vector's content agree with each other.
+When defined with type parameters, as denoted by `<T, U>`, this
+function can be applied to any type of vector, as long as the type of
+`function`'s argument and the type of the vector's content agree with
+each other.
 
 Inside a generic function, the names of the type parameters
 (capitalized by convention) stand for opaque types. You can't look
@@ -1558,11 +1556,12 @@ parameter `function()` is supplied with a pointer to a value of type
 function works with the broadest set of types possible, since some
 types are expensive or illegal to copy and pass by value.
 
-## Generic datatypes
-
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
+# use std::map::HashMap;
+type Set<T> = HashMap<T, ()>;
+
 struct Stack<T> {
     elements: ~[mut T]
 }
@@ -1573,89 +1572,112 @@ enum Maybe<T> {
 }
 ~~~~
 
-These declarations produce valid types like `Stack<u8>` and `Maybe<int>`.
+These declarations produce valid types like `Set<int>`, `Stack<int>`
+and `Maybe<int>`.
 
-## Kinds
+## Traits
 
 Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
-for all Rust types. Resource types (classes with destructors) cannot be
-copied, and neither can any type whose copying would require copying a
-resource (such as records or unique boxes containing a resource).
+for all Rust types. Types with user-defined destructors cannot be
+copied, and neither can types that own other types containing
+destructors.
+
+~~~
+// Instances of this struct can't be copied, either implicitly
+// or with the `copy` keyword
+struct NotCopyable {
+    foo: int,
+
+    drop { }
+}
+
+// This owned box containing a NotCopyable is also not copyable
+let not_copyable_box = ~NotCopyable { foo: 0 };
+~~~
 
 This complicates handling of generic functions. If you have a type
 parameter `T`, can you copy values of that type? In Rust, you can't,
-unless you explicitly declare that type parameter to have copyable
-'kind'. A kind is a type of type.
+unless you explicitly declare that type parameter to have the
+_trait_ for copying, called `Copy`.
 
 ~~~~ {.ignore}
 // This does not compile
-fn head_bad<T>(v: ~[T]) -> T { v[0] }
+fn head_bad<T>(v: ~[T]) -> T {
+    copy v[0] // Elements of type T aren't copyable
+}
+~~~~
+
+~~~~
 // This does
-fn head<T: Copy>(v: ~[T]) -> T { v[0] }
+fn head<T: Copy>(v: ~[T]) -> T {
+   copy v[0]
+}
 ~~~~
 
 When instantiating a generic function, you can only instantiate it
-with types that fit its kinds. So you could not apply `head` to a
-resource type. Rust has several kinds that can be used as type bounds:
+with types that implement the correct traits. So you could not apply
+`head` to a type with a destructor.
 
-* `Copy` - Copyable types. All types are copyable unless they
-  are classes with destructors or otherwise contain
-  classes with destructors.
-* `Send` - Sendable types. All types are sendable unless they
-  contain shared boxes, closures, or other local-heap-allocated
-  types.
-* `Const` - Constant types. These are types that do not contain
-  mutable fields nor shared boxes.
+While most traits can be defined and implemented by user code, three
+traits are derived for all applicable types by the compiler, and may
+not be overridden:
 
-> ***Note:*** Rust type kinds are syntactically very similar to
-> [traits](#traits) when used as type bounds, and can be
-> conveniently thought of as built-in traits. In the future type
-> kinds will actually be traits that the compiler has special
-> knowledge about.
+* `Copy` - Types that can be copied, either implicitly, or using the
+  `copy` expression. All types are copyable unless they are classes
+  with destructors or otherwise contain classes with destructors.
 
-# Traits
+* `Send` - Sendable (owned) types. All types are sendable unless they
+  contain managed boxes, managed closures, or otherwise managed
+  types. Sendable types may or may not be copyable.
+
+* `Const` - Constant (immutable) types. These are types that do not contain
+  mutable fields.
+
+> ***Note:*** These three traits were referred to as 'kinds' in earlier
+> iterations of the language, and often still are.
 
 Traits are Rust's take on value polymorphism—the thing that
 object-oriented languages tend to solve with methods and inheritance.
 For example, writing a function that can operate on multiple types of
 collections.
 
-> ***Note:*** This feature is very new, and will need a few extensions to be
-> applicable to more advanced use cases.
+## Declaring and implementing traits
 
-## Declaration
-
-A trait consists of a set of methods. A method is a function that
+A trait consists of a set of methods, or may be empty, as is the case
+with `Copy`, `Send`, and `Const`. A method is a function that
 can be applied to a `self` value and a number of arguments, using the
 dot notation: `self.foo(arg1, arg2)`.
 
-For example, we could declare the trait `to_str` for things that
-can be converted to a string, with a single method of the same name:
+For example, we could declare the trait `Stringable` for things that
+can be converted to a string, with a single method:
 
 ~~~~
 trait ToStr {
-    fn to_str() -> ~str;
+    fn to_str(self) -> ~str;
 }
 ~~~~
 
-## Implementation
-
 To actually implement a trait for a given type, the `impl` form
-is used. This defines implementations of `to_str` for the `int` and
+is used. This defines implementations of `ToStr` for the `int` and
 `~str` types.
 
 ~~~~
-# trait ToStr { fn to_str() -> ~str; }
+# // FIXME: This example is no good because you can't actually
+# // implement your own .to_str for int and ~str
+# trait ToStr { fn to_str(self) -> ~str; }
 impl int: ToStr {
-    fn to_str() -> ~str { int::to_str(self, 10u) }
+    fn to_str(self) -> ~str { int::to_str(self, 10u) }
 }
 impl ~str: ToStr {
-    fn to_str() -> ~str { self }
+    fn to_str(self) -> ~str { self }
 }
+
+# //1.to_str();
+# //(~"foo").to_str();
 ~~~~
 
-Given these, we may call `1.to_str()` to get `~"1"`, or
-`(~"foo").to_str()` to get `~"foo"` again. This is basically a form of
+Given these, we may call `1.to_str()` to get `"1"`, or
+`(~"foo").to_str()` to get `"foo"` again. This is basically a form of
 static overloading—when the Rust compiler sees the `to_str` method
 call, it looks for an implementation that matches the type with a
 method that matches the name, and simply calls that.
