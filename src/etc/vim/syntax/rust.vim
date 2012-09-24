@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
-" Maintainer:   Ben Blum <bblum@mozilla.com>
+" Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Last Change:  2012 Jul 06
 
 if version < 600
@@ -14,7 +14,7 @@ syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     again as break
 syn keyword   rustKeyword     const copy do drop else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
-syn keyword   rustKeyword     loop match mod module move mut new of owned priv pure
+syn keyword   rustKeyword     loop match mod module move mut new of priv pure
 syn match     rustKeyword     "\<pub\>"
 syn keyword   rustKeyword     ref return static to unchecked
 syn match     rustKeyword     "\<unsafe\>" " Allows also matching unsafe::foo()
@@ -41,6 +41,11 @@ syn keyword   rustType        c_short c_ushort c_int c_uint c_long c_ulong
 syn keyword   rustType        size_t ptrdiff_t clock_t time_t
 syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
 syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
+
+syn keyword   rustTrait       Const Copy Send Owned " inherent traits
+syn keyword   rustTrait       Eq Ord Num Ptr
+syn keyword   rustTrait       Add Sub Mul Div Modulo Neg BitAnd BitOr BitXor
+syn keyword   rustTrait       Shl Shr Index
 
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
@@ -109,6 +114,7 @@ syn keyword   rustTodo        TODO FIXME XXX NB
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
+hi def link rustTrait           rustType
 
 hi def link rustFormat        Special
 hi def link rustString        String
