@@ -232,9 +232,24 @@ fn mk_ser_method(
         bounds: @~[ast::bound_trait(ser_bound)],
     }];
 
+    let ty_s = @{
+        id: cx.next_id(),
+        node: ast::ty_rptr(
+            @{
+                id: cx.next_id(),
+                node: ast::re_anon,
+            },
+            {
+                ty: cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[]),
+                mutbl: ast::m_imm
+            }
+        ),
+        span: span,
+    };
+
     let ser_inputs = ~[{
-        mode: ast::expl(ast::by_ref),
-        ty: cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[]),
+        mode: ast::infer(cx.next_id()),
+        ty: ty_s,
         ident: cx.ident_of(~"__s"),
         id: cx.next_id(),
     }];
@@ -255,7 +270,7 @@ fn mk_ser_method(
         ident: cx.ident_of(~"serialize"),
         attrs: ~[],
         tps: ser_tps,
-        self_ty: { node: ast::sty_by_ref, span: span },
+        self_ty: { node: ast::sty_region(ast::m_imm), span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
         body: ser_body,
@@ -288,9 +303,24 @@ fn mk_deser_method(
         bounds: @~[ast::bound_trait(deser_bound)],
     }];
 
+    let ty_d = @{
+        id: cx.next_id(),
+        node: ast::ty_rptr(
+            @{
+                id: cx.next_id(),
+                node: ast::re_anon,
+            },
+            {
+                ty: cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[]),
+                mutbl: ast::m_imm
+            }
+        ),
+        span: span,
+    };
+
     let deser_inputs = ~[{
-        mode: ast::expl(ast::by_ref),
-        ty: cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[]),
+        mode: ast::infer(cx.next_id()),
+        ty: ty_d,
         ident: cx.ident_of(~"__d"),
         id: cx.next_id(),
     }];
@@ -608,11 +638,14 @@ fn mk_enum_ser_body(
         }
     };
 
-    // ast for `match self { $(arms) }`
+    // ast for `match *self { $(arms) }`
     let match_expr = cx.expr(
         span,
         ast::expr_match(
-            cx.expr_var(span, ~"self"),
+            cx.expr(
+                span,
+                ast::expr_unary(ast::deref, cx.expr_var(span, ~"self"))
+            ),
             arms
         )
     );
