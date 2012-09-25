@@ -19,7 +19,7 @@ impl test_mode : cmp::Eq {
 
 fn write_file(filename: &Path, content: ~str) {
     result::get(
-        io::file_writer(filename, ~[io::Create, io::Truncate]))
+        &io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
 }
 
@@ -543,7 +543,7 @@ fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
         if !file_might_not_converge(file) {
-            let s = @result::get(io::read_whole_file_str(file));
+            let s = @result::get(&io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
                 error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
@@ -563,7 +563,7 @@ fn check_variants(files: &[Path], cx: context) {
             loop;
         }
 
-        let s = @result::get(io::read_whole_file_str(file));
+        let s = @result::get(&io::read_whole_file_str(file));
         if contains(*s, ~"#") {
             loop; // Macros are confusing
         }

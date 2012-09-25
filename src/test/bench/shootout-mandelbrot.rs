@@ -114,7 +114,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
         }
         _ => {
             result::get(
-                io::file_writer(&Path(path),
+                &io::file_writer(&Path(path),
                 ~[io::Create, io::Truncate]))
         }
     };

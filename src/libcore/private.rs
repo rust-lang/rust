@@ -283,7 +283,7 @@ fn test_weaken_task_fail() {
             }
         }
     };
-    assert result::is_err(res);
+    assert result::is_err(&res);
 }
 
 /****************************************************************************

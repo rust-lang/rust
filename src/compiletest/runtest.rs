@@ -109,7 +109,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
     let rounds =
         match props.pp_exact { option::Some(_) => 1, option::None => 2 };
 
-    let mut srcs = ~[result::get(io::read_whole_file_str(testfile))];
+    let mut srcs = ~[io::read_whole_file_str(testfile).get()];
 
     let mut round = 0;
     while round < rounds {
@@ -129,7 +129,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
         match props.pp_exact {
           option::Some(file) => {
             let filepath = testfile.dir_path().push_rel(&file);
-            result::get(io::read_whole_file_str(&filepath))
+            io::read_whole_file_str(&filepath).get()
           }
           option::None => { srcs[vec::len(srcs) - 2u] }
         };
@@ -561,8 +561,8 @@ fn dump_output(config: config, testfile: &Path, out: ~str, err: ~str) {
 fn dump_output_file(config: config, testfile: &Path,
                     out: ~str, extension: ~str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer = result::get(
-        io::file_writer(&outfile, ~[io::Create, io::Truncate]));
+    let writer =
+        io::file_writer(&outfile, ~[io::Create, io::Truncate]).get();
     writer.write_str(out);
 }
 

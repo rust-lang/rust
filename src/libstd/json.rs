@@ -892,7 +892,7 @@ mod tests {
             ]))
         ]);
         let astr = to_str(a);
-        let b = result::get(from_str(astr));
+        let b = result::get(&from_str(astr));
         let bstr = to_str(b);
         assert astr == bstr;
         assert a == b;
@@ -1040,24 +1040,24 @@ mod tests {
         assert from_str(~"{\"a\":1,") ==
             Err({line: 1u, col: 8u, msg: @~"EOF while parsing object"});
 
-        assert eq(result::get(from_str(~"{}")), mk_dict(~[]));
-        assert eq(result::get(from_str(~"{\"a\": 3}")),
+        assert eq(result::get(&from_str(~"{}")), mk_dict(~[]));
+        assert eq(result::get(&from_str(~"{\"a\": 3}")),
                   mk_dict(~[(~"a", Num(3.0f))]));
 
-        assert eq(result::get(from_str(~"{ \"a\": null, \"b\" : true }")),
+        assert eq(result::get(&from_str(~"{ \"a\": null, \"b\" : true }")),
                   mk_dict(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert eq(result::get(from_str(~"\n{ \"a\": null, \"b\" : true }\n")),
+        assert eq(result::get(&from_str(~"\n{ \"a\": null, \"b\" : true }\n")),
                   mk_dict(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert eq(result::get(from_str(~"{\"a\" : 1.0 ,\"b\": [ true ]}")),
+        assert eq(result::get(&from_str(~"{\"a\" : 1.0 ,\"b\": [ true ]}")),
                   mk_dict(~[
                       (~"a", Num(1.0)),
                       (~"b", List(@~[Boolean(true)]))
                   ]));
-        assert eq(result::get(from_str(
+        assert eq(result::get(&from_str(
                       ~"{" +
                           ~"\"a\": 1.0, " +
                           ~"\"b\": [" +

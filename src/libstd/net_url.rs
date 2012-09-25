@@ -627,30 +627,30 @@ fn get_query_fragment(rawurl: &str) ->
 fn from_str(rawurl: &str) -> result::Result<Url, ~str> {
     // scheme
     let mut schm = get_scheme(rawurl);
-    if result::is_err(schm) {
-        return result::Err(copy *result::get_err(schm));
+    if result::is_err(&schm) {
+        return result::Err(copy *result::get_err(&schm));
     }
     let (scheme, rest) = result::unwrap(schm);
 
     // authority
     let mut auth = get_authority(rest);
-    if result::is_err(auth) {
-        return result::Err(copy *result::get_err(auth));
+    if result::is_err(&auth) {
+        return result::Err(copy *result::get_err(&auth));
     }
     let (userinfo, host, port, rest) = result::unwrap(auth);
 
     // path
     let has_authority = if host == ~"" { false } else { true };
     let mut pth = get_path(rest, has_authority);
-    if result::is_err(pth) {
-        return result::Err(copy *result::get_err(pth));
+    if result::is_err(&pth) {
+        return result::Err(copy *result::get_err(&pth));
     }
     let (path, rest) = result::unwrap(pth);
 
     // query and fragment
     let mut qry = get_query_fragment(rest);
-    if result::is_err(qry) {
-        return result::Err(copy *result::get_err(qry));
+    if result::is_err(&qry) {
+        return result::Err(copy *result::get_err(&qry));
     }
     let (query, fragment) = result::unwrap(qry);
 
@@ -796,13 +796,13 @@ mod tests {
         assert p == option::Some(~"8000");
 
         // invalid authorities;
-        assert result::is_err(get_authority(
+        assert result::is_err(&get_authority(
             ~"//user:pass@rust-lang:something"));
-        assert result::is_err(get_authority(
+        assert result::is_err(&get_authority(
             ~"//user@rust-lang:something:/path"));
-        assert result::is_err(get_authority(
+        assert result::is_err(&get_authority(
             ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a"));
-        assert result::is_err(get_authority(
+        assert result::is_err(&get_authority(
             ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00"));
 
         // these parse as empty, because they don't start with '//'
@@ -830,7 +830,7 @@ mod tests {
         assert r == ~"?q=v";
 
         //failure cases
-        assert result::is_err(get_path(~"something?q", true));
+        assert result::is_err(&get_path(~"something?q", true));
 
     }
 
@@ -877,13 +877,13 @@ mod tests {
 
     #[test]
     fn test_no_scheme() {
-        assert result::is_err(get_scheme(~"noschemehere.html"));
+        assert result::is_err(&get_scheme(~"noschemehere.html"));
     }
 
     #[test]
     fn test_invalid_scheme_errors() {
-        assert result::is_err(from_str(~"99://something"));
-        assert result::is_err(from_str(~"://something"));
+        assert result::is_err(&from_str(~"99://something"));
+        assert result::is_err(&from_str(~"://something"));
     }
 
     #[test]
