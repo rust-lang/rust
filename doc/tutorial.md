@@ -1712,6 +1712,29 @@ method declarations. So, re-declaring the type parameter
 `T` as an explicit type parameter for `len` -- in either the trait or
 the impl -- would be a compile-time error.
 
+Within a trait definition, `self` is a special type that you can think
+of as a type parameter. An implementation of the trait for any given
+type `T` replaces the `self` type parameter with `T`. Simply, in a
+trait, `self` is a type, and in an impl, `self` is a value. The
+following trait describes types that support an equality operation:
+
+~~~~
+// In a trait, `self` refers to the type implementing the trait
+trait Eq {
+  fn equals(other: &self) -> bool;
+}
+
+// In an impl, self refers to the value of the receiver
+impl int: Eq {
+  fn equals(other: &int) -> bool { *other == self }
+}
+~~~~
+
+Notice that in the trait definition, `equals` takes a `self` type
+argument, whereas, in the impl, `equals` takes an `int` type argument,
+and uses `self` as the name of the receiver (analogous to the `this` pointer
+in C++).
+
 ## Bounded type parameters and static method dispatch
 
 Traits give us a language for talking about the abstract capabilities
@@ -1753,7 +1776,7 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
-## Casting to a trait type and dynamic dispatch
+## Casting to a trait type and dynamic method dispatch
 
 The above allows us to define functions that polymorphically act on
 values of a single unknown type that conforms to a given trait.
@@ -1835,31 +1858,6 @@ time it uses a lookup table (vtable) to decide at runtime which
 method to call.
 
 This usage of traits is similar to Java interfaces.
-
-## The `self` type
-
-In a trait, `self` is a special type that you can think of as a
-type parameter. An implementation of the trait for any given type
-`T` replaces the `self` type parameter with `T`. Simply, in a trait,
-`self` is a type, and in an impl, `self` is a value. The following
-trait describes types that support an equality operation:
-
-~~~~
-// In a trait, `self` refers to the type implementing the trait
-trait Eq {
-  fn equals(&&other: self) -> bool;
-}
-
-// In an impl, self refers to the value of the receiver
-impl int: Eq {
-  fn equals(&&other: int) -> bool { other == self }
-}
-~~~~
-
-Notice that in the trait definition, `equals` takes a `self` type
-argument, whereas, in the impl, `equals` takes an `int` type argument,
-and uses `self` as the name of the receiver (analogous to the `this` pointer
-in C++).
 
 # Modules and crates
 
