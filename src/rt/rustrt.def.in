@@ -60,6 +60,7 @@ rust_get_task
 rust_get_stack_segment
 rust_task_weaken
 rust_task_unweaken
+rust_log_str
 shape_log_str
 start_task
 vec_reserve_shared_actual
