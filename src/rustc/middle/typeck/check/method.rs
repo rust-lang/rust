@@ -48,11 +48,12 @@ candidates in the same way.
 
 If find no matching candidate at all, we proceed to auto-deref the
 receiver type and search again.  We keep doing that until we cannot
-auto-deref any longer.  At that point, we will attempt an auto-ref.
-If THAT fails, method lookup fails altogether.  Autoref itself comes
-in two varieties, autoslice and autoptr.  The former converts `~[]` to
-`&[]` and the latter converts any type `T` to `&mut T`, `&const T`, or
-`&T`.
+auto-deref any longer.  At each step, we also check for candidates
+based on "autoptr", which if the current type is `T`, checks for `&mut
+T`, `&const T`, and `&T` receivers.  Finally, at the very end, we will
+also try autoslice, which converts `~[]` to `&[]` (there is no point
+at trying autoslice earlier, because no autoderefable type is also
+sliceable).
 
 ## Why two phases?
 
@@ -159,22 +160,9 @@ impl LookupContext {
                 None => {}
             }
 
-            // some special logic around newtypes:
-            match ty::get(self_ty).sty {
-                ty_enum(*) => {
-                    // Note: in general, we prefer not to auto-ref a
-                    // partially autoderef'd type, because it
-                    // seems... crazy.  But we have to be careful
-                    // around newtype enums.  They can be further
-                    // deref'd, but they may also have intrinsic
-                    // methods hanging off of them with interior type.
-                    match self.search_for_any_autorefd_method(self_ty,
-                                                              autoderefs) {
-                        Some(move mme) => { return Some(mme); }
-                        None => {}
-                    }
-                }
-                _ => {}
+            match self.search_for_autoptrd_method(self_ty, autoderefs) {
+                Some(move mme) => { return Some(move mme); }
+                None => {}
             }
 
             match self.deref(self_ty, &enum_dids) {
@@ -186,7 +174,7 @@ impl LookupContext {
             }
         }
 
-        self.search_for_any_autorefd_method(self_ty, autoderefs)
+        self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
     fn deref(ty: ty::t, enum_dids: &DVec<ast::def_id>) -> Option<ty::t> {
@@ -516,30 +504,6 @@ impl LookupContext {
         }
     }
 
-    fn search_for_any_autorefd_method(
-        &self,
-        self_ty: ty::t,
-        autoderefs: uint)
-        -> Option<method_map_entry>
-    {
-        /*!
-         *
-         * Attempts both auto-slice and auto-ptr, as appropriate.
-         */
-
-        match self.search_for_autosliced_method(self_ty, autoderefs) {
-            Some(move mme) => { return Some(move mme); }
-            None => {}
-        }
-
-        match self.search_for_autoptrd_method(self_ty, autoderefs) {
-            Some(move mme) => { return Some(move mme); }
-            None => {}
-        }
-
-        return None;
-    }
-
     fn search_for_autosliced_method(
         &self,
         self_ty: ty::t,
@@ -594,13 +558,7 @@ impl LookupContext {
 
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
-            ty_box(*) | ty_uniq(*) | ty_rptr(*) => {
-                // we should be fully autoderef'd
-                self.bug(fmt!("Receiver type %s should be fully \
-                               autoderef'd by this point",
-                              self.ty_to_str(self_ty)));
-            }
-
+            ty_box(*) | ty_uniq(*) | ty_rptr(*) |
             ty_infer(IntVar(_)) | // FIXME(#3211)---should be resolved
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
