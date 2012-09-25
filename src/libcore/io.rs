@@ -48,6 +48,17 @@ trait Reader {
 trait ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8];
     fn read_line() -> ~str;
+
+    fn read_chars(n: uint) -> ~[char];
+    fn read_char() -> char;
+    fn read_c_str() -> ~str;
+    fn read_le_uint(size: uint) -> uint;
+    fn read_le_int(size: uint) -> int;
+    fn read_be_uint(size: uint) -> uint;
+    fn read_whole_stream() -> ~[u8];
+    fn each_byte(it: fn(int) -> bool);
+    fn each_char(it: fn(char) -> bool);
+    fn each_line(it: fn((&str)) -> bool);
 }
 
 impl<T: Reader> T : ReaderUtil {
@@ -69,12 +80,10 @@ impl<T: Reader> T : ReaderUtil {
         }
         str::from_bytes(buf)
     }
-}
 
-impl Reader {
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes(buf: &~[u8], chars: &mut ~[char])
+        fn chars_from_bytes<T: Reader>(buf: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
             let mut i = 0;
             let buf_len = buf.len();
@@ -120,7 +129,7 @@ impl Reader {
                 break;
             }
             vec::push_all(buf, data);
-            let (offset, nbreq) = chars_from_bytes(&buf, &mut chars);
+            let (offset, nbreq) = chars_from_bytes::<T>(&buf, &mut chars);
             let ncreq = n - chars.len();
             // again we either know we need a certain number of bytes
             // to complete a character, or we make sure we don't
