@@ -645,7 +645,7 @@ impl<T: Writer> T : WriterUtil {
 
 #[allow(non_implicitly_copyable_typarams)]
 fn file_writer(path: &Path, flags: ~[FileFlag]) -> Result<Writer, ~str> {
-    result::chain(mk_file_writer(path, flags), |w| result::Ok(w))
+    mk_file_writer(path, flags).chain(|w| result::Ok(w))
 }
 
 
@@ -864,10 +864,10 @@ mod tests {
         {
             let out: io::Writer =
                 result::get(
-                    io::file_writer(tmpfile, ~[io::Create, io::Truncate]));
+                    &io::file_writer(tmpfile, ~[io::Create, io::Truncate]));
             out.write_str(frood);
         }
-        let inp: io::Reader = result::get(io::file_reader(tmpfile));
+        let inp: io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         log(debug, frood2);
         assert frood == frood2;

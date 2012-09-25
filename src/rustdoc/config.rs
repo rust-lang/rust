@@ -285,20 +285,20 @@ mod test {
 #[test]
 fn should_error_with_no_crates() {
     let config = test::parse_config(~[~"rustdoc"]);
-    assert result::get_err(config) == ~"no crates specified";
+    assert config.get_err() == ~"no crates specified";
 }
 
 #[test]
 fn should_error_with_multiple_crates() {
     let config =
         test::parse_config(~[~"rustdoc", ~"crate1.rc", ~"crate2.rc"]);
-    assert result::get_err(config) == ~"multiple crates specified";
+    assert config.get_err() == ~"multiple crates specified";
 }
 
 #[test]
 fn should_set_output_dir_to_cwd_if_not_provided() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_dir == Path(".");
+    assert config.get().output_dir == Path(".");
 }
 
 #[test]
@@ -306,13 +306,13 @@ fn should_set_output_dir_if_provided() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-dir", ~"snuggles"
     ]);
-    assert result::get(config).output_dir == Path("snuggles");
+    assert config.get().output_dir == Path("snuggles");
 }
 
 #[test]
 fn should_set_output_format_to_pandoc_html_if_not_provided() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_format == PandocHtml;
+    assert config.get().output_format == PandocHtml;
 }
 
 #[test]
@@ -320,7 +320,7 @@ fn should_set_output_format_to_markdown_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-format", ~"markdown"
     ]);
-    assert result::get(config).output_format == Markdown;
+    assert config.get().output_format == Markdown;
 }
 
 #[test]
@@ -328,7 +328,7 @@ fn should_set_output_format_to_pandoc_html_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-format", ~"html"
     ]);
-    assert result::get(config).output_format == PandocHtml;
+    assert config.get().output_format == PandocHtml;
 }
 
 #[test]
@@ -336,13 +336,13 @@ fn should_error_on_bogus_format() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-format", ~"bogus"
     ]);
-    assert result::get_err(config) == ~"unknown output format 'bogus'";
+    assert config.get_err() == ~"unknown output format 'bogus'";
 }
 
 #[test]
 fn should_set_output_style_to_doc_per_mod_by_default() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_style == DocPerMod;
+    assert config.get().output_style == DocPerMod;
 }
 
 #[test]
@@ -350,7 +350,7 @@ fn should_set_output_style_to_one_doc_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-style", ~"doc-per-crate"
     ]);
-    assert result::get(config).output_style == DocPerCrate;
+    assert config.get().output_style == DocPerCrate;
 }
 
 #[test]
@@ -358,7 +358,7 @@ fn should_set_output_style_to_doc_per_mod_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-style", ~"doc-per-mod"
     ]);
-    assert result::get(config).output_style == DocPerMod;
+    assert config.get().output_style == DocPerMod;
 }
 
 #[test]
@@ -366,7 +366,7 @@ fn should_error_on_bogus_output_style() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-style", ~"bogus"
     ]);
-    assert result::get_err(config) == ~"unknown output style 'bogus'";
+    assert config.get_err() == ~"unknown output style 'bogus'";
 }
 
 #[test]
@@ -374,11 +374,11 @@ fn should_set_pandoc_command_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--pandoc-cmd", ~"panda-bear-doc"
     ]);
-    assert result::get(config).pandoc_cmd == Some(~"panda-bear-doc");
+    assert config.get().pandoc_cmd == Some(~"panda-bear-doc");
 }
 
 #[test]
 fn should_set_pandoc_command_when_using_pandoc() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).pandoc_cmd == Some(~"pandoc");
+    assert config.get().pandoc_cmd == Some(~"pandoc");
 }

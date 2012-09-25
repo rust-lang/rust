@@ -415,7 +415,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
     let mode = {
         match a.mode {
           ast::infer(_) if expected_ty.is_some() => {
-            result::get(ty::unify_mode(
+            result::get(&ty::unify_mode(
                 self.tcx(),
                 ty::expected_found {expected: expected_ty.get().mode,
                                     found: a.mode}))
@@ -434,7 +434,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
               _ => {
                 let m1 = ast::expl(ty::default_arg_mode_for_ty(self.tcx(),
                                                                ty));
-                result::get(ty::unify_mode(
+                result::get(&ty::unify_mode(
                     self.tcx(),
                     ty::expected_found {expected: m1,
                                         found: a.mode}))

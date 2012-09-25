@@ -9,7 +9,7 @@ type expected_error = { line: uint, kind: ~str, msg: ~str };
 // Load any test directives embedded in the file
 fn load_errors(testfile: &Path) -> ~[expected_error] {
     let mut error_patterns = ~[];
-    let rdr = result::get(io::file_reader(testfile));
+    let rdr = io::file_reader(testfile).get();
     let mut line_num = 1u;
     while !rdr.eof() {
         let ln = rdr.read_line();

@@ -176,24 +176,24 @@ mod v4 {
         unsafe {
             let INADDR_NONE = ll::get_INADDR_NONE();
             let ip_rep_result = parse_to_ipv4_rep(ip);
-            if result::is_err(ip_rep_result) {
-                let err_str = result::get_err(ip_rep_result);
+            if result::is_err(&ip_rep_result) {
+                let err_str = result::get_err(&ip_rep_result);
                 return result::Err({err_msg: err_str})
             }
             // ipv4_rep.as_u32 is unsafe :/
             let input_is_inaddr_none =
-                result::get(ip_rep_result).as_u32() == INADDR_NONE;
+                result::get(&ip_rep_result).as_u32() == INADDR_NONE;
 
             let new_addr = uv_ip4_addr(str::from_slice(ip), 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             log(debug, fmt!("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name));
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
-            if result::is_err(ref_ip_rep_result) {
-                let err_str = result::get_err(ref_ip_rep_result);
+            if result::is_err(&ref_ip_rep_result) {
+                let err_str = result::get_err(&ref_ip_rep_result);
                 return result::Err({err_msg: err_str})
             }
-            if result::get(ref_ip_rep_result).as_u32() == INADDR_NONE &&
+            if result::get(&ref_ip_rep_result).as_u32() == INADDR_NONE &&
                  !input_is_inaddr_none {
                 return result::Err(
                     {err_msg: ~"uv_ip4_name produced invalid result."})
@@ -358,7 +358,7 @@ mod test {
         let localhost_name = ~"localhost";
         let iotask = uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
-        if result::is_err(ga_result) {
+        if result::is_err(&ga_result) {
             fail ~"got err result from net::ip::get_addr();"
         }
         // note really sure how to realiably test/assert
@@ -384,6 +384,6 @@ mod test {
         let localhost_name = ~"sjkl234m,./sdf";
         let iotask = uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
-        assert result::is_err(ga_result);
+        assert result::is_err(&ga_result);
     }
 }

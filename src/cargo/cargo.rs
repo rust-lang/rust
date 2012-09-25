@@ -460,7 +460,7 @@ fn parse_source(name: ~str, j: json::Json) -> source {
 fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
-    match json::from_str(result::get(c)) {
+    match json::from_str(c.get()) {
         Ok(json::Dict(j)) => {
           for j.each |k, v| {
                 sources.insert(k, parse_source(k, v));
@@ -579,7 +579,7 @@ fn load_source_info(c: &cargo, src: source) {
     let srcfile = dir.push("source.json");
     if !os::path_exists(&srcfile) { return; }
     let srcstr = io::read_whole_file_str(&srcfile);
-    match json::from_str(result::get(srcstr)) {
+    match json::from_str(srcstr.get()) {
         Ok(json::Dict(s)) => {
             let o = parse_source(src.name, json::Dict(s));
 
@@ -601,7 +601,7 @@ fn load_source_packages(c: &cargo, src: source) {
     let pkgfile = dir.push("packages.json");
     if !os::path_exists(&pkgfile) { return; }
     let pkgstr = io::read_whole_file_str(&pkgfile);
-    match json::from_str(result::get(pkgstr)) {
+    match json::from_str(pkgstr.get()) {
         Ok(json::List(js)) => {
           for (*js).each |j| {
                 match *j {
@@ -659,7 +659,7 @@ fn build_cargo_options(argv: ~[~str]) -> options {
 fn configure(opts: options) -> cargo {
     let home = match get_cargo_root() {
         Ok(home) => home,
-        Err(_err) => result::get(get_cargo_sysroot())
+        Err(_err) => get_cargo_sysroot().get()
     };
 
     let get_cargo_dir = match opts.mode {
@@ -668,7 +668,7 @@ fn configure(opts: options) -> cargo {
         local_mode => get_cargo_root_nearest
     };
 
-    let p = result::get(get_cargo_dir());
+    let p = get_cargo_dir().get();
 
     let sources = map::HashMap();
     try_parse_sources(&home.push("sources.json"), sources);

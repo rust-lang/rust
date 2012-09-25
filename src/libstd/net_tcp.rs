@@ -871,17 +871,17 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
     log(debug, ~"starting tcp::read");
     let iotask = (*socket_data).iotask;
     let rs_result = read_start_common_impl(socket_data);
-    if result::is_err(rs_result) {
-        let err_data = result::get_err(rs_result);
+    if result::is_err(&rs_result) {
+        let err_data = result::get_err(&rs_result);
         result::Err(err_data)
     }
     else {
         log(debug, ~"tcp::read before recv_timeout");
         let read_result = if timeout_msecs > 0u {
             timer::recv_timeout(
-               iotask, timeout_msecs, result::get(rs_result))
+               iotask, timeout_msecs, result::get(&rs_result))
         } else {
-            Some(core::comm::recv(result::get(rs_result)))
+            Some(core::comm::recv(result::get(&rs_result)))
         };
         log(debug, ~"tcp::read after recv_timeout");
         match read_result {
@@ -1514,9 +1514,9 @@ mod test {
 
                     let accept_result = accept(new_conn);
                     log(debug, ~"SERVER: after accept()");
-                    if result::is_err(accept_result) {
+                    if result::is_err(&accept_result) {
                         log(debug, ~"SERVER: error accept connection");
-                        let err_data = result::get_err(accept_result);
+                        let err_data = result::get_err(&accept_result);
                         core::comm::send(kill_ch, Some(err_data));
                         log(debug,
                             ~"SERVER/WORKER: send on err cont ch");
@@ -1558,8 +1558,8 @@ mod test {
             log(debug, ~"SERVER: recv'd on cont_ch..leaving listen cb");
         });
         // err check on listen_result
-        if result::is_err(listen_result) {
-            match result::get_err(listen_result) {
+        if result::is_err(&listen_result) {
+            match result::get_err(&listen_result) {
               GenericListenErr(name, msg) => {
                 fail fmt!("SERVER: exited abnormally name %s msg %s",
                                 name, msg);
@@ -1592,8 +1592,8 @@ mod test {
                            new_conn, kill_ch);
         });
         // err check on listen_result
-        if result::is_err(listen_result) {
-            result::get_err(listen_result)
+        if result::is_err(&listen_result) {
+            result::get_err(&listen_result)
         }
         else {
             fail ~"SERVER: did not fail as expected"
@@ -1609,9 +1609,9 @@ mod test {
         log(debug, ~"CLIENT: starting..");
         let connect_result = connect(move server_ip_addr, server_port,
                                      iotask);
-        if result::is_err(connect_result) {
+        if result::is_err(&connect_result) {
             log(debug, ~"CLIENT: failed to connect");
-            let err_data = result::get_err(connect_result);
+            let err_data = result::get_err(&connect_result);
             Err(err_data)
         }
         else {
@@ -1636,9 +1636,9 @@ mod test {
     fn tcp_write_single(sock: &TcpSocket, val: ~[u8]) {
         let write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
-        if result::is_err(write_result) {
+        if result::is_err(&write_result) {
             log(debug, ~"tcp_write_single: write failed!");
-            let err_data = result::get_err(write_result);
+            let err_data = result::get_err(&write_result);
             log(debug, fmt!("tcp_write_single err name: %s msg: %s",
                 err_data.err_name, err_data.err_msg));
             // meh. torn on what to do here.
