@@ -1,3 +1,4 @@
+#[legacy_exports];
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];

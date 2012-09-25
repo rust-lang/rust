@@ -4,6 +4,8 @@
 // aux-build:crateresolve4b-1.rs
 // aux-build:crateresolve4b-2.rs
 
+#[legacy_exports];
+
 mod a {
     #[legacy_exports];
     extern mod crateresolve4b(vers = "0.1");

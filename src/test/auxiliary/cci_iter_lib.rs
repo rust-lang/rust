@@ -1,5 +1,6 @@
 #[link(name="cci_iter_lib", vers="0.0")];
 #[legacy_modes];
+#[legacy_exports];
 
 #[inline]
 fn iter<T>(v: ~[T], f: fn(T)) {

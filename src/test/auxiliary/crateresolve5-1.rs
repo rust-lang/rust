@@ -2,6 +2,7 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
+#[legacy_exports];
 
 fn structural() -> { name: ~str, val: int } {
     { name: ~"crateresolve5", val: 10 }

@@ -1,4 +1,5 @@
 #[legacy_modes];
+#[legacy_exports];
 
 use dvec::DVec;
 

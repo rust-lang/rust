@@ -1,3 +1,5 @@
+#[legacy_exports];
+
 export foo;
 
 use comm::*;

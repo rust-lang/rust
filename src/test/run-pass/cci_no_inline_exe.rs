@@ -1,6 +1,8 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_no_inline_lib.rs
 
+#[legacy_exports];
+
 extern mod cci_no_inline_lib;
 use cci_no_inline_lib::iter;
 

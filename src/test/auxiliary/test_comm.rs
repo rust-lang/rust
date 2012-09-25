@@ -3,6 +3,7 @@
 
   Could probably be more minimal.
  */
+#[legacy_exports];
 
 use libc::size_t;
 

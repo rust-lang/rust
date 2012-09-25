@@ -2,6 +2,7 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
+#[legacy_exports];
 
 extern mod rustrt {
     #[legacy_exports];
