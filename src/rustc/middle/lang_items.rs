@@ -46,7 +46,8 @@ struct LanguageItems {
 
     mut str_eq_fn: Option<def_id>,
     mut uniq_str_eq_fn: Option<def_id>,
-    mut annihilate_fn: Option<def_id>
+    mut annihilate_fn: Option<def_id>,
+    mut log_type_fn: Option<def_id>
 }
 
 mod LanguageItems {
@@ -76,7 +77,8 @@ mod LanguageItems {
 
             str_eq_fn: None,
             uniq_str_eq_fn: None,
-            annihilate_fn: None
+            annihilate_fn: None,
+            log_type_fn: None
         }
     }
 }
@@ -111,6 +113,7 @@ fn LanguageItemCollector(crate: @crate, session: session,
     item_refs.insert(~"str_eq", &mut items.str_eq_fn);
     item_refs.insert(~"uniq_str_eq", &mut items.uniq_str_eq_fn);
     item_refs.insert(~"annihilate", &mut items.annihilate_fn);
+    item_refs.insert(~"log_type", &mut items.log_type_fn);
 
     LanguageItemCollector {
         crate: crate,
