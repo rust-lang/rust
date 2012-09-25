@@ -39,11 +39,13 @@ stage2_tests.sort()
 c = open("tmp/run_pass_stage2.rc", "w")
 i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
+c.write("#[legacy_exports];\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 for t in stage2_tests:
     p = os.path.join(run_pass, t)
     p = p.replace("\\", "\\\\")
     c.write("#[path = \"%s\"]" % p);
+    c.write("#[legacy_exports]");
     c.write("mod t_%d;\n" % i)
     i += 1
 c.close()
