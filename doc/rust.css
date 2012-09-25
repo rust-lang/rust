@@ -94,3 +94,8 @@ table {
 td {
     padding-right: 1em;
 }
+
+/* Only display one level of hierarchy in the TOC */
+#TOC ul ul {
+    display: none;
+}
