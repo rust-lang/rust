@@ -33,7 +33,14 @@ struct MemoryRegion { priv opaque: () }
 
 #[cfg(target_arch="x86")]
 struct Registers {
-    data: [u32 * 13]
+    data: [u32 * 16]
+}
+
+#[cfg(target_arch="x86")]
+struct Context {
+    regs: Registers,
+    next: *Context,
+    pad: [u32 * 3]
 }
 
 #[cfg(target_arch="x86_64")]
@@ -41,10 +48,11 @@ struct Registers {
     data: [u64 * 22]
 }
 
+#[cfg(target_arch="x86_64")]
 struct Context {
     regs: Registers,
     next: *Context,
-    pad: u64
+    pad: uintptr_t
 }
 
 struct BoxedRegion {
@@ -53,6 +61,27 @@ struct BoxedRegion {
     live_allocs: *BoxRepr
 }
 
+#[cfg(target_arch="x86")]
+struct Task {
+    // Public fields
+    refcount: intptr_t,                 // 0
+    id: TaskID,                         // 4
+    pad: [u32 * 2],                     // 8
+    ctx: Context,                       // 16
+    stack_segment: *StackSegment,       // 96
+    runtime_sp: uintptr_t,              // 100
+    scheduler: *Scheduler,              // 104
+    scheduler_loop: *SchedulerLoop,     // 108
+
+    // Fields known only to the runtime
+    kernel: *Kernel,                    // 112
+    name: *c_char,                      // 116
+    list_index: i32,                    // 120
+    rendezvous_ptr: *uintptr_t,         // 124
+    boxed_region: BoxedRegion           // 128
+}
+
+#[cfg(target_arch="x86_64")]
 struct Task {
     // Public fields
     refcount: intptr_t,
@@ -66,7 +95,7 @@ struct Task {
     // Fields known only to the runtime
     kernel: *Kernel,
     name: *c_char,
-    list_index: *i32,
+    list_index: i32,
     rendezvous_ptr: *uintptr_t,
     boxed_region: BoxedRegion
 }
