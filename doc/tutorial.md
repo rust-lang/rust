@@ -896,6 +896,8 @@ Rust types with the `impl` keyword. As an example, lets define a draw
 method on our `Shape` enum.
 
 ~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
 struct Point {
     x: float,
     y: float
@@ -915,17 +917,18 @@ impl Shape {
     }
 }
 
-let s = Circle(Point { x: 1f, y: 2f }, 3f };
+let s = Circle(Point { x: 1f, y: 2f }, 3f);
 s.draw();
 ~~~
 
 This defines an _implementation_ for `Shape` containing a single
-method, `draw`. If we wanted we could add additional methods to the
-same impl.  In most most respects the `draw` method is defined like
-any other function, with the exception of the name `self`. `self` is a
-special value that is automatically defined in each method, referring
-to the value being operated on. We'll discuss methods more in the
-context of [traits and generics](#generics).
+method, `draw`. In most most respects the `draw` method is defined
+like any other function, with the exception of the name `self`. `self`
+is a special value that is automatically defined in each method,
+referring to the value being operated on. If we wanted we could add
+additional methods to the same impl, or multiple impls for the same
+type. We'll discuss methods more in the context of [traits and
+generics](#generics).
 
 > ***Note:*** The method definition syntax will change to require
 > declaring the self type explicitly, as the first argument.
@@ -1042,9 +1045,11 @@ during assignment, only copies a pointer, never the contents of the
 box.
 
 ~~~~
-let x: @int = @10; // New box, refcount of 1
-let y = x; // Copy the pointer, increase refcount
-// When x and y go out of scope, refcount goes to 0, box is freed
+let x: @int = @10; // New box
+let y = x; // Copy of a pointer to the same box
+
+// x and y both refer to the same allocation. When both go out of scope
+// then the allocation will be freed.
 ~~~~
 
 Managed boxes never cross task boundaries.
@@ -1059,7 +1064,7 @@ In contrast to maneged boxes, owned boxes have a single owning memory
 slot and thus two owned boxes may not refer to the same memory. All
 owned boxes across all tasks are allocated on a single _exchange
 heap_, where their uniquely owned nature allows them to be passed
-between tasks.
+between tasks efficiently.
 
 Because owned boxes are uniquely owned, copying them involves allocating
 a new owned box and duplicating the contents. Copying owned boxes
@@ -1089,15 +1094,15 @@ let x = ~10;
 let y = move x;
 ~~~~
 
-> ***Note:*** this discussion of copying vs moving does not account
-> for the "last use" rules that automatically promote copy operations
-> to moves. This is an evolving area of the language that will
-> continue to change.
-
 Owned boxes, when they do not contain any managed boxes, can be sent
 to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
+
+> ***Note:*** this discussion of copying vs moving does not account
+> for the "last use" rules that automatically promote copy operations
+> to moves. Last use is expected to be removed from the language in
+> favor of explicit moves.
 
 ## Borrowed pointers
 
@@ -1108,41 +1113,85 @@ pointer is the owner of the pointed-to memory, borrowed pointers never
 imply ownership. Pointers may be borrowed from any type, in which case
 the pointer is guaranteed not to outlive the value it points to.
 
-~~~~
-# fn work_with_foo_by_pointer(f: &~str) { }
-let foo = ~"foo";
-work_with_foo_by_pointer(&foo);
-~~~~
+As an example, consider a simple struct type, `Point`:
 
-The following shows an example of what is _not_ possible with borrowed
-pointers. If you were able to write this then the pointer to `foo`
-would outlive `foo` itself.
-
-~~~~ {.ignore}
-let foo_ptr;
-{
-    let foo = ~"foo";
-    foo_ptr = &foo;
+~~~
+struct Point {
+    x: float, y: float
 }
 ~~~~
 
-> ***Note:*** borrowed pointers are a new addition to the language.
-> They are not used extensively yet but are expected to become the
-> pointer type used in many common situations, in particular for
-> by-reference argument passing. Rust's current solution for passing
-> arguments by reference is [argument modes](#argument-passing).
+We can use this simple definition to allocate points in many ways. For
+example, in this code, each of these three local variables contains a
+point, but allocated in a different place:
 
-## Mutability
+~~~
+# struct Point { x: float, y: float }
+let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
+let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
+let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
+~~~
 
-All pointer types have a mutable variant, written `@mut T` or `~mut
-T`. Given such a pointer, you can write to its contents by combining
-the dereference operator with a mutating action.
+Suppose we wanted to write a procedure that computed the distance
+between any two points, no matter where they were stored. For example,
+we might like to compute the distance between `on_the_stack` and
+`shared_box`, or between `shared_box` and `unique_box`. One option is
+to define a function that takes two arguments of type point—that is,
+it takes the points by value. But this will cause the points to be
+copied when we call the function. For points, this is probably not so
+bad, but often copies are expensive or, worse, if there are mutable
+fields, they can change the semantics of your program. So we’d like to
+define a function that takes the points by pointer. We can use
+borrowed pointers to do this:
 
-~~~~
-fn increase_contents(pt: @mut int) {
-    *pt += 1;
+~~~
+# struct Point { x: float, y: float }
+# fn sqrt(f: float) -> float { 0f }
+fn compute_distance(p1: &Point, p2: &Point) -> float {
+    let x_d = p1.x - p2.x;
+    let y_d = p1.y - p2.y;
+    sqrt(x_d * x_d + y_d * y_d)
 }
-~~~~
+~~~
+
+Now we can call `compute_distance()` in various ways:
+
+~~~
+# struct Point{ x: float, y: float };
+# let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
+# let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
+# let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
+# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
+compute_distance(&on_the_stack, shared_box);
+compute_distance(shared_box, unique_box);
+~~~
+
+Here the `&` operator is used to take the address of the variable
+`on_the_stack`; this is because `on_the_stack` has the type `point`
+(that is, a record value) and we have to take its address to get a
+value. We also call this _borrowing_ the local variable
+`on_the_stack`, because we are created an alias: that is, another
+route to the same data.
+
+In the case of the boxes `shared_box` and `unique_box`, however, no
+explicit action is necessary. The compiler will automatically convert
+a box like `@point` or `~point` to a borrowed pointer like
+`&point`. This is another form of borrowing; in this case, the
+contents of the shared/unique box is being lent out.
+
+Whenever a value is borrowed, there are some limitations on what you
+can do with the original. For example, if the contents of a variable
+have been lent out, you cannot send that variable to another task, nor
+will you be permitted to take actions that might cause the borrowed
+value to be freed or to change its type. This rule should make
+intuitive sense: you must wait for a borrowed value to be returned
+(that is, for the borrowed pointer to go out of scope) before you can
+make full use of it again.
+
+For a more in-depth explanation of borrowed pointers, read the
+[borrowed pointer tutorial][borrowtut].
+
+[borrowtut]: tutorial-borrowed-ptr.html
 
 # Vectors and strings
 
@@ -1719,8 +1768,8 @@ impl ~str: Printable {
 # (~"foo").print();
 ~~~~
 
-Given these, we may call `1.to_str()` to print `"1"`, or
-`(~"foo").to_str()` to print `"foo"` again. This is basically a form of
+Given these, we may call `1.print()` to print `"1"`, or
+`(~"foo").print()` to print `"foo"` again, as with . This is basically a form of
 static overloading—when the Rust compiler sees the `print` method
 call, it looks for an implementation that matches the type with a
 method that matches the name, and simply calls that.
