@@ -580,8 +580,8 @@ you use the matching to get at the contents of data types. Remember
 that `(float, float)` is a tuple of two floats:
 
 ~~~~
-use float::consts::pi;
 fn angle(vector: (float, float)) -> float {
+    let pi = float::consts::pi;
     match vector {
       (0f, y) if y < 0f => 1.5 * pi,
       (0f, y) => 0.5 * pi,
@@ -601,23 +601,19 @@ an expression of type `bool` that determines, after the pattern is
 found to match, whether the arm is taken or not. The variables bound
 by the pattern are available in this guard expression.
 
-## Let
-
-You've already seen simple `let` bindings. `let` is also a little fancier: it
-is possible to use destructuring patterns in it. For example, you can say this
-to extract the fields from a tuple:
+You've already seen simple `let` bindings, but `let` is a little
+fancier than you've been led to believe. It too supports destructuring
+patterns. For example, you can say this to extract the fields from a
+tuple, introducing two variables, `a` and `b`.
 
 ~~~~
 # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) }
 let (a, b) = get_tuple_of_two_ints();
 ~~~~
 
-This will introduce two new variables, `a` and `b`, bound to the
-content of the tuple.
-
-You may only use *irrefutable* patterns—patterns that can never fail to
-match—in let bindings. Other types of patterns, such as literals, are
-not allowed.
+Let bindings only work with _irrefutable_ patterns, that is, patterns
+that can never fail to match. This excludes `let` from matching
+literals and most enum variants.
 
 ## Loops
 
