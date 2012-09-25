@@ -12,6 +12,7 @@ use core::*;
 
 // -*- rust -*-
 use result::{Ok, Err};
+use io::ReaderUtil;
 use std::getopts;
 use std::map::HashMap;
 use getopts::{opt_present};
