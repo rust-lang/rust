@@ -290,26 +290,6 @@ fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
         ArgVals(args), dest, DontAutorefArg);
 }
 
-fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
-                                              did: ast::def_id,
-                                              args: ~[ValueRef],
-                                              type_params: ~[ty::t],
-                                              dest: expr::Dest) -> block {
-    let fty;
-    if did.crate == ast::local_crate {
-        fty = ty::node_id_to_type(bcx.tcx(), did.node);
-    } else {
-        fty = csearch::get_type(bcx.tcx(), did).ty;
-    }
-
-    let rty = ty::ty_fn_ret(fty);
-    return callee::trans_call_inner(
-        bcx, None, fty, rty,
-        |bcx| trans_fn_ref_with_vtables_to_callee(bcx, did, 0, type_params,
-                                                  None),
-        ArgVals(args), dest, DontAutorefArg);
-}
-
 fn body_contains_ret(body: ast::blk) -> bool {
     let cx = {mut found: false};
     visit::visit_block(body, cx, visit::mk_vt(@{

@@ -952,9 +952,9 @@ rust_call_tydesc_glue(void *root, size_t *tydesc, size_t glue_index) {
 
 // Don't run on the Rust stack!
 extern "C" void
-rust_log_str(uint32_t level, const char *str, size_t size) {
+rust_log_str(uint32_t level, const char *str) {
     rust_task *task = rust_get_current_task();
-    task->sched_loop->get_log().log(task, level, "%.*s", (int)size, str);
+    task->sched_loop->get_log().log(task, level, "%s", str);
 }
 
 //
