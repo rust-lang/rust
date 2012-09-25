@@ -163,7 +163,9 @@ fn trans_fn_ref_with_vtables(
     //
     // - `bcx`: the current block where the reference to the fn occurs
     // - `def_id`: def id of the fn or method item being referenced
-    // - `ref_id`: node id of the reference to the fn/method
+    // - `ref_id`: node id of the reference to the fn/method, if applicable.
+    //   This parameter may be zero; but, if so, the resulting value may not
+    //   have the right type, so it must be cast before being used.
     // - `type_params`: values for each of the fn/method's type parameters
     // - `vtables`: values for each bound on each of the type parameters
 
@@ -220,7 +222,7 @@ fn trans_fn_ref_with_vtables(
         let mut {val, must_cast} =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
                                          vtables, Some(ref_id));
-        if must_cast {
+        if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)
             let ref_ty = common::node_id_type(bcx, ref_id);
@@ -287,6 +289,43 @@ fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
     return callee::trans_call_inner(
         bcx, None, fty, rty,
         |bcx| trans_fn_ref_with_vtables_to_callee(bcx, did, 0, ~[], None),
+        ArgVals(args), dest, DontAutorefArg);
+}
+
+fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
+                                              did: ast::def_id,
+                                              args: ~[ValueRef],
+                                              type_params: ~[ty::t],
+                                              dest: expr::Dest) -> block {
+    let fty;
+    if did.crate == ast::local_crate {
+        fty = ty::node_id_to_type(bcx.tcx(), did.node);
+    } else {
+        fty = csearch::get_type(bcx.tcx(), did).ty;
+    }
+
+    let rty = ty::ty_fn_ret(fty);
+    return callee::trans_call_inner(
+        bcx, None, fty, rty,
+        |bcx| {
+            let callee =
+                trans_fn_ref_with_vtables_to_callee(bcx, did, 0, type_params,
+                                                    None);
+
+            let new_llval;
+            match callee.data {
+                Fn(fn_data) => {
+                    let substituted = ty::subst_tps(callee.bcx.tcx(),
+                                                    type_params, fty);
+                    let mut llfnty = type_of::type_of(callee.bcx.ccx(),
+                                                      substituted);
+                    llfnty = T_ptr(struct_elt(llfnty, 0));
+                    new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
+                }
+                _ => fail
+            }
+            Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
+        },
         ArgVals(args), dest, DontAutorefArg);
 }
 

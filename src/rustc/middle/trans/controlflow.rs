@@ -190,12 +190,12 @@ fn trans_log(log_ex: @ast::expr,
 
             // Translate the value to be logged
             let val_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, e));
-            let tydesc = get_tydesc_simple(ccx, val_datum.ty);
 
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
-            let val = PointerCast(bcx, val, T_ptr(T_i8()));
-            Call(bcx, ccx.upcalls.log_type, [tydesc, val, level]);
+            let did = bcx.tcx().lang_items.log_type_fn.get();
+            let bcx = callee::trans_rtcall_or_lang_call_with_type_params(
+                bcx, did, ~[level, val], ~[val_datum.ty], expr::Ignore);
             bcx
         }
     }
