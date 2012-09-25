@@ -81,11 +81,11 @@ impl T : Eq {
 }
 
 impl T: num::Num {
-    pure fn add(&&other: T)    -> T { return self + other; }
-    pure fn sub(&&other: T)    -> T { return self - other; }
-    pure fn mul(&&other: T)    -> T { return self * other; }
-    pure fn div(&&other: T)    -> T { return self / other; }
-    pure fn modulo(&&other: T) -> T { return self % other; }
+    pure fn add(other: &T)    -> T { return self + *other; }
+    pure fn sub(other: &T)    -> T { return self - *other; }
+    pure fn mul(other: &T)    -> T { return self * *other; }
+    pure fn div(other: &T)    -> T { return self / *other; }
+    pure fn modulo(other: &T) -> T { return self % *other; }
     pure fn neg()              -> T { return -self;        }
 
     pure fn to_int()         -> int { return self as int; }
@@ -250,11 +250,11 @@ fn test_interfaces() {
         let two: U = from_int(2);
         assert (two.to_int() == 2);
 
-        assert (ten.add(two) == from_int(12));
-        assert (ten.sub(two) == from_int(8));
-        assert (ten.mul(two) == from_int(20));
-        assert (ten.div(two) == from_int(5));
-        assert (ten.modulo(two) == from_int(0));
+        assert (ten.add(&two) == from_int(12));
+        assert (ten.sub(&two) == from_int(8));
+        assert (ten.mul(&two) == from_int(20));
+        assert (ten.div(&two) == from_int(5));
+        assert (ten.modulo(&two) == from_int(0));
         assert (ten.neg() == from_int(-10));
     }
 
