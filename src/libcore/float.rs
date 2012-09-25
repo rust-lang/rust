@@ -139,7 +139,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
 
     // while we still need digits
     // build stack of digits
-    while ii > 0u && (frac >= epsilon_prime || exact) {
+    while ii > 0 && (frac >= epsilon_prime || exact) {
         // store the next digit
         frac *= 10.0;
         let digit = frac as uint;
@@ -153,25 +153,25 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
 
     let mut acc;
     let mut racc = ~"";
-    let mut carry = if frac * 10.0 as uint >= 5u { 1u } else { 0u };
+    let mut carry = if frac * 10.0 as uint >= 5 { 1 } else { 0 };
 
     // turn digits into string
     // using stack of digits
-    while vec::len(fractionalParts) > 0u {
+    while fractionalParts.is_not_empty() {
         let mut adjusted_digit = carry + vec::pop(fractionalParts);
 
-        if adjusted_digit == 10u {
-            carry = 1u;
-            adjusted_digit %= 10u
+        if adjusted_digit == 10 {
+            carry = 1;
+            adjusted_digit %= 10
         } else {
-            carry = 0u
+            carry = 0;
         };
 
         racc = uint::str(adjusted_digit) + racc;
     }
 
     // pad decimals with trailing zeroes
-    while str::len(racc) < digits && exact {
+    while racc.len() < digits && exact {
         racc += ~"0"
     }
 
@@ -428,11 +428,11 @@ impl float : Ord {
 }
 
 impl float: num::Num {
-    pure fn add(&&other: float)    -> float { return self + other; }
-    pure fn sub(&&other: float)    -> float { return self - other; }
-    pure fn mul(&&other: float)    -> float { return self * other; }
-    pure fn div(&&other: float)    -> float { return self / other; }
-    pure fn modulo(&&other: float) -> float { return self % other; }
+    pure fn add(other: &float)    -> float { return self + *other; }
+    pure fn sub(other: &float)    -> float { return self - *other; }
+    pure fn mul(other: &float)    -> float { return self * *other; }
+    pure fn div(other: &float)    -> float { return self / *other; }
+    pure fn modulo(other: &float) -> float { return self % *other; }
     pure fn neg()                  -> float { return -self;        }
 
     pure fn to_int()         -> int   { return self as int; }
@@ -540,11 +540,11 @@ fn test_traits() {
         let two: U = from_int(2);
         assert (two.to_int() == 2);
 
-        assert (ten.add(two) == from_int(12));
-        assert (ten.sub(two) == from_int(8));
-        assert (ten.mul(two) == from_int(20));
-        assert (ten.div(two) == from_int(5));
-        assert (ten.modulo(two) == from_int(0));
+        assert (ten.add(&two) == from_int(12));
+        assert (ten.sub(&two) == from_int(8));
+        assert (ten.mul(&two) == from_int(20));
+        assert (ten.div(&two) == from_int(5));
+        assert (ten.modulo(&two) == from_int(0));
     }
 
     test(&10.0);

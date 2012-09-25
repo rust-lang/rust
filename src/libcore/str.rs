@@ -464,7 +464,7 @@ pure fn byte_slice<T>(s: &str, f: fn(v: &[u8]) -> T) -> T {
 
 /// Convert a string to a vector of characters
 pure fn chars(s: &str) -> ~[char] {
-    let mut buf = ~[], i = 0u;
+    let mut buf = ~[], i = 0;
     let len = len(s);
     while i < len {
         let {ch, next} = char_range_at(s, i);
