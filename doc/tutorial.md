@@ -651,60 +651,6 @@ For more involved iteration, such as going over the elements of a
 collection, Rust uses higher-order functions. We'll come back to those
 in a moment.
 
-# Functions
-
-Like all other static declarations, such as `type`, functions can be
-declared both at the top level and inside other functions (or modules,
-which we'll come back to [later](#modules-and-crates)).
-
-We've already seen several function definitions. They are introduced
-with the `fn` keyword, the type of arguments are specified following
-colons and the return type follows the arrow.
-
-~~~~
-fn repeat(string: &str, count: int) -> ~str {
-    let mut result = ~"";
-    for count.times {
-        result += string;
-    }
-    return result;
-}
-~~~~
-
-The `return` keyword immediately returns from the body of a function. It
-is optionally followed by an expression to return. A function can
-also return a value by having its top level block produce an
-expression.
-
-~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus {
-        return ~"tube sock";
-    } else {
-        return ~"violin";
-    }
-}
-~~~~
-
-~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus { ~"tube sock" }
-    else { ~"violin" }
-}
-~~~~
-
-Functions that do not return a value are said to return nil, `()`,
-and both the return type and the return value may be omitted from
-the definition. The following two functions are equivalent.
-
-~~~~
-fn do_nothing_the_hard_way() -> () { return (); }
-
-fn do_nothing_the_easy_way() { }
-~~~~
-
 # Basic datatypes
 
 The core datatypes of Rust are structs, enums (tagged unions, algebraic data
@@ -890,13 +836,109 @@ match mytup {
 }
 ~~~~
 
+# Functions and methods
+
+We've already seen several function definitions. Like all other static
+declarations, such as `type`, functions can be declared both at the
+top level and inside other functions (or modules, which we'll come
+back to [later](#modules-and-crates)). They are introduced with the
+`fn` keyword, the type of arguments are specified following colons and
+the return type follows the arrow.
+
+~~~~
+fn repeat(string: &str, count: int) -> ~str {
+    let mut result = ~"";
+    for count.times {
+        result += string;
+    }
+    return result;
+}
+~~~~
+
+The `return` keyword immediately returns from the body of a function. It
+is optionally followed by an expression to return. A function can
+also return a value by having its top level block produce an
+expression.
+
+~~~~
+# const copernicus: int = 0;
+fn int_to_str(i: int) -> ~str {
+    if i == copernicus {
+        return ~"tube sock";
+    } else {
+        return ~"violin";
+    }
+}
+~~~~
+
+~~~~
+# const copernicus: int = 0;
+fn int_to_str(i: int) -> ~str {
+    if i == copernicus { ~"tube sock" }
+    else { ~"violin" }
+}
+~~~~
+
+Functions that do not return a value are said to return nil, `()`,
+and both the return type and the return value may be omitted from
+the definition. The following two functions are equivalent.
+
+~~~~
+fn do_nothing_the_hard_way() -> () { return (); }
+
+fn do_nothing_the_easy_way() { }
+~~~~
+
+Methods are like functions, except that they are defined for a specific
+'self' type (like 'this' in C++). Calling a method is done with
+dot notation, as in `my_vec.len()`. Methods may be defined on most
+Rust types with the `impl` keyword. As an example, lets define a draw
+method on our `Shape` enum.
+
+~~~
+struct Point {
+    x: float,
+    y: float
+}
+
+enum Shape {
+    Circle(Point, float),
+    Rectangle(Point, Point)
+}
+
+impl Shape {
+    fn draw() {
+        match self {
+            Circle(p, f) => draw_circle(p, f),
+            Rectangle(p1, p2) => draw_rectangle(p1, p2)
+        }
+    }
+}
+
+let s = Circle(Point { x: 1f, y: 2f }, 3f };
+s.draw();
+~~~
+
+This defines an _implementation_ for `Shape` containing a single
+method, `draw`. If we wanted we could add additional methods to the
+same impl.  In most most respects the `draw` method is defined like
+any other function, with the exception of the name `self`. `self` is a
+special value that is automatically defined in each method, referring
+to the value being operated on. We'll discuss methods more in the
+context of [traits and generics](#generics).
+
+> ***Note:*** The method definition syntax will change to require
+> declaring the self type explicitly, as the first argument.
+
 # The Rust memory model
 
 At this junction let's take a detour to explain the concepts involved
-in Rust's memory model. Rust has a very particular approach to
-memory management that plays a significant role in shaping the "feel"
-of the language. Understanding the memory landscape will illuminate
-several of Rust's unique features as we encounter them.
+in Rust's memory model. We've seen some of Rust's pointer sigils (`@`,
+`~`, and `&`) float by in a few examples, and we aren't going to get
+much further without explaining them. Rust has a very particular
+approach to memory management that plays a significant role in shaping
+the "feel" of the language. Understanding the memory landscape will
+illuminate several of Rust's unique features as we encounter them.
 
 Rust has three competing goals that inform its view of memory:
 
