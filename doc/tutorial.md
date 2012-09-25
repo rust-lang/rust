@@ -1575,52 +1575,59 @@ enum Maybe<T> {
 These declarations produce valid types like `Set<int>`, `Stack<int>`
 and `Maybe<int>`.
 
+Generic functions in Rust are compiled to very efficient runtime code
+through a process called _monomorphisation_. This big word just means
+that, for each generic function you call, the compiler generates a
+specialized version that is optimized specifically for the argument
+types. In this respect Rust's generics have similar performance
+characteristics to C++ templates.
+
 ## Traits
 
-Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
-for all Rust types. Types with user-defined destructors cannot be
-copied, and neither can types that own other types containing
-destructors.
+Within a generic function the operations available on generic types
+are very limited. After all, since the function doesn't know what
+types it is operating on, it can't safely modify or query their
+values. This is where _traits_ come into play. Traits are Rust's most
+powerful tool for writing polymorphic code. Java developers will see
+in them aspects of Java interfaces, and Haskellers will notice their
+similarities to type classes.
 
-~~~
-// Instances of this struct can't be copied, either implicitly
-// or with the `copy` keyword
-struct NotCopyable {
-    foo: int,
-
-    drop { }
-}
-
-// This owned box containing a NotCopyable is also not copyable
-let not_copyable_box = ~NotCopyable { foo: 0 };
-~~~
+As motivation, let us consider copying in Rust. Perhaps surprisingly,
+the copy operation is not defined for all Rust types. In
+particular, types with user-defined destructors cannot be copied,
+either implicitly or explicitly, and neither can types that own other
+types containing destructors (the actual mechanism for defining
+destructors will be discussed elsewhere).
 
 This complicates handling of generic functions. If you have a type
 parameter `T`, can you copy values of that type? In Rust, you can't,
-unless you explicitly declare that type parameter to have the
-_trait_ for copying, called `Copy`.
+and if you try to run the following code the compiler will complain.
 
-~~~~ {.ignore}
+~~~~ {.xfail-test}
 // This does not compile
-fn head_bad<T>(v: ~[T]) -> T {
-    copy v[0] // Elements of type T aren't copyable
+fn head_bad<T>(v: &[T]) -> T {
+    v[0] // error: copying a non-copyable value
 }
 ~~~~
+
+We can tell the compiler though that the `head` function is only for
+copyable types with the `Copy` trait.
 
 ~~~~
 // This does
-fn head<T: Copy>(v: ~[T]) -> T {
-   copy v[0]
+fn head<T: Copy>(v: &[T]) -> T {
+    v[0]
 }
 ~~~~
 
-When instantiating a generic function, you can only instantiate it
-with types that implement the correct traits. So you could not apply
-`head` to a type with a destructor.
+This says that we can call `head` on any type `T` as long as that type
+implements the `Copy` trait. When instantiating a generic function,
+you can only instantiate it with types that implement the correct
+trait, so you could not apply `head` to a type with a destructor.
 
 While most traits can be defined and implemented by user code, three
-traits are derived for all applicable types by the compiler, and may
-not be overridden:
+traits are automatically derived and implemented for all applicable
+types by the compiler, and may not be overridden:
 
 * `Copy` - Types that can be copied, either implicitly, or using the
   `copy` expression. All types are copyable unless they are classes
@@ -1636,11 +1643,6 @@ not be overridden:
 > ***Note:*** These three traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
-Traits are Rust's take on value polymorphism—the thing that
-object-oriented languages tend to solve with methods and inheritance.
-For example, writing a function that can operate on multiple types of
-collections.
-
 ## Declaring and implementing traits
 
 A trait consists of a set of methods, or may be empty, as is the case
@@ -1648,80 +1650,48 @@ with `Copy`, `Send`, and `Const`. A method is a function that
 can be applied to a `self` value and a number of arguments, using the
 dot notation: `self.foo(arg1, arg2)`.
 
-For example, we could declare the trait `Stringable` for things that
-can be converted to a string, with a single method:
+For example, we could declare the trait `Printable` for things that
+can be printed to the console, with a single method:
 
 ~~~~
-trait ToStr {
-    fn to_str(self) -> ~str;
+trait Printable {
+    fn print();
 }
 ~~~~
 
-To actually implement a trait for a given type, the `impl` form
-is used. This defines implementations of `ToStr` for the `int` and
+To actually implement a trait for a given type, the `impl` form is
+used. This defines implementations of `Printable` for the `int` and
 `~str` types.
 
 ~~~~
-# // FIXME: This example is no good because you can't actually
-# // implement your own .to_str for int and ~str
-# trait ToStr { fn to_str(self) -> ~str; }
-impl int: ToStr {
-    fn to_str(self) -> ~str { int::to_str(self, 10u) }
-}
-impl ~str: ToStr {
-    fn to_str(self) -> ~str { self }
+# trait Printable { fn print(); }
+impl int: Printable {
+    fn print() { io::println(fmt!("%d", self)) }
 }
 
-# //1.to_str();
-# //(~"foo").to_str();
+impl ~str: Printable {
+    fn print() { io::println(self) }
+}
+
+# 1.print();
+# (~"foo").print();
 ~~~~
 
-Given these, we may call `1.to_str()` to get `"1"`, or
-`(~"foo").to_str()` to get `"foo"` again. This is basically a form of
-static overloading—when the Rust compiler sees the `to_str` method
+Given these, we may call `1.to_str()` to print `"1"`, or
+`(~"foo").to_str()` to print `"foo"` again. This is basically a form of
+static overloading—when the Rust compiler sees the `print` method
 call, it looks for an implementation that matches the type with a
 method that matches the name, and simply calls that.
 
-## Bounded type parameters
-
-The useful thing about value polymorphism is that it does not have to
-be static. If object-oriented languages only let you call a method on
-an object when they knew exactly which sub-type it had, that would not
-get you very far. To be able to call methods on types that aren't
-known at compile time, it is possible to specify 'bounds' for type
-parameters.
-
-~~~~
-# trait ToStr { fn to_str() -> ~str; }
-fn comma_sep<T: ToStr>(elts: ~[T]) -> ~str {
-    let mut result = ~"", first = true;
-    for elts.each |elt| {
-        if first { first = false; }
-        else { result += ~", "; }
-        result += elt.to_str();
-    }
-    return result;
-}
-~~~~
-
-The syntax for this is similar to the syntax for specifying that a
-parameter type has to be copyable (which is, in principle, another
-kind of bound). By declaring `T` as conforming to the `to_str`
-trait, it becomes possible to call methods from that trait on
-values of that type inside the function. It will also cause a
-compile-time error when anyone tries to call `comma_sep` on an array
-whose element type does not have a `to_str` implementation in scope.
-
-## Polymorphic traits
-
-Traits may contain type parameters. A trait for
-generalized sequence types is:
+Traits may themselves contain type parameters. A trait for
+generalized sequence types might look like the following:
 
 ~~~~
 trait Seq<T> {
     fn len() -> uint;
     fn iter(b: fn(v: &T));
 }
+
 impl<T> ~[T]: Seq<T> {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(v: &T)) {
@@ -1730,107 +1700,166 @@ impl<T> ~[T]: Seq<T> {
 }
 ~~~~
 
-The implementation has to explicitly declare the type
-parameter that it binds, `T`, before using it to specify its trait type. Rust requires this declaration because the `impl` could also, for example, specify an implementation of `seq<int>`. The trait type -- appearing after the colon in the `impl` -- *refers* to a type, rather than defining one.
+The implementation has to explicitly declare the type parameter that
+it binds, `T`, before using it to specify its trait type. Rust
+requires this declaration because the `impl` could also, for example,
+specify an implementation of `Seq<int>`. The trait type -- appearing
+after the colon in the `impl` -- *refers* to a type, rather than
+defining one.
 
 The type parameters bound by a trait are in scope in each of the
 method declarations. So, re-declaring the type parameter
 `T` as an explicit type parameter for `len` -- in either the trait or
 the impl -- would be a compile-time error.
 
-## The `self` type in traits
+## Bounded type parameters and static method dispatch
 
-In a trait, `self` is a special type that you can think of as a
-type parameter. An implementation of the trait for any given type
-`T` replaces the `self` type parameter with `T`. The following
-trait describes types that support an equality operation:
+Traits give us a language for talking about the abstract capabilities
+of types, and we can use this to place _bounds_ on type parameters,
+so that we can then operate on generic types.
 
 ~~~~
-trait Eq {
-  fn equals(&&other: self) -> bool;
-}
-
-impl int: Eq {
-  fn equals(&&other: int) -> bool { other == self }
+# trait Printable { fn print(); }
+fn print_all<T: Printable>(printable_things: ~[T]) {
+    for printable_things.each |thing| {
+        thing.print();
+    }
 }
 ~~~~
 
-Notice that `equals` takes an `int` argument, rather than a `self` argument, in
-an implementation for type `int`.
+By declaring `T` as conforming to the `Printable` trait (as we earlier
+did with `Copy`), it becomes possible to call methods from that trait
+on values of that type inside the function. It will also cause a
+compile-time error when anyone tries to call `print_all` on an array
+whose element type does not have a `Printable` implementation.
 
-## Casting to a trait type
+Type parameters can have multiple bounds by separating them with spaces,
+as in this version of `print_all` that makes copies of elements.
+
+~~~
+# trait Printable { fn print(); }
+fn print_all<T: Printable Copy>(printable_things: ~[T]) {
+    let mut i = 0;
+    while i < printable_things.len() {
+        let copy_of_thing = printable_things[0];
+        copy_of_thing.print();
+    }
+}
+~~~
+
+Method calls to bounded type parameters are _statically dispatched_,
+imposing no more overhead than normal function invocation, so are
+the preferred way to use traits polymorphically.
+
+This usage of traits is similar to Haskell type classes.
+
+## Casting to a trait type and dynamic dispatch
 
 The above allows us to define functions that polymorphically act on
-values of *an* unknown type that conforms to a given trait.
+values of a single unknown type that conforms to a given trait.
 However, consider this function:
 
 ~~~~
 # type Circle = int; type Rectangle = int;
-# trait Drawable { fn draw(); }
 # impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
+
+trait Drawable { fn draw(); }
+
 fn draw_all<T: Drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
 }
+
 # let c: Circle = new_circle();
 # draw_all(~[c]);
 ~~~~
 
 You can call that on an array of circles, or an array of squares
-(assuming those have suitable `drawable` traits defined), but not
-on an array containing both circles and squares.
-
-When this is needed, a trait name can be used as a type, causing
-the function to be written simply like this:
+(assuming those have suitable `Drawable` traits defined), but not on
+an array containing both circles and squares. When such behavior is
+needed, a trait name can alternately be used as a type.
 
 ~~~~
 # trait Drawable { fn draw(); }
-fn draw_all(shapes: ~[Drawable]) {
+fn draw_all(shapes: ~[@Drawable]) {
     for shapes.each |shape| { shape.draw(); }
 }
 ~~~~
 
-There is no type parameter anymore (since there isn't a single type
-that we're calling the function on). Instead, the `drawable` type is
-used to refer to a type that is a reference-counted box containing a
-value for which a `drawable` implementation exists, combined with
-information on where to find the methods for this implementation. This
-is very similar to the 'vtables' used in most object-oriented
-languages.
-
-To construct such a value, you use the `as` operator to cast a value
-to a trait type:
+In this example there is no type parameter. Instead, the `@Drawable`
+type is used to refer to any managed box value that implements the
+`Drawable` trait. To construct such a value, you use the `as` operator
+to cast a value to a trait type:
 
 ~~~~
+# type Circle = int; type Rectangle = bool;
+# trait Drawable { fn draw(); }
+# fn new_circle() -> Circle { 1 }
+# fn new_rectangle() -> Rectangle { true }
+# fn draw_all(shapes: ~[Drawable]) {}
+
+impl @Circle: Drawable { fn draw() { ... } }
+
+impl @Rectangle: Drawable { fn draw() { ... } }
+
+let c: @Circle = @new_circle();
+let r: @Rectangle = @new_rectangle();
+draw_all(~[c as @Drawable, r as @Drawable]);
+~~~~
+
+Note that, like strings and vectors, trait types have dynamic size
+and may only be used via one of the pointer types. In turn, the
+`impl` is defined for `@Circle` and `@Rectangle` instead of for
+just `Circle` and `Rectangle`. Other pointer types work as well.
+
+~~~{.xfail-test}
 # type Circle = int; type Rectangle = int;
 # trait Drawable { fn draw(); }
 # impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-# fn draw_all(shapes: ~[Drawable]) {}
-let c: Circle = new_circle();
-let r: Rectangle = new_rectangle();
-draw_all(~[c as Drawable, r as Drawable]);
+// A managed trait instance
+let boxy: @Drawable = @new_circle() as @Drawable;
+// An owned trait instance
+let owny: ~Drawable = ~new_circle() as ~Drawable;
+// A borrowed trait instance
+let stacky: &Drawable = &new_circle() as &Drawable;
+~~~
+
+> ***Note:*** Other pointer types actually _do not_ work here. This is
+> an evolving corner of the language.
+
+Method calls to trait types are _dynamically dispatched_. Since the
+compiler doesn't know specifically which functions to call at compile
+time it uses a lookup table (vtable) to decide at runtime which
+method to call.
+
+This usage of traits is similar to Java interfaces.
+
+## The `self` type
+
+In a trait, `self` is a special type that you can think of as a
+type parameter. An implementation of the trait for any given type
+`T` replaces the `self` type parameter with `T`. Simply, in a trait,
+`self` is a type, and in an impl, `self` is a value. The following
+trait describes types that support an equality operation:
+
+~~~~
+// In a trait, `self` refers to the type implementing the trait
+trait Eq {
+  fn equals(&&other: self) -> bool;
+}
+
+// In an impl, self refers to the value of the receiver
+impl int: Eq {
+  fn equals(&&other: int) -> bool { other == self }
+}
 ~~~~
 
-This will store the value into a box, along with information about the
-implementation (which is looked up in the scope of the cast). The
-`drawable` type simply refers to such boxes, and calling methods on it
-always works, no matter what implementations are in scope.
-
-Note that the allocation of a box is somewhat more expensive than
-simply using a type parameter and passing in the value as-is, and much
-more expensive than statically resolved method calls.
-
-## Trait-less implementations
-
-If you only intend to use an implementation for static overloading,
-and there is no trait available that it conforms to, you are free
-to leave off the type after the colon.  However, this is only possible when you
-are defining an implementation in the same module as the receiver
-type, and the receiver type is a named type (i.e., an enum or a
-class); [single-variant enums](#single_variant_enum) are a common
-choice.
+Notice that in the trait definition, `equals` takes a `self` type
+argument, whereas, in the impl, `equals` takes an `int` type argument,
+and uses `self` as the name of the receiver (analogous to the `this` pointer
+in C++).
 
 # Modules and crates
 
