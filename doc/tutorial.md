@@ -1052,6 +1052,34 @@ let y = x; // Copy of a pointer to the same box
 // then the allocation will be freed.
 ~~~~
 
+Any type that contains managed boxes or other managed types is
+considered _managed_. Managed types are the only types that can
+construct cyclic data structures in Rust, such as doubly-linked lists.
+
+~~~
+// A linked list node
+struct Node {
+    mut next: MaybeNode,
+    mut prev: MaybeNode,
+    payload: int
+}
+
+enum MaybeNode {
+    SomeNode(@Node),
+    NoNode
+}
+
+let node1 = @Node { next: NoNode, prev: NoNode, payload: 1 };
+let node2 = @Node { next: NoNode, prev: NoNode, payload: 2 };
+let node3 = @Node { next: NoNode, prev: NoNode, payload: 3 };
+
+// Link the three list nodes together
+node1.next = SomeNode(node2);
+node2.prev = SomeNode(node1);
+node2.next = SomeNode(node3);
+node3.prev = SomeNode(node2);
+~~~
+
 Managed boxes never cross task boundaries.
 
 > ***Note:*** managed boxes are currently reclaimed through reference
@@ -1060,7 +1088,7 @@ Managed boxes never cross task boundaries.
 
 ## Owned boxes
 
-In contrast to maneged boxes, owned boxes have a single owning memory
+In contrast to managed boxes, owned boxes have a single owning memory
 slot and thus two owned boxes may not refer to the same memory. All
 owned boxes across all tasks are allocated on a single _exchange
 heap_, where their uniquely owned nature allows them to be passed
