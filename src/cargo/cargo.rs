@@ -17,7 +17,7 @@ use to_str::to_str;
 use getopts::{optflag, optopt, opt_present};
 use dvec::DVec;
 
-type package = {
+struct Package {
     name: ~str,
     uuid: ~str,
     url: ~str,
@@ -26,10 +26,10 @@ type package = {
     reference: Option<~str>,
     tags: ~[~str],
     versions: ~[(~str, ~str)]
-};
+}
 
-impl package : cmp::Ord {
-    pure fn lt(other: &package) -> bool {
+impl Package : cmp::Ord {
+    pure fn lt(other: &Package) -> bool {
         if self.name.lt(&(*other).name) { return true; }
         if (*other).name.lt(&self.name) { return false; }
         if self.uuid.lt(&(*other).uuid) { return true; }
@@ -45,28 +45,21 @@ impl package : cmp::Ord {
         if self.versions.lt(&(*other).versions) { return true; }
         return false;
     }
-    pure fn le(other: &package) -> bool { !(*other).lt(&self) }
-    pure fn ge(other: &package) -> bool { !self.lt(other)     }
-    pure fn gt(other: &package) -> bool { (*other).lt(&self)  }
+    pure fn le(other: &Package) -> bool { !(*other).lt(&self) }
+    pure fn ge(other: &Package) -> bool { !self.lt(other)     }
+    pure fn gt(other: &Package) -> bool { (*other).lt(&self)  }
 }
 
-type local_package = {
-    name: ~str,
-    metaname: ~str,
-    version: ~str,
-    files: ~[~str]
-};
-
-type source = @{
+struct Source {
     name: ~str,
     mut url: ~str,
     mut method: ~str,
     mut key: Option<~str>,
     mut keyfp: Option<~str>,
-    packages: DVec<package>
-};
+    packages: DVec<Package>
+}
 
-type cargo = {
+struct Cargo {
     pgp: bool,
     root: Path,
     installdir: Path,
@@ -74,13 +67,13 @@ type cargo = {
     libdir: Path,
     workdir: Path,
     sourcedir: Path,
-    sources: map::HashMap<~str, source>,
+    sources: map::HashMap<~str, @Source>,
     mut current_install: ~str,
     dep_cache: map::HashMap<~str, bool>,
-    opts: options
-};
+    opts: Options
+}
 
-type crate = {
+struct Crate {
     name: ~str,
     vers: ~str,
     uuid: ~str,
@@ -88,22 +81,22 @@ type crate = {
     sigs: Option<~str>,
     crate_type: Option<~str>,
     deps: ~[~str]
-};
+}
 
-type options = {
+struct Options {
     test: bool,
-    mode: mode,
+    mode: Mode,
     free: ~[~str],
     help: bool,
-};
+}
 
-enum mode { system_mode, user_mode, local_mode }
+enum Mode { SystemMode, UserMode, LocalMode }
 
-impl mode : cmp::Eq {
-    pure fn eq(other: &mode) -> bool {
+impl Mode : cmp::Eq {
+    pure fn eq(other: &Mode) -> bool {
         (self as uint) == ((*other) as uint)
     }
-    pure fn ne(other: &mode) -> bool { !self.eq(other) }
+    pure fn ne(other: &Mode) -> bool { !self.eq(other) }
 }
 
 fn opts() -> ~[getopts::Opt] {
@@ -270,7 +263,7 @@ fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
     (name, vers, uuid)
 }
 
-fn load_crate(filename: &Path) -> Option<crate> {
+fn load_crate(filename: &Path) -> Option<Crate> {
     let sess = parse::new_parse_sess(None);
     let c = parse::parse_crate_from_crate_file(filename, ~[], sess);
 
@@ -375,7 +368,7 @@ fn load_crate(filename: &Path) -> Option<crate> {
 
     match (name, vers, uuid) {
         (Some(name0), Some(vers0), Some(uuid0)) => {
-            Some({
+            Some(Crate {
                 name: name0,
                 vers: vers0,
                 uuid: uuid0,
@@ -419,7 +412,7 @@ fn valid_pkg_name(s: ~str) -> bool {
     s.all(is_valid_digit)
 }
 
-fn parse_source(name: ~str, j: json::Json) -> source {
+fn parse_source(name: ~str, j: json::Json) -> @Source {
     if !valid_pkg_name(name) {
         fail fmt!("'%s' is an invalid source name", name);
     }
@@ -445,7 +438,7 @@ fn parse_source(name: ~str, j: json::Json) -> source {
             if method == ~"file" {
                 url = os::make_absolute(&Path(url)).to_str();
             }
-            return @{
+            return @Source {
                 name: name,
                 mut url: url,
                 mut method: method,
@@ -457,7 +450,7 @@ fn parse_source(name: ~str, j: json::Json) -> source {
     };
 }
 
-fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, source>) {
+fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, @Source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(c.get()) {
@@ -472,7 +465,7 @@ fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, source>) {
     }
 }
 
-fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
+fn load_one_source_package(src: @Source, p: map::HashMap<~str, json::Json>) {
     let name = match p.find(~"name") {
         Some(json::String(n)) => {
             if !valid_pkg_name(*n) {
@@ -550,7 +543,7 @@ fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
         }
     };
 
-    let newpkg = {
+    let newpkg = Package {
         name: name,
         uuid: uuid,
         url: url,
@@ -574,7 +567,7 @@ fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
     log(debug, ~"  loaded package: " + src.name + ~"/" + name);
 }
 
-fn load_source_info(c: &cargo, src: source) {
+fn load_source_info(c: &Cargo, src: @Source) {
     let dir = c.sourcedir.push(src.name);
     let srcfile = dir.push("source.json");
     if !os::path_exists(&srcfile) { return; }
@@ -595,7 +588,7 @@ fn load_source_info(c: &cargo, src: source) {
         }
     };
 }
-fn load_source_packages(c: &cargo, src: source) {
+fn load_source_packages(c: &Cargo, src: @Source) {
     log(debug, ~"loading source: " + src.name);
     let dir = c.sourcedir.push(src.name);
     let pkgfile = dir.push("packages.json");
@@ -625,7 +618,7 @@ fn load_source_packages(c: &cargo, src: source) {
     };
 }
 
-fn build_cargo_options(argv: ~[~str]) -> options {
+fn build_cargo_options(argv: ~[~str]) -> Options {
     let matches = match getopts::getopts(argv, opts()) {
         result::Ok(m) => m,
         result::Err(f) => {
@@ -649,23 +642,23 @@ fn build_cargo_options(argv: ~[~str]) -> options {
     }
 
     let mode =
-        if (!is_install && !is_uninstall) || g { user_mode }
-        else if G { system_mode }
-        else { local_mode };
+        if (!is_install && !is_uninstall) || g { UserMode }
+        else if G { SystemMode }
+        else { LocalMode };
 
-    {test: test, mode: mode, free: matches.free, help: help}
+    Options {test: test, mode: mode, free: matches.free, help: help}
 }
 
-fn configure(opts: options) -> cargo {
+fn configure(opts: Options) -> Cargo {
     let home = match get_cargo_root() {
         Ok(home) => home,
         Err(_err) => get_cargo_sysroot().get()
     };
 
     let get_cargo_dir = match opts.mode {
-        system_mode => get_cargo_sysroot,
-        user_mode => get_cargo_root,
-        local_mode => get_cargo_root_nearest
+        SystemMode => get_cargo_sysroot,
+        UserMode => get_cargo_root,
+        LocalMode => get_cargo_root_nearest
     };
 
     let p = get_cargo_dir().get();
@@ -676,7 +669,7 @@ fn configure(opts: options) -> cargo {
 
     let dep_cache = map::HashMap();
 
-    let mut c = {
+    let mut c = Cargo {
         pgp: pgp::supported(),
         root: home,
         installdir: p,
@@ -714,7 +707,7 @@ fn configure(opts: options) -> cargo {
     c
 }
 
-fn for_each_package(c: &cargo, b: fn(source, package)) {
+fn for_each_package(c: &Cargo, b: fn(s: @Source, p: Package)) {
     for c.sources.each_value |v| {
         for v.packages.each |p| {
             b(v, *p);
@@ -748,7 +741,7 @@ fn run_in_buildpath(what: &str, path: &Path, subdir: &Path, cf: &Path,
     Some(buildpath)
 }
 
-fn test_one_crate(_c: &cargo, path: &Path, cf: &Path) {
+fn test_one_crate(_c: &Cargo, path: &Path, cf: &Path) {
     let buildpath = match run_in_buildpath(~"testing", path,
                                            &Path("test"),
                                            cf,
@@ -759,7 +752,7 @@ fn test_one_crate(_c: &cargo, path: &Path, cf: &Path) {
   run_programs(&buildpath);
 }
 
-fn install_one_crate(c: &cargo, path: &Path, cf: &Path) {
+fn install_one_crate(c: &Cargo, path: &Path, cf: &Path) {
     let buildpath = match run_in_buildpath(~"installing", path,
                                            &Path("build"),
                                            cf, ~[]) {
@@ -776,7 +769,7 @@ fn install_one_crate(c: &cargo, path: &Path, cf: &Path) {
                                ~"lib")) {
             debug!("  bin: %s", ct.to_str());
             install_to_dir(*ct, &c.bindir);
-            if c.opts.mode == system_mode {
+            if c.opts.mode == SystemMode {
                 // FIXME (#2662): Put this file in PATH / symlink it so it can
                 // be used as a generic executable
                 // `cargo install -G rustray` and `rustray file.obj`
@@ -800,7 +793,7 @@ fn rustc_sysroot() -> ~str {
     }
 }
 
-fn install_source(c: &cargo, path: &Path) {
+fn install_source(c: &Cargo, path: &Path) {
     debug!("source: %s", path.to_str());
     os::change_dir(path);
 
@@ -839,7 +832,7 @@ fn install_source(c: &cargo, path: &Path) {
     }
 }
 
-fn install_git(c: &cargo, wd: &Path, url: ~str, reference: Option<~str>) {
+fn install_git(c: &Cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd.to_str()]);
     if reference.is_some() {
         let r = reference.get();
@@ -850,7 +843,7 @@ fn install_git(c: &cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     install_source(c, wd);
 }
 
-fn install_curl(c: &cargo, wd: &Path, url: ~str) {
+fn install_curl(c: &Cargo, wd: &Path, url: ~str) {
     let tarpath = wd.push("pkg.tar");
     let p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                                          tarpath.to_str(), url]);
@@ -863,14 +856,14 @@ fn install_curl(c: &cargo, wd: &Path, url: ~str) {
     install_source(c, wd);
 }
 
-fn install_file(c: &cargo, wd: &Path, path: &Path) {
+fn install_file(c: &Cargo, wd: &Path, path: &Path) {
     run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
                                   ~"-C", wd.to_str(),
                                   ~"-f", path.to_str()]);
     install_source(c, wd);
 }
 
-fn install_package(c: &cargo, src: ~str, wd: &Path, pkg: package) {
+fn install_package(c: &Cargo, src: ~str, wd: &Path, pkg: Package) {
     let url = copy pkg.url;
     let method = match pkg.method {
         ~"git" => ~"git",
@@ -888,7 +881,7 @@ fn install_package(c: &cargo, src: ~str, wd: &Path, pkg: package) {
     }
 }
 
-fn cargo_suggestion(c: &cargo, fallback: fn())
+fn cargo_suggestion(c: &Cargo, fallback: fn())
 {
     if c.sources.size() == 0u {
         error(~"no sources defined - you may wish to run " +
@@ -898,7 +891,7 @@ fn cargo_suggestion(c: &cargo, fallback: fn())
     fallback();
 }
 
-fn install_uuid(c: &cargo, wd: &Path, uuid: ~str) {
+fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.uuid == uuid {
@@ -922,7 +915,7 @@ fn install_uuid(c: &cargo, wd: &Path, uuid: ~str) {
     }
 }
 
-fn install_named(c: &cargo, wd: &Path, name: ~str) {
+fn install_named(c: &Cargo, wd: &Path, name: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.name == name {
@@ -946,7 +939,7 @@ fn install_named(c: &cargo, wd: &Path, name: ~str) {
     }
 }
 
-fn install_uuid_specific(c: &cargo, wd: &Path, src: ~str, uuid: ~str) {
+fn install_uuid_specific(c: &Cargo, wd: &Path, src: ~str, uuid: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -961,7 +954,7 @@ fn install_uuid_specific(c: &cargo, wd: &Path, src: ~str, uuid: ~str) {
     error(~"can't find package: " + src + ~"/" + uuid);
 }
 
-fn install_named_specific(c: &cargo, wd: &Path, src: ~str, name: ~str) {
+fn install_named_specific(c: &Cargo, wd: &Path, src: ~str, name: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -976,7 +969,7 @@ fn install_named_specific(c: &cargo, wd: &Path, src: ~str, name: ~str) {
     error(~"can't find package: " + src + ~"/" + name);
 }
 
-fn cmd_uninstall(c: &cargo) {
+fn cmd_uninstall(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         return;
@@ -1028,7 +1021,7 @@ fn cmd_uninstall(c: &cargo) {
     }
 }
 
-fn install_query(c: &cargo, wd: &Path, target: ~str) {
+fn install_query(c: &Cargo, wd: &Path, target: ~str) {
     match c.dep_cache.find(target) {
         Some(inst) => {
             if inst {
@@ -1088,7 +1081,7 @@ fn install_query(c: &cargo, wd: &Path, target: ~str) {
     }
 }
 
-fn get_temp_workdir(c: &cargo) -> Path {
+fn get_temp_workdir(c: &Cargo) -> Path {
     match tempfile::mkdtemp(&c.workdir, "cargo") {
       Some(wd) => wd,
       None => fail fmt!("needed temp dir: %s",
@@ -1096,7 +1089,7 @@ fn get_temp_workdir(c: &cargo) -> Path {
     }
 }
 
-fn cmd_install(c: &cargo) unsafe {
+fn cmd_install(c: &Cargo) unsafe {
     let wd = get_temp_workdir(c);
 
     if vec::len(c.opts.free) == 2u {
@@ -1120,7 +1113,7 @@ fn cmd_install(c: &cargo) unsafe {
     install_query(c, &wd, query);
 }
 
-fn sync(c: &cargo) {
+fn sync(c: &Cargo) {
     for c.sources.each_key |k| {
         let mut s = c.sources.get(k);
         sync_one(c, s);
@@ -1128,7 +1121,7 @@ fn sync(c: &cargo) {
     }
 }
 
-fn sync_one_file(c: &cargo, dir: &Path, src: source) -> bool {
+fn sync_one_file(c: &Cargo, dir: &Path, src: @Source) -> bool {
     let name = src.name;
     let srcfile = dir.push("source.json.new");
     let destsrcfile = dir.push("source.json");
@@ -1206,7 +1199,7 @@ fn sync_one_file(c: &cargo, dir: &Path, src: source) -> bool {
     return true;
 }
 
-fn sync_one_git(c: &cargo, dir: &Path, src: source) -> bool {
+fn sync_one_git(c: &Cargo, dir: &Path, src: @Source) -> bool {
     let name = src.name;
     let srcfile = dir.push("source.json");
     let pkgfile = dir.push("packages.json");
@@ -1309,7 +1302,7 @@ fn sync_one_git(c: &cargo, dir: &Path, src: source) -> bool {
     return true;
 }
 
-fn sync_one_curl(c: &cargo, dir: &Path, src: source) -> bool {
+fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
     let name = src.name;
     let srcfile = dir.push("source.json.new");
     let destsrcfile = dir.push("source.json");
@@ -1425,7 +1418,7 @@ fn sync_one_curl(c: &cargo, dir: &Path, src: source) -> bool {
     return true;
 }
 
-fn sync_one(c: &cargo, src: source) {
+fn sync_one(c: &Cargo, src: @Source) {
     let name = src.name;
     let dir = c.sourcedir.push(name);
 
@@ -1445,7 +1438,7 @@ fn sync_one(c: &cargo, src: source) {
     }
 }
 
-fn cmd_init(c: &cargo) {
+fn cmd_init(c: &Cargo) {
     let srcurl = ~"http://www.rust-lang.org/cargo/sources.json";
     let sigurl = ~"http://www.rust-lang.org/cargo/sources.json.sig";
 
@@ -1484,7 +1477,7 @@ fn cmd_init(c: &cargo) {
     info(fmt!("initialized .cargo in %s", c.root.to_str()));
 }
 
-fn print_pkg(s: source, p: package) {
+fn print_pkg(s: @Source, p: Package) {
     let mut m = s.name + ~"/" + p.name + ~" (" + p.uuid + ~")";
     if vec::len(p.tags) > 0u {
         m = m + ~" [" + str::connect(p.tags, ~", ") + ~"]";
@@ -1495,7 +1488,7 @@ fn print_pkg(s: source, p: package) {
     }
 }
 
-fn print_source(s: source) {
+fn print_source(s: @Source) {
     info(s.name + ~" (" + s.url + ~")");
 
     let pks = sort::merge_sort(sys::shape_lt, s.packages.get());
@@ -1516,7 +1509,7 @@ fn print_source(s: source) {
     }));
 }
 
-fn cmd_list(c: &cargo) {
+fn cmd_list(c: &Cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
@@ -1542,7 +1535,7 @@ fn cmd_list(c: &cargo) {
     }
 }
 
-fn cmd_search(c: &cargo) {
+fn cmd_search(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
         return;
@@ -1575,7 +1568,7 @@ fn install_to_dir(srcfile: &Path, destdir: &Path) {
     }
 }
 
-fn dump_cache(c: &cargo) {
+fn dump_cache(c: &Cargo) {
     need_dir(&c.root);
 
     let out = c.root.push("cache.json");
@@ -1585,7 +1578,7 @@ fn dump_cache(c: &cargo) {
         copy_warn(&out, &c.root.push("cache.json.old"));
     }
 }
-fn dump_sources(c: &cargo) {
+fn dump_sources(c: &Cargo) {
     if c.sources.size() < 1u {
         return;
     }
@@ -1641,7 +1634,7 @@ fn copy_warn(srcfile: &Path, destfile: &Path) {
     }
 }
 
-fn cmd_sources(c: &cargo) {
+fn cmd_sources(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
         for c.sources.each_value |v| {
             info(fmt!("%s (%s) via %s",
@@ -1677,7 +1670,7 @@ fn cmd_sources(c: &cargo) {
             if c.sources.contains_key(name) {
                 error(fmt!("source already exists: %s", name));
             } else {
-                c.sources.insert(name, @{
+                c.sources.insert(name, @Source {
                     name: name,
                     mut url: url,
                     mut method: assume_source_method(url),
