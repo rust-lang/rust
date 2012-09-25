@@ -679,7 +679,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    for ccx.tydescs.each |key, val| {
+    for ccx.tydescs.each |_key, val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
 
@@ -720,10 +720,8 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               }
             };
 
-        let shape = shape_of(ccx, key);
-        let shape_tables =
-            llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
-                                       T_ptr(T_i8()));
+        let shape = C_null(T_ptr(T_i8()));
+        let shape_tables = C_null(T_ptr(T_i8()));
 
         let tydesc =
             C_named_struct(ccx.tydesc_type,
@@ -733,7 +731,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                              drop_glue, // drop_glue
                              free_glue, // free_glue
                              visit_glue, // visit_glue
-                             C_shape(ccx, shape), // shape
+                             shape, // shape
                              shape_tables]); // shape_tables
 
         let gvar = ti.tydesc;

@@ -2701,11 +2701,7 @@ fn trans_crate(sess: session::session,
 
     decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, crate_map);
-    // NB: Must call force_declare_tydescs before emit_tydescs to break
-    // cyclical dependency with shape code! See shape.rs for details.
-    force_declare_tydescs(ccx);
     glue::emit_tydescs(ccx);
-    gen_shape_tables(ccx);
     write_abi_version(ccx);
 
     // Translate the metadata.
