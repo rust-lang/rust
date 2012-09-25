@@ -1,6 +1,8 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_borrow_lib.rs
 
+#[legacy_exports];
+
 extern mod cci_borrow_lib;
 use cci_borrow_lib::foo;
 

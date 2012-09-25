@@ -2,6 +2,7 @@
 // aux-build:cci_nested_lib.rs
 
 #[legacy_modes];
+#[legacy_exports];
 
 extern mod cci_nested_lib;
 use cci_nested_lib::*;

@@ -1,5 +1,6 @@
 #[link(name = "req")];
 #[crate_type = "lib"];
+#[legacy_exports];
 
 extern mod std;
 

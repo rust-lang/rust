@@ -2868,6 +2868,64 @@ impl Resolver {
 
     fn record_exports_for_module(module_: @Module) {
         let mut exports2 = ~[];
+
+        if module_.legacy_exports {
+            self.add_exports_for_legacy_module(&mut exports2, module_);
+        } else {
+            self.add_exports_for_module(&mut exports2, module_);
+        }
+        match copy module_.def_id {
+            Some(def_id) => {
+                self.export_map2.insert(def_id.node, move exports2);
+                debug!("(computing exports) writing exports for %d (some)",
+                       def_id.node);
+            }
+            None => {}
+        }
+    }
+
+
+    fn add_exports_of_namebindings(exports2: &mut ~[Export2],
+                                   atom: Atom,
+                                   namebindings: @NameBindings,
+                                   reexport: bool) {
+        for [ModuleNS, TypeNS, ValueNS].each |ns| {
+            match namebindings.def_for_namespace(*ns) {
+                Some(d) if d.privacy == Public => {
+                    vec::push(*exports2,  Export2 {
+                        reexport: reexport,
+                        name: self.session.str_of(atom),
+                        def_id: def_id_of_def(d.def)
+                    });
+                }
+                _ => ()
+            }
+        }
+    }
+
+    fn add_exports_for_module(exports2: &mut ~[Export2], module_: @Module) {
+
+        for module_.children.each_ref |atom, namebindings| {
+            self.add_exports_of_namebindings(exports2, *atom,
+                                             *namebindings, false)
+        }
+
+        for module_.import_resolutions.each_ref |atom, importresolution| {
+            for [ModuleNS, TypeNS, ValueNS].each |ns| {
+                match importresolution.target_for_namespace(*ns) {
+                    Some(target) => {
+                        self.add_exports_of_namebindings(exports2, *atom,
+                                                         target.bindings,
+                                                         true)
+                    }
+                    _ => ()
+                }
+            }
+        }
+    }
+
+    fn add_exports_for_legacy_module(exports2: &mut ~[Export2],
+                                     module_: @Module) {
         for module_.exported_names.each |name, _exp_node_id| {
             for self.namespaces.each |namespace| {
                 match self.resolve_definition_of_name_in_module(module_,
@@ -2882,7 +2940,7 @@ impl Resolver {
                                 for %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(exports2, Export2 {
+                        vec::push(*exports2, Export2 {
                             reexport: false,
                             name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)
@@ -2893,7 +2951,7 @@ impl Resolver {
                                 %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(exports2, Export2 {
+                        vec::push(*exports2, Export2 {
                             reexport: true,
                             name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)
@@ -2901,15 +2959,6 @@ impl Resolver {
                     }
                 }
             }
-        }
-
-        match copy module_.def_id {
-            Some(def_id) => {
-                self.export_map2.insert(def_id.node, move exports2);
-                debug!("(computing exports) writing exports for %d (some)",
-                       def_id.node);
-            }
-            None => {}
         }
     }
 
