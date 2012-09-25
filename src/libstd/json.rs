@@ -8,7 +8,7 @@
 
 use core::cmp::{Eq, Ord};
 use result::{Result, Ok, Err};
-use io::WriterUtil;
+use io::{WriterUtil, ReaderUtil};
 use map::HashMap;
 use map::Map;
 use sort::Sort;

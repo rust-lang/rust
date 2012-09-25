@@ -1,4 +1,5 @@
 use io::println;//XXXXXXXXxxx
+use io::ReaderUtil;
 use util::interner;
 use lexer::{string_reader, bump, is_eof, nextch,
                is_whitespace, get_str_from, reader};
