@@ -4,6 +4,10 @@ Functions for the unit type.
 
 */
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::{Eq, Ord};
 
 impl () : Eq {

@@ -4,6 +4,10 @@ Sendable hash maps.  Very much a work in progress.
 
 */
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
