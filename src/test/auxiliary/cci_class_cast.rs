@@ -1,3 +1,5 @@
+#[legacy_exports];
+
 use to_str::*;
 use to_str::ToStr;
 
