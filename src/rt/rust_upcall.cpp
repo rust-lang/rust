@@ -8,7 +8,6 @@
 
 #include "rust_globals.h"
 #include "rust_task.h"
-#include "rust_cc.h"
 #include "rust_sched_loop.h"
 #include "rust_unwind.h"
 #include "rust_upcall.h"
@@ -224,8 +223,6 @@ upcall_s_malloc(s_malloc_args *args) {
     rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
     LOG(task, mem, "upcall malloc(0x%" PRIxPTR ")", args->td);
-
-    cc::maybe_cc(task);
 
     // FIXME--does this have to be calloc? (Issue #2682)
     rust_opaque_box *box = task->boxed.calloc(args->td, args->size);
