@@ -15,98 +15,71 @@ fn test_ser_and_deser<A:Eq Serializable>(
 ) {
 
     // check the pretty printer:
-    let s = io::with_str_writer(|w| a1.serialize(w));
+    let s = do io::with_str_writer |w| {
+        a1.serialize(&prettyprint2::Serializer(w))
+    };
     debug!("s == %?", s);
     assert s == expected;
 
     // check the EBML serializer:
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = ebml2::Serializer(wr);
+        let ebml_w = &ebml2::Serializer(wr);
         a1.serialize(ebml_w)
     };
     let d = ebml2::Doc(@bytes);
-    let a2: A = deserialize(ebml2::Deserializer(d));
+    let a2: A = deserialize(&ebml2::Deserializer(d));
     assert a1 == a2;
 }
 
-#[auto_serialize2]
-enum Expr {
-    Val(uint),
-    Plus(@Expr, @Expr),
-    Minus(@Expr, @Expr)
-}
-
 impl AnEnum : cmp::Eq {
-    pure fn eq(&&other: AnEnum) -> bool {
+    pure fn eq(other: &AnEnum) -> bool {
         self.v == other.v
     }
-    pure fn ne(&&other: AnEnum) -> bool { !self.eq(other) }
+    pure fn ne(other: &AnEnum) -> bool { !self.eq(other) }
 }
 
 impl Point : cmp::Eq {
-    pure fn eq(&&other: Point) -> bool {
+    pure fn eq(other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
-    pure fn ne(&&other: Point) -> bool { !self.eq(other) }
+    pure fn ne(other: &Point) -> bool { !self.eq(other) }
 }
 
 impl<T:cmp::Eq> Quark<T> : cmp::Eq {
-    pure fn eq(&&other: Quark<T>) -> bool {
+    pure fn eq(other: &Quark<T>) -> bool {
         match self {
-          Top(ref q) => match other {
-            Top(ref r) => q == r,
-            Bottom(_) => false
-          },
-          Bottom(ref q) => match other {
-            Top(_) => false,
-            Bottom(ref r) => q == r
-          }
+            Top(ref q) => {
+                match *other {
+                    Top(ref r) => q == r,
+                    Bottom(_) => false
+                }
+            },
+            Bottom(ref q) => {
+                match *other {
+                    Top(_) => false,
+                    Bottom(ref r) => q == r
+                }
+            },
         }
     }
-    pure fn ne(&&other: Quark<T>) -> bool { !self.eq(other) }
+    pure fn ne(other: &Quark<T>) -> bool { !self.eq(other) }
 }
 
 impl CLike : cmp::Eq {
-    pure fn eq(&&other: CLike) -> bool {
-        self as int == other as int
+    pure fn eq(other: &CLike) -> bool {
+        self as int == *other as int
     }
-    pure fn ne(&&other: CLike) -> bool { !self.eq(other) }
-}
-
-impl Expr : cmp::Eq {
-    pure fn eq(&&other: Expr) -> bool {
-        match self {
-            Val(e0a) => {
-                match other {
-                    Val(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            Plus(e0a, e1a) => {
-                match other {
-                    Plus(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            Minus(e0a, e1a) => {
-                match other {
-                    Minus(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&&other: Expr) -> bool { !self.eq(other) }
+    pure fn ne(other: &CLike) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize2]
 type Spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
-    pure fn eq(&&other: Spanned<T>) -> bool {
-        self.lo == other.lo && self.hi == other.hi && self.node.eq(other.node)
+    pure fn eq(other: &Spanned<T>) -> bool {
+        self.lo == other.lo && self.hi == other.hi && self.node == other.node
     }
-    pure fn ne(&&other: Spanned<T>) -> bool { !self.eq(other) }
+    pure fn ne(other: &Spanned<T>) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize2]
@@ -128,12 +101,6 @@ enum Quark<T> {
 enum CLike { A, B, C }
 
 fn main() {
-
-    test_ser_and_deser(Plus(@Minus(@Val(3u), @Val(10u)),
-                            @Plus(@Val(22u), @Val(5u))),
-                       ~"Plus(@Minus(@Val(3u), @Val(10u)), \
-                        @Plus(@Val(22u), @Val(5u)))");
-
     test_ser_and_deser({lo: 0u, hi: 5u, node: 22u},
                        ~"{lo: 0u, hi: 5u, node: 22u}");
 
