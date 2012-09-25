@@ -144,7 +144,6 @@ mod unicode;
 mod test;
 #[legacy_exports]
 mod serialization;
-#[legacy_exports]
 mod serialization2;
 
 // Local Variables:
