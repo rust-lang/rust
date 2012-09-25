@@ -3,7 +3,7 @@
 
 use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
-use io::Reader;
+use io::{Reader, ReaderUtil};
 use result::{Result, Ok, Err};
 
 export
