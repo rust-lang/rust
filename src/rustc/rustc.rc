@@ -86,6 +86,7 @@ mod middle {
         mod type_use;
         #[legacy_exports]
         mod reachable;
+        mod machine;
     }
     #[legacy_exports]
     mod ty;
