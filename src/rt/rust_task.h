@@ -223,8 +223,6 @@ rust_task : public kernel_owned<rust_task>
 
     bool propagate_failure;
 
-    uint32_t cc_counter;
-
     debug::task_debug_info debug;
 
     // The amount of stack we're using, excluding red zones

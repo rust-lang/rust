@@ -71,7 +71,6 @@ RUNTIME_CS_$(1) := \
               rt/rust_kernel.cpp \
               rt/rust_shape.cpp \
               rt/rust_abi.cpp \
-              rt/rust_cc.cpp \
               rt/rust_debug.cpp \
               rt/rust_box_annihilator.cpp \
               rt/memory_region.cpp \
