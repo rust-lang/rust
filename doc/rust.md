@@ -118,19 +118,16 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted as a sequence of Unicode codepoints encoded in
-UTF-8. No normalization is performed during input processing. Most Rust
-grammar rules are defined in terms of printable ASCII-range codepoints, but
-a small number are defined in terms of Unicode properties or explicit
-codepoint lists. ^[Surrogate definitions for the special Unicode productions
-are provided to the grammar verifier, restricted to ASCII range, when
-verifying the grammar in this document.]
+Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8,
+normalized to Unicode normalization form NFKC.
+Most Rust grammar rules are defined in terms of printable ASCII-range codepoints,
+but a small number are defined in terms of Unicode properties or explicit codepoint lists.
+^[Substitute definitions for the special Unicode productions are provided to the grammar verifier, restricted to ASCII range, when verifying the grammar in this document.]
 
 ## Special Unicode Productions
 
-The following productions in the Rust grammar are defined in terms of
-Unicode properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash`,
-`non_single_quote` and `non_double_quote`.
+The following productions in the Rust grammar are defined in terms of Unicode properties:
+`ident`, `non_null`, `non_star`, `non_eol`, `non_slash`, `non_single_quote` and `non_double_quote`.
 
 ### Identifiers
 
