@@ -7,13 +7,6 @@ use option::{Some, None};
 use libc::{pid_t, c_void, c_int};
 use io::ReaderUtil;
 
-export Program;
-export run_program;
-export start_program;
-export program_output;
-export spawn_process;
-export waitpid;
-
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
@@ -24,7 +17,7 @@ extern mod rustrt {
 }
 
 /// A value representing a child process
-trait Program {
+pub trait Program {
     /// Returns the process id of the program
     fn get_id() -> pid_t;
 
@@ -68,7 +61,7 @@ trait Program {
  *
  * The process id of the spawned process
  */
-fn spawn_process(prog: &str, args: &[~str],
+pub fn spawn_process(prog: &str, args: &[~str],
                  env: &Option<~[(~str,~str)]>,
                  dir: &Option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
@@ -166,7 +159,7 @@ fn with_dirp<T>(d: &Option<~str>,
  *
  * The process id
  */
-fn run_program(prog: &str, args: &[~str]) -> int {
+pub fn run_program(prog: &str, args: &[~str]) -> int {
     let pid = spawn_process(prog, args, &None, &None,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
@@ -189,7 +182,7 @@ fn run_program(prog: &str, args: &[~str]) -> int {
  *
  * A class with a <program> field
  */
-fn start_program(prog: &str, args: &[~str]) -> Program {
+pub fn start_program(prog: &str, args: &[~str]) -> Program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -278,7 +271,7 @@ fn read_all(rd: io::Reader) -> ~str {
  * A record, {status: int, out: str, err: str} containing the exit code,
  * the contents of stdout and the contents of stderr.
  */
-fn program_output(prog: &str, args: &[~str]) ->
+pub fn program_output(prog: &str, args: &[~str]) ->
    {status: int, out: ~str, err: ~str} {
 
     let pipe_in = os::pipe();
@@ -359,7 +352,7 @@ fn readclose(fd: c_int) -> ~str {
 }
 
 /// Waits for a process to exit and returns the exit code
-fn waitpid(pid: pid_t) -> int {
+pub fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]
@@ -402,20 +395,18 @@ fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use io::WriterUtil;
 
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)
-    fn test_leaks() {
+    pub fn test_leaks() {
         run::run_program("echo", []);
         run::start_program("echo", []);
         run::program_output("echo", []);
     }
 
     #[test]
-    fn test_pipes() {
+    pub fn test_pipes() {
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
@@ -441,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn waitpid() {
+    pub fn waitpid() {
         let pid = run::spawn_process("false", [],
                                      &None, &None,
                                      0i32, 0i32, 0i32);

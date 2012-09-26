@@ -16,12 +16,6 @@ Note that recursive use is not permitted.
 use cast::reinterpret_cast;
 use ptr::null;
 
-export DVec;
-export from_elem;
-export from_vec;
-export extensions;
-export unwrap;
-
 /**
  * A growable, modifiable vector type that accumulates elements into a
  * unique vector.
@@ -57,27 +51,27 @@ type DVec_<A> = {
     mut data: ~[A]
 };
 
-enum DVec<A> {
+pub enum DVec<A> {
     DVec_(DVec_<A>)
 }
 
 /// Creates a new, empty dvec
-fn DVec<A>() -> DVec<A> {
+pub fn DVec<A>() -> DVec<A> {
     DVec_({mut data: ~[]})
 }
 
 /// Creates a new dvec with a single element
-fn from_elem<A>(+e: A) -> DVec<A> {
+pub fn from_elem<A>(+e: A) -> DVec<A> {
     DVec_({mut data: ~[move e]})
 }
 
 /// Creates a new dvec with the contents of a vector
-fn from_vec<A>(+v: ~[A]) -> DVec<A> {
+pub fn from_vec<A>(+v: ~[A]) -> DVec<A> {
     DVec_({mut data: move v})
 }
 
 /// Consumes the vector and returns its contents
-fn unwrap<A>(+d: DVec<A>) -> ~[A] {
+pub fn unwrap<A>(+d: DVec<A>) -> ~[A] {
     let DVec_({data: v}) <- d;
     move v
 }
