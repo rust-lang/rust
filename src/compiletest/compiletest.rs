@@ -58,7 +58,7 @@ fn parse_config(args: ~[~str]) -> config {
              } else { option::None },
          logfile: option::map(&getopts::opt_maybe_str(matches,
                                                      ~"logfile"),
-                              |s| Path(s)),
+                              |s| Path(*s)),
          runtool: getopts::opt_maybe_str(matches, ~"runtool"),
          rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
          jit: getopts::opt_present(matches, ~"jit"),

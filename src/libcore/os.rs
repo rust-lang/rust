@@ -439,7 +439,7 @@ fn self_exe_path() -> Option<Path> {
     }
 
     do load_self().map |pth| {
-        Path(pth).dir_path()
+        Path(*pth).dir_path()
     }
 }
 

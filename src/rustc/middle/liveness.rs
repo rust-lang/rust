@@ -659,7 +659,7 @@ impl Liveness {
           expr_path(_) => {
             let def = self.tcx.def_map.get(expr.id);
             relevant_def(def).map(
-                |rdef| self.variable_from_rdef(rdef, expr.span)
+                |rdef| self.variable_from_rdef(*rdef, expr.span)
             )
           }
           _ => None
@@ -675,7 +675,7 @@ impl Liveness {
         match self.tcx.def_map.find(node_id) {
           Some(def) => {
             relevant_def(def).map(
-                |rdef| self.variable_from_rdef(rdef, span)
+                |rdef| self.variable_from_rdef(*rdef, span)
             )
           }
           None => {
@@ -1396,7 +1396,7 @@ impl Liveness {
                 // Note: the field_map is empty unless we are in a ctor
                 return self.ir.field_map.find(fld).map(|var| {
                     let ln = self.live_node(expr.id, expr.span);
-                    (ln, var)
+                    (ln, *var)
                 });
               }
               _ => return None

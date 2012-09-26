@@ -969,7 +969,7 @@ pure fn find<T: Copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
  */
 pure fn find_between<T: Copy>(v: &[T], start: uint, end: uint,
                       f: fn(T) -> bool) -> Option<T> {
-    position_between(v, start, end, f).map(|i| v[i])
+    position_between(v, start, end, f).map(|i| v[*i])
 }
 
 /**
@@ -992,7 +992,7 @@ pure fn rfind<T: Copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
  */
 pure fn rfind_between<T: Copy>(v: &[T], start: uint, end: uint,
                                f: fn(T) -> bool) -> Option<T> {
-    rposition_between(v, start, end, f).map(|i| v[i])
+    rposition_between(v, start, end, f).map(|i| v[*i])
 }
 
 /// Find the first index containing a matching value

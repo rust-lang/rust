@@ -183,7 +183,7 @@ impl check_loan_ctxt {
         debug!("check_pure_callee_or_arg(pc=%?, expr=%?, \
                 callee_id=%d, ty=%s)",
                pc,
-               opt_expr.map(|e| pprust::expr_to_str(e, tcx.sess.intr()) ),
+               opt_expr.map(|e| pprust::expr_to_str(*e, tcx.sess.intr()) ),
                callee_id,
                ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id)));
 

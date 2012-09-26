@@ -141,7 +141,7 @@ fn config_from_opts(
     let result = result::Ok(config);
     let result = do result::chain(result) |config| {
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
-        let output_dir = output_dir.map(|s| Path(s));
+        let output_dir = output_dir.map(|s| Path(*s));
         result::Ok({
             output_dir: output_dir.get_default(config.output_dir),
             .. config
@@ -152,7 +152,7 @@ fn config_from_opts(
             matches, opt_output_format());
         do output_format.map_default(result::Ok(config))
             |output_format| {
-            do result::chain(parse_output_format(output_format))
+            do result::chain(parse_output_format(*output_format))
                 |output_format| {
 
                 result::Ok({
@@ -167,7 +167,7 @@ fn config_from_opts(
             getopts::opt_maybe_str(matches, opt_output_style());
         do output_style.map_default(result::Ok(config))
             |output_style| {
-            do result::chain(parse_output_style(output_style))
+            do result::chain(parse_output_style(*output_style))
                 |output_style| {
                 result::Ok({
                     output_style: output_style,

@@ -537,7 +537,7 @@ fn trans_arg_expr(bcx: block,
             ret_flag=%?)",
            formal_ty.mode, bcx.ty_to_str(formal_ty.ty),
            bcx.expr_to_str(arg_expr),
-           ret_flag.map(|v| bcx.val_str(v)));
+           ret_flag.map(|v| bcx.val_str(*v)));
     let _indenter = indenter();
 
     // translate the arg expr to a datum

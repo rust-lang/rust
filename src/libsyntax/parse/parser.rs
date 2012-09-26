@@ -2758,7 +2758,7 @@ impl parser {
         }
 
         let actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = dtor;
+            let (d_body, d_attrs, d_s) = *dtor;
             {node: {id: self.get_id(),
                     attrs: d_attrs,
                     self_id: self.get_id(),
@@ -3126,7 +3126,7 @@ impl parser {
         }
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = dtor;
+            let (d_body, d_attrs, d_s) = *dtor;
             {node: {id: self.get_id(),
                     attrs: d_attrs,
                     self_id: self.get_id(),

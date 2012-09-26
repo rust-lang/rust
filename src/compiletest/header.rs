@@ -103,7 +103,7 @@ fn parse_compile_flags(line: ~str) -> Option<~str> {
 fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
-        let strs = str::splitn_char(nv, '=', 1u);
+        let strs = str::splitn_char(*nv, '=', 1u);
         match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),

@@ -37,7 +37,7 @@ fn replace_bound_regions_in_fn_ty(
 
     debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",
-           self_ty.map(|t| ty_to_str(tcx, t)),
+           self_ty.map(|t| ty_to_str(tcx, *t)),
            ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
            all_tys.map(|t| ty_to_str(tcx, *t)));
     let _i = indenter();
@@ -50,11 +50,11 @@ fn replace_bound_regions_in_fn_ty(
     let t_fn = ty::fold_sty_to_ty(tcx, &ty_fn, |t| {
         replace_bound_regions(tcx, isr, t)
     });
-    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
+    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, *t));
 
     debug!("result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
                 fn_ty=%s",
-           t_self.map(|t| ty_to_str(tcx, t)),
+           t_self.map(|t| ty_to_str(tcx, *t)),
            ty_to_str(tcx, t_fn));
 
 

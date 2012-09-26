@@ -275,13 +275,13 @@ impl<T> DList<T> {
     /// Remove a node from the head of the list. O(1).
     fn pop_n() -> Option<DListNode<T>> {
         let hd = self.peek_n();
-        hd.map(|nobe| self.unlink(nobe));
+        hd.map(|nobe| self.unlink(*nobe));
         hd
     }
     /// Remove a node from the tail of the list. O(1).
     fn pop_tail_n() -> Option<DListNode<T>> {
         let tl = self.peek_tail_n();
-        tl.map(|nobe| self.unlink(nobe));
+        tl.map(|nobe| self.unlink(*nobe));
         tl
     }
     /// Get the node at the list's head. O(1).
