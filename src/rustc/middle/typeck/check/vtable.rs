@@ -69,7 +69,7 @@ fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
     do fixup_ty(fcx, expr, t, is_early).map |t_f| {
-        match ty::get(t_f).sty {
+        match ty::get(*t_f).sty {
           ty::ty_trait(_, substs_f, _) => substs_f,
           _ => fail ~"t_f should be a trait"
         }

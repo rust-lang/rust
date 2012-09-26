@@ -507,7 +507,7 @@ fn build_session_options(binary: ~str,
     let extra_debuginfo = opt_present(matches, ~"xg");
     let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
-    let sysroot_opt = sysroot_opt.map(|m| Path(m));
+    let sysroot_opt = sysroot_opt.map(|m| Path(*m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
     match output_type {

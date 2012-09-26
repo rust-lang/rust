@@ -61,13 +61,7 @@ pure fn expect<T: Copy>(opt: &Option<T>, +reason: ~str) -> T {
     match *opt { Some(x) => x, None => fail reason }
 }
 
-pure fn map<T, U>(opt: &Option<T>, f: fn(T) -> U) -> Option<U> {
-    //! Maps a `some` value from one type to another
-
-    match *opt { Some(x) => Some(f(x)), None => None }
-}
-
-pure fn map_ref<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
+pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
@@ -138,14 +132,7 @@ pure fn get_default<T: Copy>(opt: &Option<T>, +def: T) -> T {
     match *opt { Some(x) => x, None => def }
 }
 
-pure fn map_default<T, U>(opt: &Option<T>, +def: U, f: fn(T) -> U) -> U {
-    //! Applies a function to the contained value or returns a default
-
-    match *opt { None => move def, Some(t) => f(t) }
-}
-
-// This should replace map_default.
-pure fn map_default_ref<T, U>(opt: &Option<T>, +def: U,
+pure fn map_default<T, U>(opt: &Option<T>, +def: U,
                               f: fn(x: &T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
@@ -200,17 +187,12 @@ impl<T> Option<T> {
      * function that returns an option.
      */
     pure fn chain<U>(f: fn(T) -> Option<U>) -> Option<U> { chain(&self, f) }
-    /// Applies a function to the contained value or returns a default
-    pure fn map_default<U>(+def: U, f: fn(T) -> U) -> U
-        { map_default(&self, move def, f) }
     /// Performs an operation on the contained value or does nothing
     pure fn iter(f: fn(T)) { iter(&self, f) }
     /// Returns true if the option equals `none`
     pure fn is_none() -> bool { is_none(&self) }
     /// Returns true if the option contains some value
     pure fn is_some() -> bool { is_some(&self) }
-    /// Maps a `some` value from one type to another
-    pure fn map<U>(f: fn(T) -> U) -> Option<U> { map(&self, f) }
 }
 
 impl<T> &Option<T> {
@@ -222,12 +204,12 @@ impl<T> &Option<T> {
         chain_ref(self, f)
     }
     /// Applies a function to the contained value or returns a default
-    pure fn map_default_ref<U>(+def: U, f: fn(x: &T) -> U) -> U
-        { map_default_ref(self, move def, f) }
+    pure fn map_default<U>(+def: U, f: fn(x: &T) -> U) -> U
+        { map_default(self, move def, f) }
     /// Performs an operation on the contained value by reference
     pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
     /// Maps a `some` value from one type to another by reference
-    pure fn map_ref<U>(f: fn(x: &T) -> U) -> Option<U> { map_ref(self, f) }
+    pure fn map<U>(f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
     /// Gets an immutable reference to the value inside a `some`.
     pure fn get_ref() -> &self/T { get_ref(self) }
 }

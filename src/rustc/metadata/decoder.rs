@@ -196,7 +196,7 @@ fn field_mutability(d: ebml::Doc) -> ast::class_mutability {
         &ebml::maybe_get_doc(d, tag_class_mut),
         ast::class_immutable,
         |d| {
-            match ebml::doc_as_u8(d) as char {
+            match ebml::doc_as_u8(*d) as char {
               'm' => ast::class_mutable,
               _   => ast::class_immutable
             }
@@ -246,7 +246,7 @@ fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     ebml::maybe_get_doc(item, tag_region_param).map(|doc| {
-        let d = ebml::ebml_deserializer(doc);
+        let d = ebml::ebml_deserializer(*doc);
         ty::deserialize_region_variance(d)
     })
 }

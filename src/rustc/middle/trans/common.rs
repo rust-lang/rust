@@ -1222,7 +1222,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
 fn node_vtables(bcx: block, id: ast::node_id) -> Option<typeck::vtable_res> {
     let raw_vtables = bcx.ccx().maps.vtable_map.find(id);
     raw_vtables.map(
-        |vts| meth::resolve_vtables_in_fn_ctxt(bcx.fcx, vts))
+        |vts| meth::resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
 fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)

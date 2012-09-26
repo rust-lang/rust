@@ -172,14 +172,14 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
-    let odir = odir.map(|o| Path(o));
+    let odir = odir.map(|o| Path(*o));
     let ofile = getopts::opt_maybe_str(matches, ~"o");
-    let ofile = ofile.map(|o| Path(o));
+    let ofile = ofile.map(|o| Path(*o));
     let cfg = build_configuration(sess, binary, input);
     let pretty =
         option::map(&getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
-                    |a| parse_pretty(sess, a) );
+                    |a| parse_pretty(sess, *a) );
     match pretty {
       Some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);

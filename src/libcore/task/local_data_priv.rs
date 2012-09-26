@@ -75,8 +75,8 @@ unsafe fn local_data_lookup<T: Owned>(
     );
     do map_pos.map |index| {
         // .get() is guaranteed because of "None { false }" above.
-        let (_, data_ptr, _) = (*map)[index].get();
-        (index, data_ptr)
+        let (_, data_ptr, _) = (*map)[*index].get();
+        (*index, data_ptr)
     }
 }
 
@@ -91,7 +91,7 @@ unsafe fn local_get_helper<T: Owned>(
         // was referenced in the local_data box, though, not here, so before
         // overwriting the local_data_box we need to give an extra reference.
         // We must also give an extra reference when not removing.
-        let (index, data_ptr) = result;
+        let (index, data_ptr) = *result;
         let data: @T = cast::transmute(move data_ptr);
         cast::bump_box_refcount(data);
         if do_pop {

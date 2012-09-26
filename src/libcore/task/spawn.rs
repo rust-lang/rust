@@ -200,7 +200,7 @@ fn each_ancestor(list:        &mut AncestorList,
         // the end of the list, which doesn't make sense to coalesce.
         return do (**ancestors).map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
-            do access_ancestors(&ancestor_arc) |nobe| {
+            do access_ancestors(ancestor_arc) |nobe| {
                 // Check monotonicity
                 assert last_generation > nobe.generation;
                 /*##########################################################*

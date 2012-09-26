@@ -177,7 +177,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[~str] {
 
 fn get_path(cstore: cstore, d: ast::def_id) -> ~[~str] {
     option::map_default(&p(cstore).mod_path_map.find(d), ~[],
-                        |ds| str::split_str(*ds, ~"::"))
+                        |ds| str::split_str(**ds, ~"::"))
 }
 // Local Variables:
 // mode: rust

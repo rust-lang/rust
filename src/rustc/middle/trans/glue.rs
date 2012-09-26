@@ -192,16 +192,16 @@ fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt, field: uint,
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
         if field == abi::tydesc_field_take_glue {
             ti.take_glue =
-                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_drop_glue {
             ti.drop_glue =
-                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_free_glue {
             ti.free_glue =
-                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_visit_glue {
             ti.visit_glue =
-                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, *v));
         }
         return true;
     }
@@ -398,7 +398,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_class(did, ref substs) => {
         // Call the dtor if there is one
         do option::map_default(&ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
-            trans_class_drop(bcx, v, dt_id, did, substs)
+            trans_class_drop(bcx, v, *dt_id, did, substs)
         }
       }
       _ => bcx

@@ -612,7 +612,7 @@ impl &mem_categorization_ctxt {
                                 cmt: cmt) -> cmt {
         @{id: arg.id(), span: arg.span(),
           cat: cat_comp(cmt, comp_variant(enum_did)),
-          lp: cmt.lp.map(|l| @lp_comp(l, comp_variant(enum_did)) ),
+          lp: cmt.lp.map(|l| @lp_comp(*l, comp_variant(enum_did)) ),
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(arg)}
     }
@@ -649,7 +649,7 @@ impl &mem_categorization_ctxt {
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
         let f_comp = comp_field(f_name, f_mutbl);
-        let lp = base_cmt.lp.map(|lp| @lp_comp(lp, f_comp) );
+        let lp = base_cmt.lp.map(|lp| @lp_comp(*lp, f_comp) );
         @{id: node.id(), span: node.span(),
           cat: cat_comp(base_cmt, f_comp), lp:lp,
           mutbl: m, ty: self.tcx.ty(node)}
@@ -699,7 +699,7 @@ impl &mem_categorization_ctxt {
             }
 
             deref_comp(comp) => {
-                let lp = base_cmt.lp.map(|l| @lp_comp(l, comp) );
+                let lp = base_cmt.lp.map(|l| @lp_comp(*l, comp) );
                 let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
                 @{id:node.id(), span:node.span(),
                   cat:cat_comp(base_cmt, comp), lp:lp,
@@ -724,7 +724,7 @@ impl &mem_categorization_ctxt {
             // (a) the contents are loanable if the base is loanable
             // and this is a *unique* vector
             let deref_lp = match ptr {
-              uniq_ptr => {base_cmt.lp.map(|lp| @lp_deref(lp, uniq_ptr))}
+              uniq_ptr => {base_cmt.lp.map(|lp| @lp_deref(*lp, uniq_ptr))}
               _ => {None}
             };
 
@@ -756,7 +756,7 @@ impl &mem_categorization_ctxt {
         fn comp(expr: @ast::expr, of_cmt: cmt,
                 vect: ty::t, mutbl: ast::mutability, ty: ty::t) -> cmt {
             let comp = comp_index(vect, mutbl);
-            let index_lp = of_cmt.lp.map(|lp| @lp_comp(lp, comp) );
+            let index_lp = of_cmt.lp.map(|lp| @lp_comp(*lp, comp) );
             @{id:expr.id, span:expr.span,
               cat:cat_comp(of_cmt, comp), lp:index_lp,
               mutbl:mutbl, ty:ty}
@@ -766,7 +766,7 @@ impl &mem_categorization_ctxt {
     fn cat_tuple_elt<N: ast_node>(elt: N, cmt: cmt) -> cmt {
         @{id: elt.id(), span: elt.span(),
           cat: cat_comp(cmt, comp_tuple),
-          lp: cmt.lp.map(|l| @lp_comp(l, comp_tuple) ),
+          lp: cmt.lp.map(|l| @lp_comp(*l, comp_tuple) ),
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(elt)}
     }
@@ -958,7 +958,7 @@ impl &mem_categorization_ctxt {
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
-             cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
+             cmt.lp.map_default(~"none", |p| self.lp_to_str(*p) ),
              ty_to_str(self.tcx, cmt.ty))
     }
 

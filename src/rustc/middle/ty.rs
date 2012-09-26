@@ -1177,7 +1177,7 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
 fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
-         self_ty: substs.self_ty.map(|t| fldop(t)),
+         self_ty: substs.self_ty.map(|t| fldop(*t)),
          tps: substs.tps.map(|t| fldop(*t))}
     }
 
@@ -1273,8 +1273,8 @@ fn fold_regions_and_ty(
         fldr: fn(r: region) -> region,
         fldt: fn(t: t) -> t) -> substs {
 
-        {self_r: substs.self_r.map(|r| fldr(r)),
-         self_ty: substs.self_ty.map(|t| fldt(t)),
+        {self_r: substs.self_r.map(|r| fldr(*r)),
+         self_ty: substs.self_ty.map(|t| fldt(*t)),
          tps: substs.tps.map(|t| fldt(*t))}
     }
 
@@ -1403,8 +1403,8 @@ fn substs_is_noop(substs: &substs) -> bool {
 
 fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
-         substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
-         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
+         substs.self_r.map_default(~"none", |r| region_to_str(cx, *r)),
+         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, *t)),
          tys_to_str(cx, substs.tps))
 }
 
