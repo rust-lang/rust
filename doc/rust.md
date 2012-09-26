@@ -206,20 +206,20 @@ export use mod
 The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-again assert
+as assert
 break
-check const copy
-drop
-else enum export extern
+const copy
+do drop
+else enum extern
 fail false fn for
 if impl
 let log loop
-match mod mut
-pure
-return
-struct
+match mod move mut
+priv pub pure
+ref return
+self static struct
 true trait type
-unsafe
+unsafe use
 while
 ~~~~~~~~
 
