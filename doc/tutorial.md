@@ -713,16 +713,16 @@ enum Shape {
 }
 ~~~~
 
-A value of this type is either a Circle, in which case it contains a
-point struct and a float, or a Rectangle, in which case it contains
-two point records. The run-time representation of such a value
+A value of this type is either a `Circle`, in which case it contains a
+`Point` struct and a float, or a `Rectangle`, in which case it contains
+two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 'tagged union' pattern in C, but with better ergonomics.
 
-The above declaration will define a type `shape` that can be used to
-refer to such shapes, and two functions, `circle` and `rectangle`,
+The above declaration will define a type `Shape` that can be used to
+refer to such shapes, and two functions, `Circle` and `Rectangle`,
 which can be used to construct values of the type (taking arguments of
-the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
+the specified types). So `Circle(Point {x: 0f, y: 0f}, 10f)` is the way to
 create a new circle.
 
 Enum variants need not have type parameters. This, for example, is
@@ -820,7 +820,7 @@ fn point_from_direction(dir: Direction) -> Point {
 
 ## Tuples
 
-Tuples in Rust behave exactly like records, except that their fields
+Tuples in Rust behave exactly like structs, except that their fields
 do not have names (and can thus not be accessed with dot notation).
 Tuples can have any arity except for 0 or 1 (though you may consider
 nil, `()`, as the empty tuple if you like).
@@ -1006,16 +1006,16 @@ of each is key to using Rust effectively.
 
 # Boxes and pointers
 
-In contrast to a lot of modern languages, aggregate types like records
+In contrast to a lot of modern languages, aggregate types like structs
 and enums are _not_ represented as pointers to allocated memory in
 Rust. They are, as in C and C++, represented directly. This means that
-if you `let x = {x: 1f, y: 1f};`, you are creating a record on the
-stack. If you then copy it into a data structure, the whole record is
+if you `let x = Point {x: 1f, y: 1f};`, you are creating a struct on the
+stack. If you then copy it into a data structure, the whole struct is
 copied, not just a pointer.
 
-For small records like `point`, this is usually more efficient than
-allocating memory and going through a pointer. But for big records, or
-records with mutable fields, it can be useful to have a single copy on
+For small structs like `Point`, this is usually more efficient than
+allocating memory and going through a pointer. But for big structs, or
+those with mutable fields, it can be useful to have a single copy on
 the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The safe pointer types are
@@ -1191,8 +1191,8 @@ compute_distance(shared_box, unique_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
-`on_the_stack`; this is because `on_the_stack` has the type `point`
-(that is, a record value) and we have to take its address to get a
+`on_the_stack`; this is because `on_the_stack` has the type `Point`
+(that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are created an alias: that is, another
 route to the same data.
@@ -1517,7 +1517,7 @@ fn each(v: &[int], op: fn(v: &int)) {
 The reason we pass in a *pointer* to an integer rather than the
 integer itself is that this is how the actual `each()` function for
 vectors works.  Using a pointer means that the function can be used
-for vectors of any type, even large records that would be impractical
+for vectors of any type, even large structs that would be impractical
 to copy out of the vector on each iteration.  As a caller, if we use a
 closure to provide the final operator argument, we can write it in a
 way that has a pleasant, block-like structure.

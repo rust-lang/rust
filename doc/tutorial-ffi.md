@@ -205,7 +205,7 @@ vector.
 ## Passing structures
 
 C functions often take pointers to structs as arguments. Since Rust
-records are binary-compatible with C structs, Rust programs can call
+structs are binary-compatible with C structs, Rust programs can call
 such functions directly.
 
 This program uses the POSIX function `gettimeofday` to get a
@@ -215,14 +215,20 @@ microsecond-resolution timer.
 extern mod std;
 use libc::c_ulonglong;
 
-type timeval = {mut tv_sec: c_ulonglong,
-                mut tv_usec: c_ulonglong};
+struct timeval {
+    mut tv_sec: c_ulonglong,
+    mut tv_usec: c_ulonglong
+}
+
 #[nolink]
 extern mod lib_c {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
 fn unix_time_in_microseconds() -> u64 unsafe {
-    let x = {mut tv_sec: 0 as c_ulonglong, mut tv_usec: 0 as c_ulonglong};
+    let x = timeval {
+        mut tv_sec: 0 as c_ulonglong,
+        mut tv_usec: 0 as c_ulonglong
+    };
     lib_c::gettimeofday(ptr::addr_of(x), ptr::null());
     return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
@@ -234,8 +240,8 @@ The `#[nolink]` attribute indicates that there's no foreign library to
 link in. The standard C library is already linked with Rust programs.
 
 A `timeval`, in C, is a struct with two 32-bit integers. Thus, we
-define a record type with the same contents, and declare
-`gettimeofday` to take a pointer to such a record.
+define a struct type with the same contents, and declare
+`gettimeofday` to take a pointer to such a struct.
 
 The second argument to `gettimeofday` (the time zone) is not used by
 this program, so it simply declares it to be a pointer to the nil
