@@ -199,13 +199,13 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let id = ast_util::def_id_of_def(fv.def).node;
 
             // skip over free variables that appear in the cap clause
-            if captured_vars.contains(id) { loop; }
+            if captured_vars.contains(&id) { loop; }
 
             // if this is the last use of the variable, then it will be
             // a move and not a copy
             let is_move = {
                 match cx.last_use_map.find(fn_id) {
-                  Some(vars) => (*vars).contains(id),
+                  Some(vars) => (*vars).contains(&id),
                   None => false
                 }
             };
@@ -588,7 +588,7 @@ fn check_cast_for_escaping_regions(
     do ty::walk_ty(source_ty) |ty| {
         match ty::get(ty).sty {
           ty::ty_param(source_param) => {
-            if target_params.contains(source_param) {
+            if target_params.contains(&source_param) {
                 /* case (2) */
             } else {
                 check_owned(cx.tcx, ty, source.span); /* case (3) */

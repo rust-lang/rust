@@ -813,7 +813,7 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
                   nid: ast::node_id) -> Datum {
         let is_last_use = match bcx.ccx().maps.last_use_map.find(ref_id) {
             None => false,
-            Some(vars) => (*vars).contains(nid)
+            Some(vars) => (*vars).contains(&nid)
         };
 
         let source = if is_last_use {FromLastUseLvalue} else {FromLvalue};

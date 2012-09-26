@@ -524,7 +524,7 @@ fn get_authority(rawurl: &str) ->
 
     let host_is_end_plus_one: &fn() -> bool = || {
         end+1 == len
-            && !['?', '#', '/'].contains(rawurl[end] as char)
+            && !['?', '#', '/'].contains(&(rawurl[end] as char))
     };
 
     // finish up

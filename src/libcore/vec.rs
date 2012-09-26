@@ -1873,7 +1873,7 @@ impl<A> &[A]: iter::BaseIter<A> {
 }
 
 impl<A> &[A]: iter::ExtendedIter<A> {
-    pure fn eachi(blk: fn(uint, v: &A) -> bool) { iter::eachi(self, blk) }
+    pure fn eachi(blk: fn(uint, v: &A) -> bool) { iter::eachi(&self, blk) }
     pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
@@ -1885,8 +1885,8 @@ impl<A> &[A]: iter::ExtendedIter<A> {
 }
 
 impl<A: Eq> &[A]: iter::EqIter<A> {
-    pure fn contains(x: A) -> bool { iter::contains(self, x) }
-    pure fn count(x: A) -> uint { iter::count(self, x) }
+    pure fn contains(x: &A) -> bool { iter::contains(self, x) }
+    pure fn count(x: &A) -> uint { iter::count(self, x) }
 }
 
 impl<A: Copy> &[A]: iter::CopyableIter<A> {

@@ -56,7 +56,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                             if method.vis == private &&
                                     (impl_id.crate != local_crate ||
                                      !privileged_items
-                                     .contains(impl_id.node)) {
+                                     .contains(&(impl_id.node))) {
                                 tcx.sess.span_err(span,
                                                   fmt!("method `%s` is \
                                                         private",
@@ -95,9 +95,9 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                     }
                                     match methods[method_num] {
                                         provided(method)
-                                                if method.vis == private &&
-                                                !privileged_items
-                                                .contains(trait_id.node) => {
+                                             if method.vis == private &&
+                                             !privileged_items
+                                             .contains(&(trait_id.node)) => {
                                             tcx.sess.span_err(span,
                                                               fmt!("method
                                                                     `%s` \
@@ -157,7 +157,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     match ty::get(ty::expr_ty(tcx, base)).sty {
                         ty_class(id, _)
                         if id.crate != local_crate ||
-                           !privileged_items.contains(id.node) => {
+                           !privileged_items.contains(&(id.node)) => {
                             match method_map.find(expr.id) {
                                 None => {
                                     debug!("(privacy checking) checking \
@@ -178,7 +178,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
                         ty_class(id, _) => {
                             if id.crate != local_crate ||
-                                    !privileged_items.contains(id.node) {
+                                    !privileged_items.contains(&(id.node)) {
                                 for fields.each |field| {
                                         debug!("(privacy checking) checking \
                                                 field in struct literal");
@@ -205,7 +205,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_class(id, _) => {
                             if id.crate != local_crate ||
-                                    !privileged_items.contains(id.node) {
+                                    !privileged_items.contains(&(id.node)) {
                                 for fields.each |field| {
                                         debug!("(privacy checking) checking \
                                                 struct pattern");

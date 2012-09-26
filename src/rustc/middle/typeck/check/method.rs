@@ -182,7 +182,7 @@ impl LookupContext {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
                 // See discussion in typeck::check::do_autoderef().
-                if enum_dids.contains(did) {
+                if enum_dids.contains(&did) {
                     return None;
                 }
                 enum_dids.push(did);

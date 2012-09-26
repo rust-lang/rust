@@ -23,8 +23,8 @@ trait ExtendedIter<A> {
 }
 
 trait EqIter<A:Eq> {
-    pure fn contains(x: A) -> bool;
-    pure fn count(x: A) -> uint;
+    pure fn contains(x: &A) -> bool;
+    pure fn count(x: &A) -> uint;
 }
 
 trait Times {
@@ -66,11 +66,11 @@ trait Buildable<A> {
                                 builder: fn(push: pure fn(+v: A))) -> self;
 }
 
-pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, v: &A) -> bool) {
-    let mut i = 0u;
+pure fn eachi<A,IA:BaseIter<A>>(self: &IA, blk: fn(uint, v: &A) -> bool) {
+    let mut i = 0;
     for self.each |a| {
         if !blk(i, a) { break; }
-        i += 1u;
+        i += 1;
     }
 }
 
@@ -130,17 +130,17 @@ pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy r, ~[a]))
 }
 
-pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> bool {
+pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> bool {
     for self.each |a| {
-        if *a == x { return true; }
+        if *a == *x { return true; }
     }
     return false;
 }
 
-pure fn count<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> uint {
-    do foldl(self, 0u) |count, value| {
-        if value == x {
-            count + 1u
+pure fn count<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> uint {
+    do foldl(self, 0) |count, value| {
+        if value == *x {
+            count + 1
         } else {
             count
         }

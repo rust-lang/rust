@@ -485,7 +485,7 @@ impl determine_rp_ctxt {
             }
         };
         let dep = {ambient_variance: self.ambient_variance, id: self.item_id};
-        if !vec.contains(dep) { vec.push(dep); }
+        if !vec.contains(&dep) { vec.push(dep); }
     }
 
     // Determines whether a reference to a region that appears in the

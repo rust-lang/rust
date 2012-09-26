@@ -169,7 +169,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
     visitor.visit_item(it, env, visitor);
 
     fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
-        if (*env.idstack).contains(it.id) {
+        if (*env.idstack).contains(&(it.id)) {
             env.sess.span_fatal(env.root_it.span, ~"recursive constant");
         }
         (*env.idstack).push(it.id);
