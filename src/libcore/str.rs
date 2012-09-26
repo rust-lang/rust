@@ -1827,10 +1827,10 @@ const tag_six_b: uint = 252u;
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
-pure fn as_bytes<T>(s: &const ~str, f: fn(~[u8]) -> T) -> T {
+pure fn as_bytes<T>(s: &const ~str, f: fn((&~[u8])) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
-        f(*v)
+        f(&*v)
     }
 }
 
@@ -1945,7 +1945,7 @@ fn reserve_at_least(s: &const ~str, n: uint) {
  */
 pure fn capacity(s: &const ~str) -> uint {
     do as_bytes(s) |buf| {
-        let vcap = vec::capacity(buf);
+        let vcap = vec::capacity(*buf);
         assert vcap > 0u;
         vcap - 1u
     }
@@ -2037,7 +2037,7 @@ mod raw {
 
     /// Form a slice from a *u8 buffer of the given length without copying.
     unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
-                              f: fn(&&v: &str) -> T) -> T {
+                              f: fn(v: &str) -> T) -> T {
         let v = (buf, len + 1);
         assert is_utf8(::cast::reinterpret_cast(&v));
         f(::cast::transmute(move v))
