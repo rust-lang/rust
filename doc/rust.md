@@ -200,7 +200,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 The keywords in [crate files](#crate-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-export use mod
+mod priv pub use
 ~~~~~~~~
 
 The keywords in [source files](#source-files) are the following strings:
@@ -616,7 +616,7 @@ or a *configuration* in Mesa.] A crate file describes:
   and copyright. These are used for linking, versioning and distributing
   crates.
 * The source-file and directory modules that make up the crate.
-* Any `use`, `extern mod` or `export` [view items](#view-items) that apply to
+* Any `use` or `extern mod` [view items](#view-items) that apply to
   the anonymous module at the top-level of the crate's module tree.
 
 An example of a crate file:
@@ -764,7 +764,7 @@ mod math {
 #### View items
 
 ~~~~~~~~ {.ebnf .gram}
-view_item : extern_mod_decl | use_decl | export_decl ;
+view_item : extern_mod_decl | use_decl ;
 ~~~~~~~~
 
 A view item manages the namespace of a module; it does not define new items
@@ -773,7 +773,6 @@ view item:
 
  * [extern mod declarations](#extern-mod-declarations)
  * [use declarations](#use-declarations)
- * [export declarations](#export-declarations)
 
 ##### Extern mod declarations
 
