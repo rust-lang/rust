@@ -101,8 +101,8 @@ pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>) -> Either<T, U> {
  *         ok(parse_bytes(buf))
  *     }
  */
-fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T) -> Result<U, V>)
-    -> Result<U, V> {
+fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
+    -> Result<U, V>) -> Result<U, V> {
     // XXX: Should be writable with move + match
     if res.is_ok() {
         op(unwrap(res))
@@ -309,7 +309,7 @@ fn map_opt<T,U:Copy,V:Copy>(
  * to accommodate an error like the vectors being of different lengths.
  */
 fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
-                               op: fn((&S),(&T)) -> Result<V,U>) -> Result<~[V],U> {
+                op: fn((&S),(&T)) -> Result<V,U>) -> Result<~[V],U> {
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
