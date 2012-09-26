@@ -189,7 +189,7 @@ impl PacketHeader {
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T: Send>(b: ~Buffer<T>) unsafe {
+    fn set_buffer<T: Send>(+b: ~Buffer<T>) unsafe {
         self.buffer = reinterpret_cast(&b);
     }
 }
