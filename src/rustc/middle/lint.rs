@@ -690,7 +690,7 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                         tcx.sess.span_lint(
                             deprecated_mode, id, id,
                             span,
-                            fmt!("argument %d uses an explicit mode", counter));
+                         fmt!("argument %d uses an explicit mode", counter));
                     }
 
                     ast::infer(_) => {
