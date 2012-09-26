@@ -12,9 +12,6 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-export DList;
-export new_dlist, from_elem, from_vec, extensions;
-
 type DListLink<T> = Option<DListNode<T>>;
 
 enum DListNode<T> = @{
@@ -24,7 +21,7 @@ enum DListNode<T> = @{
     mut next: DListLink<T>
 };
 
-enum DList<T> {
+pub enum DList<T> {
     DList_(@{
         mut size: uint,
         mut hd:   DListLink<T>,
@@ -94,13 +91,13 @@ pure fn DList<T>() -> DList<T> {
 }
 
 /// Creates a new dlist with a single element
-pure fn from_elem<T>(+data: T) -> DList<T> {
+pub pure fn from_elem<T>(+data: T) -> DList<T> {
     let list = DList();
     unsafe { list.push(move data); }
     list
 }
 
-fn from_vec<T: Copy>(+vec: &[T]) -> DList<T> {
+pub fn from_vec<T: Copy>(+vec: &[T]) -> DList<T> {
     do vec::foldl(DList(), vec) |list,data| {
         list.push(data); // Iterating left-to-right -- add newly to the tail.
         list

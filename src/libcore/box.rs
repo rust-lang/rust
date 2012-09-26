@@ -7,26 +7,22 @@
 use cmp::{Eq, Ord};
 use intrinsic::TyDesc;
 
-export ptr_eq, raw;
-
-mod raw {
-    #[legacy_exports];
-
-    struct BoxHeaderRepr {
+pub mod raw {
+    pub struct BoxHeaderRepr {
         ref_count: uint,
         type_desc: *TyDesc,
         prev: *BoxRepr,
         next: *BoxRepr,
     }
 
-    struct BoxRepr {
+    pub struct BoxRepr {
         header: BoxHeaderRepr,
         data: u8
     }
 
 }
 
-pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
+pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
     unsafe { ptr::addr_of(*a) == ptr::addr_of(*b) }
 }

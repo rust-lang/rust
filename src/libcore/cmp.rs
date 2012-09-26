@@ -14,17 +14,16 @@ and `Eq` to overload the `==` and `!=` operators.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-use nounittest::*;
-use unittest::*;
-export Ord;
-export Eq;
+pub use nounittest::*;
+pub use unittest::*;
+
+export Ord, Eq;
 
 /// Interfaces used for comparison.
 
 // Awful hack to work around duplicate lang items in core test.
 #[cfg(notest)]
 mod nounittest {
-    #[legacy_exports];
     /**
      * Trait for values that can be compared for a sort-order.
      *
@@ -33,7 +32,7 @@ mod nounittest {
      * default implementations.
      */
     #[lang="ord"]
-    trait Ord {
+    pub trait Ord {
         pure fn lt(other: &self) -> bool;
         pure fn le(other: &self) -> bool;
         pure fn ge(other: &self) -> bool;
@@ -50,7 +49,7 @@ mod nounittest {
      * a default implementation.
      */
     #[lang="eq"]
-    trait Eq {
+    pub trait Eq {
         pure fn eq(other: &self) -> bool;
         pure fn ne(other: &self) -> bool;
     }
@@ -63,14 +62,14 @@ mod nounittest {
 #[cfg(test)]
 mod unittest {
     #[legacy_exports];
-    trait Ord {
+    pub trait Ord {
         pure fn lt(other: &self) -> bool;
         pure fn le(other: &self) -> bool;
         pure fn ge(other: &self) -> bool;
         pure fn gt(other: &self) -> bool;
     }
 
-    trait Eq {
+    pub trait Eq {
         pure fn eq(other: &self) -> bool;
         pure fn ne(other: &self) -> bool;
     }
@@ -80,27 +79,27 @@ mod unittest {
 mod unittest {
     #[legacy_exports];}
 
-pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2)
 }
 
-pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
+pub pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2) || (*v1).eq(v2)
 }
 
-pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
+pub pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
     (*v1).eq(v2)
 }
 
-pure fn ne<T: Eq>(v1: &T, v2: &T) -> bool {
+pub pure fn ne<T: Eq>(v1: &T, v2: &T) -> bool {
     (*v1).ne(v2)
 }
 
-pure fn ge<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn ge<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).ge(v2)
 }
 
-pure fn gt<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn gt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }
 
