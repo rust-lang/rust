@@ -357,6 +357,15 @@ EXTRAFLAGS_STAGE$(1) = $$(RUSTFLAGS_STAGE$(1))
 
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
 
+# Pass --cfg stage0 only for the build->host part of stage0;
+# if you're building a cross config, the host->* parts are
+# effectively stage1, since it uses the just-built stage0.
+ifeq ($(1),0)
+ifneq ($(strip $(CFG_HOST_TRIPLE)),$(strip $(3)))
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+endif
+endif
+
 STAGE$(1)_T_$(2)_H_$(3) := 						\
 	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
 		$$(CFG_VALGRIND_COMPILE$(1)) 			\
