@@ -1048,7 +1048,8 @@ mod tests {
                   mk_dict(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert eq(result::get(&from_str(~"\n{ \"a\": null, \"b\" : true }\n")),
+        assert eq(result::get(&from_str(
+                  ~"\n{ \"a\": null, \"b\" : true }\n")),
                   mk_dict(~[
                       (~"a", Null),
                       (~"b", Boolean(true))]));
