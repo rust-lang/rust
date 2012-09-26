@@ -4,6 +4,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast::transmute;
 use ptr::addr_of;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
@@ -48,10 +49,10 @@ pub pure fn capacity<T>(v: @[const T]) -> uint {
 #[inline(always)]
 pub pure fn build_sized<A>(size: uint,
                            builder: &fn(push: pure fn(+v: A))) -> @[A] {
-    let mut vec = @[];
-    unsafe { raw::reserve(vec, size); }
-    builder(|+x| unsafe { raw::push(vec, move x) });
-    return vec;
+    let mut vec: @[const A] = @[];
+    unsafe { raw::reserve(&mut vec, size); }
+    builder(|+x| unsafe { raw::push(&mut vec, move x) });
+    return unsafe { transmute(vec) };
 }
 
 /**
@@ -125,10 +126,10 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, t: &T) -> @[T] {
+pub pure fn from_elem<T: Copy>(n_elts: uint, +t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
-        while i < n_elts { push(copy *t); i += 1u; }
+        while i < n_elts { push(copy t); i += 1u; }
     }
 }
 
@@ -165,8 +166,8 @@ pub mod raw {
     }
 
     #[inline(always)]
-    pub unsafe fn push<T>(v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
+    pub unsafe fn push<T>(v: &mut @[const T], +initval: T) {
+        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, move initval);
@@ -177,8 +178,8 @@ pub mod raw {
     }
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
-    pub unsafe fn push_fast<T>(v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
+    pub unsafe fn push_fast<T>(v: &mut @[const T], +initval: T) {
+        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).unboxed.data);
@@ -186,7 +187,7 @@ pub mod raw {
         rusti::move_val_init(*p, move initval);
     }
 
-    pub unsafe fn push_slow<T>(v: @[const T], +initval: T) {
+    pub unsafe fn push_slow<T>(v: &mut @[const T], +initval: T) {
         reserve_at_least(v, v.len() + 1u);
         push_fast(v, move initval);
     }
@@ -202,10 +203,10 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
-    pub unsafe fn reserve<T>(v: @[const T], n: uint) {
+    pub unsafe fn reserve<T>(v: &mut @[const T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
-        if capacity(v) < n {
-            let ptr = addr_of(v) as **VecRepr;
+        if capacity(*v) < n {
+            let ptr: **VecRepr = transmute(copy v);
             rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
                                               ptr, n as libc::size_t);
         }
@@ -226,7 +227,7 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
-    pub unsafe fn reserve_at_least<T>(v: @[const T], n: uint) {
+    pub unsafe fn reserve_at_least<T>(v: &mut @[const T], n: uint) {
         reserve(v, uint::next_power_of_two(n));
     }
 
