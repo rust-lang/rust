@@ -1,5 +1,9 @@
 //! Managed vectors
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use ptr::addr_of;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
@@ -21,7 +25,7 @@ extern mod rusti {
 
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
-pub pure fn capacity<T>(&&v: @[const T]) -> uint {
+pub pure fn capacity<T>(v: @[const T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr =
             ::cast::reinterpret_cast(&addr_of(v));
@@ -43,7 +47,7 @@ pub pure fn capacity<T>(&&v: @[const T]) -> uint {
  */
 #[inline(always)]
 pub pure fn build_sized<A>(size: uint,
-                           builder: fn(push: pure fn(+v: A))) -> @[A] {
+                           builder: &fn(push: pure fn(+v: A))) -> @[A] {
     let mut vec = @[];
     unsafe { raw::reserve(vec, size); }
     builder(|+x| unsafe { raw::push(vec, move x) });
@@ -61,7 +65,7 @@ pub pure fn build_sized<A>(size: uint,
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> @[A] {
+pub pure fn build<A>(builder: &fn(push: pure fn(+v: A))) -> @[A] {
     build_sized(4, builder)
 }
 
@@ -78,8 +82,8 @@ pub pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build_sized_opt<A>(size: Option<uint>,
-                           builder: fn(push: pure fn(+v: A))) -> @[A] {
+pub pure fn build_sized_opt<A>(+size: Option<uint>,
+                               builder: &fn(push: pure fn(+v: A))) -> @[A] {
     build_sized(size.get_default(4), builder)
 }
 
@@ -94,10 +98,10 @@ pub pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
 
 
 /// Apply a function to each element of a vector and return the results
-pub pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
+pub pure fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
         for vec::each(v) |elem| {
-            push(f(*elem));
+            push(f(elem));
         }
     }
 }
@@ -121,10 +125,10 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
+pub pure fn from_elem<T: Copy>(n_elts: uint, t: &T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
-        while i < n_elts { push(t); i += 1u; }
+        while i < n_elts { push(copy *t); i += 1u; }
     }
 }
 
@@ -155,13 +159,13 @@ pub mod raw {
      * the vector is actually the specified size.
      */
     #[inline(always)]
-    pub unsafe fn set_len<T>(&&v: @[const T], new_len: uint) {
+    pub unsafe fn set_len<T>(v: @[const T], new_len: uint) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
-    pub unsafe fn push<T>(&v: @[const T], +initval: T) {
+    pub unsafe fn push<T>(v: @[const T], +initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
@@ -173,7 +177,7 @@ pub mod raw {
     }
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
-    pub unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
+    pub unsafe fn push_fast<T>(v: @[const T], +initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
@@ -182,7 +186,7 @@ pub mod raw {
         rusti::move_val_init(*p, move initval);
     }
 
-    pub unsafe fn push_slow<T>(&v: @[const T], +initval: T) {
+    pub unsafe fn push_slow<T>(v: @[const T], +initval: T) {
         reserve_at_least(v, v.len() + 1u);
         push_fast(v, move initval);
     }
@@ -198,7 +202,7 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
-    pub unsafe fn reserve<T>(&v: @[const T], n: uint) {
+    pub unsafe fn reserve<T>(v: @[const T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(v) < n {
             let ptr = addr_of(v) as **VecRepr;
@@ -222,7 +226,7 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
-    pub unsafe fn reserve_at_least<T>(&v: @[const T], n: uint) {
+    pub unsafe fn reserve_at_least<T>(v: @[const T], n: uint) {
         reserve(v, uint::next_power_of_two(n));
     }
 
