@@ -29,10 +29,10 @@ a limit duration. Borrowed pointers never claim any kind of ownership
 over the data that they point at: instead, they are used for cases
 where you like to make use of data for a short time.
 
-As an example, consider a simple record type `point`:
+As an example, consider a simple struct type `point`:
 
 ~~~
-type point = {x: float, y: float};
+struct point {x: float, y: float}
 ~~~
 
 We can use this simple definition to allocate points in many ways. For
@@ -82,7 +82,7 @@ compute_distance(shared_box, unique_box);
 
 Here the `&` operator is used to take the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `point`
-(that is, a record value) and we have to take its address to get a
+(that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are created an alias: that is, another
 route to the same data.
@@ -325,15 +325,18 @@ which has been freed.
 In fact, the compiler can apply this same kind of reasoning can be
 applied to any memory which is _(uniquely) owned by the stack
 frame_. So we could modify the previous example to introduce
-additional unique pointers and records, and the compiler will still be
+additional unique pointers and structs, and the compiler will still be
 able to detect possible mutations:
 
 ~~~ {.xfail-test}
 fn example3() -> int {
-    let mut x = ~{mut f: ~{g: 3}};
+    struct R { g: int }
+    struct S { mut f: ~R }
+
+    let mut x = ~S {mut f: ~R {g: 3}};
     let y = &x.f.g;
-    x = ~{mut f: ~{g: 4}}; // Error reported here.
-    x.f = ~{g: 5};         // Error reported here.
+    x = ~S {mut f: ~R {g: 4}}; // Error reported here.
+    x.f = ~R {g: 5};           // Error reported here.
     *y
 }
 ~~~
@@ -504,7 +507,7 @@ Stack             Memory
 ~~~
 
 As you can see, the `size` pointer would not be pointing at a `float` and
-not a record. This is not good.
+not a struct. This is not good.
 
 So, in fact, for every `ref` binding, the compiler will impose the
 same rules as the ones we saw for borrowing the interior of a unique
@@ -559,14 +562,14 @@ defined by the caller.
 
 In any case, whatever the lifetime L is, the pointer produced by
 `&p.x` always has the same lifetime as `p` itself, as a pointer to a
-field of a record is valid as long as the record is valid. Therefore,
+field of a struct is valid as long as the struct is valid. Therefore,
 the compiler is satisfied with the function `get_x()`.
 
 To drill in this point, let’s look at a variation on the example, this
 time one which does not compile:
 
 ~~~ {.xfail-test}
-type point = {x: float, y: float};
+struct point {x: float, y: float}
 fn get_x_sh(p: @point) -> &float {
     &p.x // Error reported here
 }
