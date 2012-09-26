@@ -584,6 +584,29 @@ impl parser {
         } else { infer(self.get_id()) }
     }
 
+    fn is_named_argument() -> bool {
+        let offset = if self.token == token::BINOP(token::AND) {
+            1
+        } else if self.token == token::BINOP(token::MINUS) {
+            1
+        } else if self.token == token::ANDAND {
+            1
+        } else if self.token == token::BINOP(token::PLUS) {
+            if self.look_ahead(1) == token::BINOP(token::PLUS) {
+                2
+            } else {
+                1
+            }
+        } else { 0 };
+        if offset == 0 {
+            is_plain_ident(self.token)
+                && self.look_ahead(1) == token::COLON
+        } else {
+            is_plain_ident(self.look_ahead(offset))
+                && self.look_ahead(offset + 1) == token::COLON
+        }
+    }
+
     fn parse_capture_item_or(parse_arg_fn: fn(parser) -> arg_or_capture_item)
         -> arg_or_capture_item {
 
@@ -605,28 +628,16 @@ impl parser {
     // This version of parse arg doesn't necessarily require
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
-        let m = self.parse_arg_mode();
-        let i = if require_name {
+        let mut m;
+        let i = if require_name || self.is_named_argument() {
+            m = self.parse_arg_mode();
             let name = self.parse_value_ident();
             self.expect(token::COLON);
             name
         } else {
-            if is_plain_ident(self.token)
-                && self.look_ahead(1u) == token::COLON {
-                let name = self.parse_value_ident();
-                self.bump();
-                name
-            } else { special_idents::invalid }
+            m = infer(self.get_id());
+            special_idents::invalid
         };
-
-        match m {
-            expl(_) => {
-                if i == special_idents::invalid {
-                    self.obsolete(copy self.span, ObsoleteModeInFnType);
-                }
-            }
-            _ => {}
-        }
 
         let t = self.parse_ty(false);
 
