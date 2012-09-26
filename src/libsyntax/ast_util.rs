@@ -399,7 +399,7 @@ fn operator_prec(op: ast::binop) -> uint {
 fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
-    {inputs: ~[{mode: ast::infer(0), // tjc: node id???
+    {inputs: ~[{mode: ast::expl(ast::by_ref),
                 ty: nil_t, ident: parse::token::special_idents::underscore,
                 id: 0}],
      output: nil_t, cf: return_val}
