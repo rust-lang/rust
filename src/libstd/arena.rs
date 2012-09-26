@@ -70,9 +70,9 @@ struct Arena {
 }
 
 fn chunk(size: uint, is_pod: bool) -> Chunk {
-    let mut v = @[];
-    unsafe { at_vec::raw::reserve(v, size); }
-    { data: v, mut fill: 0u, is_pod: is_pod }
+    let mut v: @[const u8] = @[];
+    unsafe { at_vec::raw::reserve(&mut v, size); }
+    { data: unsafe { cast::transmute(v) }, mut fill: 0u, is_pod: is_pod }
 }
 
 fn arena_with_size(initial_size: uint) -> Arena {
