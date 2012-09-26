@@ -7,7 +7,7 @@ The iteration traits and common implementation
 use cmp::{Eq, Ord};
 
 /// A function used to initialize the elements of a sequence
-type InitOp<T> = fn(uint) -> T;
+type InitOp<T> = &fn(uint) -> T;
 
 trait BaseIter<A> {
     pure fn each(blk: fn(v: &A) -> bool);
