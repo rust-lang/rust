@@ -6,8 +6,6 @@
 
 use cast::transmute;
 
-export console_on, console_off, log_type;
-
 #[nolink]
 extern mod rustrt {
     #[legacy_exports];
@@ -17,7 +15,7 @@ extern mod rustrt {
 }
 
 /// Turns on logging to stdout globally
-fn console_on() {
+pub fn console_on() {
     rustrt::rust_log_console_on();
 }
 
@@ -28,7 +26,7 @@ fn console_on() {
  * runtime environment's logging spec, e.g. by setting
  * the RUST_LOG environment variable
  */
-fn console_off() {
+pub fn console_off() {
     rustrt::rust_log_console_off();
 }
 
