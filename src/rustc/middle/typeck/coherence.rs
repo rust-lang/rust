@@ -654,6 +654,10 @@ impl CoherenceChecker {
                                                 module_def_id,
                                                 None);
         for (*implementations).each |implementation| {
+            debug!("coherence: adding impl from external crate: %s",
+                   ty::item_path_str(self.crate_context.tcx,
+                                     implementation.did));
+
             // Make sure we don't visit the same implementation
             // multiple times.
             match impls_seen.find(implementation.did) {
