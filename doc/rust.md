@@ -1224,14 +1224,6 @@ impl circle: shape {
 }
 ~~~~
 
-This defines an implementation named `circle_shape` of trait
-`shape` for type `circle`. The name of the implementation is the name
-by which it is imported and exported, but has no further significance.
-It may be omitted to default to the name of the trait that was
-implemented. Implementation names do not conflict the way other names
-do: multiple implementations with the same name may exist in a scope at
-the same time.
-
 It is possible to define an implementation without referring to a
 trait.  The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
