@@ -1001,7 +1001,7 @@ pure fn pure_length<T>(ls: List<T>) -> uint {
 Despite its name, `pure_foldl` is a `fn`, not a `pure fn`, because there is no
 way in Rust to specify that the higher-order function argument `f` is a pure
 function. So, to use `foldl` in a pure list length function that a pure function
-could then use, we must use an `unchecked` block wrapped around the call to
+could then use, we must use an `unsafe` block wrapped around the call to
 `pure_foldl` in the definition of `pure_length`.
 
 #### Generic functions
