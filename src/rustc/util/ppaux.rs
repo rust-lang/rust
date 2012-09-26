@@ -261,7 +261,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                 m == ty::default_arg_mode_for_ty(cx, ty) {
                 ~""
             } else {
-                mode_to_str(ast::expl(m))
+                mode_to_str(ast::expl(m)) + ":"
             }
           }
         };
