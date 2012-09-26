@@ -356,7 +356,7 @@ mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
-        pure fn index(&&k: K) -> V {
+        pure fn index(+k: K) -> V {
             unsafe {
                 self.get(k)
             }

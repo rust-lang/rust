@@ -118,7 +118,7 @@ fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
 }
 
 priv impl<T> DList<T> {
-    pure fn new_link(-data: T) -> DListLink<T> {
+    pure fn new_link(+data: T) -> DListLink<T> {
         Some(DListNode(@{data: move data, mut linked: true,
                           mut prev: None, mut next: None}))
     }

@@ -77,6 +77,6 @@ trait Shr<RHS,Result> {
 
 #[lang="index"]
 trait Index<Index,Result> {
-    pure fn index(index: Index) -> Result;
+    pure fn index(+index: Index) -> Result;
 }
 
