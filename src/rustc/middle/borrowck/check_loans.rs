@@ -204,7 +204,7 @@ impl check_loan_ctxt {
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
-                    (*self.fn_args).contains(did.node);
+                    (*self.fn_args).contains(&(did.node));
                 if is_fn_arg { return; } // case (a) above
               }
               ast::expr_fn_block(*) | ast::expr_fn(*) |
@@ -251,7 +251,7 @@ impl check_loan_ctxt {
             let def = self.tcx().def_map.get(expr.id);
             let did = ast_util::def_id_of_def(def);
             did.crate == ast::local_crate &&
-                (*self.fn_args).contains(did.node)
+                (*self.fn_args).contains(&(did.node))
           }
           ast::expr_fn_block(*) | ast::expr_fn(*) => {
             self.is_stack_closure(expr.id)

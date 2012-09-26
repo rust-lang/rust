@@ -8,7 +8,7 @@ type IMPL_T<A> = dlist::DList<A>;
  * e.g. breadth-first search with in-place enqueues), but removing the current
  * node is forbidden.
  */
-pure fn EACH<A>(self: IMPL_T<A>, f: fn(v: &A) -> bool) {
+pure fn EACH<A>(self: &IMPL_T<A>, f: fn(v: &A) -> bool) {
     let mut link = self.peek_n();
     while option::is_some(&link) {
         let nobe = option::get(&link);
@@ -29,6 +29,6 @@ pure fn EACH<A>(self: IMPL_T<A>, f: fn(v: &A) -> bool) {
     }
 }
 
-pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> Option<uint> {
+pure fn SIZE_HINT<A>(self: &IMPL_T<A>) -> Option<uint> {
     Some(self.len())
 }

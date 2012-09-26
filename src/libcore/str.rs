@@ -377,7 +377,7 @@ fn unshift_char(s: &mut ~str, ch: char) {
 pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
     if chars_to_trim.is_empty() { return from_slice(s); }
 
-    match find(s, |c| !chars_to_trim.contains(c)) {
+    match find(s, |c| !chars_to_trim.contains(&c)) {
       None => ~"",
       Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
@@ -395,7 +395,7 @@ pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
 pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
     if chars_to_trim.is_empty() { return str::from_slice(s); }
 
-    match rfind(s, |c| !chars_to_trim.contains(c)) {
+    match rfind(s, |c| !chars_to_trim.contains(&c)) {
       None => ~"",
       Some(last) => {
         let {next, _} = char_range_at(s, last);
