@@ -201,7 +201,6 @@ mod str;
 mod ptr;
 #[legacy_exports]
 mod vec;
-#[legacy_exports]
 mod at_vec;
 #[legacy_exports]
 mod bool;
