@@ -30,7 +30,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
 
     if os::getenv(~"RUST_BENCH").is_some() { run_test = true }
     else if argv.len() > 0 {
-        run_test = argv.contains(~"all") || argv.contains(name)
+        run_test = argv.contains(&~"all") || argv.contains(&name)
     }
 
     if !run_test { return }

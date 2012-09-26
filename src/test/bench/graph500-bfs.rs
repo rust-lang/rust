@@ -374,7 +374,7 @@ fn validate(edges: ~[(node_id, node_id)],
             true
         }
         else {
-            edges.contains((u, v)) || edges.contains((v, u))
+            edges.contains(&(u, v)) || edges.contains(&(v, u))
         }
     };
 
