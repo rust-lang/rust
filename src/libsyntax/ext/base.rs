@@ -73,7 +73,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: None})
     }
-    let syntax_expanders = HashMap::<~str,syntax_extension>();
+    let syntax_expanders = HashMap();
     syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert(~"macro_rules",
@@ -82,6 +82,8 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(~"auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
+    syntax_expanders.insert(~"auto_serialize2",
+                            item_decorator(ext::auto_serialize2::expand));
     syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));

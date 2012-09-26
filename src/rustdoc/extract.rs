@@ -21,7 +21,7 @@ fn to_str(id: ast::ident) -> ~str {
     return *(*intr.get()).get(id);
 }
 
-fn interner() -> syntax::parse::token::ident_interner {
+fn interner() -> @syntax::parse::token::ident_interner {
     return *(unsafe{ local_data_get(interner_key!()) }).get();
 }
 

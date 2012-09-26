@@ -38,6 +38,10 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
+// FIXME(#3534): Replace with the struct-based newtype when it's been
+// implemented.
+struct ident { repr: uint }
+
 fn serialize_ident<S: Serializer>(s: S, i: ident) {
     let intr = match unsafe{
         task::local_data::local_data_get(interner_key!())
@@ -59,7 +63,16 @@ fn deserialize_ident<D: Deserializer>(d: D) -> ident  {
     (*intr).intern(@d.read_str())
 }
 
-type ident = token::str_num;
+impl ident: cmp::Eq {
+    pure fn eq(other: &ident) -> bool { self.repr == other.repr }
+    pure fn ne(other: &ident) -> bool { !self.eq(other) }
+}
+
+impl ident: to_bytes::IterBytes {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        self.repr.iter_bytes(lsb0, f)
+    }
+}
 
 // Functions may or may not have names.
 #[auto_serialize]
