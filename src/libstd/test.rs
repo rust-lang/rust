@@ -5,7 +5,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;

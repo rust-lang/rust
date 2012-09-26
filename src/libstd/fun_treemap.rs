@@ -1,4 +1,4 @@
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 /*!
