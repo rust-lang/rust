@@ -134,9 +134,9 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, +t: T) -> @[T] {
 }
 
 #[cfg(notest)]
-mod traits {
+pub mod traits {
     #[legacy_exports];
-    impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+    pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> @[T] {
             append(self, (*rhs))
@@ -249,9 +249,7 @@ pub fn test() {
     assert from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14];
 }
 
-/*
 #[test]
 pub fn append_test() {
     assert @[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6];
 }
-*/
