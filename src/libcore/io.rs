@@ -74,69 +74,71 @@ impl<T: Reader> T : ReaderUtil {
 impl Reader {
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
-            let mut i = 0u;
-            while i < vec::len(buf) {
+        fn chars_from_bytes(buf: &~[u8], chars: &mut ~[char])
+            -> (uint, uint) {
+            let mut i = 0;
+            let buf_len = buf.len();
+            while i < buf_len {
                 let b0 = buf[i];
                 let w = str::utf8_char_width(b0);
                 let end = i + w;
-                i += 1u;
-                assert (w > 0u);
-                if w == 1u {
-                    vec::push(chars,  b0 as char );
+                i += 1;
+                assert (w > 0);
+                if w == 1 {
+                    vec::push(*chars, b0 as char);
                     loop;
                 }
                 // can't satisfy this char with the existing data
-                if end > vec::len(buf) {
-                    return (i - 1u, end - vec::len(buf));
+                if end > buf_len {
+                    return (i - 1, end - buf_len);
                 }
-                let mut val = 0u;
+                let mut val = 0;
                 while i < end {
                     let next = buf[i] as int;
-                    i += 1u;
+                    i += 1;
                     assert (next > -1);
                     assert (next & 192 == 128);
-                    val <<= 6u;
+                    val <<= 6;
                     val += (next & 63) as uint;
                 }
                 // See str::char_at
-                val += ((b0 << ((w + 1u) as u8)) as uint)
-                    << (w - 1u) * 6u - w - 1u;
-                vec::push(chars,  val as char );
+                val += ((b0 << ((w + 1) as u8)) as uint)
+                    << (w - 1) * 6 - w - 1u;
+                vec::push(*chars, val as char);
             }
-            return (i, 0u);
+            return (i, 0);
         }
         let mut buf: ~[u8] = ~[];
         let mut chars: ~[char] = ~[];
         // might need more bytes, but reading n will never over-read
         let mut nbread = n;
-        while nbread > 0u {
+        while nbread > 0 {
             let data = self.read_bytes(nbread);
-            if vec::len(data) == 0u {
+            if data.is_empty() {
                 // eof - FIXME (#2004): should we do something if
                 // we're split in a unicode char?
                 break;
             }
             vec::push_all(buf, data);
-            let (offset, nbreq) = chars_from_bytes(buf, chars);
-            let ncreq = n - vec::len(chars);
+            let (offset, nbreq) = chars_from_bytes(&buf, &mut chars);
+            let ncreq = n - chars.len();
             // again we either know we need a certain number of bytes
             // to complete a character, or we make sure we don't
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
-            if nbread > 0u {
-                buf = vec::slice(buf, offset, vec::len(buf));
+            if nbread > 0 {
+                buf = vec::slice(buf, offset, buf.len());
             }
         }
         move chars
     }
 
     fn read_char() -> char {
-        let c = self.read_chars(1u);
-        if vec::len(c) == 0u {
+        let c = self.read_chars(1);
+        if vec::len(c) == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
         }
-        assert(vec::len(c) == 1u);
+        assert(vec::len(c) == 1);
         return c[0];
     }
 
@@ -195,7 +197,7 @@ impl Reader {
         }
     }
 
-    fn each_line(it: fn(~str) -> bool) {
+    fn each_line(it: fn(s: &str) -> bool) {
         while !self.eof() {
             if !it(self.read_line()) { break; }
         }
@@ -440,7 +442,7 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
 }
 
 
-fn mk_file_writer(path: &Path, flags: ~[FileFlag])
+fn mk_file_writer(path: &Path, flags: &[FileFlag])
     -> Result<Writer, ~str> {
 
     #[cfg(windows)]
@@ -644,7 +646,7 @@ impl<T: Writer> T : WriterUtil {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn file_writer(path: &Path, flags: ~[FileFlag]) -> Result<Writer, ~str> {
+fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<Writer, ~str> {
     mk_file_writer(path, flags).chain(|w| result::Ok(w))
 }
 
@@ -786,7 +788,7 @@ mod fsync {
 
 
     // Artifacts that need to fsync on destruction
-    struct Res<t> {
+    struct Res<t: Copy> {
         arg: Arg<t>,
         drop {
           match self.arg.opt_level {
@@ -799,7 +801,7 @@ mod fsync {
         }
     }
 
-    fn Res<t>(-arg: Arg<t>) -> Res<t>{
+    fn Res<t: Copy>(+arg: Arg<t>) -> Res<t>{
         Res {
             arg: move arg
         }
@@ -808,28 +810,28 @@ mod fsync {
     type Arg<t> = {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: fn@(t, Level) -> int
+        fsync_fn: fn@(+f: t, Level) -> int
     };
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
-    fn FILE_res_sync(&&file: FILERes, opt_level: Option<Level>,
-                  blk: fn(&&v: Res<*libc::FILE>)) {
-        blk(Res({
+    fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
+                  blk: fn(+v: Res<*libc::FILE>)) {
+        blk(move Res({
             val: file.f, opt_level: opt_level,
-            fsync_fn: fn@(&&file: *libc::FILE, l: Level) -> int {
+            fsync_fn: fn@(+file: *libc::FILE, l: Level) -> int {
                 return os::fsync_fd(libc::fileno(file), l) as int;
             }
         }));
     }
 
     // fsync fd after executing blk
-    fn fd_res_sync(&&fd: FdRes, opt_level: Option<Level>,
-                   blk: fn(&&v: Res<fd_t>)) {
-        blk(Res({
+    fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
+                   blk: fn(+v: Res<fd_t>)) {
+        blk(move Res({
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: fn@(&&fd: fd_t, l: Level) -> int {
+            fsync_fn: fn@(+fd: fd_t, l: Level) -> int {
                 return os::fsync_fd(fd, l) as int;
             }
         }));
@@ -839,11 +841,11 @@ mod fsync {
     trait FSyncable { fn fsync(l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    fn obj_sync(&&o: FSyncable, opt_level: Option<Level>,
-                blk: fn(&&v: Res<FSyncable>)) {
+    fn obj_sync(+o: FSyncable, opt_level: Option<Level>,
+                blk: fn(+v: Res<FSyncable>)) {
         blk(Res({
             val: o, opt_level: opt_level,
-            fsync_fn: fn@(&&o: FSyncable, l: Level) -> int {
+            fsync_fn: fn@(+o: FSyncable, l: Level) -> int {
                 return o.fsync(l);
             }
         }));
