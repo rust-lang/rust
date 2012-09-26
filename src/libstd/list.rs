@@ -32,7 +32,7 @@ fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
  */
 fn foldl<T: Copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
-    do iter(ls) |elt| { accum = f(&accum, &elt);}
+    do iter(ls) |elt| { accum = f(&accum, elt);}
     accum
 }
 
@@ -121,11 +121,11 @@ pure fn push<T: Copy>(ll: &mut @list<T>, +vv: T) {
 */
 
 /// Iterate over a list
-fn iter<T>(l: @List<T>, f: fn(T)) {
+fn iter<T>(l: @List<T>, f: fn((&T))) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          Cons(hd, tl) => {
+          Cons(ref hd, tl) => {
             f(hd);
             tl
           }

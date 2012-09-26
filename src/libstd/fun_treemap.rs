@@ -60,7 +60,7 @@ fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn(K, V)) {
+fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn((&K), (&V))) {
     match *m {
       Empty => (),
       /*
@@ -72,7 +72,7 @@ fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn(K, V)) {
         // copy v to make aliases work out
         let v1 = v;
         traverse(left, f);
-        f(k, v1);
+        f(&k, &v1);
         traverse(right, f);
       }
     }
