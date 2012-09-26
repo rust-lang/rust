@@ -5,7 +5,7 @@
  * very naive algorithm, but it will probably be updated to be a
  * red-black tree or something else.
  */
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use core::cmp::{Eq, Ord};

@@ -9,7 +9,7 @@
  */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
