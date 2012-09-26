@@ -783,9 +783,8 @@ link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
 
-An _extern mod declaration_ specifies a dependency on an external crate. The
-external crate is then imported into the declaring scope as the `ident`
-provided in the `extern_mod_decl`.
+An _extern mod declaration_ specifies a dependency on an external crate.
+The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
@@ -825,16 +824,16 @@ linkage-dependency with external crates. Linkage dependencies are
 independently declared with
 [`extern mod` declarations](#extern-mod-declarations).
 
-Imports support a number of "convenience" notations:
+Use declarations support a number of "convenience" notations:
 
-  * Importing as a different name than the imported name, using the
+  * Rebinding the target name as a new local name, using the
     syntax `use x = p::q::r;`.
-  * Importing a list of paths differing only in final element, using
-    the glob-like brace syntax `use a::b::{c,d,e,f};`
-  * Importing all paths matching a given prefix, using the glob-like
-    asterisk syntax `use a::b::*;`
+  * Simultaneously binding a list of paths differing only in final element,
+    using the glob-like brace syntax `use a::b::{c,d,e,f};`
+  * Binding all paths matching a given prefix,
+    using the glob-like asterisk syntax `use a::b::*;`
 
-An example of imports:
+An example of `use` declarations:
 
 ~~~~
 use foo = core::info;
@@ -855,82 +854,11 @@ fn main() {
 }
 ~~~~
 
-##### Export declarations
-
-~~~~~~~~ {.ebnf .gram}
-export_decl : "export" ident [ ',' ident ] *
-            | "export" ident "::{}"
-            | "export" ident '{' ident [ ',' ident ] * '}' ;
-~~~~~~~~
-
-An _export declaration_ restricts the set of local names within a module that
-can be accessed from code outside the module. By default, all _local items_ in
-a module are exported; imported paths are not automatically re-exported by
-default. If a module contains an explicit `export` declaration, this
-declaration replaces the default export with the export specified.
-
-An example of an export:
-
-~~~~~~~~
-pub mod foo {
-	#[legacy_exports];
-    export primary;
-
-    fn primary() {
-        helper(1, 2);
-        helper(3, 4);
-    }
-
-    fn helper(x: int, y: int) {
-        ...
-    }
-}
-
-fn main() {
-    foo::primary();  // Will compile.
-}
-~~~~~~~~
-
-If, instead of calling `foo::primary` in main, you were to call `foo::helper`
-then it would fail to compile:
-
-~~~~~~~~{.ignore}
-    foo::helper(2,3) // ERROR: will not compile.
-~~~~~~~~
-
-Multiple names may be exported from a single export declaration:
-
-~~~~~~~~
-mod foo {
-    export primary, secondary;
-
-    fn primary() {
-        helper(1, 2);
-        helper(3, 4);
-    }
-
-    fn secondary() {
-        ...
-    }
-
-    fn helper(x: int, y: int) {
-        ...
-    }
-}
-~~~~~~~~
-
-When exporting the name of an `enum` type `t`, by default, the module does
-*not* implicitly export any of `t`'s constructors. For example:
-
-~~~~~~~~
-mod foo {
-    export t;
-
-    enum t {a, b, c}
-}
-~~~~~~~~
-
-Here, `foo` imports `t`, but not `a`, `b`, and `c`.
+Like items, `use` declarations are private to the containing module, by default.
+Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
+A public `use` declaration can therefore be used to _redirect_ some public name to a different target definition,
+even a definition with a private canonical path, inside a different module.
+If a sequence of such redirections form a cycle or cannot be unambiguously resolved, they represent a compile-time error.
 
 ### Functions
 
