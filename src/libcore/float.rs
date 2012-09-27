@@ -51,49 +51,47 @@ const infinity: float = 1.0/0.0;
 const neg_infinity: float = -1.0/0.0;
 
 /* Module: consts */
-mod consts {
-    #[legacy_exports];
-
+pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
     /// Archimedes' constant
-    const pi: float = 3.14159265358979323846264338327950288;
+    pub const pi: float = 3.14159265358979323846264338327950288;
 
     /// pi/2.0
-    const frac_pi_2: float = 1.57079632679489661923132169163975144;
+    pub const frac_pi_2: float = 1.57079632679489661923132169163975144;
 
     /// pi/4.0
-    const frac_pi_4: float = 0.785398163397448309615660845819875721;
+    pub const frac_pi_4: float = 0.785398163397448309615660845819875721;
 
     /// 1.0/pi
-    const frac_1_pi: float = 0.318309886183790671537767526745028724;
+    pub const frac_1_pi: float = 0.318309886183790671537767526745028724;
 
     /// 2.0/pi
-    const frac_2_pi: float = 0.636619772367581343075535053490057448;
+    pub const frac_2_pi: float = 0.636619772367581343075535053490057448;
 
     /// 2.0/sqrt(pi)
-    const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
+    pub const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
 
     /// sqrt(2.0)
-    const sqrt2: float = 1.41421356237309504880168872420969808;
+    pub const sqrt2: float = 1.41421356237309504880168872420969808;
 
     /// 1.0/sqrt(2.0)
-    const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
+    pub const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
 
     /// Euler's number
-    const e: float = 2.71828182845904523536028747135266250;
+    pub const e: float = 2.71828182845904523536028747135266250;
 
     /// log2(e)
-    const log2_e: float = 1.44269504088896340735992468100189214;
+    pub const log2_e: float = 1.44269504088896340735992468100189214;
 
     /// log10(e)
-    const log10_e: float = 0.434294481903251827651128918916605082;
+    pub const log10_e: float = 0.434294481903251827651128918916605082;
 
     /// ln(2.0)
-    const ln_2: float = 0.693147180559945309417232121458176568;
+    pub const ln_2: float = 0.693147180559945309417232121458176568;
 
     /// ln(10.0)
-    const ln_10: float = 2.30258509299404568401799145468436421;
+    pub const ln_10: float = 2.30258509299404568401799145468436421;
 }
 
 /**
@@ -194,12 +192,12 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str_exact(num: float, digits: uint) -> ~str {
+pub fn to_str_exact(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, true)
 }
 
 #[test]
-fn test_to_str_exact_do_decimal() {
+pub fn test_to_str_exact_do_decimal() {
     let s = to_str_exact(5.0, 4u);
     assert s == ~"5.0000";
 }
@@ -214,7 +212,7 @@ fn test_to_str_exact_do_decimal() {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str(num: float, digits: uint) -> ~str {
+pub fn to_str(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, false)
 }
 
@@ -244,7 +242,7 @@ fn to_str(num: float, digits: uint) -> ~str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-fn from_str(num: &str) -> Option<float> {
+pub fn from_str(num: &str) -> Option<float> {
    if num == "inf" {
        return Some(infinity as float);
    } else if num == "-inf" {
@@ -379,7 +377,7 @@ fn from_str(num: &str) -> Option<float> {
  *
  * `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
  */
-fn pow_with_uint(base: uint, pow: uint) -> float {
+pub fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {
             return NaN as float;
@@ -399,21 +397,21 @@ fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
-pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
-pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
-pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
-pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
-pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
-pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
-pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
-pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
+pub pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
+pub pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
+pub pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
+pub pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
+pub pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
+pub pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
+pub pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
+pub pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
-pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
-pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
-pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
-pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
-pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
-pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
+pub pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
+pub pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
+pub pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
+pub pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
+pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
+pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl float : Eq {
     pure fn eq(other: &float) -> bool { self == (*other) }
@@ -440,7 +438,7 @@ impl float: num::Num {
 }
 
 #[test]
-fn test_from_str() {
+pub fn test_from_str() {
    assert from_str(~"3") == Some(3.);
    assert from_str(~"3") == Some(3.);
    assert from_str(~"3.14") == Some(3.14);
@@ -483,7 +481,7 @@ fn test_from_str() {
 }
 
 #[test]
-fn test_positive() {
+pub fn test_positive() {
   assert(is_positive(infinity));
   assert(is_positive(1.));
   assert(is_positive(0.));
@@ -494,7 +492,7 @@ fn test_positive() {
 }
 
 #[test]
-fn test_negative() {
+pub fn test_negative() {
   assert(!is_negative(infinity));
   assert(!is_negative(1.));
   assert(!is_negative(0.));
@@ -505,7 +503,7 @@ fn test_negative() {
 }
 
 #[test]
-fn test_nonpositive() {
+pub fn test_nonpositive() {
   assert(!is_nonpositive(infinity));
   assert(!is_nonpositive(1.));
   assert(!is_nonpositive(0.));
@@ -516,7 +514,7 @@ fn test_nonpositive() {
 }
 
 #[test]
-fn test_nonnegative() {
+pub fn test_nonnegative() {
   assert(is_nonnegative(infinity));
   assert(is_nonnegative(1.));
   assert(is_nonnegative(0.));
@@ -527,13 +525,13 @@ fn test_nonnegative() {
 }
 
 #[test]
-fn test_to_str_inf() {
+pub fn test_to_str_inf() {
     assert to_str(infinity, 10u) == ~"inf";
     assert to_str(-infinity, 10u) == ~"-inf";
 }
 
 #[test]
-fn test_traits() {
+pub fn test_traits() {
     fn test<U:num::Num cmp::Eq>(ten: &U) {
         assert (ten.to_int() == 10);
 
