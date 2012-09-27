@@ -1,5 +1,7 @@
 /// Map representation
 
+use io::ReaderUtil;
+
 extern mod std;
 
 enum square {
@@ -50,7 +52,7 @@ fn read_board_grid<rdr: Owned io::Reader>(+in: rdr) -> ~[~[square]] {
     let mut grid = ~[];
     for in.each_line |line| {
         let mut row = ~[];
-        for line.each_char |c| {
+        for str::each_char(line) |c| {
             vec::push(row, square_from_char(c))
         }
         vec::push(grid, row)
