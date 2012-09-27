@@ -47,9 +47,9 @@ export is_alphabetic,
        to_digit, cmp,
        escape_default, escape_unicode;
 
-use is_alphabetic = unicode::derived_property::Alphabetic;
-use is_XID_start = unicode::derived_property::XID_Start;
-use is_XID_continue = unicode::derived_property::XID_Continue;
+pub use is_alphabetic = unicode::derived_property::Alphabetic;
+pub use is_XID_start = unicode::derived_property::XID_Start;
+pub use is_XID_continue = unicode::derived_property::XID_Continue;
 
 
 /**
