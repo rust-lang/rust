@@ -1526,6 +1526,7 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
 }
 
 trait ImmutableVector<T> {
+    pure fn view(start: uint, end: uint) -> &[T];
     pure fn foldr<U: Copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn map<U>(f: fn(v: &T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, v: &T) -> U) -> ~[U];
@@ -1544,6 +1545,10 @@ trait ImmutableEqVector<T: Eq> {
 
 /// Extension methods for vectors
 impl<T> &[T]: ImmutableVector<T> {
+    /// Return a slice that points into another slice.
+    pure fn view(start: uint, end: uint) -> &[T] {
+        view(self, start, end)
+    }
     /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: Copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
@@ -2804,17 +2809,14 @@ mod tests {
         assert capacity(v) == 10u;
     }
 
-/*
     #[test]
-    #[ignore] // region inference doesn't work well enough for this yet.
     fn test_view() {
         let v = ~[1, 2, 3, 4, 5];
-        let v = view(v, 1u, 3u);
+        let v = v.view(1u, 3u);
         assert(len(v) == 2u);
         assert(v[0] == 2);
         assert(v[1] == 3);
     }
-*/
 }
 
 // Local Variables:
