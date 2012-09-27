@@ -66,24 +66,23 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 mod win32 {
-    use dword = libc::DWORD;
+    use libc::DWORD;
 
-    fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
+    fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
-        use libc::dword;
-        let mut n = tmpbuf_sz as dword;
+        let mut n = tmpbuf_sz as DWORD;
         let mut res = None;
         let mut done = false;
         while !done {
             let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
             do vec::as_mut_buf(buf) |b, _sz| {
-                let k : dword = f(b, tmpbuf_sz as dword);
-                if k == (0 as dword) {
+                let k : DWORD = f(b, tmpbuf_sz as DWORD);
+                if k == (0 as DWORD) {
                     done = true;
                 } else if (k == n &&
                            libc::GetLastError() ==
-                           libc::ERROR_INSUFFICIENT_BUFFER as dword) {
-                    n *= (2 as dword);
+                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
+                    n *= (2 as DWORD);
                 } else {
                     let sub = vec::slice(buf, 0u, k as uint);
                     res = option::Some(str::from_utf16(sub));
@@ -394,7 +393,7 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~str> {
         use win32::*;
         do fill_utf16_buf_and_decode() |buf, sz| {
-            libc::GetModuleFileNameW(0u as libc::dword, buf, sz)
+            libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
         }
     }
 
