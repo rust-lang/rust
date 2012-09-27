@@ -345,6 +345,7 @@ LLVMRustExecuteJIT(void* mem,
 
   std::string Err;
   TargetOptions Options;
+  Options.JITExceptionHandling = true;
   Options.JITEmitDebugInfo = true;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
