@@ -12,7 +12,7 @@ pub fn Serializer(wr: io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 
-impl Serializer: serialization2::Serializer {
+pub impl Serializer: serialization2::Serializer {
     fn emit_nil(&self) {
         self.wr.write_str(~"()")
     }
@@ -73,8 +73,35 @@ impl Serializer: serialization2::Serializer {
         self.wr.write_str(fmt!("%?_f32", v));
     }
 
-    fn emit_str(&self, v: &str) {
+    fn emit_char(&self, v: char) {
         self.wr.write_str(fmt!("%?", v));
+    }
+
+    fn emit_borrowed_str(&self, v: &str) {
+        self.wr.write_str(fmt!("&%?", v));
+    }
+
+    fn emit_owned_str(&self, v: &str) {
+        self.wr.write_str(fmt!("~%?", v));
+    }
+
+    fn emit_managed_str(&self, v: &str) {
+        self.wr.write_str(fmt!("@%?", v));
+    }
+
+    fn emit_borrowed(&self, f: fn()) {
+        self.wr.write_str(~"&");
+        f();
+    }
+
+    fn emit_owned(&self, f: fn()) {
+        self.wr.write_str(~"~");
+        f();
+    }
+
+    fn emit_managed(&self, f: fn()) {
+        self.wr.write_str(~"@");
+        f();
     }
 
     fn emit_enum(&self, _name: &str, f: fn()) {
@@ -94,8 +121,20 @@ impl Serializer: serialization2::Serializer {
         f();
     }
 
-    fn emit_vec(&self, _len: uint, f: fn()) {
-        self.wr.write_str(~"[");
+    fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
+        self.wr.write_str(~"&[");
+        f();
+        self.wr.write_str(~"]");
+    }
+
+    fn emit_owned_vec(&self, _len: uint, f: fn()) {
+        self.wr.write_str(~"~[");
+        f();
+        self.wr.write_str(~"]");
+    }
+
+    fn emit_managed_vec(&self, _len: uint, f: fn()) {
+        self.wr.write_str(~"@[");
         f();
         self.wr.write_str(~"]");
     }
@@ -105,30 +144,26 @@ impl Serializer: serialization2::Serializer {
         f();
     }
 
-    fn emit_box(&self, f: fn()) {
-        self.wr.write_str(~"@");
-        f();
-    }
-
-    fn emit_uniq(&self, f: fn()) {
-        self.wr.write_str(~"~");
-        f();
-    }
-
     fn emit_rec(&self, f: fn()) {
         self.wr.write_str(~"{");
         f();
         self.wr.write_str(~"}");
     }
 
-    fn emit_rec_field(&self, f_name: &str, f_idx: uint, f: fn()) {
-        if f_idx > 0u { self.wr.write_str(~", "); }
-        self.wr.write_str(f_name);
+    fn emit_struct(&self, name: &str, f: fn()) {
+        self.wr.write_str(fmt!("%s {", name));
+        f();
+        self.wr.write_str(~"}");
+    }
+
+    fn emit_field(&self, name: &str, idx: uint, f: fn()) {
+        if idx > 0u { self.wr.write_str(~", "); }
+        self.wr.write_str(name);
         self.wr.write_str(~": ");
         f();
     }
 
-    fn emit_tup(&self, _sz: uint, f: fn()) {
+    fn emit_tup(&self, _len: uint, f: fn()) {
         self.wr.write_str(~"(");
         f();
         self.wr.write_str(~")");
