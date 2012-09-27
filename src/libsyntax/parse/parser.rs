@@ -2940,7 +2940,8 @@ impl parser {
         (id, item_mod(m), Some(inner_attrs.inner))
     }
 
-    fn parse_item_foreign_fn(+attrs: ~[attribute]) -> @foreign_item {
+    fn parse_item_foreign_fn(vis: ast::visibility,
+                             +attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
         let purity = self.parse_fn_purity();
         let t = self.parse_fn_header();
@@ -2951,10 +2952,12 @@ impl parser {
                  attrs: attrs,
                  node: foreign_item_fn(decl, purity, t.tps),
                  id: self.get_id(),
-                 span: mk_sp(lo, hi)};
+                 span: mk_sp(lo, hi),
+                 vis: vis};
     }
 
-    fn parse_item_foreign_const(+attrs: ~[attribute]) -> @foreign_item {
+    fn parse_item_foreign_const(vis: ast::visibility,
+                                +attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
         self.expect_keyword(~"const");
         let ident = self.parse_ident();
@@ -2966,7 +2969,8 @@ impl parser {
                  attrs: attrs,
                  node: foreign_item_const(move ty),
                  id: self.get_id(),
-                 span: mk_sp(lo, hi)};
+                 span: mk_sp(lo, hi),
+                 vis: vis};
     }
 
     fn parse_fn_purity() -> purity {
@@ -2982,10 +2986,11 @@ impl parser {
     }
 
     fn parse_foreign_item(+attrs: ~[attribute]) -> @foreign_item {
+        let vis = self.parse_visibility();
         if self.is_keyword(~"const") {
-            self.parse_item_foreign_const(move attrs)
+            self.parse_item_foreign_const(vis, move attrs)
         } else {
-            self.parse_item_foreign_fn(move attrs)
+            self.parse_item_foreign_fn(vis, move attrs)
         }
     }
 
