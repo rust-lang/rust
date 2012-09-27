@@ -16,12 +16,6 @@ magic.
 
 */
 
-export LocalDataKey;
-export local_data_pop;
-export local_data_get;
-export local_data_set;
-export local_data_modify;
-
 use local_data_priv::{
     local_pop,
     local_get,
@@ -43,13 +37,13 @@ use local_data_priv::{
  *
  * These two cases aside, the interface is safe.
  */
-type LocalDataKey<T: Owned> = &fn(+v: @T);
+pub type LocalDataKey<T: Owned> = &fn(+v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-unsafe fn local_data_pop<T: Owned>(
+pub unsafe fn local_data_pop<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_pop(rt::rust_get_task(), key)
@@ -58,7 +52,7 @@ unsafe fn local_data_pop<T: Owned>(
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-unsafe fn local_data_get<T: Owned>(
+pub unsafe fn local_data_get<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get(rt::rust_get_task(), key)
@@ -67,7 +61,7 @@ unsafe fn local_data_get<T: Owned>(
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-unsafe fn local_data_set<T: Owned>(
+pub unsafe fn local_data_set<T: Owned>(
     key: LocalDataKey<T>, +data: @T) {
 
     local_set(rt::rust_get_task(), key, data)
@@ -76,7 +70,7 @@ unsafe fn local_data_set<T: Owned>(
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
-unsafe fn local_data_modify<T: Owned>(
+pub unsafe fn local_data_modify<T: Owned>(
     key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 
@@ -84,7 +78,7 @@ unsafe fn local_data_modify<T: Owned>(
 }
 
 #[test]
-fn test_tls_multitask() unsafe {
+pub fn test_tls_multitask() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"parent data");
     do task::spawn unsafe {
@@ -100,7 +94,7 @@ fn test_tls_multitask() unsafe {
 }
 
 #[test]
-fn test_tls_overwrite() unsafe {
+pub fn test_tls_overwrite() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"first data");
     local_data_set(my_key, @~"next data"); // Shouldn't leak.
@@ -108,7 +102,7 @@ fn test_tls_overwrite() unsafe {
 }
 
 #[test]
-fn test_tls_pop() unsafe {
+pub fn test_tls_pop() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"weasel");
     assert *(local_data_pop(my_key).get()) == ~"weasel";
@@ -117,7 +111,7 @@ fn test_tls_pop() unsafe {
 }
 
 #[test]
-fn test_tls_modify() unsafe {
+pub fn test_tls_modify() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
         match data {
@@ -136,7 +130,7 @@ fn test_tls_modify() unsafe {
 }
 
 #[test]
-fn test_tls_crust_automorestack_memorial_bug() unsafe {
+pub fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // This might result in a stack-canary clobber if the runtime fails to set
     // sp_limit to 0 when calling the cleanup extern - it might automatically
     // jump over to the rust stack, which causes next_c_sp to get recorded as
@@ -149,7 +143,7 @@ fn test_tls_crust_automorestack_memorial_bug() unsafe {
 }
 
 #[test]
-fn test_tls_multiple_types() unsafe {
+pub fn test_tls_multiple_types() unsafe {
     fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
@@ -161,7 +155,7 @@ fn test_tls_multiple_types() unsafe {
 }
 
 #[test]
-fn test_tls_overwrite_multiple_types() {
+pub fn test_tls_overwrite_multiple_types() {
     fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
@@ -177,7 +171,7 @@ fn test_tls_overwrite_multiple_types() {
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
-fn test_tls_cleanup_on_failure() unsafe {
+pub fn test_tls_cleanup_on_failure() unsafe {
     fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
