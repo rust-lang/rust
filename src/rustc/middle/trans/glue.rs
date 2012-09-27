@@ -426,8 +426,8 @@ fn trans_class_drop(bcx: block,
         // Class dtors have no explicit args, so the params should
         // just consist of the output pointer and the environment
         // (self)
-        assert(params.len() == 2u);
-        let self_arg = PointerCast(bcx, v0, params[1u]);
+        assert(params.len() == 2);
+        let self_arg = PointerCast(bcx, v0, params[1]);
         let args = ~[bcx.fcx.llretptr, self_arg];
         Call(bcx, dtor_addr, args);
 
@@ -440,7 +440,7 @@ fn trans_class_drop(bcx: block,
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
-        Store(bcx, C_u8(0u), drop_flag);
+        Store(bcx, C_u8(0), drop_flag);
         bcx
     }
 }

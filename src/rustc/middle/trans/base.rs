@@ -383,7 +383,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
                 parent_id: ast::def_id, substs: ~[ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
-    if (substs.len() > 0u) {
+    if (substs.is_not_empty()) {
         let did = if did.crate != ast::local_crate {
             inline::maybe_instantiate_inline(ccx, did)
         } else { did };
@@ -1496,7 +1496,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
 
         // For certain mode/type combinations, the raw llarg values are passed
         // by value.  However, within the fn body itself, we want to always
-        // have all locals and argumenst be by-ref so that we can cancel the
+        // have all locals and arguments be by-ref so that we can cancel the
         // cleanup and for better interaction with LLVM's debug info.  So, if
         // the argument would be passed by value, we store it into an alloca.
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
@@ -1767,9 +1767,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
 
   /* The dtor takes a (null) output pointer, and a self argument,
      and returns () */
-  let lldty = T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(tcx))),
-                    T_ptr(type_of(ccx, class_ty))],
-                   llvm::LLVMVoidType());
+  let lldty = type_of_dtor(ccx, class_ty);
 
   let s = get_dtor_symbol(ccx, path, dtor_id, psubsts);
 
@@ -1833,7 +1831,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                                          *path,
                                          ~[path_name(item.ident)]),
                                      decl, body, llfndecl, item.id);
-        } else if tps.len() == 0u {
+        } else if tps.is_empty() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(*path, ~[path_name(item.ident)]),
