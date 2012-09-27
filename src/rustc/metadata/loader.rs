@@ -193,7 +193,7 @@ fn get_metadata_section(os: os,
                        vlen);
                 let minsz = uint::min(vlen, csz);
                 let mut version_ok = false;
-                do vec::raw::form_slice(cvbuf, minsz) |buf0| {
+                do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
                     version_ok = (buf0 ==
                                   encoder::metadata_encoding_version);
                 }
@@ -202,7 +202,7 @@ fn get_metadata_section(os: os,
                 let cvbuf1 = ptr::offset(cvbuf, vlen);
                 debug!("inflating %u bytes of compressed metadata",
                        csz - vlen);
-                do vec::raw::form_slice(cvbuf1, csz-vlen) |bytes| {
+                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
                     found = move Some(@(move inflated));
                 }
