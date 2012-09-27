@@ -307,13 +307,9 @@ mod gc;
 mod io;
 mod libc;
 mod os;
-#[legacy_exports]
 mod path;
-#[legacy_exports]
 mod rand;
-#[legacy_exports]
 mod run;
-#[legacy_exports]
 mod sys;
 #[legacy_exports]
 mod cast;
