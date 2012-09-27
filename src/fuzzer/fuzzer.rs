@@ -124,7 +124,7 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
-        es.push(e);
+        es.push(*e);
     } else {/* now my indices are wrong :( */ }
 }
 
