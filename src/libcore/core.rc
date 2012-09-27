@@ -37,6 +37,7 @@ Implicitly, all crates behave as if they included the following prologue:
 #[no_core];
 
 #[legacy_modes];
+#[legacy_exports];
 
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
@@ -307,9 +308,7 @@ mod pipes;
 mod gc;
 #[legacy_exports]
 mod io;
-#[legacy_exports]
 mod libc;
-#[legacy_exports]
 mod os;
 #[legacy_exports]
 mod path;

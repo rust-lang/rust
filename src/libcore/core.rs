@@ -2,8 +2,6 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-#[legacy_exports];
-
 use option::{Some, None};
 use Option = option::Option;
 use result::{Result, Ok, Err};

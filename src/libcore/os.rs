@@ -21,30 +21,17 @@
  */
 
 use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
-              mode_t, pid_t, FILE};
+           mode_t, pid_t, FILE};
 use libc::{close, fclose};
 
 use option::{Some, None};
 
-use consts::*;
+pub use consts::*;
 use task::TaskBuilder;
 
-export close, fclose, fsync_fd, waitpid;
-export env, getenv, setenv, fdopen, pipe;
-export getcwd, dll_filename, self_exe_path;
-export exe_suffix, dll_suffix, sysname, arch, family;
-export homedir, tmpdir, list_dir, list_dir_path, path_is_dir, path_exists,
-       make_absolute, make_dir, remove_dir, change_dir, remove_file,
-       copy_file;
-export last_os_error;
-export set_exit_status;
-export walk_dir;
-
 // FIXME: move these to str perhaps? #2620
-export as_c_charp, fill_charp_buf;
 
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_getcwd() -> ~str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
@@ -57,15 +44,15 @@ extern mod rustrt {
 
 const tmpbuf_sz : uint = 1000u;
 
-fn getcwd() -> Path {
+pub fn getcwd() -> Path {
     Path(rustrt::rust_getcwd())
 }
 
-fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
+pub fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
     str::as_c_str(s, |b| f(b as *c_char))
 }
 
-fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
+pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
@@ -79,16 +66,11 @@ fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 mod win32 {
-    #[legacy_exports];
-    use dword = libc::types::os::arch::extra::DWORD;
+    use dword = libc::DWORD;
 
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
         -> Option<~str> {
-
-        // FIXME: remove these when export globs work properly. #1238
-        use libc::funcs::extra::kernel32::*;
-        use libc::consts::os::extra::*;
-
+        use libc::dword;
         let mut n = tmpbuf_sz as dword;
         let mut res = None;
         let mut done = false;
@@ -99,8 +81,8 @@ mod win32 {
                 if k == (0 as dword) {
                     done = true;
                 } else if (k == n &&
-                           GetLastError() ==
-                           ERROR_INSUFFICIENT_BUFFER as dword) {
+                           libc::GetLastError() ==
+                           libc::ERROR_INSUFFICIENT_BUFFER as dword) {
                     n *= (2 as dword);
                 } else {
                     let sub = vec::slice(buf, 0u, k as uint);
@@ -120,28 +102,22 @@ mod win32 {
     }
 }
 
-fn getenv(n: &str) -> Option<~str> {
+pub fn getenv(n: &str) -> Option<~str> {
     global_env::getenv(n)
 }
 
-fn setenv(n: &str, v: &str) {
+pub fn setenv(n: &str, v: &str) {
     global_env::setenv(n, v)
 }
 
-fn env() -> ~[(~str,~str)] {
+pub fn env() -> ~[(~str,~str)] {
     global_env::env()
 }
 
 mod global_env {
-    #[legacy_exports];
     //! Internal module for serializing access to getenv/setenv
 
-    export getenv;
-    export setenv;
-    export env;
-
     extern mod rustrt {
-        #[legacy_exports];
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
     }
 
@@ -151,7 +127,7 @@ mod global_env {
         MsgEnv(comm::Chan<~[(~str,~str)]>)
     }
 
-    fn getenv(n: &str) -> Option<~str> {
+    pub fn getenv(n: &str) -> Option<~str> {
         let env_ch = get_global_env_chan();
         let po = comm::Port();
         comm::send(env_ch, MsgGetEnv(str::from_slice(n),
@@ -159,7 +135,7 @@ mod global_env {
         comm::recv(po)
     }
 
-    fn setenv(n: &str, v: &str) {
+    pub fn setenv(n: &str, v: &str) {
         let env_ch = get_global_env_chan();
         let po = comm::Port();
         comm::send(env_ch, MsgSetEnv(str::from_slice(n),
@@ -168,7 +144,7 @@ mod global_env {
         comm::recv(po)
     }
 
-    fn env() -> ~[(~str,~str)] {
+    pub fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
         let po = comm::Port();
         comm::send(env_ch, MsgEnv(comm::Chan(po)));
@@ -208,13 +184,11 @@ mod global_env {
     }
 
     mod impl_ {
-        #[legacy_exports];
         extern mod rustrt {
-            #[legacy_exports];
             fn rust_env_pairs() -> ~[~str];
         }
 
-        fn env() -> ~[(~str,~str)] {
+        pub fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for vec::each(rustrt::rust_env_pairs()) |p| {
                 let vs = str::splitn_char(*p, '=', 1u);
@@ -225,7 +199,7 @@ mod global_env {
         }
 
         #[cfg(unix)]
-        fn getenv(n: &str) -> Option<~str> {
+        pub fn getenv(n: &str) -> Option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
                 return if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
@@ -238,39 +212,32 @@ mod global_env {
         }
 
         #[cfg(windows)]
-        fn getenv(n: &str) -> Option<~str> {
-            use libc::types::os::arch::extra::*;
-            use libc::funcs::extra::kernel32::*;
+        pub fn getenv(n: &str) -> Option<~str> {
             use win32::*;
             do as_utf16_p(n) |u| {
                 do fill_utf16_buf_and_decode() |buf, sz| {
-                    GetEnvironmentVariableW(u, buf, sz)
+                    libc::GetEnvironmentVariableW(u, buf, sz)
                 }
             }
         }
 
 
         #[cfg(unix)]
-        fn setenv(n: &str, v: &str) {
-
-            // FIXME: remove this when export globs work properly. #1238
-            use libc::funcs::posix01::unistd::setenv;
+        pub fn setenv(n: &str, v: &str) {
             do str::as_c_str(n) |nbuf| {
                 do str::as_c_str(v) |vbuf| {
-                    setenv(nbuf, vbuf, 1i32);
+                    libc::setenv(nbuf, vbuf, 1i32);
                 }
             }
         }
 
 
         #[cfg(windows)]
-        fn setenv(n: &str, v: &str) {
-            // FIXME: remove imports when export globs work properly. #1238
-            use libc::funcs::extra::kernel32::*;
+        pub fn setenv(n: &str, v: &str) {
             use win32::*;
             do as_utf16_p(n) |nbuf| {
                 do as_utf16_p(v) |vbuf| {
-                    SetEnvironmentVariableW(nbuf, vbuf);
+                    libc::SetEnvironmentVariableW(nbuf, vbuf);
                 }
             }
         }
@@ -278,7 +245,7 @@ mod global_env {
     }
 }
 
-fn fdopen(fd: c_int) -> *FILE {
+pub fn fdopen(fd: c_int) -> *FILE {
     return do as_c_charp("r") |modebuf| {
         libc::fdopen(fd, modebuf)
     };
@@ -288,13 +255,13 @@ fn fdopen(fd: c_int) -> *FILE {
 // fsync related
 
 #[cfg(windows)]
-fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
+pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
     use libc::funcs::extra::msvcrt::*;
     return commit(fd);
 }
 
 #[cfg(target_os = "linux")]
-fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
+pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     use libc::funcs::posix01::unistd::*;
     match level {
       io::fsync::FSync
@@ -304,7 +271,7 @@ fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
 }
 
 #[cfg(target_os = "macos")]
-fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
+pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     use libc::consts::os::extra::*;
     use libc::funcs::posix88::fcntl::*;
     use libc::funcs::posix01::unistd::*;
@@ -321,19 +288,19 @@ fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
 }
 
 #[cfg(target_os = "freebsd")]
-fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
+pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     use libc::funcs::posix01::unistd::*;
     return fsync(fd);
 }
 
 
 #[cfg(windows)]
-fn waitpid(pid: pid_t) -> c_int {
+pub fn waitpid(pid: pid_t) -> c_int {
     return rustrt::rust_process_wait(pid);
 }
 
 #[cfg(unix)]
-fn waitpid(pid: pid_t) -> c_int {
+pub fn waitpid(pid: pid_t) -> c_int {
     use libc::funcs::posix01::wait::*;
     let status = 0 as c_int;
 
@@ -344,7 +311,7 @@ fn waitpid(pid: pid_t) -> c_int {
 
 
 #[cfg(unix)]
-fn pipe() -> {in: c_int, out: c_int} {
+pub fn pipe() -> {in: c_int, out: c_int} {
     let fds = {mut in: 0 as c_int,
                mut out: 0 as c_int };
     assert (libc::pipe(ptr::mut_addr_of(fds.in)) == (0 as c_int));
@@ -354,19 +321,17 @@ fn pipe() -> {in: c_int, out: c_int} {
 
 
 #[cfg(windows)]
-fn pipe() -> {in: c_int, out: c_int} {
-    // FIXME: remove this when export globs work properly. #1238
-    use libc::consts::os::extra::*;
+pub fn pipe() -> {in: c_int, out: c_int} {
     // Windows pipes work subtly differently than unix pipes, and their
     // inheritance has to be handled in a different way that I do not fully
     // understand. Here we explicitly make the pipe non-inheritable, which
     // means to pass it to a subprocess they need to be duplicated first, as
     // in rust_run_program.
     let fds = { mut in: 0 as c_int,
-               mut out: 0 as c_int };
+                mut out: 0 as c_int };
     let res = libc::pipe(ptr::mut_addr_of(fds.in),
                          1024 as c_uint,
-                         (O_BINARY | O_NOINHERIT) as c_int);
+                         (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
     assert (res == 0 as c_int);
     assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
     assert (fds.out != -1 as c_int && fds.in != 0 as c_int);
@@ -378,7 +343,7 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 }
 
 
-fn dll_filename(base: &str) -> ~str {
+pub fn dll_filename(base: &str) -> ~str {
     return pre() + str::from_slice(base) + dll_suffix();
 
     #[cfg(unix)]
@@ -389,7 +354,7 @@ fn dll_filename(base: &str) -> ~str {
 }
 
 
-fn self_exe_path() -> Option<Path> {
+pub fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
     fn load_self() -> Option<~str> {
@@ -419,22 +384,17 @@ fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "macos")]
     fn load_self() -> Option<~str> {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::funcs::extra::*;
         do fill_charp_buf() |buf, sz| {
-            _NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
+            libc::_NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
                 == (0 as c_int)
         }
     }
 
     #[cfg(windows)]
     fn load_self() -> Option<~str> {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::types::os::arch::extra::*;
-        use libc::funcs::extra::kernel32::*;
         use win32::*;
         do fill_utf16_buf_and_decode() |buf, sz| {
-            GetModuleFileNameW(0u as dword, buf, sz)
+            libc::GetModuleFileNameW(0u as libc::dword, buf, sz)
         }
     }
 
@@ -457,7 +417,7 @@ fn self_exe_path() -> Option<Path> {
  *
  * Otherwise, homedir returns option::none.
  */
-fn homedir() -> Option<Path> {
+pub fn homedir() -> Option<Path> {
     return match getenv(~"HOME") {
         Some(p) => if !str::is_empty(p) {
           Some(Path(p))
@@ -494,7 +454,7 @@ fn homedir() -> Option<Path> {
  * 'USERPROFILE' environment variable  if any are set and not the empty
  * string. Otherwise, tmpdir returns the path to the Windows directory.
  */
-fn tmpdir() -> Path {
+pub fn tmpdir() -> Path {
     return lookup();
 
     fn getenv_nonempty(v: &str) -> Option<Path> {
@@ -528,7 +488,7 @@ fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
-fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
+pub fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
 
     walk_dir_(p, f);
 
@@ -557,21 +517,19 @@ fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
 }
 
 /// Indicates whether a path represents a directory
-fn path_is_dir(p: &Path) -> bool {
+pub fn path_is_dir(p: &Path) -> bool {
     do str::as_c_str(p.to_str()) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 /// Indicates whether a path exists
-fn path_exists(p: &Path) -> bool {
+pub fn path_exists(p: &Path) -> bool {
     do str::as_c_str(p.to_str()) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
 }
 
-// FIXME (#2622): under Windows, we should prepend the current drive letter
-// to paths that start with a slash.
 /**
  * Convert a relative path to an absolute path
  *
@@ -582,7 +540,7 @@ fn path_exists(p: &Path) -> bool {
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-fn make_absolute(p: &Path) -> Path {
+pub fn make_absolute(p: &Path) -> Path {
     if p.is_absolute {
         copy *p
     } else {
@@ -592,18 +550,16 @@ fn make_absolute(p: &Path) -> Path {
 
 
 /// Creates a directory at the specified path
-fn make_dir(p: &Path, mode: c_int) -> bool {
+pub fn make_dir(p: &Path, mode: c_int) -> bool {
     return mkdir(p, mode);
 
     #[cfg(windows)]
     fn mkdir(p: &Path, _mode: c_int) -> bool {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::types::os::arch::extra::*;
-        use libc::funcs::extra::kernel32::*;
-        use win32::*;
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
-            CreateDirectoryW(buf, unsafe { cast::reinterpret_cast(&0) })
+            libc::CreateDirectoryW(buf, unsafe {
+                unsafe::reinterpret_cast(&0)
+            })
                 != (0 as BOOL)
         }
     }
@@ -618,7 +574,7 @@ fn make_dir(p: &Path, mode: c_int) -> bool {
 
 /// Lists the contents of a directory
 #[allow(non_implicitly_copyable_typarams)]
-fn list_dir(p: &Path) -> ~[~str] {
+pub fn list_dir(p: &Path) -> ~[~str] {
 
     #[cfg(unix)]
     fn star(p: &Path) -> Path { copy *p }
@@ -636,22 +592,19 @@ fn list_dir(p: &Path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-fn list_dir_path(p: &Path) -> ~[~Path] {
+pub fn list_dir_path(p: &Path) -> ~[~Path] {
     os::list_dir(p).map(|f| ~p.push(*f))
 }
 
 /// Removes a directory at the specified path
-fn remove_dir(p: &Path) -> bool {
+pub fn remove_dir(p: &Path) -> bool {
    return rmdir(p);
 
     #[cfg(windows)]
     fn rmdir(p: &Path) -> bool {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::funcs::extra::kernel32::*;
-        use libc::types::os::arch::extra::*;
         use win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
-            RemoveDirectoryW(buf) != (0 as BOOL)
+            libc::RemoveDirectoryW(buf) != (0 as libc::BOOL)
         };
     }
 
@@ -663,17 +616,14 @@ fn remove_dir(p: &Path) -> bool {
     }
 }
 
-fn change_dir(p: &Path) -> bool {
+pub fn change_dir(p: &Path) -> bool {
     return chdir(p);
 
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::funcs::extra::kernel32::*;
-        use libc::types::os::arch::extra::*;
         use win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
-            SetCurrentDirectoryW(buf) != (0 as BOOL)
+            libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
         };
     }
 
@@ -686,18 +636,16 @@ fn change_dir(p: &Path) -> bool {
 }
 
 /// Copies a file from one location to another
-fn copy_file(from: &Path, to: &Path) -> bool {
+pub fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
 
     #[cfg(windows)]
     fn do_copy_file(from: &Path, to: &Path) -> bool {
-        // FIXME: remove imports when export globs work properly. #1238
-        use libc::funcs::extra::kernel32::*;
-        use libc::types::os::arch::extra::*;
         use win32::*;
         return do as_utf16_p(from.to_str()) |fromp| {
             do as_utf16_p(to.to_str()) |top| {
-                CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
+                libc::CopyFileW(fromp, top, (0 as libc::BOOL)) !=
+                    (0 as libc::BOOL)
             }
         }
     }
@@ -748,18 +696,14 @@ fn copy_file(from: &Path, to: &Path) -> bool {
 }
 
 /// Deletes an existing file
-fn remove_file(p: &Path) -> bool {
+pub fn remove_file(p: &Path) -> bool {
     return unlink(p);
 
     #[cfg(windows)]
     fn unlink(p: &Path) -> bool {
-        // FIXME (similar to Issue #2006): remove imports when export globs
-        // work properly.
-        use libc::funcs::extra::kernel32::*;
-        use libc::types::os::arch::extra::*;
         use win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
-            DeleteFileW(buf) != (0 as BOOL)
+            libc::DeleteFileW(buf) != (0 as libc::BOOL)
         };
     }
 
@@ -772,7 +716,7 @@ fn remove_file(p: &Path) -> bool {
 }
 
 /// Get a string representing the platform-dependent last error
-fn last_os_error() -> ~str {
+pub fn last_os_error() -> ~str {
     rustrt::last_os_error()
 }
 
@@ -784,64 +728,59 @@ fn last_os_error() -> ~str {
  * and is supervised by the scheduler then any user-specified exit status is
  * ignored and the process exits with the default failure status
  */
-fn set_exit_status(code: int) {
+pub fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
 #[cfg(unix)]
-fn family() -> ~str { ~"unix" }
+pub fn family() -> ~str { ~"unix" }
 
 #[cfg(windows)]
-fn family() -> ~str { ~"windows" }
+pub fn family() -> ~str { ~"windows" }
 
 #[cfg(target_os = "macos")]
 mod consts {
-    #[legacy_exports];
-    fn sysname() -> ~str { ~"macos" }
-    fn exe_suffix() -> ~str { ~"" }
-    fn dll_suffix() -> ~str { ~".dylib" }
+    pub fn sysname() -> ~str { ~"macos" }
+    pub fn exe_suffix() -> ~str { ~"" }
+    pub fn dll_suffix() -> ~str { ~".dylib" }
 }
 
 #[cfg(target_os = "freebsd")]
 mod consts {
-    #[legacy_exports];
-    fn sysname() -> ~str { ~"freebsd" }
-    fn exe_suffix() -> ~str { ~"" }
-    fn dll_suffix() -> ~str { ~".so" }
+    pub fn sysname() -> ~str { ~"freebsd" }
+    pub fn exe_suffix() -> ~str { ~"" }
+    pub fn dll_suffix() -> ~str { ~".so" }
 }
 
 #[cfg(target_os = "linux")]
 mod consts {
-    #[legacy_exports];
-    fn sysname() -> ~str { ~"linux" }
-    fn exe_suffix() -> ~str { ~"" }
-    fn dll_suffix() -> ~str { ~".so" }
+    pub fn sysname() -> ~str { ~"linux" }
+    pub fn exe_suffix() -> ~str { ~"" }
+    pub fn dll_suffix() -> ~str { ~".so" }
 }
 
 #[cfg(target_os = "win32")]
 mod consts {
-    #[legacy_exports];
-    fn sysname() -> ~str { ~"win32" }
-    fn exe_suffix() -> ~str { ~".exe" }
-    fn dll_suffix() -> ~str { ~".dll" }
+    pub fn sysname() -> ~str { ~"win32" }
+    pub fn exe_suffix() -> ~str { ~".exe" }
+    pub fn dll_suffix() -> ~str { ~".dll" }
 }
 
 #[cfg(target_arch = "x86")]
-fn arch() -> ~str { ~"x86" }
+pub fn arch() -> ~str { ~"x86" }
 
 #[cfg(target_arch = "x86_64")]
-fn arch() -> ~str { ~"x86_64" }
+pub fn arch() -> ~str { ~"x86_64" }
 
 #[cfg(target_arch = "arm")]
-fn arch() -> str { ~"arm" }
+pub fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
-    #[legacy_exports];
 
     #[test]
-    fn last_os_error() {
+    pub fn last_os_error() {
         log(debug, last_os_error());
     }
 
