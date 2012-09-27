@@ -371,7 +371,7 @@ more detail later on (the `T`s here stand for any other type):
 `[T * N]`                 Vector (like an array in other languages) with N elements
 `[mut T * N]`             Mutable vector with N elements
 `(T1, T2)`                Tuple type. Any arity above 1 is supported
-`@T`, `~T`, `&T`          [Pointer types](#boxes-and-pointers)
+`&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
 ------------------------- -----------------------------------------------
 
 Some types can only be manipulated by pointer, never directly. For instance,
