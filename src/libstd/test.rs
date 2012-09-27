@@ -281,7 +281,7 @@ enum TestEvent {
 type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts, tests: &[TestDesc],
-             callback: fn@(TestEvent)) {
+             callback: fn@(+e: TestEvent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
     callback(TeFiltered(copy filtered_tests));
