@@ -219,8 +219,8 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
 
     if start == 0 { start += 1; }
 
-    let mut pivot = ~[mut];
-    vec::reserve(pivot, 1);
+    let mut pivot = ~[];
+    vec::reserve(&mut pivot, 1);
     unsafe { vec::raw::set_len(pivot, 1); };
 
     while start < size {
@@ -409,7 +409,7 @@ struct MergeState<T> {
 
 fn MergeState<T>() -> MergeState<T> {
     let mut tmp = ~[];
-    vec::reserve(tmp, INITIAL_TMP_STORAGE); 
+    vec::reserve(&mut tmp, INITIAL_TMP_STORAGE); 
     MergeState {
         minGallop: MIN_GALLOP,
         tmp: tmp,
@@ -467,7 +467,7 @@ impl<T: Ord> &MergeState<T> {
     fn mergeLo(array: &[mut T], base1: uint, len1: uint, base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
         
-        vec::reserve(self.tmp, len1);
+        vec::reserve(&mut self.tmp, len1);
 
         unsafe {
             vec::raw::set_len(self.tmp, len1);
@@ -587,7 +587,7 @@ impl<T: Ord> &MergeState<T> {
     fn mergeHi(array: &[mut T], base1: uint, len1: uint, base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        vec::reserve(self.tmp, len2);
+        vec::reserve(&mut self.tmp, len2);
 
         unsafe {
             vec::raw::set_len(self.tmp, len2);
