@@ -15,8 +15,6 @@ mutation when the data structure should be immutable.
 use util::with;
 use cast::transmute_immut;
 
-export Mut;
-
 enum Mode { ReadOnly, Mutable, Immutable }
 
 struct Data<T> {
@@ -24,13 +22,13 @@ struct Data<T> {
     priv mut mode: Mode
 }
 
-type Mut<T> = Data<T>;
+pub type Mut<T> = Data<T>;
 
-fn Mut<T>(+t: T) -> Mut<T> {
+pub fn Mut<T>(+t: T) -> Mut<T> {
     Data {value: t, mode: ReadOnly}
 }
 
-fn unwrap<T>(+m: Mut<T>) -> T {
+pub fn unwrap<T>(+m: Mut<T>) -> T {
     // Borrowck should prevent us from calling unwrap while the value
     // is in use, as that would be a move from a borrowed value.
     assert (m.mode as uint) == (ReadOnly as uint);
@@ -71,7 +69,7 @@ impl<T> Data<T> {
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
-fn test_mut_in_imm() {
+pub fn test_mut_in_imm() {
     let m = @Mut(1);
     do m.borrow_imm |_p| {
         do m.borrow_mut |_q| {
@@ -83,7 +81,7 @@ fn test_mut_in_imm() {
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
-fn test_imm_in_mut() {
+pub fn test_imm_in_mut() {
     let m = @Mut(1);
     do m.borrow_mut |_p| {
         do m.borrow_imm |_q| {
@@ -93,7 +91,7 @@ fn test_imm_in_mut() {
 }
 
 #[test]
-fn test_const_in_mut() {
+pub fn test_const_in_mut() {
     let m = @Mut(1);
     do m.borrow_mut |p| {
         do m.borrow_const |q| {
@@ -105,7 +103,7 @@ fn test_const_in_mut() {
 }
 
 #[test]
-fn test_mut_in_const() {
+pub fn test_mut_in_const() {
     let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_mut |q| {
@@ -117,7 +115,7 @@ fn test_mut_in_const() {
 }
 
 #[test]
-fn test_imm_in_const() {
+pub fn test_imm_in_const() {
     let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_imm |q| {
@@ -127,7 +125,7 @@ fn test_imm_in_const() {
 }
 
 #[test]
-fn test_const_in_imm() {
+pub fn test_const_in_imm() {
     let m = @Mut(1);
     do m.borrow_imm |p| {
         do m.borrow_const |q| {
@@ -140,7 +138,7 @@ fn test_const_in_imm() {
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
-fn test_mut_in_imm_in_const() {
+pub fn test_mut_in_imm_in_const() {
     let m = @Mut(1);
     do m.borrow_const |_p| {
         do m.borrow_imm |_q| {
@@ -149,3 +147,4 @@ fn test_mut_in_imm_in_const() {
         }
     }
 }
+

@@ -19,20 +19,8 @@ use either::Either;
 use pipes::recv;
 use cast::copy_lifetime;
 
-export Future;
-export extensions;
-export from_value;
-export from_port;
-export from_fn;
-export get;
-export with;
-export spawn;
-
-// for task.rs
-export future_pipe;
-
 #[doc = "The future type"]
-struct Future<A> {
+pub struct Future<A> {
     /*priv*/ mut state: FutureState<A>,
 
     // FIXME(#2829) -- futures should not be copyable, because they close
@@ -67,7 +55,7 @@ impl<A> Future<A> {
     }
 }
 
-fn from_value<A>(+val: A) -> Future<A> {
+pub fn from_value<A>(+val: A) -> Future<A> {
     /*!
      * Create a future from a value
      *
@@ -78,7 +66,8 @@ fn from_value<A>(+val: A) -> Future<A> {
     Future {state: Forced(~(move val))}
 }
 
-fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
+pub fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) ->
+        Future<A> {
     /*!
      * Create a future from a port
      *
@@ -97,7 +86,7 @@ fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     }
 }
 
-fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
+pub fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
@@ -109,7 +98,7 @@ fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
     Future {state: Pending(move f)}
 }
 
-fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
+pub fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *
@@ -122,7 +111,7 @@ fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
     }))
 }
 
-fn get_ref<A>(future: &r/Future<A>) -> &r/A {
+pub fn get_ref<A>(future: &r/Future<A>) -> &r/A {
     /*!
      * Executes the future's closure and then returns a borrowed
      * pointer to the result.  The borrowed pointer lasts as long as
@@ -160,13 +149,13 @@ fn get_ref<A>(future: &r/Future<A>) -> &r/A {
     }
 }
 
-fn get<A:Copy>(future: &Future<A>) -> A {
+pub fn get<A:Copy>(future: &Future<A>) -> A {
     //! Get the value of the future
 
     *get_ref(future)
 }
 
-fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
+pub fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
     //! Work with the value without copying it
 
     blk(get_ref(future))
@@ -179,16 +168,15 @@ proto! future_pipe (
 )
 
 #[allow(non_implicitly_copyable_typarams)]
-mod test {
-    #[legacy_exports];
+pub mod test {
     #[test]
-    fn test_from_value() {
+    pub fn test_from_value() {
         let f = from_value(~"snail");
         assert get(&f) == ~"snail";
     }
 
     #[test]
-    fn test_from_port() {
+    pub fn test_from_port() {
         let (po, ch) = future_pipe::init();
         future_pipe::server::completed(ch, ~"whale");
         let f = from_port(po);
@@ -196,43 +184,43 @@ mod test {
     }
 
     #[test]
-    fn test_from_fn() {
+    pub fn test_from_fn() {
         let f = from_fn(|| ~"brail");
         assert get(&f) == ~"brail";
     }
 
     #[test]
-    fn test_interface_get() {
+    pub fn test_interface_get() {
         let f = from_value(~"fail");
         assert f.get() == ~"fail";
     }
 
     #[test]
-    fn test_with() {
+    pub fn test_with() {
         let f = from_value(~"nail");
         assert with(&f, |v| copy *v) == ~"nail";
     }
 
     #[test]
-    fn test_get_ref_method() {
+    pub fn test_get_ref_method() {
         let f = from_value(22);
         assert *f.get_ref() == 22;
     }
 
     #[test]
-    fn test_get_ref_fn() {
+    pub fn test_get_ref_fn() {
         let f = from_value(22);
         assert *get_ref(&f) == 22;
     }
 
     #[test]
-    fn test_interface_with() {
+    pub fn test_interface_with() {
         let f = from_value(~"kale");
         assert f.with(|v| copy *v) == ~"kale";
     }
 
     #[test]
-    fn test_spawn() {
+    pub fn test_spawn() {
         let f = spawn(|| ~"bale");
         assert get(&f) == ~"bale";
     }
@@ -240,13 +228,13 @@ mod test {
     #[test]
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
-    fn test_futurefail() {
+    pub fn test_futurefail() {
         let f = spawn(|| fail);
         let _x: ~str = get(&f);
     }
 
     #[test]
-    fn test_sendable_future() {
+    pub fn test_sendable_future() {
         let expected = ~"schlorf";
         let f = do spawn |copy expected| { copy expected };
         do task::spawn {

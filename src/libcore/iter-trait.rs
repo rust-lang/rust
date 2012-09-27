@@ -6,7 +6,6 @@
 
 use cmp::{Eq, Ord};
 use inst::{IMPL_T, EACH, SIZE_HINT};
-export extensions;
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {
     pure fn each(blk: fn(v: &A) -> bool) { EACH(&self, blk) }

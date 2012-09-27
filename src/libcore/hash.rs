@@ -17,9 +17,6 @@ use io::Writer;
 use io::WriterUtil;
 use to_bytes::IterBytes;
 
-export Streaming, State, Hash, HashUtil;
-export default_state;
-
 /**
  * Types that can meaningfully be hashed should implement this.
  *
@@ -32,7 +29,7 @@ export default_state;
  * the rest. This is the recommended approach, since constructing
  * good keyed hash functions is quite difficult.
  */
-trait Hash {
+pub trait Hash {
     /**
      * Compute a "keyed" hash of the value implementing the trait,
      * taking `k0` and `k1` as "keying" parameters that randomize or
@@ -49,7 +46,7 @@ trait Hash {
 }
 
 // When we have default methods, won't need this.
-trait HashUtil {
+pub trait HashUtil {
     pure fn hash() -> u64;
 }
 
@@ -59,7 +56,7 @@ impl <A: Hash> A: HashUtil {
 }
 
 /// Streaming hash-functions should implement this.
-trait Streaming {
+pub trait Streaming {
     fn input((&[const u8]));
     // These can be refactored some when we have default methods.
     fn result_bytes() -> ~[u8];
@@ -139,15 +136,15 @@ pure fn hash_keyed_5<A: IterBytes,
 
 // Implement State as SipState
 
-type State = SipState;
+pub type State = SipState;
 
 #[inline(always)]
-fn State(k0: u64, k1: u64) -> State {
+pub fn State(k0: u64, k1: u64) -> State {
     SipState(k0, k1)
 }
 
 #[inline(always)]
-fn default_state() -> State {
+pub fn default_state() -> State {
     State(0,0)
 }
 
@@ -361,7 +358,7 @@ impl &SipState : Streaming {
 }
 
 #[test]
-fn test_siphash() {
+pub fn test_siphash() {
     let vecs : [[u8]/8]/64 = [
         [ 0x31, 0x0e, 0x0e, 0xdd, 0x47, 0xdb, 0x6f, 0x72, ]/_,
         [ 0xfd, 0x67, 0xdc, 0x93, 0xc5, 0x39, 0xf8, 0x74, ]/_,
@@ -468,26 +465,26 @@ fn test_siphash() {
 }
 
 #[test] #[cfg(target_arch = "arm")]
-fn test_hash_uint() {
+pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert (val as u64).hash() != (val as uint).hash();
     assert (val as u32).hash() == (val as uint).hash();
 }
 #[test] #[cfg(target_arch = "x86_64")]
-fn test_hash_uint() {
+pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert (val as u64).hash() == (val as uint).hash();
     assert (val as u32).hash() != (val as uint).hash();
 }
 #[test] #[cfg(target_arch = "x86")]
-fn test_hash_uint() {
+pub fn test_hash_uint() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert (val as u64).hash() != (val as uint).hash();
     assert (val as u32).hash() == (val as uint).hash();
 }
 
 #[test]
-fn test_hash_idempotent() {
+pub fn test_hash_idempotent() {
     let val64 = 0xdeadbeef_deadbeef_u64;
     val64.hash() == val64.hash();
     let val32 = 0xdeadbeef_u32;
@@ -495,7 +492,7 @@ fn test_hash_idempotent() {
 }
 
 #[test]
-fn test_hash_no_bytes_dropped_64() {
+pub fn test_hash_no_bytes_dropped_64() {
     let val = 0xdeadbeef_deadbeef_u64;
 
     assert val.hash() != zero_byte(val, 0).hash();
@@ -514,7 +511,7 @@ fn test_hash_no_bytes_dropped_64() {
 }
 
 #[test]
-fn test_hash_no_bytes_dropped_32() {
+pub fn test_hash_no_bytes_dropped_32() {
     let val = 0xdeadbeef_u32;
 
     assert val.hash() != zero_byte(val, 0).hash();

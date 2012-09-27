@@ -3,10 +3,6 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-// uncomment once #1433 is fixed
-// FIXME (#1433): export c_float_math_consts;
-// FIXME (#1433): export c_double_math_consts;
-
 use libc::c_int;
 use libc::c_float;
 use libc::c_double;
@@ -193,66 +189,62 @@ pub mod c_double_targ_consts {
 
 FIXME use these once they can be parsed (see Issue #1433)
 
-mod c_float_math_consts {
-    #[legacy_exports];
-    const pi: c_float = 0x1.921fb6p+1_f32;
-    const div_1_pi: c_float = 0x1.45f306p-2_f32;
-    const div_2_pi: c_float = 0x1.45f306p-1_f32;
-    const div_pi_2: c_float = 0x1.921fb6p+0_f32;
-    const div_pi_4: c_float = 0x1.921fb6p-1_f32;
-    const div_2_sqrtpi: c_float = 0x1.20dd76p+0_f32;
-    const e: c_float = 0x1.5bf0a8p+1_f32;
-    const log2_e: c_float = 0x1.715476p+0_f32;
-    const log10_e: c_float = 0x1.bcb7b2p-2_f32;
-    const ln_2: c_float = 0x1.62e43p-1_f32;
-    const ln_10: c_float = 0x1.26bb1cp+1_f32;
-    const sqrt2: c_float = 0x1.6a09e6p+0_f32;
-    const div_1_sqrt2: c_float = 0x1.6a09e6p-1_f32;
+pub mod c_float_math_consts {
+    pub const pi: c_float = 0x1.921fb6p+1_f32;
+    pub const div_1_pi: c_float = 0x1.45f306p-2_f32;
+    pub const div_2_pi: c_float = 0x1.45f306p-1_f32;
+    pub const div_pi_2: c_float = 0x1.921fb6p+0_f32;
+    pub const div_pi_4: c_float = 0x1.921fb6p-1_f32;
+    pub const div_2_sqrtpi: c_float = 0x1.20dd76p+0_f32;
+    pub const e: c_float = 0x1.5bf0a8p+1_f32;
+    pub const log2_e: c_float = 0x1.715476p+0_f32;
+    pub const log10_e: c_float = 0x1.bcb7b2p-2_f32;
+    pub const ln_2: c_float = 0x1.62e43p-1_f32;
+    pub const ln_10: c_float = 0x1.26bb1cp+1_f32;
+    pub const sqrt2: c_float = 0x1.6a09e6p+0_f32;
+    pub const div_1_sqrt2: c_float = 0x1.6a09e6p-1_f32;
 }
 
-mod c_double_math_consts {
-    #[legacy_exports];
-    const pi: c_double = 0x1.921fb54442d18p+1_f64;
-    const div_1_pi: c_double = 0x1.45f306dc9c883p-2_f64;
-    const div_2_pi: c_double = 0x1.45f306dc9c883p-1_f64;
-    const div_pi_2: c_double = 0x1.921fb54442d18p+0_f64;
-    const div_pi_4: c_double = 0x1.921fb54442d18p-1_f64;
-    const div_2_sqrtpi: c_double = 0x1.20dd750429b6dp+0_f64;
-    const e: c_double = 0x1.5bf0a8b145769p+1_f64;
-    const log2_e: c_double = 0x1.71547652b82fep+0_f64;
-    const log10_e: c_double = 0x1.bcb7b1526e50ep-2_f64;
-    const ln_2: c_double = 0x1.62e42fefa39efp-1_f64;
-    const ln_10: c_double = 0x1.26bb1bbb55516p+1_f64;
-    const sqrt2: c_double = 0x1.6a09e667f3bcdp+0_f64;
-    const div_1_sqrt2: c_double = 0x1.6a09e667f3bcdp-1_f64;
+pub mod c_double_math_consts {
+    pub const pi: c_double = 0x1.921fb54442d18p+1_f64;
+    pub const div_1_pi: c_double = 0x1.45f306dc9c883p-2_f64;
+    pub const div_2_pi: c_double = 0x1.45f306dc9c883p-1_f64;
+    pub const div_pi_2: c_double = 0x1.921fb54442d18p+0_f64;
+    pub const div_pi_4: c_double = 0x1.921fb54442d18p-1_f64;
+    pub const div_2_sqrtpi: c_double = 0x1.20dd750429b6dp+0_f64;
+    pub const e: c_double = 0x1.5bf0a8b145769p+1_f64;
+    pub const log2_e: c_double = 0x1.71547652b82fep+0_f64;
+    pub const log10_e: c_double = 0x1.bcb7b1526e50ep-2_f64;
+    pub const ln_2: c_double = 0x1.62e42fefa39efp-1_f64;
+    pub const ln_10: c_double = 0x1.26bb1bbb55516p+1_f64;
+    pub const sqrt2: c_double = 0x1.6a09e667f3bcdp+0_f64;
+    pub const div_1_sqrt2: c_double = 0x1.6a09e667f3bcdp-1_f64;
 }
 
-mod c_float_targ_consts {
-    #[legacy_exports];
-    const radix: uint = 2u;
-    const mantissa_digits: uint = 24u;
-    const digits: uint = 6u;
-    const min_exp: int = -125;
-    const max_exp: int = 128;
-    const min_10_exp: int = -37;
-    const max_10_exp: int = 38;
-    const min_value: c_float = 0x1p-126_f32;
-    const max_value: c_float = 0x1.fffffep+127_f32;
-    const epsilon: c_float = 0x1p-23_f32;
+pub mod c_float_targ_consts {
+    pub const radix: uint = 2u;
+    pub const mantissa_digits: uint = 24u;
+    pub const digits: uint = 6u;
+    pub const min_exp: int = -125;
+    pub const max_exp: int = 128;
+    pub const min_10_exp: int = -37;
+    pub const max_10_exp: int = 38;
+    pub const min_value: c_float = 0x1p-126_f32;
+    pub const max_value: c_float = 0x1.fffffep+127_f32;
+    pub const epsilon: c_float = 0x1p-23_f32;
 }
 
-mod c_double_targ_consts {
-    #[legacy_exports];
-    const radix: uint = 2u;
-    const mantissa_digits: uint = 53u;
-    const digits: uint = 15u;
-    const min_exp: int = -1021;
-    const max_exp: int = 1024;
-    const min_10_exp: int = -307;
-    const max_10_exp: int = 308;
-    const min_value: c_double = 0x1p-1022_f64;
-    const max_value: c_double = 0x1.fffffffffffffp+1023_f64;
-    const epsilon: c_double = 0x1p-52_f64;
+pub mod c_double_targ_consts {
+    pub const radix: uint = 2u;
+    pub const mantissa_digits: uint = 53u;
+    pub const digits: uint = 15u;
+    pub const min_exp: int = -1021;
+    pub const max_exp: int = 1024;
+    pub const min_10_exp: int = -307;
+    pub const max_10_exp: int = 308;
+    pub const min_value: c_double = 0x1p-1022_f64;
+    pub const max_value: c_double = 0x1.fffffffffffffp+1023_f64;
+    pub const epsilon: c_double = 0x1p-52_f64;
 }
 
 */
