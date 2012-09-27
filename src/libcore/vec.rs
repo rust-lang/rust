@@ -2818,6 +2818,545 @@ mod tests {
         assert(v[0] == 2);
         assert(v[1] == 3);
     }
+
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_from_fn_fail() {
+        do from_fn(100) |v| {
+            if v == 50 { fail }
+            (~0, @0)
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_build_fail() {
+        do build |push| {
+            push((~0, @0));
+            push((~0, @0));
+            push((~0, @0));
+            push((~0, @0));
+            fail;
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_split_fail_ret_true() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do split(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_split_fail_ret_false() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do split(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_splitn_fail_ret_true() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do splitn(v, 100) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_splitn_fail_ret_false() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do split(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_rsplit_fail_ret_true() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do rsplit(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_rsplit_fail_ret_false() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do rsplit(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_rsplitn_fail_ret_true() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do rsplitn(v, 100) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_rsplitn_fail_ret_false() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do rsplitn(v, 100) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_consume_fail() {
+        let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do consume(v) |_i, _elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_consume_mut_fail() {
+        let v = ~[mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do consume_mut(v) |_i, _elt| {
+            if i == 2 {
+                fail
+            }
+            i += 1;
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_grow_fn_fail() {
+        let mut v = ~[];
+        do grow_fn(v, 100) |i| {
+            if i == 50 {
+                fail
+            }
+            (~0, @0)
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_map_fail() {
+        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do map(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            ~[(~0, @0)]
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_map_consume_fail() {
+        let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do map_consume(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            ~[(~0, @0)]
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_mapi_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do mapi(v) |_i, _elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            ~[(~0, @0)]
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_flat_map_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do map(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            ~[(~0, @0)]
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_map2_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do map2(v, v) |_elt1, _elt2| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            ~[(~0, @0)]
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_filter_map_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do filter_map(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            Some((~0, @0))
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_filter_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do filter(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_foldl_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do foldl((~0, @0), v) |_a, _b| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            (~0, @0)
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_foldr_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do foldr(v, (~0, @0)) |_a, _b| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            (~0, @0)
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_any_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do any(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_any2_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do any(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_all_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do all(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_alli_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do alli(v) |_i, _elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_all2_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do all2(v, v) |_elt1, _elt2| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            true
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_find_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do find(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_position_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do position(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_rposition_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do rposition(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        };
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_each_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do each(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_eachi_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do eachi(v) |_i, _elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+            false
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_permute_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do permute(v) |_elt| {
+            if i == 2 {
+                fail
+            }
+            i += 0;
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_as_imm_buf_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        do as_imm_buf(v) |_buf, _i| {
+            fail
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_as_const_buf_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        do as_const_buf(v) |_buf, _i| {
+            fail
+        }
+    }
+
+    #[test]
+    #[ignore(windows)]
+    #[should_fail]
+    fn test_as_mut_buf_fail() {
+        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        do as_mut_buf(v) |_buf, _i| {
+            fail
+        }
+    }
+
+
 }
 
 // Local Variables:
