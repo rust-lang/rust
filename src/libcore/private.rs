@@ -4,13 +4,6 @@
 
 #[doc(hidden)];
 
-export chan_from_global_ptr, weaken_task;
-
-export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
-export get_shared_mutable_state, get_shared_immutable_state;
-export unwrap_shared_mutable_state;
-export Exclusive, exclusive, unwrap_exclusive;
-
 use compare_and_swap = rustrt::rust_compare_and_swap_ptr;
 use task::TaskBuilder;
 use task::atomically;
@@ -49,7 +42,7 @@ type GlobalPtr = *libc::uintptr_t;
  * or, if no channel exists creates and installs a new channel and sets up a
  * new task to receive from it.
  */
-unsafe fn chan_from_global_ptr<T: Send>(
+pub unsafe fn chan_from_global_ptr<T: Send>(
     global: GlobalPtr,
     task_fn: fn() -> task::TaskBuilder,
     +f: fn~(comm::Port<T>)
@@ -110,7 +103,7 @@ unsafe fn chan_from_global_ptr<T: Send>(
 }
 
 #[test]
-fn test_from_global_chan1() {
+pub fn test_from_global_chan1() {
 
     // This is unreadable, right?
 
@@ -147,7 +140,7 @@ fn test_from_global_chan1() {
 }
 
 #[test]
-fn test_from_global_chan2() {
+pub fn test_from_global_chan2() {
 
     for iter::repeat(100u) {
         // The global channel
@@ -208,7 +201,7 @@ fn test_from_global_chan2() {
  * * Weak tasks must not be supervised. A supervised task keeps
  *   a reference to its parent, so the parent will not die.
  */
-unsafe fn weaken_task(f: fn(comm::Port<()>)) {
+pub unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let po = comm::Port();
     let ch = comm::Chan(po);
     unsafe {
@@ -232,7 +225,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
 }
 
 #[test]
-fn test_weaken_task_then_unweaken() {
+pub fn test_weaken_task_then_unweaken() {
     do task::try {
         unsafe {
             do weaken_task |_po| {
@@ -242,7 +235,7 @@ fn test_weaken_task_then_unweaken() {
 }
 
 #[test]
-fn test_weaken_task_wait() {
+pub fn test_weaken_task_wait() {
     do task::spawn_unlinked {
         unsafe {
             do weaken_task |po| {
@@ -253,7 +246,7 @@ fn test_weaken_task_wait() {
 }
 
 #[test]
-fn test_weaken_task_stress() {
+pub fn test_weaken_task_stress() {
     // Create a bunch of weak tasks
     for iter::repeat(100u) {
         do task::spawn {
@@ -275,7 +268,7 @@ fn test_weaken_task_stress() {
 
 #[test]
 #[ignore(cfg(windows))]
-fn test_weaken_task_fail() {
+pub fn test_weaken_task_fail() {
     let res = do task::try {
         unsafe {
             do weaken_task |_po| {
@@ -347,7 +340,7 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
     }
 }
 
-unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
+pub unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
@@ -418,9 +411,10 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
  * Data races between tasks can result in crashes and, with sufficient
  * cleverness, arbitrary type coercion.
  */
-type SharedMutableState<T: Send> = ArcDestruct<T>;
+pub type SharedMutableState<T: Send> = ArcDestruct<T>;
 
-unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
+pub unsafe fn shared_mutable_state<T: Send>(+data: T) ->
+        SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
         let ptr = cast::transmute(move data);
@@ -429,7 +423,7 @@ unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
 }
 
 #[inline(always)]
-unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
+pub unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         -> &a/mut T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -441,8 +435,8 @@ unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
     }
 }
 #[inline(always)]
-unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
-        -> &a/T {
+pub unsafe fn get_shared_immutable_state<T: Send>(
+        rc: &a/SharedMutableState<T>) -> &a/T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
@@ -453,7 +447,7 @@ unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
     }
 }
 
-unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
+pub unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -506,9 +500,9 @@ struct ExData<T: Send> { lock: LittleLock, mut failed: bool, mut data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
+pub struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
 
-fn exclusive<T:Send >(+user_data: T) -> Exclusive<T> {
+pub fn exclusive<T:Send >(+user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: user_data
     };
@@ -550,7 +544,7 @@ impl<T: Send> Exclusive<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive
-fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
+pub fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
     let Exclusive { x: x } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let ExData { data: data, _ } <- inner;
@@ -558,11 +552,9 @@ fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
 }
 
 #[cfg(test)]
-mod tests {
-    #[legacy_exports];
-
+pub mod tests {
     #[test]
-    fn exclusive_arc() {
+    pub fn exclusive_arc() {
         let mut futures = ~[];
 
         let num_tasks = 10u;
@@ -589,7 +581,7 @@ mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn exclusive_poison() {
+    pub fn exclusive_poison() {
         // Tests that if one task fails inside of an exclusive, subsequent
         // accesses will also fail.
         let x = exclusive(1);
@@ -605,13 +597,13 @@ mod tests {
     }
 
     #[test]
-    fn exclusive_unwrap_basic() {
+    pub fn exclusive_unwrap_basic() {
         let x = exclusive(~~"hello");
         assert unwrap_exclusive(x) == ~~"hello";
     }
 
     #[test]
-    fn exclusive_unwrap_contended() {
+    pub fn exclusive_unwrap_contended() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
         do task::spawn {
@@ -636,7 +628,7 @@ mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn exclusive_unwrap_conflict() {
+    pub fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
         let mut res = None;
@@ -650,7 +642,7 @@ mod tests {
     }
 
     #[test] #[ignore(cfg(windows))]
-    fn exclusive_unwrap_deadlock() {
+    pub fn exclusive_unwrap_deadlock() {
         // This is not guaranteed to get to the deadlock before being killed,
         // but it will show up sometimes, and if the deadlock were not there,
         // the test would nondeterministically fail.

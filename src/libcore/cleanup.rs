@@ -10,8 +10,6 @@ use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
 
-export annihilate;
-
 /**
  * Runtime structures
  *
