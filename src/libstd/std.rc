@@ -132,11 +132,8 @@ mod prettyprint;
 mod prettyprint2;
 #[legacy_exports]
 mod arena;
-#[legacy_exports]
 mod par;
-#[legacy_exports]
 mod cmp;
-#[legacy_exports]
 mod base64;
 
 #[cfg(unicode)]

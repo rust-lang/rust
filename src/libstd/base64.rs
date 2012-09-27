@@ -2,7 +2,7 @@
 #[forbid(deprecated_pattern)];
 use io::Reader;
 
-trait ToBase64 {
+pub trait ToBase64 {
     fn to_base64() -> ~str;
 }
 
@@ -63,7 +63,7 @@ impl &str: ToBase64 {
     }
 }
 
-trait FromBase64 {
+pub trait FromBase64 {
     fn from_base64() -> ~[u8];
 }
 

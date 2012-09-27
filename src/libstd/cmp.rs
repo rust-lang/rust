@@ -4,7 +4,7 @@
 
 const fuzzy_epsilon: float = 1.0e-6;
 
-trait FuzzyEq {
+pub trait FuzzyEq {
     pure fn fuzzy_eq(other: &self) -> bool;
 }
 
