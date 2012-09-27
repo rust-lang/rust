@@ -9,14 +9,16 @@ For example, a type like:
 
     type node_id = uint;
 
-would generate two functions like:
+would generate two implementations like:
 
     impl node_id: Serializable {
-        fn serialize<S: Serializer>(s: S) {
+        fn serialize<S: Serializer>(s: &S) {
             s.emit_uint(self)
         }
+    }
 
-        static fn deserialize<D: Deserializer>(d: D) -> node_id {
+    impl node_id: Deserializable {
+        static fn deserialize<D: Deserializer>(d: &D) -> node_id {
             d.read_uint()
         }
     }
@@ -29,18 +31,20 @@ references other non-built-in types.  A type definition like:
 would yield functions like:
 
     impl<T: Serializable> spanned<T>: Serializable {
-        fn serialize<S: Serializer>(s: S) {
+        fn serialize<S: Serializer>(s: &S) {
             do s.emit_rec {
-                s.emit_rec_field("node", 0, self.node.serialize(s));
-                s.emit_rec_field("span", 1, self.span.serialize(s));
+                s.emit_field("node", 0, self.node.serialize(s));
+                s.emit_field("span", 1, self.span.serialize(s));
             }
         }
+    }
 
-        static fn deserialize<D: Deserializer>(d: D) -> spanned<T> {
+    impl<T: Deserializable> spanned<T>: Deserializable {
+        static fn deserialize<D: Deserializer>(d: &D) -> spanned<T> {
             do d.read_rec {
                 {
-                    node: d.read_rec_field(~"node", 0, || deserialize(d)),
-                    span: d.read_rec_field(~"span", 1, || deserialize(d)),
+                    node: d.read_field(~"node", 0, || deserialize(d)),
+                    span: d.read_field(~"span", 1, || deserialize(d)),
                 }
             }
         }
@@ -87,22 +91,22 @@ fn expand(cx: ext_ctxt,
     do vec::flat_map(in_items) |item| {
         match item.node {
             ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
-                ~[
-                    filter_attrs(*item),
-                    mk_rec_impl(cx, item.span, item.ident, fields, tps),
-                ]
+                vec::append(
+                    ~[filter_attrs(*item)],
+                    mk_rec_impl(cx, item.span, item.ident, fields, tps)
+                )
             },
             ast::item_class(@{ fields, _}, tps) => {
-                ~[
-                    filter_attrs(*item),
-                    mk_struct_impl(cx, item.span, item.ident, fields, tps),
-                ]
+                vec::append(
+                    ~[filter_attrs(*item)],
+                    mk_struct_impl(cx, item.span, item.ident, fields, tps)
+                )
             },
             ast::item_enum(enum_def, tps) => {
-                ~[
-                    filter_attrs(*item),
-                    mk_enum_impl(cx, item.span, item.ident, enum_def, tps),
-                ]
+                vec::append(
+                    ~[filter_attrs(*item)],
+                    mk_enum_impl(cx, item.span, item.ident, enum_def, tps)
+                )
             },
             _ => {
                 cx.span_err(span, ~"#[auto_serialize2] can only be applied \
@@ -152,22 +156,11 @@ fn mk_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
+    path: @ast::path,
     tps: ~[ast::ty_param],
-    ser_body: @ast::expr,
-    deser_body: @ast::expr
+    f: fn(@ast::ty) -> @ast::method
 ) -> @ast::item {
-    // Make a path to the std::serialization2::Serializable trait.
-    let path = cx.path(
-        span,
-        ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialization2"),
-            cx.ident_of(~"Serializable"),
-        ]
-    );
-
-    // All the type parameters need to bound to
-    // std::serialization::Serializable.
+    // All the type parameters need to bound to the trait.
     let trait_tps = do tps.map |tp| {
         let t_bound = ast::bound_trait(@{
             id: cx.next_id(),
@@ -194,21 +187,70 @@ fn mk_impl(
         tps.map(|tp| cx.ty_path(span, ~[tp.ident], ~[]))
     );
 
-    let methods = ~[
-        mk_ser_method(cx, span, cx.expr_blk(ser_body)),
-        mk_deser_method(cx, span, ty, cx.expr_blk(deser_body)),
-    ];
-
     @{
         // This is a new-style impl declaration.
         // XXX: clownshoes
         ident: ast::token::special_idents::clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
-        node: ast::item_impl(trait_tps, opt_trait, ty, methods),
+        node: ast::item_impl(trait_tps, opt_trait, ty, ~[f(ty)]),
         vis: ast::public,
         span: span,
     }
+}
+
+fn mk_ser_impl(
+    cx: ext_ctxt,
+    span: span,
+    ident: ast::ident,
+    tps: ~[ast::ty_param],
+    body: @ast::expr
+) -> @ast::item {
+    // Make a path to the std::serialization2::Serializable trait.
+    let path = cx.path(
+        span,
+        ~[
+            cx.ident_of(~"std"),
+            cx.ident_of(~"serialization2"),
+            cx.ident_of(~"Serializable"),
+        ]
+    );
+
+    mk_impl(
+        cx,
+        span,
+        ident,
+        path,
+        tps,
+        |_ty| mk_ser_method(cx, span, cx.expr_blk(body))
+    )
+}
+
+fn mk_deser_impl(
+    cx: ext_ctxt,
+    span: span,
+    ident: ast::ident,
+    tps: ~[ast::ty_param],
+    body: @ast::expr
+) -> @ast::item {
+    // Make a path to the std::serialization2::Deserializable trait.
+    let path = cx.path(
+        span,
+        ~[
+            cx.ident_of(~"std"),
+            cx.ident_of(~"serialization2"),
+            cx.ident_of(~"Deserializable"),
+        ]
+    );
+
+    mk_impl(
+        cx,
+        span,
+        ident,
+        path,
+        tps,
+        |ty| mk_deser_method(cx, span, ty, cx.expr_blk(body))
+    )
 }
 
 fn mk_ser_method(
@@ -352,7 +394,7 @@ fn mk_rec_impl(
     ident: ast::ident,
     fields: ~[ast::ty_field],
     tps: ~[ast::ty_param]
-) -> @ast::item {
+) -> ~[@ast::item] {
     // Records and structs don't have the same fields types, but they share
     // enough that if we extract the right subfields out we can share the
     // serialization generator code.
@@ -365,11 +407,26 @@ fn mk_rec_impl(
     };
 
     let ser_body = mk_ser_fields(cx, span, fields);
+
+    // ast for `__s.emit_rec($(ser_body))`
+    let ser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__s"),
+            cx.ident_of(~"emit_rec")
+        ),
+        ~[ser_body]
+    );
+
     let deser_body = do mk_deser_fields(cx, span, fields) |fields| {
          cx.expr(span, ast::expr_rec(fields, None))
     };
 
-    mk_impl(cx, span, ident, tps, ser_body, deser_body)
+    ~[
+        mk_ser_impl(cx, span, ident, tps, ser_body),
+        mk_deser_impl(cx, span, ident, tps, deser_body),
+    ]
 }
 
 fn mk_struct_impl(
@@ -378,7 +435,7 @@ fn mk_struct_impl(
     ident: ast::ident,
     fields: ~[@ast::struct_field],
     tps: ~[ast::ty_param]
-) -> @ast::item {
+) -> ~[@ast::item] {
     // Records and structs don't have the same fields types, but they share
     // enough that if we extract the right subfields out we can share the
     // serialization generator code.
@@ -400,11 +457,26 @@ fn mk_struct_impl(
     };
 
     let ser_body = mk_ser_fields(cx, span, fields);
+
+    // ast for `__s.emit_struct($(name), $(ser_body))`
+    let ser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__s"),
+            cx.ident_of(~"emit_struct")
+        ),
+        ~[cx.lit_str(span, @cx.str_of(ident)), ser_body]
+    );
+
     let deser_body = do mk_deser_fields(cx, span, fields) |fields| {
         cx.expr(span, ast::expr_struct(cx.path(span, ~[ident]), fields, None))
     };
 
-    mk_impl(cx, span, ident, tps, ser_body, deser_body)
+    ~[
+        mk_ser_impl(cx, span, ident, tps, ser_body),
+        mk_deser_impl(cx, span, ident, tps, deser_body),
+    ]
 }
 
 fn mk_ser_fields(
@@ -430,14 +502,14 @@ fn mk_ser_fields(
             )
         );
 
-        // ast for `__s.emit_rec_field($(name), $(idx), $(expr_lambda))`
+        // ast for `__s.emit_field($(name), $(idx), $(expr_lambda))`
         cx.stmt(
             cx.expr_call(
                 span,
                 cx.expr_field(
                     span,
                     cx.expr_var(span, ~"__s"),
-                    cx.ident_of(~"emit_rec_field")
+                    cx.ident_of(~"emit_field")
                 ),
                 ~[
                     cx.lit_str(span, @cx.str_of(field.ident)),
@@ -448,16 +520,8 @@ fn mk_ser_fields(
         )
     };
 
-    // ast for `__s.emit_rec(|| $(stmts))`
-    cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_rec")
-        ),
-        ~[cx.lambda_stmts(span, stmts)]
-    )
+    // ast for `|| $(stmts)`
+    cx.lambda_stmts(span, stmts)
 }
 
 fn mk_deser_fields(
@@ -482,13 +546,13 @@ fn mk_deser_fields(
             )
         );
 
-        // ast for `__d.read_rec_field($(name), $(idx), $(expr_lambda))`
+        // ast for `__d.read_field($(name), $(idx), $(expr_lambda))`
         let expr: @ast::expr = cx.expr_call(
             span,
             cx.expr_field(
                 span,
                 cx.expr_var(span, ~"__d"),
-                cx.ident_of(~"read_rec_field")
+                cx.ident_of(~"read_field")
             ),
             ~[
                 cx.lit_str(span, @cx.str_of(field.ident)),
@@ -521,7 +585,7 @@ fn mk_enum_impl(
     ident: ast::ident,
     enum_def: ast::enum_def,
     tps: ~[ast::ty_param]
-) -> @ast::item {
+) -> ~[@ast::item] {
     let ser_body = mk_enum_ser_body(
         cx,
         span,
@@ -536,7 +600,10 @@ fn mk_enum_impl(
         enum_def.variants
     );
 
-    mk_impl(cx, span, ident, tps, ser_body, deser_body)
+    ~[
+        mk_ser_impl(cx, span, ident, tps, ser_body),
+        mk_deser_impl(cx, span, ident, tps, deser_body),
+    ]
 }
 
 fn ser_variant(

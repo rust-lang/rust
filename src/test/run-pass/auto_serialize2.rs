@@ -6,14 +6,13 @@ extern mod std;
 use cmp::Eq;
 use std::ebml2;
 use io::Writer;
-use std::serialization2::{Serializer, Serializable, deserialize};
+use std::serialization2::{Serializable, Deserializable, deserialize};
 use std::prettyprint2;
 
-fn test_ser_and_deser<A:Eq Serializable>(
+fn test_ser_and_deser<A:Eq Serializable Deserializable>(
     a1: A,
     expected: ~str
 ) {
-
     // check the pretty printer:
     let s = do io::with_str_writer |w| {
         a1.serialize(&prettyprint2::Serializer(w))
@@ -29,6 +28,39 @@ fn test_ser_and_deser<A:Eq Serializable>(
     let d = ebml2::Doc(@bytes);
     let a2: A = deserialize(&ebml2::Deserializer(d));
     assert a1 == a2;
+}
+
+#[auto_serialize2]
+enum Expr {
+    Val(uint),
+    Plus(@Expr, @Expr),
+    Minus(@Expr, @Expr)
+}
+
+impl Expr : cmp::Eq {
+    pure fn eq(other: &Expr) -> bool {
+        match self {
+            Val(e0a) => {
+                match *other {
+                    Val(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            Plus(e0a, e1a) => {
+                match *other {
+                    Plus(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            Minus(e0a, e1a) => {
+                match *other {
+                    Minus(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(other: &Expr) -> bool { !self.eq(other) }
 }
 
 impl AnEnum : cmp::Eq {
@@ -101,15 +133,20 @@ enum Quark<T> {
 enum CLike { A, B, C }
 
 fn main() {
+    test_ser_and_deser(Plus(@Minus(@Val(3u), @Val(10u)),
+                            @Plus(@Val(22u), @Val(5u))),
+                       ~"Plus(@Minus(@Val(3u), @Val(10u)), \
+                        @Plus(@Val(22u), @Val(5u)))");
+
     test_ser_and_deser({lo: 0u, hi: 5u, node: 22u},
                        ~"{lo: 0u, hi: 5u, node: 22u}");
 
     test_ser_and_deser(AnEnum({v: ~[1u, 2u, 3u]}),
-                       ~"AnEnum({v: [1u, 2u, 3u]})");
+                       ~"AnEnum({v: ~[1u, 2u, 3u]})");
 
     test_ser_and_deser({x: 3u, y: 5u}, ~"{x: 3u, y: 5u}");
 
-    test_ser_and_deser(~[1u, 2u, 3u], ~"[1u, 2u, 3u]");
+    test_ser_and_deser(@[1u, 2u, 3u], ~"@[1u, 2u, 3u]");
 
     test_ser_and_deser(Top(22u), ~"Top(22u)");
     test_ser_and_deser(Bottom(222u), ~"Bottom(222u)");

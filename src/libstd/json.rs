@@ -92,10 +92,15 @@ pub impl Serializer: serialization2::Serializer {
         self.wr.write_str(float::to_str(v, 6u));
     }
 
-    fn emit_str(&self, v: &str) {
-        let s = escape_str(v);
-        self.wr.write_str(s);
-    }
+    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
+
+    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)) }
+    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
+    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
+
+    fn emit_borrowed(&self, f: fn()) { f() }
+    fn emit_owned(&self, f: fn()) { f() }
+    fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
         if name != "option" { fail ~"only supports option enum" }
@@ -112,32 +117,41 @@ pub impl Serializer: serialization2::Serializer {
         f()
     }
 
-    fn emit_vec(&self, _len: uint, f: fn()) {
+    fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
         self.wr.write_char('[');
         f();
         self.wr.write_char(']');
     }
-
+    fn emit_owned_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
+    fn emit_managed_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
     fn emit_vec_elt(&self, idx: uint, f: fn()) {
         if idx != 0 { self.wr.write_char(','); }
         f()
     }
 
-    fn emit_box(&self, f: fn()) { f() }
-    fn emit_uniq(&self, f: fn()) { f() }
     fn emit_rec(&self, f: fn()) {
         self.wr.write_char('{');
         f();
         self.wr.write_char('}');
     }
-    fn emit_rec_field(&self, name: &str, idx: uint, f: fn()) {
+    fn emit_struct(&self, _name: &str, f: fn()) {
+        self.wr.write_char('{');
+        f();
+        self.wr.write_char('}');
+    }
+    fn emit_field(&self, name: &str, idx: uint, f: fn()) {
         if idx != 0 { self.wr.write_char(','); }
         self.wr.write_str(escape_str(name));
         self.wr.write_char(':');
         f();
     }
-    fn emit_tup(&self, sz: uint, f: fn()) {
-        self.emit_vec(sz, f);
+
+    fn emit_tup(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f);
     }
     fn emit_tup_elt(&self, idx: uint, f: fn()) {
         self.emit_vec_elt(idx, f)
@@ -182,7 +196,15 @@ pub impl PrettySerializer: serialization2::Serializer {
         self.wr.write_str(float::to_str(v, 6u));
     }
 
-    fn emit_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
+    fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
+
+    fn emit_borrowed_str(&self, v: &str) { self.wr.write_str(escape_str(v)); }
+    fn emit_owned_str(&self, v: &str) { self.emit_borrowed_str(v) }
+    fn emit_managed_str(&self, v: &str) { self.emit_borrowed_str(v) }
+
+    fn emit_borrowed(&self, f: fn()) { f() }
+    fn emit_owned(&self, f: fn()) { f() }
+    fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
         if name != "option" { fail ~"only supports option enum" }
@@ -199,14 +221,19 @@ pub impl PrettySerializer: serialization2::Serializer {
         f()
     }
 
-    fn emit_vec(&self, _len: uint, f: fn()) {
+    fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
         self.wr.write_char('[');
         self.indent += 2;
         f();
         self.indent -= 2;
         self.wr.write_char(']');
     }
-
+    fn emit_owned_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
+    fn emit_managed_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
     fn emit_vec_elt(&self, idx: uint, f: fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
@@ -217,8 +244,6 @@ pub impl PrettySerializer: serialization2::Serializer {
         f()
     }
 
-    fn emit_box(&self, f: fn()) { f() }
-    fn emit_uniq(&self, f: fn()) { f() }
     fn emit_rec(&self, f: fn()) {
         self.wr.write_char('{');
         self.indent += 2;
@@ -226,7 +251,10 @@ pub impl PrettySerializer: serialization2::Serializer {
         self.indent -= 2;
         self.wr.write_char('}');
     }
-    fn emit_rec_field(&self, name: &str, idx: uint, f: fn()) {
+    fn emit_struct(&self, _name: &str, f: fn()) {
+        self.emit_rec(f)
+    }
+    fn emit_field(&self, name: &str, idx: uint, f: fn()) {
         if idx == 0 {
             self.wr.write_char('\n');
         } else {
@@ -238,43 +266,39 @@ pub impl PrettySerializer: serialization2::Serializer {
         f();
     }
     fn emit_tup(&self, sz: uint, f: fn()) {
-        self.emit_vec(sz, f);
+        self.emit_borrowed_vec(sz, f);
     }
     fn emit_tup_elt(&self, idx: uint, f: fn()) {
         self.emit_vec_elt(idx, f)
     }
 }
 
-pub fn to_serializer<S: serialization2::Serializer>(ser: &S, json: &Json) {
-    match *json {
-        Number(f) => ser.emit_float(f),
-        String(ref s) => ser.emit_str(*s),
-        Boolean(b) => ser.emit_bool(b),
-        List(v) => {
-            do ser.emit_vec(v.len()) || {
-                for v.eachi |i, elt| {
-                    ser.emit_vec_elt(i, || to_serializer(ser, elt))
-                }
-            }
-        }
-        Object(ref o) => {
-            do ser.emit_rec || {
-                let mut idx = 0;
-                for o.each |key, value| {
-                    do ser.emit_rec_field(*key, idx) {
-                        to_serializer(ser, value);
+pub impl Json: serialization2::Serializable {
+    fn serialize<S: serialization2::Serializer>(&self, s: &S) {
+        match *self {
+            Number(v) => v.serialize(s),
+            String(ref v) => v.serialize(s),
+            Boolean(v) => v.serialize(s),
+            List(v) => v.serialize(s),
+            Object(ref v) => {
+                do s.emit_rec || {
+                    let mut idx = 0;
+                    for v.each |key, value| {
+                        do s.emit_field(*key, idx) {
+                            value.serialize(s);
+                        }
+                        idx += 1;
                     }
-                    idx += 1;
                 }
-            }
+            },
+            Null => s.emit_nil(),
         }
-        Null => ser.emit_nil(),
     }
 }
 
 /// Serializes a json value into a io::writer
 pub fn to_writer(wr: io::Writer, json: &Json) {
-    to_serializer(&Serializer(wr), json)
+    json.serialize(&Serializer(wr))
 }
 
 /// Serializes a json value into a string
@@ -284,7 +308,7 @@ pub fn to_str(json: &Json) -> ~str {
 
 /// Serializes a json value into a io::writer
 pub fn to_pretty_writer(wr: io::Writer, json: &Json) {
-    to_serializer(&PrettySerializer(wr), json)
+    json.serialize(&PrettySerializer(wr))
 }
 
 /// Serializes a json value into a string
@@ -736,12 +760,33 @@ pub impl Deserializer: serialization2::Deserializer {
         }
     }
 
-    fn read_str(&self) -> ~str {
-        debug!("read_str");
+    fn read_char(&self) -> char {
+        let v = str::chars(self.read_owned_str());
+        if v.len() != 1 { fail ~"string must have one character" }
+        v[0]
+    }
+
+    fn read_owned_str(&self) -> ~str {
+        debug!("read_owned_str");
         match *self.pop() {
             String(ref s) => copy *s,
             _ => fail ~"not a string"
         }
+    }
+
+    fn read_managed_str(&self) -> @str {
+        // FIXME(#3604): There's no way to convert from a ~str to a @str.
+        fail ~"read_managed_str()";
+    }
+
+    fn read_owned<T>(&self, f: fn() -> T) -> T {
+        debug!("read_owned()");
+        f()
+    }
+
+    fn read_managed<T>(&self, f: fn() -> T) -> T {
+        debug!("read_managed()");
+        f()
     }
 
     fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
@@ -765,8 +810,19 @@ pub impl Deserializer: serialization2::Deserializer {
         f()
     }
 
-    fn read_vec<T>(&self, f: fn(uint) -> T) -> T {
-        debug!("read_vec()");
+    fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T {
+        debug!("read_owned_vec()");
+        let len = match *self.peek() {
+            List(list) => list.len(),
+            _ => fail ~"not a list",
+        };
+        let res = f(len);
+        self.pop();
+        res
+    }
+
+    fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
+        debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
             _ => fail ~"not a list",
@@ -790,16 +846,6 @@ pub impl Deserializer: serialization2::Deserializer {
         }
     }
 
-    fn read_box<T>(&self, f: fn() -> T) -> T {
-        debug!("read_box()");
-        f()
-    }
-
-    fn read_uniq<T>(&self, f: fn() -> T) -> T {
-        debug!("read_uniq()");
-        f()
-    }
-
     fn read_rec<T>(&self, f: fn() -> T) -> T {
         debug!("read_rec()");
         let value = f();
@@ -807,17 +853,23 @@ pub impl Deserializer: serialization2::Deserializer {
         value
     }
 
-    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint,
-                         f: fn() -> T) -> T {
-        debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
+    fn read_struct<T>(&self, _name: &str, f: fn() -> T) -> T {
+        debug!("read_struct()");
+        let value = f();
+        self.pop();
+        value
+    }
+
+    fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
+        debug!("read_rec_field(%s, idx=%u)", name, idx);
         let top = self.peek();
         match *top {
             Object(ref obj) => {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&(f_name.to_unique())) {
-                    None => fail fmt!("no such field: %s", f_name),
+                match obj.find_ref(&name.to_unique()) {
+                    None => fail fmt!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);
                         f()
@@ -834,8 +886,8 @@ pub impl Deserializer: serialization2::Deserializer {
         }
     }
 
-    fn read_tup<T>(&self, sz: uint, f: fn() -> T) -> T {
-        debug!("read_tup(sz=%u)", sz);
+    fn read_tup<T>(&self, len: uint, f: fn() -> T) -> T {
+        debug!("read_tup(len=%u)", len);
         let value = f();
         self.pop();
         value

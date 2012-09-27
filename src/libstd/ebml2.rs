@@ -384,7 +384,25 @@ impl Serializer: serialization2::Serializer {
         fail ~"Unimplemented: serializing a float";
     }
 
-    fn emit_str(&self, v: &str) { self.wr_tagged_str(EsStr as uint, v) }
+    fn emit_char(&self, _v: char) {
+        fail ~"Unimplemented: serializing a char";
+    }
+
+    fn emit_borrowed_str(&self, v: &str) {
+        self.wr_tagged_str(EsStr as uint, v)
+    }
+
+    fn emit_owned_str(&self, v: &str) {
+        self.emit_borrowed_str(v)
+    }
+
+    fn emit_managed_str(&self, v: &str) {
+        self.emit_borrowed_str(v)
+    }
+
+    fn emit_borrowed(&self, f: fn()) { f() }
+    fn emit_owned(&self, f: fn()) { f() }
+    fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
         self._emit_label(name);
@@ -397,25 +415,33 @@ impl Serializer: serialization2::Serializer {
     }
     fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) { f() }
 
-    fn emit_vec(&self, len: uint, f: fn()) {
+    fn emit_borrowed_vec(&self, len: uint, f: fn()) {
         do self.wr_tag(EsVec as uint) {
             self._emit_tagged_uint(EsVecLen, len);
             f()
         }
     }
 
+    fn emit_owned_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
+
+    fn emit_managed_vec(&self, len: uint, f: fn()) {
+        self.emit_borrowed_vec(len, f)
+    }
+
     fn emit_vec_elt(&self, _idx: uint, f: fn()) {
         self.wr_tag(EsVecElt as uint, f)
     }
 
-    fn emit_box(&self, f: fn()) { f() }
-    fn emit_uniq(&self, f: fn()) { f() }
     fn emit_rec(&self, f: fn()) { f() }
-    fn emit_rec_field(&self, f_name: &str, _f_idx: uint, f: fn()) {
-        self._emit_label(f_name);
+    fn emit_struct(&self, _name: &str, f: fn()) { f() }
+    fn emit_field(&self, name: &str, _idx: uint, f: fn()) {
+        self._emit_label(name);
         f()
     }
-    fn emit_tup(&self, _sz: uint, f: fn()) { f() }
+
+    fn emit_tup(&self, _len: uint, f: fn()) { f() }
     fn emit_tup_elt(&self, _idx: uint, f: fn()) { f() }
 }
 
@@ -525,9 +551,22 @@ impl Deserializer: serialization2::Deserializer {
     fn read_f32(&self) -> f32 { fail ~"read_f32()"; }
     fn read_float(&self) -> float { fail ~"read_float()"; }
 
-    fn read_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
+    fn read_char(&self) -> char { fail ~"read_char()"; }
+
+    fn read_owned_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
+    fn read_managed_str(&self) -> @str { fail ~"read_managed_str()"; }
 
     // Compound types:
+    fn read_owned<T>(&self, f: fn() -> T) -> T {
+        debug!("read_owned()");
+        f()
+    }
+
+    fn read_managed<T>(&self, f: fn() -> T) -> T {
+        debug!("read_managed()");
+        f()
+    }
+
     fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         self._check_label(name);
@@ -548,8 +587,17 @@ impl Deserializer: serialization2::Deserializer {
         f()
     }
 
-    fn read_vec<T>(&self, f: fn(uint) -> T) -> T {
-        debug!("read_vec()");
+    fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T {
+        debug!("read_owned_vec()");
+        do self.push_doc(self.next_doc(EsVec)) {
+            let len = self._next_uint(EsVecLen);
+            debug!("  len=%u", len);
+            f(len)
+        }
+    }
+
+    fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
+        debug!("read_managed_vec()");
         do self.push_doc(self.next_doc(EsVec)) {
             let len = self._next_uint(EsVecLen);
             debug!("  len=%u", len);
@@ -562,30 +610,24 @@ impl Deserializer: serialization2::Deserializer {
         self.push_doc(self.next_doc(EsVecElt), f)
     }
 
-    fn read_box<T>(&self, f: fn() -> T) -> T {
-        debug!("read_box()");
-        f()
-    }
-
-    fn read_uniq<T>(&self, f: fn() -> T) -> T {
-        debug!("read_uniq()");
-        f()
-    }
-
     fn read_rec<T>(&self, f: fn() -> T) -> T {
         debug!("read_rec()");
         f()
     }
 
-    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint,
-                         f: fn() -> T) -> T {
-        debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
-        self._check_label(f_name);
+    fn read_struct<T>(&self, name: &str, f: fn() -> T) -> T {
+        debug!("read_struct(name=%s)", name);
         f()
     }
 
-    fn read_tup<T>(&self, sz: uint, f: fn() -> T) -> T {
-        debug!("read_tup(sz=%u)", sz);
+    fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
+        debug!("read_field(name=%s, idx=%u)", name, idx);
+        self._check_label(name);
+        f()
+    }
+
+    fn read_tup<T>(&self, len: uint, f: fn() -> T) -> T {
+        debug!("read_tup(len=%u)", len);
         f()
     }
 
@@ -594,7 +636,6 @@ impl Deserializer: serialization2::Deserializer {
         f()
     }
 }
-
 
 // ___________________________________________________________________________
 // Testing
