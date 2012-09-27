@@ -10,19 +10,19 @@ Cross-platform file path handling
 
 use cmp::Eq;
 
-struct WindowsPath {
+pub struct WindowsPath {
     host: Option<~str>,
     device: Option<~str>,
     is_absolute: bool,
     components: ~[~str],
 }
 
-struct PosixPath {
+pub struct PosixPath {
     is_absolute: bool,
     components: ~[~str],
 }
 
-trait GenericPath {
+pub trait GenericPath {
 
     static pure fn from_str((&str)) -> self;
 
@@ -45,18 +45,18 @@ trait GenericPath {
 }
 
 #[cfg(windows)]
-type Path = WindowsPath;
+pub type Path = WindowsPath;
 
 #[cfg(windows)]
-pure fn Path(s: &str) -> Path {
+pub pure fn Path(s: &str) -> Path {
     from_str::<WindowsPath>(s)
 }
 
 #[cfg(unix)]
-type Path = PosixPath;
+pub type Path = PosixPath;
 
 #[cfg(unix)]
-pure fn Path(s: &str) -> Path {
+pub pure fn Path(s: &str) -> Path {
     from_str::<PosixPath>(s)
 }
 
@@ -429,7 +429,7 @@ impl WindowsPath : GenericPath {
 }
 
 
-pure fn normalize(components: &[~str]) -> ~[~str] {
+pub pure fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
     unsafe {
         for components.each |c| {
@@ -462,7 +462,6 @@ fn test_double_slash_collapsing()
 }
 
 mod posix {
-    #[legacy_exports];
 
     #[cfg(test)]
     fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
@@ -553,14 +552,13 @@ mod posix {
 
 // Various windows helpers, and tests for the impl.
 mod windows {
-    #[legacy_exports];
 
     #[inline(always)]
-    pure fn is_sep(u: u8) -> bool {
+    pub pure fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
     }
 
-    pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
+    pub pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
         if (s.len() > 1 &&
             s[0] == '\\' as u8 &&
             s[1] == '\\' as u8) {
@@ -577,7 +575,7 @@ mod windows {
         None
     }
 
-    pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
+    pub pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
         unsafe {
             if (s.len() > 1 &&
                 libc::isalpha(s[0] as libc::c_int) != 0 &&

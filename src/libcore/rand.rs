@@ -9,7 +9,6 @@ enum rctx {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
     fn rand_seed() -> ~[u8];
     fn rand_new() -> *rctx;
     fn rand_new_seeded(seed: ~[u8]) -> *rctx;
