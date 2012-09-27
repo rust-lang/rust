@@ -254,8 +254,8 @@ fn llvm_type_name(cx: @crate_ctxt,
 }
 
 fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
-    T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))),
-          T_ptr(type_of(ccx, self_ty))],
+    T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
+           T_ptr(type_of(ccx, self_ty))],            // self arg
          llvm::LLVMVoidType())
 }
 

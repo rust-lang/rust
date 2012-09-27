@@ -103,11 +103,11 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be
     // causing an infinite expansion.
-    if depth > 10u {
+    if depth > 10 {
         ccx.sess.span_fatal(
             span, ~"overly deep expansion of inlined function");
     }
-    ccx.monomorphizing.insert(fn_id, depth + 1u);
+    ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(*pt,
                          ~[path_name(ccx.names(ccx.sess.str_of(name)))]);
