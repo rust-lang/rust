@@ -3,9 +3,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-mod general_category {
-    #[legacy_exports];
-    pure fn Cc(c: char) -> bool {
+pub mod general_category {
+    pub pure fn Cc(c: char) -> bool {
         return match c {
               '\x00' .. '\x1f'
             | '\x7f' .. '\x9f' => true,
@@ -13,7 +12,7 @@ mod general_category {
         };
     }
 
-    pure fn Cf(c: char) -> bool {
+    pub pure fn Cf(c: char) -> bool {
         return match c {
               '\xad'
             | '\u0600' .. '\u0603'
@@ -32,21 +31,21 @@ mod general_category {
         };
     }
 
-    pure fn Co(c: char) -> bool {
+    pub pure fn Co(c: char) -> bool {
         return match c {
           '\ue000' .. '\uf8ff' => true,
           _ => false
         };
     }
 
-    pure fn Cs(c: char) -> bool {
+    pub pure fn Cs(c: char) -> bool {
         return match c {
               '\ud800' .. '\udfff' => true,
             _ => false
         };
     }
 
-    pure fn Ll(c: char) -> bool {
+    pub pure fn Ll(c: char) -> bool {
         return match c {
               '\x61' .. '\x7a'
             | '\xaa'
@@ -651,7 +650,7 @@ mod general_category {
         };
     }
 
-    pure fn Lm(c: char) -> bool {
+    pub pure fn Lm(c: char) -> bool {
         return match c {
               '\u02b0' .. '\u02c1'
             | '\u02c6' .. '\u02d1'
@@ -707,7 +706,7 @@ mod general_category {
         };
     }
 
-    pure fn Lo(c: char) -> bool {
+    pub pure fn Lo(c: char) -> bool {
         return match c {
               '\u01bb'
             | '\u01c0' .. '\u01c3'
@@ -893,7 +892,7 @@ mod general_category {
         };
     }
 
-    pure fn Lt(c: char) -> bool {
+    pub pure fn Lt(c: char) -> bool {
         return match c {
               '\u01c5'
             | '\u01c8'
@@ -910,7 +909,7 @@ mod general_category {
         };
     }
 
-    pure fn Lu(c: char) -> bool {
+    pub pure fn Lu(c: char) -> bool {
         return match c {
               '\x41' .. '\x5a'
             | '\xc0' .. '\xd6'
@@ -1502,7 +1501,7 @@ mod general_category {
         };
     }
 
-    pure fn Mc(c: char) -> bool {
+    pub pure fn Mc(c: char) -> bool {
         return match c {
               '\u0903'
             | '\u093b'
@@ -1613,7 +1612,7 @@ mod general_category {
         };
     }
 
-    pure fn Me(c: char) -> bool {
+    pub pure fn Me(c: char) -> bool {
         return match c {
               '\u0488' .. '\u0489'
             | '\u20dd' .. '\u20e0'
@@ -1624,7 +1623,7 @@ mod general_category {
         };
     }
 
-    pure fn Mn(c: char) -> bool {
+    pub pure fn Mn(c: char) -> bool {
         return match c {
               '\u0300' .. '\u036f'
             | '\u0483' .. '\u0487'
@@ -1817,7 +1816,7 @@ mod general_category {
         };
     }
 
-    pure fn Nd(c: char) -> bool {
+    pub pure fn Nd(c: char) -> bool {
         return match c {
               '\x30' .. '\x39'
             | '\u0660' .. '\u0669'
@@ -1861,7 +1860,7 @@ mod general_category {
         };
     }
 
-    pure fn Nl(c: char) -> bool {
+    pub pure fn Nl(c: char) -> bool {
         return match c {
               '\u16ee' .. '\u16f0'
             | '\u2160' .. '\u2182'
@@ -1880,7 +1879,7 @@ mod general_category {
         };
     }
 
-    pure fn No(c: char) -> bool {
+    pub pure fn No(c: char) -> bool {
         return match c {
               '\xb2' .. '\xb3'
             | '\xb9'
@@ -1928,7 +1927,7 @@ mod general_category {
         };
     }
 
-    pure fn Pc(c: char) -> bool {
+    pub pure fn Pc(c: char) -> bool {
         return match c {
               '\x5f'
             | '\u203f' .. '\u2040'
@@ -1941,7 +1940,7 @@ mod general_category {
         };
     }
 
-    pure fn Pd(c: char) -> bool {
+    pub pure fn Pd(c: char) -> bool {
         return match c {
               '\x2d'
             | '\u058a'
@@ -1963,7 +1962,7 @@ mod general_category {
         };
     }
 
-    pure fn Pe(c: char) -> bool {
+    pub pure fn Pe(c: char) -> bool {
         return match c {
               '\x29'
             | '\x5d'
@@ -2040,7 +2039,7 @@ mod general_category {
         };
     }
 
-    pure fn Pf(c: char) -> bool {
+    pub pure fn Pf(c: char) -> bool {
         return match c {
               '\xbb'
             | '\u2019'
@@ -2057,7 +2056,7 @@ mod general_category {
         };
     }
 
-    pure fn Pi(c: char) -> bool {
+    pub pure fn Pi(c: char) -> bool {
         return match c {
               '\xab'
             | '\u2018'
@@ -2075,7 +2074,7 @@ mod general_category {
         };
     }
 
-    pure fn Po(c: char) -> bool {
+    pub pure fn Po(c: char) -> bool {
         return match c {
               '\x21' .. '\x23'
             | '\x25' .. '\x27'
@@ -2208,7 +2207,7 @@ mod general_category {
         };
     }
 
-    pure fn Ps(c: char) -> bool {
+    pub pure fn Ps(c: char) -> bool {
         return match c {
               '\x28'
             | '\x5b'
@@ -2287,7 +2286,7 @@ mod general_category {
         };
     }
 
-    pure fn Sc(c: char) -> bool {
+    pub pure fn Sc(c: char) -> bool {
         return match c {
               '\x24'
             | '\xa2' .. '\xa5'
@@ -2310,7 +2309,7 @@ mod general_category {
         };
     }
 
-    pure fn Sk(c: char) -> bool {
+    pub pure fn Sk(c: char) -> bool {
         return match c {
               '\x5e'
             | '\x60'
@@ -2344,7 +2343,7 @@ mod general_category {
         };
     }
 
-    pure fn Sm(c: char) -> bool {
+    pub pure fn Sm(c: char) -> bool {
         return match c {
               '\x2b'
             | '\x3c' .. '\x3e'
@@ -2415,7 +2414,7 @@ mod general_category {
         };
     }
 
-    pure fn So(c: char) -> bool {
+    pub pure fn So(c: char) -> bool {
         return match c {
               '\xa6' .. '\xa7'
             | '\xa9'
@@ -2534,21 +2533,21 @@ mod general_category {
         };
     }
 
-    pure fn Zl(c: char) -> bool {
+    pub pure fn Zl(c: char) -> bool {
         return match c {
           '\u2028' => true,
           _ => false
         };
     }
 
-    pure fn Zp(c: char) -> bool {
+    pub pure fn Zp(c: char) -> bool {
         return match c {
           '\u2029' => true,
           _ => false
         };
     }
 
-    pure fn Zs(c: char) -> bool {
+    pub pure fn Zs(c: char) -> bool {
         return match c {
               '\x20'
             | '\xa0'
@@ -2567,7 +2566,7 @@ mod general_category {
 mod derived_property {
     #[legacy_exports];
     /// Check if a character has the alphabetic unicode property
-    pure fn Alphabetic(c: char) -> bool {
+    pub pure fn Alphabetic(c: char) -> bool {
         return match c {
               '\x41' .. '\x5a'
             | '\x61' .. '\x7a'
@@ -3305,7 +3304,7 @@ mod derived_property {
         };
     }
 
-    pure fn XID_Continue(c: char) -> bool {
+    pub pure fn XID_Continue(c: char) -> bool {
         return match c {
               '\x30' .. '\x39'
             | '\x41' .. '\x5a'
@@ -4176,7 +4175,7 @@ mod derived_property {
         };
     }
 
-    pure fn XID_Start(c: char) -> bool {
+    pub pure fn XID_Start(c: char) -> bool {
         return match c {
               '\x41' .. '\x5a'
             | '\x61' .. '\x7a'
