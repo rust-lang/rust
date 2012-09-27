@@ -1,4 +1,6 @@
-% Tasks and communication in Rust
+% Rust Tasks and Communication Tutorial
+
+# Introduction
 
 Rust supports a system of lightweight tasks, similar to what is found
 in Erlang or other actor systems. Rust tasks communicate via messages

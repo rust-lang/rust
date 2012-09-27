@@ -1,4 +1,6 @@
-# Interacting with foreign code
+% Rust Foreign Function Interface Tutorial
+
+# Introduction
 
 One of Rust's aims, as a system programming language, is to
 interoperate well with C code.
@@ -38,7 +40,7 @@ fn main(args: ~[~str]) {
 }
 ~~~~
 
-## Foreign modules
+# Foreign modules
 
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
@@ -68,7 +70,7 @@ extern mod something {
 }
 ~~~~
 
-## Foreign calling conventions
+# Foreign calling conventions
 
 Most foreign code will be C code, which usually uses the `cdecl` calling
 convention, so that is what Rust uses by default when calling foreign
@@ -88,7 +90,7 @@ The `"abi"` attribute applies to a foreign module (it can not be applied
 to a single function within a module), and must be either `"cdecl"`
 or `"stdcall"`. Other conventions may be defined in the future.
 
-## Unsafe pointers
+# Unsafe pointers
 
 The foreign `SHA1` function is declared to take three arguments, and
 return a pointer.
@@ -118,7 +120,7 @@ caution—unlike Rust's other pointer types, unsafe pointers are
 completely unmanaged, so they might point at invalid memory, or be
 null pointers.
 
-## Unsafe blocks
+# Unsafe blocks
 
 The `sha1` function is the most obscure part of the program.
 
@@ -159,7 +161,7 @@ unsafe fn kaboom() { ~"I'm harmless!"; }
 This function can only be called from an unsafe block or another
 unsafe function.
 
-## Pointer fiddling
+# Pointer fiddling
 
 The standard library defines a number of helper functions for dealing
 with unsafe data, casting between types, and generally subverting
@@ -202,7 +204,7 @@ unsafe pointer that was returned by `SHA1`. SHA1 digests are always
 twenty bytes long, so we can pass `20u` for the length of the new
 vector.
 
-## Passing structures
+# Passing structures
 
 C functions often take pointers to structs as arguments. Since Rust
 structs are binary-compatible with C structs, Rust programs can call
