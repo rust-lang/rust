@@ -24,19 +24,30 @@ pub trait Serializer {
     fn emit_float(&self, v: float);
     fn emit_f64(&self, v: f64);
     fn emit_f32(&self, v: f32);
-    fn emit_str(&self, v: &str);
+    fn emit_char(&self, v: char);
+    fn emit_borrowed_str(&self, v: &str);
+    fn emit_owned_str(&self, v: &str);
+    fn emit_managed_str(&self, v: &str);
 
     // Compound types:
+    fn emit_borrowed(&self, f: fn());
+    fn emit_owned(&self, f: fn());
+    fn emit_managed(&self, f: fn());
+
     fn emit_enum(&self, name: &str, f: fn());
     fn emit_enum_variant(&self, v_name: &str, v_id: uint, sz: uint, f: fn());
     fn emit_enum_variant_arg(&self, idx: uint, f: fn());
-    fn emit_vec(&self, len: uint, f: fn());
+
+    fn emit_borrowed_vec(&self, len: uint, f: fn());
+    fn emit_owned_vec(&self, len: uint, f: fn());
+    fn emit_managed_vec(&self, len: uint, f: fn());
     fn emit_vec_elt(&self, idx: uint, f: fn());
-    fn emit_box(&self, f: fn());
-    fn emit_uniq(&self, f: fn());
+
     fn emit_rec(&self, f: fn());
-    fn emit_rec_field(&self, f_name: &str, f_idx: uint, f: fn());
-    fn emit_tup(&self, sz: uint, f: fn());
+    fn emit_struct(&self, name: &str, f: fn());
+    fn emit_field(&self, f_name: &str, f_idx: uint, f: fn());
+
+    fn emit_tup(&self, len: uint, f: fn());
     fn emit_tup_elt(&self, idx: uint, f: fn());
 }
 
@@ -57,29 +68,43 @@ pub trait Deserializer {
     fn read_f64(&self) -> f64;
     fn read_f32(&self) -> f32;
     fn read_float(&self) -> float;
-    fn read_str(&self) -> ~str;
+    fn read_char(&self) -> char;
+    fn read_owned_str(&self) -> ~str;
+    fn read_managed_str(&self) -> @str;
 
     // Compound types:
     fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T;
     fn read_enum_variant<T>(&self, f: fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T;
-    fn read_vec<T>(&self, f: fn(uint) -> T) -> T;
+
+    fn read_owned<T>(&self, f: fn() -> T) -> T;
+    fn read_managed<T>(&self, f: fn() -> T) -> T;
+
+    fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T;
+    fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T;
     fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
-    fn read_box<T>(&self, f: fn() -> T) -> T;
-    fn read_uniq<T>(&self, f: fn() -> T) -> T;
+
     fn read_rec<T>(&self, f: fn() -> T) -> T;
-    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint, f: fn() -> T) -> T;
+    fn read_struct<T>(&self, name: &str, f: fn() -> T) -> T;
+    fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T;
+
     fn read_tup<T>(&self, sz: uint, f: fn() -> T) -> T;
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
 }
 
 pub trait Serializable {
     fn serialize<S: Serializer>(&self, s: &S);
+}
+
+pub trait Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> self;
 }
 
 pub impl uint: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_uint(*self) }
+}
+
+pub impl uint: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> uint {
         d.read_uint()
     }
@@ -87,6 +112,9 @@ pub impl uint: Serializable {
 
 pub impl u8: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_u8(*self) }
+}
+
+pub impl u8: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> u8 {
         d.read_u8()
     }
@@ -94,6 +122,9 @@ pub impl u8: Serializable {
 
 pub impl u16: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_u16(*self) }
+}
+
+pub impl u16: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> u16 {
         d.read_u16()
     }
@@ -101,6 +132,9 @@ pub impl u16: Serializable {
 
 pub impl u32: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_u32(*self) }
+}
+
+pub impl u32: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> u32 {
         d.read_u32()
     }
@@ -108,6 +142,9 @@ pub impl u32: Serializable {
 
 pub impl u64: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_u64(*self) }
+}
+
+pub impl u64: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> u64 {
         d.read_u64()
     }
@@ -115,6 +152,9 @@ pub impl u64: Serializable {
 
 pub impl int: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_int(*self) }
+}
+
+pub impl int: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> int {
         d.read_int()
     }
@@ -122,6 +162,9 @@ pub impl int: Serializable {
 
 pub impl i8: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_i8(*self) }
+}
+
+pub impl i8: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> i8 {
         d.read_i8()
     }
@@ -129,6 +172,9 @@ pub impl i8: Serializable {
 
 pub impl i16: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_i16(*self) }
+}
+
+pub impl i16: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> i16 {
         d.read_i16()
     }
@@ -136,6 +182,9 @@ pub impl i16: Serializable {
 
 pub impl i32: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_i32(*self) }
+}
+
+pub impl i32: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> i32 {
         d.read_i32()
     }
@@ -143,20 +192,43 @@ pub impl i32: Serializable {
 
 pub impl i64: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_i64(*self) }
+}
+
+pub impl i64: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> i64 {
         d.read_i64()
     }
 }
 
+pub impl &str: Serializable {
+    fn serialize<S: Serializer>(&self, s: &S) { s.emit_borrowed_str(*self) }
+}
+
 pub impl ~str: Serializable {
-    fn serialize<S: Serializer>(&self, s: &S) { s.emit_str(*self) }
+    fn serialize<S: Serializer>(&self, s: &S) { s.emit_owned_str(*self) }
+}
+
+pub impl ~str: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> ~str {
-        d.read_str()
+        d.read_owned_str()
+    }
+}
+
+pub impl @str: Serializable {
+    fn serialize<S: Serializer>(&self, s: &S) { s.emit_managed_str(*self) }
+}
+
+pub impl @str: Deserializable {
+    static fn deserialize<D: Deserializer>(&self, d: &D) -> @str {
+        d.read_managed_str()
     }
 }
 
 pub impl float: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_float(*self) }
+}
+
+pub impl float: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> float {
         d.read_float()
     }
@@ -164,12 +236,18 @@ pub impl float: Serializable {
 
 pub impl f32: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_f32(*self) }
+}
+
+pub impl f32: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> f32 {
         d.read_f32() }
 }
 
 pub impl f64: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_f64(*self) }
+}
+
+pub impl f64: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> f64 {
         d.read_f64()
     }
@@ -177,6 +255,9 @@ pub impl f64: Serializable {
 
 pub impl bool: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_bool(*self) }
+}
+
+pub impl bool: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> bool {
         d.read_bool()
     }
@@ -184,43 +265,88 @@ pub impl bool: Serializable {
 
 pub impl (): Serializable {
     fn serialize<S: Serializer>(&self, s: &S) { s.emit_nil() }
+}
+
+pub impl (): Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> () {
         d.read_nil()
     }
 }
 
-pub impl<T: Serializable> @T: Serializable {
+pub impl<T: Serializable> &T: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
-        s.emit_box(|| (*self).serialize(s))
-    }
-
-    static fn deserialize<D: Deserializer>(&self, d: &D) -> @T {
-        d.read_box(|| @deserialize(d))
+        s.emit_borrowed(|| (**self).serialize(s))
     }
 }
 
 pub impl<T: Serializable> ~T: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
-        s.emit_uniq(|| (*self).serialize(s))
-    }
-
-    static fn deserialize<D: Deserializer>(&self, d: &D) -> ~T {
-        d.read_uniq(|| ~deserialize(d))
+        s.emit_owned(|| (**self).serialize(s))
     }
 }
 
-pub impl<T: Serializable> ~[T]: Serializable {
+pub impl<T: Deserializable> ~T: Deserializable {
+    static fn deserialize<D: Deserializer>(&self, d: &D) -> ~T {
+        d.read_owned(|| ~deserialize(d))
+    }
+}
+
+pub impl<T: Serializable> @T: Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
-        do s.emit_vec(self.len()) {
+        s.emit_managed(|| (**self).serialize(s))
+    }
+}
+
+pub impl<T: Deserializable> @T: Deserializable {
+    static fn deserialize<D: Deserializer>(&self, d: &D) -> @T {
+        d.read_managed(|| @deserialize(d))
+    }
+}
+
+pub impl<T: Serializable> &[T]: Serializable {
+    fn serialize<S: Serializer>(&self, s: &S) {
+        do s.emit_borrowed_vec(self.len()) {
             for self.eachi |i, e| {
                 s.emit_vec_elt(i, || e.serialize(s))
             }
         }
     }
+}
 
+pub impl<T: Serializable> ~[T]: Serializable {
+    fn serialize<S: Serializer>(&self, s: &S) {
+        do s.emit_owned_vec(self.len()) {
+            for self.eachi |i, e| {
+                s.emit_vec_elt(i, || e.serialize(s))
+            }
+        }
+    }
+}
+
+pub impl<T: Deserializable> ~[T]: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> ~[T] {
-        do d.read_vec |len| {
+        do d.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
+                d.read_vec_elt(i, || deserialize(d))
+            }
+        }
+    }
+}
+
+pub impl<T: Serializable> @[T]: Serializable {
+    fn serialize<S: Serializer>(&self, s: &S) {
+        do s.emit_managed_vec(self.len()) {
+            for self.eachi |i, e| {
+                s.emit_vec_elt(i, || e.serialize(s))
+            }
+        }
+    }
+}
+
+pub impl<T: Deserializable> @[T]: Deserializable {
+    static fn deserialize<D: Deserializer>(&self, d: &D) -> @[T] {
+        do d.read_managed_vec |len| {
+            do at_vec::from_fn(len) |i| {
                 d.read_vec_elt(i, || deserialize(d))
             }
         }
@@ -240,7 +366,9 @@ pub impl<T: Serializable> Option<T>: Serializable {
             }
         }
     }
+}
 
+pub impl<T: Deserializable> Option<T>: Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> Option<T> {
         do d.read_enum(~"option") {
             do d.read_enum_variant |i| {
@@ -268,7 +396,12 @@ pub impl<
             }
         }
     }
+}
 
+pub impl<
+    T0: Deserializable,
+    T1: Deserializable
+> (T0, T1): Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> (T0, T1) {
         do d.read_tup(2) {
             (
@@ -295,7 +428,13 @@ pub impl<
             }
         }
     }
+}
 
+pub impl<
+    T0: Deserializable,
+    T1: Deserializable,
+    T2: Deserializable
+> (T0, T1, T2): Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> (T0, T1, T2) {
         do d.read_tup(3) {
             (
@@ -325,7 +464,14 @@ pub impl<
             }
         }
     }
+}
 
+pub impl<
+    T0: Deserializable,
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable
+> (T0, T1, T2, T3): Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D) -> (T0, T1, T2, T3) {
         do d.read_tup(4) {
             (
@@ -358,7 +504,15 @@ pub impl<
             }
         }
     }
+}
 
+pub impl<
+    T0: Deserializable,
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable,
+    T4: Deserializable
+> (T0, T1, T2, T3, T4): Deserializable {
     static fn deserialize<D: Deserializer>(&self, d: &D)
       -> (T0, T1, T2, T3, T4) {
         do d.read_tup(5) {
@@ -379,12 +533,12 @@ pub impl<
 // In some cases, these should eventually be coded as traits.
 
 pub trait SerializerHelpers {
-    fn emit_from_vec<T>(&self, v: ~[T], f: fn(v: &T));
+    fn emit_from_vec<T>(&self, v: &[T], f: fn(&T));
 }
 
 pub impl<S: Serializer> S: SerializerHelpers {
-    fn emit_from_vec<T>(&self, v: ~[T], f: fn(v: &T)) {
-        do self.emit_vec(v.len()) {
+    fn emit_from_vec<T>(&self, v: &[T], f: fn(&T)) {
+        do self.emit_owned_vec(v.len()) {
             for v.eachi |i, e| {
                 do self.emit_vec_elt(i) {
                     f(e)
@@ -400,7 +554,7 @@ pub trait DeserializerHelpers {
 
 pub impl<D: Deserializer> D: DeserializerHelpers {
     fn read_to_vec<T>(&self, f: fn() -> T) -> ~[T] {
-        do self.read_vec |len| {
+        do self.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
                 self.read_vec_elt(i, || f())
             }
