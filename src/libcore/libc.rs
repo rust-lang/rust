@@ -2,40 +2,40 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 /*!
- * Bindings for libc.
- *
- * We consider the following specs reasonably normative with respect
- * to interoperating with the C standard library (libc/msvcrt):
- *
- * * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
- * * ISO 9899:1999 ('C99' or 'C9x').
- * * ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
- * * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
- * * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
- *
- * Despite having several names each, these are *reasonably* coherent
- * point-in-time, list-of-definition sorts of specs. You can get each under a
- * variety of names but will wind up with the same definition in each case.
- *
- * Our interface to these libraries is complicated by the non-universality of
- * conformance to any of them. About the only thing universally supported is
- * the first (C95), beyond that definitions quickly become absent on various
- * platforms.
- *
- * We therefore wind up dividing our module-space up (mostly for the sake of
- * sanity while editing, filling-in-details and eliminating duplication) into
- * definitions common-to-all (held in modules named c95, c99, posix88, posix01
- * and posix08) and definitions that appear only on *some* platforms (named
- * 'extra'). This would be things like significant OSX foundation kit, or
- * win32 library kernel32.dll, or various fancy glibc, linux or BSD
- * extensions.
- *
- * In addition to the per-platform 'extra' modules, we define a module of
- * 'common BSD' libc routines that never quite made it into POSIX but show up
- * in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
- * final one from Berkeley after the lawsuits died down and the CSRG
- * dissolved.
- */
+* Bindings for libc.
+*
+* We consider the following specs reasonably normative with respect
+* to interoperating with the C standard library (libc/msvcrt):
+*
+* * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
+* * ISO 9899:1999 ('C99' or 'C9x').
+* * ISO 9945:1988 / IEEE 1003.1-1988 ('POSIX.1').
+* * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
+* * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
+*
+* Despite having several names each, these are *reasonably* coherent
+* point-in-time, list-of-definition sorts of specs. You can get each under a
+* variety of names but will wind up with the same definition in each case.
+*
+* Our interface to these libraries is complicated by the non-universality of
+* conformance to any of them. About the only thing universally supported is
+* the first (C95), beyond that definitions quickly become absent on various
+* platforms.
+*
+* We therefore wind up dividing our module-space up (mostly for the sake of
+* sanity while editing, filling-in-details and eliminating duplication) into
+* definitions common-to-all (held in modules named c95, c99, posix88, posix01
+* and posix08) and definitions that appear only on *some* platforms (named
+* 'extra'). This would be things like significant OSX foundation kit, or
+* win32 library kernel32.dll, or various fancy glibc, linux or BSD
+* extensions.
+*
+* In addition to the per-platform 'extra' modules, we define a module of
+* 'common BSD' libc routines that never quite made it into POSIX but show up
+* in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
+* final one from Berkeley after the lawsuits died down and the CSRG
+* dissolved.
+*/
 
 #[allow(non_camel_case_types)];
 
@@ -44,19 +44,19 @@
 
 // FIXME (#2006): change these to glob-exports when sufficiently supported.
 
-use types::common::c95::*;
-use types::common::c99::*;
-use types::common::posix88::*;
-use types::common::posix01::*;
-use types::common::posix08::*;
-use types::common::bsd44::*;
-use types::os::arch::c95::*;
-use types::os::arch::c99::*;
-use types::os::arch::posix88::*;
-use types::os::arch::posix01::*;
-use types::os::arch::posix08::*;
-use types::os::arch::bsd44::*;
-use types::os::arch::extra::*;
+pub use types::common::c95::*;
+pub use types::common::c99::*;
+pub use types::common::posix88::*;
+pub use types::common::posix01::*;
+pub use types::common::posix08::*;
+pub use types::common::bsd44::*;
+pub use types::os::arch::c95::*;
+pub use types::os::arch::c99::*;
+pub use types::os::arch::posix88::*;
+pub use types::os::arch::posix01::*;
+pub use types::os::arch::posix08::*;
+pub use types::os::arch::bsd44::*;
+pub use types::os::arch::extra::*;
 
 use consts::os::c95::*;
 use consts::os::c99::*;
@@ -83,756 +83,682 @@ use funcs::posix08::unistd::*;
 use funcs::bsd44::*;
 use funcs::extra::*;
 
-// FIXME (#2006): remove these 3 exports (and their uses next door in os::)
-// when export globs work. They provide access (for now) for os:: to dig
-// around in the rest of the platform-specific definitions.
-
-export types, funcs, consts;
-
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
 // symbols.
 
-export c_float, c_double, c_void, FILE, fpos_t;
-export DIR, dirent;
-export c_char, c_schar, c_uchar;
-export c_short, c_ushort, c_int, c_uint, c_long, c_ulong;
-export size_t, ptrdiff_t, clock_t, time_t;
-export c_longlong, c_ulonglong, intptr_t, uintptr_t;
-export off_t, dev_t, ino_t, pid_t, mode_t, ssize_t;
+pub use size_t;
+pub use c_float, c_double, c_void, FILE, fpos_t;
+pub use DIR, dirent;
+pub use c_char, c_schar, c_uchar;
+pub use c_short, c_ushort, c_int, c_uint, c_long, c_ulong;
+pub use size_t, ptrdiff_t, clock_t, time_t;
+pub use c_longlong, c_ulonglong, intptr_t, uintptr_t;
+pub use off_t, dev_t, ino_t, pid_t, mode_t, ssize_t;
 
-export EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX,
-       EOF, SEEK_SET, SEEK_CUR, SEEK_END, _IOFBF, _IONBF, _IOLBF,
-       BUFSIZ, FOPEN_MAX, FILENAME_MAX, L_tmpnam, TMP_MAX,
-       O_RDONLY, O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_EXCL, O_TRUNC,
-       S_IFIFO, S_IFCHR, S_IFBLK, S_IFDIR, S_IFREG, S_IFMT, S_IEXEC,
-       S_IWRITE, S_IREAD, S_IRWXU, S_IXUSR, S_IWUSR, S_IRUSR, F_OK, R_OK,
-       W_OK, X_OK, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+pub use EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX,
+EOF, SEEK_SET, SEEK_CUR, SEEK_END, _IOFBF, _IONBF, _IOLBF,
+BUFSIZ, FOPEN_MAX, FILENAME_MAX, L_tmpnam, TMP_MAX,
+O_RDONLY, O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_EXCL, O_TRUNC,
+S_IFIFO, S_IFCHR, S_IFBLK, S_IFDIR, S_IFREG, S_IFMT, S_IEXEC,
+S_IWRITE, S_IREAD, S_IRWXU, S_IXUSR, S_IWUSR, S_IRUSR, F_OK, R_OK,
+W_OK, X_OK, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
 
-export isalnum, isalpha, iscntrl, isdigit, islower, isprint, ispunct,
-       isspace, isupper, isxdigit, tolower, toupper;
+pub use isalnum, isalpha, iscntrl, isdigit, islower, isprint, ispunct,
+isspace, isupper, isxdigit, tolower, toupper;
 
-export fopen, freopen, fflush, fclose, remove, tmpfile, setvbuf, setbuf,
-       fgetc, fgets, fputc, fputs, puts, ungetc, fread, fwrite, fseek, ftell,
-       rewind, fgetpos, fsetpos, feof, ferror, perror;
+pub use fopen, freopen, fflush, fclose, remove, tmpfile, setvbuf, setbuf,
+fgetc, fgets, fputc, fputs, puts, ungetc, fread, fwrite, fseek, ftell,
+rewind, fgetpos, fsetpos, feof, ferror, perror;
 
-export abs, labs, atof, atoi, strtod, strtol, strtoul, calloc, malloc,
-       realloc, free, abort, exit, system, getenv, rand, srand;
+pub use abs, labs, atof, atoi, strtod, strtol, strtoul, calloc, malloc,
+realloc, free, abort, exit, system, getenv, rand, srand;
 
-export strcpy, strncpy, strcat, strncat, strcmp, strncmp, strcoll, strchr,
-       strrchr, strspn, strcspn, strpbrk, strstr, strlen, strerror, strtok,
-       strxfrm, memcpy, memmove, memcmp, memchr, memset;
+pub use strcpy, strncpy, strcat, strncat, strcmp, strncmp, strcoll, strchr,
+strrchr, strspn, strcspn, strpbrk, strstr, strlen, strerror, strtok,
+strxfrm, memcpy, memmove, memcmp, memchr, memset;
 
-export chmod, mkdir;
-export popen, pclose, fdopen, fileno;
-export open, creat;
-export access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
-       getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
+pub use chmod, mkdir;
+pub use popen, pclose, fdopen, fileno;
+pub use open, creat;
+pub use access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
+getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
 
 
 mod types {
-    #[legacy_exports];
 
     // Types tend to vary *per architecture* so we pull their definitions out
     // into this module.
 
     // Standard types that are opaque or common, so are not per-target.
-    mod common {
-        #[legacy_exports];
-        mod c95 {
-            #[legacy_exports];
-            enum c_void {}
-            enum FILE {}
-            enum fpos_t {}
+    pub mod common {
+        pub mod c95 {
+            pub enum c_void {}
+            pub enum FILE {}
+            pub enum fpos_t {}
         }
-        mod c99 {
-            #[legacy_exports];
-            type int8_t = i8;
-            type int16_t = i16;
-            type int32_t = i32;
-            type int64_t = i64;
-            type uint8_t = u8;
-            type uint16_t = u16;
-            type uint32_t = u32;
-            type uint64_t = u64;
+        pub mod c99 {
+            pub type int8_t = i8;
+            pub type int16_t = i16;
+            pub type int32_t = i32;
+            pub type int64_t = i64;
+            pub type uint8_t = u8;
+            pub type uint16_t = u16;
+            pub type uint32_t = u32;
+            pub type uint64_t = u64;
         }
-        mod posix88 {
-            #[legacy_exports];
-            enum DIR {}
-            enum dirent {}
+        pub mod posix88 {
+            pub enum DIR {}
+            pub enum dirent {}
         }
-        mod posix01 {
-            #[legacy_exports]; }
-        mod posix08 {
-            #[legacy_exports]; }
-        mod bsd44 {
-            #[legacy_exports]; }
+        pub mod posix01 {}
+        pub mod posix08 {}
+        pub mod bsd44 {}
     }
 
     // Standard types that are scalar but vary by OS and arch.
 
     #[cfg(target_os = "linux")]
-    mod os {
-        #[legacy_exports];
+    pub mod os {
         #[cfg(target_arch = "x86")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i32;
-                type c_ulong = u32;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u32;
-                type ptrdiff_t = i32;
-                type clock_t = i32;
-                type time_t = i32;
-                type wchar_t = i32;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = i32;
+                pub type time_t = i32;
+                pub type wchar_t = i32;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i32;
-                type dev_t = u64;
-                type ino_t = u32;
-                type pid_t = i32;
-                type uid_t = u32;
-                type gid_t = u32;
-                type useconds_t = u32;
-                type mode_t = u32;
-                type ssize_t = i32;
+            pub mod posix88 {
+                pub type off_t = i32;
+                pub type dev_t = u64;
+                pub type ino_t = u32;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u32;
+                pub type ssize_t = i32;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
-            }
+            pub mod posix01 {}
+            pub mod posix08 {}
+            pub mod bsd44 {}
+            pub mod extra {}
         }
 
         #[cfg(target_arch = "x86_64")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i64;
-                type c_ulong = u64;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u64;
-                type ptrdiff_t = i64;
-                type clock_t = i64;
-                type time_t = i64;
-                type wchar_t = i32;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i64;
+                pub type c_ulong = u64;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u64;
+                pub type ptrdiff_t = i64;
+                pub type clock_t = i64;
+                pub type time_t = i64;
+                pub type wchar_t = i32;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i64;
-                type dev_t = u64;
-                type ino_t = u64;
-                type pid_t = i32;
-                type uid_t = u32;
-                type gid_t = u32;
-                type useconds_t = u32;
-                type mode_t = u32;
-                type ssize_t = i64;
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = u64;
+                pub type ino_t = u64;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u32;
+                pub type ssize_t = i64;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
             }
         }
     }
 
     #[cfg(target_os = "freebsd")]
-    mod os {
-        #[legacy_exports];
+    pub mod os {
         #[cfg(target_arch = "x86_64")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i64;
-                type c_ulong = u64;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u64;
-                type ptrdiff_t = i64;
-                type clock_t = i32;
-                type time_t = i64;
-                type wchar_t = i32;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i64;
+                pub type c_ulong = u64;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u64;
+                pub type ptrdiff_t = i64;
+                pub type clock_t = i32;
+                pub type time_t = i64;
+                pub type wchar_t = i32;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i64;
-                type dev_t = u32;
-                type ino_t = u32;
-                type pid_t = i32;
-                type uid_t = u32;
-                type gid_t = u32;
-                type useconds_t = u32;
-                type mode_t = u16;
-                type ssize_t = i64;
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = u32;
+                pub type ino_t = u32;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i64;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
             }
         }
     }
 
     #[cfg(target_os = "win32")]
-    mod os {
-        #[legacy_exports];
+    pub mod os {
         #[cfg(target_arch = "x86")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i32;
-                type c_ulong = u32;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u32;
-                type ptrdiff_t = i32;
-                type clock_t = i32;
-                type time_t = i32;
-                type wchar_t = u16;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = i32;
+                pub type time_t = i32;
+                pub type wchar_t = u16;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i32;
-                type dev_t = u32;
-                type ino_t = i16;
-                type pid_t = i32;
-                type useconds_t = u32;
-                type mode_t = u16;
-                type ssize_t = i32;
+            pub mod posix88 {
+                pub type off_t = i32;
+                pub type dev_t = u32;
+                pub type ino_t = i16;
+                pub type pid_t = i32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i32;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
-                type BOOL = c_int;
-                type BYTE = u8;
-                type CCHAR = c_char;
-                type CHAR = c_char;
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
+                pub type BOOL = c_int;
+                pub type BYTE = u8;
+                pub type CCHAR = c_char;
+                pub type CHAR = c_char;
 
-                type DWORD = c_ulong;
-                type DWORDLONG = c_ulonglong;
+                pub type DWORD = c_ulong;
+                pub type DWORDLONG = c_ulonglong;
 
-                type HANDLE = LPVOID;
-                type HMODULE = c_uint;
+                pub type HANDLE = LPVOID;
+                pub type HMODULE = c_uint;
 
-                type LONG_PTR = c_long;
+                pub type LONG_PTR = c_long;
 
-                type LPCWSTR = *WCHAR;
-                type LPCSTR = *CHAR;
+                pub type LPCWSTR = *WCHAR;
+                pub type LPCSTR = *CHAR;
 
-                type LPWSTR = *mut WCHAR;
-                type LPSTR = *mut CHAR;
+                pub type LPWSTR = *mut WCHAR;
+                pub type LPSTR = *mut CHAR;
 
                 // Not really, but opaque to us.
-                type LPSECURITY_ATTRIBUTES = LPVOID;
+                pub type LPSECURITY_ATTRIBUTES = LPVOID;
 
-                type LPVOID = *mut c_void;
-                type LPWORD = *mut WORD;
+                pub type LPVOID = *mut c_void;
+                pub type LPWORD = *mut WORD;
 
-                type LRESULT = LONG_PTR;
-                type PBOOL = *mut BOOL;
-                type WCHAR = wchar_t;
-                type WORD = u16;
+                pub type LRESULT = LONG_PTR;
+                pub type PBOOL = *mut BOOL;
+                pub type WCHAR = wchar_t;
+                pub type WORD = u16;
             }
         }
     }
 
     #[cfg(target_os = "macos")]
-    mod os {
-        #[legacy_exports];
+    pub mod os {
         #[cfg(target_arch = "x86")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i32;
-                type c_ulong = u32;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u32;
-                type ptrdiff_t = i32;
-                type clock_t = u32;
-                type time_t = i32;
-                type wchar_t = i32;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = u32;
+                pub type time_t = i32;
+                pub type wchar_t = i32;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i64;
-                type dev_t = i32;
-                type ino_t = u64;
-                type pid_t = i32;
-                type uid_t = u32;
-                type gid_t = u32;
-                type useconds_t = u32;
-                type mode_t = u16;
-                type ssize_t = i32;
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = i32;
+                pub type ino_t = u64;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i32;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
             }
         }
 
         #[cfg(target_arch = "x86_64")]
-        mod arch {
-            #[legacy_exports];
-            mod c95 {
-                #[legacy_exports];
-                type c_char = i8;
-                type c_schar = i8;
-                type c_uchar = u8;
-                type c_short = i16;
-                type c_ushort = u16;
-                type c_int = i32;
-                type c_uint = u32;
-                type c_long = i64;
-                type c_ulong = u64;
-                type c_float = f32;
-                type c_double = f64;
-                type size_t = u64;
-                type ptrdiff_t = i64;
-                type clock_t = u64;
-                type time_t = i64;
-                type wchar_t = i32;
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i64;
+                pub type c_ulong = u64;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u64;
+                pub type ptrdiff_t = i64;
+                pub type clock_t = u64;
+                pub type time_t = i64;
+                pub type wchar_t = i32;
             }
-            mod c99 {
-                #[legacy_exports];
-                type c_longlong = i64;
-                type c_ulonglong = u64;
-                type intptr_t = int;
-                type uintptr_t = uint;
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
             }
-            mod posix88 {
-                #[legacy_exports];
-                type off_t = i64;
-                type dev_t = i32;
-                type ino_t = u64;
-                type pid_t = i32;
-                type uid_t = u32;
-                type gid_t = u32;
-                type useconds_t = u32;
-                type mode_t = u16;
-                type ssize_t = i64;
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = i32;
+                pub type ino_t = u64;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i64;
             }
-            mod posix01 {
-                #[legacy_exports]; }
-            mod posix08 {
-                #[legacy_exports]; }
-            mod bsd44 {
-                #[legacy_exports]; }
-            mod extra {
-                #[legacy_exports];
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
             }
         }
     }
 }
 
-mod consts {
-    #[legacy_exports];
-
+pub mod consts {
     // Consts tend to vary per OS so we pull their definitions out
     // into this module.
 
     #[cfg(target_os = "win32")]
-    mod os {
-        #[legacy_exports];
-        mod c95 {
-            #[legacy_exports];
-            const EXIT_FAILURE : int = 1;
-            const EXIT_SUCCESS : int = 0;
-            const RAND_MAX : int = 32767;
-            const EOF : int = -1;
-            const SEEK_SET : int = 0;
-            const SEEK_CUR : int = 1;
-            const SEEK_END : int = 2;
-            const _IOFBF : int = 0;
-            const _IONBF : int = 4;
-            const _IOLBF : int = 64;
-            const BUFSIZ : uint = 512_u;
-            const FOPEN_MAX : uint = 20_u;
-            const FILENAME_MAX : uint = 260_u;
-            const L_tmpnam : uint = 16_u;
-            const TMP_MAX : uint = 32767_u;
+    pub mod os {
+        pub mod c95 {
+            pub const EXIT_FAILURE : int = 1;
+            pub const EXIT_SUCCESS : int = 0;
+            pub const RAND_MAX : int = 32767;
+            pub const EOF : int = -1;
+            pub const SEEK_SET : int = 0;
+            pub const SEEK_CUR : int = 1;
+            pub const SEEK_END : int = 2;
+            pub const _IOFBF : int = 0;
+            pub const _IONBF : int = 4;
+            pub const _IOLBF : int = 64;
+            pub const BUFSIZ : uint = 512_u;
+            pub const FOPEN_MAX : uint = 20_u;
+            pub const FILENAME_MAX : uint = 260_u;
+            pub const L_tmpnam : uint = 16_u;
+            pub const TMP_MAX : uint = 32767_u;
         }
-        mod c99 {
-            #[legacy_exports]; }
-        mod posix88 {
-            #[legacy_exports];
-            const O_RDONLY : int = 0;
-            const O_WRONLY : int = 1;
-            const O_RDWR : int = 2;
-            const O_APPEND : int = 8;
-            const O_CREAT : int = 256;
-            const O_EXCL : int = 1024;
-            const O_TRUNC : int = 512;
-            const S_IFIFO : int = 4096;
-            const S_IFCHR : int = 8192;
-            const S_IFBLK : int = 12288;
-            const S_IFDIR : int = 16384;
-            const S_IFREG : int = 32768;
-            const S_IFMT : int = 61440;
-            const S_IEXEC : int = 64;
-            const S_IWRITE : int = 128;
-            const S_IREAD : int = 256;
-            const S_IRWXU : int = 448;
-            const S_IXUSR : int = 64;
-            const S_IWUSR : int = 128;
-            const S_IRUSR : int = 256;
-            const F_OK : int = 0;
-            const R_OK : int = 4;
-            const W_OK : int = 2;
-            const X_OK : int = 1;
-            const STDIN_FILENO : int = 0;
-            const STDOUT_FILENO : int = 1;
-            const STDERR_FILENO : int = 2;
+        pub mod c99 {
         }
-        mod posix01 {
-            #[legacy_exports]; }
-        mod posix08 {
-            #[legacy_exports]; }
-        mod bsd44 {
-            #[legacy_exports]; }
-        mod extra {
-            #[legacy_exports];
-            const O_TEXT : int = 16384;
-            const O_BINARY : int = 32768;
-            const O_NOINHERIT: int = 128;
+        pub mod posix88 {
+            pub const O_RDONLY : int = 0;
+            pub const O_WRONLY : int = 1;
+            pub const O_RDWR : int = 2;
+            pub const O_APPEND : int = 8;
+            pub const O_CREAT : int = 256;
+            pub const O_EXCL : int = 1024;
+            pub const O_TRUNC : int = 512;
+            pub const S_IFIFO : int = 4096;
+            pub const S_IFCHR : int = 8192;
+            pub const S_IFBLK : int = 12288;
+            pub const S_IFDIR : int = 16384;
+            pub const S_IFREG : int = 32768;
+            pub const S_IFMT : int = 61440;
+            pub const S_IEXEC : int = 64;
+            pub const S_IWRITE : int = 128;
+            pub const S_IREAD : int = 256;
+            pub const S_IRWXU : int = 448;
+            pub const S_IXUSR : int = 64;
+            pub const S_IWUSR : int = 128;
+            pub const S_IRUSR : int = 256;
+            pub const F_OK : int = 0;
+            pub const R_OK : int = 4;
+            pub const W_OK : int = 2;
+            pub const X_OK : int = 1;
+            pub const STDIN_FILENO : int = 0;
+            pub const STDOUT_FILENO : int = 1;
+            pub const STDERR_FILENO : int = 2;
+        }
+        pub mod posix01 {
+        }
+        pub mod posix08 {
+        }
+        pub mod bsd44 {
+        }
+        pub mod extra {
+            pub const O_TEXT : int = 16384;
+            pub const O_BINARY : int = 32768;
+            pub const O_NOINHERIT: int = 128;
 
-            const ERROR_SUCCESS : int = 0;
-            const ERROR_INSUFFICIENT_BUFFER : int = 122;
+            pub const ERROR_SUCCESS : int = 0;
+            pub const ERROR_INSUFFICIENT_BUFFER : int = 122;
         }
     }
 
 
     #[cfg(target_os = "linux")]
-    mod os {
-        #[legacy_exports];
-        mod c95 {
-            #[legacy_exports];
-            const EXIT_FAILURE : int = 1;
-            const EXIT_SUCCESS : int = 0;
-            const RAND_MAX : int = 2147483647;
-            const EOF : int = -1;
-            const SEEK_SET : int = 0;
-            const SEEK_CUR : int = 1;
-            const SEEK_END : int = 2;
-            const _IOFBF : int = 0;
-            const _IONBF : int = 2;
-            const _IOLBF : int = 1;
-            const BUFSIZ : uint = 8192_u;
-            const FOPEN_MAX : uint = 16_u;
-            const FILENAME_MAX : uint = 4096_u;
-            const L_tmpnam : uint = 20_u;
-            const TMP_MAX : uint = 238328_u;
+    pub mod os {
+        pub mod c95 {
+            pub const EXIT_FAILURE : int = 1;
+            pub const EXIT_SUCCESS : int = 0;
+            pub const RAND_MAX : int = 2147483647;
+            pub const EOF : int = -1;
+            pub const SEEK_SET : int = 0;
+            pub const SEEK_CUR : int = 1;
+            pub const SEEK_END : int = 2;
+            pub const _IOFBF : int = 0;
+            pub const _IONBF : int = 2;
+            pub const _IOLBF : int = 1;
+            pub const BUFSIZ : uint = 8192_u;
+            pub const FOPEN_MAX : uint = 16_u;
+            pub const FILENAME_MAX : uint = 4096_u;
+            pub const L_tmpnam : uint = 20_u;
+            pub const TMP_MAX : uint = 238328_u;
         }
-        mod c99 {
-            #[legacy_exports]; }
-        mod posix88 {
-            #[legacy_exports];
-            const O_RDONLY : int = 0;
-            const O_WRONLY : int = 1;
-            const O_RDWR : int = 2;
-            const O_APPEND : int = 1024;
-            const O_CREAT : int = 64;
-            const O_EXCL : int = 128;
-            const O_TRUNC : int = 512;
-            const S_IFIFO : int = 4096;
-            const S_IFCHR : int = 8192;
-            const S_IFBLK : int = 24576;
-            const S_IFDIR : int = 16384;
-            const S_IFREG : int = 32768;
-            const S_IFMT : int = 61440;
-            const S_IEXEC : int = 64;
-            const S_IWRITE : int = 128;
-            const S_IREAD : int = 256;
-            const S_IRWXU : int = 448;
-            const S_IXUSR : int = 64;
-            const S_IWUSR : int = 128;
-            const S_IRUSR : int = 256;
-            const F_OK : int = 0;
-            const R_OK : int = 4;
-            const W_OK : int = 2;
-            const X_OK : int = 1;
-            const STDIN_FILENO : int = 0;
-            const STDOUT_FILENO : int = 1;
-            const STDERR_FILENO : int = 2;
-            const F_LOCK : int = 1;
-            const F_TEST : int = 3;
-            const F_TLOCK : int = 2;
-            const F_ULOCK : int = 0;
+        pub mod c99 {
         }
-        mod posix01 {
-            #[legacy_exports]; }
-        mod posix08 {
-            #[legacy_exports]; }
-        mod bsd44 {
-            #[legacy_exports]; }
-        mod extra {
-            #[legacy_exports];
-            const O_RSYNC : int = 1052672;
-            const O_DSYNC : int = 4096;
-            const O_SYNC : int = 1052672;
+        pub mod posix88 {
+            pub const O_RDONLY : int = 0;
+            pub const O_WRONLY : int = 1;
+            pub const O_RDWR : int = 2;
+            pub const O_APPEND : int = 1024;
+            pub const O_CREAT : int = 64;
+            pub const O_EXCL : int = 128;
+            pub const O_TRUNC : int = 512;
+            pub const S_IFIFO : int = 4096;
+            pub const S_IFCHR : int = 8192;
+            pub const S_IFBLK : int = 24576;
+            pub const S_IFDIR : int = 16384;
+            pub const S_IFREG : int = 32768;
+            pub const S_IFMT : int = 61440;
+            pub const S_IEXEC : int = 64;
+            pub const S_IWRITE : int = 128;
+            pub const S_IREAD : int = 256;
+            pub const S_IRWXU : int = 448;
+            pub const S_IXUSR : int = 64;
+            pub const S_IWUSR : int = 128;
+            pub const S_IRUSR : int = 256;
+            pub const F_OK : int = 0;
+            pub const R_OK : int = 4;
+            pub const W_OK : int = 2;
+            pub const X_OK : int = 1;
+            pub const STDIN_FILENO : int = 0;
+            pub const STDOUT_FILENO : int = 1;
+            pub const STDERR_FILENO : int = 2;
+            pub const F_LOCK : int = 1;
+            pub const F_TEST : int = 3;
+            pub const F_TLOCK : int = 2;
+            pub const F_ULOCK : int = 0;
+        }
+        pub mod posix01 {
+        }
+        pub mod posix08 {
+        }
+        pub mod bsd44 {
+        }
+        pub mod extra {
+            pub const O_RSYNC : int = 1052672;
+            pub const O_DSYNC : int = 4096;
+            pub const O_SYNC : int = 1052672;
         }
     }
 
     #[cfg(target_os = "freebsd")]
-    mod os {
-        #[legacy_exports];
-        mod c95 {
-            #[legacy_exports];
-            const EXIT_FAILURE : int = 1;
-            const EXIT_SUCCESS : int = 0;
-            const RAND_MAX : int = 2147483647;
-            const EOF : int = -1;
-            const SEEK_SET : int = 0;
-            const SEEK_CUR : int = 1;
-            const SEEK_END : int = 2;
-            const _IOFBF : int = 0;
-            const _IONBF : int = 2;
-            const _IOLBF : int = 1;
-            const BUFSIZ : uint = 1024_u;
-            const FOPEN_MAX : uint = 20_u;
-            const FILENAME_MAX : uint = 1024_u;
-            const L_tmpnam : uint = 1024_u;
-            const TMP_MAX : uint = 308915776_u;
+    pub mod os {
+        pub mod c95 {
+            pub const EXIT_FAILURE : int = 1;
+            pub const EXIT_SUCCESS : int = 0;
+            pub const RAND_MAX : int = 2147483647;
+            pub const EOF : int = -1;
+            pub const SEEK_SET : int = 0;
+            pub const SEEK_CUR : int = 1;
+            pub const SEEK_END : int = 2;
+            pub const _IOFBF : int = 0;
+            pub const _IONBF : int = 2;
+            pub const _IOLBF : int = 1;
+            pub const BUFSIZ : uint = 1024_u;
+            pub const FOPEN_MAX : uint = 20_u;
+            pub const FILENAME_MAX : uint = 1024_u;
+            pub const L_tmpnam : uint = 1024_u;
+            pub const TMP_MAX : uint = 308915776_u;
         }
-        mod c99 {
-            #[legacy_exports]; }
-        mod posix88 {
-            #[legacy_exports];
-            const O_RDONLY : int = 0;
-            const O_WRONLY : int = 1;
-            const O_RDWR : int = 2;
-            const O_APPEND : int = 8;
-            const O_CREAT : int = 512;
-            const O_EXCL : int = 2048;
-            const O_TRUNC : int = 1024;
-            const S_IFIFO : int = 4096;
-            const S_IFCHR : int = 8192;
-            const S_IFBLK : int = 24576;
-            const S_IFDIR : int = 16384;
-            const S_IFREG : int = 32768;
-            const S_IFMT : int = 61440;
-            const S_IEXEC : int = 64;
-            const S_IWRITE : int = 128;
-            const S_IREAD : int = 256;
-            const S_IRWXU : int = 448;
-            const S_IXUSR : int = 64;
-            const S_IWUSR : int = 128;
-            const S_IRUSR : int = 256;
-            const F_OK : int = 0;
-            const R_OK : int = 4;
-            const W_OK : int = 2;
-            const X_OK : int = 1;
-            const STDIN_FILENO : int = 0;
-            const STDOUT_FILENO : int = 1;
-            const STDERR_FILENO : int = 2;
-            const F_LOCK : int = 1;
-            const F_TEST : int = 3;
-            const F_TLOCK : int = 2;
-            const F_ULOCK : int = 0;
+        pub mod c99 {
         }
-        mod posix01 {
-            #[legacy_exports]; }
-        mod posix08 {
-            #[legacy_exports]; }
-        mod bsd44 {
-            #[legacy_exports]; }
-        mod extra {
-            #[legacy_exports];
-            const O_SYNC : int = 128;
-            const CTL_KERN: int = 1;
-            const KERN_PROC: int = 14;
-            const KERN_PROC_PATHNAME: int = 12;
+        pub mod posix88 {
+            pub const O_RDONLY : int = 0;
+            pub const O_WRONLY : int = 1;
+            pub const O_RDWR : int = 2;
+            pub const O_APPEND : int = 8;
+            pub const O_CREAT : int = 512;
+            pub const O_EXCL : int = 2048;
+            pub const O_TRUNC : int = 1024;
+            pub const S_IFIFO : int = 4096;
+            pub const S_IFCHR : int = 8192;
+            pub const S_IFBLK : int = 24576;
+            pub const S_IFDIR : int = 16384;
+            pub const S_IFREG : int = 32768;
+            pub const S_IFMT : int = 61440;
+            pub const S_IEXEC : int = 64;
+            pub const S_IWRITE : int = 128;
+            pub const S_IREAD : int = 256;
+            pub const S_IRWXU : int = 448;
+            pub const S_IXUSR : int = 64;
+            pub const S_IWUSR : int = 128;
+            pub const S_IRUSR : int = 256;
+            pub const F_OK : int = 0;
+            pub const R_OK : int = 4;
+            pub const W_OK : int = 2;
+            pub const X_OK : int = 1;
+            pub const STDIN_FILENO : int = 0;
+            pub const STDOUT_FILENO : int = 1;
+            pub const STDERR_FILENO : int = 2;
+            pub const F_LOCK : int = 1;
+            pub const F_TEST : int = 3;
+            pub const F_TLOCK : int = 2;
+            pub const F_ULOCK : int = 0;
+        }
+        pub mod posix01 {
+        }
+        pub mod posix08 {
+        }
+        pub mod bsd44 {
+        }
+        pub mod extra {
+            pub const O_SYNC : int = 128;
+            pub const CTL_KERN: int = 1;
+            pub const KERN_PROC: int = 14;
+            pub const KERN_PROC_PATHNAME: int = 12;
         }
     }
 
     #[cfg(target_os = "macos")]
-    mod os {
-        #[legacy_exports];
-        mod c95 {
-            #[legacy_exports];
-            const EXIT_FAILURE : int = 1;
-            const EXIT_SUCCESS : int = 0;
-            const RAND_MAX : int = 2147483647;
-            const EOF : int = -1;
-            const SEEK_SET : int = 0;
-            const SEEK_CUR : int = 1;
-            const SEEK_END : int = 2;
-            const _IOFBF : int = 0;
-            const _IONBF : int = 2;
-            const _IOLBF : int = 1;
-            const BUFSIZ : uint = 1024_u;
-            const FOPEN_MAX : uint = 20_u;
-            const FILENAME_MAX : uint = 1024_u;
-            const L_tmpnam : uint = 1024_u;
-            const TMP_MAX : uint = 308915776_u;
+    pub mod os {
+        pub mod c95 {
+            pub const EXIT_FAILURE : int = 1;
+            pub const EXIT_SUCCESS : int = 0;
+            pub const RAND_MAX : int = 2147483647;
+            pub const EOF : int = -1;
+            pub const SEEK_SET : int = 0;
+            pub const SEEK_CUR : int = 1;
+            pub const SEEK_END : int = 2;
+            pub const _IOFBF : int = 0;
+            pub const _IONBF : int = 2;
+            pub const _IOLBF : int = 1;
+            pub const BUFSIZ : uint = 1024_u;
+            pub const FOPEN_MAX : uint = 20_u;
+            pub const FILENAME_MAX : uint = 1024_u;
+            pub const L_tmpnam : uint = 1024_u;
+            pub const TMP_MAX : uint = 308915776_u;
         }
-        mod c99 {
-            #[legacy_exports]; }
-        mod posix88 {
-            #[legacy_exports];
-            const O_RDONLY : int = 0;
-            const O_WRONLY : int = 1;
-            const O_RDWR : int = 2;
-            const O_APPEND : int = 8;
-            const O_CREAT : int = 512;
-            const O_EXCL : int = 2048;
-            const O_TRUNC : int = 1024;
-            const S_IFIFO : int = 4096;
-            const S_IFCHR : int = 8192;
-            const S_IFBLK : int = 24576;
-            const S_IFDIR : int = 16384;
-            const S_IFREG : int = 32768;
-            const S_IFMT : int = 61440;
-            const S_IEXEC : int = 64;
-            const S_IWRITE : int = 128;
-            const S_IREAD : int = 256;
-            const S_IRWXU : int = 448;
-            const S_IXUSR : int = 64;
-            const S_IWUSR : int = 128;
-            const S_IRUSR : int = 256;
-            const F_OK : int = 0;
-            const R_OK : int = 4;
-            const W_OK : int = 2;
-            const X_OK : int = 1;
-            const STDIN_FILENO : int = 0;
-            const STDOUT_FILENO : int = 1;
-            const STDERR_FILENO : int = 2;
-            const F_LOCK : int = 1;
-            const F_TEST : int = 3;
-            const F_TLOCK : int = 2;
-            const F_ULOCK : int = 0;
+        pub mod c99 {
         }
-        mod posix01 {
-            #[legacy_exports]; }
-        mod posix08 {
-            #[legacy_exports]; }
-        mod bsd44 {
-            #[legacy_exports]; }
-        mod extra {
-            #[legacy_exports];
-            const O_DSYNC : int = 4194304;
-            const O_SYNC : int = 128;
-            const F_FULLFSYNC : int = 51;
+        pub mod posix88 {
+            pub const O_RDONLY : int = 0;
+            pub const O_WRONLY : int = 1;
+            pub const O_RDWR : int = 2;
+            pub const O_APPEND : int = 8;
+            pub const O_CREAT : int = 512;
+            pub const O_EXCL : int = 2048;
+            pub const O_TRUNC : int = 1024;
+            pub const S_IFIFO : int = 4096;
+            pub const S_IFCHR : int = 8192;
+            pub const S_IFBLK : int = 24576;
+            pub const S_IFDIR : int = 16384;
+            pub const S_IFREG : int = 32768;
+            pub const S_IFMT : int = 61440;
+            pub const S_IEXEC : int = 64;
+            pub const S_IWRITE : int = 128;
+            pub const S_IREAD : int = 256;
+            pub const S_IRWXU : int = 448;
+            pub const S_IXUSR : int = 64;
+            pub const S_IWUSR : int = 128;
+            pub const S_IRUSR : int = 256;
+            pub const F_OK : int = 0;
+            pub const R_OK : int = 4;
+            pub const W_OK : int = 2;
+            pub const X_OK : int = 1;
+            pub const STDIN_FILENO : int = 0;
+            pub const STDOUT_FILENO : int = 1;
+            pub const STDERR_FILENO : int = 2;
+            pub const F_LOCK : int = 1;
+            pub const F_TEST : int = 3;
+            pub const F_TLOCK : int = 2;
+            pub const F_ULOCK : int = 0;
+        }
+        pub mod posix01 {
+        }
+        pub mod posix08 {
+        }
+        pub mod bsd44 {
+        }
+        pub mod extra {
+            pub const O_DSYNC : int = 4194304;
+            pub const O_SYNC : int = 128;
+            pub const F_FULLFSYNC : int = 51;
         }
     }
 }
 
 
-mod funcs {
-    #[legacy_exports];
-
+pub mod funcs {
     // Thankfull most of c95 is universally available and does not vary by OS
     // or anything. The same is not true of POSIX.
 
-    mod c95 {
-        #[legacy_exports];
-
+    pub mod c95 {
         #[nolink]
         #[abi = "cdecl"]
-        extern mod ctype {
-            #[legacy_exports];
+        pub extern mod ctype {
             fn isalnum(c: c_int) -> c_int;
             fn isalpha(c: c_int) -> c_int;
             fn iscntrl(c: c_int) -> c_int;
@@ -850,9 +776,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stdio {
-            #[legacy_exports];
-
+        pub extern mod stdio {
             fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
             fn freopen(filename: *c_char, mode: *c_char,
                        file: *FILE) -> *FILE;
@@ -882,7 +806,8 @@ mod funcs {
                      nobj: size_t, stream: *FILE) -> size_t;
             fn fwrite(ptr: *c_void, size: size_t,
                       nobj: size_t, stream: *FILE) -> size_t;
-            fn fseek(stream: *FILE, offset: c_long, whence: c_int) -> c_int;
+            fn fseek(stream: *FILE, offset: c_long,
+                     whence: c_int) -> c_int;
             fn ftell(stream: *FILE) -> c_long;
             fn rewind(stream: *FILE);
             fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
@@ -895,16 +820,16 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stdlib {
-            #[legacy_exports];
+        pub extern mod stdlib {
             fn abs(i: c_int) -> c_int;
             fn labs(i: c_long) -> c_long;
-            // Omitted: div, ldiv (return type incomplete).
+            // Omitted: div, ldiv (return pub type incomplete).
             fn atof(s: *c_char) -> c_double;
             fn atoi(s: *c_char) -> c_int;
             fn strtod(s: *c_char, endp: **c_char) -> c_double;
             fn strtol(s: *c_char, endp: **c_char, base: c_int) -> c_long;
-            fn strtoul(s: *c_char, endp: **c_char, base: c_int) -> c_ulong;
+            fn strtoul(s: *c_char, endp: **c_char,
+                       base: c_int) -> c_ulong;
             fn calloc(nobj: size_t, size: size_t) -> *c_void;
             fn malloc(size: size_t) -> *c_void;
             fn realloc(p: *c_void, size: size_t) -> *c_void;
@@ -921,9 +846,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod string {
-            #[legacy_exports];
-
+        pub extern mod string {
             fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
             fn strncpy(dst: *c_char, src: *c_char, n: size_t) -> *c_char;
             fn strcat(s: *c_char, ct: *c_char) -> *c_char;
@@ -956,13 +879,10 @@ mod funcs {
     // with the same POSIX functions and types as other platforms.
 
     #[cfg(target_os = "win32")]
-    mod posix88 {
-        #[legacy_exports];
-
+    pub mod posix88 {
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stat {
-            #[legacy_exports];
+        pub extern mod stat {
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -972,8 +892,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stdio {
-            #[legacy_exports];
+        pub extern mod stdio {
             #[link_name = "_popen"]
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
@@ -989,8 +908,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod fcntl {
-            #[legacy_exports];
+        pub extern mod fcntl {
             #[link_name = "_open"]
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
@@ -1000,15 +918,13 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod dirent {
-            #[legacy_exports];
+        pub extern mod dirent {
             // Not supplied at all.
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod unistd {
-            #[legacy_exports];
+        pub extern mod unistd {
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
 
@@ -1035,7 +951,8 @@ mod funcs {
             fn execvp(c: *c_char, argv: **c_char) -> c_int;
 
             #[link_name = "_execvpe"]
-            fn execvpe(c: *c_char, argv: **c_char, envp: **c_char) -> c_int;
+            fn execvpe(c: *c_char, argv: **c_char,
+                       envp: **c_char) -> c_int;
 
             #[link_name = "_getcwd"]
             fn getcwd(buf: *c_char, size: size_t) -> *c_char;
@@ -1072,13 +989,10 @@ mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    mod posix88 {
-        #[legacy_exports];
-
+    pub mod posix88 {
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stat {
-            #[legacy_exports];
+        pub extern mod stat {
             fn chmod(path: *c_char, mode: mode_t) -> c_int;
             fn fchmod(fd: c_int, mode: mode_t) -> c_int;
             fn mkdir(path: *c_char, mode: mode_t) -> c_int;
@@ -1087,8 +1001,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod stdio {
-            #[legacy_exports];
+        pub extern mod stdio {
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
             fn pclose(stream: *FILE) -> c_int;
             fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
@@ -1097,8 +1010,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod fcntl {
-            #[legacy_exports];
+        pub extern mod fcntl {
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
             fn creat(path: *c_char, mode: mode_t) -> c_int;
             fn fcntl(fd: c_int, cmd: c_int) -> c_int;
@@ -1106,8 +1018,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod dirent {
-            #[legacy_exports];
+        pub extern mod dirent {
             fn opendir(dirname: *c_char) -> *DIR;
             fn closedir(dirp: *DIR) -> c_int;
             fn readdir(dirp: *DIR) -> *dirent;
@@ -1118,8 +1029,7 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod unistd {
-            #[legacy_exports];
+        pub extern mod unistd {
             fn access(path: *c_char, amode: c_int) -> c_int;
             fn alarm(seconds: c_uint) -> c_uint;
             fn chdir(dir: *c_char) -> c_int;
@@ -1128,7 +1038,8 @@ mod funcs {
             fn dup(fd: c_int) -> c_int;
             fn dup2(src: c_int, dst: c_int) -> c_int;
             fn execv(prog: *c_char, argv: **c_char) -> c_int;
-            fn execve(prog: *c_char, argv: **c_char, envp: **c_char) -> c_int;
+            fn execve(prog: *c_char, argv: **c_char,
+                      envp: **c_char) -> c_int;
             fn execvp(c: *c_char, argv: **c_char) -> c_int;
             fn fork() -> pid_t;
             fn fpathconf(filedes: c_int, name: c_int) -> c_long;
@@ -1138,7 +1049,8 @@ mod funcs {
             fn getgid() -> gid_t ;
             fn getgroups(ngroups_max: c_int, groups: *mut gid_t) -> c_int;
             fn getlogin() -> *c_char;
-            fn getopt(argc: c_int, argv: **c_char, optstr: *c_char) -> c_int;
+            fn getopt(argc: c_int, argv: **c_char,
+                      optstr: *c_char) -> c_int;
             fn getpgrp() -> pid_t;
             fn getpid() -> pid_t;
             fn getppid() -> pid_t;
@@ -1168,13 +1080,10 @@ mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    mod posix01 {
-        #[legacy_exports];
-
+    pub mod posix01 {
         #[nolink]
         #[abi = "cdecl"]
-        extern mod unistd {
-            #[legacy_exports];
+        pub extern mod unistd {
             fn readlink(path: *c_char, buf: *mut c_char,
                         bufsz: size_t) -> ssize_t;
 
@@ -1191,19 +1100,17 @@ mod funcs {
 
         #[nolink]
         #[abi = "cdecl"]
-        extern mod wait {
-            #[legacy_exports];
+        pub extern mod wait {
             fn waitpid(pid: pid_t, status: *mut c_int,
                        options: c_int) -> pid_t;
         }
     }
 
     #[cfg(target_os = "win32")]
-    mod posix01 {
-        #[legacy_exports];
+    pub mod posix01 {
         #[nolink]
-        extern mod unistd {
-            #[legacy_exports]; }
+        pub extern mod unistd {
+        }
     }
 
 
@@ -1211,11 +1118,10 @@ mod funcs {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    mod posix08 {
-        #[legacy_exports];
+    pub mod posix08 {
         #[nolink]
-        extern mod unistd {
-            #[legacy_exports]; }
+        pub extern mod unistd {
+        }
     }
 
 
@@ -1223,9 +1129,7 @@ mod funcs {
     #[cfg(target_os = "freebsd")]
     #[nolink]
     #[abi = "cdecl"]
-    extern mod bsd44 {
-        #[legacy_exports];
-
+    pub extern mod bsd44 {
         fn sysctl(name: *c_int, namelen: c_uint,
                   oldp: *mut c_void, oldlenp: *mut size_t,
                   newp: *c_void, newlen: size_t) -> c_int;
@@ -1241,37 +1145,35 @@ mod funcs {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "win32")]
-    mod bsd44 {
-        #[legacy_exports];
+    pub mod bsd44 {
     }
 
 
     #[cfg(target_os = "macos")]
     #[nolink]
     #[abi = "cdecl"]
-    extern mod extra {
-        #[legacy_exports];
+    pub extern mod extra {
         fn _NSGetExecutablePath(buf: *mut c_char,
                                 bufsize: *mut u32) -> c_int;
     }
 
     #[cfg(target_os = "freebsd")]
-    mod extra {
-        #[legacy_exports]; }
+    pub mod extra {
+    }
 
     #[cfg(target_os = "linux")]
-    mod extra {
-        #[legacy_exports]; }
+    pub mod extra {
+    }
 
 
     #[cfg(target_os = "win32")]
-    mod extra {
-        #[legacy_exports];
+    pub mod extra {
         use types::os::arch::extra::*;
+        pub use kernel32::*;
+        pub use msvcrt::*;
 
         #[abi = "stdcall"]
-        extern mod kernel32 {
-            #[legacy_exports];
+        pub extern mod kernel32 {
             fn GetEnvironmentVariableW(n: LPCWSTR,
                                        v: LPWSTR,
                                        nsize: DWORD) -> DWORD;
@@ -1295,8 +1197,7 @@ mod funcs {
 
         #[abi = "cdecl"]
         #[nolink]
-        extern mod msvcrt {
-            #[legacy_exports];
+        pub extern mod msvcrt {
             #[link_name = "_commit"]
             fn commit(fd: c_int) -> c_int;
         }
