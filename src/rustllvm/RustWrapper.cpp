@@ -342,6 +342,7 @@ LLVMRustExecuteJIT(void* mem,
 
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
 
   std::string Err;
   TargetOptions Options;
