@@ -12,7 +12,7 @@ use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-trait SendMap<K:Eq Hash, V: Copy> {
+pub trait SendMap<K:Eq Hash, V: Copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
     fn insert(&mut self, +k: K, +v: V) -> bool;
@@ -31,17 +31,15 @@ trait SendMap<K:Eq Hash, V: Copy> {
 }
 
 /// Open addressing with linear probing.
-mod linear {
-    #[legacy_exports];
-    export LinearMap, linear_map, linear_map_with_capacity, public_methods;
-
+pub mod linear {
     const initial_capacity: uint = 32u; // 2^5
+
     struct Bucket<K:Eq Hash,V> {
         hash: uint,
         key: K,
         value: V,
     }
-    struct LinearMap<K:Eq Hash,V> {
+    pub struct LinearMap<K:Eq Hash,V> {
         k0: u64,
         k1: u64,
         resize_at: uint,
@@ -60,11 +58,11 @@ mod linear {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
+    pub fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
         linear_map_with_capacity(32)
     }
 
-    fn linear_map_with_capacity<K:Eq Hash,V>(
+    pub fn linear_map_with_capacity<K:Eq Hash,V>(
         initial_capacity: uint) -> LinearMap<K,V> {
         let r = rand::Rng();
         linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
@@ -366,13 +364,11 @@ mod linear {
 }
 
 #[test]
-mod test {
-    #[legacy_exports];
-
+pub mod test {
     use linear::LinearMap;
 
     #[test]
-    fn inserts() {
+    pub fn inserts() {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
@@ -381,7 +377,7 @@ mod test {
     }
 
     #[test]
-    fn overwrite() {
+    pub fn overwrite() {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
@@ -390,7 +386,7 @@ mod test {
     }
 
     #[test]
-    fn conflicts() {
+    pub fn conflicts() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -401,7 +397,7 @@ mod test {
     }
 
     #[test]
-    fn conflict_remove() {
+    pub fn conflict_remove() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -412,7 +408,7 @@ mod test {
     }
 
     #[test]
-    fn empty() {
+    pub fn empty() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
@@ -421,7 +417,7 @@ mod test {
     }
 
     #[test]
-    fn iterate() {
+    pub fn iterate() {
         let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert m.insert(i, i*2);
@@ -435,7 +431,7 @@ mod test {
     }
 
     #[test]
-    fn find_ref() {
+    pub fn find_ref() {
         let mut m = ~LinearMap();
         assert m.find_ref(&1).is_none();
         m.insert(1, 2);
