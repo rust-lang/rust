@@ -1,4 +1,6 @@
-# Macros
+% Rust Macros Tutorial
+
+# Introduction
 
 Functions are the programmer's primary tool of abstraction, but there are
 cases in which they are insufficient, because the programmer wants to
@@ -50,7 +52,7 @@ early_return!(input_2 special_b);
 
 Macros are defined in pattern-matching style:
 
-## Invocation syntax
+# Invocation syntax
 
 On the left-hand-side of the `=>` is the macro invocation syntax. It is
 free-form, excepting the following rules:
@@ -69,7 +71,7 @@ rules of tokenization apply,
 So `($x:ident => (($e:expr)))`, though excessively fancy, would create a macro
 that could be invoked like `my_macro!(i=>(( 2+2 )))`.
 
-## Transcription syntax
+# Transcription syntax
 
 The right-hand side of the `=>` follows the same rules as the left-hand side,
 except that `$` need only be followed by the name of the syntactic fragment
@@ -80,9 +82,9 @@ an expression; currently, user-defined macros can only be invoked in
 expression position (even though `macro_rules!` itself can be in item
 position).
 
-## Multiplicity
+# Multiplicity
 
-### Invocation
+## Invocation
 
 Going back to the motivating example, suppose that we wanted each invocation
 of `early_return` to potentially accept multiple "special" identifiers. The
