@@ -91,7 +91,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     let mut mitems = ~[];
-    for attrs.each |a| { vec::push(mitems, attr_meta(*a)); }
+    for attrs.each |a| { mitems.push(attr_meta(*a)); }
     return mitems;
 }
 

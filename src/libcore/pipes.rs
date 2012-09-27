@@ -1059,7 +1059,7 @@ pub fn PortSet<T: Send>() -> PortSet<T>{
 impl<T: Send> PortSet<T> : Recv<T> {
 
     fn add(+port: pipes::Port<T>) {
-        vec::push(self.ports, move port)
+        self.ports.push(move port)
     }
 
     fn chan() -> Chan<T> {

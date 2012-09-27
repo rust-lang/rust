@@ -259,16 +259,16 @@ fn build_closure(bcx0: block,
         match cap_var.mode {
             capture::cap_ref => {
                 assert ck == ty::ck_block;
-                vec::push(env_vals, EnvValue {action: EnvRef,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvRef,
+                                        datum: datum});
             }
             capture::cap_copy => {
-                vec::push(env_vals, EnvValue {action: EnvStore,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvStore,
+                                        datum: datum});
             }
             capture::cap_move => {
-                vec::push(env_vals, EnvValue {action: EnvMove,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvMove,
+                                        datum: datum});
             }
             capture::cap_drop => {
                 bcx = datum.drop_val(bcx);
@@ -283,8 +283,8 @@ fn build_closure(bcx0: block,
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: flagptr, ty: ty::mk_bool(tcx),
                                 mode: ByRef, source: FromLvalue};
-        vec::push(env_vals, EnvValue {action: EnvRef,
-                                      datum: flag_datum});
+        env_vals.push(EnvValue {action: EnvRef,
+                                datum: flag_datum});
 
         // Return value (we just pass a by-ref () and cast it later to
         // the right thing):
@@ -295,8 +295,8 @@ fn build_closure(bcx0: block,
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
                                mode: ByRef, source: FromLvalue};
-        vec::push(env_vals, EnvValue {action: EnvRef,
-                                      datum: ret_datum});
+        env_vals.push(EnvValue {action: EnvRef,
+                                datum: ret_datum});
     }
 
     return store_environment(bcx, env_vals, ck);

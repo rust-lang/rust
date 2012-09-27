@@ -869,7 +869,7 @@ mod node {
         loop {
             match (leaf_iterator::next(&it)) {
               option::None    => break,
-              option::Some(x) => vec::push(forest, @Leaf(x))
+              option::Some(x) => forest.push(@Leaf(x))
             }
         }
         //2. Rebuild tree from forest

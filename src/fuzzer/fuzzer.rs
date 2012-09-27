@@ -30,7 +30,7 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
 fn find_rust_files(files: &mut ~[Path], path: &Path) {
     if path.filetype() == Some(~".rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
-        vec::push(*files, *path);
+        files.push(*path);
     } else if os::path_is_dir(path)
         && !contains(path.to_str(), ~"compile-fail")
         && !contains(path.to_str(), ~"build") {
@@ -124,7 +124,7 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
-        vec::push(*es,*e);
+        es.push(e);
     } else {/* now my indices are wrong :( */ }
 }
 

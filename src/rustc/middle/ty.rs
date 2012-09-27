@@ -2243,10 +2243,10 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           }
 
           ty_class(did, ref substs) => {
-            vec::push(*seen, did);
-            let r = vec::any(class_items_as_fields(cx, did, substs),
-                             |f| type_requires(cx, seen, r_ty, f.mt.ty));
-            vec::pop(*seen);
+              seen.push(did);
+              let r = vec::any(class_items_as_fields(cx, did, substs),
+                               |f| type_requires(cx, seen, r_ty, f.mt.ty));
+              vec::pop(*seen);
             r
           }
 
@@ -2258,18 +2258,18 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false
           }
 
-          ty_enum(did, ref substs) => {
-            vec::push(*seen, did);
-            let vs = enum_variants(cx, did);
-            let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
-                vec::any(variant.args, |aty| {
-                    let sty = subst(cx, substs, aty);
-                    type_requires(cx, seen, r_ty, sty)
-                })
-            });
-            vec::pop(*seen);
-            r
-          }
+            ty_enum(did, ref substs) => {
+                seen.push(did);
+                let vs = enum_variants(cx, did);
+                let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
+                    vec::any(variant.args, |aty| {
+                        let sty = subst(cx, substs, aty);
+                        type_requires(cx, seen, r_ty, sty)
+                    })
+                });
+                vec::pop(*seen);
+                r
+            }
         };
 
         debug!("subtypes_require(%s, %s)? %b",
@@ -3036,7 +3036,7 @@ fn param_tys_in_type(ty: t) -> ~[param_ty] {
     do walk_ty(ty) |ty| {
         match get(ty).sty {
           ty_param(p) => {
-            vec::push(rslt, p);
+            rslt.push(p);
           }
           _ => ()
         }
@@ -3052,7 +3052,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
         let mut rslt = ~[];
         do walk_ty(ty) |ty| {
             match get(ty).sty {
-              ty_infer(TyVar(v)) => vec::push(rslt, v),
+              ty_infer(TyVar(v)) => rslt.push(v),
               _ => ()
             }
         }
@@ -3704,10 +3704,10 @@ fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
     for fields.each |field| {
         match field.node.kind {
             named_field(ident, mutability, visibility) => {
-                vec::push(rslt, {ident: ident,
-                                 id: ast_util::local_def(field.node.id),
-                                 vis: visibility,
-                                 mutability: mutability});
+                rslt.push({ident: ident,
+                           id: ast_util::local_def(field.node.id),
+                           vis: visibility,
+                           mutability: mutability});
             }
             unnamed_field => {}
        }
@@ -3747,7 +3747,7 @@ fn class_item_fields(cx:ctxt,
     for lookup_class_fields(cx, did).each |f| {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-       vec::push(rslt, {ident: f.ident, mt:
+       rslt.push({ident: f.ident, mt:
                {ty: lookup_field_type(cx, did, f.id, substs),
                     mutbl: frob_mutability(f.mutability)}});
     }

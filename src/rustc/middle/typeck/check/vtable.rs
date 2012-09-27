@@ -51,8 +51,8 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                vec::push(result, lookup_vtable(fcx, expr, *ty, i_ty,
-                                                allow_unsafe, is_early));
+                result.push(lookup_vtable(fcx, expr, *ty, i_ty,
+                                          allow_unsafe, is_early));
               }
               _ => ()
             }
@@ -331,9 +331,9 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             // the impl as well as the resolved list
                             // of type substitutions for the target
                             // trait.
-                            vec::push(found,
-                                      vtable_static(im.did, substs_f.tps,
-                                                    subres));
+                            found.push(
+                                vtable_static(im.did, substs_f.tps,
+                                              subres));
                         }
                     }
                 }

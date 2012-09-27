@@ -594,7 +594,7 @@ priv impl Parser {
 
         loop {
             match move self.parse_value() {
-              Ok(move v) => vec::push(values, v),
+              Ok(move v) => values.push(v),
               Err(move e) => return Err(e)
             }
 
@@ -690,13 +690,13 @@ pub fn Deserializer(rdr: io::Reader) -> Result<Deserializer, Error> {
 }
 
 priv impl Deserializer {
-    fn peek() -> &self/Json {
-        if self.stack.len() == 0 { vec::push(self.stack, &self.json); }
+    fn peek(&self) -> &self/Json {
+        if self.stack.len() == 0 { self.stack.push(&self.json); }
         vec::last(self.stack)
     }
 
-    fn pop() -> &self/Json {
-        if self.stack.len() == 0 { vec::push(self.stack, &self.json); }
+    fn pop(&self) -> &self/Json {
+        if self.stack.len() == 0 { self.stack.push(&self.json); }
         vec::pop(self.stack)
     }
 }
@@ -772,7 +772,7 @@ pub impl Deserializer: serialization2::Deserializer {
     fn read_vec<T>(&self, f: fn(uint) -> T) -> T {
         debug!("read_vec()");
         let len = match *self.peek() {
-            List(list) => list.len(),
+            List(ref list) => list.len(),
             _ => fail ~"not a list",
         };
         let res = f(len);
@@ -784,7 +784,10 @@ pub impl Deserializer: serialization2::Deserializer {
         debug!("read_vec_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {
-                vec::push(self.stack, &list[idx]);
+                // FIXME(#3148)---should be inferred
+                let list: &self/~[Json] = list;
+
+                self.stack.push(&list[idx]);
                 f()
             }
             _ => fail ~"not a list",
@@ -820,7 +823,7 @@ pub impl Deserializer: serialization2::Deserializer {
                 match obj.find_ref(&f_name) {
                     None => fail fmt!("no such field: %s", f_name),
                     Some(json) => {
-                        vec::push(self.stack, json);
+                        self.stack.push(json);
                         f()
                     }
                 }
@@ -845,8 +848,10 @@ pub impl Deserializer: serialization2::Deserializer {
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
         debug!("read_tup_elt(idx=%u)", idx);
         match *self.peek() {
-            List(list) => {
-                vec::push(self.stack, &list[idx]);
+            List(ref list) => {
+                // FIXME(#3148)---should be inferred
+                let list: &self/~[Json] = list;
+                self.stack.push(&list[idx]);
                 f()
             }
             _ => fail ~"not a list"
@@ -939,12 +944,12 @@ impl Json : Ord {
 
                             // XXX: this is horribly inefficient...
                             for d0.each |k, v| {
-                                 vec::push(d0_flat, (@copy *k, @copy *v));
+                                 d0_flat.push((@copy *k, @copy *v));
                             }
                             d0_flat.qsort();
 
                             for d1.each |k, v| {
-                                vec::push(d1_flat, (@copy *k, @copy *v));
+                                d1_flat.push((@copy *k, @copy *v));
                             }
                             d1_flat.qsort();
 

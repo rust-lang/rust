@@ -830,7 +830,7 @@ impl RegionVarBindings {
         // It would be nice to write this using map():
         let mut edges = vec::with_capacity(num_edges);
         for self.constraints.each_ref |constraint, span| {
-            vec::push(edges, GraphEdge {
+            edges.push(GraphEdge {
                 next_edge: [mut uint::max_value, uint::max_value],
                 constraint: *constraint,
                 span: *span
@@ -1201,13 +1201,13 @@ impl RegionVarBindings {
                       Outgoing => to_vid
                     };
                     if set.insert(*vid, ()) {
-                        vec::push(stack, vid);
+                        stack.push(vid);
                     }
                   }
 
                   ConstrainRegSubVar(region, _) => {
                     assert dir == Incoming;
-                    vec::push(result, SpannedRegion {
+                    result.push(SpannedRegion {
                         region: region,
                         span: edge.span
                     });
@@ -1215,7 +1215,7 @@ impl RegionVarBindings {
 
                   ConstrainVarSubReg(_, region) => {
                     assert dir == Outgoing;
-                    vec::push(result, SpannedRegion {
+                    result.push(SpannedRegion {
                         region: region,
                         span: edge.span
                     });

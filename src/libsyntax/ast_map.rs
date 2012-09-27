@@ -273,9 +273,9 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     }
     match i.node {
       item_mod(_) | item_foreign_mod(_) => {
-        vec::push(cx.path, path_mod(i.ident));
+        cx.path.push(path_mod(i.ident));
       }
-      _ => vec::push(cx.path, path_name(i.ident))
+      _ => cx.path.push(path_name(i.ident))
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);

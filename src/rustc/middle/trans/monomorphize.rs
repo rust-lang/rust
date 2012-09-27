@@ -246,7 +246,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
             for vec::each(*bounds) |bound| {
                 match *bound {
                   ty::bound_trait(_) => {
-                    vec::push(v, meth::vtable_id(ccx, vts[i]));
+                    v.push(meth::vtable_id(ccx, vts[i]));
                     i += 1u;
                   }
                   _ => ()

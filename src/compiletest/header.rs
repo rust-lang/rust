@@ -28,7 +28,7 @@ fn load_props(testfile: &Path) -> test_props {
     let mut pp_exact = option::None;
     for iter_header(testfile) |ln| {
         match parse_error_pattern(ln) {
-          option::Some(ep) => vec::push(error_patterns, ep),
+          option::Some(ep) => error_patterns.push(ep),
           option::None => ()
         };
 
@@ -41,11 +41,11 @@ fn load_props(testfile: &Path) -> test_props {
         }
 
         do parse_aux_build(ln).iter |ab| {
-            vec::push(aux_builds, ab);
+            aux_builds.push(ab);
         }
 
         do parse_exec_env(ln).iter |ee| {
-            vec::push(exec_env, ee);
+            exec_env.push(ee);
         }
     };
     return {

@@ -332,7 +332,7 @@ fn write_content(bcx: block,
                         bcx = expr::trans_into(bcx, *element,
                                                SaveIn(lleltptr));
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
-                        vec::push(temp_cleanups, lleltptr);
+                        temp_cleanups.push(lleltptr);
                     }
                     for vec::each(temp_cleanups) |cleanup| {
                         revoke_clean(bcx, *cleanup);
@@ -369,7 +369,7 @@ fn write_content(bcx: block,
                             bcx = tmpdatum.move_to(bcx, INIT, lleltptr);
                         }
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
-                        vec::push(temp_cleanups, lleltptr);
+                        temp_cleanups.push(lleltptr);
                     }
 
                     for vec::each(temp_cleanups) |cleanup| {

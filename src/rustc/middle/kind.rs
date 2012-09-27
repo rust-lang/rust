@@ -42,17 +42,17 @@ fn kind_to_str(k: kind) -> ~str {
     let mut kinds = ~[];
 
     if ty::kind_lteq(kind_const(), k) {
-        vec::push(kinds, ~"const");
+        kinds.push(~"const");
     }
 
     if ty::kind_can_be_copied(k) {
-        vec::push(kinds, ~"copy");
+        kinds.push(~"copy");
     }
 
     if ty::kind_can_be_sent(k) {
-        vec::push(kinds, ~"send");
+        kinds.push(~"send");
     } else if ty::kind_is_owned(k) {
-        vec::push(kinds, ~"owned");
+        kinds.push(~"owned");
     }
 
     str::connect(kinds, ~" ")

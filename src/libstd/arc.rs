@@ -648,7 +648,7 @@ mod tests {
         let mut children = ~[];
         for 5.times {
             let arc3 = ~arc.clone();
-            do task::task().future_result(|+r| vec::push(children, r)).spawn {
+            do task::task().future_result(|+r| children.push(r)).spawn {
                 do arc3.read |num| {
                     assert *num >= 0;
                 }
@@ -676,7 +676,7 @@ mod tests {
         let mut reader_convos = ~[];
         for 10.times {
             let ((rc1,rp1),(rc2,rp2)) = (pipes::stream(),pipes::stream());
-            vec::push(reader_convos, (rc1,rp2));
+            reader_convos.push((rc1,rp2));
             let arcn = ~arc.clone();
             do task::spawn {
                 rp1.recv(); // wait for downgrader to give go-ahead

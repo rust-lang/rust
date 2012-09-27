@@ -245,7 +245,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     for pieces.each |pc| {
         match *pc {
           PieceString(s) => {
-            vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s))
+            piece_exprs.push(mk_uniq_str(cx, fmt_sp, s))
           }
           PieceConv(conv) => {
             n += 1u;
@@ -258,7 +258,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
-            vec::push(piece_exprs, c_expr);
+            piece_exprs.push(c_expr);
           }
         }
     }

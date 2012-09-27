@@ -496,7 +496,7 @@ impl parser {
                 let mut ts = ~[self.parse_ty(false)];
                 while self.token == token::COMMA {
                     self.bump();
-                    vec::push(ts, self.parse_ty(false));
+                    ts.push(self.parse_ty(false));
                 }
                 let t = if vec::len(ts) == 1u { ts[0].node }
                 else { ty_tup(ts) };
@@ -771,10 +771,10 @@ impl parser {
                 && self.look_ahead(1u) == token::MOD_SEP;
 
             if is_not_last {
-                vec::push(ids, parse_ident(self));
+                ids.push(parse_ident(self));
                 self.expect(token::MOD_SEP);
             } else {
-                vec::push(ids, parse_last_ident(self));
+                ids.push(parse_last_ident(self));
                 break;
             }
         }
@@ -903,7 +903,7 @@ impl parser {
             }
             let mut es = ~[self.parse_expr()];
             while self.token == token::COMMA {
-                self.bump(); vec::push(es, self.parse_expr());
+                self.bump(); es.push(self.parse_expr());
             }
             hi = self.span.hi;
             self.expect(token::RPAREN);
@@ -1049,7 +1049,7 @@ impl parser {
                     self.bump();
                     let mut fields = ~[];
                     let mut base = None;
-                    vec::push(fields, self.parse_field(token::COLON));
+                    fields.push(self.parse_field(token::COLON));
                     while self.token != token::RBRACE {
 
                         if self.try_parse_obsolete_with() {
@@ -1067,7 +1067,7 @@ impl parser {
                             // Accept an optional trailing comma.
                             break;
                         }
-                        vec::push(fields, self.parse_field(token::COLON));
+                        fields.push(self.parse_field(token::COLON));
                     }
 
                     hi = pth.span.hi;
@@ -1316,7 +1316,7 @@ impl parser {
         while self.token != ket || lparens > 0u {
             if self.token == token::LPAREN { lparens += 1u; }
             if self.token == token::RPAREN { lparens -= 1u; }
-            vec::push(ret_val, self.parse_matcher(name_idx));
+            ret_val.push(self.parse_matcher(name_idx));
         }
 
         self.bump();
@@ -1722,7 +1722,7 @@ impl parser {
                 // record ends by an optional trailing comma
                 break;
             }
-            vec::push(fields, self.parse_field(token::COLON));
+            fields.push(self.parse_field(token::COLON));
         }
         self.expect(token::RBRACE);
         return expr_rec(fields, base);
@@ -1757,7 +1757,7 @@ impl parser {
                               rules: default_blk},
                        span: expr.span};
 
-            vec::push(arms, {pats: pats, guard: guard, body: blk});
+            arms.push({pats: pats, guard: guard, body: blk});
         }
         let mut hi = self.span.hi;
         self.bump();
@@ -1802,7 +1802,7 @@ impl parser {
     fn parse_pats() -> ~[@pat] {
         let mut pats = ~[];
         loop {
-            vec::push(pats, self.parse_pat(true));
+            pats.push(self.parse_pat(true));
             if self.token == token::BINOP(token::OR) { self.bump(); }
             else { return pats; }
         };
@@ -1849,7 +1849,7 @@ impl parser {
                     span: self.last_span
                 };
             }
-            vec::push(fields, {ident: fieldname, pat: subpat});
+            fields.push({ident: fieldname, pat: subpat});
         }
         return (fields, etc);
     }
@@ -1937,7 +1937,7 @@ impl parser {
                 let mut fields = ~[self.parse_pat(refutable)];
                 while self.token == token::COMMA {
                     self.bump();
-                    vec::push(fields, self.parse_pat(refutable));
+                    fields.push(self.parse_pat(refutable));
                 }
                 if vec::len(fields) == 1u { self.expect(token::COMMA); }
                 hi = self.span.hi;
@@ -2126,7 +2126,7 @@ impl parser {
         let lo = self.span.lo;
         let mut locals = ~[self.parse_local(is_mutbl, true)];
         while self.eat(token::COMMA) {
-            vec::push(locals, self.parse_local(is_mutbl, true));
+            locals.push(self.parse_local(is_mutbl, true));
         }
         return @spanned(lo, self.last_span.hi, decl_local(locals));
     }
@@ -2266,8 +2266,8 @@ impl parser {
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
-            push(stmts, @spanned(item.span.lo, item.span.hi,
-                                 stmt_decl(decl, self.get_id())));
+            stmts.push(@spanned(item.span.lo, item.span.hi,
+                                stmt_decl(decl, self.get_id())));
         }
 
         let mut initial_attrs = attrs_remaining;
@@ -2278,43 +2278,43 @@ impl parser {
 
         while self.token != token::RBRACE {
             match self.token {
-              token::SEMI => {
-                self.bump(); // empty
-              }
-              _ => {
-                let stmt = self.parse_stmt(initial_attrs);
-                initial_attrs = ~[];
-                match stmt.node {
-                  stmt_expr(e, stmt_id) => { // Expression without semicolon:
-                    match self.token {
-                      token::SEMI => {
-                        self.bump();
-                        push(stmts,
-                             @{node: stmt_semi(e, stmt_id),.. *stmt});
-                      }
-                      token::RBRACE => {
-                        expr = Some(e);
-                      }
-                      t => {
-                        if classify::stmt_ends_with_semi(*stmt) {
-                            self.fatal(~"expected `;` or `}` after \
-                                         expression but found `"
-                                       + token_to_str(self.reader, t) + ~"`");
-                        }
-                        vec::push(stmts, stmt);
-                      }
-                    }
-                  }
-
-                  _ => { // All other kinds of statements:
-                    vec::push(stmts, stmt);
-
-                    if classify::stmt_ends_with_semi(*stmt) {
-                        self.expect(token::SEMI);
-                    }
-                  }
+                token::SEMI => {
+                    self.bump(); // empty
                 }
-              }
+                _ => {
+                    let stmt = self.parse_stmt(initial_attrs);
+                    initial_attrs = ~[];
+                    match stmt.node {
+                        stmt_expr(e, stmt_id) => { // Expression without semicolon:
+                            match self.token {
+                                token::SEMI => {
+                                    self.bump();
+                                    stmts.push(@{node: stmt_semi(e, stmt_id),
+                                                 ..*stmt});
+                                }
+                                token::RBRACE => {
+                                    expr = Some(e);
+                                }
+                                t => {
+                                    if classify::stmt_ends_with_semi(*stmt) {
+                                        self.fatal(~"expected `;` or `}` after \
+                                                     expression but found `"
+                                                   + token_to_str(self.reader, t) + ~"`");
+                                    }
+                                    stmts.push(stmt);
+                                }
+                            }
+                        }
+
+                        _ => { // All other kinds of statements:
+                            stmts.push(stmt);
+
+                            if classify::stmt_ends_with_semi(*stmt) {
+                                self.expect(token::SEMI);
+                            }
+                        }
+                    }
+                }
             }
         }
         let mut hi = self.span.hi;
@@ -2356,16 +2356,16 @@ impl parser {
                     };
 
                     match maybe_bound {
-                      Some(bound) => {
-                        self.bump();
-                        push(bounds, bound);
-                      }
-                      None => {
-                        push(bounds, bound_trait(self.parse_ty(false)));
-                      }
+                        Some(bound) => {
+                            self.bump();
+                            bounds.push(bound);
+                        }
+                        None => {
+                            bounds.push(bound_trait(self.parse_ty(false)));
+                        }
                     }
                 } else {
-                    push(bounds, bound_trait(self.parse_ty(false)));
+                    bounds.push(bound_trait(self.parse_ty(false)));
                 }
             }
         }
@@ -2636,7 +2636,7 @@ impl parser {
         self.expect(token::LBRACE);
         while !self.eat(token::RBRACE) {
             let vis = self.parse_visibility();
-            vec::push(meths, self.parse_method(vis));
+            meths.push(self.parse_method(vis));
         }
         (ident, item_impl(tps, opt_trait, ty, meths), None)
     }
@@ -2722,9 +2722,9 @@ impl parser {
                     for mms.each |mm| {
                         match *mm {
                             @field_member(struct_field) =>
-                                vec::push(fields, struct_field),
+                                fields.push(struct_field),
                             @method_member(the_method_member) =>
-                                vec::push(methods, the_method_member)
+                                methods.push(the_method_member)
                         }
                     }
                   }
@@ -2896,7 +2896,7 @@ impl parser {
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
                    attrs);
             match self.parse_item_or_view_item(attrs, true) {
-              iovi_item(item) => vec::push(items, item),
+              iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
                 self.span_fatal(view_item.span, ~"view items must be \
                                                   declared at the top of the \
@@ -3000,7 +3000,7 @@ impl parser {
             let attrs = vec::append(initial_attrs,
                                     self.parse_outer_attributes());
             initial_attrs = ~[];
-            vec::push(items, self.parse_foreign_item(attrs));
+            items.push(self.parse_foreign_item(attrs));
         }
         return {sort: sort, view_items: view_items,
              items: items};
@@ -3113,9 +3113,9 @@ impl parser {
                     for mms.each |mm| {
                         match *mm {
                             @field_member(struct_field) =>
-                                vec::push(fields, struct_field),
+                                fields.push(struct_field),
                             @method_member(the_method_member) =>
-                                vec::push(methods, the_method_member)
+                                methods.push(the_method_member)
                         }
                     }
                 }
@@ -3184,7 +3184,7 @@ impl parser {
                         seq_sep_trailing_disallowed(token::COMMA),
                         |p| p.parse_ty(false));
                     for arg_tys.each |ty| {
-                        vec::push(args, {ty: *ty, id: self.get_id()});
+                        args.push({ty: *ty, id: self.get_id()});
                     }
                     kind = tuple_variant_kind(args);
                 } else if self.eat(token::EQ) {
@@ -3200,7 +3200,7 @@ impl parser {
             let vr = {name: ident, attrs: variant_attrs,
                       kind: kind, id: self.get_id(),
                       disr_expr: disr_expr, vis: vis};
-            vec::push(variants, spanned(vlo, self.last_span.hi, vr));
+            variants.push(spanned(vlo, self.last_span.hi, vr));
 
             if needs_comma && !self.eat(token::COMMA) { break; }
         }
@@ -3427,7 +3427,7 @@ impl parser {
             while self.token == token::MOD_SEP {
                 self.bump();
                 let id = self.parse_ident();
-                vec::push(path, id);
+                path.push(id);
             }
             let path = @{span: mk_sp(lo, self.span.hi), global: false,
                          idents: path, rp: None, types: ~[]};
@@ -3445,7 +3445,7 @@ impl parser {
 
                   token::IDENT(i, _) => {
                     self.bump();
-                    vec::push(path, i);
+                    path.push(i);
                   }
 
                   // foo::bar::{a,b,c}
@@ -3488,7 +3488,7 @@ impl parser {
         let mut vp = ~[self.parse_view_path()];
         while self.token == token::COMMA {
             self.bump();
-            vec::push(vp, self.parse_view_path());
+            vp.push(self.parse_view_path());
         }
         return vp;
     }
@@ -3662,7 +3662,7 @@ impl parser {
         let mut first_outer_attr = first_outer_attr;
         while self.token != term {
             let cdir = @self.parse_crate_directive(first_outer_attr);
-            vec::push(cdirs, cdir);
+            cdirs.push(cdir);
             first_outer_attr = ~[];
         }
         return cdirs;

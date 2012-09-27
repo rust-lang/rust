@@ -297,21 +297,21 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
     while i < e {
         match cls[i] {
             integer_class => {
-                vec::push(tys, T_i64());
+                tys.push(T_i64());
             }
             sse_fv_class => {
                 let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
                 let vec_ty = llvm::LLVMVectorType(T_f32(),
                                                   vec_len as c_uint);
-                vec::push(tys, vec_ty);
+                tys.push(vec_ty);
                 i += vec_len;
                 loop;
             }
             sse_fs_class => {
-                vec::push(tys, T_f32());
+                tys.push(T_f32());
             }
             sse_ds_class => {
-                vec::push(tys, T_f64());
+                tys.push(T_f64());
             }
             _ => fail ~"llregtype: unhandled class"
         }
@@ -378,8 +378,8 @@ fn x86_64_tys(atys: ~[TypeRef],
     let mut attrs = ~[];
     for vec::each(atys) |t| {
         let (ty, attr) = x86_64_ty(*t, is_pass_byval, ByValAttribute);
-        vec::push(arg_tys, ty);
-        vec::push(attrs, attr);
+        arg_tys.push(ty);
+        attrs.push(attr);
     }
     let mut (ret_ty, ret_attr) = x86_64_ty(rty, is_ret_bysret,
                                        StructRetAttribute);
@@ -619,7 +619,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                         } else {
                             load_inbounds(bcx, llargbundle, [0u, i])
                         };
-                        vec::push(llargvals, llargval);
+                        llargvals.push(llargval);
                         i += 1u;
                     }
                 }
@@ -627,7 +627,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     while i < n {
                         let llargval = load_inbounds(bcx, llargbundle,
                                                           [0u, i]);
-                        vec::push(llargvals, llargval);
+                        llargvals.push(llargval);
                         i += 1u;
                     }
                 }
@@ -1041,12 +1041,12 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
             let llretptr = load_inbounds(bcx, llargbundle, ~[0u, n]);
-            vec::push(llargvals, llretptr);
+            llargvals.push(llretptr);
             let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
-            vec::push(llargvals, llenvptr);
+            llargvals.push(llenvptr);
             while i < n {
                 let llargval = load_inbounds(bcx, llargbundle, ~[0u, i]);
-                vec::push(llargvals, llargval);
+                llargvals.push(llargval);
                 i += 1u;
             }
             return llargvals;

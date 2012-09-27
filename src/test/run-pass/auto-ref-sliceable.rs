@@ -4,7 +4,7 @@ trait Pushable<T> {
 
 impl<T> ~[T]: Pushable<T> {
     fn push_val(&mut self, +t: T) {
-        vec::push(*self, t);
+        self.push(t);
     }
 }
 

@@ -76,7 +76,7 @@ impl @crate_ctxt: get_insn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
-            vec::push(*self.stats.llvm_insn_ctxt, str::from_slice(s));
+            self.stats.llvm_insn_ctxt.push(str::from_slice(s));
         }
         icx_popper(self)
     }
@@ -98,7 +98,7 @@ fn log_fn_time(ccx: @crate_ctxt, name: ~str, start: time::Timespec,
                end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
-    vec::push(*ccx.stats.fn_times, {ident: name, time: elapsed});
+    ccx.stats.fn_times.push({ident: name, time: elapsed});
 }
 
 fn decl_fn(llmod: ModuleRef, name: ~str, cc: lib::llvm::CallConv,
@@ -1153,7 +1153,7 @@ fn cleanup_and_leave(bcx: block, upto: Option<BasicBlockRef>,
             }
             let sub_cx = sub_block(bcx, ~"cleanup");
             Br(bcx, sub_cx.llbb);
-            vec::push(inf.cleanup_paths, {target: leave, dest: sub_cx.llbb});
+            inf.cleanup_paths.push({target: leave, dest: sub_cx.llbb});
             bcx = trans_block_cleanups_(sub_cx, block_cleanups(cur), is_lpad);
           }
           _ => ()
@@ -2001,7 +2001,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = ~[lloutputarg, llenvarg];
         if takes_argv {
-            vec::push(args, llvm::LLVMGetParam(llfdecl, 2 as c_uint));
+            args.push(llvm::LLVMGetParam(llfdecl, 2 as c_uint));
         }
         Call(bcx, main_llfn, args);
 
@@ -2451,10 +2451,10 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     for ccx.module_data.each |key, val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
-        vec::push(elts, elt);
+        elts.push(elt);
     }
     let term = C_struct(~[C_int(ccx, 0), C_int(ccx, 0)]);
-    vec::push(elts, term);
+    elts.push(term);
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     return map;
 }
@@ -2492,10 +2492,10 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
         let cr = str::as_c_str(nm, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
-        vec::push(subcrates, p2i(ccx, cr));
+        subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    vec::push(subcrates, C_int(ccx, 0));
+    subcrates.push(C_int(ccx, 0));
 
     let llannihilatefn;
     let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn.get();

@@ -478,10 +478,10 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
             }
         }
     };
-    vec::push(llargs, llretslot);
+    llargs.push(llretslot);
 
     // Arg 1: Env (closure-bindings / self value)
-    vec::push(llargs, llenv);
+    llargs.push(llenv);
 
     // ... then explicit args.
 
@@ -497,11 +497,11 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
                                if i == last { ret_flag } else { None },
                                autoref_arg)
             });
-            vec::push(llargs, arg_val);
+            llargs.push(arg_val);
         }
       }
       ArgVals(vs) => {
-        vec::push_all(llargs, vs);
+        llargs.push_all(vs);
       }
     }
 
@@ -622,7 +622,7 @@ fn trans_arg_expr(bcx: block,
                         // However, we must cleanup should we fail before the
                         // callee is actually invoked.
                         scratch.add_clean(bcx);
-                        vec::push(*temp_cleanups, scratch.val);
+                        temp_cleanups.push(scratch.val);
 
                         match arg_datum.appropriate_mode() {
                             ByValue => {

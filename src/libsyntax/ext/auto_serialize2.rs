@@ -750,7 +750,7 @@ fn mk_enum_deser_body(
         body: cx.expr_blk(cx.expr(span, ast::expr_fail(None))),
     };
 
-    vec::push(arms, impossible_case);
+    arms.push(impossible_case);
 
     // ast for `|i| { match i { $(arms) } }`
     let expr_lambda = cx.expr(

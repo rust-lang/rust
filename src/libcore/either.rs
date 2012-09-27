@@ -32,27 +32,27 @@ fn either<T, U, V>(f_left: fn((&T)) -> V,
 fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
-    let mut result: ~[T] = ~[];
-    for vec::each(eithers) |elt| {
-        match *elt {
-          Left(l) => vec::push(result, l),
-          _ => { /* fallthrough */ }
+    do vec::build_sized(eithers.len()) |push| {
+        for vec::each(eithers) |elt| {
+            match *elt {
+                Left(ref l) => { push(*l); }
+                _ => { /* fallthrough */ }
+            }
         }
     }
-    move result
 }
 
 fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
-    let mut result: ~[U] = ~[];
-    for vec::each(eithers) |elt| {
-        match *elt {
-          Right(r) => vec::push(result, r),
-          _ => { /* fallthrough */ }
+    do vec::build_sized(eithers.len()) |push| {
+        for vec::each(eithers) |elt| {
+            match *elt {
+                Right(ref r) => { push(*r); }
+                _ => { /* fallthrough */ }
+            }
         }
     }
-    move result
 }
 
 fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
@@ -68,8 +68,8 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     let mut rights: ~[U] = ~[];
     for vec::each(eithers) |elt| {
         match *elt {
-          Left(l) => vec::push(lefts, l),
-          Right(r) => vec::push(rights, r)
+          Left(l) => lefts.push(l),
+          Right(r) => rights.push(r)
         }
     }
     return {lefts: move lefts, rights: move rights};

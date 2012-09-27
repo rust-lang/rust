@@ -277,7 +277,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                         result::Err(GetAddrUnknownError));
                     break;
                 };
-                vec::push(out_vec, move new_ip_addr);
+                out_vec.push(move new_ip_addr);
 
                 let next_addr = ll::get_next_addrinfo(curr_addr);
                 if next_addr == ptr::null::<addrinfo>() as *addrinfo {

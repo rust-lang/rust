@@ -99,7 +99,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    Option<@ast::item> {
 
-    vec::push(cx.path, i.ident);
+    cx.path.push(i.ident);
     debug!("current path: %s",
            ast_util::path_name_i(cx.path, cx.sess.parse_sess.interner));
 
@@ -286,7 +286,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for cx.testfns.each |test| {
-        vec::push(descs, mk_test_desc_rec(cx, *test));
+        descs.push(mk_test_desc_rec(cx, *test));
     }
 
     let inner_expr = @{id: cx.sess.next_node_id(),

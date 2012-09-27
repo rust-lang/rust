@@ -219,7 +219,7 @@ mod global_env {
             for vec::each(rustrt::rust_env_pairs()) |p| {
                 let vs = str::splitn_char(*p, '=', 1u);
                 assert vec::len(vs) == 2u;
-                vec::push(pairs, (copy vs[0], copy vs[1]));
+                pairs.push((copy vs[0], copy vs[1]));
             }
             move pairs
         }

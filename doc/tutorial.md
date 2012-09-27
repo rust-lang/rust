@@ -1651,7 +1651,7 @@ may be invoked on multiple types.
 fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
-        vec::push(accumulator, function(element));
+        accumulator.push(function(element));
     }
     return accumulator;
 }

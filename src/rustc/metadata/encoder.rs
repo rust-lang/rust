@@ -118,12 +118,12 @@ type entry<T> = {val: T, pos: uint};
 fn add_to_index(ecx: @encode_ctxt, ebml_w: ebml::Writer, path: &[ident],
                 &index: ~[entry<~str>], name: ident) {
     let mut full_path = ~[];
-    vec::push_all(full_path, path);
-    vec::push(full_path, name);
-    vec::push(index,
-              {val: ast_util::path_name_i(full_path,
-                                          ecx.tcx.sess.parse_sess.interner),
-               pos: ebml_w.writer.tell()});
+    full_path.push_all(path);
+    full_path.push(name);
+    index.push(
+        {val: ast_util::path_name_i(full_path,
+                                    ecx.tcx.sess.parse_sess.interner),
+         pos: ebml_w.writer.tell()});
 }
 
 fn encode_trait_ref(ebml_w: ebml::Writer, ecx: @encode_ctxt, t: @trait_ref) {
@@ -225,7 +225,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::Writer,
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx, {crate: local_crate, node: id});
     for variants.each |variant| {
-        vec::push(*index, {val: variant.node.id, pos: ebml_w.writer.tell()});
+        index.push({val: variant.node.id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(variant.node.id));
         encode_family(ebml_w, 'v');
@@ -390,9 +390,9 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Writer,
         match field.node.kind {
             named_field(nm, mt, vis) => {
                 let id = field.node.id;
-                vec::push(*index, {val: id, pos: ebml_w.writer.tell()});
-                vec::push(*global_index, {val: id,
-                                          pos: ebml_w.writer.tell()});
+                index.push({val: id, pos: ebml_w.writer.tell()});
+                global_index.push({val: id,
+                                    pos: ebml_w.writer.tell()});
                 ebml_w.start_tag(tag_items_data_item);
                 debug!("encode_info_for_class: doing %s %d",
                        tcx.sess.str_of(nm), id);
@@ -411,9 +411,9 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Writer,
     for methods.each |m| {
         match m.vis {
             public | inherited => {
-                vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
-                vec::push(*global_index,
-                          {val: m.id, pos: ebml_w.writer.tell()});
+                index.push({val: m.id, pos: ebml_w.writer.tell()});
+                global_index.push(
+                    {val: m.id, pos: ebml_w.writer.tell()});
                 let impl_path = vec::append_one(path,
                                                 ast_map::path_name(m.ident));
                 debug!("encode_info_for_class: doing %s %d",
@@ -519,7 +519,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
 
     fn add_to_index_(item: @item, ebml_w: ebml::Writer,
                      index: @mut ~[entry<int>]) {
-        vec::push(*index, {val: item.id, pos: ebml_w.writer.tell()});
+        index.push({val: item.id, pos: ebml_w.writer.tell()});
     }
     let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
 
@@ -603,7 +603,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
                                         index);
         /* Encode the dtor */
         do struct_def.dtor.iter |dtor| {
-            vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
+            index.push({val: dtor.node.id, pos: ebml_w.writer.tell()});
           encode_info_for_ctor(ecx, ebml_w, dtor.node.id,
                                ecx.tcx.sess.ident_of(
                                    ecx.tcx.sess.str_of(item.ident) +
@@ -688,7 +688,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         for struct_def.ctor.each |ctor| {
             debug!("encoding info for ctor %s %d",
                    ecx.tcx.sess.str_of(item.ident), ctor.node.id);
-            vec::push(*index, {
+            index.push({
                 val: ctor.node.id,
                 pos: ebml_w.writer.tell()
             });
@@ -723,7 +723,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         let impl_path = vec::append_one(path,
                                         ast_map::path_name(item.ident));
         for methods.each |m| {
-            vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
+            index.push({val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx, ebml_w, impl_path,
                                    should_inline(m.attrs), item.id, *m,
                                    vec::append(tps, m.tps));
@@ -774,7 +774,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
             let ty_m = ast_util::trait_method_to_ty_method(*m);
             if ty_m.self_ty.node != ast::sty_static { loop; }
 
-            vec::push(*index, {val: ty_m.id, pos: ebml_w.writer.tell()});
+            index.push({val: ty_m.id, pos: ebml_w.writer.tell()});
 
             ebml_w.start_tag(tag_items_data_item);
             encode_def_id(ebml_w, local_def(ty_m.id));
@@ -799,7 +799,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::Writer,
                                 index: @mut ~[entry<int>],
                                 path: ast_map::path, abi: foreign_abi) {
     if !reachable(ecx, nitem.id) { return; }
-    vec::push(*index, {val: nitem.id, pos: ebml_w.writer.tell()});
+    index.push({val: nitem.id, pos: ebml_w.writer.tell()});
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
@@ -831,7 +831,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Writer,
                          crate: @crate) -> ~[entry<int>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
-    vec::push(*index, {val: crate_node_id, pos: ebml_w.writer.tell()});
+    index.push({val: crate_node_id, pos: ebml_w.writer.tell()});
     encode_info_for_mod(ecx, ebml_w, crate.node.module,
                         crate_node_id, ~[],
                         syntax::parse::token::special_idents::invalid);
@@ -869,15 +869,15 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Writer,
 fn create_index<T: Copy Hash IterBytes>(index: ~[entry<T>]) ->
    ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
-    for uint::range(0u, 256u) |_i| { vec::push(buckets, @mut ~[]); };
+    for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
     for index.each |elt| {
         let h = elt.val.hash() as uint;
-        vec::push(*buckets[h % 256], *elt);
+        buckets[h % 256].push(*elt);
     }
 
     let mut buckets_frozen = ~[];
     for buckets.each |bucket| {
-        vec::push(buckets_frozen, @**bucket);
+        buckets_frozen.push(@**bucket);
     }
     return buckets_frozen;
 }
@@ -889,7 +889,7 @@ fn encode_index<T>(ebml_w: ebml::Writer, buckets: ~[@~[entry<T>]],
     let mut bucket_locs: ~[uint] = ~[];
     ebml_w.start_tag(tag_index_buckets);
     for buckets.each |bucket| {
-        vec::push(bucket_locs, ebml_w.writer.tell());
+        bucket_locs.push(ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
         for vec::each(**bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
@@ -996,8 +996,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
     let mut attrs: ~[attribute] = ~[];
     let mut found_link_attr = false;
     for crate.node.attrs.each |attr| {
-        vec::push(
-            attrs,
+        attrs.push(
             if attr::get_attr_name(*attr) != ~"link" {
                 *attr
             } else {
@@ -1011,7 +1010,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
             });
     }
 
-    if !found_link_attr { vec::push(attrs, synthesize_link_attr(ecx, ~[])); }
+    if !found_link_attr { attrs.push(synthesize_link_attr(ecx, ~[])); }
 
     return attrs;
 }
@@ -1031,7 +1030,7 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Writer,
             let dep = {cnum: key, name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
-            vec::push(deps, dep);
+            deps.push(dep);
         };
 
         // Sort by cnum

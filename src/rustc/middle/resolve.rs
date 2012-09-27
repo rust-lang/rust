@@ -2897,7 +2897,7 @@ impl Resolver {
                            if reexport { ~"reexport" } else { ~"export"},
                            self.session.str_of(ident),
                            def_id_of_def(d.def));
-                    vec::push(*exports2,  Export2 {
+                    exports2.push(Export2 {
                         reexport: reexport,
                         name: self.session.str_of(ident),
                         def_id: def_id_of_def(d.def)
@@ -2949,7 +2949,7 @@ impl Resolver {
                                 for %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(*exports2, Export2 {
+                        exports2.push(Export2 {
                             reexport: false,
                             name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)
@@ -2960,7 +2960,7 @@ impl Resolver {
                                 %?",
                                self.session.str_of(name),
                                module_.def_id);
-                        vec::push(*exports2, Export2 {
+                        exports2.push(Export2 {
                             reexport: true,
                             name: self.session.str_of(name),
                             def_id: def_id_of_def(target_def)

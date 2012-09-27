@@ -41,7 +41,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 
    // map -> [(k,%)]
    mm.each(fn&(key: ~[u8], val: uint) -> bool {
-      vec::push(pairs, (key, pct(val, total)));
+      pairs.push((key, pct(val, total)));
       return true;
    });
 
@@ -152,7 +152,7 @@ fn main(++args: ~[~str]) {
         stream <-> streams[ii];
         let (to_parent_, from_child_) = option::unwrap(stream);
 
-        vec::push(from_child, from_child_);
+        from_child.push(from_child_);
 
         let (to_child, from_parent) = pipes::stream();
 

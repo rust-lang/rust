@@ -141,7 +141,7 @@ fn run_tests_console(opts: &TestOpts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
-                vec::push(st.failures, copy test);
+                st.failures.push(copy test);
               }
               TrIgnored => {
                 st.ignored += 1u;
@@ -545,7 +545,7 @@ mod tests {
             for vec::each(names) |name| {
                 let test = {name: *name, testfn: copy testfn, ignore: false,
                             should_fail: false};
-                vec::push(tests, test);
+                tests.push(test);
             }
             tests
         };

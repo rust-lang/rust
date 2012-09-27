@@ -76,7 +76,7 @@ impl<T: Reader> T : ReaderUtil {
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            vec::push(buf, ch as u8);
+            buf.push(ch as u8);
         }
         str::from_bytes(buf)
     }
@@ -94,7 +94,7 @@ impl<T: Reader> T : ReaderUtil {
                 i += 1;
                 assert (w > 0);
                 if w == 1 {
-                    vec::push(*chars, b0 as char);
+                    chars.push(b0 as char);
                     loop;
                 }
                 // can't satisfy this char with the existing data
@@ -113,7 +113,7 @@ impl<T: Reader> T : ReaderUtil {
                 // See str::char_at
                 val += ((b0 << ((w + 1) as u8)) as uint)
                     << (w - 1) * 6 - w - 1u;
-                vec::push(*chars, val as char);
+                chars.push(val as char);
             }
             return (i, 0);
         }
@@ -128,7 +128,7 @@ impl<T: Reader> T : ReaderUtil {
                 // we're split in a unicode char?
                 break;
             }
-            vec::push_all(buf, data);
+            buf.push_all(data);
             let (offset, nbreq) = chars_from_bytes::<T>(&buf, &mut chars);
             let ncreq = n - chars.len();
             // again we either know we need a certain number of bytes
@@ -155,7 +155,7 @@ impl<T: Reader> T : ReaderUtil {
         let mut buf: ~[u8] = ~[];
         loop {
             let ch = self.read_byte();
-            if ch < 1 { break; } else { vec::push(buf, ch as u8); }
+            if ch < 1 { break; } else { buf.push(ch as u8); }
         }
         str::from_bytes(buf)
     }
@@ -190,7 +190,7 @@ impl<T: Reader> T : ReaderUtil {
 
     fn read_whole_stream() -> ~[u8] {
         let mut buf: ~[u8] = ~[];
-        while !self.eof() { vec::push_all(buf, self.read_bytes(2048u)); }
+        while !self.eof() { buf.push_all(self.read_bytes(2048u)); }
         move buf
     }
 
@@ -503,7 +503,7 @@ fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
 
         let mut bytes: ~[u8] = ~[], i = size, n = n;
         while i > 0u {
-            vec::push(bytes, (n & 255_u64) as u8);
+            bytes.push((n & 255_u64) as u8);
             n >>= 8_u64;
             i -= 1u;
         }
@@ -535,7 +535,7 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
         let mut i = size;
         while i > 0u {
             let shift = ((i - 1u) * 8u) as u64;
-            vec::push(bytes, (n >> shift) as u8);
+            bytes.push((n >> shift) as u8);
             i -= 1u;
         }
         f(bytes)
@@ -737,7 +737,7 @@ fn with_str_writer(f: fn(Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
     // Make sure the vector has a trailing null and is proper utf8.
-    vec::push(v, 0);
+    v.push(0);
     assert str::is_utf8(v);
 
     unsafe { move ::cast::transmute(v) }

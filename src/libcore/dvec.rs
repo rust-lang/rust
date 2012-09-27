@@ -172,7 +172,7 @@ impl<A> DVec<A> {
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             log(error, ~"a");
             self.data <- ~[move t];
-            vec::push_all_move(self.data, move data);
+            self.data.push_all_move(move data);
             log(error, ~"b");
         }
     }
@@ -180,7 +180,7 @@ impl<A> DVec<A> {
     /// Append a single item to the end of the list
     fn push(+t: A) {
         self.check_not_borrowed();
-        vec::push(self.data, move t);
+        self.data.push(move t);
     }
 
     /// Remove and return the first element
@@ -240,7 +240,7 @@ impl<A: Copy> DVec<A> {
             vec::reserve(&mut v, new_len);
             let mut i = from_idx;
             while i < to_idx {
-                vec::push(v, ts[i]);
+                v.push(ts[i]);
                 i += 1u;
             }
             move v
@@ -266,7 +266,7 @@ impl<A: Copy> DVec<A> {
             }
            };
 
-        for ts.each |t| { vec::push(v, *t) };
+        for ts.each |t| { v.push(*t) };
            v
         }
     }

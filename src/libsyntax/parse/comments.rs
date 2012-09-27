@@ -130,7 +130,7 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 fn push_blank_line_comment(rdr: string_reader, &comments: ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
-    vec::push(comments, {style: blank_line, lines: v, pos: rdr.chpos});
+    comments.push({style: blank_line, lines: v, pos: rdr.chpos});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
@@ -149,7 +149,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
     debug!(">>> shebang comment");
     let p = rdr.chpos;
     debug!("<<< shebang comment");
-    vec::push(comments, {
+    comments.push({
         style: if code_to_the_left { trailing } else { isolated },
         lines: ~[read_one_line_comment(rdr)],
         pos: p
@@ -167,12 +167,12 @@ fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
         if is_doc_comment(line) { // doc-comments are not put in comments
             break;
         }
-        vec::push(lines, line);
+        lines.push(line);
         consume_non_eol_whitespace(rdr);
     }
     debug!("<<< line comments");
     if !lines.is_empty() {
-        vec::push(comments, {
+        comments.push({
             style: if code_to_the_left { trailing } else { isolated },
             lines: lines,
             pos: p
@@ -198,7 +198,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: ~[~str],
         } else { s1 = ~""; }
     } else { s1 = s; }
     log(debug, ~"pushing line: " + s1);
-    vec::push(lines, s1);
+    lines.push(s1);
 }
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
@@ -257,7 +257,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
         style = mixed;
     }
     debug!("<<< block comment");
-    vec::push(comments, {style: style, lines: lines, pos: p});
+    comments.push({style: style, lines: lines, pos: p});
 }
 
 fn peeking_at_comment(rdr: string_reader) -> bool {
@@ -315,7 +315,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         let {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(tok) {
             let s = get_str_from(rdr, bstart);
-            vec::push(literals, {lit: s, pos: sp.lo});
+            literals.push({lit: s, pos: sp.lo});
             log(debug, ~"tok lit: " + s);
         } else {
             log(debug, ~"tok: " + token::to_str(rdr.interner, tok));

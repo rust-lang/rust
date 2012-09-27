@@ -234,10 +234,10 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
         let cur = args[i];
         let curlen = str::len(cur);
         if !is_arg(cur) {
-            vec::push(free, cur);
+            free.push(cur);
         } else if cur == ~"--" {
             let mut j = i + 1u;
-            while j < l { vec::push(free, args[j]); j += 1u; }
+            while j < l { free.push(args[j]); j += 1u; }
             break;
         } else {
             let mut names;
@@ -287,7 +287,7 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                         }
                       }
                     }
-                    vec::push(names, opt);
+                    names.push(opt);
                     j = range.next;
                 }
             }
@@ -303,23 +303,22 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                     if !i_arg.is_none() {
                         return Err(UnexpectedArgument(name_str(nm)));
                     }
-                    vec::push(vals[optid], Given);
+                    vals[optid].push(Given);
                   }
                   Maybe => {
                     if !i_arg.is_none() {
-                        vec::push(vals[optid], Val(i_arg.get()));
+                        vals[optid].push(Val(i_arg.get()));
                     } else if name_pos < vec::len::<Name>(names) ||
                                   i + 1u == l || is_arg(args[i + 1u]) {
-                        vec::push(vals[optid], Given);
-                    } else { i += 1u; vec::push(vals[optid], Val(args[i])); }
+                        vals[optid].push(Given);
+                    } else { i += 1u; vals[optid].push(Val(args[i])); }
                   }
                   Yes => {
                     if !i_arg.is_none() {
-                        vec::push(vals[optid],
-                                  Val(i_arg.get()));
+                        vals[optid].push(Val(i_arg.get()));
                     } else if i + 1u == l {
                         return Err(ArgumentMissing(name_str(nm)));
-                    } else { i += 1u; vec::push(vals[optid], Val(args[i])); }
+                    } else { i += 1u; vals[optid].push(Val(args[i])); }
                   }
                 }
             }
@@ -412,7 +411,7 @@ fn opts_str(+mm: Matches, names: &[~str]) -> ~str {
 fn opt_strs(+mm: Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     for vec::each(opt_vals(mm, nm)) |v| {
-        match *v { Val(s) => vec::push(acc, s), _ => () }
+        match *v { Val(s) => acc.push(s), _ => () }
     }
     return acc;
 }

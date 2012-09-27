@@ -102,12 +102,12 @@ impl ~[u8]: FromBase64 {
                 } else if ch == '=' {
                     match len - i {
                       1u => {
-                        vec::push(r, ((n >> 16u) & 0xFFu) as u8);
-                        vec::push(r, ((n >> 8u ) & 0xFFu) as u8);
+                        r.push(((n >> 16u) & 0xFFu) as u8);
+                        r.push(((n >> 8u ) & 0xFFu) as u8);
                         return copy r;
                       }
                       2u => {
-                        vec::push(r, ((n >> 10u) & 0xFFu) as u8);
+                        r.push(((n >> 10u) & 0xFFu) as u8);
                         return copy r;
                       }
                       _ => fail ~"invalid base64 padding"
@@ -119,9 +119,9 @@ impl ~[u8]: FromBase64 {
                 i += 1u;
             };
 
-            vec::push(r, ((n >> 16u) & 0xFFu) as u8);
-            vec::push(r, ((n >> 8u ) & 0xFFu) as u8);
-            vec::push(r, ((n       ) & 0xFFu) as u8);
+            r.push(((n >> 16u) & 0xFFu) as u8);
+            r.push(((n >> 8u ) & 0xFFu) as u8);
+            r.push(((n       ) & 0xFFu) as u8);
         }
 
         r

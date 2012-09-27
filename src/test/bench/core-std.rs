@@ -47,7 +47,7 @@ fn shift_push() {
     let mut v2 = ~[];
 
     while v1.len() > 0 {
-        vec::push(v2, vec::shift(v1));
+        v2.push(vec::shift(v1));
     }
 }
 
@@ -122,11 +122,11 @@ fn vec_push_all() {
     for uint::range(0, 1500) |i| {
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen_bool() {
-            vec::push_all(v, rv);
+            v.push_all(rv);
         }
         else {
             v <-> rv;
-            vec::push_all(v, rv);
+            v.push_all(rv);
         }
     }
 }

@@ -140,7 +140,7 @@ fn nmoddoc_from_mod(
         let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {
-            vec::push(fns, fndoc_from_fn(ItemDoc));
+            fns.push(fndoc_from_fn(ItemDoc));
           }
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }

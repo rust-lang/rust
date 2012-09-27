@@ -283,18 +283,9 @@ pub mod linear {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
                         Some(ref bkt) => {
-                            let ptr = unsafe {
-                                // FIXME(#3148)--region inference
-                                // fails to capture needed deps.
-                                // Here, the bucket value is known to
-                                // live as long as self, because self
-                                // is immutable.  But the region
-                                // inference stupidly infers a
-                                // lifetime for `ref bkt` that is
-                                // shorter than it needs to be.
-                                cast::copy_lifetime(self, &bkt.value)
-                            };
-                            Some(ptr)
+                            // FIXME(#3148)---should be inferred
+                            let bkt: &self/Bucket<K,V> = bkt;
+                            Some(&bkt.value)
                         }
                         None => {
                             fail ~"LinearMap::find: internal logic error"

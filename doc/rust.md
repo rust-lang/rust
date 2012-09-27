@@ -1016,7 +1016,7 @@ fn iter<T>(seq: ~[T], f: fn(T)) {
 }
 fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for seq.each |elt| { vec::push(acc, f(elt)); }
+    for seq.each |elt| { acc.push(f(elt)); }
     acc
 }
 ~~~~
