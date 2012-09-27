@@ -111,12 +111,9 @@ can be adjusted by passing a `--prefix` argument to
 `configure`. Various other options are also supported, pass `--help`
 for more information on them.
 
-When complete, `make install` will place the following programs into
-`/usr/local/bin`:
-
-  * `rustc`, the Rust compiler
-  * `rustdoc`, the API-documentation tool
-  * `cargo`, the Rust package manager
+When complete, `make install` will place several programs into
+`/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
+API-documentation tool, and `cargo`, the Rust package manager.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
