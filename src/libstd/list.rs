@@ -59,7 +59,7 @@ fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
 /// Returns true if a list contains an element with the given value
 fn has<T: Copy Eq>(ls: @List<T>, +elt: T) -> bool {
     for each(ls) |e| {
-        if e == elt { return true; }
+        if *e == elt { return true; }
     }
     return false;
 }
@@ -135,11 +135,11 @@ fn iter<T>(l: @List<T>, f: fn((&T))) {
 }
 
 /// Iterate over a list
-fn each<T>(l: @List<T>, f: fn(T) -> bool) {
+fn each<T>(l: @List<T>, f: fn((&T)) -> bool) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          Cons(hd, tl) => {
+          Cons(ref hd, tl) => {
             if !f(hd) { return; }
             tl
           }

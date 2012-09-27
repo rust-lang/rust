@@ -73,13 +73,13 @@ fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn(K, V)) {
+fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
     match copy *m {
       None => (),
       Some(node) => {
         traverse(&const node.left, f);
         // copy of value is req'd as f() requires an immutable ptr
-        f(node.key, copy node.value);
+        f(&node.key, &copy node.value);
         traverse(&const node.right, f);
       }
     }
@@ -130,7 +130,7 @@ mod tests {
         fn t(n: @mut int, +k: int, +_v: ()) {
             assert (*n == k); *n += 1;
         }
-        traverse(m, |x,y| t(n, x, y));
+        traverse(m, |x,y| t(n, *x, *y));
     }
 
     #[test]

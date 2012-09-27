@@ -63,7 +63,7 @@ struct Arena {
         unsafe {
             destroy_chunk(&self.head);
             for list::each(self.chunks) |chunk| {
-                if !chunk.is_pod { destroy_chunk(&chunk); }
+                if !chunk.is_pod { destroy_chunk(chunk); }
             }
         }
     }

@@ -181,7 +181,7 @@ impl isr_alist: get_and_find_region {
 
     fn find(br: ty::bound_region) -> Option<ty::region> {
         for list::each(self) |isr| {
-            let (isr_br, isr_r) = isr;
+            let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
         }
         return None;
