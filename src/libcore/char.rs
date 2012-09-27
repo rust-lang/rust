@@ -39,14 +39,6 @@ use cmp::Eq;
     Cn  Unassigned  a reserved unassigned code point or a noncharacter
 */
 
-export is_alphabetic,
-       is_XID_start, is_XID_continue,
-       is_lowercase, is_uppercase,
-       is_whitespace, is_alphanumeric,
-       is_ascii, is_digit,
-       to_digit, cmp,
-       escape_default, escape_unicode;
-
 pub use is_alphabetic = unicode::derived_property::Alphabetic;
 pub use is_XID_start = unicode::derived_property::XID_Start;
 pub use is_XID_continue = unicode::derived_property::XID_Continue;
@@ -56,7 +48,7 @@ pub use is_XID_continue = unicode::derived_property::XID_Continue;
  * Indicates whether a character is in lower case, defined
  * in terms of the Unicode General Category 'Ll'
  */
-pure fn is_lowercase(c: char) -> bool {
+pub pure fn is_lowercase(c: char) -> bool {
     return unicode::general_category::Ll(c);
 }
 
@@ -64,7 +56,7 @@ pure fn is_lowercase(c: char) -> bool {
  * Indicates whether a character is in upper case, defined
  * in terms of the Unicode General Category 'Lu'.
  */
-pure fn is_uppercase(c: char) -> bool {
+pub pure fn is_uppercase(c: char) -> bool {
     return unicode::general_category::Lu(c);
 }
 
@@ -73,7 +65,7 @@ pure fn is_uppercase(c: char) -> bool {
  * terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
  * additional 'Cc'-category control codes in the range [0x09, 0x0d]
  */
-pure fn is_whitespace(c: char) -> bool {
+pub pure fn is_whitespace(c: char) -> bool {
     return ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
         || unicode::general_category::Zl(c)
@@ -85,7 +77,7 @@ pure fn is_whitespace(c: char) -> bool {
  * defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
  * and the Derived Core Property 'Alphabetic'.
  */
-pure fn is_alphanumeric(c: char) -> bool {
+pub pure fn is_alphanumeric(c: char) -> bool {
     return unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
@@ -93,12 +85,12 @@ pure fn is_alphanumeric(c: char) -> bool {
 }
 
 /// Indicates whether the character is an ASCII character
-pure fn is_ascii(c: char) -> bool {
+pub pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
-pure fn is_digit(c: char) -> bool {
+pub pure fn is_digit(c: char) -> bool {
     return unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
@@ -114,7 +106,7 @@ pure fn is_digit(c: char) -> bool {
  * 'b' or 'B', 11, etc. Returns none if the char does not
  * refer to a digit in the given radix.
  */
-pure fn to_digit(c: char, radix: uint) -> Option<uint> {
+pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
       'a' .. 'z' => c as uint + 10u - ('a' as uint),
@@ -134,7 +126,7 @@ pure fn to_digit(c: char, radix: uint) -> Option<uint> {
  *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
-fn escape_unicode(c: char) -> ~str {
+pub fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
@@ -159,7 +151,7 @@ fn escape_unicode(c: char) -> ~str {
  *   - Any other chars in the range [0x20,0x7e] are not escaped.
  *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
  */
-fn escape_default(c: char) -> ~str {
+pub fn escape_default(c: char) -> ~str {
     match c {
       '\t' => ~"\\t",
       '\r' => ~"\\r",
@@ -179,7 +171,7 @@ fn escape_default(c: char) -> ~str {
  *
  * -1 if a < b, 0 if a == b, +1 if a > b
  */
-pure fn cmp(a: char, b: char) -> int {
+pub pure fn cmp(a: char, b: char) -> int {
     return  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }

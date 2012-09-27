@@ -196,11 +196,8 @@ mod u64 {
 }
 
 
-#[legacy_exports]
 mod box;
-#[legacy_exports]
 mod char;
-#[legacy_exports]
 mod float;
 #[legacy_exports]
 mod f32;
