@@ -1,5 +1,9 @@
 //! Random number generation
 
+// NB: transitional, de-mode-ing.
+#[warn(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 #[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 
@@ -120,7 +124,7 @@ impl Rng {
     /**
      * Return a char randomly chosen from chars, failing if chars is empty
      */
-    fn gen_char_from(chars: ~str) -> char {
+    fn gen_char_from(chars: &str) -> char {
         assert !chars.is_empty();
         self.choose(str::chars(chars))
     }
@@ -272,8 +276,8 @@ pub fn Rng() -> Rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-pub fn seeded_rng(seed: ~[u8]) -> Rng {
-    @RandRes(rustrt::rand_new_seeded(seed)) as Rng
+pub fn seeded_rng(seed: &~[u8]) -> Rng {
+    @RandRes(rustrt::rand_new_seeded(*seed)) as Rng
 }
 
 type XorShiftState = {
@@ -310,8 +314,8 @@ pub mod tests {
     #[test]
     pub fn rng_seeded() {
         let seed = rand::seed();
-        let ra = rand::seeded_rng(seed);
-        let rb = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
+        let rb = rand::seeded_rng(&seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
@@ -319,15 +323,15 @@ pub mod tests {
     pub fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
         let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(seed);
-        let rb = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
+        let rb = rand::seeded_rng(&seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
     pub fn rng_seeded_custom_seed2() {
         let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);
