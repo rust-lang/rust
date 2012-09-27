@@ -1485,7 +1485,8 @@ type foreign_item =
      attrs: ~[attribute],
      node: foreign_item_,
      id: node_id,
-     span: span};
+     span: span,
+     vis: visibility};
 
 #[auto_serialize]
 enum foreign_item_ {

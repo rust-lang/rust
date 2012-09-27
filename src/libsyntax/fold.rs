@@ -203,7 +203,8 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
                 }
               },
           id: fld.new_id(ni.id),
-          span: fld.new_span(ni.span)};
+          span: fld.new_span(ni.span),
+          vis: ni.vis};
 }
 
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
