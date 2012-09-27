@@ -2285,7 +2285,8 @@ impl parser {
                     let stmt = self.parse_stmt(initial_attrs);
                     initial_attrs = ~[];
                     match stmt.node {
-                        stmt_expr(e, stmt_id) => { // Expression without semicolon:
+                        stmt_expr(e, stmt_id) => {
+                            // Expression without semicolon
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
@@ -2297,9 +2298,11 @@ impl parser {
                                 }
                                 t => {
                                     if classify::stmt_ends_with_semi(*stmt) {
-                                        self.fatal(~"expected `;` or `}` after \
-                                                     expression but found `"
-                                                   + token_to_str(self.reader, t) + ~"`");
+                                        self.fatal(
+                                            ~"expected `;` or `}` after \
+                                              expression but found `"
+                                            + token_to_str(self.reader, t)
+                                            + ~"`");
                                     }
                                     stmts.push(stmt);
                                 }
