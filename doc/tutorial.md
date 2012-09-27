@@ -995,15 +995,6 @@ _owned boxes_. All tasks may allocate objects on the exchange heap,
 then transfer ownership of those objects to other tasks, avoiding
 expensive copies.
 
-## What to be aware of
-
-Rust has three "realms" in which objects can be allocated: the stack,
-the local heap, and the exchange heap. These realms have corresponding
-pointer types: the borrowed pointer (`&T`), the managed box (`@T`),
-and the owned box (`~T`). These three sigils will appear
-repeatedly as we explore the language. Learning the appropriate role
-of each is key to using Rust effectively.
-
 # Boxes and pointers
 
 In contrast to a lot of modern languages, aggregate types like structs
