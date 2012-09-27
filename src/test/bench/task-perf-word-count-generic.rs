@@ -20,7 +20,7 @@ use option::None;
 use std::map;
 use std::map::HashMap;
 use hash::Hash;
-use io::WriterUtil;
+use io::{ReaderUtil, WriterUtil};
 
 use std::time;
 
