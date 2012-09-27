@@ -60,7 +60,7 @@ fn run(args: &[~str]) {
     for uint::range(0u, workers) |i| {
         let to_child = to_child.clone();
         do task::task().future_result(|+r| {
-            vec::push(worker_results, r);
+            worker_results.push(r);
         }).spawn {
             for uint::range(0u, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);

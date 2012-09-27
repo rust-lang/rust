@@ -115,7 +115,7 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 
 fn add_used_crate_file(cstore: cstore, lib: &Path) {
     if !vec::contains(p(cstore).used_crate_files, copy *lib) {
-        vec::push(p(cstore).used_crate_files, copy *lib);
+        p(cstore).used_crate_files.push(copy *lib);
     }
 }
 
@@ -127,7 +127,7 @@ fn add_used_library(cstore: cstore, lib: ~str) -> bool {
     assert lib != ~"";
 
     if vec::contains(p(cstore).used_libraries, lib) { return false; }
-    vec::push(p(cstore).used_libraries, lib);
+    p(cstore).used_libraries.push(lib);
     return true;
 }
 
@@ -136,7 +136,7 @@ fn get_used_libraries(cstore: cstore) -> ~[~str] {
 }
 
 fn add_used_link_args(cstore: cstore, args: ~str) {
-    vec::push_all(p(cstore).used_link_args, str::split_char(args, ' '));
+    p(cstore).used_link_args.push_all(str::split_char(args, ' '));
 }
 
 fn get_used_link_args(cstore: cstore) -> ~[~str] {
@@ -163,7 +163,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[~str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);
-        vec::push(result, {name: cdata.name, hash: hash});
+        result.push({name: cdata.name, hash: hash});
     };
     pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
     let sorted = std::sort::merge_sort(lteq, result);

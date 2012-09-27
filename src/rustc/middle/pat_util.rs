@@ -54,6 +54,6 @@ fn pat_bindings(dm: resolve::DefMap, pat: @pat,
 
 fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[node_id] {
     let mut found = ~[];
-    pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| vec::push(found, b_id) );
+    pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;
 }

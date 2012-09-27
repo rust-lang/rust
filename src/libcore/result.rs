@@ -280,7 +280,7 @@ fn map_vec<T,U:Copy,V:Copy>(
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
     for vec::each(ts) |t| {
         match op(t) {
-          Ok(v) => vec::push(vs, v),
+          Ok(v) => vs.push(v),
           Err(u) => return Err(u)
         }
     }
@@ -317,7 +317,7 @@ fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
     let mut i = 0u;
     while i < n {
         match op(&ss[i],&ts[i]) {
-          Ok(v) => vec::push(vs, v),
+          Ok(v) => vs.push(v),
           Err(u) => return Err(u)
         }
         i += 1u;

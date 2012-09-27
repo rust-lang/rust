@@ -90,7 +90,7 @@ mod ct {
         fn flush_buf(+buf: ~str, &pieces: ~[Piece]) -> ~str {
             if str::len(buf) > 0 {
                 let piece = PieceString(move buf);
-                vec::push(pieces, move piece);
+                pieces.push(move piece);
             }
             return ~"";
         }
@@ -110,7 +110,7 @@ mod ct {
                 } else {
                     buf = flush_buf(move buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    vec::push(pieces, copy rs.piece);
+                    pieces.push(copy rs.piece);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }

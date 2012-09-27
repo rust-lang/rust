@@ -215,7 +215,7 @@ impl Rng {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
-                vec::push(r, item.item);
+                r.push(item.item);
             }
         }
         move r

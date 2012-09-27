@@ -226,7 +226,7 @@ impl state: to_type_decls {
 
             let v = cx.variant(cx.ident_of(name), span, tys);
 
-            vec::push(items_msg, v);
+            items_msg.push(v);
         }
 
         ~[cx.item_enum_poly(name,
@@ -245,44 +245,44 @@ impl state: to_type_decls {
         let mut items = ~[];
         for self.messages.each |m| {
             if dir == send {
-                vec::push(items, m.gen_send(cx, true));
-                vec::push(items, m.gen_send(cx, false));
+                items.push(m.gen_send(cx, true));
+                items.push(m.gen_send(cx, false));
             }
         }
 
         if !self.proto.is_bounded() {
-            vec::push(items,
-                      cx.item_ty_poly(
-                          self.data_name(),
-                          self.span,
-                          cx.ty_path_ast_builder(
-                              path(~[cx.ident_of(~"pipes"),
-                                     cx.ident_of(dir.to_str() + ~"Packet")],
-                                   empty_span())
-                              .add_ty(cx.ty_path_ast_builder(
-                                  path(~[cx.ident_of(self.proto.name),
-                                         self.data_name()],
-                                       empty_span())
-                                  .add_tys(cx.ty_vars(self.ty_params))))),
-                          self.ty_params));
+            items.push(
+                cx.item_ty_poly(
+                    self.data_name(),
+                    self.span,
+                    cx.ty_path_ast_builder(
+                        path(~[cx.ident_of(~"pipes"),
+                               cx.ident_of(dir.to_str() + ~"Packet")],
+                             empty_span())
+                        .add_ty(cx.ty_path_ast_builder(
+                            path(~[cx.ident_of(self.proto.name),
+                                   self.data_name()],
+                                 empty_span())
+                            .add_tys(cx.ty_vars(self.ty_params))))),
+                    self.ty_params));
         }
         else {
-            vec::push(items,
-                      cx.item_ty_poly(
-                          self.data_name(),
-                          self.span,
-                          cx.ty_path_ast_builder(
-                              path(~[cx.ident_of(~"pipes"),
-                                     cx.ident_of(dir.to_str()
-                                                 + ~"PacketBuffered")],
-                                  empty_span())
-                              .add_tys(~[cx.ty_path_ast_builder(
-                                  path(~[cx.ident_of(self.proto.name),
-                                         self.data_name()],
-                                       empty_span())
-                                  .add_tys(cx.ty_vars(self.ty_params))),
-                                         self.proto.buffer_ty_path(cx)])),
-                          self.ty_params));
+            items.push(
+                cx.item_ty_poly(
+                    self.data_name(),
+                    self.span,
+                    cx.ty_path_ast_builder(
+                        path(~[cx.ident_of(~"pipes"),
+                               cx.ident_of(dir.to_str()
+                                           + ~"PacketBuffered")],
+                             empty_span())
+                        .add_tys(~[cx.ty_path_ast_builder(
+                            path(~[cx.ident_of(self.proto.name),
+                                   self.data_name()],
+                                 empty_span())
+                            .add_tys(cx.ty_vars(self.ty_params))),
+                                   self.proto.buffer_ty_path(cx)])),
+                    self.ty_params));
         };
         items
     }
@@ -367,7 +367,7 @@ impl protocol: gen_init {
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  None => vec::push(params, *tp),
+                  None => params.push(*tp),
                   _ => ()
                 }
             }
@@ -383,7 +383,7 @@ impl protocol: gen_init {
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  None => vec::push(params, *tp),
+                  None => params.push(*tp),
                   _ => ()
                 }
             }
@@ -415,17 +415,15 @@ impl protocol: gen_init {
         }
 
         if self.is_bounded() {
-            vec::push(items, self.gen_buffer_type(cx))
+            items.push(self.gen_buffer_type(cx))
         }
 
-        vec::push(items,
-                  cx.item_mod(cx.ident_of(~"client"),
-                              self.span,
-                              client_states));
-        vec::push(items,
-                  cx.item_mod(cx.ident_of(~"server"),
-                              self.span,
-                              server_states));
+        items.push(cx.item_mod(cx.ident_of(~"client"),
+                               self.span,
+                               client_states));
+        items.push(cx.item_mod(cx.ident_of(~"server"),
+                               self.span,
+                               server_states));
 
         cx.item_mod(cx.ident_of(self.name), self.span, items)
     }

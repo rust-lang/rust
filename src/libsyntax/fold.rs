@@ -367,9 +367,8 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_rec(fields, etc) => {
             let mut fs = ~[];
             for fields.each |f| {
-                vec::push(fs,
-                          {ident: /* FIXME (#2543) */ copy f.ident,
-                           pat: fld.fold_pat(f.pat)});
+                fs.push({ident: /* FIXME (#2543) */ copy f.ident,
+                         pat: fld.fold_pat(f.pat)});
             }
             pat_rec(fs, etc)
           }
@@ -377,9 +376,8 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
             let pth_ = fld.fold_path(pth);
             let mut fs = ~[];
             for fields.each |f| {
-                vec::push(fs,
-                          {ident: /* FIXME (#2543) */ copy f.ident,
-                           pat: fld.fold_pat(f.pat)});
+                fs.push({ident: /* FIXME (#2543) */ copy f.ident,
+                         pat: fld.fold_pat(f.pat)});
             }
             pat_struct(pth_, fs, etc)
           }

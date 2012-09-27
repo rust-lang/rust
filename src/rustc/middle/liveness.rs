@@ -302,7 +302,7 @@ fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
 impl IrMaps {
     fn add_live_node(lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
-        vec::push(self.lnks, lnk);
+        self.lnks.push(lnk);
         self.num_live_nodes += 1u;
 
         debug!("%s is of kind %?", ln.to_str(), lnk);
@@ -319,7 +319,7 @@ impl IrMaps {
 
     fn add_variable(vk: VarKind) -> Variable {
         let v = Variable(self.num_vars);
-        vec::push(self.var_kinds, vk);
+        self.var_kinds.push(vk);
         self.num_vars += 1u;
 
         match vk {
@@ -540,7 +540,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
                   cap_move | cap_drop => true, // var must be dead afterwards
                   cap_copy | cap_ref => false // var can still be used
                 };
-                vec::push(call_caps, {ln: cv_ln, is_move: is_move, rv: rv});
+                call_caps.push({ln: cv_ln, is_move: is_move, rv: rv});
               }
               None => {}
             }

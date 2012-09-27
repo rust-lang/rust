@@ -27,13 +27,13 @@ fn replace_bound_regions_in_fn_ty(
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              { ty: ty::mk_self(tcx), mutbl: m });
-        vec::push(all_tys, ty);
+        all_tys.push(ty);
       }
       _ => {}
     }
 
 
-    for self_ty.each |t| { vec::push(all_tys, *t) }
+    for self_ty.each |t| { all_tys.push(*t) }
 
     debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",

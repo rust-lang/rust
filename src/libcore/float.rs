@@ -143,7 +143,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
         // store the next digit
         frac *= 10.0;
         let digit = frac as uint;
-        vec::push(fractionalParts, digit);
+        fractionalParts.push(digit);
 
         // calculate the next frac
         frac -= digit as float;

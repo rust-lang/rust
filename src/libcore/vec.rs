@@ -92,6 +92,8 @@ export CopyableVector;
 export ImmutableVector;
 export ImmutableEqVector;
 export ImmutableCopyableVector;
+export MutableVector;
+export MutableCopyableVector;
 export IterTraitExtensions;
 export vec_concat;
 export traits;
@@ -238,7 +240,7 @@ pure fn with_capacity<T>(capacity: uint) -> ~[T] {
 pure fn build_sized<A>(size: uint,
                        builder: fn(push: pure fn(+v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
-    builder(|+x| unsafe { push(vec, move x) });
+    builder(|+x| unsafe { vec.push(move x) });
     move vec
 }
 
@@ -330,7 +332,7 @@ pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     assert (end <= len(v));
     let mut result = ~[];
     unsafe {
-        for uint::range(start, end) |i| { vec::push(result, v[i]) }
+        for uint::range(start, end) |i| { result.push(v[i]) }
     }
     move result
 }
@@ -383,14 +385,14 @@ fn split<T: Copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln {
         match position_between(v, start, ln, f) {
-          None => break,
-          Some(i) => {
-            push(result, slice(v, start, i));
-            start = i + 1u;
-          }
+            None => break,
+            Some(i) => {
+                result.push(slice(v, start, i));
+                start = i + 1u;
+            }
         }
     }
-    push(result, slice(v, start, ln));
+    result.push(slice(v, start, ln));
     move result
 }
 
@@ -407,16 +409,16 @@ fn splitn<T: Copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln && count > 0u {
         match position_between(v, start, ln, f) {
-          None => break,
-          Some(i) => {
-            push(result, slice(v, start, i));
-            // Make sure to skip the separator.
-            start = i + 1u;
-            count -= 1u;
-          }
+            None => break,
+            Some(i) => {
+                result.push(slice(v, start, i));
+                // Make sure to skip the separator.
+                start = i + 1u;
+                count -= 1u;
+            }
         }
     }
-    push(result, slice(v, start, ln));
+    result.push(slice(v, start, ln));
     move result
 }
 
@@ -432,14 +434,14 @@ fn rsplit<T: Copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u {
         match rposition_between(v, 0u, end, f) {
-          None => break,
-          Some(i) => {
-            push(result, slice(v, i + 1u, end));
-            end = i;
-          }
+            None => break,
+            Some(i) => {
+                result.push(slice(v, i + 1u, end));
+                end = i;
+            }
         }
     }
-    push(result, slice(v, 0u, end));
+    result.push(slice(v, 0u, end));
     reverse(result);
     return move result;
 }
@@ -457,16 +459,16 @@ fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u && count > 0u {
         match rposition_between(v, 0u, end, f) {
-          None => break,
-          Some(i) => {
-            push(result, slice(v, i + 1u, end));
-            // Make sure to skip the separator.
-            end = i;
-            count -= 1u;
-          }
+            None => break,
+            Some(i) => {
+                result.push(slice(v, i + 1u, end));
+                // Make sure to skip the separator.
+                end = i;
+                count -= 1u;
+            }
         }
     }
-    push(result, slice(v, 0u, end));
+    result.push(slice(v, 0u, end));
     reverse(result);
     move result
 }
@@ -489,7 +491,7 @@ fn shift<T>(&v: ~[T]) -> T {
 
             for uint::range(1, ln) |i| {
                 let r <- *ptr::offset(vv, i);
-                push(v, move r);
+                v.push(move r);
             }
         }
         raw::set_len(vv, 0);
@@ -503,7 +505,7 @@ fn unshift<T>(&v: ~[T], +x: T) {
     let mut vv = ~[move x];
     v <-> vv;
     while len(vv) > 0 {
-        push(v, shift(vv));
+        v.push(shift(vv));
     }
 }
 
@@ -568,9 +570,9 @@ fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
 
 /// Append an element to a vector
 #[inline(always)]
-fn push<T>(&v: ~[T], +initval: T) {
+fn push<T>(v: &mut ~[T], +initval: T) {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::reinterpret_cast(&addr_of(v));
+        let repr: **raw::VecRepr = ::cast::transmute(copy v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, move initval);
@@ -583,8 +585,8 @@ fn push<T>(&v: ~[T], +initval: T) {
 
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
-unsafe fn push_fast<T>(&v: ~[T], +initval: T) {
-    let repr: **raw::VecRepr = ::cast::reinterpret_cast(&addr_of(v));
+unsafe fn push_fast<T>(+v: &mut ~[T], +initval: T) {
+    let repr: **raw::VecRepr = ::cast::transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::size_of::<T>();
     let p = ptr::addr_of((**repr).unboxed.data);
@@ -593,14 +595,14 @@ unsafe fn push_fast<T>(&v: ~[T], +initval: T) {
 }
 
 #[inline(never)]
-fn push_slow<T>(&v: ~[T], +initval: T) {
-    reserve_at_least(&mut v, v.len() + 1u);
+fn push_slow<T>(+v: &mut ~[T], +initval: T) {
+    reserve_at_least(v, v.len() + 1u);
     unsafe { push_fast(v, move initval) }
 }
 
 #[inline(always)]
-fn push_all<T: Copy>(&v: ~[T], rhs: &[const T]) {
-    reserve(&mut v, v.len() + rhs.len());
+fn push_all<T: Copy>(+v: &mut ~[T], rhs: &[const T]) {
+    reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
         push(v, unsafe { raw::get(rhs, i) })
@@ -608,8 +610,8 @@ fn push_all<T: Copy>(&v: ~[T], rhs: &[const T]) {
 }
 
 #[inline(always)]
-fn push_all_move<T>(&v: ~[T], -rhs: ~[const T]) {
-    reserve(&mut v, v.len() + rhs.len());
+fn push_all_move<T>(v: &mut ~[T], -rhs: ~[const T]) {
+    reserve(v, v.len() + rhs.len());
     unsafe {
         do as_imm_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
@@ -675,7 +677,7 @@ fn dedup<T: Eq>(&v: ~[const T]) unsafe {
 pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
     let mut v <- lhs;
     unsafe {
-        push_all(v, rhs);
+        v.push_all(rhs);
     }
     move v
 }
@@ -683,7 +685,7 @@ pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
 #[inline(always)]
 pure fn append_one<T>(+lhs: ~[T], +x: T) -> ~[T] {
     let mut v <- lhs;
-    unsafe { push(v, move x); }
+    unsafe { v.push(move x); }
     move v
 }
 
@@ -705,7 +707,10 @@ fn grow<T: Copy>(&v: ~[T], n: uint, initval: T) {
     reserve_at_least(&mut v, len(v) + n);
     let mut i: uint = 0u;
 
-    while i < n { push(v, initval); i += 1u; }
+    while i < n {
+        v.push(initval);
+        i += 1u;
+    }
 }
 
 /**
@@ -724,7 +729,10 @@ fn grow<T: Copy>(&v: ~[T], n: uint, initval: T) {
 fn grow_fn<T>(&v: ~[T], n: uint, op: iter::InitOp<T>) {
     reserve_at_least(&mut v, len(v) + n);
     let mut i: uint = 0u;
-    while i < n { push(v, op(i)); i += 1u; }
+    while i < n {
+        v.push(op(i));
+        i += 1u;
+    }
 }
 
 /**
@@ -745,14 +753,18 @@ fn grow_set<T: Copy>(&v: ~[T], index: uint, initval: T, val: T) {
 /// Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: &[T], f: fn(v: &T) -> U) -> ~[U] {
     let mut result = with_capacity(len(v));
-    for each(v) |elem| { unsafe { push(result, f(elem)); } }
+    for each(v) |elem| {
+        unsafe {
+            result.push(f(elem));
+        }
+    }
     move result
 }
 
 fn map_consume<T, U>(+v: ~[T], f: fn(+v: T) -> U) -> ~[U] {
     let mut result = ~[];
     do consume(move v) |_i, x| {
-        vec::push(result, f(move x));
+        result.push(f(move x));
     }
     move result
 }
@@ -772,7 +784,7 @@ pure fn mapi<T, U>(v: &[T], f: fn(uint, v: &T) -> U) -> ~[U] {
  */
 pure fn flat_map<T, U>(v: &[T], f: fn(T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
-    for each(v) |elem| { unsafe{ push_all_move(result, f(*elem)); } }
+    for each(v) |elem| { unsafe{ result.push_all_move(f(*elem)); } }
     move result
 }
 
@@ -784,7 +796,7 @@ pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
-        unsafe { push(u, f(copy v0[i], copy v1[i])) };
+        unsafe { u.push(f(copy v0[i], copy v1[i])) };
         i += 1u;
     }
     move u
@@ -802,7 +814,7 @@ pure fn filter_map<T, U: Copy>(v: &[T], f: fn(T) -> Option<U>)
     for each(v) |elem| {
         match f(*elem) {
           None => {/* no-op */ }
-          Some(result_elem) => unsafe { push(result, result_elem); }
+          Some(result_elem) => unsafe { result.push(result_elem); }
         }
     }
     move result
@@ -818,7 +830,7 @@ pure fn filter_map<T, U: Copy>(v: &[T], f: fn(T) -> Option<U>)
 pure fn filter<T: Copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
-        if f(*elem) { unsafe { push(result, *elem); } }
+        if f(*elem) { unsafe { result.push(*elem); } }
     }
     move result
 }
@@ -830,7 +842,7 @@ pure fn filter<T: Copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
  */
 pure fn concat<T: Copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
-    for each(v) |inner| { unsafe { push_all(r, *inner); } }
+    for each(v) |inner| { unsafe { r.push_all(*inner); } }
     move r
 }
 
@@ -839,8 +851,8 @@ pure fn connect<T: Copy>(v: &[~[T]], sep: T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
     for each(v) |inner| {
-        if first { first = false; } else { unsafe { push(r, sep); } }
-        unsafe { push_all(r, *inner) };
+        if first { first = false; } else { unsafe { r.push(sep); } }
+        unsafe { r.push_all(*inner) };
     }
     move r
 }
@@ -1059,15 +1071,15 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
  * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
 pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
-    let mut as_ = ~[], bs = ~[];
+    let mut ts = ~[], us = ~[];
     for each(v) |p| {
-        let (a, b) = *p;
+        let (t, u) = *p;
         unsafe {
-            vec::push(as_, a);
-            vec::push(bs, b);
+            ts.push(t);
+            us.push(u);
         }
     }
-    return (move as_, move bs);
+    return (move ts, move us);
 }
 
 /**
@@ -1082,9 +1094,9 @@ pure fn unzip<T,U>(+v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     unsafe {
         do consume(move v) |_i, p| {
-            let (a,b) = move p;
-            push(ts, move a);
-            push(us, move b);
+            let (t, u) = move p;
+            ts.push(move t);
+            us.push(move u);
         }
     }
     (move ts, move us)
@@ -1099,7 +1111,7 @@ pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
-    while i < sz unsafe { vec::push(zipped, (v[i], u[i])); i += 1u; }
+    while i < sz unsafe { zipped.push((v[i], u[i])); i += 1u; }
     move zipped
 }
 
@@ -1114,7 +1126,7 @@ pure fn zip<T, U>(+v: ~[const T], +u: ~[const U]) -> ~[(T, U)] {
     assert i == len(u);
     let mut w = with_capacity(i);
     while i > 0 {
-        unsafe { push(w, (pop(v),pop(u))); }
+        unsafe { w.push((pop(v),pop(u))); }
         i -= 1;
     }
     unsafe { reverse(w); }
@@ -1147,8 +1159,8 @@ pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
     let mut i = len::<T>(v);
     if i == 0 { return (move rs); } else { i -= 1; }
     unsafe {
-        while i != 0 { vec::push(rs, v[i]); i -= 1; }
-        vec::push(rs, v[0]);
+        while i != 0 { rs.push(v[i]); i -= 1; }
+        rs.push(v[0]);
     }
     move rs
 }
@@ -1283,7 +1295,7 @@ pure fn permute<T: Copy>(v: &[const T], put: fn(~[T])) {
             let elt = v[i];
             let mut rest = slice(v, 0u, i);
             unsafe {
-                push_all(rest, const_view(v, i+1u, ln));
+                rest.push_all(const_view(v, i+1u, ln));
                 permute(rest, |permutation| {
                     put(append(~[elt], permutation))
                 })
@@ -1299,7 +1311,7 @@ pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     for vec::eachi (xx) |ii, _x| {
         let len = vec::len(xx);
         if ii+nn <= len unsafe {
-            vec::push(ww, vec::slice(xx, ii, ii+nn));
+            ww.push(vec::slice(xx, ii, ii+nn));
         }
     }
     move ww
@@ -1551,7 +1563,7 @@ impl<T> &[T]: ImmutableVector<T> {
         let mut r = ~[];
         let mut i = 0;
         while i < self.len() {
-            push(r, f(&self[i]));
+            r.push(f(&self[i]));
             i += 1;
         }
         move r
@@ -1635,6 +1647,31 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
      */
     #[inline]
     pure fn rfind(f: fn(T) -> bool) -> Option<T> { rfind(self, f) }
+}
+
+trait MutableVector<T> {
+    fn push(&mut self, +t: T);
+    fn push_all_move(&mut self, -rhs: ~[const T]);
+}
+
+trait MutableCopyableVector<T: Copy> {
+    fn push_all(&mut self, rhs: &[const T]);
+}
+
+impl<T> ~[T]: MutableVector<T> {
+    fn push(&mut self, +t: T) {
+        push(self, move t);
+    }
+
+    fn push_all_move(&mut self, -rhs: ~[const T]) {
+        push_all_move(self, move rhs);
+    }
+}
+
+impl<T: Copy> ~[T]: MutableCopyableVector<T> {
+    fn push_all(&mut self, rhs: &[const T]) {
+        push_all(self, rhs);
+    }
 }
 
 /// Unsafe operations
@@ -2109,12 +2146,12 @@ mod tests {
     fn test_push() {
         // Test on-stack push().
         let mut v = ~[];
-        push(v, 1);
+        v.push(1);
         assert (len(v) == 1u);
         assert (v[0] == 1);
 
         // Test on-heap push().
-        push(v, 2);
+        v.push(2);
         assert (len(v) == 2u);
         assert (v[0] == 1);
         assert (v[1] == 2);
@@ -2380,19 +2417,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        permute(~[], |v| vec::push(results, copy v));
+        permute(~[], |v| results.push(copy v));
         assert results == ~[~[]];
 
         results = ~[];
-        permute(~[7], |v| push(results, copy v));
+        permute(~[7], |v| results.push(copy v));
         assert results == ~[~[7]];
 
         results = ~[];
-        permute(~[1,1], |v| push(results, copy v));
+        permute(~[1,1], |v| results.push(copy v));
         assert results == ~[~[1,1],~[1,1]];
 
         results = ~[];
-        permute(~[5,2,0], |v| push(results, copy v));
+        permute(~[5,2,0], |v| results.push(copy v));
         assert results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]];
     }

@@ -779,7 +779,7 @@ impl TcpSocketBuf: io::Reader {
                 }
             }
             else {
-                vec::push_all(self.data.buf, result::unwrap(read_result));
+                self.data.buf.push_all(result::unwrap(read_result));
             }
         }
 
@@ -790,7 +790,7 @@ impl TcpSocketBuf: io::Reader {
 
         vec::bytes::memcpy(buf, vec::view(data, 0, data.len()), count);
 
-        vec::push_all(self.data.buf, vec::view(data, count, data.len()));
+        self.data.buf.push_all(vec::view(data, count, data.len()));
 
         count
     }

@@ -52,10 +52,15 @@ fn read_board_grid<rdr: Owned io::Reader>(+in: rdr) -> ~[~[square]] {
     let mut grid = ~[];
     for in.each_line |line| {
         let mut row = ~[];
+<<<<<<< HEAD
         for str::each_char(line) |c| {
             vec::push(row, square_from_char(c))
+=======
+        for line.each_char |c| {
+            row.push(square_from_char(c))
+>>>>>>> Demode vec::push (and convert to method)
         }
-        vec::push(grid, row)
+        grid.push(row)
     }
     let width = grid[0].len();
     for grid.each |row| { assert row.len() == width }

@@ -206,7 +206,7 @@ impl PosixPath : GenericPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { vec::push_all_move(v, move ss); }
+            unsafe { v.push_all_move(move ss); }
         }
         PosixPath { components: move v, ..self }
     }
@@ -214,7 +214,7 @@ impl PosixPath : GenericPath {
     pure fn push(s: &str) -> PosixPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { vec::push_all_move(v, move ss); }
+        unsafe { v.push_all_move(move ss); }
         PosixPath { components: move v, ..self }
     }
 
@@ -400,7 +400,7 @@ impl WindowsPath : GenericPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { vec::push_all_move(v, move ss); }
+            unsafe { v.push_all_move(move ss); }
         }
         return WindowsPath { components: move v, ..self }
     }
@@ -408,7 +408,7 @@ impl WindowsPath : GenericPath {
     pure fn push(s: &str) -> WindowsPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { vec::push_all_move(v, move ss); }
+        unsafe { v.push_all_move(move ss); }
         return WindowsPath { components: move v, ..self }
     }
 
@@ -440,7 +440,7 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
                     vec::pop(cs);
                     loop;
                 }
-                vec::push(cs, copy *c);
+                cs.push(copy *c);
             }
         }
     }

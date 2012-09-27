@@ -174,7 +174,7 @@ impl resolve_state {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
         } else {
-            vec::push(self.v_seen, vid);
+            self.v_seen.push(vid);
             let tcx = self.infcx.tcx;
 
             // Nonobvious: prefer the most specific type

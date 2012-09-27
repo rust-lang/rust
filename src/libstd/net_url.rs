@@ -329,7 +329,7 @@ fn query_from_str(rawquery: &str) -> Query {
     if str::len(rawquery) != 0 {
         for str::split_char(rawquery, '&').each |p| {
             let (k, v) = split_char_first(*p, '=');
-            vec::push(query, (decode_component(k), decode_component(v)));
+            query.push((decode_component(k), decode_component(v)));
         };
     }
     return query;

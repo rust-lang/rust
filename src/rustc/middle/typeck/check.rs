@@ -818,7 +818,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
                 if vec::contains(enum_dids, did) {
                     return (t1, autoderefs);
                 }
-                vec::push(enum_dids, did);
+                enum_dids.push(did);
             }
             _ => { /*ok*/ }
         }
@@ -2029,8 +2029,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         let name = class_field.ident;
                         let (_, seen) = class_field_map.get(name);
                         if !seen {
-                            vec::push(missing_fields,
-                                      ~"`" + tcx.sess.str_of(name) + ~"`");
+                            missing_fields.push(
+                                ~"`" + tcx.sess.str_of(name) + ~"`");
                         }
                     }
 
@@ -2298,7 +2298,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 ccx.tcx.sess.span_err(v.span,
                                       ~"discriminator value already exists");
             }
-            vec::push(*disr_vals, *disr_val);
+            disr_vals.push(*disr_val);
             let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
             let arg_tys;
 
@@ -2321,7 +2321,8 @@ fn check_enum_variants(ccx: @crate_ctxt,
             match arg_tys {
                 None => {}
                 Some(arg_tys) => {
-                    vec::push(*variants, @{args: arg_tys, ctor_ty: ctor_ty,
+                    variants.push(
+                        @{args: arg_tys, ctor_ty: ctor_ty,
                           name: v.node.name, id: local_def(v.node.id),
                           disr_val: this_disr_val});
                 }

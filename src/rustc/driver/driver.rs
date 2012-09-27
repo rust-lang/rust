@@ -94,7 +94,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| {
-        vec::push(words, attr::mk_word_item(*s));
+        words.push(attr::mk_word_item(*s));
     }
     return words;
 }
@@ -466,7 +466,7 @@ fn build_session_options(binary: ~str,
                                            level_name, lint_name));
               }
               Some(lint) => {
-                vec::push(lint_opts, (lint.lint, *level));
+                lint_opts.push((lint.lint, *level));
               }
             }
         }

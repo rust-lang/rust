@@ -208,7 +208,7 @@ fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> parse_result {
     let mut cur_eis = ~[];
-    vec::push(cur_eis, initial_matcher_pos(ms, None, rdr.peek().sp.lo));
+    cur_eis.push(initial_matcher_pos(ms, None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -256,7 +256,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         }
 
                         new_pos.idx += 1;
-                        vec::push(cur_eis, move new_pos);
+                        cur_eis.push(move new_pos);
                     }
 
                     // can we go around again?
@@ -267,17 +267,17 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         if tok == t { //pass the separator
                             let ei_t <- ei;
                             ei_t.idx += 1;
-                            vec::push(next_eis, move ei_t);
+                            next_eis.push(move ei_t);
                         }
                       }
                       _ => { // we don't need a separator
                         let ei_t <- ei;
                         ei_t.idx = 0;
-                        vec::push(cur_eis, move ei_t);
+                        cur_eis.push(move ei_t);
                       }
                     }
                 } else {
-                    vec::push(eof_eis, move ei);
+                    eof_eis.push(move ei);
                 }
             } else {
                 match copy ei.elts[idx].node {
@@ -292,13 +292,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                             new_ei.matches[idx].push(@matched_seq(~[], sp));
                         }
 
-                        vec::push(cur_eis, move new_ei);
+                        cur_eis.push(move new_ei);
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
                                            |_m| DVec::<@named_match>());
                     let ei_t <- ei;
-                    vec::push(cur_eis, ~{
+                    cur_eis.push(~{
                         elts: matchers, sep: sep, mut idx: 0u,
                         mut up: matcher_pos_up(Some(move ei_t)),
                         matches: move matches,
@@ -306,12 +306,12 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         sp_lo: sp.lo
                     });
                   }
-                  match_nonterminal(_,_,_) => { vec::push(bb_eis, move ei) }
+                  match_nonterminal(_,_,_) => { bb_eis.push(move ei) }
                   match_tok(t) => {
                     let ei_t <- ei;
                     if t == tok {
                         ei_t.idx += 1;
-                        vec::push(next_eis, move ei_t);
+                        next_eis.push(move ei_t);
                     }
                   }
                 }
@@ -323,7 +323,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             if eof_eis.len() == 1u {
                 return success(
                     nameize(sess, ms,
-                            vec::map(eof_eis[0u].matches, |dv| dv.pop())));
+                            eof_eis[0u].matches.map(|dv| dv.pop())));
             } else if eof_eis.len() > 1u {
                 return error(sp, ~"Ambiguity: multiple successful parses");
             } else {
@@ -350,7 +350,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
-                    vec::push(cur_eis, vec::pop(next_eis));
+                    cur_eis.push(vec::pop(next_eis));
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
@@ -365,7 +365,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                   }
                   _ => fail
                 }
-                vec::push(cur_eis, move ei);
+                cur_eis.push(move ei);
 
                 /* this would fail if zero-length tokens existed */
                 while rdr.peek().sp.lo < rust_parser.span.lo {

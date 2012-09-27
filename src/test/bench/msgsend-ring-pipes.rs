@@ -88,7 +88,7 @@ fn main(++args: ~[~str]) {
                         option::unwrap(num_chan),
                         option::unwrap(num_port1))
         };
-        vec::push(futures, new_future);
+        futures.push(new_future);
         num_chan = Some(new_chan);
     };
 

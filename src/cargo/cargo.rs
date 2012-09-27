@@ -345,7 +345,7 @@ fn load_crate(filename: &Path) -> Option<Crate> {
 
                 match *ps.interner.get(attr_name) {
                     ~"std" | ~"core" => (),
-                    _ => vec::push(e.deps, query)
+                    _ => e.deps.push(query)
                 }
             }
             _ => ()
@@ -801,7 +801,7 @@ fn install_source(c: &Cargo, path: &Path) {
     let mut cratefiles = ~[];
     for os::walk_dir(&Path(".")) |p| {
         if p.filetype() == Some(~".rc") {
-            vec::push(cratefiles, *p);
+            cratefiles.push(*p);
         }
     }
 

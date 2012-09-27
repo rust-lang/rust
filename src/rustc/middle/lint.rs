@@ -288,7 +288,7 @@ impl ctxt {
                     for metas.each |meta| {
                         match meta.node {
                           ast::meta_word(lintname) => {
-                            vec::push(triples, (*meta, *level, lintname));
+                            triples.push((*meta, *level, lintname));
                           }
                           _ => {
                             self.sess.span_err(

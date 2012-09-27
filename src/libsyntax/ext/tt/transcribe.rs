@@ -205,8 +205,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     r.cur.idx += 1u;
                     return tt_next_token(r);
                 } else {
-                    vec::push(r.repeat_len, len);
-                    vec::push(r.repeat_idx, 0u);
+                    r.repeat_len.push(len);
+                    r.repeat_idx.push(0u);
                     r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
                               sep: sep, up: tt_frame_up(option::Some(r.cur))};
                 }

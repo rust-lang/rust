@@ -28,7 +28,7 @@ fn declare_upcalls(targ_cfg: @session::config,
             tys: ~[TypeRef], rv: TypeRef) ->
        ValueRef {
         let mut arg_tys: ~[TypeRef] = ~[];
-        for tys.each |t| { vec::push(arg_tys, *t); }
+        for tys.each |t| { arg_tys.push(*t); }
         let fn_ty = T_fn(arg_tys, rv);
         return base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
     }

@@ -4,7 +4,7 @@ fn add_int(x: &mut ints, v: int) {
     *x.sum += v;
     let mut values = ~[];
     x.values <-> values;
-    vec::push(values, v);
+    values.push(v);
     x.values <- values;
 }
 

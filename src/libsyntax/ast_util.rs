@@ -313,8 +313,8 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
-          required(tm) => vec::push(reqd, tm),
-          provided(m) => vec::push(provd, m)
+          required(tm) => reqd.push(tm),
+          provided(m) => provd.push(m)
         }
     };
     (reqd, provd)

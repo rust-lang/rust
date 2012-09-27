@@ -348,9 +348,9 @@ fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |info| {
-        vec::push(info.cleanups,
-                  clean(|a| glue::drop_ty_root(a, root, rooted, t),
-                        cleanup_type));
+        info.cleanups.push(
+            clean(|a| glue::drop_ty_root(a, root, rooted, t),
+                  cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -362,9 +362,9 @@ fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
            ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups,
-                  clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
-                             cleanup_type));
+        info.cleanups.push(
+            clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
+                       cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -376,9 +376,9 @@ fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |info| {
-        vec::push(info.cleanups,
-                  clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
-                             cleanup_type));
+        info.cleanups.push(
+            clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
+                       cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -388,8 +388,8 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
       heap_exchange => |a| glue::trans_unique_free(a, ptr)
     };
     do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups, clean_temp(ptr, free_fn,
-                                     normal_exit_and_unwind));
+        info.cleanups.push(clean_temp(ptr, free_fn,
+                                      normal_exit_and_unwind));
         scope_clean_changed(info);
     }
 }
@@ -1050,7 +1050,7 @@ fn C_postr(s: ~str) -> ValueRef {
 fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let mut i = 0u;
     let mut elts: ~[ValueRef] = ~[];
-    while i < size { vec::push(elts, C_u8(0u)); i += 1u; }
+    while i < size { elts.push(C_u8(0u)); i += 1u; }
     return llvm::LLVMConstArray(T_i8(), vec::raw::to_ptr(elts),
                              elts.len() as c_uint);
 }

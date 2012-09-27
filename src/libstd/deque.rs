@@ -38,8 +38,8 @@ fn create<T: Copy>() -> Deque<T> {
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {
-                vec::push(rv, elts[(lo + i) % nelts]);
-            } else { vec::push(rv, None); }
+                rv.push(elts[(lo + i) % nelts]);
+            } else { rv.push(None); }
             i += 1u;
         }
 

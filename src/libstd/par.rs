@@ -55,7 +55,7 @@ fn map_slices<A: Copy Send, B: Copy Send>(
                         f(base, slice)
                     }
                 };
-                vec::push(futures, move f);
+                futures.push(move f);
             };
             base += items_per_task;
         }

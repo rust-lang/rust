@@ -318,7 +318,7 @@ fn validate(edges: ~[(node_id, node_id)],
                     status = false;
                 }
 
-                vec::push(path, parent);
+                path.push(parent);
                 parent = tree[parent];
             }
 

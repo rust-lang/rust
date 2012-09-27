@@ -229,7 +229,7 @@ impl parser: parser_common {
               }
               _ => ()
             }
-            vec::push(v, f(self));
+            v.push(f(self));
         }
 
         return v;
@@ -274,7 +274,7 @@ impl parser: parser_common {
               _ => ()
             }
             if sep.trailing_sep_allowed && self.token == ket { break; }
-            vec::push(v, f(self));
+            v.push(f(self));
         }
         return v;
     }

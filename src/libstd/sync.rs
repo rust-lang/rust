@@ -82,7 +82,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
         -> Sem<~[mut Waitqueue]> {
     let mut queues = ~[];
     for num_condvars.times {
-        vec::push(queues, new_waitqueue());
+        queues.push(new_waitqueue());
     }
     new_sem(count, vec::to_mut(move queues))
 }
@@ -840,7 +840,7 @@ mod tests {
         for num_waiters.times {
             let mi = ~m.clone();
             let (chan, port) = pipes::stream();
-            vec::push(ports, port);
+            ports.push(port);
             do task::spawn {
                 do mi.lock_cond |cond| {
                     chan.send(());
@@ -930,7 +930,7 @@ mod tests {
             for 2.times {
                 let (c,p) = pipes::stream();
                 let c = ~mut Some(c);
-                vec::push(sibling_convos, p);
+                sibling_convos.push(p);
                 let mi = ~m2.clone();
                 // spawn sibling task
                 do task::spawn { // linked
@@ -1194,7 +1194,7 @@ mod tests {
         for num_waiters.times {
             let xi = ~x.clone();
             let (chan, port) = pipes::stream();
-            vec::push(ports, port);
+            ports.push(port);
             do task::spawn {
                 do lock_cond(xi, dg1) |cond| {
                     chan.send(());

@@ -141,7 +141,7 @@ fn make_tests(config: config) -> ~[test::TestDesc] {
         let file = copy *file;
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
-            vec::push(tests, make_test(config, file))
+            tests.push(make_test(config, file))
         }
     }
     return tests;

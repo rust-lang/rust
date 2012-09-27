@@ -47,9 +47,9 @@ fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
         let mut b_ix = 0u;
         while a_ix < a_len && b_ix < b_len {
             if le(&a[a_ix], &b[b_ix]) {
-                vec::push(rs, a[a_ix]);
+                rs.push(a[a_ix]);
                 a_ix += 1u;
-            } else { vec::push(rs, b[b_ix]); b_ix += 1u; }
+            } else { rs.push(b[b_ix]); b_ix += 1u; }
         }
         rs = vec::append(rs, vec::slice(a, a_ix, a_len));
         rs = vec::append(rs, vec::slice(b, b_ix, b_len));

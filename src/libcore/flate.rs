@@ -71,12 +71,12 @@ fn test_flate_round_trip() {
     let r = rand::Rng();
     let mut words = ~[];
     for 20.times {
-        vec::push(words, r.gen_bytes(r.gen_uint_range(1, 10)));
+        words.push(r.gen_bytes(r.gen_uint_range(1, 10)));
     }
     for 20.times {
         let mut in = ~[];
         for 2000.times {
-            vec::push_all(in, r.choose(words));
+            in.push_all(r.choose(words));
         }
         debug!("de/inflate of %u bytes of random word-sequences",
                in.len());

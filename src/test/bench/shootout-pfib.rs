@@ -73,7 +73,7 @@ fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
         do task::task().future_result(|+r| {
-            vec::push(results, r);
+            results.push(r);
         }).spawn {
             stress_task(i);
         }

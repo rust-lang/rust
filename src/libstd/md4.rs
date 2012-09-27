@@ -11,14 +11,14 @@ fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     let mut msg = vec::append(vec::from_slice(msg), ~[0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
-        vec::push(msg, 0u8);
+        msg.push(0u8);
         bitlen += 8u64;
     }
 
     // append length
     let mut i = 0u64;
     while i < 8u64 {
-        vec::push(msg, (orig_len >> (i * 8u64)) as u8);
+        msg.push((orig_len >> (i * 8u64)) as u8);
         i += 1u64;
     }
 

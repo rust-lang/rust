@@ -39,15 +39,15 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
         fn lib_search_paths() -> ~[Path] {
             let mut paths = self.addl_lib_search_paths;
 
-            vec::push(paths,
-                      make_target_lib_path(&self.sysroot,
-                                           self.target_triple));
+            paths.push(
+                make_target_lib_path(&self.sysroot,
+                                     self.target_triple));
             match get_cargo_lib_path_nearest() {
-              result::Ok(p) => vec::push(paths, p),
+              result::Ok(p) => paths.push(p),
               result::Err(_) => ()
             }
             match get_cargo_lib_path() {
-              result::Ok(p) => vec::push(paths, p),
+              result::Ok(p) => paths.push(p),
               result::Err(_) => ()
             }
             paths

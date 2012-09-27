@@ -305,7 +305,7 @@ fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
                     _ => {}
                 }
 
-                vec::push(result, @Match {pats: pats, data: br.data});
+                result.push(@Match {pats: pats, data: br.data});
             }
             None => ()
         }
@@ -398,8 +398,8 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
                 let mut pats = ~[];
                 for vec::each(fields) |fname| {
                     match fpats.find(|p| p.ident == *fname) {
-                        None => vec::push(pats, dummy),
-                        Some(pat) => vec::push(pats, pat.pat)
+                        None => pats.push(dummy),
+                        Some(pat) => pats.push(pat.pat)
                     }
                 }
                 Some(pats)
@@ -582,7 +582,7 @@ fn collect_record_or_struct_fields(m: &[@Match], col: uint) -> ~[ast::ident] {
         for field_pats.each |field_pat| {
             let field_ident = field_pat.ident;
             if !vec::any(*idents, |x| x == field_ident) {
-                vec::push(*idents, field_ident);
+                idents.push(field_ident);
             }
         }
     }
@@ -1162,9 +1162,9 @@ fn trans_alt_inner(scope_cx: block,
         let arm_data = @ArmData {bodycx: body,
                                  arm: arm,
                                  bindings_map: bindings_map};
-        vec::push(arm_datas, arm_data);
+        arm_datas.push(arm_data);
         for vec::each(arm.pats) |p| {
-            vec::push(matches, @Match {pats: ~[*p], data: arm_data});
+            matches.push(@Match {pats: ~[*p], data: arm_data});
         }
     }
 

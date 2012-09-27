@@ -39,13 +39,13 @@ fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
     let mut atys: ~[TypeRef] = ~[];
 
     // Arg 0: Output pointer.
-    vec::push(atys, T_ptr(type_of(cx, output)));
+    atys.push(T_ptr(type_of(cx, output)));
 
     // Arg 1: Environment
-    vec::push(atys, T_opaque_box_ptr(cx));
+    atys.push(T_opaque_box_ptr(cx));
 
     // ... then explicit args.
-    vec::push_all(atys, type_of_explicit_args(cx, inputs));
+    atys.push_all(type_of_explicit_args(cx, inputs));
     return T_fn(atys, llvm::LLVMVoidType());
 }
 
@@ -151,7 +151,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         let mut tys: ~[TypeRef] = ~[];
         for vec::each(fields) |f| {
             let mt_ty = f.mt.ty;
-            vec::push(tys, type_of(cx, mt_ty));
+            tys.push(type_of(cx, mt_ty));
         }
 
         // n.b.: introduce an extra layer of indirection to match
@@ -164,7 +164,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_tup(elts) => {
         let mut tys = ~[];
         for vec::each(elts) |elt| {
-            vec::push(tys, type_of(cx, *elt));
+            tys.push(type_of(cx, *elt));
         }
         T_struct(tys)
       }

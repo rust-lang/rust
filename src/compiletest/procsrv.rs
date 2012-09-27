@@ -19,7 +19,7 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
         else { (k,v) }
     };
     if str::ends_with(prog, ~"rustc.exe") {
-        vec::push(env, (~"RUST_THREADS", ~"1"));
+        env.push((~"RUST_THREADS", ~"1"));
     }
     return env;
 }

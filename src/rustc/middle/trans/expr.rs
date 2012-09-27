@@ -993,7 +993,7 @@ fn trans_rec_or_struct(bcx: block,
             let dest = GEPi(bcx, addr, struct_field(ix));
             bcx = trans_into(bcx, field.node.expr, SaveIn(dest));
             add_clean_temp_mem(bcx, dest, field_tys[ix].mt.ty);
-            vec::push(temp_cleanups, dest);
+            temp_cleanups.push(dest);
         }
 
         // copy over any remaining fields from the base (for
@@ -1046,7 +1046,7 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
         let e_ty = expr_ty(bcx, *e);
         bcx = trans_into(bcx, *e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
-        vec::push(temp_cleanups, dest);
+        temp_cleanups.push(dest);
     }
     for vec::each(temp_cleanups) |cleanup| {
         revoke_clean(bcx, *cleanup);
