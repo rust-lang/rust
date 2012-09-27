@@ -349,7 +349,7 @@ pub pure fn to_bytes(s: &str) -> ~[u8] unsafe {
 #[inline(always)]
 pub pure fn byte_slice<T>(s: &str, f: fn(v: &[u8]) -> T) -> T {
     do as_buf(s) |p,n| {
-        unsafe { vec::raw::form_slice(p, n-1u, f) }
+        unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
     }
 }
 

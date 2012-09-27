@@ -226,8 +226,7 @@ pub pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
                 *ptr::mut_offset(mp, i) = '-' as u8;
             }
 
-            vec::raw::form_slice(ptr::offset(p, i),
-                                 len - i, f)
+            vec::raw::buf_as_slice(ptr::offset(p, i), len - i, f)
         }
     }
 }
