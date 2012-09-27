@@ -957,7 +957,7 @@ Rust has three competing goals that inform its view of memory:
 Most languages that offer strong memory safety guarantees rely upon a
 garbage-collected heap to manage all of the objects. This approach is
 straightforward both in concept and in implementation, but has
-significant costs. Languages that take this approach tend to
+significant costs. Languages that follow this path tend to
 aggressively pursue ways to ameliorate allocation costs (think the
 Java Virtual Machine). Rust supports this strategy with _managed
 boxes_: memory allocated on the heap whose lifetime is managed
@@ -982,7 +982,7 @@ tasks. Experience in other languages has proven that isolating each
 task's heap from the others is a reliable strategy and one that is
 easy for programmers to reason about. Heap isolation has the
 additional benefit that garbage collection must only be done
-per-heap. Rust never "stops the world" to garbage-collect memory.
+per-heap. Rust never "stops the world" to reclaim memory.
 
 Complete isolation of heaps between tasks implies that any data
 transferred between tasks must be copied. While this is a fine and
