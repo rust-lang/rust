@@ -83,6 +83,7 @@ export private;
 // Built-in-type support modules
 
 /// Operations and constants for `int`
+#[legacy_exports]
 #[path = "int-template"]
 mod int {
     #[legacy_exports];
@@ -94,6 +95,7 @@ mod int {
 }
 
 /// Operations and constants for `i8`
+#[legacy_exports]
 #[path = "int-template"]
 mod i8 {
     #[legacy_exports];
@@ -103,6 +105,7 @@ mod i8 {
 }
 
 /// Operations and constants for `i16`
+#[legacy_exports]
 #[path = "int-template"]
 mod i16 {
     #[legacy_exports];
@@ -112,6 +115,7 @@ mod i16 {
 }
 
 /// Operations and constants for `i32`
+#[legacy_exports]
 #[path = "int-template"]
 mod i32 {
     #[legacy_exports];
@@ -121,6 +125,7 @@ mod i32 {
 }
 
 /// Operations and constants for `i64`
+#[legacy_exports]
 #[path = "int-template"]
 mod i64 {
     #[legacy_exports];
@@ -130,6 +135,7 @@ mod i64 {
 }
 
 /// Operations and constants for `uint`
+#[legacy_exports]
 #[path = "uint-template"]
 mod uint {
     #[legacy_exports];
@@ -146,6 +152,7 @@ mod uint {
 }
 
 /// Operations and constants for `u8`
+#[legacy_exports]
 #[path = "uint-template"]
 mod u8 {
     #[legacy_exports];
@@ -158,6 +165,7 @@ mod u8 {
 }
 
 /// Operations and constants for `u16`
+#[legacy_exports]
 #[path = "uint-template"]
 mod u16 {
     #[legacy_exports];
@@ -167,6 +175,7 @@ mod u16 {
 }
 
 /// Operations and constants for `u32`
+#[legacy_exports]
 #[path = "uint-template"]
 mod u32 {
     #[legacy_exports];
@@ -176,6 +185,7 @@ mod u32 {
 }
 
 /// Operations and constants for `u64`
+#[legacy_exports]
 #[path = "uint-template"]
 mod u64 {
     #[legacy_exports];
