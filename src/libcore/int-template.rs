@@ -19,37 +19,38 @@ export abs;
 export parse_bytes, from_str, to_str, to_str_bytes, str;
 export num, ord, eq, times, timesi;
 export bits, bytes;
+export str;
 
-const bits : uint = inst::bits;
-const bytes : uint = (inst::bits / 8);
+pub const bits : uint = inst::bits;
+pub const bytes : uint = (inst::bits / 8);
 
-const min_value: T = (-1 as T) << (bits - 1);
-const max_value: T = min_value - 1 as T;
+pub const min_value: T = (-1 as T) << (bits - 1);
+pub const max_value: T = min_value - 1 as T;
 
-pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
-pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
+pub pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+pub pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
-pure fn add(x: T, y: T) -> T { x + y }
-pure fn sub(x: T, y: T) -> T { x - y }
-pure fn mul(x: T, y: T) -> T { x * y }
-pure fn div(x: T, y: T) -> T { x / y }
-pure fn rem(x: T, y: T) -> T { x % y }
+pub pure fn add(x: T, y: T) -> T { x + y }
+pub pure fn sub(x: T, y: T) -> T { x - y }
+pub pure fn mul(x: T, y: T) -> T { x * y }
+pub pure fn div(x: T, y: T) -> T { x / y }
+pub pure fn rem(x: T, y: T) -> T { x % y }
 
-pure fn lt(x: T, y: T) -> bool { x < y }
-pure fn le(x: T, y: T) -> bool { x <= y }
-pure fn eq(x: T, y: T) -> bool { x == y }
-pure fn ne(x: T, y: T) -> bool { x != y }
-pure fn ge(x: T, y: T) -> bool { x >= y }
-pure fn gt(x: T, y: T) -> bool { x > y }
+pub pure fn lt(x: T, y: T) -> bool { x < y }
+pub pure fn le(x: T, y: T) -> bool { x <= y }
+pub pure fn eq(x: T, y: T) -> bool { x == y }
+pub pure fn ne(x: T, y: T) -> bool { x != y }
+pub pure fn ge(x: T, y: T) -> bool { x >= y }
+pub pure fn gt(x: T, y: T) -> bool { x > y }
 
-pure fn is_positive(x: T) -> bool { x > 0 as T }
-pure fn is_negative(x: T) -> bool { x < 0 as T }
-pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
-pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
+pub pure fn is_positive(x: T) -> bool { x > 0 as T }
+pub pure fn is_negative(x: T) -> bool { x < 0 as T }
+pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
+pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-fn range(lo: T, hi: T, it: fn(T) -> bool) {
+pub fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {
         if !it(i) { break }
@@ -58,13 +59,13 @@ fn range(lo: T, hi: T, it: fn(T) -> bool) {
 }
 
 /// Computes the bitwise complement
-pure fn compl(i: T) -> T {
+pub pure fn compl(i: T) -> T {
     -1 as T ^ i
 }
 
 /// Computes the absolute value
 // FIXME: abs should return an unsigned int (#2353)
-pure fn abs(i: T) -> T {
+pub pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
@@ -137,7 +138,7 @@ impl T: iter::TimesIx {
  * * buf - A byte buffer
  * * radix - The base of the number
  */
-fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
     if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
@@ -160,14 +161,14 @@ fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: &str) -> Option<T> { parse_bytes(str::to_bytes(s), 10u) }
+pub fn from_str(s: &str) -> Option<T> { parse_bytes(str::to_bytes(s), 10u) }
 
 impl T : FromStr {
     static fn from_str(s: &str) -> Option<T> { from_str(s) }
 }
 
 /// Convert to a string in a given base
-fn to_str(n: T, radix: uint) -> ~str {
+pub fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
         do vec::as_imm_buf(slice) |p, len| {
             unsafe { str::raw::from_buf_len(p, len) }
@@ -175,7 +176,7 @@ fn to_str(n: T, radix: uint) -> ~str {
     }
 }
 
-fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+pub fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     if n < 0 as T {
         uint::to_str_bytes(true, -n as uint, radix, f)
     } else {
@@ -184,12 +185,12 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string
-fn str(i: T) -> ~str { return to_str(i, 10u); }
+pub fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
-fn test_from_str() {
+pub fn test_from_str() {
     assert from_str(~"0") == Some(0 as T);
     assert from_str(~"3") == Some(3 as T);
     assert from_str(~"10") == Some(10 as T);
@@ -209,7 +210,7 @@ fn test_from_str() {
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
-fn test_parse_bytes() {
+pub fn test_parse_bytes() {
     use str::to_bytes;
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T);
     assert parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T);
@@ -234,7 +235,7 @@ fn test_parse_bytes() {
 }
 
 #[test]
-fn test_to_str() {
+pub fn test_to_str() {
     assert (to_str(0 as T, 10u) == ~"0");
     assert (to_str(1 as T, 10u) == ~"1");
     assert (to_str(-1 as T, 10u) == ~"-1");
@@ -243,7 +244,7 @@ fn test_to_str() {
 }
 
 #[test]
-fn test_interfaces() {
+pub fn test_interfaces() {
     fn test<U:num::Num cmp::Eq>(+ten: U) {
         assert (ten.to_int() == 10);
 
@@ -262,7 +263,7 @@ fn test_interfaces() {
 }
 
 #[test]
-fn test_times() {
+pub fn test_times() {
     use iter::Times;
     let ten = 10 as T;
     let mut accum = 0;
@@ -273,7 +274,7 @@ fn test_times() {
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
-fn test_times_negative() {
+pub fn test_times_negative() {
     use iter::Times;
     for (-10).times { log(error, ~"nope!"); }
 }
