@@ -896,7 +896,7 @@ fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.uuid == uuid {
-            vec::push(ps, (s.name, copy *p));
+            vec::push(&mut ps, (s.name, copy *p));
         }
     });
     if vec::len(ps) == 1u {
@@ -920,7 +920,7 @@ fn install_named(c: &Cargo, wd: &Path, name: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.name == name {
-            vec::push(ps, (s.name, copy *p));
+            vec::push(&mut ps, (s.name, copy *p));
         }
     });
     if vec::len(ps) == 1u {
