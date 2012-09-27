@@ -68,7 +68,7 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 mod win32 {
     use libc::DWORD;
 
-    fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
+    pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
         let mut n = tmpbuf_sz as DWORD;
         let mut res = None;
@@ -93,7 +93,7 @@ mod win32 {
         return res;
     }
 
-    fn as_utf16_p<T>(s: &str, f: fn(*u16) -> T) -> T {
+    pub fn as_utf16_p<T>(s: &str, f: fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
@@ -557,7 +557,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
             libc::CreateDirectoryW(buf, unsafe {
-                unsafe::reinterpret_cast(&0)
+                cast::reinterpret_cast(&0)
             })
                 != (0 as BOOL)
         }
