@@ -697,8 +697,10 @@ impl BytesWriter: Writer {
             vec::reserve(&mut buf, count);
             unsafe { vec::raw::set_len(buf, count); }
 
-            let view = vec::mut_view(buf, self.pos, count);
-            vec::bytes::memcpy(view, v, v_len);
+            {
+                let view = vec::mut_view(buf, self.pos, count);
+                vec::bytes::memcpy(view, v, v_len);
+            }
 
             self.pos += v_len;
 

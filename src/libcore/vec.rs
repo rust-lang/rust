@@ -338,7 +338,7 @@ pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 }
 
 /// Return a slice that points into another slice.
-pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
+pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_imm_buf(v) |p, _len| {
@@ -351,7 +351,7 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
 }
 
 /// Return a slice that points into another slice.
-pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
+pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_mut_buf(v) |p, _len| {
@@ -364,7 +364,8 @@ pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
 }
 
 /// Return a slice that points into another slice.
-pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
+pure fn const_view<T>(v: &r/[const T], start: uint,
+                      end: uint) -> &r/[const T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_const_buf(v) |p, _len| {
@@ -1526,7 +1527,7 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
 }
 
 trait ImmutableVector<T> {
-    pure fn view(start: uint, end: uint) -> &[T];
+    pure fn view(start: uint, end: uint) -> &self/[T];
     pure fn foldr<U: Copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn map<U>(f: fn(v: &T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, v: &T) -> U) -> ~[U];
@@ -1546,7 +1547,7 @@ trait ImmutableEqVector<T: Eq> {
 /// Extension methods for vectors
 impl<T> &[T]: ImmutableVector<T> {
     /// Return a slice that points into another slice.
-    pure fn view(start: uint, end: uint) -> &[T] {
+    pure fn view(start: uint, end: uint) -> &self/[T] {
         view(self, start, end)
     }
     /// Reduce a vector from right to left
