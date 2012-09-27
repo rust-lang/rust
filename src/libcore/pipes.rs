@@ -236,21 +236,6 @@ pub fn entangle_buffer<T: Send, Tstart: Send>(
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }
 
-#[cfg(stage0)]
-#[abi = "rust-intrinsic"]
-#[doc(hidden)]
-extern mod rusti {
-    #[legacy_exports];
-    fn atomic_xchg(dst: &mut int, ++src: int) -> int;
-    fn atomic_xchg_acq(dst: &mut int, ++src: int) -> int;
-    fn atomic_xchg_rel(dst: &mut int, ++src: int) -> int;
-
-    fn atomic_xadd_acq(dst: &mut int, ++src: int) -> int;
-    fn atomic_xsub_rel(dst: &mut int, ++src: int) -> int;
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 #[abi = "rust-intrinsic"]
 #[doc(hidden)]
 extern mod rusti {
