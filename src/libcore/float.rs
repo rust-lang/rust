@@ -7,26 +7,10 @@
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
-export to_str_common, to_str_exact, to_str, from_str;
-export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
-export is_positive, is_negative, is_nonpositive, is_nonnegative;
-export is_zero, is_infinite, is_finite;
-export NaN, is_NaN, infinity, neg_infinity;
-export consts;
-export logarithm;
-export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh, floor;
-export erf, erfc, exp, expm1, exp2, abs, abs_sub;
-export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
-export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
-export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
-export signbit;
-export pow_with_uint;
 
-export num;
 
 // export when m_float == c_double
 
-export j0, j1, jn, y0, y1, yn;
 
 // PORT this must match in width according to architecture
 
@@ -44,11 +28,11 @@ use f64::{j0, j1, jn, y0, y1, yn};
 use cmp::{Eq, Ord};
 use num::from_int;
 
-const NaN: float = 0.0/0.0;
+pub const NaN: float = 0.0/0.0;
 
-const infinity: float = 1.0/0.0;
+pub const infinity: float = 1.0/0.0;
 
-const neg_infinity: float = -1.0/0.0;
+pub const neg_infinity: float = -1.0/0.0;
 
 /* Module: consts */
 pub mod consts {
@@ -107,7 +91,7 @@ pub mod consts {
  * * digits - The number of significant digits
  * * exact - Whether to enforce the exact number of significant digits
  */
-fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
+pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     if is_NaN(num) { return ~"NaN"; }
     if num == infinity { return ~"inf"; }
     if num == neg_infinity { return ~"-inf"; }
@@ -414,22 +398,22 @@ pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl float : Eq {
-    pure fn eq(other: &float) -> bool { self == (*other) }
-    pure fn ne(other: &float) -> bool { self != (*other) }
+    pub pure fn eq(other: &float) -> bool { self == (*other) }
+    pub pure fn ne(other: &float) -> bool { self != (*other) }
 }
 
 impl float : Ord {
-    pure fn lt(other: &float) -> bool { self < (*other) }
-    pure fn le(other: &float) -> bool { self <= (*other) }
-    pure fn ge(other: &float) -> bool { self >= (*other) }
-    pure fn gt(other: &float) -> bool { self > (*other) }
+    pub pure fn lt(other: &float) -> bool { self < (*other) }
+    pub pure fn le(other: &float) -> bool { self <= (*other) }
+    pub pure fn ge(other: &float) -> bool { self >= (*other) }
+    pub pure fn gt(other: &float) -> bool { self > (*other) }
 }
 
 impl float: num::Num {
-    pure fn add(other: &float)    -> float { return self + *other; }
-    pure fn sub(other: &float)    -> float { return self - *other; }
-    pure fn mul(other: &float)    -> float { return self * *other; }
-    pure fn div(other: &float)    -> float { return self / *other; }
+    pub pure fn add(other: &float)    -> float { return self + *other; }
+    pub pure fn sub(other: &float)    -> float { return self - *other; }
+    pub pure fn mul(other: &float)    -> float { return self * *other; }
+    pub pure fn div(other: &float)    -> float { return self / *other; }
     pure fn modulo(other: &float) -> float { return self % *other; }
     pure fn neg()                  -> float { return -self;        }
 
