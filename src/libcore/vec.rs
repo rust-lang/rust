@@ -1993,8 +1993,8 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, v: &A) -> bool) { iter::eachi(&self, blk) }
     pure fn all(blk: fn(&A) -> bool) -> bool { iter::all(&self, blk) }
     pure fn any(blk: fn(&A) -> bool) -> bool { iter::any(&self, blk) }
-    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
-        iter::foldl(self, move b0, blk)
+    pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B {
+        iter::foldl(&self, move b0, blk)
     }
     pure fn position(f: fn(A) -> bool) -> Option<uint> {
         iter::position(self, f)
@@ -2003,7 +2003,7 @@ impl<A> &[A]: iter::ExtendedIter<A> {
 
 impl<A: Eq> &[A]: iter::EqIter<A> {
     pure fn contains(x: &A) -> bool { iter::contains(self, x) }
-    pure fn count(x: &A) -> uint { iter::count(self, x) }
+    pure fn count(x: &A) -> uint { iter::count(&self, x) }
 }
 
 impl<A: Copy> &[A]: iter::CopyableIter<A> {
@@ -2013,7 +2013,7 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
     pure fn map_to_vec<B>(op: fn(+v: A) -> B) -> ~[B] {
         iter::map_to_vec(&self, op)
     }
-    pure fn to_vec() -> ~[A] { iter::to_vec(self) }
+    pure fn to_vec() -> ~[A] { iter::to_vec(&self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
@@ -2024,8 +2024,8 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
 }
 
 impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {
-    pure fn min() -> A { iter::min(self) }
-    pure fn max() -> A { iter::max(self) }
+    pure fn min() -> A { iter::min(&self) }
+    pure fn max() -> A { iter::max(&self) }
 }
 // ___________________________________________________________________________
 

@@ -364,8 +364,8 @@ fn combine_impl_and_methods_origins(bcx: block,
 
     // Flatten out to find the number of vtables the method expects.
     let m_vtables = m_boundss.foldl(0, |sum, m_bounds| {
-        m_bounds.foldl(sum, |sum, m_bound| {
-            sum + match m_bound {
+        m_bounds.foldl(*sum, |sum, m_bound| {
+            (*sum) + match (*m_bound) {
                 ty::bound_copy | ty::bound_owned |
                 ty::bound_send | ty::bound_const => 0,
                 ty::bound_trait(_) => 1

@@ -111,14 +111,14 @@ fn replace_bound_regions_in_fn_ty(
 
         // For each type `ty` in `tys`...
         do tys.foldl(isr) |isr, ty| {
-            let mut isr = isr;
+            let mut isr = *isr;
 
             // Using fold_regions is inefficient, because it
             // constructs new types, but it avoids code duplication in
             // terms of locating all the regions within the various
             // kinds of types.  This had already caused me several
             // bugs so I decided to switch over.
-            do ty::fold_regions(tcx, ty) |r, in_fn| {
+            do ty::fold_regions(tcx, *ty) |r, in_fn| {
                 if !in_fn { isr = append_isr(isr, to_r, r); }
                 r
             };
