@@ -675,7 +675,7 @@ mod tests {
     #[test]
     fn test_dlist_foldl() {
         let l = from_vec(vec::from_fn(101, |x|x));
-        assert iter::foldl(l, 0, |accum,elem| accum+elem) == 5050;
+        assert iter::foldl(&l, 0, |accum,elem| *accum+*elem) == 5050;
     }
     #[test]
     fn test_dlist_break_early() {

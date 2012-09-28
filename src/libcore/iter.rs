@@ -18,7 +18,7 @@ trait ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, v: &A) -> bool);
     pure fn all(blk: fn(&A) -> bool) -> bool;
     pure fn any(blk: fn(&A) -> bool) -> bool;
-    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
+    pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B;
     pure fn position(f: fn(A) -> bool) -> Option<uint>;
 }
 
@@ -118,16 +118,17 @@ pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
     }
 }
 
-pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
+pure fn foldl<A,B,IA:BaseIter<A>>(self: &IA, +b0: B, blk: fn(&B, &A) -> B)
+    -> B {
     let mut b <- b0;
     for self.each |a| {
-        b = blk(b, *a);
+        b = blk(&b, a);
     }
     move b
 }
 
-pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy r, ~[a]))
+pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: &IA) -> ~[A] {
+    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(*r, ~[*a]))
 }
 
 pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> bool {
@@ -137,12 +138,12 @@ pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> bool {
     return false;
 }
 
-pure fn count<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> uint {
+pure fn count<A:Eq,IA:BaseIter<A>>(self: &IA, x: &A) -> uint {
     do foldl(self, 0) |count, value| {
-        if value == *x {
-            count + 1
+        if *value == *x {
+            *count + 1
         } else {
-            count
+            *count
         }
     }
 }
@@ -170,16 +171,13 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
-// XXX bad copies
-pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
+pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          Some(copy a_) if a_ < b => {
-            // FIXME (#2005): Not sure if this is successfully optimized to
-            // a move
-            a
+          &Some(a_) if a_ < *b => {
+             *(move a)
           }
-          _ => Some(b)
+          _ => Some(*b)
         }
     } {
         Some(move val) => val,
@@ -187,16 +185,13 @@ pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     }
 }
 
-// XXX bad copies
-pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
+pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          Some(copy a_) if a_ > b => {
-            // FIXME (#2005): Not sure if this is successfully optimized to
-            // a move.
-            a
+          &Some(a_) if a_ > *b => {
+              *(move a)
           }
-          _ => Some(b)
+          _ => Some(*b)
         }
     } {
         Some(move val) => val,

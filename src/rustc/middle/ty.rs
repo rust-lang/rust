@@ -2137,25 +2137,25 @@ fn type_size(cx: ctxt, ty: t) -> uint {
       }
 
       ty_rec(flds) => {
-        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
       ty_class(did, ref substs) => {
         let flds = class_items_as_fields(cx, did, substs);
-        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
       ty_tup(tys) => {
-        tys.foldl(0, |s, t| s + type_size(cx, t))
+        tys.foldl(0, |s, t| *s + type_size(cx, *t))
       }
 
       ty_enum(did, ref substs) => {
         let variants = substd_enum_variants(cx, did, substs);
         variants.foldl( // find max size of any variant
             0,
-            |m, v| uint::max(m,
+            |m, v| uint::max(*m,
                              // find size of this variant:
-                             v.args.foldl(0, |s, a| s + type_size(cx, a))))
+                             v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
       }
 
       ty_param(_) | ty_self => {
