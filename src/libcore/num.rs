@@ -1,6 +1,6 @@
 //! An interface for numeric types
 
-trait Num {
+pub trait Num {
     // FIXME: Trait composition. (#2616)
     pure fn add(other: &self) -> self;
     pure fn sub(other: &self) -> self;
