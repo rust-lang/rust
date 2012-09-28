@@ -70,7 +70,7 @@
                     "let" "log" "loop"
                     "move" "new"
                     "pure" "pub" "priv"
-                    "return" "static"
+                    "ref" "return" "static"
                     "unchecked" "unsafe"
                     "while"))
       (puthash word t table))
