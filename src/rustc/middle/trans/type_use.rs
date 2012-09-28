@@ -204,7 +204,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_path(_) => {
         do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
-            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts,
+            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), *ts,
                        |uses, subst| {
                            type_needs(cx, uses, subst)
                        })
@@ -238,7 +238,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             match mth.origin {
               typeck::method_static(did) => {
                 do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
-                    do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
+                    do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), *ts)
                         |uses, subst| { type_needs(cx, uses, subst)}
                 }
               }

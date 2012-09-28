@@ -979,7 +979,7 @@ fn print_mac(s: ps, m: ast::mac) {
           Some(@{node: ast::expr_vec(_, _), _}) => (),
           _ => word(s.s, ~" ")
         }
-        arg.iter(|a| print_expr(s, a));
+        arg.iter(|a| print_expr(s, *a));
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_invoc_tt(pth, tts) => {
@@ -1177,7 +1177,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
         print_block(s, blk);
       }
       ast::expr_match(expr, arms) => {
@@ -1360,12 +1360,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");

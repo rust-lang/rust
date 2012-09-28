@@ -279,7 +279,7 @@ fn check_fn(ccx: @crate_ctxt,
 
     // Update the self_info to contain an accurate self type (taking
     // into account explicit self).
-    let self_info = do self_info.chain |info| {
+    let self_info = do self_info.chain_ref |info| {
         // If the self type is sty_static, we don't have a self ty.
         if info.explicit_self.node == ast::sty_static {
             None
@@ -288,7 +288,7 @@ fn check_fn(ccx: @crate_ctxt,
             let ty = method::transform_self_type_for_method(
                 fcx.tcx(), self_region,
                 info.self_ty, info.explicit_self.node);
-            Some({self_ty: ty,.. info})
+            Some({self_ty: ty,.. *info})
         }
     };
 
@@ -1864,7 +1864,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) => {
-        option::iter(&base, |b| { check_expr(fcx, b, expected); });
+        option::iter(&base, |b| { check_expr(fcx, *b, expected); });
         let expected = if expected.is_none() && base.is_some() {
             Some(fcx.expr_ty(base.get()))
         } else { expected };
@@ -1872,8 +1872,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             match sty { ty::ty_rec(flds) => Some(flds), _ => None }
         );
         let fields_t = vec::map(fields, |f| {
-            bot |= check_expr(fcx, f.node.expr, flds.chain(|flds|
-                vec::find(flds, |tf| tf.ident == f.node.ident)
+            bot |= check_expr(fcx, f.node.expr, flds.chain_ref(|flds|
+                vec::find(*flds, |tf| tf.ident == f.node.ident)
             ).map(|tf| tf.mt.ty));
             let expr_t = fcx.expr_ty(f.node.expr);
             let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};

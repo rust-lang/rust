@@ -472,7 +472,7 @@ type optional_boxed_ast_expr = Option<@ast::expr>;
 
 impl optional_boxed_ast_expr: get_node_info {
     fn info() -> Option<node_info> {
-        self.chain(|s| s.info())
+        self.chain_ref(|s| s.info())
     }
 }
 

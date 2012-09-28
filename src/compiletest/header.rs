@@ -41,11 +41,11 @@ fn load_props(testfile: &Path) -> test_props {
         }
 
         do parse_aux_build(ln).iter |ab| {
-            aux_builds.push(ab);
+            aux_builds.push(*ab);
         }
 
         do parse_exec_env(ln).iter |ee| {
-            exec_env.push(ee);
+            exec_env.push(*ee);
         }
     };
     return {

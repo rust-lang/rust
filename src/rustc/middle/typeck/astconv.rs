@@ -484,7 +484,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
         let rb = in_binding_rscope(rscope);
 
         let input_tys = do decl.inputs.mapi |i, a| {
-            let expected_arg_ty = do expected_tys.chain |e| {
+            let expected_arg_ty = do expected_tys.chain_ref |e| {
                 // no guarantee that the correct number of expected args
                 // were supplied
                 if i < e.inputs.len() {Some(e.inputs[i])} else {None}

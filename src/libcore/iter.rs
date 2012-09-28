@@ -289,8 +289,8 @@ pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
 #[inline(always)]
 pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
     lhs: IT, rhs: IT) -> BT {
-    let size_opt = lhs.size_hint().chain(
-        |sz1| rhs.size_hint().map(|sz2| sz1+*sz2));
+    let size_opt = lhs.size_hint().chain_ref(
+        |sz1| rhs.size_hint().map(|sz2| *sz1+*sz2));
     do build_sized_opt(size_opt) |push| {
         for lhs.each |x| { push(*x); }
         for rhs.each |x| { push(*x); }

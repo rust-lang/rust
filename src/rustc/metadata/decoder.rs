@@ -204,7 +204,7 @@ fn field_mutability(d: ebml::Doc) -> ast::class_mutability {
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
-    do option::chain(&ebml::maybe_get_doc(d, tag_disr_val)) |val_doc| {
+    do option::chain(ebml::maybe_get_doc(d, tag_disr_val)) |val_doc| {
         int::parse_bytes(ebml::doc_data(val_doc), 10u)
     }
 }

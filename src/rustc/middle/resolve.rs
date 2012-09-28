@@ -923,7 +923,7 @@ impl Resolver {
                             namespace_to_str(ns),
                             self.session.str_of(name)));
                   do child.span_for_namespace(ns).iter() |sp| {
-                      self.session.span_note(sp,
+                      self.session.span_note(*sp,
                            #fmt("First definition of %s %s here:",
                                 namespace_to_str(ns),
                                 self.session.str_of(name)));

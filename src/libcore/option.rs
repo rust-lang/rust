@@ -75,13 +75,18 @@ pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+v: T) -> U) -> Option<U> {
     if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
 }
 
-pure fn chain<T, U>(opt: &Option<T>, f: fn(T) -> Option<U>) -> Option<U> {
+pure fn chain<T, U>(+opt: Option<T>, f: fn(+t: T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content through a
      * function that returns an option.
      */
 
-    match *opt { Some(x) => f(x), None => None }
+    // XXX write with move match
+    if opt.is_some() {
+        f(unwrap(opt))
+    } else {
+        None
+    }
 }
 
 pure fn chain_ref<T, U>(opt: &Option<T>,
@@ -139,14 +144,7 @@ pure fn map_default<T, U>(opt: &Option<T>, +def: U,
     match *opt { None => move def, Some(ref t) => f(t) }
 }
 
-// This should change to by-copy mode; use iter_ref below for by reference
-pure fn iter<T>(opt: &Option<T>, f: fn(T)) {
-    //! Performs an operation on the contained value or does nothing
-
-    match *opt { None => (), Some(t) => f(t) }
-}
-
-pure fn iter_ref<T>(opt: &Option<T>, f: fn(x: &T)) {
+pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
 }
@@ -182,13 +180,6 @@ pure fn unwrap_expect<T>(+opt: Option<T>, reason: &str) -> T {
 
 // Some of these should change to be &Option<T>, some should not. See below.
 impl<T> Option<T> {
-    /**
-     * Update an optional value by optionally running its content through a
-     * function that returns an option.
-     */
-    pure fn chain<U>(f: fn(T) -> Option<U>) -> Option<U> { chain(&self, f) }
-    /// Performs an operation on the contained value or does nothing
-    pure fn iter(f: fn(T)) { iter(&self, f) }
     /// Returns true if the option equals `none`
     pure fn is_none() -> bool { is_none(&self) }
     /// Returns true if the option contains some value
@@ -207,7 +198,7 @@ impl<T> &Option<T> {
     pure fn map_default<U>(+def: U, f: fn(x: &T) -> U) -> U
         { map_default(self, move def, f) }
     /// Performs an operation on the contained value by reference
-    pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
+    pure fn iter(f: fn(x: &T)) { iter(self, f) }
     /// Maps a `some` value from one type to another by reference
     pure fn map<U>(f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
     /// Gets an immutable reference to the value inside a `some`.

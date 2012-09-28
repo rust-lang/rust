@@ -609,7 +609,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
                                    ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
                                path, if tps.len() > 0u {
-                                   Some(ii_dtor(dtor, item.ident, tps,
+                                   Some(ii_dtor(*dtor, item.ident, tps,
                                                 local_def(item.id))) }
                                else { None }, tps);
         }
@@ -715,7 +715,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
             ebml_w.end_tag();
         }
         do opt_trait.iter() |associated_trait| {
-           encode_trait_ref(ebml_w, ecx, associated_trait)
+           encode_trait_ref(ebml_w, ecx, *associated_trait)
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();

@@ -1252,7 +1252,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         do option::iter(&simple_name) |name| {
-            str::as_c_str(cx.ccx().sess.str_of(name), |buf| {
+            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
                 llvm::LLVMSetValueName(val, buf)
             });
         }
@@ -1778,7 +1778,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   /* If we're monomorphizing, register the monomorphized decl
      for the dtor */
     do option::iter(&hash_id) |h_id| {
-    ccx.monomorphized.insert(h_id, lldecl);
+    ccx.monomorphized.insert(*h_id, lldecl);
   }
   /* Translate the dtor body */
   trans_fn(ccx, path, ast_util::dtor_dec(),
