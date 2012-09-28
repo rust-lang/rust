@@ -308,7 +308,7 @@ fn check_fn(ccx: @crate_ctxt,
     for self_info.each |info| {
         fcx.write_ty(info.self_id, info.self_ty);
     }
-    do vec::iter2(decl.inputs, arg_tys) |input, arg| {
+    for vec::each2(decl.inputs, arg_tys) |input, arg| {
         fcx.write_ty(input.id, *arg);
     }
 
@@ -351,7 +351,7 @@ fn check_fn(ccx: @crate_ctxt,
         }
 
         // Add formal parameters.
-        do vec::iter2(arg_tys, decl.inputs) |arg_ty, input| {
+        for vec::each2(arg_tys, decl.inputs) |arg_ty, input| {
             assign(input.ty.span, input.id, Some(*arg_ty));
             debug!("Argument %s is assigned to %s",
                    tcx.sess.str_of(input.ident),

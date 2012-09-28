@@ -1571,7 +1571,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
       expr_call(f, args, _) => {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
-        do vec::iter2(args, targs) |arg_expr, arg_ty| {
+        for vec::each2(args, targs) |arg_expr, arg_ty| {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
                 by_val | by_copy | by_ref | by_mutbl_ref => {}
                 by_move => {

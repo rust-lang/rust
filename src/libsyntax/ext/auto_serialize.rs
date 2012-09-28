@@ -566,7 +566,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
                     tp_inputs);
 
     let tps_map = map::HashMap();
-    do vec::iter2(tps, tp_inputs) |tp, arg| {
+    for vec::each2(tps, tp_inputs) |tp, arg| {
         let arg_ident = arg.ident;
         tps_map.insert(
             tp.ident,
@@ -773,7 +773,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
                     tp_inputs);
 
     let tps_map = map::HashMap();
-    do vec::iter2(tps, tp_inputs) |tp, arg| {
+    for vec::each2(tps, tp_inputs) |tp, arg| {
         let arg_ident = arg.ident;
         tps_map.insert(
             tp.ident,

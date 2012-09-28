@@ -204,10 +204,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_path(_) => {
         do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
-            vec::iter2(type_uses_for(cx.ccx, id, ts.len()), *ts,
-                       |uses, subst| {
-                           type_needs(cx, *uses, *subst)
-                       })
+            let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
+            for vec::each2(uses_for_ts, *ts) |uses, subst| {
+                type_needs(cx, *uses, *subst)
+            }
         }
       }
       expr_fn(*) | expr_fn_block(*) => {
@@ -238,8 +238,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             match mth.origin {
               typeck::method_static(did) => {
                 do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
-                    do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), *ts)
-                        |uses, subst| { type_needs(cx, *uses, *subst)}
+                    let type_uses = type_uses_for(cx.ccx, did, ts.len());
+                    for vec::each2(type_uses, *ts) |uses, subst| {
+                        type_needs(cx, *uses, *subst)
+                    }
                 }
               }
               typeck::method_param({param_num: param, _}) => {
