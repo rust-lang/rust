@@ -11,8 +11,6 @@ Simple compression
 use libc::{c_void, size_t, c_int};
 
 extern mod rustrt {
-    #[legacy_exports];
-
     fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
                                   src_buf_len: size_t,
                                   pout_len: *size_t,
@@ -29,7 +27,7 @@ const lz_fast : c_int = 0x1;   // LZ with only one probe
 const lz_norm : c_int = 0x80;  // LZ with 128 probes, "normal"
 const lz_best : c_int = 0xfff; // LZ with 4095 probes, "best"
 
-fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
+pub fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
     do vec::as_const_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
@@ -47,7 +45,7 @@ fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
     }
 }
 
-fn inflate_bytes(bytes: &[const u8]) -> ~[u8] {
+pub fn inflate_bytes(bytes: &[const u8]) -> ~[u8] {
     do vec::as_const_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;

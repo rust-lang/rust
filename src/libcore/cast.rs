@@ -2,7 +2,6 @@
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
     fn forget<T>(-x: T);
     fn reinterpret_cast<T, U>(e: T) -> U;
 }
