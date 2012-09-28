@@ -137,17 +137,17 @@ impl BigBitv {
     }
 
     #[inline(always)]
-     fn each_storage(op: fn(&v: uint) -> bool) {
+     fn each_storage(op: fn(v: &mut uint) -> bool) {
         for uint::range(0, self.storage.len()) |i| {
             let mut w = self.storage[i];
-            let b = !op(w);
+            let b = !op(&mut w);
             self.storage[i] = w;
             if !b { break; }
         }
      }
 
     #[inline(always)]
-    fn invert() { for self.each_storage() |w| { w = !w } }
+    fn invert() { for self.each_storage() |w| { *w = !*w } }
 
     #[inline(always)]
     fn union(b: &BigBitv, nbits: uint) -> bool {
@@ -337,7 +337,7 @@ impl Bitv {
      * bitvectors contain identical elements.
      */
     #[inline(always)]
-    fn equal(v1: Bitv) -> bool {
+    fn equal(v1: &Bitv) -> bool {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
         Small(ref b) => match v1.rep {
@@ -356,7 +356,7 @@ impl Bitv {
     fn clear() {
         match self.rep {
           Small(ref b) => b.clear(),
-          Big(ref s) => for s.each_storage() |w| { w = 0u }
+          Big(ref s) => for s.each_storage() |w| { *w = 0u }
         }
     }
 
@@ -365,7 +365,7 @@ impl Bitv {
     fn set_all() {
       match self.rep {
         Small(ref b) => b.set_all(),
-        Big(ref s) => for s.each_storage() |w| { w = !0u } }
+        Big(ref s) => for s.each_storage() |w| { *w = !0u } }
     }
 
     /// Invert all bits
@@ -373,7 +373,7 @@ impl Bitv {
     fn invert() {
       match self.rep {
         Small(ref b) => b.invert(),
-        Big(ref s) => for s.each_storage() |w| { w = !w } }
+        Big(ref s) => for s.each_storage() |w| { *w = !*w } }
     }
 
     /**
@@ -386,7 +386,7 @@ impl Bitv {
      * Returns `true` if `v0` was changed.
      */
     #[inline(always)]
-    fn difference(v: ~Bitv) -> bool { self.do_op(Difference, v) }
+    fn difference(v: &Bitv) -> bool { self.do_op(Difference, v) }
 
     /// Returns true if all bits are 1
     #[inline(always)]
@@ -863,14 +863,14 @@ mod tests {
     fn test_equal_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(11u, false);
-        assert !v0.equal(v1);
+        assert !v0.equal(&v1);
     }
 
     #[test]
     fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(110u, false);
-        assert !v0.equal(v1);
+        assert !v0.equal(&v1);
     }
 
     #[test]
@@ -881,7 +881,7 @@ mod tests {
         let b = bitv::Bitv(1, true);
         b.set(0, true);
 
-        assert a.equal(b);
+        assert a.equal(&b);
     }
 
     #[test]
@@ -896,7 +896,7 @@ mod tests {
             b.set(i, true);
         }
 
-        assert a.equal(b);
+        assert a.equal(&b);
     }
 
     #[test]
