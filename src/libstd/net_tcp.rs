@@ -738,7 +738,7 @@ impl TcpSocket {
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
         read_start(&self)
     }
-    fn read_stop(-read_port:
+    fn read_stop(+read_port:
                  comm::Port<result::Result<~[u8], TcpErrData>>) ->
         result::Result<(), TcpErrData> {
         read_stop(&self, move read_port)

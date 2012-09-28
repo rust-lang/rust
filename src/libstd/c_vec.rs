@@ -117,7 +117,7 @@ fn get<T: Copy>(t: CVec<T>, ofs: uint) -> T {
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-fn set<T: Copy>(t: CVec<T>, ofs: uint, v: T) {
+fn set<T: Copy>(t: CVec<T>, ofs: uint, +v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
