@@ -182,7 +182,7 @@ fn connect(+input_ip: ip::IpAddr, port: uint,
                     ptr::addr_of(in_addr),
                     tcp_connect_on_connect_cb)
               }
-              ip::Ipv6(addr) => {
+              ip::Ipv6(ref addr) => {
                 log(debug, fmt!("addr: %?", addr));
                 let in_addr = uv::ll::ip6_addr(addr_str, port as int);
                 uv::ll::tcp_connect6(
