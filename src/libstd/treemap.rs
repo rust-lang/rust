@@ -12,12 +12,7 @@ use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
 use Option = core::Option;
 
-export TreeMap;
-export insert;
-export find;
-export traverse;
-
-type TreeMap<K, V> = @mut TreeEdge<K, V>;
+pub type TreeMap<K, V> = @mut TreeEdge<K, V>;
 
 type TreeEdge<K, V> = Option<@TreeNode<K, V>>;
 
@@ -29,10 +24,10 @@ enum TreeNode<K, V> = {
 };
 
 /// Create a treemap
-fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
+pub fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
 
 /// Insert a value into the map
-fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
+pub fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
     match copy *m {
       None => {
         *m = Some(@TreeNode({key: k,
@@ -54,7 +49,7 @@ fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
 }
 
 /// Find a value based on the key
-fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
+pub fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
                               -> Option<V> {
     match copy *m {
       None => None,
@@ -73,7 +68,7 @@ fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
+pub fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
     match copy *m {
       None => (),
       Some(node) => {
