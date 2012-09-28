@@ -105,7 +105,7 @@ mod jit {
         // for us.
 
         let entry = llvm::LLVMRustExecuteJIT(manager,
-                                      pm, m, opt, stacks);
+                                             pm, m, opt, stacks);
 
         if ptr::is_null(entry) {
             llvm_err(sess, ~"Could not JIT");
@@ -223,30 +223,9 @@ mod write {
                 // JIT execution takes ownership of the module,
                 // so don't dispose and return.
 
-                // We need to tell LLVM where to resolve all linked
-                // symbols from. The equivalent of -lstd, -lcore, etc.
-                // By default the JIT will resolve symbols from the std and
-                // core linked into rustc. We don't want that,
-                // incase the user wants to use an older std library.
-                /*let cstore = sess.cstore;
-                for cstore::get_used_crate_files(cstore).each |cratepath| {
-                    debug!{"linking: %s", cratepath};
-
-                    let _: () = str::as_c_str(
-                        cratepath,
-                        |buf_t| {
-                            if !llvm::LLVMRustLoadLibrary(buf_t) {
-                                llvm_err(sess, ~"Could not link");
-                            }
-                            debug!{"linked: %s", cratepath};
-                        });
-                }*/
-
                 jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
 
-                if sess.time_llvm_passes() {
-                    llvm::LLVMRustPrintPassTimings();
-                }
+                if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
                 return;
             }
 
