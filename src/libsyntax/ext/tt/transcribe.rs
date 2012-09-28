@@ -82,13 +82,13 @@ pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
 
 pure fn lookup_cur_matched_by_matched(r: tt_reader,
                                       start: @named_match) -> @named_match {
-    pure fn red(&&ad: @named_match, &&idx: uint) -> @named_match {
+    pure fn red(+ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
           matched_nonterminal(_) => {
             // end of the line; duplicate henceforth
             ad
           }
-          matched_seq(ads, _) => ads[idx]
+          matched_seq(ads, _) => ads[*idx]
         }
     }
     vec::foldl(start, r.repeat_idx, red)
@@ -122,8 +122,8 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
     }
     match t {
       tt_delim(tts) | tt_seq(_, tts, _, _) => {
-        vec::foldl(lis_unconstrained, tts, {|lis, tt|
-            lis_merge(lis, lockstep_iter_size(tt, r), r) })
+        vec::foldl(lis_unconstrained, tts, |lis, tt|
+            lis_merge(lis, lockstep_iter_size(*tt, r), r))
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
@@ -148,7 +148,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               }
               tt_frame_up(Some(tt_f)) => {
                 if r.cur.dotdotdoted {
-                    vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
+                    r.repeat_idx.pop();
+                    r.repeat_len.pop();
                 }
 
                 r.cur = tt_f;

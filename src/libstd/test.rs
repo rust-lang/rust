@@ -358,7 +358,7 @@ fn filter_tests(opts: &TestOpts,
             } else { return option::None; }
         }
 
-        vec::filter_map(filtered, |x| filter_fn(&x, filter_str))
+        vec::filter_map(filtered, |x| filter_fn(x, filter_str))
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -374,7 +374,7 @@ fn filter_tests(opts: &TestOpts,
             } else { return option::None; }
         };
 
-        vec::filter_map(filtered, |x| filter(&x))
+        vec::filter_map(filtered, |x| filter(x))
     };
 
     // Sort the tests alphabetically

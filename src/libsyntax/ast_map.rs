@@ -278,7 +278,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       _ => cx.path.push(path_name(i.ident))
     }
     visit::visit_item(i, cx, v);
-    vec::pop(cx.path);
+    cx.path.pop();
 }
 
 fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,

@@ -97,7 +97,7 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
         let k = r.gen_uint_range(0u, graph.len());
 
         if graph[k].len() > 0u && vec::any(graph[k], |i| {
-            i != k as node_id
+            *i != k as node_id
         }) {
             map::set_add(keys, k as node_id);
         }
@@ -160,8 +160,8 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         }
     };
 
-    fn is_gray(c: color) -> bool {
-        match c {
+    fn is_gray(c: &color) -> bool {
+        match *c {
           gray(_) => { true }
           _ => { false }
         }
@@ -183,7 +183,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
                 let mut color = white;
 
                 do neighbors.each() |k| {
-                    if is_gray(colors[*k]) {
+                    if is_gray(&colors[*k]) {
                         color = gray(*k);
                         false
                     }
@@ -314,7 +314,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
         else {
             while parent != root {
-                if vec::contains(path, parent) {
+                if vec::contains(path, &parent) {
                     status = false;
                 }
 
@@ -336,8 +336,8 @@ fn validate(edges: ~[(node_id, node_id)],
     log(info, ~"Verifying tree edges...");
 
     let status = do tree.alli() |k, parent| {
-        if parent != root && parent != -1i64 {
-            level[parent] == level[k] - 1
+        if *parent != root && *parent != -1i64 {
+            level[*parent] == level[k] - 1
         }
         else {
             true

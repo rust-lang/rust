@@ -696,7 +696,7 @@ priv impl Deserializer {
 
     fn pop(&self) -> &self/Json {
         if self.stack.len() == 0 { self.stack.push(&self.json); }
-        vec::pop(self.stack)
+        self.stack.pop()
     }
 }
 

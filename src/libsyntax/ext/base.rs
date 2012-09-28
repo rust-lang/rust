@@ -161,7 +161,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn print_backtrace() { }
         fn backtrace() -> expn_info { self.backtrace }
         fn mod_push(i: ast::ident) { self.mod_path.push(i); }
-        fn mod_pop() { vec::pop(self.mod_path); }
+        fn mod_pop() { self.mod_path.pop(); }
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             match ei {

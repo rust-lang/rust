@@ -955,7 +955,7 @@ impl Liveness {
     fn propagate_through_block(blk: blk, succ: LiveNode) -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
         do blk.node.stmts.foldr(succ) |stmt, succ| {
-            self.propagate_through_stmt(stmt, succ)
+            self.propagate_through_stmt(*stmt, succ)
         }
     }
 
@@ -975,7 +975,7 @@ impl Liveness {
         match decl.node {
           decl_local(locals) => {
             do locals.foldr(succ) |local, succ| {
-                self.propagate_through_local(local, succ)
+                self.propagate_through_local(*local, succ)
             }
           }
           decl_item(_) => {
@@ -1007,7 +1007,7 @@ impl Liveness {
     fn propagate_through_exprs(exprs: ~[@expr],
                                succ: LiveNode) -> LiveNode {
         do exprs.foldr(succ) |expr, succ| {
-            self.propagate_through_expr(expr, succ)
+            self.propagate_through_expr(*expr, succ)
         }
     }
 
@@ -1575,7 +1575,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
                 by_val | by_copy | by_ref | by_mutbl_ref => {}
                 by_move => {
-                    self.check_move_from_expr(arg_expr, vt);
+                    self.check_move_from_expr(*arg_expr, vt);
                 }
             }
         }

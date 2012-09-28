@@ -402,7 +402,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |info| {
         let cleanup_pos = vec::position(
             info.cleanups,
-            |cu| match cu {
+            |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });

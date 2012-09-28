@@ -309,7 +309,7 @@ fn check_fn(ccx: @crate_ctxt,
         fcx.write_ty(info.self_id, info.self_ty);
     }
     do vec::iter2(decl.inputs, arg_tys) |input, arg| {
-        fcx.write_ty(input.id, arg);
+        fcx.write_ty(input.id, *arg);
     }
 
     // If we don't have any enclosing function scope, it is time to
@@ -352,7 +352,7 @@ fn check_fn(ccx: @crate_ctxt,
 
         // Add formal parameters.
         do vec::iter2(arg_tys, decl.inputs) |arg_ty, input| {
-            assign(input.ty.span, input.id, Some(arg_ty));
+            assign(input.ty.span, input.id, Some(*arg_ty));
             debug!("Argument %s is assigned to %s",
                    tcx.sess.str_of(input.ident),
                    fcx.inh.locals.get(input.id).to_str());
@@ -807,7 +807,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
                     _ => ()
                 }
             }
-            ty::ty_enum(did, _) => {
+            ty::ty_enum(ref did, _) => {
                 // Watch out for a type like `enum t = @t`.  Such a
                 // type would otherwise infinitely auto-deref.  Only
                 // autoderef loops during typeck (basically, this one
@@ -818,7 +818,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
                 if vec::contains(enum_dids, did) {
                     return (t1, autoderefs);
                 }
-                enum_dids.push(did);
+                enum_dids.push(*did);
             }
             _ => { /*ok*/ }
         }
@@ -2294,7 +2294,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
               }
               _ => ()
             }
-            if vec::contains(*disr_vals, *disr_val) {
+            if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
                                       ~"discriminator value already exists");
             }

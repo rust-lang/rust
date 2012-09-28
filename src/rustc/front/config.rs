@@ -50,13 +50,12 @@ fn filter_view_item(cx: ctxt, &&view_item: @ast::view_item
 
 fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
    ast::_mod {
-    let item_filter = |a| filter_item(cx, a);
-    let filtered_items = vec::filter_map(m.items, item_filter);
-    let view_item_filter = |a| filter_view_item(cx, a);
-    let filtered_view_items = vec::filter_map(m.view_items, view_item_filter);
+    let filtered_items = vec::filter_map(m.items, |a| filter_item(cx, *a));
+    let filtered_view_items = vec::filter_map(m.view_items,
+                                              |a| filter_view_item(cx, *a));
     return {
         view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
-        items: vec::filter_map(filtered_items, |x| fld.fold_item(x))
+        items: vec::filter_map(filtered_items, |x| fld.fold_item(*x))
     };
 }
 
@@ -69,11 +68,10 @@ fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
 
 fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
                    fld: fold::ast_fold) -> ast::foreign_mod {
-    let item_filter = |a| filter_foreign_item(cx, a);
-    let filtered_items = vec::filter_map(nm.items, item_filter);
-    let view_item_filter = |a| filter_view_item(cx, a);
-    let filtered_view_items = vec::filter_map(
-        nm.view_items, view_item_filter);
+    let filtered_items = vec::filter_map(nm.items,
+                                         |a| filter_foreign_item(cx, *a));
+    let filtered_view_items = vec::filter_map(nm.view_items,
+                                              |a| filter_view_item(cx, *a));
     return {
         sort: nm.sort,
         view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
@@ -100,8 +98,7 @@ fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
 
 fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
-    let filter = |a| filter_stmt(cx, a);
-    let filtered_stmts = vec::filter_map(b.stmts, filter);
+    let filtered_stmts = vec::filter_map(b.stmts, |a| filter_stmt(cx, *a));
     return {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
          expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
@@ -136,7 +133,7 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
     // so we can match against them. This is the list of configurations for
     // which the item is valid
     let cfg_metas = vec::concat(vec::filter_map(cfg_metas,
-        |&&i| attr::get_meta_item_list(i) ));
+        |i| attr::get_meta_item_list(*i)));
 
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
     if !has_cfg_metas { return true; }

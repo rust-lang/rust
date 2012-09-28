@@ -1560,7 +1560,7 @@ impl Resolver {
                     path_entry.def_like);
 
             let mut pieces = split_str(path_entry.path_string, ~"::");
-            let final_ident_str = pop(pieces);
+            let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 
             // Find the module we need, creating modules along the way if we

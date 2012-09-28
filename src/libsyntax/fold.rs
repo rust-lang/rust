@@ -552,7 +552,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
 // ...nor do modules
 fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     return {view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
-         items: vec::filter_map(m.items, |x| fld.fold_item(x))};
+         items: vec::filter_map(m.items, |x| fld.fold_item(*x))};
 }
 
 fn noop_fold_foreign_mod(nm: foreign_mod, fld: ast_fold) -> foreign_mod {

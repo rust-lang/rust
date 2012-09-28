@@ -140,7 +140,7 @@ pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     // turn digits into string
     // using stack of digits
     while fractionalParts.is_not_empty() {
-        let mut adjusted_digit = carry + vec::pop(fractionalParts);
+        let mut adjusted_digit = carry + fractionalParts.pop();
 
         if adjusted_digit == 10 {
             carry = 1;

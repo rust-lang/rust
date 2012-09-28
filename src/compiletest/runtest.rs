@@ -503,10 +503,7 @@ fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
 
 fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
     fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        fn flt(&&s: ~str) -> Option<~str> {
-          if !str::is_whitespace(s) { option::Some(s) } else { option::None }
-        }
-        vec::filter_map(v, flt)
+        vec::filter(v, |s| !str::is_whitespace(*s))
     }
 
     match argstr {

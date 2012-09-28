@@ -450,7 +450,7 @@ Section: Transforming strings
  */
 pure fn to_bytes(s: &str) -> ~[u8] unsafe {
     let mut v: ~[u8] = ::cast::transmute(from_slice(s));
-    vec::raw::set_len(v, len(s));
+    vec::raw::set_len(&mut v, len(s));
     move v
 }
 
@@ -1945,7 +1945,7 @@ fn reserve_at_least(s: &const ~str, n: uint) {
  */
 pure fn capacity(s: &const ~str) -> uint {
     do as_bytes(s) |buf| {
-        let vcap = vec::capacity(*buf);
+        let vcap = vec::capacity(buf);
         assert vcap > 0u;
         vcap - 1u
     }
@@ -2008,7 +2008,7 @@ mod raw {
         vec::as_mut_buf(v, |vbuf, _len| {
             ptr::memcpy(vbuf, buf as *u8, len)
         });
-        vec::raw::set_len(v, len);
+        vec::raw::set_len(&mut v, len);
         v.push(0u8);
 
         assert is_utf8(v);
@@ -2065,7 +2065,7 @@ mod raw {
                     let src = ptr::offset(sbuf, begin);
                     ptr::memcpy(vbuf, src, end - begin);
                 }
-                vec::raw::set_len(v, end - begin);
+                vec::raw::set_len(&mut v, end - begin);
                 v.push(0u8);
                 ::cast::transmute(move v)
             }

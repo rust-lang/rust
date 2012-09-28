@@ -221,7 +221,7 @@ impl PosixPath : GenericPath {
     pure fn pop() -> PosixPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { vec::pop(cs); }
+            unsafe { cs.pop(); }
         }
         return PosixPath { components: move cs, ..self }
     }
@@ -415,7 +415,7 @@ impl WindowsPath : GenericPath {
     pure fn pop() -> WindowsPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { vec::pop(cs); }
+            unsafe { cs.pop(); }
         }
         return WindowsPath { components: move cs, ..self }
     }
@@ -437,7 +437,7 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
                 if *c == ~"." && components.len() > 1 { loop; }
                 if *c == ~"" { loop; }
                 if *c == ~".." && cs.len() != 0 {
-                    vec::pop(cs);
+                    cs.pop();
                     loop;
                 }
                 cs.push(copy *c);

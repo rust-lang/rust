@@ -163,9 +163,9 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
 fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
    ~[ast::attribute] {
     let filter = (
-        fn@(a: ast::attribute) -> Option<ast::attribute> {
-            if get_attr_name(a) == name {
-                option::Some(a)
+        fn@(a: &ast::attribute) -> Option<ast::attribute> {
+            if get_attr_name(*a) == name {
+                option::Some(*a)
             } else { option::None }
         }
     );
@@ -175,9 +175,9 @@ fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
 /// Searcha list of meta items and return only those with a specific name
 fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
    ~[@ast::meta_item] {
-    let filter = fn@(&&m: @ast::meta_item) -> Option<@ast::meta_item> {
-        if get_meta_item_name(m) == name {
-            option::Some(m)
+    let filter = fn@(m: &@ast::meta_item) -> Option<@ast::meta_item> {
+        if get_meta_item_name(*m) == name {
+            option::Some(*m)
         } else { option::None }
     };
     return vec::filter_map(metas, filter);
@@ -289,8 +289,8 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
    ~[@ast::meta_item] {
 
     return vec::filter_map(items, |item| {
-        if get_meta_item_name(item) != name {
-            option::Some(/* FIXME (#2543) */ copy item)
+        if get_meta_item_name(*item) != name {
+            option::Some(/* FIXME (#2543) */ copy *item)
         } else {
             option::None
         }

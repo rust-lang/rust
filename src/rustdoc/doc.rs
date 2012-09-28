@@ -378,7 +378,7 @@ impl IndexEntry : cmp::Eq {
 impl Doc {
     fn CrateDoc() -> CrateDoc {
         option::get(&vec::foldl(None, self.pages, |_m, page| {
-            match page {
+            match *page {
               doc::CratePage(doc) => Some(doc),
               _ => None
             }
@@ -395,7 +395,7 @@ impl ModDoc {
 
     fn mods() -> ~[ModDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               ModTag(ModDoc) => Some(ModDoc),
               _ => None
             }
@@ -404,7 +404,7 @@ impl ModDoc {
 
     fn nmods() -> ~[NmodDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               NmodTag(nModDoc) => Some(nModDoc),
               _ => None
             }
@@ -413,7 +413,7 @@ impl ModDoc {
 
     fn fns() -> ~[FnDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               FnTag(FnDoc) => Some(FnDoc),
               _ => None
             }
@@ -422,7 +422,7 @@ impl ModDoc {
 
     fn consts() -> ~[ConstDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               ConstTag(ConstDoc) => Some(ConstDoc),
               _ => None
             }
@@ -431,7 +431,7 @@ impl ModDoc {
 
     fn enums() -> ~[EnumDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               EnumTag(EnumDoc) => Some(EnumDoc),
               _ => None
             }
@@ -440,7 +440,7 @@ impl ModDoc {
 
     fn traits() -> ~[TraitDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               TraitTag(TraitDoc) => Some(TraitDoc),
               _ => None
             }
@@ -449,7 +449,7 @@ impl ModDoc {
 
     fn impls() -> ~[ImplDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               ImplTag(ImplDoc) => Some(ImplDoc),
               _ => None
             }
@@ -458,7 +458,7 @@ impl ModDoc {
 
     fn types() -> ~[TyDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
               TyTag(TyDoc) => Some(TyDoc),
               _ => None
             }
@@ -467,7 +467,7 @@ impl ModDoc {
 
     fn structs() -> ~[StructDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
+            match *itemtag {
                 StructTag(StructDoc) => Some(StructDoc),
                 _ => None
             }
@@ -490,7 +490,7 @@ impl ~[Page]: PageUtils {
 
     fn mods() -> ~[ModDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(ModTag(ModDoc)) => Some(ModDoc),
               _ => None
             }
@@ -499,7 +499,7 @@ impl ~[Page]: PageUtils {
 
     fn nmods() -> ~[NmodDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(NmodTag(nModDoc)) => Some(nModDoc),
               _ => None
             }
@@ -508,7 +508,7 @@ impl ~[Page]: PageUtils {
 
     fn fns() -> ~[FnDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(FnTag(FnDoc)) => Some(FnDoc),
               _ => None
             }
@@ -517,7 +517,7 @@ impl ~[Page]: PageUtils {
 
     fn consts() -> ~[ConstDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(ConstTag(ConstDoc)) => Some(ConstDoc),
               _ => None
             }
@@ -526,7 +526,7 @@ impl ~[Page]: PageUtils {
 
     fn enums() -> ~[EnumDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(EnumTag(EnumDoc)) => Some(EnumDoc),
               _ => None
             }
@@ -535,7 +535,7 @@ impl ~[Page]: PageUtils {
 
     fn traits() -> ~[TraitDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(TraitTag(TraitDoc)) => Some(TraitDoc),
               _ => None
             }
@@ -544,7 +544,7 @@ impl ~[Page]: PageUtils {
 
     fn impls() -> ~[ImplDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(ImplTag(ImplDoc)) => Some(ImplDoc),
               _ => None
             }
@@ -553,7 +553,7 @@ impl ~[Page]: PageUtils {
 
     fn types() -> ~[TyDoc] {
         do vec::filter_map(self) |page| {
-            match page {
+            match *page {
               ItemPage(TyTag(TyDoc)) => Some(TyDoc),
               _ => None
             }

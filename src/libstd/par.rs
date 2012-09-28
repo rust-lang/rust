@@ -123,17 +123,17 @@ pub fn alli<A: Copy Send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
-                f(i + base, x)
+                f(i + base, *x)
             })
         }
-    })) |x| { x }
+    })) |x| { *x }
 }
 
 /// Returns true if the function holds for any elements in the vector.
 pub fn any<A: Copy Send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {
-            vec::any(slice, |x| f(x))
+            vec::any(slice, |x| f(*x))
         }
-    })) |x| { x }
+    })) |x| { *x }
 }

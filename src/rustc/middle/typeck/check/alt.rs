@@ -165,7 +165,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
             do subpats.iter() |pats| {
                 do vec::iter2(*pats, arg_types) |subpat, arg_ty| {
-                  check_pat(pcx, subpat, arg_ty);
+                  check_pat(pcx, *subpat, *arg_ty);
                 }
             };
         } else if subpats_len > 0u {

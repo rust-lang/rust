@@ -170,7 +170,7 @@ impl resolve_state {
     }
 
     fn resolve_ty_var(vid: TyVid) -> ty::t {
-        if vec::contains(self.v_seen, vid) {
+        if vec::contains(self.v_seen, &vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
         } else {
@@ -197,7 +197,7 @@ impl resolve_state {
                 ty::mk_var(tcx, vid)
               }
             };
-            vec::pop(self.v_seen);
+            self.v_seen.pop();
             return t1;
         }
     }

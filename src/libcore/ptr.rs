@@ -127,7 +127,7 @@ pub unsafe fn memset<T>(dst: *mut T, c: int, count: uint) {
   reinterpret_cast.
 */
 #[inline(always)]
-pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
+pub pure fn to_unsafe_ptr<T>(thing: &T) -> *T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 
@@ -137,7 +137,7 @@ pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
   reinterpret_cast.
 */
 #[inline(always)]
-pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
+pub pure fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 
@@ -147,7 +147,7 @@ pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
   reinterpret_cast.
 */
 #[inline(always)]
-pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
+pub pure fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
     unsafe { cast::reinterpret_cast(&thing) }
 }
 

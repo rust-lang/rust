@@ -229,7 +229,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
-                                  |a| safe_to_use_expr(a, cx.mode) );
+                                  |a| safe_to_use_expr(*a, cx.mode) );
     check_variants_T(crate, codemap, filename, ~"expr",
                      extra_exprs + stolen.exprs, pprust::expr_to_str,
                      replace_expr_in_crate, cx);

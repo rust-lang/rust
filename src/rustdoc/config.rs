@@ -228,8 +228,8 @@ fn maybe_find_pandoc(
     };
 
     let pandoc = do vec::find(possible_pandocs) |pandoc| {
-        let output = program_output(pandoc, ~[~"--version"]);
-        debug!("testing pandoc cmd %s: %?", pandoc, output);
+        let output = program_output(*pandoc, ~[~"--version"]);
+        debug!("testing pandoc cmd %s: %?", *pandoc, output);
         output.status == 0
     };
 

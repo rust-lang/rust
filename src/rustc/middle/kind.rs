@@ -273,7 +273,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                       *bounds, (*bounds).len());
         }
         do vec::iter2(*ts, *bounds) |ty, bound| {
-            check_bounds(cx, id_to_use, e.span, ty, bound)
+            check_bounds(cx, id_to_use, e.span, *ty, *bound)
         }
     }
 
@@ -377,7 +377,7 @@ fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             do vec::iter2(*ts, *bounds) |ty, bound| {
-                check_bounds(cx, aty.id, aty.span, ty, bound)
+                check_bounds(cx, aty.id, aty.span, *ty, *bound)
             }
         }
       }

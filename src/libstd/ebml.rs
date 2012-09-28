@@ -217,7 +217,7 @@ impl Writer {
     }
 
     fn end_tag() {
-        let last_size_pos = vec::pop::<uint>(self.size_positions);
+        let last_size_pos = self.size_positions.pop();
         let cur_pos = self.writer.tell();
         self.writer.seek(last_size_pos as int, io::SeekSet);
         let size = (cur_pos - last_size_pos - 4u);

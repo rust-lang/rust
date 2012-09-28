@@ -1192,7 +1192,7 @@ impl RegionVarBindings {
         set.insert(*orig_node_idx, ());
         let mut result = ~[];
         while !vec::is_empty(stack) {
-            let node_idx = vec::pop(stack);
+            let node_idx = stack.pop();
             for self.each_edge(graph, node_idx, dir) |edge| {
                 match edge.constraint {
                   ConstrainVarSubVar(from_vid, to_vid) => {

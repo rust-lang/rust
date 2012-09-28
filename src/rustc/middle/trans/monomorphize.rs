@@ -33,7 +33,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, Some(param_uses));
     if vec::any(hash_id.params,
-                |p| match p { mono_precise(_, _) => false, _ => true }) {
+                |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
     }
 
@@ -243,7 +243,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
         let mut i = 0u;
         vec::map2(*bounds, substs, |bounds, subst| {
             let mut v = ~[];
-            for vec::each(*bounds) |bound| {
+            for bounds.each |bound| {
                 match *bound {
                   ty::bound_trait(_) => {
                     v.push(meth::vtable_id(ccx, vts[i]));
@@ -252,7 +252,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                   _ => ()
                 }
             }
-            (subst, if v.len() > 0u { Some(v) } else { None })
+            (*subst, if v.len() > 0u { Some(v) } else { None })
         })
       }
       None => {
@@ -262,12 +262,12 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
     let param_ids = match param_uses {
       Some(uses) => {
         vec::map2(precise_param_ids, uses, |id, uses| {
-            match id {
+            match *id {
                 (a, b@Some(_)) => mono_precise(a, b),
                 (subst, None) => {
-                    if uses == 0u {
+                    if *uses == 0u {
                         mono_any
-                    } else if uses == type_use::use_repr &&
+                    } else if *uses == type_use::use_repr &&
                         !ty::type_needs_drop(ccx.tcx, subst)
                     {
                         let llty = type_of::type_of(ccx, subst);

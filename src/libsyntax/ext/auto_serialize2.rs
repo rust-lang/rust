@@ -75,8 +75,8 @@ fn expand(cx: ext_ctxt,
           span: span,
           _mitem: ast::meta_item,
           in_items: ~[@ast::item]) -> ~[@ast::item] {
-    fn not_auto_serialize2(a: ast::attribute) -> bool {
-        attr::get_attr_name(a) != ~"auto_serialize2"
+    fn not_auto_serialize2(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) != ~"auto_serialize2"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -88,19 +88,19 @@ fn expand(cx: ext_ctxt,
         match item.node {
             ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
                 ~[
-                    filter_attrs(item),
+                    filter_attrs(*item),
                     mk_rec_impl(cx, item.span, item.ident, fields, tps),
                 ]
             },
             ast::item_class(@{ fields, _}, tps) => {
                 ~[
-                    filter_attrs(item),
+                    filter_attrs(*item),
                     mk_struct_impl(cx, item.span, item.ident, fields, tps),
                 ]
             },
             ast::item_enum(enum_def, tps) => {
                 ~[
-                    filter_attrs(item),
+                    filter_attrs(*item),
                     mk_enum_impl(cx, item.span, item.ident, enum_def, tps),
                 ]
             },
@@ -108,7 +108,7 @@ fn expand(cx: ext_ctxt,
                 cx.span_err(span, ~"#[auto_serialize2] can only be applied \
                                     to structs, record types, and enum \
                                     definitions");
-                ~[item]
+                ~[*item]
             }
         }
     }

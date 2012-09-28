@@ -29,7 +29,7 @@ fn unindent(s: ~str) -> ~str {
         let ignore_previous_indents =
             saw_first_line &&
             !saw_second_line &&
-            !str::is_whitespace(line);
+            !str::is_whitespace(*line);
 
         let min_indent = if ignore_previous_indents {
             uint::max_value
@@ -41,12 +41,12 @@ fn unindent(s: ~str) -> ~str {
             saw_second_line = true;
         }
 
-        if str::is_whitespace(line) {
+        if str::is_whitespace(*line) {
             min_indent
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do str::all(line) |char| {
+            do str::all(*line) |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {

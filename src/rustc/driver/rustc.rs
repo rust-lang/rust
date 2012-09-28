@@ -122,7 +122,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     logging::console_off();
 
     let mut args = args;
-    let binary = vec::shift(args);
+    let binary = args.shift();
 
     if vec::len(args) == 0u { usage(binary); return; }
 

@@ -13,7 +13,7 @@ enum List<T> {
 
 /// Cregate a list from a vector
 fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
-    vec::foldr(v, @Nil::<T>, |h, t| @Cons(h, t))
+    vec::foldr(v, @Nil::<T>, |h, t| @Cons(*h, t))
 }
 
 /**
