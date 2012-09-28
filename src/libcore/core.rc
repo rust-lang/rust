@@ -183,9 +183,7 @@ mod u64 {
 mod box;
 mod char;
 mod float;
-#[legacy_exports]
 mod f32;
-#[legacy_exports]
 mod f64;
 #[legacy_exports]
 mod str;

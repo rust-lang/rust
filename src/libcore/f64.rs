@@ -4,38 +4,13 @@
 
 //! Operations and constants for `f64`
 
-// PORT
+pub use cmath::c_double::*;
+pub use cmath::c_double_targ_consts::*;
 
-use cmath::c_double::*;
-use cmath::c_double_targ_consts::*;
+// FIXME (#1433): obtain these in a different way
 
 // These are not defined inside consts:: for consistency with
 // the integer types
-
-// Even though this module exports everything defined in it,
-// because it contains re-exports, we also have to explicitly
-// export locally defined things. That's a bit annoying.
-export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
-export is_positive, is_negative, is_nonpositive, is_nonnegative;
-export is_zero, is_infinite, is_finite;
-export NaN, is_NaN, infinity, neg_infinity;
-export consts;
-export logarithm;
-export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh, floor;
-export erf, erfc, exp, expm1, exp2, abs, abs_sub;
-export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
-export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
-export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
-export signbit;
-export epsilon;
-
-export j0, j1, jn, y0, y1, yn;
-
-export num;
-
-// PORT check per architecture
-
-// FIXME (#1433): obtain these in a different way
 
 pub const radix: uint = 2u;
 
