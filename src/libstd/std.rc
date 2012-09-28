@@ -69,9 +69,7 @@ mod uv_global_loop;
 
 #[legacy_exports]
 mod c_vec;
-#[legacy_exports]
 mod timer;
-#[legacy_exports]
 mod cell;
 
 // Concurrency
@@ -85,7 +83,6 @@ mod comm;
 
 // Collections
 
-#[legacy_exports]
 mod bitv;
 #[legacy_exports]
 mod deque;

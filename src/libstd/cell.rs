@@ -3,16 +3,16 @@
 ///
 /// Similar to a mutable option type, but friendlier.
 
-struct Cell<T> {
+pub struct Cell<T> {
     mut value: Option<T>
 }
 
 /// Creates a new full cell with the given value.
-fn Cell<T>(+value: T) -> Cell<T> {
+pub fn Cell<T>(+value: T) -> Cell<T> {
     Cell { value: Some(move value) }
 }
 
-fn empty_cell<T>() -> Cell<T> {
+pub fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
