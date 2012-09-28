@@ -1063,6 +1063,7 @@ impl Resolver {
                 for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant,
                                                          local_def(item.id),
+                                                         privacy,
                                                          new_parent,
                                                          visitor);
                 }
@@ -1156,17 +1157,20 @@ impl Resolver {
     // type and/or value namespaces.
     fn build_reduced_graph_for_variant(variant: variant,
                                        item_id: def_id,
+                                       +parent_privacy: Privacy,
                                        parent: ReducedGraphParent,
                                        &&visitor: vt<ReducedGraphParent>) {
-
-        let legacy = match parent {
-          ModuleReducedGraphParent(m) => m.legacy_exports
-        };
 
         let ident = variant.node.name;
         let (child, _) = self.add_child(ident, parent, ~[ValueNS],
                                         variant.span);
-        let privacy = self.visibility_to_privacy(variant.node.vis, legacy);
+
+        let privacy;
+        match variant.node.vis {
+            public => privacy = Public,
+            private => privacy = Private,
+            inherited => privacy = parent_privacy
+        }
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
@@ -1188,6 +1192,7 @@ impl Resolver {
                                      variant.span);
                 for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant, item_id,
+                                                         parent_privacy,
                                                          parent, visitor);
                 }
             }
