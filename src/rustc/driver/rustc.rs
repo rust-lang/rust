@@ -236,7 +236,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
         let demitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
-                           msg: ~str, lvl: diagnostic::level) {
+                           msg: &str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
                 comm::send(ch, fatal);
             }

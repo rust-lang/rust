@@ -81,14 +81,14 @@ mod ct {
 
     // A fragment of the output sequence
     enum Piece { PieceString(~str), PieceConv(Conv), }
-    type ErrorFn = fn@(~str) -> ! ;
+    type ErrorFn = fn@(&str) -> ! ;
 
-    fn parse_fmt_string(s: ~str, error: ErrorFn) -> ~[Piece] {
+    fn parse_fmt_string(s: &str, error: ErrorFn) -> ~[Piece] {
         let mut pieces: ~[Piece] = ~[];
         let lim = str::len(s);
         let mut buf = ~"";
-        fn flush_buf(+buf: ~str, &pieces: ~[Piece]) -> ~str {
-            if str::len(buf) > 0 {
+        fn flush_buf(+buf: ~str, pieces: &mut ~[Piece]) -> ~str {
+            if buf.len() > 0 {
                 let piece = PieceString(move buf);
                 pieces.push(move piece);
             }
@@ -108,17 +108,17 @@ mod ct {
                     buf += curr2;
                     i += 1;
                 } else {
-                    buf = flush_buf(move buf, pieces);
+                    buf = flush_buf(move buf, &mut pieces);
                     let rs = parse_conversion(s, i, lim, error);
                     pieces.push(copy rs.piece);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
         }
-        flush_buf(move buf, pieces);
+        flush_buf(move buf, &mut pieces);
         move pieces
     }
-    fn peek_num(s: ~str, i: uint, lim: uint) ->
+    fn peek_num(s: &str, i: uint, lim: uint) ->
        Option<{num: uint, next: uint}> {
         let mut j = i;
         let mut accum = 0u;
@@ -140,7 +140,7 @@ mod ct {
             None
         }
     }
-    fn parse_conversion(s: ~str, i: uint, lim: uint, error: ErrorFn) ->
+    fn parse_conversion(s: &str, i: uint, lim: uint, error: ErrorFn) ->
        {piece: Piece, next: uint} {
         let parm = parse_parameter(s, i, lim);
         let flags = parse_flags(s, parm.next, lim);
@@ -155,7 +155,7 @@ mod ct {
                              ty: ty.ty}),
              next: ty.next};
     }
-    fn parse_parameter(s: ~str, i: uint, lim: uint) ->
+    fn parse_parameter(s: &str, i: uint, lim: uint) ->
        {param: Option<int>, next: uint} {
         if i >= lim { return {param: None, next: i}; }
         let num = peek_num(s, i, lim);
@@ -170,12 +170,12 @@ mod ct {
               }
             };
     }
-    fn parse_flags(s: ~str, i: uint, lim: uint) ->
+    fn parse_flags(s: &str, i: uint, lim: uint) ->
        {flags: ~[Flag], next: uint} {
         let noflags: ~[Flag] = ~[];
         if i >= lim { return {flags: move noflags, next: i}; }
 
-        fn more_(f: Flag, s: ~str, i: uint, lim: uint) ->
+        fn more(f: Flag, s: &str, i: uint, lim: uint) ->
            {flags: ~[Flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
             let rest = copy next.flags;
@@ -183,21 +183,22 @@ mod ct {
             let curr: ~[Flag] = ~[f];
             return {flags: vec::append(move curr, rest), next: j};
         }
-        let more = |x, copy s| more_(x, copy s, i, lim);
+        // Unfortunate, but because s is borrowed, can't use a closure
+     //   fn more(f: Flag, s: &str) { more_(f, s, i, lim); }
         let f = s[i];
         return if f == '-' as u8 {
-                more(FlagLeftJustify)
+                more(FlagLeftJustify, s, i, lim)
             } else if f == '0' as u8 {
-                more(FlagLeftZeroPad)
+                more(FlagLeftZeroPad, s, i, lim)
             } else if f == ' ' as u8 {
-                more(FlagSpaceForSign)
+                more(FlagSpaceForSign, s, i, lim)
             } else if f == '+' as u8 {
-                more(FlagSignAlways)
+                more(FlagSignAlways, s, i, lim)
             } else if f == '#' as u8 {
-                more(FlagAlternate)
+                more(FlagAlternate, s, i, lim)
             } else { {flags: move noflags, next: i} };
     }
-    fn parse_count(s: ~str, i: uint, lim: uint)
+    fn parse_count(s: &str, i: uint, lim: uint)
         -> {count: Count, next: uint} {
         return if i >= lim {
                 {count: CountImplied, next: i}
@@ -219,7 +220,7 @@ mod ct {
                 }
             };
     }
-    fn parse_precision(s: ~str, i: uint, lim: uint) ->
+    fn parse_precision(s: &str, i: uint, lim: uint) ->
        {count: Count, next: uint} {
         return if i >= lim {
                 {count: CountImplied, next: i}
@@ -235,7 +236,7 @@ mod ct {
                 }
             } else { {count: CountImplied, next: i} };
     }
-    fn parse_type(s: ~str, i: uint, lim: uint, error: ErrorFn) ->
+    fn parse_type(s: &str, i: uint, lim: uint, error: ErrorFn) ->
        {ty: Ty, next: uint} {
         if i >= lim { error(~"missing type in conversion"); }
         let tstr = str::slice(s, i, i+1u);
@@ -269,10 +270,7 @@ mod ct {
     }
 }
 
-// Functions used by the fmt extension at runtime. For now there are a lot of
-// decisions made a runtime. If it proves worthwhile then some of these
-// conditions can be evaluated at compile-time. For now though it's cleaner to
-// implement it 0this way, I think.
+// OLD CODE -- eventually remove
 mod rt {
     #[legacy_exports];
     const flag_none : u32 = 0u32;
@@ -328,7 +326,7 @@ mod rt {
         let mut unpadded = match cv.precision {
           CountImplied => s.to_unique(),
           CountIs(max) => if max as uint < str::char_len(s) {
-            str::substr(s, 0u, max as uint)
+            str::substr(s, 0, max as uint)
           } else {
             s.to_unique()
           }
@@ -338,7 +336,7 @@ mod rt {
     pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
-              CountImplied => (float::to_str, 6u)
+              CountImplied => (float::to_str, 6)
         };
         let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
@@ -404,16 +402,17 @@ mod rt {
         pure fn ne(other: &PadMode) -> bool { !self.eq(other) }
     }
 
-    fn pad(cv: Conv, &s: ~str, mode: PadMode) -> ~str {
+    fn pad(cv: Conv, +s: ~str, mode: PadMode) -> ~str {
+        let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
-          CountImplied => return copy s,
+          CountImplied => return s,
           CountIs(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { return copy s; }
+        if uwidth <= strlen { return s; }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
@@ -444,7 +443,7 @@ mod rt {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::len(s) > 0u {
+        if signed && zero_padding && s.len() > 0 {
             let head = str::shift_char(&mut s);
             if head == '+' || head == '-' || head == ' ' {
                 let headstr = str::from_chars(vec::from_elem(1u, head));
@@ -461,7 +460,12 @@ mod rt {
     }
 }
 
-// XXX remove after snapshots
+// NEW CODE
+
+// Functions used by the fmt extension at runtime. For now there are a lot of
+// decisions made a runtime. If it proves worthwhile then some of these
+// conditions can be evaluated at compile-time. For now though it's cleaner to
+// implement it 0this way, I think.
 mod rt2 {
     #[legacy_exports];
     const flag_none : u32 = 0u32;
@@ -477,7 +481,7 @@ mod rt2 {
     type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
 
     pure fn conv_int(cv: Conv, i: int) -> ~str {
-        let radix = 10u;
+        let radix = 10;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
@@ -511,7 +515,7 @@ mod rt2 {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pure fn conv_str(cv: Conv, s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, +s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -539,8 +543,8 @@ mod rt2 {
         }
         return unsafe { pad(cv, s, PadFloat) };
     }
-    pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
-        let s = sys::log_str(&v);
+    pure fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
+        let s = sys::log_str(v);
         return conv_str(cv, s);
     }
 
@@ -593,16 +597,17 @@ mod rt2 {
         pure fn ne(other: &PadMode) -> bool { !self.eq(other) }
     }
 
-    fn pad(cv: Conv, &s: ~str, mode: PadMode) -> ~str {
+    fn pad(cv: Conv, +s: ~str, mode: PadMode) -> ~str {
+        let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
-          CountImplied => return copy s,
+          CountImplied => return s,
           CountIs(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { return copy s; }
+        if uwidth <= strlen { return s; }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
@@ -633,7 +638,7 @@ mod rt2 {
         // zeros. It may make sense to convert zero padding to a precision
         // instead.
 
-        if signed && zero_padding && str::len(s) > 0u {
+        if signed && zero_padding && s.len() > 0 {
             let head = str::shift_char(&mut s);
             if head == '+' || head == '-' || head == ' ' {
                 let headstr = str::from_chars(vec::from_elem(1u, head));

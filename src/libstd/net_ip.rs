@@ -156,14 +156,14 @@ mod v4 {
     fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             match uint::from_str(*s) {
-              Some(n) if n <= 255u => n,
-              _ => 256u
+              Some(n) if n <= 255 => n,
+              _ => 256
             }
         });
-        if vec::len(parts) != 4u {
+        if parts.len() != 4 {
                 result::Err(fmt!("'%s' doesn't have 4 parts", ip))
                 }
-        else if vec::contains(parts, &256u) {
+        else if parts.contains(&256) {
                 result::Err(fmt!("invalid octal in addr '%s'", ip))
                 }
         else {

@@ -328,7 +328,7 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     return {status: status, out: move outs, err: move errs};
 }
 
-fn writeclose(fd: c_int, s: &str) {
+fn writeclose(fd: c_int, +s: ~str) {
     use io::WriterUtil;
 
     error!("writeclose %d, %s", fd as int, s);
