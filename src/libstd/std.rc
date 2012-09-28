@@ -98,11 +98,8 @@ mod map;
 mod rope;
 #[legacy_exports]
 mod smallintmap;
-#[legacy_exports]
 mod sort;
-#[legacy_exports]
 mod treemap;
-#[legacy_exports]
 
 // And ... other stuff
 

@@ -5,12 +5,6 @@
 use vec::{len, push};
 use core::cmp::{Eq, Ord};
 
-export le;
-export merge_sort;
-export quick_sort;
-export quick_sort3;
-export Sort;
-
 type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
 
 /**
@@ -19,7 +13,7 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
+pub fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     type Slice = (uint, uint);
 
     return merge_sort_(le, v, (0u, len(v)));
@@ -93,7 +87,7 @@ fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: Copy>(compare_func: Le<T>, arr: &[mut T]) {
+pub fn quick_sort<T: Copy>(compare_func: Le<T>, arr: &[mut T]) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
@@ -155,12 +149,12 @@ fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
+pub fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
 
-trait Sort {
+pub trait Sort {
     fn qsort(self);
 }
 
@@ -274,7 +268,7 @@ mod tests {
 
     fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
-        pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(f, v1);
         let mut i = 0u;
@@ -304,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_merge_sort_mutable() {
-        pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let v1 = ~[mut 3, 2, 1];
         let v2 = merge_sort(le, v1);
         assert v2 == ~[1, 2, 3];
