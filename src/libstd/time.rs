@@ -978,7 +978,7 @@ mod tests {
         tzset();
 
         match strptime(~"", ~"") {
-          Ok(tm) => {
+          Ok(ref tm) => {
             assert tm.tm_sec == 0_i32;
             assert tm.tm_min == 0_i32;
             assert tm.tm_hour == 0_i32;
@@ -1000,8 +1000,8 @@ mod tests {
             == Err(~"Invalid time");
 
         match strptime(~"Fri Feb 13 15:31:30 2009", format) {
-          Err(e) => fail e,
-          Ok(tm) => {
+          Err(copy e) => fail e,
+          Ok(ref tm) => {
             assert tm.tm_sec == 30_i32;
             assert tm.tm_min == 31_i32;
             assert tm.tm_hour == 15_i32;
@@ -1019,8 +1019,8 @@ mod tests {
 
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
-              Ok(tm) => tm.strftime(format) == str::from_slice(s),
-              Err(e) => fail e
+              Ok(ref tm) => tm.strftime(format) == str::from_slice(s),
+              Err(copy e) => fail e
             }
         }
 

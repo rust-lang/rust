@@ -23,8 +23,8 @@ pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
 fn test_mkdtemp() {
     let r = mkdtemp(&Path("."), "foobar");
     match r {
-        Some(p) => {
-            os::remove_dir(&p);
+        Some(ref p) => {
+            os::remove_dir(p);
             assert(str::ends_with(p.to_str(), "foobar"));
         }
         _ => assert(false)

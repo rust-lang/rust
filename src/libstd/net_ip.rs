@@ -329,11 +329,11 @@ mod test {
     #[test]
     fn test_ip_ipv4_bad_parse() {
         match v4::try_parse_addr(~"b4df00d") {
-          result::Err(err_info) => {
+          result::Err(ref err_info) => {
             log(debug, fmt!("got error as expected %?", err_info));
             assert true;
           }
-          result::Ok(addr) => {
+          result::Ok(ref addr) => {
             fail fmt!("Expected failure, but got addr %?", addr);
           }
         }
@@ -342,11 +342,11 @@ mod test {
     #[ignore(target_os="win32")]
     fn test_ip_ipv6_bad_parse() {
         match v6::try_parse_addr(~"::,~2234k;") {
-          result::Err(err_info) => {
+          result::Err(ref err_info) => {
             log(debug, fmt!("got error as expected %?", err_info));
             assert true;
           }
-          result::Ok(addr) => {
+          result::Ok(ref addr) => {
             fail fmt!("Expected failure, but got addr %?", addr);
           }
         }

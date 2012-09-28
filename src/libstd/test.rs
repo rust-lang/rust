@@ -124,7 +124,8 @@ fn run_tests_console(opts: &TestOpts,
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
             st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
-          TeWait(ref test) => st.out.write_str(fmt!("test %s ... ", test.name)),
+          TeWait(ref test) => st.out.write_str(
+              fmt!("test %s ... ", test.name)),
           TeResult(copy test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, result, &test),
@@ -490,7 +491,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
+          either::Left(copy o) => o,
           _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
         };
         assert ~"filter" == opts.filter.get();
@@ -500,7 +501,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
+          either::Left(copy o) => o,
           _ => fail ~"Malformed arg in parse_ignored_flag"
         };
         assert (opts.run_ignored);
@@ -563,7 +564,7 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (a, b) => { assert (a == b.name); }
+                (ref a, ref b) => { assert (*a == b.name); }
             }
         }
     }
