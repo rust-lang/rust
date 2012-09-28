@@ -120,62 +120,43 @@ mod i64 {
 }
 
 /// Operations and constants for `uint`
-#[legacy_exports]
 #[path = "uint-template"]
 mod uint {
-    #[legacy_exports];
-    use inst::{
+    pub use inst::{
         div_ceil, div_round, div_floor, iterate,
         next_power_of_two
     };
-    export div_ceil, div_round, div_floor, iterate,
-    next_power_of_two;
-
     #[path = "uint.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u8`
-#[legacy_exports]
 #[path = "uint-template"]
 mod u8 {
-    #[legacy_exports];
-    use inst::is_ascii;
-    export is_ascii;
+    pub use inst::is_ascii;
 
     #[path = "u8.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u16`
-#[legacy_exports]
 #[path = "uint-template"]
 mod u16 {
-    #[legacy_exports];
     #[path = "u16.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u32`
-#[legacy_exports]
 #[path = "uint-template"]
 mod u32 {
-    #[legacy_exports];
     #[path = "u32.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `u64`
-#[legacy_exports]
 #[path = "uint-template"]
 mod u64 {
-    #[legacy_exports];
     #[path = "u64.rs"]
-    #[legacy_exports]
     mod inst;
 }
 

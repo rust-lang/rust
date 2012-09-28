@@ -6,20 +6,6 @@ use T = inst::T;
 use cmp::{Eq, Ord};
 use from_str::FromStr;
 
-export min_value, max_value;
-export min, max;
-export add, sub, mul, div, rem;
-export lt, le, eq, ne, ge, gt;
-export is_positive, is_negative;
-export is_nonpositive, is_nonnegative;
-export range;
-export compl;
-export to_str, to_str_bytes;
-export from_str, from_str_radix, str, parse_bytes;
-export num, ord, eq, times, timesi;
-export bits, bytes;
-export str;
-
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
 

@@ -1,11 +1,11 @@
-type T = uint;
+pub type T = uint;
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "arm")]
-const bits: uint = 32;
+pub const bits: uint = 32;
 
 #[cfg(target_arch = "x86_64")]
-const bits: uint = 64;
+pub const bits: uint = 64;
 
 /**
  * Divide two numbers, return the result, rounded up.
@@ -19,7 +19,7 @@ const bits: uint = 64;
  *
  * The smallest integer `q` such that `x/y <= q`.
  */
-pure fn div_ceil(x: uint, y: uint) -> uint {
+pub pure fn div_ceil(x: uint, y: uint) -> uint {
     let div = x / y;
     if x % y == 0u { div }
     else { div + 1u }
@@ -37,7 +37,7 @@ pure fn div_ceil(x: uint, y: uint) -> uint {
  *
  * The integer `q` closest to `x/y`.
  */
-pure fn div_round(x: uint, y: uint) -> uint {
+pub pure fn div_round(x: uint, y: uint) -> uint {
     let div = x / y;
     if x % y * 2u  < y { div }
     else { div + 1u }
@@ -58,7 +58,7 @@ pure fn div_round(x: uint, y: uint) -> uint {
  * The smallest integer `q` such that `x/y <= q`. This
  * is either `x/y` or `x/y + 1`.
  */
-pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
+pub pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
 /**
  * Iterate over the range [`lo`..`hi`), or stop when requested
@@ -75,7 +75,7 @@ pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
  * `true` If execution proceeded correctly, `false` if it was interrupted,
  * that is if `it` returned `false` at any point.
  */
-pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
+pub pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
         if (!it(i)) { return false; }
@@ -86,7 +86,7 @@ pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
 
 /// Returns the smallest power of 2 greater than or equal to `n`
 #[inline(always)]
-fn next_power_of_two(n: uint) -> uint {
+pub fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let mut tmp: uint = n - 1u;
     let mut shift: uint = 1u;

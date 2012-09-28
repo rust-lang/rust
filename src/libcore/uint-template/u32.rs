@@ -1,2 +1,2 @@
-type T = u32;
-const bits: uint = 32;
+pub type T = u32;
+pub const bits: uint = 32;
