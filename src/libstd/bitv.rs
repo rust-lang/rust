@@ -2,8 +2,6 @@
 
 use vec::{to_mut, from_elem};
 
-export Bitv, from_bytes, from_bools, from_fn;
-
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
     mut bits: u32
@@ -209,12 +207,12 @@ enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
 enum Op {Union, Intersect, Assign, Difference}
 
 // The bitvector type
-struct Bitv {
+pub struct Bitv {
     rep: BitvVariant,
     nbits: uint
 }
 
-fn Bitv (nbits: uint, init: bool) -> Bitv {
+pub fn Bitv (nbits: uint, init: bool) -> Bitv {
     let rep = if nbits <= 32 {
         Small(~SmallBitv(if init {!0} else {0}))
     }
@@ -519,7 +517,7 @@ impl Bitv {
  * with the most significant bits of each byte coming first. Each
  * bit becomes true if equal to 1 or false if equal to 0.
  */
-fn from_bytes(bytes: &[u8]) -> Bitv {
+pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
         let b = bytes[i / 8] as uint;
         let offset = i % 8;
@@ -530,7 +528,7 @@ fn from_bytes(bytes: &[u8]) -> Bitv {
 /**
  * Transform a [bool] into a bitv by converting each bool into a bit.
  */
-fn from_bools(bools: &[bool]) -> Bitv {
+pub fn from_bools(bools: &[bool]) -> Bitv {
     from_fn(bools.len(), |i| bools[i])
 }
 
@@ -538,7 +536,7 @@ fn from_bools(bools: &[bool]) -> Bitv {
  * Create a bitv of the specified length where the value at each
  * index is f(index).
  */
-fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
+pub fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     let bitv = Bitv(len, false);
     for uint::range(0, len) |i| {
         bitv.set(i, f(i));

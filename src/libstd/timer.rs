@@ -7,8 +7,6 @@ use uv::iotask;
 use iotask::IoTask;
 use comm = core::comm;
 
-export delayed_send, sleep, recv_timeout;
-
 /**
  * Wait for timeout period then send provided value over a channel
  *
@@ -25,8 +23,8 @@ export delayed_send, sleep, recv_timeout;
  * * ch - a channel of type T to send a `val` on
  * * val - a value of type T to send over the provided `ch`
  */
-fn delayed_send<T: Copy Send>(iotask: IoTask,
-                              msecs: uint, ch: comm::Chan<T>, +val: T) {
+pub fn delayed_send<T: Copy Send>(iotask: IoTask,
+                                  msecs: uint, ch: comm::Chan<T>, +val: T) {
         unsafe {
             let timer_done_po = core::comm::Port::<()>();
             let timer_done_ch = core::comm::Chan(timer_done_po);
@@ -74,7 +72,7 @@ fn delayed_send<T: Copy Send>(iotask: IoTask,
  * * `iotask` - a `uv::iotask` that the tcp request will run on
  * * msecs - an amount of time, in milliseconds, for the current task to block
  */
-fn sleep(iotask: IoTask, msecs: uint) {
+pub fn sleep(iotask: IoTask, msecs: uint) {
     let exit_po = core::comm::Port::<()>();
     let exit_ch = core::comm::Chan(exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
@@ -101,7 +99,7 @@ fn sleep(iotask: IoTask, msecs: uint) {
  * on the provided port in the allotted timeout period, then the result will
  * be a `some(T)`. If not, then `none` will be returned.
  */
-fn recv_timeout<T: Copy Send>(iotask: IoTask,
+pub fn recv_timeout<T: Copy Send>(iotask: IoTask,
                               msecs: uint,
                               wait_po: comm::Port<T>) -> Option<T> {
     let timeout_po = comm::Port::<()>();
