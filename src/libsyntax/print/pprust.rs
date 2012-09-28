@@ -443,6 +443,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
     s.ann.pre(ann_node);
+    print_visibility(s, item.vis);
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
