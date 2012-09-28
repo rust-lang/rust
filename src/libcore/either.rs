@@ -68,8 +68,8 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     let mut rights: ~[U] = ~[];
     for vec::each(eithers) |elt| {
         match *elt {
-          Left(l) => lefts.push(l),
-          Right(r) => rights.push(r)
+          Left(copy l) => lefts.push(l),
+          Right(copy r) => rights.push(r)
         }
     }
     return {lefts: move lefts, rights: move rights};
@@ -79,8 +79,8 @@ pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match *eith {
-      Right(r) => Left(r),
-      Left(l) => Right(l)
+      Right(copy r) => Left(r),
+      Left(copy l) => Right(l)
     }
 }
 
@@ -93,8 +93,8 @@ pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
      */
 
     match *eith {
-      Right(r) => result::Ok(r),
-      Left(l) => result::Err(l)
+      Right(copy r) => result::Ok(r),
+      Left(copy l) => result::Err(l)
     }
 }
 
@@ -129,16 +129,16 @@ pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
 impl<T:Eq,U:Eq> Either<T,U> : Eq {
     pure fn eq(other: &Either<T,U>) -> bool {
         match self {
-            Left(a) => {
+            Left(ref a) => {
                 match (*other) {
-                    Left(ref b) => a.eq(b),
+                    Left(ref b) => (*a).eq(b),
                     Right(_) => false
                 }
             }
-            Right(a) => {
+            Right(ref a) => {
                 match (*other) {
                     Left(_) => false,
-                    Right(ref b) => a.eq(b)
+                    Right(ref b) => (*a).eq(b)
                 }
             }
         }
