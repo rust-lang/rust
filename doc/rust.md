@@ -42,14 +42,17 @@ If you have suggestions to make, please try to focus them on *reductions* to
 the language: possible features that can be combined or omitted. We aim to
 keep the size and complexity of the language under control.
 
-**Note on grammar:** The grammar for Rust given in this document is rough and
-very incomplete; only a modest number of sections have accompanying grammar
-rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
-but future versions of this document will contain a complete
-grammar. Moreover, we hope that this grammar will be extracted and verified
-as LL(1) by an automated grammar-analysis tool, and further tested against the
-Rust sources. Preliminary versions of this automation exist, but are not yet
-complete.
+> **Note:** This manual is very out of date. The best source of Rust
+> documentation is currently the tutorial.
+
+> **Note:** The grammar for Rust given in this document is rough and
+> very incomplete; only a modest number of sections have accompanying grammar
+> rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
+> but future versions of this document will contain a complete
+> grammar. Moreover, we hope that this grammar will be extracted and verified
+> as LL(1) by an automated grammar-analysis tool, and further tested against the
+> Rust sources. Preliminary versions of this automation exist, but are not yet
+> complete.
 
 # Notation
 
