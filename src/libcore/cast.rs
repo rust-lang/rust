@@ -21,7 +21,7 @@ pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
  * reinterpret_cast on managed pointer types.
  */
 #[inline(always)]
-pub unsafe fn forget<T>(-thing: T) { rusti::forget(move thing); }
+pub unsafe fn forget<T>(+thing: T) { rusti::forget(move thing); }
 
 /**
  * Force-increment the reference count on a shared box. If used
@@ -40,7 +40,7 @@ pub unsafe fn bump_box_refcount<T>(+t: @T) { forget(move t); }
  *     assert transmute("L") == ~[76u8, 0u8];
  */
 #[inline(always)]
-pub unsafe fn transmute<L, G>(-thing: L) -> G {
+pub unsafe fn transmute<L, G>(+thing: L) -> G {
     let newthing: G = reinterpret_cast(&thing);
     forget(move thing);
     move newthing

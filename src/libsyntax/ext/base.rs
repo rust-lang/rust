@@ -133,12 +133,12 @@ trait ext_ctxt {
     fn mod_path() -> ~[ast::ident];
     fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
-    fn span_fatal(sp: span, msg: ~str) -> !;
-    fn span_err(sp: span, msg: ~str);
-    fn span_warn(sp: span, msg: ~str);
-    fn span_unimpl(sp: span, msg: ~str) -> !;
-    fn span_bug(sp: span, msg: ~str) -> !;
-    fn bug(msg: ~str) -> !;
+    fn span_fatal(sp: span, msg: &str) -> !;
+    fn span_err(sp: span, msg: &str);
+    fn span_warn(sp: span, msg: &str);
+    fn span_unimpl(sp: span, msg: &str) -> !;
+    fn span_bug(sp: span, msg: &str) -> !;
+    fn bug(msg: &str) -> !;
     fn next_id() -> ast::node_id;
     pure fn trace_macros() -> bool;
     fn set_trace_macros(x: bool);
@@ -182,27 +182,27 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
               _ => self.bug(~"tried to pop without a push")
             }
         }
-        fn span_fatal(sp: span, msg: ~str) -> ! {
+        fn span_fatal(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_fatal(sp, msg);
         }
-        fn span_err(sp: span, msg: ~str) {
+        fn span_err(sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_err(sp, msg);
         }
-        fn span_warn(sp: span, msg: ~str) {
+        fn span_warn(sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_warn(sp, msg);
         }
-        fn span_unimpl(sp: span, msg: ~str) -> ! {
+        fn span_unimpl(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
         }
-        fn span_bug(sp: span, msg: ~str) -> ! {
+        fn span_bug(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_bug(sp, msg);
         }
-        fn bug(msg: ~str) -> ! {
+        fn bug(msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }

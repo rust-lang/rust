@@ -20,10 +20,10 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let fmtspan = args[0].span;
     debug!("Format string:");
     log(debug, fmt);
-    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: ~str) -> ! {
+    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
-    let parse_fmt_err = fn@(s: ~str) -> ! {
+    let parse_fmt_err = fn@(s: &str) -> ! {
         parse_fmt_err_(cx, fmtspan, s)
     };
     let pieces = parse_fmt_string(fmt, parse_fmt_err);
@@ -39,7 +39,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
         let intr = _cx.parse_sess().interner;
-        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
+        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt2"),
                  intr.intern(ident)];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
@@ -187,7 +187,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           TyFloat => {
             return make_conv_call(cx, arg.span, ~"float", cnv, arg);
           }
-          TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv, arg)
+          TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv,
+                                          mk_addr_of(cx, sp, arg))
         }
     }
     fn log_conv(c: Conv) {

@@ -10,30 +10,30 @@ export ice_msg;
 export expect;
 
 type emitter = fn@(cmsp: Option<(codemap::codemap, span)>,
-                   msg: ~str, lvl: level);
+                   msg: &str, lvl: level);
 
 
 trait span_handler {
-    fn span_fatal(sp: span, msg: ~str) -> !;
-    fn span_err(sp: span, msg: ~str);
-    fn span_warn(sp: span, msg: ~str);
-    fn span_note(sp: span, msg: ~str);
-    fn span_bug(sp: span, msg: ~str) -> !;
-    fn span_unimpl(sp: span, msg: ~str) -> !;
+    fn span_fatal(sp: span, msg: &str) -> !;
+    fn span_err(sp: span, msg: &str);
+    fn span_warn(sp: span, msg: &str);
+    fn span_note(sp: span, msg: &str);
+    fn span_bug(sp: span, msg: &str) -> !;
+    fn span_unimpl(sp: span, msg: &str) -> !;
     fn handler() -> handler;
 }
 
 trait handler {
-    fn fatal(msg: ~str) -> !;
-    fn err(msg: ~str);
+    fn fatal(msg: &str) -> !;
+    fn err(msg: &str);
     fn bump_err_count();
     fn has_errors() -> bool;
     fn abort_if_errors();
-    fn warn(msg: ~str);
-    fn note(msg: ~str);
-    fn bug(msg: ~str) -> !;
-    fn unimpl(msg: ~str) -> !;
-    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level);
+    fn warn(msg: &str);
+    fn note(msg: &str);
+    fn bug(msg: &str) -> !;
+    fn unimpl(msg: &str) -> !;
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: &str, lvl: level);
 }
 
 type handler_t = @{
@@ -47,24 +47,24 @@ type codemap_t = @{
 };
 
 impl codemap_t: span_handler {
-    fn span_fatal(sp: span, msg: ~str) -> ! {
+    fn span_fatal(sp: span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail;
     }
-    fn span_err(sp: span, msg: ~str) {
+    fn span_err(sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(sp: span, msg: ~str) {
+    fn span_warn(sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(sp: span, msg: ~str) {
+    fn span_note(sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(sp: span, msg: ~str) -> ! {
+    fn span_bug(sp: span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(sp: span, msg: ~str) -> ! {
+    fn span_unimpl(sp: span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
     fn handler() -> handler {
@@ -73,11 +73,11 @@ impl codemap_t: span_handler {
 }
 
 impl handler_t: handler {
-    fn fatal(msg: ~str) -> ! {
+    fn fatal(msg: &str) -> ! {
         self.emit(None, msg, fatal);
         fail;
     }
-    fn err(msg: ~str) {
+    fn err(msg: &str) {
         self.emit(None, msg, error);
         self.bump_err_count();
     }
@@ -97,22 +97,22 @@ impl handler_t: handler {
         }
         self.fatal(s);
     }
-    fn warn(msg: ~str) {
+    fn warn(msg: &str) {
         self.emit(None, msg, warning);
     }
-    fn note(msg: ~str) {
+    fn note(msg: &str) {
         self.emit(None, msg, note);
     }
-    fn bug(msg: ~str) -> ! {
+    fn bug(msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    fn unimpl(msg: ~str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level) {
+    fn unimpl(msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: &str, lvl: level) {
         self.emit(cmsp, msg, lvl);
     }
 }
 
-fn ice_msg(msg: ~str) -> ~str {
+fn ice_msg(msg: &str) -> ~str {
     fmt!("internal compiler error: %s", msg)
 }
 
@@ -126,17 +126,19 @@ fn mk_handler(emitter: Option<emitter>) -> handler {
       Some(e) => e,
       None => {
         let f = fn@(cmsp: Option<(codemap::codemap, span)>,
-            msg: ~str, t: level) {
+            msg: &str, t: level) {
             emit(cmsp, msg, t);
         };
         f
       }
     };
 
-    @{
-        mut err_count: 0u,
+    let x: handler_t = @{
+        mut err_count: 0,
         emit: emit
-    } as handler
+    };
+
+    x as handler
 }
 
 enum level {
@@ -171,7 +173,7 @@ fn diagnosticcolor(lvl: level) -> u8 {
     }
 }
 
-fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
+fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
     let use_color = term::color_supported() &&
         io::stderr().get_type() == io::Screen;
     if str::is_not_empty(topic) {
@@ -188,7 +190,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
 }
 
 fn emit(cmsp: Option<(codemap::codemap, span)>,
-        msg: ~str, lvl: level) {
+        msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
         let sp = codemap::adjust_span(cm,sp);
