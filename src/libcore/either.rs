@@ -55,6 +55,7 @@ fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     }
 }
 
+// XXX bad copies. take arg by val
 fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
@@ -75,6 +76,7 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     return {lefts: move lefts, rights: move rights};
 }
 
+// XXX bad copies
 pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
@@ -84,6 +86,7 @@ pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     }
 }
 
+// XXX bad copies
 pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
     /*!
      * Converts either::t to a result::t

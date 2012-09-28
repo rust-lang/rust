@@ -451,7 +451,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 match *old_ancestors {
-                    Some(arc) => access_ancestors(&arc, |a| a.generation+1),
+                    Some(ref arc) => access_ancestors(arc, |a| a.generation+1),
                     None      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
@@ -541,8 +541,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
 
             //let mut notifier = None;//notify_chan.map(|c| AutoNotify(c));
             let notifier = match notify_chan {
-                Some(notify_chan_value) => {
-                    let moved_ncv = move_it!(notify_chan_value);
+                Some(ref notify_chan_value) => {
+                    let moved_ncv = move_it!(*notify_chan_value);
                     Some(AutoNotify(move moved_ncv))
                 }
                 _ => None

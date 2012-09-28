@@ -1011,7 +1011,7 @@ impl<T: Send> Port<T>: Recv<T> {
         let mut endp = None;
         endp <-> self.endp;
         let peek = match endp {
-          Some(endp) => pipes::peek(&endp),
+          Some(ref endp) => pipes::peek(endp),
           None => fail ~"peeking empty stream"
         };
         self.endp <-> endp;
@@ -1022,7 +1022,7 @@ impl<T: Send> Port<T>: Recv<T> {
 impl<T: Send> Port<T>: Selectable {
     pure fn header() -> *PacketHeader unsafe {
         match self.endp {
-          Some(endp) => endp.header(),
+          Some(ref endp) => endp.header(),
           None => fail ~"peeking empty stream"
         }
     }
@@ -1128,7 +1128,7 @@ impl<T: Send, U: Send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
 
     fn select() -> Either<T, U> {
         match self {
-          (lp, rp) => match select2i(&lp, &rp) {
+          (ref lp, ref rp) => match select2i(lp, rp) {
             Left(()) => Left (lp.recv()),
             Right(()) => Right(rp.recv())
           }
@@ -1137,7 +1137,7 @@ impl<T: Send, U: Send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
 
     fn try_select() -> Either<Option<T>, Option<U>> {
         match self {
-          (lp, rp) => match select2i(&lp, &rp) {
+          (ref lp, ref rp) => match select2i(lp, rp) {
             Left(()) => Left (lp.try_recv()),
             Right(()) => Right(rp.try_recv())
           }

@@ -941,7 +941,7 @@ mod tests {
     #[test]
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
-          result::Err(e) => {
+          result::Err(copy e) => {
             assert e == ~"error opening not a file";
           }
           result::Ok(_) => fail
@@ -951,7 +951,7 @@ mod tests {
     #[test]
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), ~[]) {
-          result::Err(e) => {
+          result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
           result::Ok(_) => fail
@@ -961,7 +961,7 @@ mod tests {
     #[test]
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
-          result::Err(e) => {
+          result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
           result::Ok(_) => fail

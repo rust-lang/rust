@@ -30,7 +30,7 @@ pure fn get<T: Copy>(opt: &Option<T>) -> T {
      */
 
     match *opt {
-      Some(x) => return x,
+      Some(copy x) => return x,
       None => fail ~"option::get none"
     }
 }
@@ -58,7 +58,7 @@ pure fn expect<T: Copy>(opt: &Option<T>, +reason: ~str) -> T {
      *
      * Fails if the value equals `none`
      */
-    match *opt { Some(x) => x, None => fail reason }
+    match *opt { Some(copy x) => x, None => fail reason }
 }
 
 pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
@@ -134,7 +134,7 @@ pure fn is_some<T>(opt: &Option<T>) -> bool {
 pure fn get_default<T: Copy>(opt: &Option<T>, +def: T) -> T {
     //! Returns the contained value or a default
 
-    match *opt { Some(x) => x, None => def }
+    match *opt { Some(copy x) => x, None => def }
 }
 
 pure fn map_default<T, U>(opt: &Option<T>, +def: U,
@@ -237,11 +237,11 @@ impl<T: Eq> Option<T> : Eq {
                     Some(_) => false
                 }
             }
-            Some(self_contents) => {
+            Some(ref self_contents) => {
                 match (*other) {
                     None => false,
                     Some(ref other_contents) =>
-                        self_contents.eq(other_contents)
+                        (*self_contents).eq(other_contents)
                 }
             }
         }

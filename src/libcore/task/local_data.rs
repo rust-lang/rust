@@ -115,14 +115,14 @@ pub fn test_tls_modify() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
         match data {
-            Some(@val) => fail ~"unwelcome value: " + val,
+            Some(@ref val) => fail ~"unwelcome value: " + *val,
             None       => Some(@~"first data")
         }
     });
     local_data_modify(my_key, |data| {
         match data {
             Some(@~"first data") => Some(@~"next data"),
-            Some(@val)           => fail ~"wrong value: " + val,
+            Some(@ref val)           => fail ~"wrong value: " + *val,
             None                 => fail ~"missing value"
         }
     });

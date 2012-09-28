@@ -809,7 +809,7 @@ pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
     for each(v) |elem| {
         match f(elem) {
           None => {/* no-op */ }
-          Some(result_elem) => unsafe { result.push(result_elem); }
+          Some(move result_elem) => unsafe { result.push(result_elem); }
         }
     }
     move result
@@ -2289,7 +2289,7 @@ mod tests {
 
     #[test]
     fn test_dedup() {
-        fn case(-a: ~[uint], -b: ~[uint]) {
+        fn case(+a: ~[uint], +b: ~[uint]) {
             let mut v = a;
             v.dedup();
             assert(v == b);
@@ -3084,6 +3084,7 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
+    #[allow(non_implicitly_copyable_typarams)]
     fn test_grow_fn_fail() {
         let mut v = ~[];
         do v.grow_fn(100) |i| {

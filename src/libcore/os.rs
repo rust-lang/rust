@@ -166,11 +166,11 @@ mod global_env {
             do private::weaken_task |weak_po| {
                 loop {
                     match comm::select2(msg_po, weak_po) {
-                      either::Left(MsgGetEnv(n, resp_ch)) => {
-                        comm::send(resp_ch, impl_::getenv(n))
+                      either::Left(MsgGetEnv(ref n, resp_ch)) => {
+                        comm::send(resp_ch, impl_::getenv(*n))
                       }
-                      either::Left(MsgSetEnv(n, v, resp_ch)) => {
-                        comm::send(resp_ch, impl_::setenv(n, v))
+                      either::Left(MsgSetEnv(ref n, ref v, resp_ch)) => {
+                        comm::send(resp_ch, impl_::setenv(*n, *v))
                       }
                       either::Left(MsgEnv(resp_ch)) => {
                         comm::send(resp_ch, impl_::env())
@@ -418,8 +418,8 @@ pub fn self_exe_path() -> Option<Path> {
  */
 pub fn homedir() -> Option<Path> {
     return match getenv(~"HOME") {
-        Some(p) => if !str::is_empty(p) {
-          Some(Path(p))
+        Some(ref p) => if !str::is_empty(*p) {
+          Some(Path(*p))
         } else {
           secondary()
         },
@@ -458,7 +458,7 @@ pub fn tmpdir() -> Path {
 
     fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
-            Some(x) =>
+            Some(move x) =>
                 if str::is_empty(x) {
                     None
                 } else {

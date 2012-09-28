@@ -167,7 +167,7 @@ impl PosixPath : GenericPath {
         if t.len() == 0 {
             match self.filestem() {
               None => copy self,
-              Some(s) => self.with_filename(s)
+              Some(ref s) => self.with_filename(*s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
@@ -239,11 +239,11 @@ impl WindowsPath : ToStr {
     fn to_str() -> ~str {
         let mut s = ~"";
         match self.host {
-          Some(h) => { s += "\\\\"; s += h; }
+          Some(ref h) => { s += "\\\\"; s += *h; }
           None => { }
         }
         match self.device {
-          Some(d) => { s += d; s += ":"; }
+          Some(ref d) => { s += *d; s += ":"; }
           None => { }
         }
         if self.is_absolute {
@@ -358,7 +358,7 @@ impl WindowsPath : GenericPath {
         if t.len() == 0 {
             match self.filestem() {
               None => copy self,
-              Some(s) => self.with_filename(s)
+              Some(ref s) => self.with_filename(*s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
