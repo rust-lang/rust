@@ -2227,17 +2227,11 @@ impl parser {
         }
 
         let lo = self.span.lo;
-        if self.eat_keyword(~"unsafe") {
-            self.expect(token::LBRACE);
-            let {inner, next} = maybe_parse_inner_attrs_and_next(self,
-                                                                 parse_attrs);
-            return (inner, self.parse_block_tail_(lo, unsafe_blk, next));
-        } else {
-            self.expect(token::LBRACE);
-            let {inner, next} = maybe_parse_inner_attrs_and_next(self,
-                                                                 parse_attrs);
-            return (inner, self.parse_block_tail_(lo, default_blk, next));
-        }
+        let us = self.eat_keyword(~"unsafe");
+        self.expect(token::LBRACE);
+        let {inner, next} = maybe_parse_inner_attrs_and_next(self,
+                                                             parse_attrs);
+        return (inner, self.parse_block_tail_(lo, if us { unsafe_blk } else { default_blk }, next));
     }
 
     fn parse_block_no_value() -> blk {
