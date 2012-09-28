@@ -63,7 +63,6 @@
  */
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
 use core::result::{Err, Ok};
@@ -110,9 +109,9 @@ fn mkname(nm: &str) -> Name {
 impl Name : Eq {
     pure fn eq(other: &Name) -> bool {
         match self {
-            Long(e0a) => {
+            Long(ref e0a) => {
                 match (*other) {
-                    Long(e0b) => e0a == e0b,
+                    Long(ref e0b) => e0a == e0b,
                     _ => false
                 }
             }
@@ -177,7 +176,7 @@ fn is_arg(arg: &str) -> bool {
 fn name_str(nm: &Name) -> ~str {
     return match *nm {
       Short(ch) => str::from_char(ch),
-      Long(s) => s
+      Long(copy s) => s
     };
 }
 
@@ -200,12 +199,12 @@ enum Fail_ {
 /// Convert a `fail_` enum into an error string
 fn fail_str(+f: Fail_) -> ~str {
     return match f {
-      ArgumentMissing(nm) => ~"Argument to option '" + nm + ~"' missing.",
-      UnrecognizedOption(nm) => ~"Unrecognized option: '" + nm + ~"'.",
-      OptionMissing(nm) => ~"Required option '" + nm + ~"' missing.",
-      OptionDuplicated(nm) => ~"Option '" + nm + ~"' given more than once.",
-      UnexpectedArgument(nm) => {
-        ~"Option " + nm + ~" does not take an argument."
+      ArgumentMissing(ref nm) => ~"Argument to option '" + *nm + ~"' missing.",
+      UnrecognizedOption(ref nm) => ~"Unrecognized option: '" + *nm + ~"'.",
+      OptionMissing(ref nm) => ~"Required option '" + *nm + ~"' missing.",
+      OptionDuplicated(ref nm) => ~"Option '" + *nm + ~"' given more than once.",
+      UnexpectedArgument(ref nm) => {
+        ~"Option " + *nm + ~" does not take an argument."
       }
     };
 }
@@ -382,7 +381,7 @@ fn opts_present(+mm: Matches, names: &[~str]) -> bool {
  * argument
  */
 fn opt_str(+mm: Matches, nm: &str) -> ~str {
-    return match opt_val(mm, nm) { Val(s) => s, _ => fail };
+    return match opt_val(mm, nm) { Val(copy s) => s, _ => fail };
 }
 
 /**
@@ -394,7 +393,7 @@ fn opt_str(+mm: Matches, nm: &str) -> ~str {
 fn opts_str(+mm: Matches, names: &[~str]) -> ~str {
     for vec::each(names) |nm| {
         match opt_val(mm, *nm) {
-          Val(s) => return s,
+          Val(copy s) => return s,
           _ => ()
         }
     }
@@ -411,7 +410,7 @@ fn opts_str(+mm: Matches, names: &[~str]) -> ~str {
 fn opt_strs(+mm: Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     for vec::each(opt_vals(mm, nm)) |v| {
-        match *v { Val(s) => acc.push(s), _ => () }
+        match *v { Val(copy s) => acc.push(s), _ => () }
     }
     return acc;
 }
@@ -420,7 +419,7 @@ fn opt_strs(+mm: Matches, nm: &str) -> ~[~str] {
 fn opt_maybe_str(+mm: Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
-    return match vals[0] { Val(s) => Some::<~str>(s), _ => None::<~str> };
+    return match vals[0] { Val(copy s) => Some::<~str>(s), _ => None::<~str> };
 }
 
 
@@ -434,7 +433,7 @@ fn opt_maybe_str(+mm: Matches, nm: &str) -> Option<~str> {
 fn opt_default(+mm: Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
-    return match vals[0] { Val(s) => Some::<~str>(s),
+    return match vals[0] { Val(copy s) => Some::<~str>(s),
                            _      => Some::<~str>(str::from_slice(def)) }
 }
 

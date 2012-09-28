@@ -1,5 +1,4 @@
 #[warn(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 /*!
  * A functional key,value store that works on anything.
@@ -37,7 +36,7 @@ fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
   -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
-       @Node(@kk, vv, left, right) => {
+       @Node(@copy kk, vv, left, right) => {
          if k < kk {
              Node(@kk, vv, insert(left, k, v), right)
          } else if k == kk {
@@ -51,10 +50,10 @@ fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
 fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
     match *m {
       Empty => None,
-      Node(@kk, @v, left, right) => {
-        if k == kk {
+      Node(@ref kk, @copy v, left, right) => {
+        if k == *kk {
             Some(v)
-        } else if k < kk { find(left, move k) } else { find(right, move k) }
+        } else if k < *kk { find(left, move k) } else { find(right, move k) }
       }
     }
 }
@@ -68,11 +67,9 @@ fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn((&K), (&V))) {
         matches to me, so I changed it. but that may be a
         de-optimization -- tjc
        */
-      Node(@k, @v, left, right) => {
-        // copy v to make aliases work out
-        let v1 = v;
+      Node(@ref k, @ref v, left, right) => {
         traverse(left, f);
-        f(&k, &v1);
+        f(k, v);
         traverse(right, f);
       }
     }

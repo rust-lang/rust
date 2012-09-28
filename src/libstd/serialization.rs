@@ -245,9 +245,9 @@ fn serialize_Option<S: Serializer,T>(s: S, v: Option<T>, st: fn(T)) {
           None => do s.emit_enum_variant(~"none", 0u, 0u) {
           },
 
-          Some(v) => do s.emit_enum_variant(~"some", 1u, 1u) {
+          Some(ref v) => do s.emit_enum_variant(~"some", 1u, 1u) {
             do s.emit_enum_variant_arg(0u) {
-                st(v)
+                st(*v)
             }
           }
         }

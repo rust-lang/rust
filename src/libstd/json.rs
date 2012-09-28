@@ -1,7 +1,6 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 #[forbid(non_camel_case_types)];
 
 //! json serialization
@@ -252,7 +251,7 @@ pub impl PrettySerializer: serialization2::Serializer {
 pub fn to_serializer<S: serialization2::Serializer>(ser: &S, json: &Json) {
     match *json {
         Number(f) => ser.emit_float(f),
-        String(s) => ser.emit_str(s),
+        String(ref s) => ser.emit_str(*s),
         Boolean(b) => ser.emit_bool(b),
         List(v) => {
             do ser.emit_vec(v.len()) || {
@@ -261,7 +260,7 @@ pub fn to_serializer<S: serialization2::Serializer>(ser: &S, json: &Json) {
                 }
             }
         }
-        Object(o) => {
+        Object(ref o) => {
             do ser.emit_rec || {
                 let mut idx = 0;
                 for o.each |key, value| {
@@ -866,8 +865,8 @@ impl Json : Eq {
         match self {
             Number(f0) =>
                 match *other { Number(f1) => f0 == f1, _ => false },
-            String(s0) =>
-                match *other { String(s1) => s0 == s1, _ => false },
+            String(ref s0) =>
+                match *other { String(ref s1) => s0 == s1, _ => false },
             Boolean(b0) =>
                 match *other { Boolean(b1) => b0 == b1, _ => false },
             Null =>
@@ -910,10 +909,10 @@ impl Json : Ord {
                 }
             }
 
-            String(s0) => {
+            String(ref s0) => {
                 match *other {
                     Number(_) => false,
-                    String(s1) => s0 < s1,
+                    String(ref s1) => s0 < s1,
                     Boolean(_) | List(_) | Object(_) | Null => true
                 }
             }
@@ -934,10 +933,10 @@ impl Json : Ord {
                 }
             }
 
-            Object(d0) => {
+            Object(ref d0) => {
                 match *other {
                     Number(_) | String(_) | Boolean(_) | List(_) => false,
-                    Object(d1) => {
+                    Object(ref d1) => {
                         unsafe {
                             let mut d0_flat = ~[];
                             let mut d1_flat = ~[];
@@ -1065,7 +1064,7 @@ impl @~str: ToJson {
 impl <A: ToJson, B: ToJson> (A, B): ToJson {
     fn to_json() -> Json {
         match self {
-          (a, b) => {
+          (ref a, ref b) => {
             List(~[a.to_json(), b.to_json()])
           }
         }
@@ -1075,7 +1074,7 @@ impl <A: ToJson, B: ToJson> (A, B): ToJson {
 impl <A: ToJson, B: ToJson, C: ToJson> (A, B, C): ToJson {
     fn to_json() -> Json {
         match self {
-          (a, b, c) => {
+          (ref a, ref b, ref c) => {
             List(~[a.to_json(), b.to_json(), c.to_json()])
           }
         }
@@ -1112,7 +1111,7 @@ impl <A: ToJson> Option<A>: ToJson {
     fn to_json() -> Json {
         match self {
           None => Null,
-          Some(value) => value.to_json()
+          Some(ref value) => value.to_json()
         }
     }
 }

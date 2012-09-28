@@ -168,7 +168,7 @@ fn connect(+input_ip: ip::IpAddr, port: uint,
                 ptr::addr_of((*socket_data_ptr).connect_req);
             let addr_str = ip::format_addr(&input_ip);
             let connect_result = match input_ip {
-              ip::Ipv4(addr) => {
+              ip::Ipv4(ref addr) => {
                 // have to "recreate" the sockaddr_in/6
                 // since the ip_addr discards the port
                 // info.. should probably add an additional
@@ -233,7 +233,7 @@ fn connect(+input_ip: ip::IpAddr, port: uint,
         log(debug, ~"tcp::connect - received success on result_po");
         result::Ok(TcpSocket(socket_data))
       }
-      ConnFailure(err_data) => {
+      ConnFailure(ref err_data) => {
         core::comm::recv(closed_signal_po);
         log(debug, ~"tcp::connect - received failure on result_po");
         // still have to free the malloc'd stream handle..
@@ -535,7 +535,7 @@ fn accept(new_conn: TcpNewConnection)
         }
         // UNSAFE LIBUV INTERACTION END
         match core::comm::recv(result_po) {
-          Some(err_data) => result::Err(err_data),
+          Some(copy err_data) => result::Err(err_data),
           None => result::Ok(TcpSocket(client_socket_data))
         }
       }
@@ -623,13 +623,13 @@ fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
                     server_data_ptr);
                 let addr_str = ip::format_addr(&loc_ip);
                 let bind_result = match loc_ip {
-                  ip::Ipv4(addr) => {
+                  ip::Ipv4(ref addr) => {
                     log(debug, fmt!("addr: %?", addr));
                     let in_addr = uv::ll::ip4_addr(addr_str, port as int);
                     uv::ll::tcp_bind(server_stream_ptr,
                                      ptr::addr_of(in_addr))
                   }
-                  ip::Ipv6(addr) => {
+                  ip::Ipv6(ref addr) => {
                     log(debug, fmt!("addr: %?", addr));
                     let in_addr = uv::ll::ip6_addr(addr_str, port as int);
                     uv::ll::tcp_bind6(server_stream_ptr,
@@ -666,7 +666,7 @@ fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
         setup_ch.recv()
     };
     match setup_result {
-      Some(err_data) => {
+      Some(ref err_data) => {
         do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, fmt!("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
@@ -703,7 +703,7 @@ fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
         stream_closed_po.recv();
         match kill_result {
           // some failure post bind/listen
-          Some(err_data) => result::Err(GenericListenErr(err_data.err_name,
+          Some(ref err_data) => result::Err(GenericListenErr(err_data.err_name,
                                                            err_data.err_msg)),
           // clean exit
           None => result::Ok(())
@@ -884,7 +884,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
             Some(core::comm::recv(result::get(&rs_result)))
         };
         log(debug, ~"tcp::read after recv_timeout");
-        match read_result {
+        match move read_result {
           None => {
             log(debug, ~"tcp::read: timed out..");
             let err_data = {
@@ -894,7 +894,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
             read_stop_common_impl(socket_data);
             result::Err(err_data)
           }
-          Some(data_result) => {
+          Some(move data_result) => {
             log(debug, ~"tcp::read got data");
             read_stop_common_impl(socket_data);
             data_result
@@ -924,7 +924,7 @@ fn read_stop_common_impl(socket_data: *TcpSocketData) ->
         }
     };
     match core::comm::recv(stop_po) {
-      Some(err_data) => result::Err(err_data.to_tcp_err()),
+      Some(ref err_data) => result::Err(err_data.to_tcp_err()),
       None => result::Ok(())
     }
 }
@@ -954,7 +954,7 @@ fn read_start_common_impl(socket_data: *TcpSocketData)
         }
     };
     match core::comm::recv(start_po) {
-      Some(err_data) => result::Err(err_data.to_tcp_err()),
+      Some(ref err_data) => result::Err(err_data.to_tcp_err()),
       None => result::Ok((*socket_data).reader_po)
     }
 }
@@ -1001,7 +1001,7 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
     // aftermath, so we don't have to sit here blocking.
     match core::comm::recv(result_po) {
       TcpWriteSuccess => result::Ok(()),
-      TcpWriteError(err_data) => result::Err(err_data.to_tcp_err())
+      TcpWriteError(ref err_data) => result::Err(err_data.to_tcp_err())
     }
 }
 
@@ -1530,8 +1530,8 @@ mod test {
                         log(debug, ~"SERVER: successfully accepted"+
                             ~"connection!");
                         let received_req_bytes = read(&sock, 0u);
-                        match received_req_bytes {
-                          result::Ok(data) => {
+                        match move received_req_bytes {
+                          result::Ok(move data) => {
                             log(debug, ~"SERVER: got REQ str::from_bytes..");
                             log(debug, fmt!("SERVER: REQ data len: %?",
                                             vec::len(data)));
@@ -1542,7 +1542,7 @@ mod test {
                             log(debug, ~"SERVER: after write.. die");
                             core::comm::send(kill_ch, None);
                           }
-                          result::Err(err_data) => {
+                          result::Err(move err_data) => {
                             log(debug, fmt!("SERVER: error recvd: %s %s",
                                 err_data.err_name, err_data.err_msg));
                             core::comm::send(kill_ch, Some(err_data));
@@ -1560,9 +1560,9 @@ mod test {
         // err check on listen_result
         if result::is_err(&listen_result) {
             match result::get_err(&listen_result) {
-              GenericListenErr(name, msg) => {
+              GenericListenErr(ref name, ref msg) => {
                 fail fmt!("SERVER: exited abnormally name %s msg %s",
-                                name, msg);
+                                *name, *msg);
               }
               AccessDenied => {
                 fail ~"SERVER: exited abnormally, got access denied..";

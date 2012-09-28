@@ -6,7 +6,6 @@
  * red-black tree or something else.
  */
 #[warn(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::{Eq, Ord};
 use core::option::{Some, None};

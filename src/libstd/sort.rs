@@ -1,6 +1,5 @@
 //! Sorting methods
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use vec::{len, push};
 use core::cmp::{Eq, Ord};

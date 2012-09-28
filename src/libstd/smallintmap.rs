@@ -3,7 +3,6 @@
  * are O(highest integer key).
  */
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::option;
 use core::option::{Some, None};
@@ -56,7 +55,7 @@ pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
         error!("smallintmap::get(): key not present");
         fail;
       }
-      Some(v) => return v
+      Some(move v) => return v
     }
 }
 
@@ -117,7 +116,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              Some(elt) => if !it(&idx, &elt) { break },
+              Some(ref elt) => if !it(&idx, elt) { break },
               None => ()
             }
             idx += 1u;

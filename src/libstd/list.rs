@@ -1,6 +1,5 @@
 //! A standard linked list
 #[warn(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
 use core::option;
@@ -47,8 +46,8 @@ fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
-          Cons(hd, tl) => {
-            if f(&hd) { return Some(hd); }
+          Cons(ref hd, tl) => {
+            if f(hd) { return Some(*hd); }
             tl
           }
           Nil => return None
@@ -95,7 +94,7 @@ pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
 /// Returns the first element of a list
 pure fn head<T: Copy>(ls: @List<T>) -> T {
     match *ls {
-      Cons(hd, _) => hd,
+      Cons(copy hd, _) => hd,
       // makes me sad
       _ => fail ~"head invoked on empty list"
     }
@@ -105,7 +104,7 @@ pure fn head<T: Copy>(ls: @List<T>) -> T {
 pure fn append<T: Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
     match *l {
       Nil => return m,
-      Cons(x, xs) => {
+      Cons(copy x, xs) => {
         let rest = append(xs, m);
         return @Cons(x, rest);
       }
@@ -151,9 +150,9 @@ fn each<T>(l: @List<T>, f: fn((&T)) -> bool) {
 impl<T:Eq> List<T> : Eq {
     pure fn eq(other: &List<T>) -> bool {
         match self {
-            Cons(e0a, e1a) => {
+            Cons(ref e0a, e1a) => {
                 match (*other) {
-                    Cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    Cons(ref e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }

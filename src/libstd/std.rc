@@ -23,6 +23,7 @@ not required in or otherwise suitable for the core library.
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
+#[forbid(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
 use core::*;

@@ -6,7 +6,6 @@
 // while providing a base that other test frameworks may build off of.
 
 #[warn(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
 use either::Either;
@@ -59,8 +58,8 @@ type TestDesc = {
 fn test_main(args: &[~str], tests: &[TestDesc]) {
     let opts =
         match parse_opts(args) {
-          either::Left(o) => o,
-          either::Right(m) => fail m
+          either::Left(move o) => o,
+          either::Right(move m) => fail m
         };
     if !run_tests_console(&opts, tests) { fail ~"Some tests failed"; }
 }
@@ -76,8 +75,8 @@ fn parse_opts(args: &[~str]) -> OptRes {
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
-          Ok(m) => m,
-          Err(f) => return either::Right(getopts::fail_str(f))
+          Ok(move m) => m,
+          Err(move f) => return either::Right(getopts::fail_str(f))
         };
 
     let filter =
@@ -120,13 +119,13 @@ fn run_tests_console(opts: &TestOpts,
     fn callback(event: &TestEvent, st: ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match *event {
-          TeFiltered(filtered_tests) => {
-            st.total = vec::len(filtered_tests);
+          TeFiltered(ref filtered_tests) => {
+            st.total = filtered_tests.len();
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
             st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
-          TeWait(test) => st.out.write_str(fmt!("test %s ... ", test.name)),
-          TeResult(test, result) => {
+          TeWait(ref test) => st.out.write_str(fmt!("test %s ... ", test.name)),
+          TeResult(copy test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, result, &test),
                 None => ()
@@ -141,7 +140,7 @@ fn run_tests_console(opts: &TestOpts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
-                st.failures.push(copy test);
+                st.failures.push(test);
               }
               TrIgnored => {
                 st.ignored += 1u;
@@ -154,11 +153,11 @@ fn run_tests_console(opts: &TestOpts,
     }
 
     let log_out = match opts.logfile {
-        Some(path) => match io::file_writer(&Path(path),
+        Some(ref path) => match io::file_writer(&Path(*path),
                                             ~[io::Create, io::Truncate]) {
           result::Ok(w) => Some(w),
-          result::Err(s) => {
-              fail(fmt!("can't open output file: %s", s))
+          result::Err(ref s) => {
+              fail(fmt!("can't open output file: %s", *s))
           }
         },
         None => None
@@ -347,7 +346,7 @@ fn filter_tests(opts: &TestOpts,
     } else {
         let filter_str =
             match opts.filter {
-          option::Some(f) => f,
+          option::Some(copy f) => f,
           option::None => ~""
         };
 

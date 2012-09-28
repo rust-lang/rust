@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 /// Additional general-purpose comparison functionality.
 
 const fuzzy_epsilon: float = 1.0e-6;

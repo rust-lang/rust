@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     // subtle: if orig_len is merely uint, then the code below

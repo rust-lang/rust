@@ -1,6 +1,5 @@
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 /**
  * The concurrency primitives you know and love.
  *
