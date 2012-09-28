@@ -4,11 +4,11 @@ use io::Writer;
 use io::WriterUtil;
 use serialization2;
 
-struct Serializer {
+pub struct Serializer {
     wr: io::Writer,
 }
 
-fn Serializer(wr: io::Writer) -> Serializer {
+pub fn Serializer(wr: io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 

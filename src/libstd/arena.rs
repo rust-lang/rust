@@ -24,8 +24,6 @@
 
 #[forbid(deprecated_mode)];
 
-export Arena, arena_with_size;
-
 use list::{List, Cons, Nil};
 use cast::reinterpret_cast;
 use sys::TypeDesc;
@@ -33,12 +31,10 @@ use libc::size_t;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
     fn move_val_init<T>(&dst: T, -src: T);
     fn needs_drop<T>() -> bool;
 }
 extern mod rustrt {
-    #[legacy_exports];
     #[rust_stack]
     fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
 }
@@ -51,7 +47,7 @@ const tydesc_drop_glue_index: size_t = 3 as size_t;
 // will always stay at 0.
 type Chunk = {data: @[u8], mut fill: uint, is_pod: bool};
 
-struct Arena {
+pub struct Arena {
     // The head is seperated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
@@ -74,13 +70,13 @@ fn chunk(size: uint, is_pod: bool) -> Chunk {
     { data: unsafe { cast::transmute(v) }, mut fill: 0u, is_pod: is_pod }
 }
 
-fn arena_with_size(initial_size: uint) -> Arena {
+pub fn arena_with_size(initial_size: uint) -> Arena {
     return Arena {mut head: chunk(initial_size, false),
                   mut pod_head: chunk(initial_size, true),
                   mut chunks: @Nil};
 }
 
-fn Arena() -> Arena {
+pub fn Arena() -> Arena {
     arena_with_size(32u)
 }
 
