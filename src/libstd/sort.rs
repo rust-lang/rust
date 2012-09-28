@@ -938,6 +938,46 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+mod test_timsort {
+    #[legacy_exports];
+    fn check_sort(v1: &[mut int], v2: &[mut int]) {
+        let len = vec::len::<int>(v1);
+        timsort::<int>(v1);
+        let mut i = 0u;
+        while i < len {
+            log(debug, v2[i]);
+            assert (v2[i] == v1[i]);
+            i += 1u;
+        }
+    }
+
+    #[test]
+    fn test() {
+        {
+            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
+            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            check_sort(v1, v2);
+        }
+        {
+            let v1 = ~[mut 1, 1, 1];
+            let v2 = ~[mut 1, 1, 1];
+            check_sort(v1, v2);
+        }
+        {
+            let v1: ~[mut int] = ~[mut];
+            let v2: ~[mut int] = ~[mut];
+            check_sort(v1, v2);
+        }
+        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        {
+            let v1 = ~[mut 9, 3, 3, 3, 9];
+            let v2 = ~[mut 3, 3, 3, 9, 9];
+            check_sort(v1, v2);
+        }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
