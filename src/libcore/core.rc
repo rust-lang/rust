@@ -175,13 +175,9 @@ mod ptr;
 #[legacy_exports]
 mod vec;
 mod at_vec;
-#[legacy_exports]
 mod bool;
-#[legacy_exports]
 mod tuple;
-#[legacy_exports]
 mod unit;
-#[legacy_exports]
 mod uniq;
 
 // Ubiquitous-utility-type modules

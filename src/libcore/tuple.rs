@@ -6,7 +6,7 @@
 
 use cmp::{Eq, Ord};
 
-trait TupleOps<T,U> {
+pub trait TupleOps<T,U> {
     pure fn first() -> T;
     pure fn second() -> U;
     pure fn swap() -> (U, T);
@@ -34,7 +34,7 @@ impl<T: Copy, U: Copy> (T, U): TupleOps<T,U> {
 
 }
 
-trait ExtendedTupleOps<A,B> {
+pub trait ExtendedTupleOps<A,B> {
     fn zip(&self) -> ~[(A, B)];
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
