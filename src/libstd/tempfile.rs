@@ -6,7 +6,7 @@
 use core::option;
 use option::{None, Some};
 
-fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
+pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let r = rand::Rng();
     let mut i = 0u;
     while (i < 1000u) {

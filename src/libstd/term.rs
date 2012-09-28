@@ -6,35 +6,35 @@ use core::Option;
 
 // FIXME (#2807): Windows support.
 
-const color_black: u8 = 0u8;
-const color_red: u8 = 1u8;
-const color_green: u8 = 2u8;
-const color_yellow: u8 = 3u8;
-const color_blue: u8 = 4u8;
-const color_magenta: u8 = 5u8;
-const color_cyan: u8 = 6u8;
-const color_light_gray: u8 = 7u8;
-const color_light_grey: u8 = 7u8;
-const color_dark_gray: u8 = 8u8;
-const color_dark_grey: u8 = 8u8;
-const color_bright_red: u8 = 9u8;
-const color_bright_green: u8 = 10u8;
-const color_bright_yellow: u8 = 11u8;
-const color_bright_blue: u8 = 12u8;
-const color_bright_magenta: u8 = 13u8;
-const color_bright_cyan: u8 = 14u8;
-const color_bright_white: u8 = 15u8;
+pub const color_black: u8 = 0u8;
+pub const color_red: u8 = 1u8;
+pub const color_green: u8 = 2u8;
+pub const color_yellow: u8 = 3u8;
+pub const color_blue: u8 = 4u8;
+pub const color_magenta: u8 = 5u8;
+pub const color_cyan: u8 = 6u8;
+pub const color_light_gray: u8 = 7u8;
+pub const color_light_grey: u8 = 7u8;
+pub const color_dark_gray: u8 = 8u8;
+pub const color_dark_grey: u8 = 8u8;
+pub const color_bright_red: u8 = 9u8;
+pub const color_bright_green: u8 = 10u8;
+pub const color_bright_yellow: u8 = 11u8;
+pub const color_bright_blue: u8 = 12u8;
+pub const color_bright_magenta: u8 = 13u8;
+pub const color_bright_cyan: u8 = 14u8;
+pub const color_bright_white: u8 = 15u8;
 
-fn esc(writer: io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
+pub fn esc(writer: io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
 
 /// Reset the foreground and background colors to default
-fn reset(writer: io::Writer) {
+pub fn reset(writer: io::Writer) {
     esc(writer);
     writer.write(~['0' as u8, 'm' as u8]);
 }
 
 /// Returns true if the terminal supports color
-fn color_supported() -> bool {
+pub fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
@@ -48,7 +48,7 @@ fn color_supported() -> bool {
         };
 }
 
-fn set_color(writer: io::Writer, first_char: u8, color: u8) {
+pub fn set_color(writer: io::Writer, first_char: u8, color: u8) {
     assert (color < 16u8);
     esc(writer);
     let mut color = color;
@@ -57,12 +57,12 @@ fn set_color(writer: io::Writer, first_char: u8, color: u8) {
 }
 
 /// Set the foreground color
-fn fg(writer: io::Writer, color: u8) {
+pub fn fg(writer: io::Writer, color: u8) {
     return set_color(writer, '3' as u8, color);
 }
 
 /// Set the background color
-fn bg(writer: io::Writer, color: u8) {
+pub fn bg(writer: io::Writer, color: u8) {
     return set_color(writer, '4' as u8, color);
 }
 

@@ -20,7 +20,6 @@
  * implementation, which is written for clarity, not speed. At some
  * point this will want to be rewritten.
  */
-export sha1;
 
 /// The SHA-1 interface
 trait Sha1 {
@@ -53,7 +52,7 @@ const k3: u32 = 0xCA62C1D6u32;
 
 
 /// Construct a `sha` object
-fn sha1() -> Sha1 {
+pub fn sha1() -> Sha1 {
     type Sha1State =
         {h: ~[mut u32],
          mut len_low: u32,
