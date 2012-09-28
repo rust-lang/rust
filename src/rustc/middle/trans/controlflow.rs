@@ -158,7 +158,7 @@ fn trans_log(log_ex: @ast::expr,
     let modpath = vec::append(
         ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
         vec::filter(bcx.fcx.path, |e|
-            match e { path_mod(_) => true, _ => false }
+            match *e { path_mod(_) => true, _ => false }
         ));
     let modname = path_str(ccx.sess, modpath);
 

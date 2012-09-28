@@ -1111,7 +1111,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_call(func, args, has_block) => {
         let mut base_args = args;
         let blk = if has_block {
-            let blk_arg = vec::pop(base_args);
+            let blk_arg = base_args.pop();
             match blk_arg.node {
               ast::expr_loop_body(_) => { head(s, ~"for"); }
               ast::expr_do_body(_) => { head(s, ~"do"); }

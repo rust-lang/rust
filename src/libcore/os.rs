@@ -582,7 +582,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
     fn star(p: &Path) -> Path { p.push("*") }
 
     do rustrt::rust_list_files(star(p).to_str()).filter |filename| {
-        filename != ~"." && filename != ~".."
+        *filename != ~"." && *filename != ~".."
     }
 }
 
@@ -857,10 +857,10 @@ mod tests {
 
         let mut e = env();
         setenv(n, ~"VALUE");
-        assert !vec::contains(e, (copy n, ~"VALUE"));
+        assert !vec::contains(e, &(copy n, ~"VALUE"));
 
         e = env();
-        assert vec::contains(e, (n, ~"VALUE"));
+        assert vec::contains(e, &(n, ~"VALUE"));
     }
 
     #[test]

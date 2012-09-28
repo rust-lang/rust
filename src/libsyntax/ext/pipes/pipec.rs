@@ -47,7 +47,7 @@ impl message: gen_send {
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
 
             let args_ast = (arg_names, tys).map(
-                |n, t| cx.arg_mode(n, t, ast::by_copy)
+                |n, t| cx.arg_mode(*n, *t, ast::by_copy)
             );
 
             let pipe_ty = cx.ty_path_ast_builder(
@@ -129,7 +129,7 @@ impl message: gen_send {
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
                 let args_ast = (arg_names, tys).map(
-                    |n, t| cx.arg_mode(cx.ident_of(n), t, ast::by_copy)
+                    |n, t| cx.arg_mode(cx.ident_of(*n), *t, ast::by_copy)
                 );
 
                 let args_ast = vec::append(

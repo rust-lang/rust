@@ -90,8 +90,8 @@ fn expand(cx: ext_ctxt,
           span: span,
           _mitem: ast::meta_item,
           in_items: ~[@ast::item]) -> ~[@ast::item] {
-    fn not_auto_serialize(a: ast::attribute) -> bool {
-        attr::get_attr_name(a) != ~"auto_serialize"
+    fn not_auto_serialize(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) != ~"auto_serialize"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -102,12 +102,12 @@ fn expand(cx: ext_ctxt,
     do vec::flat_map(in_items) |in_item| {
         match in_item.node {
           ast::item_ty(ty, tps) => {
-            vec::append(~[filter_attrs(in_item)],
+            vec::append(~[filter_attrs(*in_item)],
                         ty_fns(cx, in_item.ident, ty, tps))
           }
 
           ast::item_enum(enum_definition, tps) => {
-            vec::append(~[filter_attrs(in_item)],
+            vec::append(~[filter_attrs(*in_item)],
                         enum_fns(cx, in_item.ident,
                                  in_item.span, enum_definition.variants, tps))
           }
@@ -116,7 +116,7 @@ fn expand(cx: ext_ctxt,
             cx.span_err(span, ~"#[auto_serialize] can only be \
                                applied to type and enum \
                                definitions");
-            ~[in_item]
+            ~[*in_item]
           }
         }
     }

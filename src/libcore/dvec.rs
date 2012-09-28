@@ -157,7 +157,7 @@ impl<A> DVec<A> {
     fn pop() -> A {
         do self.check_out |v| {
             let mut v <- v;
-            let result = vec::pop(v);
+            let result = v.pop();
             self.give_back(move v);
             move result
         }
@@ -187,7 +187,7 @@ impl<A> DVec<A> {
     fn shift() -> A {
         do self.check_out |v| {
             let mut v = move v;
-            let result = vec::shift(v);
+            let result = v.shift();
             self.give_back(move v);
             move result
         }
@@ -305,10 +305,10 @@ impl<A: Copy> DVec<A> {
      * growing the vector if necessary.  New elements will be initialized
      * with `initval`
      */
-    fn grow_set_elt(idx: uint, initval: A, +val: A) {
+    fn grow_set_elt(idx: uint, initval: &A, +val: A) {
         do self.swap |v| {
             let mut v = move v;
-            vec::grow_set(v, idx, initval, val);
+            v.grow_set(idx, initval, val);
             move v
         }
     }

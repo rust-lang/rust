@@ -99,7 +99,7 @@ pub pure fn from_elem<T>(+data: T) -> DList<T> {
 
 pub fn from_vec<T: Copy>(+vec: &[T]) -> DList<T> {
     do vec::foldl(DList(), vec) |list,data| {
-        list.push(data); // Iterating left-to-right -- add newly to the tail.
+        list.push(*data); // Iterating left-to-right -- add newly to the tail.
         list
     }
 }

@@ -64,11 +64,11 @@ trait ReaderUtil {
 impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = vec::with_capacity(len);
-        unsafe { vec::raw::set_len(buf, len); }
+        unsafe { vec::raw::set_len(&mut buf, len); }
 
         let count = self.read(buf, len);
 
-        unsafe { vec::raw::set_len(buf, count); }
+        unsafe { vec::raw::set_len(&mut buf, count); }
         move buf
     }
     fn read_line() -> ~str {
@@ -695,7 +695,7 @@ impl BytesWriter: Writer {
 
             let count = uint::max(buf_len, self.pos + v_len);
             vec::reserve(&mut buf, count);
-            unsafe { vec::raw::set_len(buf, count); }
+            unsafe { vec::raw::set_len(&mut buf, count); }
 
             {
                 let view = vec::mut_view(buf, self.pos, count);

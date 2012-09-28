@@ -163,7 +163,7 @@ mod v4 {
         if vec::len(parts) != 4u {
                 result::Err(fmt!("'%s' doesn't have 4 parts", ip))
                 }
-        else if vec::contains(parts, 256u) {
+        else if vec::contains(parts, &256u) {
                 result::Err(fmt!("invalid octal in addr '%s'", ip))
                 }
         else {

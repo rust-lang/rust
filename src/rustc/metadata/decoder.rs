@@ -980,7 +980,7 @@ fn get_crate_module_paths(intr: @ident_interner, cdata: cmd)
         res.push((did, path));
     }
     return do vec::filter(res) |x| {
-        let (_, xp) = x;
+        let (_, xp) = *x;
         mods.contains_key(xp)
     }
 }

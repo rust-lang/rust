@@ -27,7 +27,7 @@ fn recv(p: &pipe) -> uint {
         while vec::is_empty(*state) {
             cond.wait();
         }
-        vec::pop(*state)
+        state.pop()
     }
 }
 

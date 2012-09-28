@@ -105,7 +105,7 @@ fn fold_mod(
 fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
     doc::ModDoc_({
         items: do vec::filter(doc.items) |item| {
-            match item {
+            match *item {
               doc::ModTag(_) => false,
               doc::NmodTag(_) => false,
               _ => true

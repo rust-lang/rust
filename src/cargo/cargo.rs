@@ -527,7 +527,7 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         Some(json::List(js)) => {
           for js.each |j| {
                 match *j {
-                    json::String(j) => vec::grow(tags, 1u, j),
+                    json::String(ref j) => tags.grow(1u, j),
                     _ => ()
                 }
             }

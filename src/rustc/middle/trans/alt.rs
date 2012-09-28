@@ -581,7 +581,7 @@ fn collect_record_or_struct_fields(m: &[@Match], col: uint) -> ~[ast::ident] {
     fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
         for field_pats.each |field_pat| {
             let field_ident = field_pat.ident;
-            if !vec::any(*idents, |x| x == field_ident) {
+            if !vec::any(*idents, |x| *x == field_ident) {
                 idents.push(field_ident);
             }
         }

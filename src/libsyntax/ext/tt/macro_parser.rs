@@ -219,7 +219,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
         /* we append new items to this while we go */
         while cur_eis.len() > 0u { /* for each Earley Item */
-            let mut ei = vec::pop(cur_eis);
+            let mut ei = cur_eis.pop();
 
             let idx = ei.idx;
             let len = ei.elts.len();
@@ -350,13 +350,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
-                    cur_eis.push(vec::pop(next_eis));
+                    cur_eis.push(next_eis.pop());
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
                 let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
-                let ei = vec::pop(bb_eis);
+                let ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(

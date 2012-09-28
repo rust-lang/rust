@@ -144,7 +144,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
-        do vec::foldr(item.attrs, ~[item]) |attr, items| {
+        do vec::foldr(item.attrs, ~[*item]) |attr, items| {
             let mname = match attr.node.value.node {
               ast::meta_word(n) => n,
               ast::meta_name_value(n, _) => n,
@@ -160,7 +160,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
         }
     };
 
-    return {items: new_items,.. module_};
+    return {items: new_items, ..module_};
 }
 
 

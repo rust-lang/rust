@@ -428,9 +428,8 @@ fn opt_maybe_str(+mm: Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
     return match vals[0] {
-      Val(copy s) =>
-      Some::<~str>(s),
-      _ => None::<~str>
+        Val(copy s) => Some(s),
+        _ => None
     };
 }
 

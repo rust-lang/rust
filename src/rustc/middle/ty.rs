@@ -2238,7 +2238,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false
           }
 
-          ty_class(did, _) if vec::contains(*seen, did) => {
+          ty_class(ref did, _) if vec::contains(*seen, did) => {
             false
           }
 
@@ -2246,15 +2246,15 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
               seen.push(did);
               let r = vec::any(class_items_as_fields(cx, did, substs),
                                |f| type_requires(cx, seen, r_ty, f.mt.ty));
-              vec::pop(*seen);
+              seen.pop();
             r
           }
 
           ty_tup(ts) => {
-            vec::any(ts, |t| type_requires(cx, seen, r_ty, t))
+            vec::any(ts, |t| type_requires(cx, seen, r_ty, *t))
           }
 
-          ty_enum(did, _) if vec::contains(*seen, did) => {
+          ty_enum(ref did, _) if vec::contains(*seen, did) => {
             false
           }
 
@@ -2263,11 +2263,11 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 let vs = enum_variants(cx, did);
                 let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
                     vec::any(variant.args, |aty| {
-                        let sty = subst(cx, substs, aty);
+                        let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
                     })
                 });
-                vec::pop(*seen);
+                seen.pop();
                 r
             }
         };
@@ -3063,7 +3063,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     if !type_needs_infer(rt) { return; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt), vid) {
+    if vec::contains(vars_in_type(rt), &vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.

@@ -43,10 +43,10 @@ fn ret_deep() -> ~str {
 fn main() {
     let mut last = 0;
     for vec::all(~[1, 2, 3, 4, 5, 6, 7]) |e| {
-        last = e;
-        if e == 5 { break; }
-        if e % 2 == 1 { loop; }
-        assert e % 2 == 0;
+        last = *e;
+        if *e == 5 { break; }
+        if *e % 2 == 1 { loop; }
+        assert *e % 2 == 0;
     };
     assert last == 5;
 

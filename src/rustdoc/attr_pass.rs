@@ -236,7 +236,7 @@ fn merge_method_attrs(
 
         {
             desc: desc,
-            .. doc
+            ..*doc
         }
     }
 }

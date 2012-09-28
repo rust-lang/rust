@@ -114,7 +114,7 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 }
 
 fn add_used_crate_file(cstore: cstore, lib: &Path) {
-    if !vec::contains(p(cstore).used_crate_files, copy *lib) {
+    if !vec::contains(p(cstore).used_crate_files, lib) {
         p(cstore).used_crate_files.push(copy *lib);
     }
 }
@@ -126,7 +126,7 @@ fn get_used_crate_files(cstore: cstore) -> ~[Path] {
 fn add_used_library(cstore: cstore, lib: ~str) -> bool {
     assert lib != ~"";
 
-    if vec::contains(p(cstore).used_libraries, lib) { return false; }
+    if vec::contains(p(cstore).used_libraries, &lib) { return false; }
     p(cstore).used_libraries.push(lib);
     return true;
 }

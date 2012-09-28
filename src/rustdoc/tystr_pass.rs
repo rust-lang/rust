@@ -177,7 +177,7 @@ fn get_method_sig(
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             match vec::find(methods, |method| {
-                match method {
+                match *method {
                   ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                   ast::provided(m) => to_str(m.ident) == method_name,
                 }

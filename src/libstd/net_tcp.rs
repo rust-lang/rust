@@ -800,7 +800,7 @@ impl TcpSocketBuf: io::Reader {
         if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
     fn unread_byte(amt: int) {
-        vec::unshift((*(self.data)).buf, amt as u8);
+        self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
         false // noop

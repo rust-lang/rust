@@ -23,7 +23,7 @@ use util::common::indenter;
 
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
-        vec::any(*bs, |b| {
+        bs.any(|b| {
             match b { ty::bound_trait(_) => true, _ => false }
         })
     })
@@ -393,7 +393,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     match ty::get(trait_ty).sty {
      ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,
-                   |a, b| demand::suptype(fcx, expr.span, a, b));
+                   |a, b| demand::suptype(fcx, expr.span, *a, *b));
       }
      _ => tcx.sess.impossible_case(expr.span, "connect_trait_tps: \
             don't know how to handle a non-trait ty")

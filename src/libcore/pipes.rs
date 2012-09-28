@@ -704,7 +704,7 @@ pub fn select<T: Send, Tb: Send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
     let mut remaining <- endpoints;
-    let port = vec::swap_remove(remaining, ready);
+    let port = remaining.swap_remove(ready);
     let result = try_recv(move port);
     (ready, move result, move remaining)
 }
@@ -1067,7 +1067,7 @@ impl<T: Send> PortSet<T> : Recv<T> {
                 }
                 None => {
                     // Remove this port.
-                    let _ = vec::swap_remove(ports, i);
+                    let _ = ports.swap_remove(i);
                 }
             }
         }

@@ -30,7 +30,7 @@ fn mk<T: Copy>() -> SmallIntMap<T> {
 #[inline(always)]
 fn insert<T: Copy>(self: SmallIntMap<T>, key: uint, +val: T) {
     //io::println(fmt!("%?", key));
-    self.v.grow_set_elt(key, None, Some(val));
+    self.v.grow_set_elt(key, &None, Some(val));
 }
 
 /**

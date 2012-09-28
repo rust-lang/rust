@@ -307,7 +307,7 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                 while idx < rc {
                     idx_path.push(idx);
                     res.push(recur(repeat_me)); // whew!
-                    vec::pop(*idx_path);
+                    idx_path.pop();
                     idx += 1u;
                 }
               }

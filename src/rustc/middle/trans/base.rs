@@ -57,7 +57,7 @@ struct icx_popper {
     ccx: @crate_ctxt,
     drop {
       if self.ccx.sess.count_llvm_insns() {
-          vec::pop(*(self.ccx.stats.llvm_insn_ctxt));
+          self.ccx.stats.llvm_insn_ctxt.pop();
       }
     }
 }

@@ -527,7 +527,7 @@ impl check_loan_ctxt {
         do vec::iter2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
                 ast::by_move => {
-                    self.check_move_out(arg);
+                    self.check_move_out(*arg);
                 }
                 ast::by_mutbl_ref | ast::by_ref |
                 ast::by_copy | ast::by_val => {

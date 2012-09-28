@@ -275,14 +275,14 @@ fn ident_to_path(s: span, +i: ident) -> @path {
       rp: None, types: ~[]}
 }
 
-pure fn is_unguarded(&&a: arm) -> bool {
+pure fn is_unguarded(a: &arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pure fn unguarded_pat(a: arm) -> Option<~[@pat]> {
+pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
     if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
