@@ -1175,7 +1175,8 @@ pub pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
  * than or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`
  */
-pub pure fn rfind_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
+pub pure fn rfind_between(s: &str, start: uint, end: uint,
+                          f: fn(char) -> bool)
     -> Option<uint> {
     assert start >= end;
     assert start <= len(s);
@@ -1607,7 +1608,9 @@ pub pure fn char_range_at(s: &str, i: uint) -> {ch: char, next: uint} {
 }
 
 /// Pluck a character out of a string
-pub pure fn char_at(s: &str, i: uint) -> char { return char_range_at(s, i).ch; }
+pub pure fn char_at(s: &str, i: uint) -> char {
+    return char_range_at(s, i).ch;
+}
 
 /**
  * Given a byte position and a str, return the previous char and its position
