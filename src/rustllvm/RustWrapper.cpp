@@ -20,6 +20,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/ADT/Triple.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/Assembly/Parser.h"
 #include "llvm/Assembly/PrintModulePass.h"
 #include "llvm/Support/FormattedStream.h"
@@ -42,7 +43,6 @@
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
-#include <cstdlib>
 
 // Used by RustMCJITMemoryManager::getPointerToNamedFunction()
 // to get around glibc issues. See the function for more information.
@@ -53,6 +53,7 @@
 #endif
 
 using namespace llvm;
+using namespace llvm::sys;
 
 static const char *LLVMRustError;
 
@@ -100,18 +101,6 @@ void LLVMRustInitializeTargets() {
   LLVMInitializeX86AsmParser();
 }
 
-extern "C" bool
-LLVMRustLoadLibrary(const char* file) {
-  std::string err;
-
-  if(llvm::sys::DynamicLibrary::LoadLibraryPermanently(file, &err)) {
-    LLVMRustError = err.c_str();
-    return false;
-  }
-
-  return true;
-}
-
 // Custom memory manager for MCJITting. It needs special features
 // that the generic JIT memory manager doesn't entail. Based on
 // code from LLI, change where needed for Rust.
@@ -121,9 +110,12 @@ public:
   SmallVector<sys::MemoryBlock, 16> AllocatedCodeMem;
   SmallVector<sys::MemoryBlock, 16> FreeCodeMem;
   void* __morestack;
+  DenseSet<DynamicLibrary*> crates;
 
   RustMCJITMemoryManager(void* sym) : __morestack(sym) { }
   ~RustMCJITMemoryManager();
+
+  bool loadCrate(const char*, std::string*);
 
   virtual uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
                                        unsigned SectionID);
@@ -196,6 +188,19 @@ public:
     llvm_unreachable("Unimplemented call");
   }
 };
+
+bool RustMCJITMemoryManager::loadCrate(const char* file, std::string* err) {
+  DynamicLibrary crate = DynamicLibrary::getPermanentLibrary(file,
+                                                             err);
+
+  if(crate.isValid()) {
+    crates.insert(&crate);
+
+    return true;
+  }
+
+  return false;
+}
 
 uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
                                                     unsigned Alignment,
@@ -276,6 +281,9 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   if (Name == "__morestack") return &__morestack;
 
   const char *NameStr = Name.c_str();
+
+  // Look through loaded crates and main for symbols.
+
   void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
   if (Ptr) return Ptr;
 
@@ -293,21 +301,49 @@ RustMCJITMemoryManager::~RustMCJITMemoryManager() {
 }
 
 extern "C" void*
-LLVMRustJIT(void* __morestack,
-            LLVMPassManagerRef PMR,
-            LLVMModuleRef M,
-            CodeGenOpt::Level OptLevel,
-            bool EnableSegmentedStacks) {
+LLVMRustPrepareJIT(void* __morestack) {
+  // An execution engine will take ownership of this later
+  // and clean it up for us.
+
+  return (void*) new RustMCJITMemoryManager(__morestack);
+}
+
+extern "C" bool
+LLVMRustLoadCrate(void* mem, const char* crate) {
+  RustMCJITMemoryManager* manager = (RustMCJITMemoryManager*) mem;
+  std::string Err;
+
+  assert(manager);
+
+  if(!manager->loadCrate(crate, &Err)) {
+    LLVMRustError = Err.c_str();
+    return false;
+  }
+
+  return true;
+}
+
+extern "C" void*
+LLVMRustExecuteJIT(void* mem,
+                   LLVMPassManagerRef PMR,
+                   LLVMModuleRef M,
+                   CodeGenOpt::Level OptLevel,
+                   bool EnableSegmentedStacks) {
 
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
 
   std::string Err;
   TargetOptions Options;
+  Options.JITExceptionHandling = true;
   Options.JITEmitDebugInfo = true;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
   PassManager *PM = unwrap<PassManager>(PMR);
+  RustMCJITMemoryManager* MM = (RustMCJITMemoryManager*) mem;
+
+  assert(MM);
 
   PM->add(createBasicAliasAnalysisPass());
   PM->add(createInstructionCombiningPass());
@@ -318,8 +354,8 @@ LLVMRustJIT(void* __morestack,
   PM->add(createPromoteMemoryToRegisterPass());
   PM->run(*unwrap(M));
 
-  RustMCJITMemoryManager* MM = new RustMCJITMemoryManager(__morestack);
   ExecutionEngine* EE = EngineBuilder(unwrap(M))
+    .setErrorStr(&Err)
     .setTargetOptions(Options)
     .setJITMemoryManager(MM)
     .setOptLevel(OptLevel)

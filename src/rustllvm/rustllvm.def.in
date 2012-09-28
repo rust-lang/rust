@@ -4,8 +4,9 @@ LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustConstSmallInt
 LLVMRustConstInt
-LLVMRustLoadLibrary
-LLVMRustJIT
+LLVMRustLoadCrate
+LLVMRustPrepareJIT
+LLVMRustExecuteJIT
 LLVMRustParseBitcode
 LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
