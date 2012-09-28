@@ -111,13 +111,9 @@ mod sha1;
 mod md4;
 mod tempfile;
 mod term;
-#[legacy_exports]
 mod time;
-#[legacy_exports]
 mod prettyprint;
-#[legacy_exports]
 mod prettyprint2;
-#[legacy_exports]
 mod arena;
 mod par;
 mod cmp;
