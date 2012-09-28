@@ -11,14 +11,9 @@ use private::{SharedMutableState, shared_mutable_state,
 use sync::{Mutex,  mutex_with_condvars,
               RWlock, rwlock_with_condvars};
 
-export ARC, clone, get;
-export Condvar;
-export MutexARC, mutex_arc_with_condvars, unwrap_mutex_arc;
-export RWARC, rw_arc_with_condvars, RWWriteMode, RWReadMode;
-export unwrap_rw_arc;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
-struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
+pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
 
 impl &Condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
@@ -71,7 +66,7 @@ impl &Condvar {
 struct ARC<T: Const Send> { x: SharedMutableState<T> }
 
 /// Create an atomically reference counted wrapper.
-fn ARC<T: Const Send>(+data: T) -> ARC<T> {
+pub fn ARC<T: Const Send>(+data: T) -> ARC<T> {
     ARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
@@ -79,7 +74,7 @@ fn ARC<T: Const Send>(+data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-fn get<T: Const Send>(rc: &a/ARC<T>) -> &a/T {
+pub fn get<T: Const Send>(rc: &a/ARC<T>) -> &a/T {
     unsafe { get_shared_immutable_state(&rc.x) }
 }
 
@@ -90,7 +85,7 @@ fn get<T: Const Send>(rc: &a/ARC<T>) -> &a/T {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-fn clone<T: Const Send>(rc: &ARC<T>) -> ARC<T> {
+pub fn clone<T: Const Send>(rc: &ARC<T>) -> ARC<T> {
     ARC { x: unsafe { clone_shared_mutable_state(&rc.x) } }
 }
 
@@ -118,14 +113,14 @@ struct MutexARCInner<T: Send> { lock: Mutex, failed: bool, data: T }
 struct MutexARC<T: Send> { x: SharedMutableState<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
-fn MutexARC<T: Send>(+user_data: T) -> MutexARC<T> {
+pub fn MutexARC<T: Send>(+user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a mutex-protected ARC with the supplied data and a specified number
  * of condvars (as sync::mutex_with_condvars).
  */
-fn mutex_arc_with_condvars<T: Send>(+user_data: T,
+pub fn mutex_arc_with_condvars<T: Send>(+user_data: T,
                                     num_condvars: uint) -> MutexARC<T> {
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
@@ -196,7 +191,7 @@ impl<T: Send> &MutexARC<T> {
  * Will additionally fail if another task has failed while accessing the arc.
  */
 // FIXME(#2585) make this a by-move method on the arc
-fn unwrap_mutex_arc<T: Send>(+arc: MutexARC<T>) -> T {
+pub fn unwrap_mutex_arc<T: Send>(+arc: MutexARC<T>) -> T {
     let MutexARC { x: x } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let MutexARCInner { failed: failed, data: data, _ } <- inner;
@@ -252,14 +247,14 @@ struct RWARC<T: Const Send> {
 }
 
 /// Create a reader/writer ARC with the supplied data.
-fn RWARC<T: Const Send>(+user_data: T) -> RWARC<T> {
+pub fn RWARC<T: Const Send>(+user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a reader/writer ARC with the supplied data and a specified number
  * of condvars (as sync::rwlock_with_condvars).
  */
-fn rw_arc_with_condvars<T: Const Send>(+user_data: T,
+pub fn rw_arc_with_condvars<T: Const Send>(+user_data: T,
                                        num_condvars: uint) -> RWARC<T> {
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
@@ -374,7 +369,7 @@ impl<T: Const Send> &RWARC<T> {
  * in write mode.
  */
 // FIXME(#2585) make this a by-move method on the arc
-fn unwrap_rw_arc<T: Const Send>(+arc: RWARC<T>) -> T {
+pub fn unwrap_rw_arc<T: Const Send>(+arc: RWARC<T>) -> T {
     let RWARC { x: x, _ } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let RWARCInner { failed: failed, data: data, _ } <- inner;
@@ -395,10 +390,10 @@ fn borrow_rwlock<T: Const Send>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.
 
 /// The "write permission" token used for RWARC.write_downgrade().
-enum RWWriteMode<T: Const Send> =
+pub enum RWWriteMode<T: Const Send> =
     (&mut T, sync::RWlockWriteMode, PoisonOnFail);
 /// The "read permission" token used for RWARC.write_downgrade().
-enum RWReadMode<T:Const Send> = (&T, sync::RWlockReadMode);
+pub enum RWReadMode<T:Const Send> = (&T, sync::RWlockReadMode);
 
 impl<T: Const Send> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode.
