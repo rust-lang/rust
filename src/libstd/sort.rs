@@ -206,9 +206,9 @@ fn timsort<T: Ord>(array: &[mut T]) {
 
         idx += runLen;
         remaining -= runLen;
-        if remaining == 0 { break; } 
+        if remaining == 0 { break; }
     }
-    
+
     ms.mergeForceCollapse(array);
 }
 
@@ -288,18 +288,18 @@ fn countRunAndMakeAscending<T: Ord>(array: &[mut T]) -> uint {
             run += 1;
         }
     }
-    
+
     return run;
 }
 
 pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T],
-                            hint: uint) -> uint {  
+                            hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
 
     let mut lastOfs = 0;
     let mut ofs = 1;
-    
+
     if *key > array[hint] {
         // Gallop right until array[hint+lastOfs] < key <= array[hint+ofs]
         let maxOfs = size - hint;
@@ -319,7 +319,7 @@ pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T],
             ofs = (ofs << 1) + 1;
             if ofs < lastOfs { ofs = maxOfs; } // uint overflow guard
         }
-        
+
         if ofs > maxOfs { ofs = maxOfs; }
 
         let tmp = lastOfs;
@@ -348,7 +348,7 @@ pure fn gallopRight<T: Ord>(key: &const T, array: &[const T],
 
     let mut lastOfs = 0;
     let mut ofs = 1;
-    
+
     if *key >= array[hint] {
         // Gallop right until array[hint+lastOfs] <= key < array[hint+ofs]
         let maxOfs = size - hint;
@@ -360,7 +360,7 @@ pure fn gallopRight<T: Ord>(key: &const T, array: &[const T],
         if ofs > maxOfs { ofs = maxOfs; }
 
         lastOfs += hint;
-        ofs += hint;    
+        ofs += hint;
     } else {
         // Gallop left until array[hint-ofs] <= key < array[hint-lastOfs]
         let maxOfs = hint + 1;
@@ -411,7 +411,7 @@ struct MergeState<T> {
 
 fn MergeState<T>() -> MergeState<T> {
     let mut tmp = ~[];
-    vec::reserve(&mut tmp, INITIAL_TMP_STORAGE); 
+    vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
     MergeState {
         minGallop: MIN_GALLOP,
         tmp: tmp,
@@ -469,7 +469,7 @@ impl<T: Ord> &MergeState<T> {
     fn mergeLo(array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
-        
+
         vec::reserve(&mut self.tmp, len1);
 
         unsafe {
@@ -563,7 +563,7 @@ impl<T: Ord> &MergeState<T> {
                 minGallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
                     break;
-                } 
+                }
             }
             if breakOuter { break; }
             if minGallop < 0 { minGallop = 0; }
@@ -655,7 +655,7 @@ impl<T: Ord> &MergeState<T> {
                 }
             }
             if breakOuter { break; }
-    
+
             // Start to gallop
             loop {
                 assert len2 > 1 && len1 != 0;
@@ -692,15 +692,15 @@ impl<T: Ord> &MergeState<T> {
                 minGallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
                     break;
-                } 
+                }
             }
-            
+
             if breakOuter { break; }
             if minGallop < 0 { minGallop = 0; }
             minGallop += 2; // Penalize for leaving gallop
         }
         self.minGallop = if minGallop < 1 { 1 } else { minGallop };
-        
+
         if len2 == 1 {
             assert len1 > 0;
             dest -= len1;
@@ -757,8 +757,8 @@ impl<T: Ord> &MergeState<T> {
 // Moves elements to from dest to from
 // Unsafe as it makes the from parameter invalid between s2 and s2+len
 #[inline(always)]
-unsafe fn moveVec<T>(dest: &[mut T], s1: uint, 
-                    from: &[const T], s2: uint, len: uint) {   
+unsafe fn moveVec<T>(dest: &[mut T], s1: uint,
+                    from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
 
     do vec::as_mut_buf(dest) |p, _len| {
@@ -818,7 +818,7 @@ mod test_qsort {
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
-        quick_sort::<int>(leual, v1);
+        quick_sort::<int>(v1, leual);
         let mut i = 0u;
         while i < len {
             log(debug, v2[i]);
@@ -859,7 +859,7 @@ mod test_qsort {
 
         let expected = ~[1, 2, 3];
 
-        sort::quick_sort(|x, y| { int::le(*x, *y) }, names);
+        do sort::quick_sort(names) |x, y| { int::le(*x, *y) };
 
         let immut_names = vec::from_mut(names);
 
@@ -880,7 +880,7 @@ mod tests {
         let len = vec::len::<int>(v1);
         pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
-        let v3 = merge_sort::<int>(f, v1);
+        let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
         while i < len {
             log(debug, v3[i]);
@@ -910,7 +910,7 @@ mod tests {
     fn test_merge_sort_mutable() {
         pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let v1 = ~[mut 3, 2, 1];
-        let v2 = merge_sort(le, v1);
+        let v2 = merge_sort(v1, le);
         assert v2 == ~[1, 2, 3];
     }
 
@@ -932,7 +932,7 @@ mod tests {
                        "Sally Mae", "JOE BOB", "Alex Andy"];
         let names2 = ~["Alex Andy", "Jack Brown", "joe bob", "Joe Bob",
                        "JOE Bob", "JOE BOB", "Sally Mae"];
-        let names3 = merge_sort(ile, names1);
+        let names3 = merge_sort(names1, ile);
         assert names3 == names2;
     }
 }
