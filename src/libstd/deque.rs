@@ -1,6 +1,5 @@
 //! A deque. Untested as of yet. Likely buggy
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 #[forbid(non_camel_case_types)];
 
 use option::{Some, None};
@@ -46,7 +45,7 @@ fn create<T: Copy>() -> Deque<T> {
         move rv
     }
     fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
-        match (*elts).get_elt(i) { Some(t) => t, _ => fail }
+        match (*elts).get_elt(i) { Some(move t) => t, _ => fail }
     }
 
     type Repr<T> = {mut nelts: uint,

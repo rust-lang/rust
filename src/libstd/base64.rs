@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 use io::Reader;
 
 pub trait ToBase64 {

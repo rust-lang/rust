@@ -6,7 +6,6 @@ Higher level communication abstractions.
 
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use pipes::{Channel, Recv, Chan, Port, Selectable};
 

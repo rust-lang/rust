@@ -6,7 +6,6 @@
  */
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 export IoTask;
 export spawn_iotask;
@@ -149,7 +148,7 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
 
     while msg_po.peek() {
         match msg_po.recv() {
-          Interaction(cb) => cb(loop_ptr),
+          Interaction(ref cb) => (*cb)(loop_ptr),
           TeardownLoop => begin_teardown(data)
         }
     }

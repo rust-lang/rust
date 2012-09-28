@@ -13,7 +13,6 @@
  */
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference

@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 //! Unsafe debugging functions for inspecting values.
 
 use cast::reinterpret_cast;

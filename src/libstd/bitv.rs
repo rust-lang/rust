@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use vec::{to_mut, from_elem};
 
@@ -241,22 +240,22 @@ priv impl Bitv {
             self.die();
         }
         match self.rep {
-          Small(s) => match other.rep {
-            Small(s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
+          Small(ref s) => match other.rep {
+            Small(ref s1) => match op {
+              Union      => s.union(*s1,      self.nbits),
+              Intersect  => s.intersect(*s1,  self.nbits),
+              Assign     => s.become(*s1,     self.nbits),
+              Difference => s.difference(*s1, self.nbits)
             },
             Big(_) => self.die()
           },
-          Big(s) => match other.rep {
+          Big(ref s) => match other.rep {
             Small(_) => self.die(),
-            Big(s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
+            Big(ref s1) => match op {
+              Union      => s.union(*s1,      self.nbits),
+              Intersect  => s.intersect(*s1,  self.nbits),
+              Assign     => s.become(*s1,     self.nbits),
+              Difference => s.difference(*s1, self.nbits)
             }
           }
         }
@@ -297,10 +296,10 @@ impl Bitv {
     #[inline(always)]
     fn clone() -> ~Bitv {
         ~match self.rep {
-          Small(b) => {
+          Small(ref b) => {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
-          Big(b) => {
+          Big(ref b) => {
             let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
@@ -314,8 +313,8 @@ impl Bitv {
     pure fn get(i: uint) -> bool {
        assert (i < self.nbits);
        match self.rep {
-         Big(b)   => b.get(i),
-         Small(s) => s.get(i)
+         Big(ref b)   => b.get(i),
+         Small(ref s) => s.get(i)
        }
     }
 
@@ -328,8 +327,8 @@ impl Bitv {
     fn set(i: uint, x: bool) {
       assert (i < self.nbits);
       match self.rep {
-        Big(b)   => b.set(i, x),
-        Small(s) => s.set(i, x)
+        Big(ref b)   => b.set(i, x),
+        Small(ref s) => s.set(i, x)
       }
     }
 
@@ -343,12 +342,12 @@ impl Bitv {
     fn equal(v1: Bitv) -> bool {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
-        Small(b) => match v1.rep {
-          Small(b1) => b.equals(b1, self.nbits),
+        Small(ref b) => match v1.rep {
+          Small(ref b1) => b.equals(*b1, self.nbits),
           _ => false
         },
-        Big(s) => match v1.rep {
-          Big(s1) => s.equals(s1, self.nbits),
+        Big(ref s) => match v1.rep {
+          Big(ref s1) => s.equals(*s1, self.nbits),
           Small(_) => return false
         }
       }
@@ -358,8 +357,8 @@ impl Bitv {
     #[inline(always)]
     fn clear() {
         match self.rep {
-          Small(b) => b.clear(),
-          Big(s) => for s.each_storage() |w| { w = 0u }
+          Small(ref b) => b.clear(),
+          Big(ref s) => for s.each_storage() |w| { w = 0u }
         }
     }
 
@@ -367,16 +366,16 @@ impl Bitv {
     #[inline(always)]
     fn set_all() {
       match self.rep {
-        Small(b) => b.set_all(),
-        Big(s) => for s.each_storage() |w| { w = !0u } }
+        Small(ref b) => b.set_all(),
+        Big(ref s) => for s.each_storage() |w| { w = !0u } }
     }
 
     /// Invert all bits
     #[inline(always)]
     fn invert() {
       match self.rep {
-        Small(b) => b.invert(),
-        Big(s) => for s.each_storage() |w| { w = !w } }
+        Small(ref b) => b.invert(),
+        Big(ref s) => for s.each_storage() |w| { w = !w } }
     }
 
     /**
@@ -395,7 +394,7 @@ impl Bitv {
     #[inline(always)]
     fn is_true() -> bool {
       match self.rep {
-        Small(b) => b.is_true(self.nbits),
+        Small(ref b) => b.is_true(self.nbits),
         _ => {
           for self.each() |i| { if !i { return false; } }
           true
@@ -415,7 +414,7 @@ impl Bitv {
     /// Returns true if all bits are 0
     fn is_false() -> bool {
       match self.rep {
-        Small(b) => b.is_false(self.nbits),
+        Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
           for self.each() |i| { if i { return false; } }
           true

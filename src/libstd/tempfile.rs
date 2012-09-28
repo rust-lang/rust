@@ -1,7 +1,6 @@
 //! Temporary files and directories
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::option;
 use option::{None, Some};

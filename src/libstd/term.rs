@@ -1,6 +1,5 @@
 //! Simple ANSI color library
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::Option;
 
@@ -38,9 +37,9 @@ pub fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
-          option::Some(env) => {
+          option::Some(ref env) => {
             for vec::each(supported_terms) |term| {
-                if *term == env { return true; }
+                if *term == *env { return true; }
             }
             false
           }

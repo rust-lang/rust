@@ -1,7 +1,6 @@
 //! Utilities that leverage libuv's `uv_timer_*` API
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use uv = uv;
 use uv::iotask;

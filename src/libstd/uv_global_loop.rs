@@ -1,7 +1,6 @@
 //! A process-wide libuv event loop for library use.
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 export get;
 

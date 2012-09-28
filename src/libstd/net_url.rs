@@ -1,6 +1,5 @@
 //! Types/fns concerning URLs (see RFC 3986)
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
 use map::HashMap;
@@ -661,7 +660,7 @@ fn from_str(rawurl: &str) -> result::Result<Url, ~str> {
 impl Url : FromStr {
     static fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
-            Ok(url) => Some(url),
+            Ok(move url) => Some(url),
             Err(_) => None
         }
     }

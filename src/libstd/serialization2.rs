@@ -5,7 +5,6 @@ Core serialization interfaces.
 */
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 #[forbid(non_camel_case_types)];
 
 pub trait Serializer {
@@ -235,7 +234,7 @@ pub impl<T: Serializable> Option<T>: Serializable {
               None => do s.emit_enum_variant(~"none", 0u, 0u) {
               },
 
-              Some(v) => do s.emit_enum_variant(~"some", 1u, 1u) {
+              Some(ref v) => do s.emit_enum_variant(~"some", 1u, 1u) {
                 s.emit_enum_variant_arg(0u, || v.serialize(s))
               }
             }
@@ -261,7 +260,7 @@ pub impl<
 > (T0, T1): Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
         match *self {
-            (t0, t1) => {
+            (ref t0, ref t1) => {
                 do s.emit_tup(2) {
                     s.emit_tup_elt(0, || t0.serialize(s));
                     s.emit_tup_elt(1, || t1.serialize(s));
@@ -287,7 +286,7 @@ pub impl<
 > (T0, T1, T2): Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
         match *self {
-            (t0, t1, t2) => {
+            (ref t0, ref t1, ref t2) => {
                 do s.emit_tup(3) {
                     s.emit_tup_elt(0, || t0.serialize(s));
                     s.emit_tup_elt(1, || t1.serialize(s));
@@ -316,7 +315,7 @@ pub impl<
 > (T0, T1, T2, T3): Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
         match *self {
-            (t0, t1, t2, t3) => {
+            (ref t0, ref t1, ref t2, ref t3) => {
                 do s.emit_tup(4) {
                     s.emit_tup_elt(0, || t0.serialize(s));
                     s.emit_tup_elt(1, || t1.serialize(s));
@@ -348,7 +347,7 @@ pub impl<
 > (T0, T1, T2, T3, T4): Serializable {
     fn serialize<S: Serializer>(&self, s: &S) {
         match *self {
-            (t0, t1, t2, t3, t4) => {
+            (ref t0, ref t1, ref t2, ref t3, ref t4) => {
                 do s.emit_tup(5) {
                     s.emit_tup_elt(0, || t0.serialize(s));
                     s.emit_tup_elt(1, || t1.serialize(s));

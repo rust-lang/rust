@@ -1,6 +1,5 @@
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
@@ -48,15 +47,15 @@ type ParseAddrErr = {
  */
 fn format_addr(ip: &IpAddr) -> ~str {
     match *ip {
-      Ipv4(addr) =>  unsafe {
-        let result = uv_ip4_name(&addr);
+      Ipv4(ref addr) =>  unsafe {
+        let result = uv_ip4_name(addr);
         if result == ~"" {
             fail ~"failed to convert inner sockaddr_in address to str"
         }
         result
       },
-      Ipv6(addr) => unsafe {
-        let result = uv_ip6_name(&addr);
+      Ipv6(ref addr) => unsafe {
+        let result = uv_ip6_name(addr);
         if result == ~"" {
             fail ~"failed to convert inner sockaddr_in address to str"
         }
@@ -136,8 +135,8 @@ mod v4 {
      */
     fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(addr) => copy(addr),
-          result::Err(err_data) => fail err_data.err_msg
+          result::Ok(copy addr) => addr,
+          result::Err(ref err_data) => fail err_data.err_msg
         }
     }
     // the simple, old style numberic representation of
@@ -223,8 +222,8 @@ mod v6 {
      */
     fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(addr) => copy(addr),
-          result::Err(err_data) => fail err_data.err_msg
+          result::Ok(copy addr) => addr,
+          result::Err(copy err_data) => fail err_data.err_msg
         }
     }
     fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {

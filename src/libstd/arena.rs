@@ -23,7 +23,6 @@
 // to waste time running the destructors of POD.
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 export Arena, arena_with_size;
 

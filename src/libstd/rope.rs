@@ -24,7 +24,6 @@
  */
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 /// The type of ropes.
 type Rope = node::Root;
@@ -738,14 +737,14 @@ mod node {
         //FIXME (#2744): Could we do this without the pattern-matching?
         match (*node) {
           Leaf(y)   => return y.byte_len,
-          Concat(y) => return y.byte_len
+          Concat(ref y) => return y.byte_len
         }
     }
 
     pure fn char_len(node: @Node) -> uint {
         match (*node) {
           Leaf(y)   => return y.char_len,
-          Concat(y) => return y.char_len
+          Concat(ref y) => return y.char_len
         }
     }
 
@@ -835,7 +834,7 @@ mod node {
     fn flatten(node: @Node) -> @Node unsafe {
         match (*node) {
           Leaf(_) => return node,
-          Concat(x) => {
+          Concat(ref x) => {
             return @Leaf({
                 byte_offset: 0u,
                 byte_len:    x.byte_len,
@@ -913,7 +912,7 @@ mod node {
                                 char_len:    char_len,
                                 content:     x.content});
               }
-              node::Concat(x) => {
+              node::Concat(ref x) => {
                 let left_len: uint = node::byte_len(x.left);
                 if byte_offset <= left_len {
                     if byte_offset + byte_len <= left_len {
@@ -976,7 +975,7 @@ mod node {
                            char_len:    char_len,
                            content:     x.content});
               }
-              node::Concat(x) => {
+              node::Concat(ref x) => {
                 if char_offset == 0u && char_len == x.char_len {return node;}
                 let left_len : uint = node::char_len(x.left);
                 if char_offset <= left_len {
@@ -1015,7 +1014,7 @@ mod node {
     fn height(node: @Node) -> uint {
         match (*node) {
           Leaf(_)   => return 0u,
-          Concat(x) => return x.height
+          Concat(ref x) => return x.height
         }
     }
 
@@ -1067,7 +1066,7 @@ mod node {
         loop {
             match (*current) {
               Leaf(x) => return it(x),
-              Concat(x) => if loop_leaves(x.left, it) { //non tail call
+              Concat(ref x) => if loop_leaves(x.left, it) { //non tail call
                 current = x.right;       //tail call
               } else {
                 return false;
@@ -1134,7 +1133,7 @@ mod node {
                 let current = it.stack[it.stackpos];
                 it.stackpos -= 1;
                 match (*current) {
-                  Concat(x) => {
+                  Concat(ref x) => {
                     it.stackpos += 1;
                     it.stack[it.stackpos] = x.right;
                     it.stackpos += 1;

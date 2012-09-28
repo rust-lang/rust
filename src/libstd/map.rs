@@ -1,7 +1,6 @@
 //! A map type
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use io::WriterUtil;
 use to_str::ToStr;
@@ -404,7 +403,7 @@ fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     let map = HashMap();
     for vec::each(items) |item| {
         match *item {
-            (key, value) => {
+            (copy key, copy value) => {
                 map.insert(key, value);
             }
         }

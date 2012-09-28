@@ -1,5 +1,4 @@
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
@@ -576,7 +575,7 @@ fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             match rdr.read_char() {
               '%' => match parse_type(s, pos, rdr.read_char(), &tm) {
                 Ok(next) => pos = next,
-                  Err(e) => { result = Err(e); break; }
+                  Err(copy e) => { result = Err(e); break; }
               },
               c => {
                 if c != ch { break }
