@@ -234,7 +234,6 @@ mod dlist_iter {
     #[legacy_exports]
     mod inst;
 }
-#[legacy_exports]
 mod send_map;
 
 // Concurrency
@@ -252,9 +251,7 @@ mod task {
     #[legacy_exports]
     mod rt;
 }
-#[legacy_exports]
 mod future;
-#[legacy_exports]
 mod pipes;
 
 // Runtime and language-primitive support

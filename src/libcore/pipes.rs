@@ -112,7 +112,7 @@ pub struct BufferHeader {
     // thing along.
 }
 
-fn BufferHeader() -> BufferHeader{
+pub fn BufferHeader() -> BufferHeader{
     BufferHeader {
         ref_count: 0
     }
@@ -239,7 +239,6 @@ pub fn entangle_buffer<T: Send, Tstart: Send>(
 #[abi = "rust-intrinsic"]
 #[doc(hidden)]
 extern mod rusti {
-    #[legacy_exports];
     fn atomic_xchg(dst: &mut int, +src: int) -> int;
     fn atomic_xchg_acq(dst: &mut int, +src: int) -> int;
     fn atomic_xchg_rel(dst: &mut int, +src: int) -> int;
@@ -280,7 +279,6 @@ type rust_task = libc::c_void;
 
 #[doc(hidden)]
 extern mod rustrt {
-    #[legacy_exports];
     #[rust_stack]
     fn rust_get_task() -> *rust_task;
     #[rust_stack]
@@ -1197,12 +1195,11 @@ pub fn try_send_one<T: Send>(+chan: ChanOne<T>, +data: T)
     oneshot::client::try_send(move chan, move data).is_some()
 }
 
-mod rt {
-    #[legacy_exports];
+pub mod rt {
     // These are used to hide the option constructors from the
     // compiler because their names are changing
-    fn make_some<T>(+val: T) -> Option<T> { Some(move val) }
-    fn make_none<T>() -> Option<T> { None }
+    pub fn make_some<T>(+val: T) -> Option<T> { Some(move val) }
+    pub fn make_none<T>() -> Option<T> { None }
 }
 
 #[cfg(test)]
