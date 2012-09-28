@@ -36,7 +36,7 @@ fn fold_mod(
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     doc::ModDoc_({
-        items: sort::merge_sort(fold.ctxt, doc.items),
+        items: sort::merge_sort(doc.items, fold.ctxt),
         .. *doc
     })
 }

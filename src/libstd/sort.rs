@@ -20,12 +20,12 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
+fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
-    return merge_sort_(le, v, (0u, len(v)));
+    return merge_sort_(v, (0u, len(v)), le);
 
-    fn merge_sort_<T: Copy>(le: Le<T>, v: &[const T], slice: Slice)
+    fn merge_sort_<T: Copy>(v: &[const T], slice: Slice, le: Le<T>)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -37,7 +37,7 @@ fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
         let mid = v_len / 2u + begin;
         let a = (begin, mid);
         let b = (mid, end);
-        return merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
+        return merge(le, merge_sort_(v, a, le), merge_sort_(v, b, le));
     }
 
     fn merge<T: Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
@@ -58,8 +58,8 @@ fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     }
 }
 
-fn part<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
-                right: uint, pivot: uint) -> uint {
+fn part<T: Copy>(arr: &[mut T], left: uint,
+                right: uint, pivot: uint, compare_func: Le<T>) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
     let mut storage_index: uint = left;
@@ -75,16 +75,16 @@ fn part<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
-             right: uint) {
+fn qsort<T: Copy>(arr: &[mut T], left: uint,
+             right: uint, compare_func: Le<T>) {
     if right > left {
         let pivot = (left + right) / 2u;
-        let new_pivot = part::<T>(compare_func, arr, left, right, pivot);
+        let new_pivot = part::<T>(arr, left, right, pivot, compare_func);
         if new_pivot != 0u {
             // Need to do this check before recursing due to overflow
-            qsort::<T>(compare_func, arr, left, new_pivot - 1u);
+            qsort::<T>(arr, left, new_pivot - 1u, compare_func);
         }
-        qsort::<T>(compare_func, arr, new_pivot + 1u, right);
+        qsort::<T>(arr, new_pivot + 1u, right, compare_func);
     }
 }
 
@@ -94,9 +94,9 @@ fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: Copy>(compare_func: Le<T>, arr: &[mut T]) {
+fn quick_sort<T: Copy>(arr: &[mut T], compare_func: Le<T>) {
     if len::<T>(arr) == 0u { return; }
-    qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
+    qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
 }
 
 fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
@@ -292,7 +292,8 @@ fn countRunAndMakeAscending<T: Ord>(array: &[mut T]) -> uint {
     return run;
 }
 
-pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T], hint: uint) -> uint {  
+pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T],
+                            hint: uint) -> uint {  
     let size = array.len();
     assert size != 0 && hint < size;
 
@@ -340,7 +341,8 @@ pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T], hint: uint) -> uint
     return ofs;
 }
 
-pure fn gallopRight<T: Ord>(key: &const T, array: &[const T], hint: uint) -> uint {
+pure fn gallopRight<T: Ord>(key: &const T, array: &[const T],
+                            hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
 
@@ -464,7 +466,8 @@ impl<T: Ord> &MergeState<T> {
         self.runs.pop();
     }
 
-    fn mergeLo(array: &[mut T], base1: uint, len1: uint, base2: uint, len2: uint) {
+    fn mergeLo(array: &[mut T], base1: uint, len1: uint,
+                base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
         
         vec::reserve(&mut self.tmp, len1);
@@ -558,7 +561,9 @@ impl<T: Ord> &MergeState<T> {
                 dest += 1; c1 += 1; len1 -= 1;
                 if len1 == 1 { breakOuter = true; break; }
                 minGallop -= 1;
-                if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) { break; } 
+                if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
+                    break;
+                } 
             }
             if breakOuter { break; }
             if minGallop < 0 { minGallop = 0; }
@@ -584,7 +589,8 @@ impl<T: Ord> &MergeState<T> {
         unsafe { vec::raw::set_len(self.tmp, 0); }
     }
 
-    fn mergeHi(array: &[mut T], base1: uint, len1: uint, base2: uint, len2: uint) {
+    fn mergeHi(array: &[mut T], base1: uint, len1: uint,
+                base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
         vec::reserve(&mut self.tmp, len2);
@@ -655,7 +661,8 @@ impl<T: Ord> &MergeState<T> {
                 assert len2 > 1 && len1 != 0;
 
                 let tmpView = vec::mut_view(array, base1, base1+len1);
-                count1 = len1-gallopRight(&const self.tmp[c2], tmpView, len1-1);
+                count1 = len1 - gallopRight(
+                    &const self.tmp[c2], tmpView, len1-1);
 
                 if count1 != 0 {
                     dest -= count1; c1 -= count1; len1 -= count1;
@@ -670,8 +677,8 @@ impl<T: Ord> &MergeState<T> {
                 if len2 == 1 { breakOuter = true; break; }
 
                 let tmpView = vec::mut_view(self.tmp, 0, len2);
-                let gL = gallopLeft(&const array[c1], tmpView, len2-1);
-                count2 = len2 - gL;
+                let count2 = len2 - gallopLeft(
+                    &const array[c1], tmpView, len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     unsafe {
@@ -683,7 +690,9 @@ impl<T: Ord> &MergeState<T> {
                 dest -= 1; c1 -= 1; len1 -= 1;
                 if len1 == 0 { breakOuter = true; break; }
                 minGallop -= 1;
-                if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) { break; } 
+                if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
+                    break;
+                } 
             }
             
             if breakOuter { break; }
@@ -748,7 +757,8 @@ impl<T: Ord> &MergeState<T> {
 // Moves elements to from dest to from
 // Unsafe as it makes the from parameter invalid between s2 and s2+len
 #[inline(always)]
-unsafe fn moveVec<T>(dest: &[mut T], s1: uint, from: &[const T], s2: uint, len: uint) {   
+unsafe fn moveVec<T>(dest: &[mut T], s1: uint, 
+                    from: &[const T], s2: uint, len: uint) {   
     assert s1+len <= dest.len() && s2+len <= from.len();
 
     do vec::as_mut_buf(dest) |p, _len| {
