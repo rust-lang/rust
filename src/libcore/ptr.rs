@@ -6,7 +6,6 @@ use libc::{c_void, size_t};
 #[nolink]
 #[abi = "cdecl"]
 extern mod libc_ {
-    #[legacy_exports];
     #[rust_stack]
     fn memcpy(dest: *mut c_void, src: *const c_void,
               n: libc::size_t) -> *c_void;
@@ -22,7 +21,6 @@ extern mod libc_ {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
     fn addr_of<T>(val: T) -> *T;
 }
 

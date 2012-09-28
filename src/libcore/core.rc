@@ -137,7 +137,6 @@ mod uint {
 #[path = "uint-template"]
 mod u8 {
     pub use inst::is_ascii;
-
     #[path = "u8.rs"]
     mod inst;
 }
@@ -170,7 +169,6 @@ mod float;
 mod f32;
 mod f64;
 mod str;
-#[legacy_exports]
 mod ptr;
 #[legacy_exports]
 mod vec;
@@ -186,7 +184,6 @@ mod uniq;
 mod ops;
 mod cmp;
 mod num;
-#[legacy_exports]
 mod hash;
 #[legacy_exports]
 mod either;
