@@ -39,6 +39,9 @@ Implicitly, all crates behave as if they included the following prologue:
 #[legacy_modes];
 #[legacy_exports];
 
+#[warn(deprecated_mode)];
+#[warn(deprecated_pattern)];
+
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
