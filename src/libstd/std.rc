@@ -124,7 +124,6 @@ mod cmp;
 mod base64;
 
 #[cfg(unicode)]
-#[legacy_exports]
 mod unicode;
 
 
