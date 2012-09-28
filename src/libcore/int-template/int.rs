@@ -1,8 +1,8 @@
-type T = int;
-const bits: uint = uint::bits;
+pub type T = int;
+pub const bits: uint = uint::bits;
 
 /// Returns `base` raised to the power of `exponent`
-fn pow(base: int, exponent: uint) -> int {
+pub fn pow(base: int, exponent: uint) -> int {
     if exponent == 0u { return 1; } //Not mathemtically true if ~[base == 0]
     if base     == 0  { return 0; }
     let mut my_pow  = exponent;

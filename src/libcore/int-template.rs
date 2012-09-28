@@ -7,20 +7,6 @@ use cmp::{Eq, Ord};
 use from_str::FromStr;
 use num::from_int;
 
-export min_value, max_value;
-export min, max;
-export add, sub, mul, div, rem;
-export lt, le, eq, ne, ge, gt;
-export is_positive, is_negative;
-export is_nonpositive, is_nonnegative;
-export range;
-export compl;
-export abs;
-export parse_bytes, from_str, to_str, to_str_bytes, str;
-export num, ord, eq, times, timesi;
-export bits, bytes;
-export str;
-
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
 
@@ -190,7 +176,7 @@ pub fn str(i: T) -> ~str { return to_str(i, 10u); }
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
-pub fn test_from_str() {
+fn test_from_str() {
     assert from_str(~"0") == Some(0 as T);
     assert from_str(~"3") == Some(3 as T);
     assert from_str(~"10") == Some(10 as T);
@@ -210,7 +196,7 @@ pub fn test_from_str() {
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
-pub fn test_parse_bytes() {
+fn test_parse_bytes() {
     use str::to_bytes;
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T);
     assert parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T);
@@ -235,7 +221,7 @@ pub fn test_parse_bytes() {
 }
 
 #[test]
-pub fn test_to_str() {
+fn test_to_str() {
     assert (to_str(0 as T, 10u) == ~"0");
     assert (to_str(1 as T, 10u) == ~"1");
     assert (to_str(-1 as T, 10u) == ~"-1");
@@ -244,7 +230,7 @@ pub fn test_to_str() {
 }
 
 #[test]
-pub fn test_interfaces() {
+fn test_interfaces() {
     fn test<U:num::Num cmp::Eq>(+ten: U) {
         assert (ten.to_int() == 10);
 
@@ -263,7 +249,7 @@ pub fn test_interfaces() {
 }
 
 #[test]
-pub fn test_times() {
+fn test_times() {
     use iter::Times;
     let ten = 10 as T;
     let mut accum = 0;
@@ -274,7 +260,7 @@ pub fn test_times() {
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
-pub fn test_times_negative() {
+fn test_times_negative() {
     use iter::Times;
     for (-10).times { log(error, ~"nope!"); }
 }
