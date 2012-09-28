@@ -17,6 +17,7 @@ Ben Striegel <ben.striegel@gmail.com>
 Benjamin Herr <ben@0x539.de>
 Benjamin Jackman <ben@jackman.biz>
 Benjamin Kircher <benjamin.kircher@gmail.com>
+Benjamin Peterson <benjamin@python.org>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
