@@ -130,7 +130,7 @@ impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap_mut(f: &fn(-v: ~[mut A]) -> ~[mut A]) {
+    fn swap_mut(f: &fn(+v: ~[mut A]) -> ~[mut A]) {
         do self.swap |v| {
             vec::from_mut(f(vec::to_mut(move v)))
         }
