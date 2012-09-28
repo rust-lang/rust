@@ -145,7 +145,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         }
 
         // sort by key strings
-        let sorted_pairs = sort::merge_sort(|a,b| *a <= *b, pairs);
+        let sorted_pairs = do sort::merge_sort(pairs) |a,b| { *a <= *b };
 
         // {
         wr.write_str(~"{\n");
