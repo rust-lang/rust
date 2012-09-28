@@ -311,17 +311,11 @@ mod path;
 mod rand;
 mod run;
 mod sys;
-#[legacy_exports]
 mod cast;
-#[legacy_exports]
 mod mutable;
-#[legacy_exports]
 mod flate;
-#[legacy_exports]
 mod repr;
-#[legacy_exports]
 mod cleanup;
-#[legacy_exports]
 mod reflect;
 
 // Modules supporting compiler-generated code
