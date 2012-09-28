@@ -135,7 +135,7 @@ pub mod linear {
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
-                    Some(bkt) => if bkt.hash == hash && *k == bkt.key {
+                    Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
                         return FoundEntry(i);
                     },
                     None => return FoundHole(i)
@@ -333,7 +333,7 @@ pub mod linear {
                     // FIXME (#3148): Once we rewrite found_entry, this
                     // failure case won't be necessary
                     match self.buckets[idx] {
-                        Some(bkt) => {Some(copy bkt.value)}
+                        Some(Bucket {value: copy value, _}) => {Some(value)}
                         None => fail ~"LinearMap::find: internal logic error"
                     }
                 }

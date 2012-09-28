@@ -345,7 +345,7 @@ impl<A: IterBytes> Option<A>: IterBytes {
     #[inline(always)]
     pure fn iter_bytes(lsb0: bool, f: Cb) {
         match self {
-          Some(a) => iter_bytes_2(&0u8, &a, lsb0, f),
+          Some(ref a) => iter_bytes_2(&0u8, a, lsb0, f),
           None => 1u8.iter_bytes(lsb0, f)
         }
     }

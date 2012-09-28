@@ -94,11 +94,11 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     match *env {
-      Some(es) if !vec::is_empty(es) => {
+      Some(ref es) if !vec::is_empty(*es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for vec::each(es) |e| {
+        for vec::each(*es) |e| {
             let (k,v) = copy *e;
             let t = @(fmt!("%s=%s", k, v));
             tmps.push(t);
@@ -141,7 +141,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
 fn with_dirp<T>(d: &Option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
     match *d {
-      Some(dir) => str::as_c_str(dir, cb),
+      Some(ref dir) => str::as_c_str(*dir, cb),
       None => cb(ptr::null())
     }
 }
@@ -312,11 +312,11 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     while count > 0 {
         let stream = comm::recv(p);
         match stream {
-            (1, s) => {
-                outs = copy s;
+            (1, copy s) => {
+                outs = s;
             }
-            (2, s) => {
-                errs = copy s;
+            (2, copy s) => {
+                errs = s;
             }
             (n, _) => {
                 fail(fmt!("program_output received an unexpected file \
@@ -405,6 +405,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(non_implicitly_copyable_typarams)]
     pub fn test_pipes() {
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -420,7 +421,7 @@ mod tests {
 
         if pid == -1i32 { fail; }
         let expected = ~"test";
-        writeclose(pipe_in.out, expected);
+        writeclose(pipe_in.out, copy expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
         os::waitpid(pid);

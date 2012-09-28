@@ -24,9 +24,9 @@ enum Result<T, U> {
  */
 pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
     match *res {
-      Ok(t) => t,
-      Err(the_err) => unsafe {
-        fail fmt!("get called on error result: %?", the_err)
+      Ok(copy t) => t,
+      Err(ref the_err) => unsafe {
+        fail fmt!("get called on error result: %?", *the_err)
       }
     }
 }
@@ -42,7 +42,7 @@ pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
     match *res {
         Ok(ref t) => t,
         Err(ref the_err) => unsafe {
-            fail fmt!("get_ref called on error result: %?", the_err)
+            fail fmt!("get_ref called on error result: %?", *the_err)
         }
     }
 }
@@ -56,7 +56,7 @@ pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
  */
 pure fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
     match *res {
-      Err(u) => u,
+      Err(copy u) => u,
       Ok(_) => fail ~"get_err called on ok result"
     }
 }
@@ -82,8 +82,8 @@ pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
  */
 pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>) -> Either<T, U> {
     match *res {
-      Ok(res) => either::Right(res),
-      Err(fail_) => either::Left(fail_)
+      Ok(copy res) => either::Right(res),
+      Err(copy fail_) => either::Left(fail_)
     }
 }
 
@@ -123,9 +123,9 @@ fn chain_err<T: Copy, U: Copy, V: Copy>(
     +res: Result<T, V>,
     op: fn(+t: V) -> Result<T, U>)
     -> Result<T, U> {
-    move match res {
-      Ok(t) => Ok(t),
-      Err(v) => op(v)
+    match move res {
+      Ok(move t) => Ok(t),
+      Err(move v) => op(v)
     }
 }
 
@@ -145,7 +145,7 @@ fn chain_err<T: Copy, U: Copy, V: Copy>(
  */
 fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
     match *res {
-      Ok(t) => f(&t),
+      Ok(ref t) => f(t),
       Err(_) => ()
     }
 }
@@ -161,7 +161,7 @@ fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
 fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
     match *res {
       Ok(_) => (),
-      Err(e) => f(&e)
+      Err(ref e) => f(e)
     }
 }
 
@@ -182,8 +182,8 @@ fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
 fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
   -> Result<U, E> {
     match *res {
-      Ok(t) => Ok(op(&t)),
-      Err(e) => Err(e)
+      Ok(ref t) => Ok(op(t)),
+      Err(copy e) => Err(e)
     }
 }
 
@@ -198,8 +198,8 @@ fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
 fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
   -> Result<T, F> {
     match *res {
-      Ok(t) => Ok(t),
-      Err(e) => Err(op(&e))
+      Ok(copy t) => Ok(t),
+      Err(ref e) => Err(op(e))
     }
 }
 
@@ -210,7 +210,7 @@ impl<T, E> Result<T, E> {
 
     fn iter(f: fn((&T))) {
         match self {
-          Ok(t) => f(&t),
+          Ok(ref t) => f(t),
           Err(_) => ()
         }
     }
@@ -218,7 +218,7 @@ impl<T, E> Result<T, E> {
     fn iter_err(f: fn((&E))) {
         match self {
           Ok(_) => (),
-          Err(e) => f(&e)
+          Err(ref e) => f(e)
         }
     }
 }
@@ -228,8 +228,8 @@ impl<T: Copy, E> Result<T, E> {
 
     fn map_err<F:Copy>(op: fn((&E)) -> F) -> Result<T,F> {
         match self {
-          Ok(t) => Ok(t),
-          Err(e) => Err(op(&e))
+          Ok(copy t) => Ok(t),
+          Err(ref e) => Err(op(e))
         }
     }
 }
@@ -239,8 +239,8 @@ impl<T, E: Copy> Result<T, E> {
 
     fn map<U:Copy>(op: fn((&T)) -> U) -> Result<U,E> {
         match self {
-          Ok(t) => Ok(op(&t)),
-          Err(e) => Err(e)
+          Ok(ref t) => Ok(op(t)),
+          Err(copy e) => Err(e)
         }
     }
 }
@@ -280,8 +280,8 @@ fn map_vec<T,U:Copy,V:Copy>(
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
     for vec::each(ts) |t| {
         match op(t) {
-          Ok(v) => vs.push(v),
-          Err(u) => return Err(u)
+          Ok(copy v) => vs.push(v),
+          Err(copy u) => return Err(u)
         }
     }
     return Ok(move vs);
@@ -292,9 +292,9 @@ fn map_opt<T,U:Copy,V:Copy>(
 
     match *o_t {
       None => Ok(None),
-      Some(t) => match op(&t) {
-        Ok(v) => Ok(Some(v)),
-        Err(e) => Err(e)
+      Some(ref t) => match op(t) {
+        Ok(copy v) => Ok(Some(v)),
+        Err(copy e) => Err(e)
       }
     }
 }
@@ -317,8 +317,8 @@ fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
     let mut i = 0u;
     while i < n {
         match op(&ss[i],&ts[i]) {
-          Ok(v) => vs.push(v),
-          Err(u) => return Err(u)
+          Ok(copy v) => vs.push(v),
+          Err(copy u) => return Err(u)
         }
         i += 1u;
     }
@@ -339,7 +339,7 @@ fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
     while i < n {
         match op(&ss[i],&ts[i]) {
           Ok(()) => (),
-          Err(u) => return Err(u)
+          Err(copy u) => return Err(u)
         }
         i += 1u;
     }
@@ -365,15 +365,15 @@ fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
 impl<T:Eq,U:Eq> Result<T,U> : Eq {
     pure fn eq(other: &Result<T,U>) -> bool {
         match self {
-            Ok(e0a) => {
+            Ok(ref e0a) => {
                 match (*other) {
-                    Ok(e0b) => e0a == e0b,
+                    Ok(ref e0b) => *e0a == *e0b,
                     _ => false
                 }
             }
-            Err(e0a) => {
+            Err(ref e0a) => {
                 match (*other) {
-                    Err(e0b) => e0a == e0b,
+                    Err(ref e0b) => *e0a == *e0b,
                     _ => false
                 }
             }

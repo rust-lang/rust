@@ -170,10 +170,11 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
+// XXX bad copies
 pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          Some(a_) if a_ < b => {
+          Some(copy a_) if a_ < b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move
             a
@@ -181,15 +182,16 @@ pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
           _ => Some(b)
         }
     } {
-        Some(val) => val,
+        Some(move val) => val,
         None => fail ~"min called on empty iterator"
     }
 }
 
+// XXX bad copies
 pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          Some(a_) if a_ > b => {
+          Some(copy a_) if a_ > b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move.
             a
@@ -197,7 +199,7 @@ pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
           _ => Some(b)
         }
     } {
-        Some(val) => val,
+        Some(move val) => val,
         None => fail ~"max called on empty iterator"
     }
 }
