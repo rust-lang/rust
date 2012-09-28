@@ -74,17 +74,47 @@ mod jit {
             m: ModuleRef,
             opt: c_int,
             stacks: bool) unsafe {
-        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(),
-                                    pm, m, opt, stacks);
+        let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
 
-        if ptr::is_null(ptr) {
+        // We need to tell JIT where to resolve all linked
+        // symbols from. The equivalent of -lstd, -lcore, etc.
+        // By default the JIT will resolve symbols from the std and
+        // core linked into rustc. We don't want that,
+        // incase the user wants to use an older std library.
+
+        let cstore = sess.cstore;
+        for cstore::get_used_crate_files(cstore).each |cratepath| {
+            let path = cratepath.to_str();
+
+            debug!("linking: %s", path);
+
+            let _: () = str::as_c_str(
+                path,
+                |buf_t| {
+                    if !llvm::LLVMRustLoadCrate(manager, buf_t) {
+                        llvm_err(sess, ~"Could not link");
+                    }
+                    debug!("linked: %s", path);
+                });
+        }
+
+        // The execute function will return a void pointer
+        // to the _rust_main function. We can do closure
+        // magic here to turn it straight into a callable rust
+        // closure. It will also cleanup the memory manager
+        // for us.
+
+        let entry = llvm::LLVMRustExecuteJIT(manager,
+                                             pm, m, opt, stacks);
+
+        if ptr::is_null(entry) {
             llvm_err(sess, ~"Could not JIT");
         } else {
             let closure = Closure {
-                code: ptr,
+                code: entry,
                 env: ptr::null()
             };
-            let func: fn(~[~str]) = cast::transmute(move closure);
+            let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
 
             func(~[sess.opts.binary]);
         }
@@ -193,30 +223,9 @@ mod write {
                 // JIT execution takes ownership of the module,
                 // so don't dispose and return.
 
-                // We need to tell LLVM where to resolve all linked
-                // symbols from. The equivalent of -lstd, -lcore, etc.
-                // By default the JIT will resolve symbols from the std and
-                // core linked into rustc. We don't want that,
-                // incase the user wants to use an older std library.
-                /*let cstore = sess.cstore;
-                for cstore::get_used_crate_files(cstore).each |cratepath| {
-                    debug!{"linking: %s", cratepath};
-
-                    let _: () = str::as_c_str(
-                        cratepath,
-                        |buf_t| {
-                            if !llvm::LLVMRustLoadLibrary(buf_t) {
-                                llvm_err(sess, ~"Could not link");
-                            }
-                            debug!{"linked: %s", cratepath};
-                        });
-                }*/
-
                 jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
 
-                if sess.time_llvm_passes() {
-                    llvm::LLVMRustPrintPassTimings();
-                }
+                if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
                 return;
             }
 

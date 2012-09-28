@@ -990,15 +990,19 @@ extern mod llvm {
         call. */
     fn LLVMRustGetLastError() -> *c_char;
 
-    /** Load a shared library to resolve symbols against. */
-    fn LLVMRustLoadLibrary(Filename: *c_char) -> bool;
+    /** Prepare the JIT. Returns a memory manager that can load crates. */
+    fn LLVMRustPrepareJIT(__morestack: *()) -> *();
 
-    /** Create and execute the JIT engine. */
-    fn LLVMRustJIT(__morestack: *(),
-                   PM: PassManagerRef,
-                   M: ModuleRef,
-                   OptLevel: c_int,
-                   EnableSegmentedStacks: bool) -> *();
+    /** Load a crate into the memory manager. */
+    fn LLVMRustLoadCrate(MM: *(),
+                         Filename: *c_char) -> bool;
+
+    /** Execute the JIT engine. */
+    fn LLVMRustExecuteJIT(MM: *(),
+                          PM: PassManagerRef,
+                          M: ModuleRef,
+                          OptLevel: c_int,
+                          EnableSegmentedStacks: bool) -> *();
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
