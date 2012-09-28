@@ -282,17 +282,7 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
 
   const char *NameStr = Name.c_str();
 
-  // Look through loaded crates for symbols.
-
-  for (DenseSet<DynamicLibrary*>::iterator I = crates.begin(),
-       E = crates.end(); I != E; ++I) {
-    void *Ptr = (*I)->getAddressOfSymbol(NameStr);
-
-    if (Ptr) return Ptr;
-  }
-
-  // Fallback to using any symbols LLVM has loaded (generally
-  // from the main program).
+  // Look through loaded crates and main for symbols.
 
   void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
   if (Ptr) return Ptr;
@@ -365,6 +355,7 @@ LLVMRustExecuteJIT(void* mem,
   PM->run(*unwrap(M));
 
   ExecutionEngine* EE = EngineBuilder(unwrap(M))
+    .setErrorStr(&Err)
     .setTargetOptions(Options)
     .setJITMemoryManager(MM)
     .setOptLevel(OptLevel)
