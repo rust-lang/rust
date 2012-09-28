@@ -17,8 +17,6 @@ and `Eq` to overload the `==` and `!=` operators.
 pub use nounittest::*;
 pub use unittest::*;
 
-export Ord, Eq;
-
 /// Interfaces used for comparison.
 
 // Awful hack to work around duplicate lang items in core test.

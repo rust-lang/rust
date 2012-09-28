@@ -206,11 +206,8 @@ mod uniq;
 // Ubiquitous-utility-type modules
 
 #[cfg(notest)]
-#[legacy_exports]
 mod ops;
-#[legacy_exports]
 mod cmp;
-#[legacy_exports]
 mod num;
 #[legacy_exports]
 mod hash;
