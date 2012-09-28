@@ -10,6 +10,7 @@ export le;
 export merge_sort;
 export quick_sort;
 export quick_sort3;
+export timsort;
 export Sort;
 
 type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
