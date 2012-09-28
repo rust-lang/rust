@@ -114,7 +114,7 @@ mod jit {
                 code: entry,
                 env: ptr::null()
             };
-            let func: fn(~[~str]) = cast::transmute(move closure);
+            let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
 
             func(~[sess.opts.binary]);
         }
