@@ -84,54 +84,38 @@ export private;
 // Built-in-type support modules
 
 /// Operations and constants for `int`
-#[legacy_exports]
 #[path = "int-template"]
 mod int {
-    #[legacy_exports];
-    use inst::{ pow };
-    export pow;
+    pub use inst::{ pow };
     #[path = "int.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i8`
-#[legacy_exports]
 #[path = "int-template"]
 mod i8 {
-    #[legacy_exports];
     #[path = "i8.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i16`
-#[legacy_exports]
 #[path = "int-template"]
 mod i16 {
-    #[legacy_exports];
     #[path = "i16.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i32`
-#[legacy_exports]
 #[path = "int-template"]
 mod i32 {
-    #[legacy_exports];
     #[path = "i32.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
 /// Operations and constants for `i64`
-#[legacy_exports]
 #[path = "int-template"]
 mod i64 {
-    #[legacy_exports];
     #[path = "i64.rs"]
-    #[legacy_exports]
     mod inst;
 }
 
