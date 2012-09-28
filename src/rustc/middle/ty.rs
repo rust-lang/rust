@@ -902,7 +902,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
         for substs.tps.each |tt| { f |= get(*tt).flags; }
-        substs.self_r.iter(|r| f |= rflags(r));
+        substs.self_r.iter(|r| f |= rflags(*r));
         return f;
     }
     match st {

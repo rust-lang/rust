@@ -240,7 +240,7 @@ fn each_ancestor(list:        &mut AncestorList,
                 if need_unwind && !nobe_is_dead {
                     do bail_opt.iter |bail_blk| {
                         do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
-                            bail_blk(tg_opt)
+                            (*bail_blk)(tg_opt)
                         }
                     }
                 }

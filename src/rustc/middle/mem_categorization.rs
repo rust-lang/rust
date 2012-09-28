@@ -670,14 +670,14 @@ impl &mem_categorization_ctxt {
 
         match deref_kind(self.tcx, base_cmt.ty) {
             deref_ptr(ptr) => {
-                let lp = do base_cmt.lp.chain |l| {
+                let lp = do base_cmt.lp.chain_ref |l| {
                     // Given that the ptr itself is loanable, we can
                     // loan out deref'd uniq ptrs as the data they are
                     // the only way to reach the data they point at.
                     // Other ptr types admit aliases and are therefore
                     // not loanable.
                     match ptr {
-                        uniq_ptr => {Some(@lp_deref(l, ptr))}
+                        uniq_ptr => {Some(@lp_deref(*l, ptr))}
                         gc_ptr | region_ptr(_) | unsafe_ptr => {None}
                     }
                 };

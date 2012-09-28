@@ -484,7 +484,7 @@ impl CoherenceChecker {
 
                                         let trait_def_id =
                                             self.trait_ref_to_trait_def_id(
-                                                trait_ref);
+                                                *trait_ref);
 
                                         if trait_def_id.crate != local_crate {
                                             let session =

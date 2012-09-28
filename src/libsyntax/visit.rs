@@ -241,7 +241,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
           v.visit_pat(inner, e, v),
       pat_ident(_, path, inner) => {
           visit_path(path, e, v);
-          do option::iter(&inner) |subpat| { v.visit_pat(subpat, e, v)};
+          do option::iter(&inner) |subpat| { v.visit_pat(*subpat, e, v)};
       }
       pat_lit(ex) => v.visit_expr(ex, e, v),
       pat_range(e1, e2) => { v.visit_expr(e1, e, v); v.visit_expr(e2, e, v); }
@@ -342,10 +342,10 @@ fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
         visit_path(p.path, e, v);
     }
     do option::iter(&sd.ctor) |ctor| {
-      visit_class_ctor_helper(ctor, nm, tps, ast_util::local_def(id), e, v);
+      visit_class_ctor_helper(*ctor, nm, tps, ast_util::local_def(id), e, v);
     };
     do option::iter(&sd.dtor) |dtor| {
-      visit_class_dtor_helper(dtor, tps, ast_util::local_def(id), e, v)
+      visit_class_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
     };
 }
 

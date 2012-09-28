@@ -281,7 +281,7 @@ fn build_closure(bcx0: block,
     // variables:
     do option::iter(&include_ret_handle) |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
-        let flag_datum = Datum {val: flagptr, ty: ty::mk_bool(tcx),
+        let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
                                 mode: ByRef, source: FromLvalue};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
