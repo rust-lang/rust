@@ -1239,7 +1239,7 @@ mod tests {
                         *x.content, x.byte_offset,
                         x.byte_offset + x.byte_len);
                   }
-                  node::Concat(x) => {
+                  node::Concat(ref x) => {
                     aux(str, x.left);
                     aux(str, x.right);
                   }

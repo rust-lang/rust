@@ -703,8 +703,9 @@ fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
         stream_closed_po.recv();
         match kill_result {
           // some failure post bind/listen
-          Some(ref err_data) => result::Err(GenericListenErr(err_data.err_name,
-                                                           err_data.err_msg)),
+          Some(ref err_data) => result::Err(GenericListenErr(
+              err_data.err_name,
+              err_data.err_msg)),
           // clean exit
           None => result::Ok(())
         }

@@ -718,7 +718,7 @@ mod tests {
                 // send to other readers
                 for vec::each(reader_convos) |x| {
                     match *x {
-                        (rc, _) => rc.send(()),
+                        (ref rc, _) => rc.send(()),
                     }
                 }
             }
@@ -727,7 +727,7 @@ mod tests {
                 // complete handshake with other readers
                 for vec::each(reader_convos) |x| {
                     match *x {
-                        (_, rp) => rp.recv(),
+                        (_, ref rp) => rp.recv(),
                     }
                 }
                 wc1.send(()); // tell writer to try again

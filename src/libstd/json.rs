@@ -1133,7 +1133,7 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (key, value) => { d.insert(copy key, copy value); },
+                (copy key, copy value) => { d.insert(key, value); },
             }
         };
 
