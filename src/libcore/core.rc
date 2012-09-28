@@ -169,7 +169,6 @@ mod char;
 mod float;
 mod f32;
 mod f64;
-#[legacy_exports]
 mod str;
 #[legacy_exports]
 mod ptr;
