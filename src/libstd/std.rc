@@ -110,19 +110,14 @@ mod treemap;
 mod ebml;
 #[legacy_exports]
 mod ebml2;
-#[legacy_exports]
 mod dbg;
 #[legacy_exports]
 mod getopts;
 #[legacy_exports]
 mod json;
-#[legacy_exports]
 mod sha1;
-#[legacy_exports]
 mod md4;
-#[legacy_exports]
 mod tempfile;
-#[legacy_exports]
 mod term;
 #[legacy_exports]
 mod time;

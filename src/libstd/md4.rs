@@ -1,7 +1,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
+pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
@@ -85,7 +85,7 @@ fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     return {a: a, b: b, c: c, d: d};
 }
 
-fn md4_str(msg: &[u8]) -> ~str {
+pub fn md4_str(msg: &[u8]) -> ~str {
     let {a, b, c, d} = md4(msg);
     fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
         f(a); f(b); f(c); f(d);
@@ -103,7 +103,7 @@ fn md4_str(msg: &[u8]) -> ~str {
     result
 }
 
-fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]
 fn test_md4() {
