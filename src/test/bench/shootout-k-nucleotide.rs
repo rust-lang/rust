@@ -31,7 +31,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 
    // sort by key, then by value
    fn sortKV<TT: Copy Ord, UU: Copy Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
-      return sort::merge_sort(le_by_val, sort::merge_sort(le_by_key, orig));
+      return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
    }
 
    let mut pairs = ~[];
