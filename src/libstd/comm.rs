@@ -9,10 +9,8 @@ Higher level communication abstractions.
 
 use pipes::{Channel, Recv, Chan, Port, Selectable};
 
-export DuplexStream;
-
 /// An extension of `pipes::stream` that allows both sending and receiving.
-struct DuplexStream<T: Send, U: Send> {
+pub struct DuplexStream<T: Send, U: Send> {
     priv chan: Chan<T>,
     priv port: Port <U>,
 }

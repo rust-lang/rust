@@ -74,11 +74,8 @@ mod cell;
 
 // Concurrency
 
-#[legacy_exports]
 mod sync;
-#[legacy_exports]
 mod arc;
-#[legacy_exports]
 mod comm;
 
 // Collections

@@ -7,9 +7,6 @@
  * in std.
  */
 
-export Condvar, Semaphore, Mutex, mutex_with_condvars;
-export RWlock, rwlock_with_condvars, RWlockReadMode, RWlockWriteMode;
-
 use private::{Exclusive, exclusive};
 
 /****************************************************************************
@@ -176,7 +173,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
+pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
 
 impl &Condvar {
     /**
@@ -379,14 +376,14 @@ impl &Semaphore {
 struct Mutex { priv sem: Sem<~[mut Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
-fn Mutex() -> Mutex { mutex_with_condvars(1) }
+pub fn Mutex() -> Mutex { mutex_with_condvars(1) }
 /**
  * Create a new mutex, with a specified number of associated condvars. This
  * will allow calling wait_on/signal_on/broadcast_on with condvar IDs between
  * 0 and num_condvars-1. (If num_condvars is 0, lock_cond will be allowed but
  * any operations on the condvar will fail.)
  */
-fn mutex_with_condvars(num_condvars: uint) -> Mutex {
+pub fn mutex_with_condvars(num_condvars: uint) -> Mutex {
     Mutex { sem: new_sem_and_signal(1, num_condvars) }
 }
 
@@ -429,13 +426,13 @@ struct RWlock {
 }
 
 /// Create a new rwlock, with one associated condvar.
-fn RWlock() -> RWlock { rwlock_with_condvars(1) }
+pub fn RWlock() -> RWlock { rwlock_with_condvars(1) }
 
 /**
  * Create a new rwlock, with a specified number of associated condvars.
  * Similar to mutex_with_condvars.
  */
-fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
+pub fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
     RWlock { order_lock: semaphore(1),
              access_lock: new_sem_and_signal(1, num_condvars),
              state: exclusive(RWlockInner { read_mode:  false,
@@ -646,9 +643,9 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
+pub struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
-struct RWlockReadMode  { priv lock: &RWlock, drop { } }
+pub struct RWlockReadMode  { priv lock: &RWlock, drop { } }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
