@@ -2231,7 +2231,8 @@ impl parser {
         self.expect(token::LBRACE);
         let {inner, next} = maybe_parse_inner_attrs_and_next(self,
                                                              parse_attrs);
-        return (inner, self.parse_block_tail_(lo, if us { unsafe_blk } else { default_blk }, next));
+        let blk_check_mode = if us { unsafe_blk } else { default_blk };
+        return (inner, self.parse_block_tail_(lo, blk_check_mode, next));
     }
 
     fn parse_block_no_value() -> blk {
