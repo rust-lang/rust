@@ -24,8 +24,8 @@ documented separately by extracting documentation attributes from their
 source code. Formatted documentation can be found at the following
 locations:
 
-  - Core library: <http://doc.rust-lang.org/doc/core>
-  - Standard library: <http://doc.rust-lang.org/doc/std>
+  - Core library: <http://doc.rust-lang.org/doc/core/index.html>
+  - Standard library: <http://doc.rust-lang.org/doc/std/index.html>
 
 ## Disclaimer
 
