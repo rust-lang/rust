@@ -433,7 +433,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do option::chain(&getenv(~"USERPROFILE")) |p| {
+        do option::chain(getenv(~"USERPROFILE")) |p| {
             if !str::is_empty(p) {
                 Some(Path(p))
             } else {
