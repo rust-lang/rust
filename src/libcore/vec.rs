@@ -82,7 +82,7 @@ export swap;
 export reverse;
 export reversed;
 export each, each_mut, each_const, eachi, rev_each, rev_eachi;
-export iter2;
+export each2;
 export permute;
 export windowed;
 export as_imm_buf;
@@ -1266,10 +1266,12 @@ pure fn rev_eachi<T>(v: &r/[T], blk: fn(i: uint, v: &r/T) -> bool) {
  * Both vectors must have the same length
  */
 #[inline]
-fn iter2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T)) {
+fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
     assert len(v1) == len(v2);
     for uint::range(0u, len(v1)) |i| {
-        f(&v1[i], &v2[i])
+        if !f(&v1[i], &v2[i]) {
+            return;
+        }
     }
 }
 

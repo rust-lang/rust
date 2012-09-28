@@ -524,7 +524,7 @@ impl check_loan_ctxt {
         let arg_tys =
             ty::ty_fn_args(
                 ty::node_id_to_type(self.tcx(), callee_id));
-        do vec::iter2(args, arg_tys) |arg, arg_ty| {
+        for vec::each2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
                 ast::by_move => {
                     self.check_move_out(*arg);

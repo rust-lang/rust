@@ -113,7 +113,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_call(f, args, _) => {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
-        do vec::iter2(args, arg_tys) |arg, arg_ty| {
+        for vec::each2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_mutbl_ref => {
                 let arg_cmt = self.bccx.cat_expr(*arg);

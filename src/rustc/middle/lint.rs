@@ -675,7 +675,7 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
     match ty::get(fn_ty).sty {
         ty::ty_fn(fn_ty) => {
             let mut counter = 0;
-            do vec::iter2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
+            for vec::each2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
                 counter += 1;
                 debug!("arg %d, ty=%s, mode=%s",
                        counter,

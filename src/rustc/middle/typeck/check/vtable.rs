@@ -392,8 +392,9 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
            ty::get(trait_ty).sty, impl_did);
     match ty::get(trait_ty).sty {
      ty::ty_trait(_, substs, _) => {
-        vec::iter2(substs.tps, trait_tys,
-                   |a, b| demand::suptype(fcx, expr.span, *a, *b));
+         for vec::each2(substs.tps, trait_tys) |a, b| {
+             demand::suptype(fcx, expr.span, *a, *b)
+         }
       }
      _ => tcx.sess.impossible_case(expr.span, "connect_trait_tps: \
             don't know how to handle a non-trait ty")
