@@ -225,7 +225,9 @@ mod write {
 
                 jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
 
-                if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
                 return;
             }
 

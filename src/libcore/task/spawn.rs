@@ -451,7 +451,9 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 match *old_ancestors {
-                    Some(ref arc) => access_ancestors(arc, |a| a.generation+1),
+                    Some(ref arc) => {
+                        access_ancestors(arc, |a| a.generation+1)
+                    }
                     None      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
