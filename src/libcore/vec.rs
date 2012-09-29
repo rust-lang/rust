@@ -6,7 +6,7 @@
 
 use cmp::{Eq, Ord};
 use option::{Some, None};
-use ptr::addr_of;
+use ptr::p2::addr_of;
 use libc::size_t;
 
 export append;
@@ -582,7 +582,7 @@ unsafe fn push_fast<T>(+v: &mut ~[T], +initval: T) {
     let repr: **raw::VecRepr = ::cast::transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::size_of::<T>();
-    let p = ptr::addr_of((**repr).unboxed.data);
+    let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
     rusti::move_val_init(*p, move initval);
 }
@@ -1339,7 +1339,7 @@ pure fn as_imm_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
 
     unsafe {
         let v : *(*T,uint) =
-            ::cast::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1352,7 +1352,7 @@ pure fn as_const_buf<T,U>(s: &[const T],
 
     unsafe {
         let v : *(*const T,uint) =
-            ::cast::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1365,7 +1365,7 @@ pure fn as_mut_buf<T,U>(s: &[mut T],
 
     unsafe {
         let v : *(*mut T,uint) =
-            ::cast::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1816,21 +1816,21 @@ mod raw {
     #[inline(always)]
     unsafe fn to_ptr<T>(+v: &[T]) -> *T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of((**repr).data));
+        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     unsafe fn to_const_ptr<T>(+v: &[const T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of((**repr).data));
+        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     unsafe fn to_mut_ptr<T>(+v: &[mut T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
-        return ::cast::reinterpret_cast(&addr_of((**repr).data));
+        return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
 
     /**
@@ -1841,7 +1841,7 @@ mod raw {
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
         let v : *(&blk/[T]) =
-            ::cast::reinterpret_cast(&ptr::addr_of(pair));
+            ::cast::reinterpret_cast(&addr_of(&pair));
         f(*v)
     }
 
@@ -1996,13 +1996,13 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B {
         iter::foldl(&self, move b0, blk)
     }
-    pure fn position(f: fn(A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+    pure fn position(f: fn(&A) -> bool) -> Option<uint> {
+        iter::position(&self, f)
     }
 }
 
 impl<A: Eq> &[A]: iter::EqIter<A> {
-    pure fn contains(x: &A) -> bool { iter::contains(self, x) }
+    pure fn contains(x: &A) -> bool { iter::contains(&self, x) }
     pure fn count(x: &A) -> uint { iter::count(&self, x) }
 }
 
@@ -2020,7 +2020,7 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
+    pure fn find(p: fn(+a: A) -> bool) -> Option<A> { iter::find(&self, p) }
 }
 
 impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {

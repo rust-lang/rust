@@ -889,8 +889,8 @@ mod tests {
     #[test]
     fn test_readchars_empty() {
         do io::with_str_reader(~"") |inp| {
-            let res : ~[char] = inp.read_chars(128u);
-            assert(vec::len(res) == 0u);
+            let res : ~[char] = inp.read_chars(128);
+            assert(vec::len(res) == 0);
         }
     }
 
@@ -903,7 +903,7 @@ mod tests {
             104, 101, 108, 108, 111,
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
-        fn check_read_ln(len : uint, s: ~str, ivals: ~[int]) {
+        fn check_read_ln(len : uint, s: &str, ivals: &[int]) {
             do io::with_str_reader(s) |inp| {
                 let res : ~[char] = inp.read_chars(len);
                 if (len <= vec::len(ivals)) {
@@ -913,13 +913,13 @@ mod tests {
                        vec::map(res, |x| *x as int));
             }
         }
-        let mut i = 0u;
-        while i < 8u {
+        let mut i = 0;
+        while i < 8 {
             check_read_ln(i, wide_test, ivals);
-            i += 1u;
+            i += 1;
         }
         // check a long read for good measure
-        check_read_ln(128u, wide_test, ivals);
+        check_read_ln(128, wide_test, ivals);
     }
 
     #[test]

@@ -24,7 +24,7 @@ pub mod raw {
 
 pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
-    unsafe { ptr::addr_of(*a) == ptr::addr_of(*b) }
+    unsafe { ptr::p2::addr_of(&(*a)) == ptr::p2::addr_of(&(*b)) }
 }
 
 impl<T:Eq> @const T : Eq {

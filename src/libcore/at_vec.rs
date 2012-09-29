@@ -5,7 +5,7 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
-use ptr::addr_of;
+use ptr::p2::addr_of;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
@@ -29,7 +29,7 @@ extern mod rusti {
 pub pure fn capacity<T>(v: @[const T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr =
-            ::cast::reinterpret_cast(&addr_of(v));
+            ::cast::reinterpret_cast(&addr_of(&v));
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -161,7 +161,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn set_len<T>(v: @[const T], new_len: uint) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
+        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(&v));
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
@@ -182,7 +182,7 @@ pub mod raw {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
-        let p = ptr::addr_of((**repr).unboxed.data);
+        let p = addr_of(&((**repr).unboxed.data));
         let p = ptr::offset(p, fill) as *mut T;
         rusti::move_val_init(*p, move initval);
     }

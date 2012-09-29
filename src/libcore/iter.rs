@@ -19,7 +19,7 @@ trait ExtendedIter<A> {
     pure fn all(blk: fn(&A) -> bool) -> bool;
     pure fn any(blk: fn(&A) -> bool) -> bool;
     pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B;
-    pure fn position(f: fn(A) -> bool) -> Option<uint>;
+    pure fn position(f: fn(&A) -> bool) -> Option<uint>;
 }
 
 trait EqIter<A:Eq> {
@@ -38,7 +38,7 @@ trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(pred: fn(+a: A) -> bool) -> ~[A];
     pure fn map_to_vec<B>(op: fn(+v: A) -> B) -> ~[B];
     pure fn to_vec() -> ~[A];
-    pure fn find(p: fn(A) -> bool) -> Option<A>;
+    pure fn find(p: fn(+a: A) -> bool) -> Option<A>;
 }
 
 trait CopyableOrderedIter<A:Copy Ord> {
@@ -131,7 +131,7 @@ pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: &IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy (*r), ~[*a]))
 }
 
-pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> bool {
+pure fn contains<A:Eq,IA:BaseIter<A>>(self: &IA, x: &A) -> bool {
     for self.each |a| {
         if *a == *x { return true; }
     }
@@ -148,12 +148,12 @@ pure fn count<A:Eq,IA:BaseIter<A>>(self: &IA, x: &A) -> uint {
     }
 }
 
-pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
+pure fn position<A,IA:BaseIter<A>>(self: &IA, f: fn(&A) -> bool)
     -> Option<uint>
 {
     let mut i = 0;
     for self.each |a| {
-        if f(*a) { return Some(i); }
+        if f(a) { return Some(i); }
         i += 1;
     }
     return None;
@@ -164,10 +164,10 @@ pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
 // it would have to be implemented with foldr, which is too inefficient.
 
 pure fn repeat(times: uint, blk: fn() -> bool) {
-    let mut i = 0u;
+    let mut i = 0;
     while i < times {
         if !blk() { break }
-        i += 1u;
+        i += 1;
     }
 }
 
@@ -199,8 +199,8 @@ pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     }
 }
 
-pure fn find<A: Copy,IA:BaseIter<A>>(self: IA,
-                                     p: fn(A) -> bool) -> Option<A> {
+pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
+                                     p: fn(+a: A) -> bool) -> Option<A> {
     for self.each |i| {
         if p(*i) { return Some(*i) }
     }

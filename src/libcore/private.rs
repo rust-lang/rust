@@ -108,8 +108,8 @@ pub fn test_from_global_chan1() {
     // This is unreadable, right?
 
     // The global channel
-    let globchan = 0u;
-    let globchanp = ptr::addr_of(globchan);
+    let globchan = 0;
+    let globchanp = ptr::p2::addr_of(&globchan);
 
     // Create the global channel, attached to a new task
     let ch = unsafe {
@@ -142,23 +142,23 @@ pub fn test_from_global_chan1() {
 #[test]
 pub fn test_from_global_chan2() {
 
-    for iter::repeat(100u) {
+    for iter::repeat(100) {
         // The global channel
-        let globchan = 0u;
-        let globchanp = ptr::addr_of(globchan);
+        let globchan = 0;
+        let globchanp = ptr::p2::addr_of(&globchan);
 
         let resultpo = comm::Port();
         let resultch = comm::Chan(resultpo);
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
-        for uint::range(0u, 10u) |i| {
+        for uint::range(0, 10) |i| {
             do task::spawn {
                 let ch = unsafe {
                     do chan_from_global_ptr(
                         globchanp, task::task) |po| {
 
-                        for uint::range(0u, 10u) |_j| {
+                        for uint::range(0, 10) |_j| {
                             let ch = comm::recv(po);
                             comm::send(ch, {i});
                         }
