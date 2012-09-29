@@ -248,10 +248,10 @@ pure fn build_sized_opt<A,B: Buildable<A>>(
 // Functions that combine iteration and building
 
 /// Apply a function to each element of an iterable and return the results
-fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: IT, f: fn(T) -> U) -> BU {
+fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: &IT, f: fn(&T) -> U) -> BU {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each() |elem| {
-            push(f(*elem));
+            push(f(elem));
         }
     }
 }
@@ -275,17 +275,17 @@ pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint, op: InitOp<T>) -> BT {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
+pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint, +t: T) -> BT {
     do build_sized(n_elts) |push| {
-        let mut i: uint = 0u;
-        while i < n_elts { push(t); i += 1u; }
+        let mut i: uint = 0;
+        while i < n_elts { push(t); i += 1; }
     }
 }
 
 /// Appending two generic sequences
 #[inline(always)]
 pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
-    lhs: IT, rhs: IT) -> BT {
+    lhs: &IT, rhs: &IT) -> BT {
     let size_opt = lhs.size_hint().chain_ref(
         |sz1| rhs.size_hint().map(|sz2| *sz1+*sz2));
     do build_sized_opt(size_opt) |push| {
@@ -298,7 +298,7 @@ pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
 /// type of sequence.
 #[inline(always)]
 pure fn copy_seq<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
-    v: IT) -> BT {
+    v: &IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each |x| { push(*x); }
     }
