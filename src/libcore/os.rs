@@ -328,7 +328,7 @@ pub fn pipe() -> {in: c_int, out: c_int} {
     // in rust_run_program.
     let fds = { mut in: 0 as c_int,
                 mut out: 0 as c_int };
-    let res = libc::pipe(ptr::mut_addr_of(fds.in),
+    let res = libc::pipe(ptr::mut_addr_of(&(fds.in)),
                          1024 as c_uint,
                          (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
     assert (res == 0 as c_int);
@@ -365,7 +365,7 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 sysctl(vec::raw::to_ptr(mib), vec::len(mib) as c_uint,
-                       buf as *mut c_void, ptr::mut_addr_of(sz),
+                       buf as *mut c_void, ptr::mut_addr_of(&sz),
                        ptr::null(), 0u as size_t) == (0 as c_int)
             }
         }
