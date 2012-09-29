@@ -363,7 +363,7 @@ fn trans_expr_fn(bcx: block,
     let llfnty = type_of_fn_from_ty(ccx, fty);
     let sub_path = vec::append_one(bcx.fcx.path,
                                    path_name(special_idents::anon));
-    let s = mangle_internal_name_by_path(ccx, sub_path);
+    let s = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> Result {
