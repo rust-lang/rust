@@ -40,6 +40,16 @@ fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) {
     rustrt::rust_upcall_fail(expr, file, line);
 }
 
+#[rt(fail_bounds_check)]
+fn rt_fail_bounds_check(file: *c_char, line: size_t,
+                        index: size_t, len: size_t) {
+    let msg = fmt!("index out of bounds: the len is %d but the index is %d",
+                    len as int, index as int);
+    do str::as_buf(msg) |p, _len| {
+        rt_fail_(p as *c_char, file, line);
+    }
+}
+
 #[rt(exchange_malloc)]
 fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_exchange_malloc(td, size);
