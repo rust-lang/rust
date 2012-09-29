@@ -238,11 +238,11 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         }
     }
 
-    let mut i = 0u;
+    let mut i = 0;
     while par::any(colors, is_gray) {
         // Do the BFS.
         log(info, fmt!("PBFS iteration %?", i));
-        i += 1u;
+        i += 1;
         let old_len = colors.len();
 
         let color = arc::ARC(colors);
@@ -264,7 +264,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
                     let mut color = white;
 
                     do neighbors.each() |k| {
-                        if is_gray(colors[*k]) {
+                        if is_gray(&colors[*k]) {
                             color = gray(*k);
                             false
                         }
@@ -370,11 +370,11 @@ fn validate(edges: ~[(node_id, node_id)],
 
     let status = do par::alli(tree) |u, v| {
         let u = u as node_id;
-        if v == -1i64 || u == root {
+        if *v == -1i64 || u == root {
             true
         }
         else {
-            edges.contains(&(u, v)) || edges.contains(&(v, u))
+            edges.contains(&(u, *v)) || edges.contains(&(*v, u))
         }
     };
 
