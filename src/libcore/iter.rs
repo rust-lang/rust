@@ -16,8 +16,8 @@ trait BaseIter<A> {
 
 trait ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, v: &A) -> bool);
-    pure fn all(blk: fn(A) -> bool) -> bool;
-    pure fn any(blk: fn(A) -> bool) -> bool;
+    pure fn all(blk: fn(&A) -> bool) -> bool;
+    pure fn any(blk: fn(&A) -> bool) -> bool;
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
     pure fn position(f: fn(A) -> bool) -> Option<uint>;
 }
@@ -35,8 +35,8 @@ trait TimesIx{
 }
 
 trait CopyableIter<A:Copy> {
-    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
-    pure fn map_to_vec<B>(op: fn(v: &A) -> B) -> ~[B];
+    pure fn filter_to_vec(pred: fn(+a: A) -> bool) -> ~[A];
+    pure fn map_to_vec<B>(op: fn(+v: A) -> B) -> ~[B];
     pure fn to_vec() -> ~[A];
     pure fn find(p: fn(A) -> bool) -> Option<A>;
 }
@@ -74,22 +74,22 @@ pure fn eachi<A,IA:BaseIter<A>>(self: &IA, blk: fn(uint, v: &A) -> bool) {
     }
 }
 
-pure fn all<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+pure fn all<A,IA:BaseIter<A>>(self: &IA, blk: fn(&A) -> bool) -> bool {
     for self.each |a| {
-        if !blk(*a) { return false; }
+        if !blk(a) { return false; }
     }
     return true;
 }
 
-pure fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+pure fn any<A,IA:BaseIter<A>>(self: &IA, blk: fn(&A) -> bool) -> bool {
     for self.each |a| {
-        if blk(*a) { return true; }
+        if blk(a) { return true; }
     }
     return false;
 }
 
-pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: IA,
-                                         prd: fn(A) -> bool) -> ~[A] {
+pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: &IA,
+                                         prd: fn(+a: A) -> bool) -> ~[A] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
             if prd(*a) { push(*a); }
@@ -97,17 +97,17 @@ pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: IA,
     }
 }
 
-pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: IA, op: fn(v: &A) -> B)
+pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: &IA, op: fn(+v: A) -> B)
     -> ~[B] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            push(op(a));
+            push(op(*a));
         }
     }
 }
 
 pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
-    self: IA, op: fn(A) -> IB) -> ~[B] {
+    self: &IA, op: fn(+a: A) -> IB) -> ~[B] {
 
     do vec::build |push| {
         for self.each |a| {

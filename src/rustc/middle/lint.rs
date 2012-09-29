@@ -149,7 +149,7 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: ~"warn about deprecated uses of modes",
-           default: allow}),
+           default: warn}),
 
         (~"deprecated_pattern",
          @{lint: deprecated_pattern,

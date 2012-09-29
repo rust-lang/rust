@@ -24,7 +24,7 @@ use util::common::indenter;
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
         bs.any(|b| {
-            match b { ty::bound_trait(_) => true, _ => false }
+            match b { &ty::bound_trait(_) => true, _ => false }
         })
     })
 }

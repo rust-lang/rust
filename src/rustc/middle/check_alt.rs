@@ -432,7 +432,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
     }
 }
 
-fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
+fn is_refutable(tcx: ty::ctxt, pat: &pat) -> bool {
     match tcx.def_map.find(pat.id) {
       Some(def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u {
@@ -457,10 +457,10 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         fields.any(|f| is_refutable(tcx, f.pat))
       }
       pat_tup(elts) => {
-        elts.any(|elt| is_refutable(tcx, elt))
+        elts.any(|elt| is_refutable(tcx, *elt))
       }
       pat_enum(_, Some(args)) => {
-        args.any(|a| is_refutable(tcx, a))
+        args.any(|a| is_refutable(tcx, *a))
       }
       pat_enum(_,_) => { false }
     }

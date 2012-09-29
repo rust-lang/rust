@@ -352,7 +352,7 @@ fn validate(edges: ~[(node_id, node_id)],
     log(info, ~"Verifying graph edges...");
 
     let status = do edges.all() |e| {
-        let (u, v) = e;
+        let (u, v) = *e;
 
         abs(level[u] - level[v]) <= 1
     };
