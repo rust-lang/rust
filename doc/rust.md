@@ -15,17 +15,16 @@ provides three kinds of material:
 
 This document does not serve as a tutorial introduction to the
 language. Background familiarity with the language is assumed. A separate
-tutorial document is available at <http://doc.rust-lang.org/doc/tutorial.html>
-to help acquire such background familiarity.
+[tutorial] document is available to help acquire such background familiarity.
 
-This document also does not serve as a reference to the core or standard
+This document also does not serve as a reference to the [core] or [standard]
 libraries included in the language distribution. Those libraries are
 documented separately by extracting documentation attributes from their
-source code. Formatted documentation can be found at the following
-locations:
+source code.
 
-  - Core library: <http://doc.rust-lang.org/doc/core/index.html>
-  - Standard library: <http://doc.rust-lang.org/doc/std/index.html>
+[tutorial]: tutorial.html
+[core]: core/index.html
+[standard]: std/index.html
 
 ## Disclaimer
 
