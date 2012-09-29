@@ -188,7 +188,6 @@ mod hash;
 mod either;
 #[legacy_exports]
 mod iter;
-#[legacy_exports]
 mod logging;
 #[legacy_exports]
 mod option;
@@ -201,13 +200,9 @@ mod option_iter {
 }
 #[legacy_exports]
 mod result;
-#[legacy_exports]
 mod to_str;
-#[legacy_exports]
 mod to_bytes;
-#[legacy_exports]
 mod from_str;
-#[legacy_exports]
 mod util;
 
 // Data structure modules

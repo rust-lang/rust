@@ -10,7 +10,7 @@ The `ToBytes` and `IterBytes` traits
 
 use io::Writer;
 
-type Cb = fn(buf: &[const u8]) -> bool;
+pub type Cb = fn(buf: &[const u8]) -> bool;
 
 /**
  * A trait to implement in order to make a type hashable;
@@ -19,7 +19,7 @@ type Cb = fn(buf: &[const u8]) -> bool;
  * modified when default methods and trait inheritence are
  * completed.
  */
-trait IterBytes {
+pub trait IterBytes {
     /**
      * Call the provided callback `f` one or more times with
      * byte-slices that should be used when computing a hash
@@ -211,7 +211,7 @@ impl<A: IterBytes> @[A]: IterBytes {
     }
 }
 
-pure fn iter_bytes_2<A: IterBytes, B: IterBytes>(a: &A, b: &B,
+pub pure fn iter_bytes_2<A: IterBytes, B: IterBytes>(a: &A, b: &B,
                                             lsb0: bool, z: Cb) {
     let mut flag = true;
     a.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
@@ -219,7 +219,7 @@ pure fn iter_bytes_2<A: IterBytes, B: IterBytes>(a: &A, b: &B,
     b.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pure fn iter_bytes_3<A: IterBytes,
+pub pure fn iter_bytes_3<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C,
                               lsb0: bool, z: Cb) {
@@ -231,7 +231,7 @@ pure fn iter_bytes_3<A: IterBytes,
     c.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pure fn iter_bytes_4<A: IterBytes,
+pub pure fn iter_bytes_4<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes>(a: &A, b: &B, c: &C,
@@ -247,7 +247,7 @@ pure fn iter_bytes_4<A: IterBytes,
     d.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pure fn iter_bytes_5<A: IterBytes,
+pub pure fn iter_bytes_5<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
@@ -266,7 +266,7 @@ pure fn iter_bytes_5<A: IterBytes,
     e.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pure fn iter_bytes_6<A: IterBytes,
+pub pure fn iter_bytes_6<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
@@ -288,7 +288,7 @@ pure fn iter_bytes_6<A: IterBytes,
     f.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-pure fn iter_bytes_7<A: IterBytes,
+pub pure fn iter_bytes_7<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
