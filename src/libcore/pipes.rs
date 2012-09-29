@@ -1111,7 +1111,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
 }
 
 /// Converts a `chan` into a `shared_chan`.
-fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
+pub fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
     private::exclusive(move c)
 }
 
