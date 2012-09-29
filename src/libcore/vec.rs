@@ -1531,7 +1531,7 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
 
 trait ImmutableVector<T> {
     pure fn view(start: uint, end: uint) -> &self/[T];
-    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, +u: U) -> U) -> U;
+    pure fn foldr<U: Copy>(+z: U, p: fn(t: &T, +u: U) -> U) -> U;
     pure fn map<U>(f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
@@ -1555,7 +1555,7 @@ impl<T> &[T]: ImmutableVector<T> {
     }
     /// Reduce a vector from right to left
     #[inline]
-    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, +u: U) -> U) -> U {
+    pure fn foldr<U: Copy>(+z: U, p: fn(t: &T, +u: U) -> U) -> U {
         foldr(self, z, p)
     }
     /// Apply a function to each element of a vector and return the results
