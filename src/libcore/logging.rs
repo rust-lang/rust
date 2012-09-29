@@ -8,7 +8,6 @@ use cast::transmute;
 
 #[nolink]
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_log_console_on();
     fn rust_log_console_off();
     fn rust_log_str(level: u32, string: *libc::c_char, size: libc::size_t);
