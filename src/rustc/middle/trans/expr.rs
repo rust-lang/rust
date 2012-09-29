@@ -946,7 +946,9 @@ fn trans_index(bcx: block,
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
     let bcx = do with_cond(bcx, bounds_check) |bcx| {
-        controlflow::trans_fail(bcx, Some(index_expr.span), ~"bounds check")
+        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
+        controlflow::trans_fail_bounds_check(bcx, index_expr.span,
+                                             ix_val, unscaled_len)
     };
     let elt = InBoundsGEP(bcx, base, ~[ix_val]);
     let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
