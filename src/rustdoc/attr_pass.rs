@@ -144,6 +144,7 @@ fn fold_enum(
 
     {
         variants: do par::map(doc.variants) |variant| {
+            let variant = *variant;
             let desc = do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{

@@ -42,7 +42,7 @@ fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
             {
                 desc: desc,
                 sections: sections,
-                ..method
+                .. *method
             }
         },
         .. doc
@@ -59,7 +59,7 @@ fn fold_impl(fold: fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
             {
                 desc: desc,
                 sections: sections,
-                .. method
+                .. *method
             }
         },
         .. doc

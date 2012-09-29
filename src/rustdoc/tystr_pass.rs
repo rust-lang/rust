@@ -112,6 +112,7 @@ fn fold_enum(
 
     {
         variants: do par::map(doc.variants) |variant| {
+            let variant = *variant;
             let sig = do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
@@ -161,7 +162,7 @@ fn merge_methods(
     do par::map(docs) |doc| {
         {
             sig: get_method_sig(srv, item_id, doc.name),
-            .. doc
+            .. *doc
         }
     }
 }

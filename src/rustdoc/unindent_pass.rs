@@ -63,11 +63,11 @@ fn unindent(s: ~str) -> ~str {
     if vec::is_not_empty(lines) {
         let unindented = ~[str::trim(vec::head(lines))]
             + do par::map(vec::tail(lines)) |line| {
-            if str::is_whitespace(line) {
-                line
+            if str::is_whitespace(*line) {
+                *line
             } else {
-                assert str::len(line) >= min_indent;
-                str::slice(line, min_indent, str::len(line))
+                assert str::len(*line) >= min_indent;
+                str::slice(*line, min_indent, str::len(*line))
             }
         };
         str::connect(unindented, ~"\n")

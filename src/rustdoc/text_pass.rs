@@ -60,7 +60,7 @@ fn fold_enum(fold: fold::Fold<Op>, doc: doc::EnumDoc) -> doc::EnumDoc {
         variants: do par::map(doc.variants) |variant, copy fold| {
             {
                 desc: maybe_apply_op(fold.ctxt, variant.desc),
-                .. variant
+                .. *variant
             }
         },
         .. doc
@@ -82,7 +82,7 @@ fn apply_to_methods(op: Op, docs: ~[doc::MethodDoc]) -> ~[doc::MethodDoc] {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
             sections: apply_to_sections(op, doc.sections),
-            .. doc
+            .. *doc
         }
     }
 }
