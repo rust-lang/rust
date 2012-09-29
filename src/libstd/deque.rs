@@ -6,7 +6,7 @@ use option::{Some, None};
 use dvec::DVec;
 use core::cmp::{Eq};
 
-trait Deque<T> {
+pub trait Deque<T> {
     fn size() -> uint;
     fn add_front(+v: T);
     fn add_back(+v: T);
@@ -19,7 +19,7 @@ trait Deque<T> {
 
 // FIXME (#2343) eventually, a proper datatype plus an exported impl would
 // be preferrable.
-fn create<T: Copy>() -> Deque<T> {
+pub fn create<T: Copy>() -> Deque<T> {
     type Cell<T> = Option<T>;
 
     let initial_capacity: uint = 32u; // 2^5
@@ -119,7 +119,6 @@ fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
     #[test]
     fn test_simple() {
         let d: deque::Deque<int> = deque::create::<int>();

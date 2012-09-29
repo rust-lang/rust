@@ -81,7 +81,6 @@ mod comm;
 // Collections
 
 mod bitv;
-#[legacy_exports]
 mod deque;
 #[legacy_exports]
 mod fun_treemap;
