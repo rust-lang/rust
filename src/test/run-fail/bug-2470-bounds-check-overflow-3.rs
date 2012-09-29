@@ -1,5 +1,5 @@
 // xfail-test
-// error-pattern:bounds check
+// error-pattern:index out of bounds
 
 #[cfg(target_arch="x86")]
 fn main() {
