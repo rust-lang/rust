@@ -1991,8 +1991,8 @@ impl<A> &[A]: iter::BaseIter<A> {
 
 impl<A> &[A]: iter::ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, v: &A) -> bool) { iter::eachi(&self, blk) }
-    pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
-    pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
+    pure fn all(blk: fn(&A) -> bool) -> bool { iter::all(&self, blk) }
+    pure fn any(blk: fn(&A) -> bool) -> bool { iter::any(&self, blk) }
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, move b0, blk)
     }
@@ -2007,11 +2007,11 @@ impl<A: Eq> &[A]: iter::EqIter<A> {
 }
 
 impl<A: Copy> &[A]: iter::CopyableIter<A> {
-    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
-        iter::filter_to_vec(self, pred)
+    pure fn filter_to_vec(pred: fn(+a: A) -> bool) -> ~[A] {
+        iter::filter_to_vec(&self, pred)
     }
-    pure fn map_to_vec<B>(op: fn(v: &A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
+    pure fn map_to_vec<B>(op: fn(+v: A) -> B) -> ~[B] {
+        iter::map_to_vec(&self, op)
     }
     pure fn to_vec() -> ~[A] { iter::to_vec(self) }
 

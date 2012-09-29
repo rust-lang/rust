@@ -514,7 +514,7 @@ fn enter_region(bcx: block, dm: DefMap, m: &[@Match/&r],
 
 fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
-        if set.any(|l| opt_eq(tcx, &l, &val)) {return;}
+        if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
 
