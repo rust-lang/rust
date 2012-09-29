@@ -511,15 +511,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
 
             let child_wrapper = make_child_wrapper(new_task, move child_tg,
                   move ancestors, is_main, move notify_chan, move f);
-            /*
-            Truly awful, but otherwise the borrow checker complains about
-            the move in the last line of this block, for reasons I can't
-            understand. -- tjc
-            */
-            let tmp: u64 = cast::reinterpret_cast(&(&child_wrapper));
-            let whatever: &~fn() = cast::reinterpret_cast(&tmp);
-            let fptr = ptr::p2::addr_of(whatever);
-            let closure: *rust_closure = cast::reinterpret_cast(&fptr);
+
+            let closure = cast::transmute(&child_wrapper);
 
             // Getting killed between these two calls would free the child's
             // closure. (Reordering them wouldn't help - then getting killed
