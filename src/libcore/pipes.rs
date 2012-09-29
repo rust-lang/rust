@@ -219,7 +219,7 @@ fn unibuffer<T: Send>() -> ~Buffer<Packet<T>> {
 #[doc(hidden)]
 pub fn packet<T: Send>() -> *Packet<T> {
     let b = unibuffer();
-    let p = ptr::addr_of(b.data);
+    let p = ptr::p2::addr_of(&(b.data));
     // We'll take over memory management from here.
     unsafe { forget(move b) }
     p
@@ -359,7 +359,7 @@ pub fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
-    assert ptr::addr_of(p.header) == header;
+    assert ptr::p2::addr_of(&(p.header)) == header;
     assert p.payload.is_none();
     p.payload <- Some(move payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
@@ -377,7 +377,7 @@ pub fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
                 rustrt::task_signal_event(
-                    old_task, ptr::addr_of(p.header) as *libc::c_void);
+                    old_task, ptr::p2::addr_of(&(p.header)) as *libc::c_void);
                 rustrt::rust_task_deref(old_task);
             }
 
@@ -529,7 +529,7 @@ fn sender_terminate<T: Send>(p: *Packet<T>) {
         if !old_task.is_null() {
             rustrt::task_signal_event(
                 old_task,
-                ptr::addr_of(p.header) as *libc::c_void);
+                ptr::p2::addr_of(&(p.header)) as *libc::c_void);
             rustrt::rust_task_deref(old_task);
         }
         // The receiver will eventually clean up.
@@ -744,7 +744,7 @@ pub fn SendPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of((*p).header))))
+                get_buffer(ptr::p2::addr_of(&((*p).header)))))
         }
     }
 }
@@ -760,7 +760,7 @@ impl<T: Send, Tbuffer: Send> SendPacketBuffered<T, Tbuffer> {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(packet.header);
+            let header = ptr::p2::addr_of(&(packet.header));
             //forget(packet);
             header
           },
@@ -815,7 +815,7 @@ impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> : Selectable {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
-            let header = ptr::addr_of(packet.header);
+            let header = ptr::p2::addr_of(&(packet.header));
             //forget(packet);
             header
           },
@@ -838,7 +838,7 @@ pub fn RecvPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
         p: Some(p),
         buffer: unsafe {
             Some(BufferResource(
-                get_buffer(ptr::addr_of((*p).header))))
+                get_buffer(ptr::p2::addr_of(&((*p).header)))))
         }
     }
 }

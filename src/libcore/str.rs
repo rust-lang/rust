@@ -1780,7 +1780,7 @@ pub pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pub pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::addr_of(s));
+        let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::p2::addr_of(&s));
         let (buf,len) = *v;
         f(buf, len)
     }
@@ -2012,7 +2012,7 @@ pub mod raw {
         let v: **vec::raw::VecRepr = cast::transmute(copy v);
         let repr: *vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
-        let null = ptr::mut_offset(ptr::mut_addr_of((*repr).unboxed.data),
+        let null = ptr::mut_offset(ptr::mut_addr_of(&((*repr).unboxed.data)),
                                    new_len);
         *null = 0u8;
     }

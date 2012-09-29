@@ -303,7 +303,7 @@ pub fn waitpid(pid: pid_t) -> c_int {
     use libc::funcs::posix01::wait::*;
     let status = 0 as c_int;
 
-    assert (waitpid(pid, ptr::mut_addr_of(status),
+    assert (waitpid(pid, ptr::mut_addr_of(&status),
                     0 as c_int) != (-1 as c_int));
     return status;
 }
@@ -313,7 +313,7 @@ pub fn waitpid(pid: pid_t) -> c_int {
 pub fn pipe() -> {in: c_int, out: c_int} {
     let fds = {mut in: 0 as c_int,
                mut out: 0 as c_int };
-    assert (libc::pipe(ptr::mut_addr_of(fds.in)) == (0 as c_int));
+    assert (libc::pipe(ptr::mut_addr_of(&(fds.in))) == (0 as c_int));
     return {in: fds.in, out: fds.out};
 }
 
@@ -384,7 +384,7 @@ pub fn self_exe_path() -> Option<Path> {
     #[cfg(target_os = "macos")]
     fn load_self() -> Option<~str> {
         do fill_charp_buf() |buf, sz| {
-            libc::_NSGetExecutablePath(buf, ptr::mut_addr_of(sz as u32))
+            libc::_NSGetExecutablePath(buf, ptr::mut_addr_of(&(sz as u32)))
                 == (0 as c_int)
         }
     }

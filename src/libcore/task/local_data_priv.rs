@@ -68,7 +68,7 @@ unsafe fn local_data_lookup<T: Owned>(
 
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
-        match entry {
+        match *entry {
             Some((k,_,_)) => k == key_value,
             None => false
         }

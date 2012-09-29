@@ -24,15 +24,24 @@ extern mod rusti {
     fn addr_of<T>(val: T) -> *T;
 }
 
+/*
+Remove this after snapshot; make p2::addr_of addr_of
+*/
 /// Get an unsafe pointer to a value
 #[inline(always)]
 pub pure fn addr_of<T>(val: T) -> *T { unsafe { rusti::addr_of(val) } }
 
+pub mod p2 {
+    /// Get an unsafe pointer to a value
+    #[inline(always)]
+    pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
+}
+
 /// Get an unsafe mut pointer to a value
 #[inline(always)]
-pub pure fn mut_addr_of<T>(val: T) -> *mut T {
+pub pure fn mut_addr_of<T>(val: &T) -> *mut T {
     unsafe {
-        cast::reinterpret_cast(&rusti::addr_of(val))
+        cast::reinterpret_cast(&rusti::addr_of(*val))
     }
 }
 
@@ -61,16 +70,16 @@ pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
 /// Return the offset of the first null pointer in `buf`.
 #[inline(always)]
 pub unsafe fn buf_len<T>(buf: **T) -> uint {
-    position(buf, |i| i == null())
+    position(buf, |i| *i == null())
 }
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline(always)]
-pub unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
-    let mut i = 0u;
+pub unsafe fn position<T>(buf: *T, f: fn(&T) -> bool) -> uint {
+    let mut i = 0;
     loop {
-        if f(*offset(buf, i)) { return i; }
-        else { i += 1u; }
+        if f(&(*offset(buf, i))) { return i; }
+        else { i += 1; }
     }
 }
 
@@ -234,7 +243,7 @@ pub fn test() {
     unsafe {
         type Pair = {mut fst: int, mut snd: int};
         let p = {mut fst: 10, mut snd: 20};
-        let pptr: *mut Pair = mut_addr_of(p);
+        let pptr: *mut Pair = mut_addr_of(&p);
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
         *iptr = 30;
@@ -268,9 +277,9 @@ pub fn test_position() {
 
     let s = ~"hello";
     unsafe {
-        assert 2u == as_c_str(s, |p| position(p, |c| c == 'l' as c_char));
-        assert 4u == as_c_str(s, |p| position(p, |c| c == 'o' as c_char));
-        assert 5u == as_c_str(s, |p| position(p, |c| c == 0 as c_char));
+        assert 2u == as_c_str(s, |p| position(p, |c| *c == 'l' as c_char));
+        assert 4u == as_c_str(s, |p| position(p, |c| *c == 'o' as c_char));
+        assert 5u == as_c_str(s, |p| position(p, |c| *c == 0 as c_char));
     }
 }
 

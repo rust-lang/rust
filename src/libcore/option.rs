@@ -252,20 +252,20 @@ impl<T: Eq> Option<T> : Eq {
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;
-    let addr_x = ptr::addr_of(*x);
+    let addr_x = ptr::p2::addr_of(&(*x));
     let opt = Some(x);
     let y = unwrap(opt);
-    let addr_y = ptr::addr_of(*y);
+    let addr_y = ptr::p2::addr_of(&(*y));
     assert addr_x == addr_y;
 }
 
 #[test]
 fn test_unwrap_str() {
     let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| ptr::addr_of(buf));
+    let addr_x = str::as_buf(x, |buf, _len| ptr::p2::addr_of(&buf));
     let opt = Some(x);
     let y = unwrap(opt);
-    let addr_y = str::as_buf(y, |buf, _len| ptr::addr_of(buf));
+    let addr_y = str::as_buf(y, |buf, _len| ptr::p2::addr_of(&buf));
     assert addr_x == addr_y;
 }
 

@@ -19,13 +19,13 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B {
         iter::foldl(&self, move b0, blk)
     }
-    pure fn position(f: fn(A) -> bool) -> Option<uint> {
-        iter::position(self, f)
+    pure fn position(f: fn(&A) -> bool) -> Option<uint> {
+        iter::position(&self, f)
     }
 }
 
 impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
-    pure fn contains(x: &A) -> bool { iter::contains(self, x) }
+    pure fn contains(x: &A) -> bool { iter::contains(&self, x) }
     pure fn count(x: &A) -> uint { iter::count(&self, x) }
 }
 
@@ -43,7 +43,7 @@ impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
         iter::flat_map_to_vec(&self, op)
     }
 
-    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
+    pure fn find(p: fn(+a: A) -> bool) -> Option<A> { iter::find(&self, p) }
 }
 
 impl<A: Copy Ord> IMPL_T<A>: iter::CopyableOrderedIter<A> {
