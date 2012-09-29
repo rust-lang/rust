@@ -67,7 +67,6 @@ mod uv_global_loop;
 
 // Utility modules
 
-#[legacy_exports]
 mod c_vec;
 mod timer;
 mod cell;

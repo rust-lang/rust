@@ -26,19 +26,13 @@
  * still held if needed.
  */
 
-export CVec;
-export CVec, c_vec_with_dtor;
-export get, set;
-export len;
-export ptr;
-
 /**
  * The type representing a foreign chunk of memory
  *
  * Wrapped in a enum for opacity; FIXME #818 when it is possible to have
  * truly opaque types, this should be revisited.
  */
-enum CVec<T> {
+pub enum CVec<T> {
     CVecCtor({ base: *mut T, len: uint, rsrc: @DtorRes})
 }
 
@@ -70,7 +64,7 @@ fn DtorRes(dtor: Option<fn@()>) -> DtorRes {
  * * base - A foreign pointer to a buffer
  * * len - The number of elements in the buffer
  */
-unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
+pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
     return CVecCtor({
         base: base,
         len: len,
@@ -89,7 +83,7 @@ unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
  * * dtor - A function to run when the value is destructed, useful
  *          for freeing the buffer, etc.
  */
-unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
+pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
   -> CVec<T> {
     return CVecCtor({
         base: base,
@@ -107,7 +101,7 @@ unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-fn get<T: Copy>(t: CVec<T>, ofs: uint) -> T {
+pub fn get<T: Copy>(t: CVec<T>, ofs: uint) -> T {
     assert ofs < len(t);
     return unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
@@ -117,7 +111,7 @@ fn get<T: Copy>(t: CVec<T>, ofs: uint) -> T {
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-fn set<T: Copy>(t: CVec<T>, ofs: uint, +v: T) {
+pub fn set<T: Copy>(t: CVec<T>, ofs: uint, +v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
@@ -127,18 +121,17 @@ fn set<T: Copy>(t: CVec<T>, ofs: uint, +v: T) {
  */
 
 /// Returns the length of the vector
-fn len<T>(t: CVec<T>) -> uint {
+pub fn len<T>(t: CVec<T>) -> uint {
     return (*t).len;
 }
 
 /// Returns a pointer to the first element of the vector
-unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
+pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
     return (*t).base;
 }
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
     use libc::*;
 
     fn malloc(n: size_t) -> CVec<u8> {
