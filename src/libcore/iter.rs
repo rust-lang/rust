@@ -128,7 +128,7 @@ pure fn foldl<A,B,IA:BaseIter<A>>(self: &IA, +b0: B, blk: fn(&B, &A) -> B)
 }
 
 pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: &IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(*r, ~[*a]))
+    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy (*r), ~[*a]))
 }
 
 pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: &A) -> bool {
@@ -174,7 +174,7 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
 pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          &Some(a_) if a_ < *b => {
+          &Some(ref a_) if *a_ < *b => {
              *(move a)
           }
           _ => Some(*b)
@@ -188,7 +188,7 @@ pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
 pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          &Some(a_) if a_ > *b => {
+          &Some(ref a_) if *a_ > *b => {
               *(move a)
           }
           _ => Some(*b)
