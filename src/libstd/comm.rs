@@ -46,7 +46,7 @@ impl<T: Send, U: Send> DuplexStream<T, U> : Selectable {
 }
 
 /// Creates a bidirectional stream.
-fn DuplexStream<T: Send, U: Send>()
+pub fn DuplexStream<T: Send, U: Send>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (c2, p1) = pipes::stream();
