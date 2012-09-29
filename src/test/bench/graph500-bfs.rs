@@ -231,8 +231,8 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
     };
 
     #[inline(always)]
-    fn is_gray(c: color) -> bool {
-        match c {
+    fn is_gray(c: &color) -> bool {
+        match *c {
           gray(_) => { true }
           _ => { false }
         }
@@ -282,7 +282,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
 
     // Convert the results.
     do par::map(colors) |c| {
-        match c {
+        match *c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail ~"Found remaining gray nodes in BFS" }
