@@ -44,7 +44,7 @@ fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
     {
         methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc),
-            .. doc
+            .. *doc
         }),
         .. doc
     }
@@ -56,7 +56,7 @@ fn fold_impl(fold: fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
     {
         methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc),
-            .. doc
+            .. *doc
         }),
         .. doc
     }
