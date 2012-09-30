@@ -2,15 +2,68 @@
 
 # Introduction
 
-Rust supports a system of lightweight tasks, similar to what is found
-in Erlang or other actor systems. Rust tasks communicate via messages
-and do not share data. However, it is possible to send data without
-copying it by making use of [the exchange heap](#unique-boxes), which
-allow the sending task to release ownership of a value, so that the
-receiving task can keep on using it.
+Rust supports concurrency and parallelism through lightweight tasks.
+Rust tasks are significantly cheaper to create than traditional
+threads, with a typical 32-bit system able to run hundreds of
+thousands simultaneously. Tasks in Rust are what are often referred to
+as _green threads_, cooperatively scheduled by the Rust runtime onto a
+small number of operating system threads.
 
-> ***Note:*** As Rust evolves, we expect the task API to grow and
-> change somewhat.  The tutorial documents the API as it exists today.
+Tasks provide failure isolation and recovery. When an exception occurs
+in rust code (either by calling `fail` explicitly or by otherwise performing
+an invalid operation) the entire task is destroyed - there is no way
+to `catch` an exception as in other languages. Instead tasks may monitor
+each other to detect when failure has occurred.
+
+Rust tasks have dynamically sized stacks. When a task is first created
+it starts off with a small amount of stack (in the hundreds to
+low thousands of bytes, depending on plattform), and more stack is
+added as needed. A Rust task will never run off the end of the stack as
+is possible in many other languages, but they do have a stack budget,
+and if a Rust task exceeds its stack budget then it will fail safely.
+
+Tasks make use of Rust's type system to provide strong memory safety
+guarantees, disallowing shared mutable state. Communication between
+tasks is facilitated by the transfer of _owned_ data through the
+global _exchange heap_.
+
+This tutorial will explain the basics of tasks and communication in Rust,
+explore some typical patterns in concurrent Rust code, and finally
+discuss some of the more exotic synchronization types in the standard
+library.
+
+# A note about the libraries
+
+While Rust's type system provides the building blocks needed for safe
+and efficient tasks, all of the task functionality itself is implemented
+in the core and standard libraries, which are still under development
+and do not always present a nice programming interface.
+
+In particular, there are currently two independent modules that provide
+a message passing interface to Rust code: `core::comm` and `core::pipes`.
+`core::comm` is an older, less efficient system that is being phased out
+in favor of `pipes`. At some point the existing `core::comm` API will
+be romoved and the user-facing portions of `core::pipes` will be moved
+to `core::comm`. In this tutorial we will discuss `pipes` and ignore
+the `comm` API.
+
+For your reference, these are the standard modules involved in Rust
+concurrency at the moment.
+
+* [`core::task`] - All code relating to tasks and task scheduling
+* [`core::comm`] - The deprecated message passing API
+* [`core::pipes`] - The new message passing infrastructure and API
+* [`std::comm`] - Higher level messaging types based on `core::pipes`
+* [`std::sync`] - More exotic synchronization tools, including locks 
+* [`std::arc`] - The ARC type, for safely sharing immutable data
+
+[`core::task`]: core/task.html
+[`core::comm`]: core/comm.html
+[`core::pipes`]: core/pipes.html
+[`std::comm`]: std/comm.html
+[`std::sync`]: std/sync.html
+[`std::arc`]: std/arc.html
+
 
 # Spawning a task
 
