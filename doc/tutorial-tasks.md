@@ -56,6 +56,7 @@ concurrency at the moment.
 * [`std::comm`] - Higher level messaging types based on `core::pipes`
 * [`std::sync`] - More exotic synchronization tools, including locks 
 * [`std::arc`] - The ARC type, for safely sharing immutable data
+* [`std::par`] - Some basic tools for implementing parallel algorithms
 
 [`core::task`]: core/task.html
 [`core::comm`]: core/comm.html
@@ -63,7 +64,7 @@ concurrency at the moment.
 [`std::comm`]: std/comm.html
 [`std::sync`]: std/sync.html
 [`std::arc`]: std/arc.html
-
+[`std::par`]: std/par.html
 
 # Spawning a task
 
