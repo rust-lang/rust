@@ -7,25 +7,33 @@ companion module with the same name as the item.
 
 For example, a type like:
 
-    type node_id = uint;
+    #[auto_serialize2]
+    struct Node {id: uint}
 
 would generate two implementations like:
 
-    impl node_id: Serializable {
+    impl Node: Serializable {
         fn serialize<S: Serializer>(s: &S) {
-            s.emit_uint(self)
+            do s.emit_struct("Node") {
+                s.emit_field("id", 0, || s.emit_uint(self))
+            }
         }
     }
 
     impl node_id: Deserializable {
-        static fn deserialize<D: Deserializer>(d: &D) -> node_id {
-            d.read_uint()
+        static fn deserialize<D: Deserializer>(d: &D) -> Node {
+            do d.read_struct("Node") {
+                Node {
+                    id: d.read_field(~"x", 0, || deserialize(d))
+                }
+            }
         }
     }
 
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
+    #[auto_serialize2]
     type spanned<T> = {node: T, span: span};
 
 would yield functions like:
@@ -33,8 +41,8 @@ would yield functions like:
     impl<T: Serializable> spanned<T>: Serializable {
         fn serialize<S: Serializer>(s: &S) {
             do s.emit_rec {
-                s.emit_field("node", 0, self.node.serialize(s));
-                s.emit_field("span", 1, self.span.serialize(s));
+                s.emit_field("node", 0, || self.node.serialize(s));
+                s.emit_field("span", 1, || self.span.serialize(s));
             }
         }
     }
@@ -395,20 +403,11 @@ fn mk_rec_impl(
     fields: ~[ast::ty_field],
     tps: ~[ast::ty_param]
 ) -> ~[@ast::item] {
-    // Records and structs don't have the same fields types, but they share
-    // enough that if we extract the right subfields out we can share the
-    // serialization generator code.
-    let fields = do fields.map |field| {
-        {
-            span: field.span,
-            ident: field.node.ident,
-            mutbl: field.node.mt.mutbl,
-        }
-    };
+    let fields = mk_rec_fields(fields);
+    let ser_fields = mk_ser_fields(cx, span, fields);
+    let deser_fields = mk_deser_fields(cx, span, fields);
 
-    let ser_body = mk_ser_fields(cx, span, fields);
-
-    // ast for `__s.emit_rec($(ser_body))`
+    // ast for `__s.emit_rec(|| $(ser_fields))`
     let ser_body = cx.expr_call(
         span,
         cx.expr_field(
@@ -416,12 +415,26 @@ fn mk_rec_impl(
             cx.expr_var(span, ~"__s"),
             cx.ident_of(~"emit_rec")
         ),
-        ~[ser_body]
+        ~[cx.lambda_stmts(span, ser_fields)]
     );
 
-    let deser_body = do mk_deser_fields(cx, span, fields) |fields| {
-         cx.expr(span, ast::expr_rec(fields, None))
-    };
+    // ast for `read_rec(|| $(deser_fields))`
+    let deser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__d"),
+            cx.ident_of(~"read_rec")
+        ),
+        ~[
+            cx.lambda_expr(
+                cx.expr(
+                    span,
+                    ast::expr_rec(deser_fields, None)
+                )
+            )
+        ]
+    );
 
     ~[
         mk_ser_impl(cx, span, ident, tps, ser_body),
@@ -436,10 +449,71 @@ fn mk_struct_impl(
     fields: ~[@ast::struct_field],
     tps: ~[ast::ty_param]
 ) -> ~[@ast::item] {
-    // Records and structs don't have the same fields types, but they share
-    // enough that if we extract the right subfields out we can share the
-    // serialization generator code.
-    let fields = do fields.map |field| {
+    let fields = mk_struct_fields(fields);
+    let ser_fields = mk_ser_fields(cx, span, fields);
+    let deser_fields = mk_deser_fields(cx, span, fields);
+
+    // ast for `__s.emit_struct($(name), || $(ser_fields))`
+    let ser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__s"),
+            cx.ident_of(~"emit_struct")
+        ),
+        ~[
+            cx.lit_str(span, @cx.str_of(ident)),
+            cx.lambda_stmts(span, ser_fields),
+        ]
+    );
+
+    // ast for `read_struct($(name), || $(deser_fields))`
+    let deser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__d"),
+            cx.ident_of(~"read_struct")
+        ),
+        ~[
+            cx.lit_str(span, @cx.str_of(ident)),
+            cx.lambda_expr(
+                span,
+                cx.expr(
+                    span,
+                    ast::expr_struct(
+                        cx.path(span, ~[ident]),
+                        deser_fields
+                        None
+                    )
+                )
+            ),
+        ]
+    )
+
+    ~[
+        mk_ser_impl(cx, span, ident, tps, ser_body),
+        mk_deser_impl(cx, span, ident, tps, deser_body),
+    ]
+}
+
+// Records and structs don't have the same fields types, but they share enough
+// that if we extract the right subfields out we can share the serialization
+// generator code.
+type field = { span: span, ident: ast::ident, mutbl: ast::mutability };
+
+fn mk_rec_fields(fields: ~[ast::ty_field]) -> ~[field] {
+    do fields.map |field| {
+        {
+            span: field.span,
+            ident: field.node.ident,
+            mutbl: field.node.mt.mutbl,
+        }
+    }
+}
+
+fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
+    do fields.map |field| {
         let (ident, mutbl) = match field.node.kind {
             ast::named_field(ident, mutbl, _) => (ident, mutbl),
             _ => fail ~"[auto_serialize2] does not support \
@@ -454,37 +528,15 @@ fn mk_struct_impl(
                 ast::class_immutable => ast::m_imm,
             },
         }
-    };
-
-    let ser_body = mk_ser_fields(cx, span, fields);
-
-    // ast for `__s.emit_struct($(name), $(ser_body))`
-    let ser_body = cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_struct")
-        ),
-        ~[cx.lit_str(span, @cx.str_of(ident)), ser_body]
-    );
-
-    let deser_body = do mk_deser_fields(cx, span, fields) |fields| {
-        cx.expr(span, ast::expr_struct(cx.path(span, ~[ident]), fields, None))
-    };
-
-    ~[
-        mk_ser_impl(cx, span, ident, tps, ser_body),
-        mk_deser_impl(cx, span, ident, tps, deser_body),
-    ]
+    }
 }
 
 fn mk_ser_fields(
     cx: ext_ctxt,
     span: span,
-    fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }]
-) -> @ast::expr {
-    let stmts = do fields.mapi |idx, field| {
+    fields: ~[field]
+) -> ~[@ast::stmt] {
+    do fields.mapi |idx, field| {
         // ast for `|| self.$(name).serialize(__s)`
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
@@ -518,10 +570,7 @@ fn mk_ser_fields(
                 ]
             )
         )
-    };
-
-    // ast for `|| $(stmts)`
-    cx.lambda_stmts(span, stmts)
+    }
 }
 
 fn mk_deser_fields(
