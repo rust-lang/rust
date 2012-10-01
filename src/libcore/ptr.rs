@@ -47,7 +47,7 @@ pub pure fn mut_addr_of<T>(val: &T) -> *mut T {
 
 /// Calculate the offset from a pointer
 #[inline(always)]
-pub fn offset<T>(ptr: *T, count: uint) -> *T {
+pub pure fn offset<T>(ptr: *T, count: uint) -> *T {
     unsafe {
         (ptr as uint + count * sys::size_of::<T>()) as *T
     }
@@ -55,7 +55,7 @@ pub fn offset<T>(ptr: *T, count: uint) -> *T {
 
 /// Calculate the offset from a const pointer
 #[inline(always)]
-pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
+pub pure fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
     unsafe {
         (ptr as uint + count * sys::size_of::<T>()) as *T
     }
@@ -63,7 +63,7 @@ pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
 
 /// Calculate the offset from a mut pointer
 #[inline(always)]
-pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
+pub pure fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
     (ptr as uint + count * sys::size_of::<T>()) as *mut T
 }
 
@@ -176,18 +176,25 @@ pub fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 
-pub trait Ptr {
+pub trait Ptr<T> {
     pure fn is_null() -> bool;
     pure fn is_not_null() -> bool;
+    pure fn offset(count: uint) -> self;
 }
 
 /// Extension methods for pointers
-impl<T> *T: Ptr {
+impl<T> *T: Ptr<T> {
     /// Returns true if the pointer is equal to the null pointer.
+    #[inline(always)]
     pure fn is_null() -> bool { is_null(self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
+    #[inline(always)]
     pure fn is_not_null() -> bool { is_not_null(self) }
+
+    /// Calculates the offset from a pointer.
+    #[inline(always)]
+    pure fn offset(count: uint) -> *T { offset(self, count) }
 }
 
 // Equality for pointers
