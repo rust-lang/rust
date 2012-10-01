@@ -1838,7 +1838,7 @@ mod raw {
      * not bytes).
      */
     #[inline(always)]
-    unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(v: &[T]) -> U) -> U {
+    unsafe fn buf_as_slice<T,U>(p: *T, len: uint, f: fn(v: &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
         let v : *(&blk/[T]) =
             ::cast::reinterpret_cast(&addr_of(&pair));
