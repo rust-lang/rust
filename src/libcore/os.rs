@@ -732,6 +732,30 @@ pub fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
+/**
+ * Returns the command line arguments
+ *
+ * Returns a list of the command line arguments.
+ */
+#[cfg(target_os = "macos")]
+pub fn args() -> ~[~str] {
+    unsafe {
+        let (argc, argv) = (*_NSGetArgc() as uint, *_NSGetArgv());
+        let mut args = ~[];
+        for uint::range(0, argc) |i| {
+            vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
+        }
+        return args;
+    }
+}
+
+#[cfg(target_os = "macos")]
+extern {
+    // These functions are in crt_externs.h.
+    pub fn _NSGetArgc() -> *c_int;
+    pub fn _NSGetArgv() -> ***c_char;
+}
+
 #[cfg(unix)]
 pub fn family() -> ~str { ~"unix" }
 
