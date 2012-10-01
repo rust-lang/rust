@@ -248,9 +248,7 @@ mod pipes;
 
 // Runtime and language-primitive support
 
-#[legacy_exports]
 mod gc;
-#[legacy_exports]
 mod io;
 mod libc;
 mod os;
