@@ -537,8 +537,8 @@ endif
 
 ifneq ($(findstring install,$(MAKECMDGOALS)),)
   ifdef DESTDIR
-    CFG_INFO := $(info cfg: setting CFG_PREFIX via DESTDIR, $(DESTDIR))
-    CFG_PREFIX:=$(DESTDIR)
+    CFG_INFO := $(info cfg: setting CFG_PREFIX via DESTDIR, $(DESTDIR)/$(CFG_PREFIX))
+    CFG_PREFIX:=$(DESTDIR)/$(CFG_PREFIX)
     export CFG_PREFIX
   endif
 
