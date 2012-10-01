@@ -185,7 +185,6 @@ mod cmp;
 mod num;
 mod hash;
 mod either;
-#[legacy_exports]
 mod iter;
 mod logging;
 mod option;
@@ -194,7 +193,6 @@ mod option_iter {
     #[path = "option.rs"]
     mod inst;
 }
-#[legacy_exports]
 mod result;
 mod to_str;
 mod to_bytes;
