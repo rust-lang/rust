@@ -301,7 +301,7 @@ impl Serializer {
         self.writer.write(b);
     }
 
-    fn wr_str(s: ~str) {
+    fn wr_str(s: &str) {
         debug!("Write str: %?", s);
         self.writer.write(str::to_bytes(s));
     }
@@ -429,7 +429,7 @@ fn Deserializer(d: Doc) -> Deserializer {
 }
 
 priv impl Deserializer {
-    fn _check_label(lbl: ~str) {
+    fn _check_label(lbl: &str) {
         if self.pos < self.parent.end {
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 doc_at(self.parent.data, self.pos);
@@ -528,7 +528,7 @@ impl Deserializer: serialization2::Deserializer {
     fn read_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
     // Compound types:
-    fn read_enum<T>(&self, name: ~str, f: fn() -> T) -> T {
+    fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         self._check_label(name);
         self.push_doc(self.next_doc(EsEnum), f)
@@ -577,7 +577,7 @@ impl Deserializer: serialization2::Deserializer {
         f()
     }
 
-    fn read_rec_field<T>(&self, f_name: ~str, f_idx: uint,
+    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint,
                          f: fn() -> T) -> T {
         debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
         self._check_label(f_name);

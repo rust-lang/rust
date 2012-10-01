@@ -292,7 +292,7 @@ impl Writer {
         self.writer.write(b);
     }
 
-    fn wr_str(s: ~str) {
+    fn wr_str(s: &str) {
         debug!("Write str: %?", s);
         self.writer.write(str::to_bytes(s));
     }
@@ -418,7 +418,7 @@ fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
 }
 
 priv impl EbmlDeserializer {
-    fn _check_label(lbl: ~str) {
+    fn _check_label(lbl: &str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =
                 ebml::doc_at(self.parent.data, self.pos);
@@ -516,7 +516,7 @@ impl EbmlDeserializer: serialization::Deserializer {
     fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(EsStr)) }
 
     // Compound types:
-    fn read_enum<T>(name: ~str, f: fn() -> T) -> T {
+    fn read_enum<T>(name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         self._check_label(name);
         self.push_doc(self.next_doc(EsEnum), f)
@@ -565,7 +565,7 @@ impl EbmlDeserializer: serialization::Deserializer {
         f()
     }
 
-    fn read_rec_field<T>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T {
+    fn read_rec_field<T>(f_name: &str, f_idx: uint, f: fn() -> T) -> T {
         debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
         self._check_label(f_name);
         f()
