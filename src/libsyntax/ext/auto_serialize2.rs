@@ -99,22 +99,61 @@ fn expand(cx: ext_ctxt,
     do vec::flat_map(in_items) |item| {
         match item.node {
             ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
-                vec::append(
-                    ~[filter_attrs(*item)],
-                    mk_rec_impl(cx, item.span, item.ident, fields, tps)
-                )
+                let ser_impl = mk_rec_ser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    fields,
+                    tps
+                );
+
+                let deser_impl = mk_rec_deser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    fields,
+                    tps
+                );
+
+                ~[filter_attrs(*item), ser_impl, deser_impl]
             },
             ast::item_class(@{ fields, _}, tps) => {
-                vec::append(
-                    ~[filter_attrs(*item)],
-                    mk_struct_impl(cx, item.span, item.ident, fields, tps)
-                )
+                let ser_impl = mk_struct_ser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    fields,
+                    tps
+                );
+
+                let deser_impl = mk_struct_deser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    fields,
+                    tps
+                );
+
+                ~[filter_attrs(*item), ser_impl, deser_impl]
             },
             ast::item_enum(enum_def, tps) => {
-                vec::append(
-                    ~[filter_attrs(*item)],
-                    mk_enum_impl(cx, item.span, item.ident, enum_def, tps)
-                )
+                let ser_impl = mk_enum_ser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    enum_def,
+                    tps
+                );
+
+                let deser_impl = mk_enum_deser_impl(
+                    cx,
+                    item.span,
+                    item.ident,
+                    enum_def,
+                    tps
+                );
+
+                ~[filter_attrs(*item), ser_impl, deser_impl]
             },
             _ => {
                 cx.span_err(span, ~"#[auto_serialize2] can only be applied \
@@ -396,30 +435,40 @@ fn mk_deser_method(
     }
 }
 
-fn mk_rec_impl(
+fn mk_rec_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
     fields: ~[ast::ty_field],
     tps: ~[ast::ty_param]
-) -> ~[@ast::item] {
-    let fields = mk_rec_fields(fields);
-    let ser_fields = mk_ser_fields(cx, span, fields);
-    let deser_fields = mk_deser_fields(cx, span, fields);
+) -> @ast::item {
+    let fields = mk_ser_fields(cx, span, mk_rec_fields(fields));
 
-    // ast for `__s.emit_rec(|| $(ser_fields))`
-    let ser_body = cx.expr_call(
+    // ast for `__s.emit_rec(|| $(fields))`
+    let body = cx.expr_call(
         span,
         cx.expr_field(
             span,
             cx.expr_var(span, ~"__s"),
             cx.ident_of(~"emit_rec")
         ),
-        ~[cx.lambda_stmts(span, ser_fields)]
+        ~[cx.lambda_stmts(span, fields)]
     );
 
-    // ast for `read_rec(|| $(deser_fields))`
-    let deser_body = cx.expr_call(
+    mk_ser_impl(cx, span, ident, tps, body)
+}
+
+fn mk_rec_deser_impl(
+    cx: ext_ctxt,
+    span: span,
+    ident: ast::ident,
+    fields: ~[ast::ty_field],
+    tps: ~[ast::ty_param]
+) -> @ast::item {
+    let fields = mk_deser_fields(cx, span, mk_rec_fields(fields));
+
+    // ast for `read_rec(|| $(fields))`
+    let body = cx.expr_call(
         span,
         cx.expr_field(
             span,
@@ -430,30 +479,25 @@ fn mk_rec_impl(
             cx.lambda_expr(
                 cx.expr(
                     span,
-                    ast::expr_rec(deser_fields, None)
+                    ast::expr_rec(fields, None)
                 )
             )
         ]
     );
 
-    ~[
-        mk_ser_impl(cx, span, ident, tps, ser_body),
-        mk_deser_impl(cx, span, ident, tps, deser_body),
-    ]
+    mk_deser_impl(cx, span, ident, tps, body)
 }
 
-fn mk_struct_impl(
+fn mk_struct_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
     fields: ~[@ast::struct_field],
     tps: ~[ast::ty_param]
-) -> ~[@ast::item] {
-    let fields = mk_struct_fields(fields);
-    let ser_fields = mk_ser_fields(cx, span, fields);
-    let deser_fields = mk_deser_fields(cx, span, fields);
+) -> @ast::item {
+    let fields = mk_ser_fields(cx, span, mk_struct_fields(fields));
 
-    // ast for `__s.emit_struct($(name), || $(ser_fields))`
+    // ast for `__s.emit_struct($(name), || $(fields))`
     let ser_body = cx.expr_call(
         span,
         cx.expr_field(
@@ -463,12 +507,24 @@ fn mk_struct_impl(
         ),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
-            cx.lambda_stmts(span, ser_fields),
+            cx.lambda_stmts(span, fields),
         ]
     );
 
-    // ast for `read_struct($(name), || $(deser_fields))`
-    let deser_body = cx.expr_call(
+    mk_ser_impl(cx, span, ident, tps, ser_body)
+}
+
+fn mk_struct_deser_impl(
+    cx: ext_ctxt,
+    span: span,
+    ident: ast::ident,
+    fields: ~[@ast::struct_field],
+    tps: ~[ast::ty_param]
+) -> @ast::item {
+    let fields = mk_deser_fields(cx, span, mk_struct_fields(fields));
+
+    // ast for `read_struct($(name), || $(fields))`
+    let body = cx.expr_call(
         span,
         cx.expr_field(
             span,
@@ -478,23 +534,19 @@ fn mk_struct_impl(
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
             cx.lambda_expr(
-                span,
                 cx.expr(
                     span,
                     ast::expr_struct(
                         cx.path(span, ~[ident]),
-                        deser_fields
+                        fields,
                         None
                     )
                 )
             ),
         ]
-    )
+    );
 
-    ~[
-        mk_ser_impl(cx, span, ident, tps, ser_body),
-        mk_deser_impl(cx, span, ident, tps, deser_body),
-    ]
+    mk_deser_impl(cx, span, ident, tps, body)
 }
 
 // Records and structs don't have the same fields types, but they share enough
@@ -576,10 +628,9 @@ fn mk_ser_fields(
 fn mk_deser_fields(
     cx: ext_ctxt,
     span: span,
-    fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }],
-    f: fn(~[ast::field]) -> @ast::expr
-) -> @ast::expr {
-    let fields = do fields.mapi |idx, field| {
+    fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }]
+) -> ~[ast::field] {
+    do fields.mapi |idx, field| {
         // ast for `|| std::serialization2::deserialize(__d)`
         let expr_lambda = cx.lambda(
             cx.expr_blk(
@@ -614,45 +665,41 @@ fn mk_deser_fields(
             node: { mutbl: field.mutbl, ident: field.ident, expr: expr },
             span: span,
         }
-    };
-
-    // ast for `__d.read_rec(|| $(fields_expr))`
-    cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_rec")
-        ),
-        ~[cx.lambda_expr(f(fields))]
-    )
+    }
 }
 
-fn mk_enum_impl(
+fn mk_enum_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
     enum_def: ast::enum_def,
     tps: ~[ast::ty_param]
-) -> ~[@ast::item] {
-    let ser_body = mk_enum_ser_body(
+) -> @ast::item {
+    let body = mk_enum_ser_body(
         cx,
         span,
         ident,
         enum_def.variants
     );
 
-    let deser_body = mk_enum_deser_body(
+    mk_ser_impl(cx, span, ident, tps, body)
+}
+
+fn mk_enum_deser_impl(
+    cx: ext_ctxt,
+    span: span,
+    ident: ast::ident,
+    enum_def: ast::enum_def,
+    tps: ~[ast::ty_param]
+) -> @ast::item {
+    let body = mk_enum_deser_body(
         cx,
         span,
         ident,
         enum_def.variants
     );
 
-    ~[
-        mk_ser_impl(cx, span, ident, tps, ser_body),
-        mk_deser_impl(cx, span, ident, tps, deser_body),
-    ]
+    mk_deser_impl(cx, span, ident, tps, body)
 }
 
 fn ser_variant(
