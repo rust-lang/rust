@@ -31,6 +31,7 @@ fn test_ser_and_deser<A:Eq Serializable Deserializable>(
 }
 
 #[auto_serialize2]
+#[auto_deserialize2]
 enum Expr {
     Val(uint),
     Plus(@Expr, @Expr),
@@ -105,6 +106,7 @@ impl CLike : cmp::Eq {
 }
 
 #[auto_serialize2]
+#[auto_deserialize2]
 type Spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
@@ -115,21 +117,26 @@ impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
 }
 
 #[auto_serialize2]
+#[auto_deserialize2]
 type SomeRec = {v: ~[uint]};
 
 #[auto_serialize2]
+#[auto_deserialize2]
 enum AnEnum = SomeRec;
 
 #[auto_serialize2]
+#[auto_deserialize2]
 struct Point {x: uint, y: uint}
 
 #[auto_serialize2]
+#[auto_deserialize2]
 enum Quark<T> {
     Top(T),
     Bottom(T)
 }
 
 #[auto_serialize2]
+#[auto_deserialize2]
 enum CLike { A, B, C }
 
 fn main() {
