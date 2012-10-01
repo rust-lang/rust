@@ -190,13 +190,10 @@ mod either;
 #[legacy_exports]
 mod iter;
 mod logging;
-#[legacy_exports]
 mod option;
 #[path="iter-trait"]
 mod option_iter {
-    #[legacy_exports];
     #[path = "option.rs"]
-    #[legacy_exports]
     mod inst;
 }
 #[legacy_exports]
