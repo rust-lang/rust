@@ -174,43 +174,43 @@ const MIN_MERGE: uint = 64;
 const MIN_GALLOP: uint = 7;
 const INITIAL_TMP_STORAGE: uint = 128;
 
-fn timsort<T: Ord>(array: &[mut T]) {
+fn tim_sort<T: Ord>(array: &[mut T]) {
     let size = array.len();
     if size < 2 {
         return;
     }
 
     if size < MIN_MERGE {
-        let initRunLen = countRunAndMakeAscending(array);
-        binarysort(array, initRunLen);
+        let init_run_len = count_run_ascending(array);
+        binarysort(array, init_run_len);
         return;
     }
 
     let ms = &MergeState();
-    let minRun = minRunLength(size);
+    let min_run = min_run_length(size);
 
     let mut idx = 0;
     let mut remaining = size;
     loop {
         let arr = vec::mut_view(array, idx, size);
-        let mut runLen: uint = countRunAndMakeAscending(arr);
+        let mut run_len: uint = count_run_ascending(arr);
 
-        if runLen < minRun {
-            let force = if remaining <= minRun {remaining} else {minRun};
+        if run_len < min_run {
+            let force = if remaining <= min_run {remaining} else {min_run};
             let slice = vec::mut_view(arr, 0, force);
-            binarysort(slice, runLen);
-            runLen = force;
+            binarysort(slice, run_len);
+            run_len = force;
         }
 
-        ms.pushRun(idx, runLen);
-        ms.mergeCollapse(array);
+        ms.push_run(idx, run_len);
+        ms.merge_collapse(array);
 
-        idx += runLen;
-        remaining -= runLen;
+        idx += run_len;
+        remaining -= run_len;
         if remaining == 0 { break; }
     }
 
-    ms.mergeForceCollapse(array);
+    ms.merge_force_collapse(array);
 }
 
 fn binarysort<T: Ord>(array: &[mut T], start: uint) {
@@ -226,8 +226,8 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
 
     while start < size {
         unsafe {
-            let tmpView = vec::mut_view(array, start, start+1);
-            vec::raw::memmove(pivot, tmpView, 1);
+            let tmp_view = vec::mut_view(array, start, start+1);
+            vec::raw::memmove(pivot, tmp_view, 1);
         }
         let mut left = 0;
         let mut right = start;
@@ -245,7 +245,7 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
         let mut n = start-left;
 
         unsafe {
-            moveVec(array, left+1, array, left, n);
+            move_vec(array, left+1, array, left, n);
         }
         array[left] <-> pivot[0];
         start += 1;
@@ -254,7 +254,7 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
 }
 
 /// Reverse the order of elements in a slice, in place
-fn reverseSlice<T>(v: &[mut T], start: uint, end:uint) {
+fn reverse_slice<T>(v: &[mut T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
         v[i] <-> v[end - i - 1];
@@ -262,7 +262,7 @@ fn reverseSlice<T>(v: &[mut T], start: uint, end:uint) {
     }
 }
 
-pure fn minRunLength(n: uint) -> uint {
+pure fn min_run_length(n: uint) -> uint {
     let mut n = n;
     let mut r = 0;   // becomes 1 if any 1 bits are shifted off
 
@@ -273,7 +273,7 @@ pure fn minRunLength(n: uint) -> uint {
     return n + r;
 }
 
-fn countRunAndMakeAscending<T: Ord>(array: &[mut T]) -> uint {
+fn count_run_ascending<T: Ord>(array: &[mut T]) -> uint {
     let size = array.len();
     assert size > 0;
     if size == 1 { return 1; }
@@ -283,7 +283,7 @@ fn countRunAndMakeAscending<T: Ord>(array: &[mut T]) -> uint {
         while run < size && array[run] < array[run-1] {
             run += 1;
         }
-        reverseSlice(array, 0, run);
+        reverse_slice(array, 0, run);
     } else {
         while run < size && array[run] >= array[run-1] {
             run += 1;
@@ -293,103 +293,103 @@ fn countRunAndMakeAscending<T: Ord>(array: &[mut T]) -> uint {
     return run;
 }
 
-pure fn gallopLeft<T: Ord>(key: &const T, array: &[const T],
+pure fn gallop_left<T: Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
 
-    let mut lastOfs = 0;
+    let mut last_ofs = 0;
     let mut ofs = 1;
 
     if *key > array[hint] {
-        // Gallop right until array[hint+lastOfs] < key <= array[hint+ofs]
-        let maxOfs = size - hint;
-        while ofs < maxOfs && *key > array[hint+ofs] {
-            lastOfs = ofs;
+        // Gallop right until array[hint+last_ofs] < key <= array[hint+ofs]
+        let max_ofs = size - hint;
+        while ofs < max_ofs && *key > array[hint+ofs] {
+            last_ofs = ofs;
             ofs = (ofs << 1) + 1;
-            if ofs < lastOfs { ofs = maxOfs; } // uint overflow guard
+            if ofs < last_ofs { ofs = max_ofs; } // uint overflow guard
         }
-        if ofs > maxOfs { ofs = maxOfs; }
+        if ofs > max_ofs { ofs = max_ofs; }
 
-        lastOfs += hint;
+        last_ofs += hint;
         ofs += hint;
     } else {
-        let maxOfs = hint + 1;
-        while ofs < maxOfs && *key <= array[hint-ofs] {
-            lastOfs = ofs;
+        let max_ofs = hint + 1;
+        while ofs < max_ofs && *key <= array[hint-ofs] {
+            last_ofs = ofs;
             ofs = (ofs << 1) + 1;
-            if ofs < lastOfs { ofs = maxOfs; } // uint overflow guard
+            if ofs < last_ofs { ofs = max_ofs; } // uint overflow guard
         }
 
-        if ofs > maxOfs { ofs = maxOfs; }
+        if ofs > max_ofs { ofs = max_ofs; }
 
-        let tmp = lastOfs;
-        lastOfs = hint - ofs;
+        let tmp = last_ofs;
+        last_ofs = hint - ofs;
         ofs = hint - tmp;
     }
-    assert (lastOfs < ofs || lastOfs+1 < ofs+1) && ofs <= size;
+    assert (last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size;
 
-    lastOfs += 1;
-    while lastOfs < ofs {
-        let m = lastOfs + ((ofs - lastOfs) >> 1);
+    last_ofs += 1;
+    while last_ofs < ofs {
+        let m = last_ofs + ((ofs - last_ofs) >> 1);
         if *key > array[m] {
-            lastOfs = m+1;
+            last_ofs = m+1;
         } else {
             ofs = m;
         }
     }
-    assert lastOfs == ofs;
+    assert last_ofs == ofs;
     return ofs;
 }
 
-pure fn gallopRight<T: Ord>(key: &const T, array: &[const T],
+pure fn gallop_right<T: Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
 
-    let mut lastOfs = 0;
+    let mut last_ofs = 0;
     let mut ofs = 1;
 
     if *key >= array[hint] {
-        // Gallop right until array[hint+lastOfs] <= key < array[hint+ofs]
-        let maxOfs = size - hint;
-        while ofs < maxOfs && *key >= array[hint+ofs] {
-            lastOfs = ofs;
+        // Gallop right until array[hint+last_ofs] <= key < array[hint+ofs]
+        let max_ofs = size - hint;
+        while ofs < max_ofs && *key >= array[hint+ofs] {
+            last_ofs = ofs;
             ofs = (ofs << 1) + 1;
-            if ofs < lastOfs { ofs = maxOfs; }
+            if ofs < last_ofs { ofs = max_ofs; }
         }
-        if ofs > maxOfs { ofs = maxOfs; }
+        if ofs > max_ofs { ofs = max_ofs; }
 
-        lastOfs += hint;
+        last_ofs += hint;
         ofs += hint;
     } else {
-        // Gallop left until array[hint-ofs] <= key < array[hint-lastOfs]
-        let maxOfs = hint + 1;
-        while ofs < maxOfs && *key < array[hint-ofs] {
-            lastOfs = ofs;
+        // Gallop left until array[hint-ofs] <= key < array[hint-last_ofs]
+        let max_ofs = hint + 1;
+        while ofs < max_ofs && *key < array[hint-ofs] {
+            last_ofs = ofs;
             ofs = (ofs << 1) + 1;
-            if ofs < lastOfs { ofs = maxOfs; }
+            if ofs < last_ofs { ofs = max_ofs; }
         }
-        if ofs > maxOfs { ofs = maxOfs; }
+        if ofs > max_ofs { ofs = max_ofs; }
 
-        let tmp = lastOfs;
-        lastOfs = hint - ofs;
+        let tmp = last_ofs;
+        last_ofs = hint - ofs;
         ofs = hint - tmp;
     }
 
-    assert (lastOfs < ofs || lastOfs+1 < ofs+1) && ofs <= size;
+    assert (last_ofs < ofs || last_ofs+1 < ofs+1) && ofs <= size;
 
-    lastOfs += 1;
-    while lastOfs < ofs {
-        let m = lastOfs + ((ofs - lastOfs) >> 1);
+    last_ofs += 1;
+    while last_ofs < ofs {
+        let m = last_ofs + ((ofs - last_ofs) >> 1);
 
         if *key >= array[m] {
-            lastOfs = m + 1;
+            last_ofs = m + 1;
         } else {
             ofs = m;
         }
     }
-    assert lastOfs == ofs;
+    assert last_ofs == ofs;
     return ofs;
 }
 
@@ -399,7 +399,7 @@ struct RunState {
 }
 
 struct MergeState<T> {
-    mut minGallop: uint,
+    mut min_gallop: uint,
     mut tmp: ~[T],
     runs: DVec<RunState>,
 
@@ -414,19 +414,19 @@ fn MergeState<T>() -> MergeState<T> {
     let mut tmp = ~[];
     vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
     MergeState {
-        minGallop: MIN_GALLOP,
+        min_gallop: MIN_GALLOP,
         tmp: tmp,
         runs: DVec(),
     }
 }
 
 impl<T: Ord> &MergeState<T> {
-    fn pushRun(runBase: uint, runLen: uint) {
-        let tmp = RunState{base: runBase, len: runLen};
+    fn push_run(run_base: uint, run_len: uint) {
+        let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
     }
 
-    fn mergeAt(n: uint, array: &[mut T]) {
+    fn merge_at(n: uint, array: &[mut T]) {
         let mut size = self.runs.len();
         assert size >= 2;
         assert n == size-2 || n == size-3;
@@ -448,18 +448,18 @@ impl<T: Ord> &MergeState<T> {
             }
 
             let slice = vec::mut_view(array, b1, b1+l1);
-            let k = gallopRight(&const array[b2], slice, 0);
+            let k = gallop_right(&const array[b2], slice, 0);
             b1 += k;
             l1 -= k;
             if l1 != 0 {
                 let slice = vec::mut_view(array, b2, b2+l2);
-                let l2 = gallopLeft(
+                let l2 = gallop_left(
                     &const array[b1+l1-1],slice,l2-1);
                 if l2 > 0 {
                     if l1 <= l2 {
-                        self.mergeLo(array, b1, l1, b2, l2);
+                        self.merge_lo(array, b1, l1, b2, l2);
                     } else {
-                        self.mergeHi(array, b1, l1, b2, l2);
+                        self.merge_hi(array, b1, l1, b2, l2);
                     }
                 }
             }
@@ -467,7 +467,7 @@ impl<T: Ord> &MergeState<T> {
         self.runs.pop();
     }
 
-    fn mergeLo(array: &[mut T], base1: uint, len1: uint,
+    fn merge_lo(array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
@@ -475,7 +475,7 @@ impl<T: Ord> &MergeState<T> {
 
         unsafe {
             vec::raw::set_len(self.tmp, len1);
-            moveVec(self.tmp, 0, array, base1, len1);
+            move_vec(self.tmp, 0, array, base1, len1);
         }
 
         let mut c1 = 0;
@@ -489,25 +489,25 @@ impl<T: Ord> &MergeState<T> {
 
         if len2 == 0 {
             unsafe {
-                moveVec(array, dest, self.tmp, 0, len1);
+                move_vec(array, dest, self.tmp, 0, len1);
                 vec::raw::set_len(self.tmp, 0); // Forget the elements
             }
             return;
         }
         if len1 == 1 {
             unsafe {
-                moveVec(array, dest, array, c2, len2);
+                move_vec(array, dest, array, c2, len2);
                 array[dest+len2] <-> self.tmp[c1];
                 vec::raw::set_len(self.tmp, 0); // Forget the element
             }
             return;
         }
 
-        let mut minGallop = self.minGallop;
+        let mut min_gallop = self.min_gallop;
         loop {
             let mut count1 = 0;
             let mut count2 = 0;
-            let mut breakOuter = false;
+            let mut break_outer = false;
 
             loop {
                 assert len1 > 1 && len2 != 0;
@@ -516,81 +516,81 @@ impl<T: Ord> &MergeState<T> {
                     dest += 1; c2 += 1; len2 -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 0 {
-                        breakOuter = true;
+                        break_outer = true;
                     }
                 } else {
                     array[dest] <-> self.tmp[c1];
                     dest += 1; c1 += 1; len1 -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 1 {
-                        breakOuter = true;
+                        break_outer = true;
                     }
                 }
-                if breakOuter || ((count1 | count2) >= minGallop) {
+                if break_outer || ((count1 | count2) >= min_gallop) {
                     break;
                 }
             }
-            if breakOuter { break; }
+            if break_outer { break; }
 
             // Start to gallop
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                let tmpView = vec::mut_view(self.tmp, c1, c1+len1);
-                count1 = gallopRight(&const array[c2], tmpView, 0);
+                let tmp_view = vec::mut_view(self.tmp, c1, c1+len1);
+                count1 = gallop_right(&const array[c2], tmp_view, 0);
                 if count1 != 0 {
                     unsafe {
-                        moveVec(array, dest, self.tmp, c1, count1);
+                        move_vec(array, dest, self.tmp, c1, count1);
                     }
                     dest += count1; c1 += count1; len1 -= count1;
-                    if len1 <= 1 { breakOuter = true; break; }
+                    if len1 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c2];
                 dest += 1; c2 += 1; len2 -= 1;
-                if len2 == 0 { breakOuter = true; break; }
+                if len2 == 0 { break_outer = true; break; }
 
-                let tmpView = vec::mut_view(array, c2, c2+len2);
-                count2 = gallopLeft(&const self.tmp[c1], tmpView, 0);
+                let tmp_view = vec::mut_view(array, c2, c2+len2);
+                count2 = gallop_left(&const self.tmp[c1], tmp_view, 0);
                 if count2 != 0 {
                     unsafe {
-                        moveVec(array, dest, array, c2, count2);
+                        move_vec(array, dest, array, c2, count2);
                     }
                     dest += count2; c2 += count2; len2 -= count2;
-                    if len2 == 0 { breakOuter = true; break; }
+                    if len2 == 0 { break_outer = true; break; }
                 }
                 array[dest] <-> self.tmp[c1];
                 dest += 1; c1 += 1; len1 -= 1;
-                if len1 == 1 { breakOuter = true; break; }
-                minGallop -= 1;
+                if len1 == 1 { break_outer = true; break; }
+                min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
                     break;
                 }
             }
-            if breakOuter { break; }
-            if minGallop < 0 { minGallop = 0; }
-            minGallop += 2; // Penalize for leaving gallop
+            if break_outer { break; }
+            if min_gallop < 0 { min_gallop = 0; }
+            min_gallop += 2; // Penalize for leaving gallop
         }
-        self.minGallop = if minGallop < 1 { 1 } else { minGallop };
+        self.min_gallop = if min_gallop < 1 { 1 } else { min_gallop };
 
         if len1 == 1 {
             assert len2 > 0;
             unsafe {
-                moveVec(array, dest, array, c2, len2);
+                move_vec(array, dest, array, c2, len2);
             }
             array[dest+len2] <-> self.tmp[c1];
         } else if len1 == 0 {
-            fail fmt!("Method mergeLo violates its contract! %?", len1);
+            fail fmt!("Method merge_lo violates its contract! %?", len1);
         } else {
             assert len2 == 0;
             assert len1 > 1;
             unsafe {
-                moveVec(array, dest, self.tmp, c1, len1);
+                move_vec(array, dest, self.tmp, c1, len1);
             }
         }
         unsafe { vec::raw::set_len(self.tmp, 0); }
     }
 
-    fn mergeHi(array: &[mut T], base1: uint, len1: uint,
+    fn merge_hi(array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
@@ -598,7 +598,7 @@ impl<T: Ord> &MergeState<T> {
 
         unsafe {
             vec::raw::set_len(self.tmp, len2);
-            moveVec(self.tmp, 0, array, base2, len2);
+            move_vec(self.tmp, 0, array, base2, len2);
         }
 
         let mut c1 = base1 + len1 - 1;
@@ -612,7 +612,7 @@ impl<T: Ord> &MergeState<T> {
 
         if len1 == 0 {
             unsafe {
-                moveVec(array, dest-(len2-1), self.tmp, 0, len2);
+                move_vec(array, dest-(len2-1), self.tmp, 0, len2);
                 vec::raw::set_len(self.tmp, 0); // Forget the elements
             }
             return;
@@ -621,18 +621,18 @@ impl<T: Ord> &MergeState<T> {
             dest -= len1;
             c1 -= len1;
             unsafe {
-                moveVec(array, dest+1, array, c1+1, len1);
+                move_vec(array, dest+1, array, c1+1, len1);
                 array[dest] <-> self.tmp[c2];
                 vec::raw::set_len(self.tmp, 0); // Forget the element
             }
             return;
         }
 
-        let mut minGallop = self.minGallop;
+        let mut min_gallop = self.min_gallop;
         loop {
             let mut count1 = 0;
             let mut count2 = 0;
-            let mut breakOuter = false;
+            let mut break_outer = false;
 
             loop {
                 assert len1 != 0 && len2 > 1;
@@ -641,88 +641,88 @@ impl<T: Ord> &MergeState<T> {
                     dest -= 1; c1 -= 1; len1 -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 0 {
-                        breakOuter = true;
+                        break_outer = true;
                     }
                 } else {
                     array[dest] <-> self.tmp[c2];
                     dest -= 1; c2 -= 1; len2 -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 1 {
-                        breakOuter = true;
+                        break_outer = true;
                     }
                 }
-                if breakOuter || ((count1 | count2) >= minGallop) {
+                if break_outer || ((count1 | count2) >= min_gallop) {
                     break;
                 }
             }
-            if breakOuter { break; }
+            if break_outer { break; }
 
             // Start to gallop
             loop {
                 assert len2 > 1 && len1 != 0;
 
-                let tmpView = vec::mut_view(array, base1, base1+len1);
-                count1 = len1 - gallopRight(
-                    &const self.tmp[c2], tmpView, len1-1);
+                let tmp_view = vec::mut_view(array, base1, base1+len1);
+                count1 = len1 - gallop_right(
+                    &const self.tmp[c2], tmp_view, len1-1);
 
                 if count1 != 0 {
                     dest -= count1; c1 -= count1; len1 -= count1;
                     unsafe {
-                        moveVec(array, dest+1, array, c1+1, count1);
+                        move_vec(array, dest+1, array, c1+1, count1);
                     }
-                    if len1 == 0 { breakOuter = true; break; }
+                    if len1 == 0 { break_outer = true; break; }
                 }
 
                 array[dest] <-> self.tmp[c2];
                 dest -= 1; c2 -= 1; len2 -= 1;
-                if len2 == 1 { breakOuter = true; break; }
+                if len2 == 1 { break_outer = true; break; }
 
-                let tmpView = vec::mut_view(self.tmp, 0, len2);
-                let count2 = len2 - gallopLeft(
-                    &const array[c1], tmpView, len2-1);
+                let tmp_view = vec::mut_view(self.tmp, 0, len2);
+                let count2 = len2 - gallop_left(
+                    &const array[c1], tmp_view, len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     unsafe {
-                        moveVec(array, dest+1, self.tmp, c2+1, count2);
+                        move_vec(array, dest+1, self.tmp, c2+1, count2);
                     }
-                    if len2 <= 1 { breakOuter = true; break; }
+                    if len2 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c1];
                 dest -= 1; c1 -= 1; len1 -= 1;
-                if len1 == 0 { breakOuter = true; break; }
-                minGallop -= 1;
+                if len1 == 0 { break_outer = true; break; }
+                min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
                     break;
                 }
             }
 
-            if breakOuter { break; }
-            if minGallop < 0 { minGallop = 0; }
-            minGallop += 2; // Penalize for leaving gallop
+            if break_outer { break; }
+            if min_gallop < 0 { min_gallop = 0; }
+            min_gallop += 2; // Penalize for leaving gallop
         }
-        self.minGallop = if minGallop < 1 { 1 } else { minGallop };
+        self.min_gallop = if min_gallop < 1 { 1 } else { min_gallop };
 
         if len2 == 1 {
             assert len1 > 0;
             dest -= len1;
             c1 -= len1;
             unsafe {
-                moveVec(array, dest+1, array, c1+1, len1);
+                move_vec(array, dest+1, array, c1+1, len1);
             }
             array[dest] <-> self.tmp[c2];
         } else if len2 == 0 {
-            fail fmt!("Method mergeHi violates its contract! %?", len2);
+            fail fmt!("Method merge_hi violates its contract! %?", len2);
         } else {
             assert len1 == 0;
             assert len2 != 0;
             unsafe {
-                moveVec(array, dest-(len2-1), self.tmp, 0, len2);
+                move_vec(array, dest-(len2-1), self.tmp, 0, len2);
             }
         }
         unsafe { vec::raw::set_len(self.tmp, 0); }
     }
 
-    fn mergeCollapse(array: &[mut T]) {
+    fn merge_collapse(array: &[mut T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             let chk = do self.runs.borrow |arr| {
@@ -736,11 +736,11 @@ impl<T: Ord> &MergeState<T> {
                 }
             };
             if !chk { break; }
-            self.mergeAt(n, array);
+            self.merge_at(n, array);
         }
     }
 
-    fn mergeForceCollapse(array: &[mut T]) {
+    fn merge_force_collapse(array: &[mut T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             if n > 0 {
@@ -750,7 +750,7 @@ impl<T: Ord> &MergeState<T> {
                     }
                 }
             }
-            self.mergeAt(n, array);
+            self.merge_at(n, array);
         }
     }
 }
@@ -758,7 +758,7 @@ impl<T: Ord> &MergeState<T> {
 // Moves elements to from dest to from
 // Unsafe as it makes the from parameter invalid between s2 and s2+len
 #[inline(always)]
-unsafe fn moveVec<T>(dest: &[mut T], s1: uint,
+unsafe fn move_vec<T>(dest: &[mut T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
 
