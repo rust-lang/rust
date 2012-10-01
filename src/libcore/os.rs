@@ -761,7 +761,46 @@ fn real_args() -> ~[~str] {
 
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
-    fail    // Needs implementing.
+    let mut nArgs: c_int = 0;
+    let lpArgCount = ptr::to_mut_unsafe_ptr(&mut nArgs);
+    let lpCmdLine = GetCommandLineW();
+    let szArgList = CommandLineToArgvW(lpCmdLine, lpArgCount);
+
+    let mut args = ~[];
+    for uint::range(0, nArgs as uint) |i| {
+        unsafe {
+            // Determine the length of this argument.
+            let ptr = *szArgList.offset(i);
+            let mut len = 0;
+            while *ptr.offset(len) != 0 { len += 1; }
+
+            // Push it onto the list.
+            vec::push(&mut args, vec::raw::form_slice(ptr, len, str::from_utf16));
+        }
+    }
+
+    unsafe {
+        LocalFree(cast::transmute(szArgList));
+    }
+
+    return args;
+}
+
+type LPCWSTR = *u16;
+
+#[cfg(windows)]
+#[link_name="kernel32"]
+#[abi="stdcall"]
+extern {
+    fn GetCommandLineW() -> LPCWSTR;
+    fn LocalFree(ptr: *c_void);
+}
+
+#[cfg(windows)]
+#[link_name="shell32"]
+#[abi="stdcall"]
+extern {
+    fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
 }
 
 struct OverriddenArgs {
@@ -843,6 +882,12 @@ mod tests {
     #[test]
     pub fn last_os_error() {
         log(debug, last_os_error());
+    }
+
+    #[test]
+    pub fn test_args() {
+        let a = real_args();
+        assert a.len() >= 1;
     }
 
     fn make_rand_name() -> ~str {
