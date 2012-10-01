@@ -8,7 +8,7 @@ use cmp::Eq;
 use either::Either;
 
 /// The result type
-enum Result<T, U> {
+pub enum Result<T, U> {
     /// Contains the successful result value
     Ok(T),
     /// Contains the error value
@@ -22,7 +22,7 @@ enum Result<T, U> {
  *
  * If the result is an error
  */
-pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
+pub pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
       Err(ref the_err) => unsafe {
@@ -38,7 +38,7 @@ pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
  *
  * If the result is an error
  */
-pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
+pub pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
     match *res {
         Ok(ref t) => t,
         Err(ref the_err) => unsafe {
@@ -54,7 +54,7 @@ pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
  *
  * If the result is not an error
  */
-pure fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
+pub pure fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
     match *res {
       Err(copy u) => u,
       Ok(_) => fail ~"get_err called on ok result"
@@ -62,7 +62,7 @@ pure fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
 }
 
 /// Returns true if the result is `ok`
-pure fn is_ok<T, U>(res: &Result<T, U>) -> bool {
+pub pure fn is_ok<T, U>(res: &Result<T, U>) -> bool {
     match *res {
       Ok(_) => true,
       Err(_) => false
@@ -70,7 +70,7 @@ pure fn is_ok<T, U>(res: &Result<T, U>) -> bool {
 }
 
 /// Returns true if the result is `err`
-pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
+pub pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
     !is_ok(res)
 }
 
@@ -80,7 +80,8 @@ pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
  * `ok` result variants are converted to `either::right` variants, `err`
  * result variants are converted to `either::left`.
  */
-pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>) -> Either<T, U> {
+pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
+    -> Either<T, U> {
     match *res {
       Ok(copy res) => either::Right(res),
       Err(copy fail_) => either::Left(fail_)
@@ -101,7 +102,7 @@ pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>) -> Either<T, U> {
  *         ok(parse_bytes(buf))
  *     }
  */
-fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
+pub fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
     -> Result<U, V>) -> Result<U, V> {
     // XXX: Should be writable with move + match
     if res.is_ok() {
@@ -119,7 +120,7 @@ fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
  * immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-fn chain_err<T: Copy, U: Copy, V: Copy>(
+pub fn chain_err<T: Copy, U: Copy, V: Copy>(
     +res: Result<T, V>,
     op: fn(+t: V) -> Result<T, U>)
     -> Result<T, U> {
@@ -143,7 +144,7 @@ fn chain_err<T: Copy, U: Copy, V: Copy>(
  *         print_buf(buf)
  *     }
  */
-fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
+pub fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
     match *res {
       Ok(ref t) => f(t),
       Err(_) => ()
@@ -158,7 +159,7 @@ fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
+pub fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
     match *res {
       Ok(_) => (),
       Err(ref e) => f(e)
@@ -179,7 +180,7 @@ fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
  *         parse_bytes(buf)
  *     }
  */
-fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
+pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
   -> Result<U, E> {
     match *res {
       Ok(ref t) => Ok(op(t)),
@@ -195,7 +196,7 @@ fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
+pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -274,7 +275,7 @@ impl<T: Copy, E: Copy> Result<T, E> {
  *         assert incd == ~[2u, 3u, 4u];
  *     }
  */
-fn map_vec<T,U:Copy,V:Copy>(
+pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: fn((&T)) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
@@ -287,7 +288,7 @@ fn map_vec<T,U:Copy,V:Copy>(
     return Ok(move vs);
 }
 
-fn map_opt<T,U:Copy,V:Copy>(
+pub fn map_opt<T,U:Copy,V:Copy>(
     o_t: &Option<T>, op: fn((&T)) -> Result<V,U>) -> Result<Option<V>,U> {
 
     match *o_t {
@@ -308,7 +309,7 @@ fn map_opt<T,U:Copy,V:Copy>(
  * used in 'careful' code contexts where it is both appropriate and easy
  * to accommodate an error like the vectors being of different lengths.
  */
-fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
+pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
                 op: fn((&S),(&T)) -> Result<V,U>) -> Result<~[V],U> {
 
     assert vec::same_length(ss, ts);
@@ -330,7 +331,7 @@ fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
  * error.  This could be implemented using `map2()` but it is more efficient
  * on its own as no result vector is built.
  */
-fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
+pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
                          op: fn((&S),(&T)) -> Result<(),U>) -> Result<(),U> {
 
     assert vec::same_length(ss, ts);
@@ -347,7 +348,7 @@ fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
-fn unwrap<T, U>(+res: Result<T, U>) -> T {
+pub fn unwrap<T, U>(+res: Result<T, U>) -> T {
     match move res {
       Ok(move t) => move t,
       Err(_) => fail ~"unwrap called on an err result"
@@ -355,7 +356,7 @@ fn unwrap<T, U>(+res: Result<T, U>) -> T {
 }
 
 /// Unwraps a result, assuming it is an `err(U)`
-fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
+pub fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
     match move res {
       Err(move u) => move u,
       Ok(_) => fail ~"unwrap called on an ok result"
