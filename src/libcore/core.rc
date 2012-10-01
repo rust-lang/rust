@@ -170,7 +170,6 @@ mod f32;
 mod f64;
 mod str;
 mod ptr;
-#[legacy_exports]
 mod vec;
 mod at_vec;
 mod bool;
