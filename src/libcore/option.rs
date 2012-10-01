@@ -264,10 +264,10 @@ fn test_unwrap_ptr() {
 #[test]
 fn test_unwrap_str() {
     let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| ptr::p2::addr_of(&buf));
-    let opt = Some(x);
-    let y = unwrap(opt);
-    let addr_y = str::as_buf(y, |buf, _len| ptr::p2::addr_of(&buf));
+    let addr_x = str::as_buf(x, |buf, _len| buf);
+    let opt = Some(move x);
+    let y = unwrap(move opt);
+    let addr_y = str::as_buf(y, |buf, _len| buf);
     assert addr_x == addr_y;
 }
 
