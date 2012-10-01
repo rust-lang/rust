@@ -184,7 +184,6 @@ mod ops;
 mod cmp;
 mod num;
 mod hash;
-#[legacy_exports]
 mod either;
 #[legacy_exports]
 mod iter;

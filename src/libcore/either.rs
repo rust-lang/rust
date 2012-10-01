@@ -8,13 +8,13 @@ use cmp::Eq;
 use result::Result;
 
 /// The either type
-enum Either<T, U> {
+pub enum Either<T, U> {
     Left(T),
     Right(U)
 }
 
-fn either<T, U, V>(f_left: fn((&T)) -> V,
-                   f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
+pub fn either<T, U, V>(f_left: fn((&T)) -> V,
+                       f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
@@ -29,7 +29,7 @@ fn either<T, U, V>(f_left: fn((&T)) -> V,
     }
 }
 
-fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
+pub fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     do vec::build_sized(eithers.len()) |push| {
@@ -42,7 +42,7 @@ fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     }
 }
 
-fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
+pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     do vec::build_sized(eithers.len()) |push| {
@@ -56,7 +56,7 @@ fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
 }
 
 // XXX bad copies. take arg by val
-fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
+pub fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
      * Extracts from a vector of either all the left values and right values
@@ -77,7 +77,7 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
 }
 
 // XXX bad copies
-pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
+pub pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match *eith {
@@ -87,7 +87,8 @@ pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
 }
 
 // XXX bad copies
-pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
+pub pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>)
+    -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -101,19 +102,19 @@ pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
     }
 }
 
-pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
+pub pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
     match *eith { Left(_) => true, _ => false }
 }
 
-pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
+pub pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
     match *eith { Right(_) => true, _ => false }
 }
 
-pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
+pub pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match move eith {
@@ -121,7 +122,7 @@ pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
     }
 }
 
-pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
+pub pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match move eith {
