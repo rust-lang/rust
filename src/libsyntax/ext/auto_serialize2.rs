@@ -1,13 +1,14 @@
 /*
 
-The compiler code necessary to implement the #[auto_serialize2]
-extension.  The idea here is that type-defining items may be tagged
-with #[auto_serialize2], which will cause us to generate a little
-companion module with the same name as the item.
+The compiler code necessary to implement the #[auto_serialize2] and
+#[auto_deserialize2] extension.  The idea here is that type-defining items may
+be tagged with #[auto_serialize2] and #[auto_deserialize2], which will cause
+us to generate a little companion module with the same name as the item.
 
 For example, a type like:
 
     #[auto_serialize2]
+    #[auto_deserialize2]
     struct Node {id: uint}
 
 would generate two implementations like:
@@ -34,6 +35,7 @@ Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
     #[auto_serialize2]
+    #[auto_deserialize2]
     type spanned<T> = {node: T, span: span};
 
 would yield functions like:
@@ -75,7 +77,8 @@ use codemap::span;
 use std::map;
 use std::map::HashMap;
 
-export expand;
+export expand_auto_serialize;
+export expand_auto_deserialize;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -83,84 +86,130 @@ mod syntax {
     pub use parse;
 }
 
-fn expand(cx: ext_ctxt,
-          span: span,
-          _mitem: ast::meta_item,
-          in_items: ~[@ast::item]) -> ~[@ast::item] {
-    fn not_auto_serialize2(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) != ~"auto_serialize2"
+fn expand_auto_serialize(
+    cx: ext_ctxt,
+    span: span,
+    _mitem: ast::meta_item,
+    in_items: ~[@ast::item]
+) -> ~[@ast::item] {
+    fn is_auto_serialize2(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) == ~"auto_serialize2"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, not_auto_serialize2),
+        @{attrs: vec::filter(item.attrs, |a| !is_auto_serialize2(a)),
           .. *item}
     }
 
     do vec::flat_map(in_items) |item| {
-        match item.node {
-            ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
-                let ser_impl = mk_rec_ser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    fields,
-                    tps
-                );
+        if item.attrs.any(is_auto_serialize2) {
+            match item.node {
+                ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
+                    let ser_impl = mk_rec_ser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        fields,
+                        tps
+                    );
 
-                let deser_impl = mk_rec_deser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    fields,
-                    tps
-                );
+                    ~[filter_attrs(*item), ser_impl]
+                },
+                ast::item_class(@{ fields, _}, tps) => {
+                    let ser_impl = mk_struct_ser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        fields,
+                        tps
+                    );
 
-                ~[filter_attrs(*item), ser_impl, deser_impl]
-            },
-            ast::item_class(@{ fields, _}, tps) => {
-                let ser_impl = mk_struct_ser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    fields,
-                    tps
-                );
+                    ~[filter_attrs(*item), ser_impl]
+                },
+                ast::item_enum(enum_def, tps) => {
+                    let ser_impl = mk_enum_ser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        enum_def,
+                        tps
+                    );
 
-                let deser_impl = mk_struct_deser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    fields,
-                    tps
-                );
-
-                ~[filter_attrs(*item), ser_impl, deser_impl]
-            },
-            ast::item_enum(enum_def, tps) => {
-                let ser_impl = mk_enum_ser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    enum_def,
-                    tps
-                );
-
-                let deser_impl = mk_enum_deser_impl(
-                    cx,
-                    item.span,
-                    item.ident,
-                    enum_def,
-                    tps
-                );
-
-                ~[filter_attrs(*item), ser_impl, deser_impl]
-            },
-            _ => {
-                cx.span_err(span, ~"#[auto_serialize2] can only be applied \
-                                    to structs, record types, and enum \
-                                    definitions");
-                ~[*item]
+                    ~[filter_attrs(*item), ser_impl]
+                },
+                _ => {
+                    cx.span_err(span, ~"#[auto_serialize2] can only be \
+                                        applied to structs, record types, \
+                                        and enum definitions");
+                    ~[*item]
+                }
             }
+        } else {
+            ~[*item]
+        }
+    }
+}
+
+fn expand_auto_deserialize(
+    cx: ext_ctxt,
+    span: span,
+    _mitem: ast::meta_item,
+    in_items: ~[@ast::item]
+) -> ~[@ast::item] {
+    fn is_auto_deserialize2(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) == ~"auto_deserialize2"
+    }
+
+    fn filter_attrs(item: @ast::item) -> @ast::item {
+        @{attrs: vec::filter(item.attrs, |a| !is_auto_deserialize2(a)),
+          .. *item}
+    }
+
+    do vec::flat_map(in_items) |item| {
+        if item.attrs.any(is_auto_deserialize2) {
+            match item.node {
+                ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
+                    let deser_impl = mk_rec_deser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        fields,
+                        tps
+                    );
+
+                    ~[filter_attrs(*item), deser_impl]
+                },
+                ast::item_class(@{ fields, _}, tps) => {
+                    let deser_impl = mk_struct_deser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        fields,
+                        tps
+                    );
+
+                    ~[filter_attrs(*item), deser_impl]
+                },
+                ast::item_enum(enum_def, tps) => {
+                    let deser_impl = mk_enum_deser_impl(
+                        cx,
+                        item.span,
+                        item.ident,
+                        enum_def,
+                        tps
+                    );
+
+                    ~[filter_attrs(*item), deser_impl]
+                },
+                _ => {
+                    cx.span_err(span, ~"#[auto_deserialize2] can only be \
+                                        applied to structs, record types, \
+                                        and enum definitions");
+                    ~[*item]
+                }
+            }
+        } else {
+            ~[*item]
         }
     }
 }
