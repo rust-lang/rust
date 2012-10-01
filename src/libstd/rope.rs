@@ -431,24 +431,24 @@ pub fn loop_leaves(rope: Rope, it: fn(node::Leaf) -> bool) -> bool{
 
 pub mod iterator {
     pub mod leaf {
-        fn start(rope: Rope) -> node::leaf_iterator::T {
+        pub fn start(rope: Rope) -> node::leaf_iterator::T {
             match (rope) {
               node::Empty      => return node::leaf_iterator::empty(),
               node::Content(x) => return node::leaf_iterator::start(x)
             }
         }
-        fn next(it: &node::leaf_iterator::T) -> Option<node::Leaf> {
+        pub fn next(it: &node::leaf_iterator::T) -> Option<node::Leaf> {
             return node::leaf_iterator::next(it);
         }
     }
     pub mod char {
-        fn start(rope: Rope) -> node::char_iterator::T {
+        pub fn start(rope: Rope) -> node::char_iterator::T {
             match (rope) {
               node::Empty      => return node::char_iterator::empty(),
               node::Content(x) => return node::char_iterator::start(x)
             }
         }
-        fn next(it: &node::char_iterator::T) -> Option<char> {
+        pub fn next(it: &node::char_iterator::T) -> Option<char> {
             return node::char_iterator::next(it)
         }
     }
