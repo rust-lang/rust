@@ -751,12 +751,12 @@ fn real_args() -> ~[~str] {
 
 #[cfg(target_os = "linux")]
 fn real_args() -> ~[~str] {
-    fail    // TODO
+    fail    // Needs implementing.
 }
 
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
-    fail    // TODO
+    fail    // Needs implementing.
 }
 
 struct OverriddenArgs {
