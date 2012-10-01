@@ -738,7 +738,7 @@ pub fn set_exit_status(code: int) {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-pub fn args() -> ~[~str] {
+fn real_args() -> ~[~str] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as uint, *_NSGetArgv());
         let mut args = ~[];
@@ -746,6 +746,38 @@ pub fn args() -> ~[~str] {
             vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
         }
         return args;
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn real_args() -> ~[~str] {
+    fail    // TODO
+}
+
+#[cfg(windows)]
+fn real_args() -> ~[~str] {
+    fail    // TODO
+}
+
+struct OverriddenArgs {
+    val: ~[~str]
+}
+
+fn overridden_arg_key(+v: @OverriddenArgs) {}
+
+pub fn args() -> ~[~str] {
+    unsafe {
+        match task::local_data::local_data_get(overridden_arg_key) {
+            None => real_args(),
+            Some(args) => copy args.val
+        }
+    }
+}
+
+pub fn set_args(+new_args: ~[~str]) {
+    unsafe {
+        let overridden_args = @OverriddenArgs { val: copy new_args };
+        task::local_data::local_data_set(overridden_arg_key, overridden_args);
     }
 }
 
