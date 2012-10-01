@@ -683,7 +683,8 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                        mode_to_str(arg_ast.mode));
                 match arg_ast.mode {
                     ast::expl(ast::by_copy) => {
-                        /* always allow by-copy */
+                        // This should warn, but we can't yet
+                        // since it's still used. -- tjc
                     }
 
                     ast::expl(_) => {
@@ -694,14 +695,16 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                     }
 
                     ast::infer(_) => {
-                        let kind = ty::type_kind(tcx, arg_ty.ty);
-                        if !ty::kind_is_safe_for_default_mode(kind) {
-                            tcx.sess.span_lint(
-                                deprecated_mode, id, id,
-                                span,
-                                fmt!("argument %d uses the default mode \
-                                      but shouldn't",
-                                     counter));
+                        if tcx.legacy_modes {
+                            let kind = ty::type_kind(tcx, arg_ty.ty);
+                            if !ty::kind_is_safe_for_default_mode(kind) {
+                                tcx.sess.span_lint(
+                                    deprecated_mode, id, id,
+                                    span,
+                                    fmt!("argument %d uses the default mode \
+                                          but shouldn't",
+                                         counter));
+                            }
                         }
                     }
                 }
