@@ -24,7 +24,7 @@ proto! ring (
 fn macros() {
     #macro[
         [#move_out[x],
-         unsafe { let y <- *ptr::addr_of(x); y }]
+         unsafe { let y <- *ptr::addr_of(&x); y }]
     ];
 }
 

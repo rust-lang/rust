@@ -796,7 +796,7 @@ unsafe fn async_send(async_handle: *uv_async_t) {
 }
 unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
-    let out_buf_ptr = ptr::addr_of(out_buf);
+    let out_buf_ptr = ptr::addr_of(&out_buf);
     log(debug, fmt!("buf_init - input %u len %u out_buf: %u",
                      input as uint,
                      len as uint,
@@ -968,7 +968,7 @@ unsafe fn free_base_of_buf(buf: uv_buf_t) {
 
 unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(err);
+    let err_ptr = ptr::addr_of(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     return fmt!("LIBUV ERROR: name: %s msg: %s",
@@ -977,7 +977,7 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
 
 unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err = last_error(uv_loop);
-    let err_ptr = ptr::addr_of(err);
+    let err_ptr = ptr::addr_of(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
     { err_name: err_name, err_msg: err_msg }
@@ -1120,9 +1120,9 @@ mod test {
                           client_chan: *comm::Chan<~str>) unsafe {
         let test_loop = loop_new();
         let tcp_handle = tcp_t();
-        let tcp_handle_ptr = ptr::addr_of(tcp_handle);
+        let tcp_handle_ptr = ptr::addr_of(&tcp_handle);
         let connect_handle = connect_t();
-        let connect_req_ptr = ptr::addr_of(connect_handle);
+        let connect_req_ptr = ptr::addr_of(&connect_handle);
 
         // this is the persistent payload of data that we
         // need to pass around to get this example to work.
@@ -1138,12 +1138,12 @@ mod test {
         // this is the enclosing record, we'll pass a ptr to
         // this to C..
         let write_handle = write_t();
-        let write_handle_ptr = ptr::addr_of(write_handle);
+        let write_handle_ptr = ptr::addr_of(&write_handle);
         log(debug, fmt!("tcp req: tcp stream: %d write_handle: %d",
                          tcp_handle_ptr as int,
                          write_handle_ptr as int));
         let client_data = { writer_handle: write_handle_ptr,
-                    req_buf: ptr::addr_of(req_msg),
+                    req_buf: ptr::addr_of(&req_msg),
                     read_chan: client_chan };
 
         let tcp_init_result = tcp_init(
@@ -1154,7 +1154,7 @@ mod test {
             log(debug, ~"building addr...");
             let addr = ip4_addr(ip, port);
             // FIXME ref #2064
-            let addr_ptr = ptr::addr_of(addr);
+            let addr_ptr = ptr::addr_of(&addr);
             log(debug, fmt!("after build addr in rust. port: %u",
                              addr.sin_port as uint));
 
@@ -1169,10 +1169,10 @@ mod test {
                 // until its initialized
                 set_data_for_req(
                     connect_req_ptr as *libc::c_void,
-                    ptr::addr_of(client_data) as *libc::c_void);
+                    ptr::addr_of(&client_data) as *libc::c_void);
                 set_data_for_uv_handle(
                     tcp_handle_ptr as *libc::c_void,
-                    ptr::addr_of(client_data) as *libc::c_void);
+                    ptr::addr_of(&client_data) as *libc::c_void);
                 log(debug, ~"before run tcp req loop");
                 run(test_loop);
                 log(debug, ~"after run tcp req loop");
@@ -1369,13 +1369,13 @@ mod test {
                           continue_chan: *comm::Chan<bool>) unsafe {
         let test_loop = loop_new();
         let tcp_server = tcp_t();
-        let tcp_server_ptr = ptr::addr_of(tcp_server);
+        let tcp_server_ptr = ptr::addr_of(&tcp_server);
 
         let tcp_client = tcp_t();
-        let tcp_client_ptr = ptr::addr_of(tcp_client);
+        let tcp_client_ptr = ptr::addr_of(&tcp_client);
 
         let server_write_req = write_t();
-        let server_write_req_ptr = ptr::addr_of(server_write_req);
+        let server_write_req_ptr = ptr::addr_of(&server_write_req);
 
         let resp_str_bytes = str::to_bytes(server_resp_msg);
         let resp_msg_ptr: *u8 = vec::raw::to_ptr(resp_str_bytes);
@@ -1386,20 +1386,20 @@ mod test {
 
         let continue_async_handle = async_t();
         let continue_async_handle_ptr =
-            ptr::addr_of(continue_async_handle);
+            ptr::addr_of(&continue_async_handle);
         let async_data =
             { continue_chan: continue_chan };
-        let async_data_ptr = ptr::addr_of(async_data);
+        let async_data_ptr = ptr::addr_of(&async_data);
 
         let server_data: tcp_server_data = {
             client: tcp_client_ptr,
             server: tcp_server_ptr,
             server_kill_msg: kill_server_msg,
-            server_resp_buf: ptr::addr_of(resp_msg),
+            server_resp_buf: ptr::addr_of(&resp_msg),
             server_chan: server_chan,
             server_write_req: server_write_req_ptr
         };
-        let server_data_ptr = ptr::addr_of(server_data);
+        let server_data_ptr = ptr::addr_of(&server_data);
         set_data_for_uv_handle(tcp_server_ptr as *libc::c_void,
                                        server_data_ptr as *libc::c_void);
 
@@ -1409,7 +1409,7 @@ mod test {
         if (tcp_init_result == 0i32) {
             let server_addr = ip4_addr(server_ip, server_port);
             // FIXME ref #2064
-            let server_addr_ptr = ptr::addr_of(server_addr);
+            let server_addr_ptr = ptr::addr_of(&server_addr);
 
             // uv_tcp_bind()
             let bind_result = tcp_bind(tcp_server_ptr,
@@ -1478,13 +1478,13 @@ mod test {
 
         let continue_port = core::comm::Port::<bool>();
         let continue_chan = core::comm::Chan::<bool>(continue_port);
-        let continue_chan_ptr = ptr::addr_of(continue_chan);
+        let continue_chan_ptr = ptr::addr_of(&continue_chan);
 
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1)) {
             impl_uv_tcp_server(bind_ip, port,
                                kill_server_msg,
                                server_resp_msg,
-                               ptr::addr_of(server_chan),
+                               ptr::addr_of(&server_chan),
                                continue_chan_ptr);
         };
 
@@ -1496,7 +1496,7 @@ mod test {
         do task::spawn_sched(task::ManualThreads(1u)) {
             impl_uv_tcp_request(request_ip, port,
                                kill_server_msg,
-                               ptr::addr_of(client_chan));
+                               ptr::addr_of(&client_chan));
         };
 
         let msg_from_client = core::comm::recv(server_port);

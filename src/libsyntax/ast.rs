@@ -1094,10 +1094,10 @@ enum ty_ {
 // since we only care about this for normalizing them to "real" types.
 impl ty : cmp::Eq {
     pure fn eq(other: &ty) -> bool {
-        ptr::addr_of(self) == ptr::addr_of((*other))
+        ptr::addr_of(&self) == ptr::addr_of(&(*other))
     }
     pure fn ne(other: &ty) -> bool {
-        ptr::addr_of(self) != ptr::addr_of((*other))
+        ptr::addr_of(&self) != ptr::addr_of(&(*other))
     }
 }
 

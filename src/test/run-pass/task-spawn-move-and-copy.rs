@@ -3,16 +3,16 @@ fn main() {
     let ch = comm::Chan(p);
 
     let x = ~1;
-    let x_in_parent = ptr::addr_of(*x) as uint;
+    let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
     let y = ~2;
-    let y_in_parent = ptr::addr_of(*y) as uint;
+    let y_in_parent = ptr::addr_of(&(*y)) as uint;
 
     task::spawn(fn~(copy ch, copy y, move x) {
-        let x_in_child = ptr::addr_of(*x) as uint;
+        let x_in_child = ptr::addr_of(&(*x)) as uint;
         comm::send(ch, x_in_child);
 
-        let y_in_child = ptr::addr_of(*y) as uint;
+        let y_in_child = ptr::addr_of(&(*y)) as uint;
         comm::send(ch, y_in_child);
     });
     // Ensure last-use analysis doesn't move y to child.

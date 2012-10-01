@@ -34,7 +34,7 @@ struct port_ptr<T:Send> {
     debug!("in the port_ptr destructor");
        do task::unkillable {
         let yield = 0u;
-        let yieldp = ptr::addr_of(yield);
+        let yieldp = ptr::addr_of(&yield);
         rustrt::rust_port_begin_detach(self.po, yieldp);
         if yield != 0u {
             task::yield();
@@ -66,10 +66,10 @@ fn recv<T: Send>(p: port<T>) -> T { recv_((**p).po) }
 /// Receive on a raw port pointer
 fn recv_<T: Send>(p: *rust_port) -> T {
     let yield = 0u;
-    let yieldp = ptr::addr_of(yield);
+    let yieldp = ptr::addr_of(&yield);
     let mut res;
     res = rusti::init::<T>();
-    rustrt::port_recv(ptr::addr_of(res) as *uint, p, yieldp);
+    rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
     if yield != 0u {
         // Data isn't available yet, so res has not been initialized.

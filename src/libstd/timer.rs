@@ -28,9 +28,9 @@ pub fn delayed_send<T: Copy Send>(iotask: IoTask,
         unsafe {
             let timer_done_po = core::comm::Port::<()>();
             let timer_done_ch = core::comm::Chan(timer_done_po);
-            let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
+            let timer_done_ch_ptr = ptr::addr_of(&timer_done_ch);
             let timer = uv::ll::timer_t();
-            let timer_ptr = ptr::addr_of(timer);
+            let timer_ptr = ptr::addr_of(&timer);
             do iotask::interact(iotask) |loop_ptr| unsafe {
                 let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
                 if (init_result == 0i32) {

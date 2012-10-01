@@ -32,7 +32,7 @@ use cmp::Eq;
 use to_bytes::IterBytes;
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
 )
 
 trait word_reader {

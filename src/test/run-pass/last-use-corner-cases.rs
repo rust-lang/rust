@@ -4,14 +4,14 @@
 fn main() {
     // Make sure closing over can be a last use
     let q = ~10;
-    let addr = ptr::addr_of(*q);
-    let f = fn@() -> *int { ptr::addr_of(*q) };
+    let addr = ptr::addr_of(&(*q));
+    let f = fn@() -> *int { ptr::addr_of(&(*q)) };
     assert addr == f();
 
     // But only when it really is the last use
     let q = ~20;
-    let f = fn@() -> *int { ptr::addr_of(*q) };
-    assert ptr::addr_of(*q) != f();
+    let f = fn@() -> *int { ptr::addr_of(&(*q)) };
+    assert ptr::addr_of(&(*q)) != f();
 
     // Ensure function arguments and box arguments interact sanely.
     fn call_me(x: fn() -> int, y: ~int) { assert x() == *y; }

@@ -645,7 +645,7 @@ impl block {
             fmt!("[block %d]", node_info.id)
           }
           None => {
-            fmt!("[block %x]", ptr::addr_of(*self) as uint)
+            fmt!("[block %x]", ptr::addr_of(&(*self)) as uint)
           }
         }
     }
