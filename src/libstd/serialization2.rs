@@ -60,7 +60,7 @@ pub trait Deserializer {
     fn read_str(&self) -> ~str;
 
     // Compound types:
-    fn read_enum<T>(&self, name: ~str, f: fn() -> T) -> T;
+    fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T;
     fn read_enum_variant<T>(&self, f: fn(uint) -> T) -> T;
     fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T;
     fn read_vec<T>(&self, f: fn(uint) -> T) -> T;
@@ -68,7 +68,7 @@ pub trait Deserializer {
     fn read_box<T>(&self, f: fn() -> T) -> T;
     fn read_uniq<T>(&self, f: fn() -> T) -> T;
     fn read_rec<T>(&self, f: fn() -> T) -> T;
-    fn read_rec_field<T>(&self, f_name: ~str, f_idx: uint, f: fn() -> T) -> T;
+    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint, f: fn() -> T) -> T;
     fn read_tup<T>(&self, sz: uint, f: fn() -> T) -> T;
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
 }

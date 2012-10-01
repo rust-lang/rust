@@ -378,7 +378,7 @@ priv impl Parser {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(ident: ~str, +value: Json) -> Result<Json, Error> {
+    fn parse_ident(ident: &str, +value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             Ok(move value)
@@ -747,7 +747,7 @@ pub impl Deserializer: serialization2::Deserializer {
         }
     }
 
-    fn read_enum<T>(&self, name: ~str, f: fn() -> T) -> T {
+    fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         if name != ~"option" { fail ~"only supports the option enum" }
         f()
@@ -810,7 +810,7 @@ pub impl Deserializer: serialization2::Deserializer {
         value
     }
 
-    fn read_rec_field<T>(&self, f_name: ~str, f_idx: uint,
+    fn read_rec_field<T>(&self, f_name: &str, f_idx: uint,
                          f: fn() -> T) -> T {
         debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
         let top = self.peek();
@@ -819,7 +819,7 @@ pub impl Deserializer: serialization2::Deserializer {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&f_name) {
+                match obj.find_ref(&(f_name.to_unique())) {
                     None => fail fmt!("no such field: %s", f_name),
                     Some(json) => {
                         self.stack.push(json);
