@@ -87,9 +87,7 @@ mod fun_treemap;
 mod list;
 #[legacy_exports]
 mod map;
-#[legacy_exports]
 mod rope;
-#[legacy_exports]
 mod smallintmap;
 mod sort;
 mod treemap;
