@@ -10,8 +10,8 @@ use std::serialization2::{Serializable, Deserializable, deserialize};
 use std::prettyprint2;
 
 fn test_ser_and_deser<A:Eq Serializable Deserializable>(
-    a1: A,
-    expected: ~str
+    a1: &A,
+    +expected: ~str
 ) {
     // check the pretty printer:
     let s = do io::with_str_writer |w| {
@@ -27,7 +27,7 @@ fn test_ser_and_deser<A:Eq Serializable Deserializable>(
     };
     let d = ebml2::Doc(@bytes);
     let a2: A = deserialize(&ebml2::Deserializer(d));
-    assert a1 == a2;
+    assert *a1 == a2;
 }
 
 #[auto_serialize2]
@@ -121,7 +121,7 @@ type SomeRec = {v: ~[uint]};
 enum AnEnum = SomeRec;
 
 #[auto_serialize2]
-type Point = {x: uint, y: uint};
+struct Point {x: uint, y: uint}
 
 #[auto_serialize2]
 enum Quark<T> {
@@ -133,24 +133,24 @@ enum Quark<T> {
 enum CLike { A, B, C }
 
 fn main() {
-    test_ser_and_deser(Plus(@Minus(@Val(3u), @Val(10u)),
-                            @Plus(@Val(22u), @Val(5u))),
+    test_ser_and_deser(&Plus(@Minus(@Val(3u), @Val(10u)),
+                             @Plus(@Val(22u), @Val(5u))),
                        ~"Plus(@Minus(@Val(3u), @Val(10u)), \
                         @Plus(@Val(22u), @Val(5u)))");
 
-    test_ser_and_deser({lo: 0u, hi: 5u, node: 22u},
+    test_ser_and_deser(&{lo: 0u, hi: 5u, node: 22u},
                        ~"{lo: 0u, hi: 5u, node: 22u}");
 
-    test_ser_and_deser(AnEnum({v: ~[1u, 2u, 3u]}),
+    test_ser_and_deser(&AnEnum({v: ~[1u, 2u, 3u]}),
                        ~"AnEnum({v: ~[1u, 2u, 3u]})");
 
-    test_ser_and_deser({x: 3u, y: 5u}, ~"{x: 3u, y: 5u}");
+    test_ser_and_deser(&Point {x: 3u, y: 5u}, ~"Point {x: 3u, y: 5u}");
 
-    test_ser_and_deser(@[1u, 2u, 3u], ~"@[1u, 2u, 3u]");
+    test_ser_and_deser(&@[1u, 2u, 3u], ~"@[1u, 2u, 3u]");
 
-    test_ser_and_deser(Top(22u), ~"Top(22u)");
-    test_ser_and_deser(Bottom(222u), ~"Bottom(222u)");
+    test_ser_and_deser(&Top(22u), ~"Top(22u)");
+    test_ser_and_deser(&Bottom(222u), ~"Bottom(222u)");
 
-    test_ser_and_deser(A, ~"A");
-    test_ser_and_deser(B, ~"B");
+    test_ser_and_deser(&A, ~"A");
+    test_ser_and_deser(&B, ~"B");
 }
