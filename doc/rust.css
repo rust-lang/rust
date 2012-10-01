@@ -1,9 +1,11 @@
 body {
   padding: 1em;
   margin: 0;
+  margin-bottom: 4em;
   font-family: "Helvetica Neue", Helvetica, sans-serif;
   background-color: white;
   color: black;
+  line-height: 1.6em;
 }
 
 body {
@@ -12,12 +14,16 @@ body {
 }
 
 h1 {
-  font-size: 22pt;
+  font-size: 20pt;
   margin-top: 2em;
-  border-bottom: 2px solid silver;
+  border-bottom: 1px solid silver;
+  line-height: 1.6em;
 }
-h2 { font-size: 17pt; }
-h3 { font-size: 14pt; }
+h2 {
+    font-size: 15pt;
+    margin-top: 2em;
+}
+h3 { font-size: 13pt; }
 
 pre {
   margin: 1.1em 0;
@@ -27,7 +33,7 @@ pre {
 
 a, a:visited, a:link {
   text-decoration: none;
-  color: #00438a;
+  color: rgb(0, 105, 214);
 }
 
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
@@ -54,20 +60,12 @@ h3 a:link, h3 a:visited { color: black; }
 .cm-s-default span.cm-tag {color: #170;}
 .cm-s-default span.cm-attribute {color: #00c;}
 
-h1.title {
-  background-image: url('http://www.rust-lang.org/logos/rust-logo-32x32-blk.png');
-  background-repeat: no-repeat;
-  background-position: right;
-}
-
 #versioninfo {
   position: fixed;
   bottom: 0px;
   right: 0px;
 
   background-color: white;
-  border-left: solid 1px black;
-  border-top: solid 1px black;
   padding: 0.5em;
 }
 
@@ -98,4 +96,9 @@ td {
 /* Only display one level of hierarchy in the TOC */
 #TOC ul ul {
     display: none;
+}
+
+#TOC ul {
+    list-style: none;
+    padding-left: 0px;
 }
