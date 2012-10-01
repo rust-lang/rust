@@ -15,7 +15,7 @@ use io::WriterUtil;
 use pipes::{Port, PortSet, Chan};
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
 )
 
 enum request {

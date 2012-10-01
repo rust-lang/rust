@@ -6,7 +6,7 @@
 
 use cmp::{Eq, Ord};
 use option::{Some, None};
-use ptr::p2::addr_of;
+use ptr::addr_of;
 use libc::size_t;
 
 export append;

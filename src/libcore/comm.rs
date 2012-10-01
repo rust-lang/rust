@@ -103,7 +103,7 @@ struct PortPtr<T:Send> {
         // Once the port is detached it's guaranteed not to receive further
         // messages
         let yield = 0;
-        let yieldp = ptr::p2::addr_of(&yield);
+        let yieldp = ptr::addr_of(&yield);
         rustrt::rust_port_begin_detach(self.po, yieldp);
         if yield != 0 {
             // Need to wait for the port to be detached
@@ -176,7 +176,7 @@ pub fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
  */
 pub fn send<T: Send>(ch: Chan<T>, +data: T) {
     let Chan_(p) = ch;
-    let data_ptr = ptr::p2::addr_of(&data) as *();
+    let data_ptr = ptr::addr_of(&data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);
     if res != 0 unsafe {
         // Data sent successfully
@@ -206,10 +206,10 @@ fn peek_chan<T: Send>(ch: comm::Chan<T>) -> bool {
 /// Receive on a raw port pointer
 fn recv_<T: Send>(p: *rust_port) -> T {
     let yield = 0;
-    let yieldp = ptr::p2::addr_of(&yield);
+    let yieldp = ptr::addr_of(&yield);
     let mut res;
     res = rusti::init::<T>();
-    rustrt::port_recv(ptr::p2::addr_of(&res) as *uint, p, yieldp);
+    rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
     if yield != 0 {
         // Data isn't available yet, so res has not been initialized.
@@ -233,12 +233,12 @@ fn peek_(p: *rust_port) -> bool {
 pub fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
     -> Either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
-    let yield = 0, yieldp = ptr::p2::addr_of(&yield);
+    let yield = 0, yieldp = ptr::addr_of(&yield);
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
     do vec::as_imm_buf(ports) |ports, n_ports| {
-        rustrt::rust_port_select(ptr::p2::addr_of(&resport), ports,
+        rustrt::rust_port_select(ptr::addr_of(&resport), ports,
                                  n_ports as size_t, yieldp);
     }
 

@@ -416,7 +416,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let fn_maps = @IrMaps(self.tcx, self.method_map,
                           self.last_use_map);
 
-    debug!("creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint);
+    debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
     for decl.inputs.each |arg| {
         debug!("adding argument %d", arg.id);

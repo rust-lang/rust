@@ -1780,7 +1780,7 @@ pub pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pub pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::p2::addr_of(&s));
+        let v : *(*u8,uint) = ::cast::reinterpret_cast(&ptr::addr_of(&s));
         let (buf,len) = *v;
         f(buf, len)
     }

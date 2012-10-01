@@ -5,7 +5,7 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
-use ptr::p2::addr_of;
+use ptr::addr_of;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.

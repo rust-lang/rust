@@ -71,10 +71,10 @@ impl message: gen_send {
 
                 body += ~"let b = pipe.reuse_buffer();\n";
                 body += fmt!("let %s = pipes::SendPacketBuffered(\
-                              ptr::p2::addr_of(&(b.buffer.data.%s)));\n",
+                              ptr::addr_of(&(b.buffer.data.%s)));\n",
                              sp, next.name);
                 body += fmt!("let %s = pipes::RecvPacketBuffered(\
-                              ptr::p2::addr_of(&(b.buffer.data.%s)));\n",
+                              ptr::addr_of(&(b.buffer.data.%s)));\n",
                              rp, next.name);
             }
             else {
@@ -351,7 +351,7 @@ impl protocol: gen_init {
                         fmt!("data.%s.set_buffer_(buffer)",
                              s.name))),
                 ext_cx.parse_expr(
-                    fmt!("ptr::p2::addr_of(&(data.%s))",
+                    fmt!("ptr::addr_of(&(data.%s))",
                          self.states[0].name))));
 
         #ast {{

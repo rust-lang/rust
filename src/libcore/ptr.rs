@@ -24,12 +24,9 @@ extern mod rusti {
     fn addr_of<T>(val: T) -> *T;
 }
 
-/*
-Remove this after snapshot; make p2::addr_of addr_of
-*/
 /// Get an unsafe pointer to a value
 #[inline(always)]
-pub pure fn addr_of<T>(val: T) -> *T { unsafe { rusti::addr_of(val) } }
+pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
 
 pub mod p2 {
     /// Get an unsafe pointer to a value

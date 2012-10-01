@@ -605,7 +605,7 @@ impl @fn_ctxt: region_scope {
 }
 
 impl @fn_ctxt {
-    fn tag() -> ~str { fmt!("%x", ptr::addr_of(*self) as uint) }
+    fn tag() -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
 
     fn expr_to_str(expr: @ast::expr) -> ~str {
         fmt!("expr(%?:%s)", expr.id,

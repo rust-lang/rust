@@ -66,7 +66,7 @@ use rt::rust_task;
 use rt::rust_closure;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::p2::addr_of(&($x)); move y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
 )
 
 type TaskSet = send_map::linear::LinearMap<*rust_task,()>;

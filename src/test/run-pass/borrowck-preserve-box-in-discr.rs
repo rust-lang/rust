@@ -5,13 +5,13 @@ fn main() {
     match *x {
       {f: b_x} => {
         assert *b_x == 3;
-        assert ptr::addr_of(*x.f) == ptr::addr_of(*b_x);
+        assert ptr::addr_of(&(*x.f)) == ptr::addr_of(&(*b_x));
 
         x = @{f: ~4};
 
-        debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(*b_x) as uint);
+        debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(*b_x)) as uint);
         assert *b_x == 3;
-        assert ptr::addr_of(*x.f) != ptr::addr_of(*b_x);
+        assert ptr::addr_of(&(*x.f)) != ptr::addr_of(&(*b_x));
       }
     }
 }

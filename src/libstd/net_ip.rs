@@ -89,11 +89,11 @@ fn get_addr(node: &str, iotask: iotask)
         do str::as_buf(node) |node_ptr, len| unsafe {
             log(debug, fmt!("slice len %?", len));
             let handle = create_uv_getaddrinfo_t();
-            let handle_ptr = ptr::addr_of(handle);
+            let handle_ptr = ptr::addr_of(&handle);
             let handle_data: GetAddrData = {
                 output_ch: output_ch
             };
-            let handle_data_ptr = ptr::addr_of(handle_data);
+            let handle_data_ptr = ptr::addr_of(&handle_data);
             do interact(iotask) |loop_ptr| unsafe {
                 let result = uv_getaddrinfo(
                     loop_ptr,
@@ -150,7 +150,7 @@ mod v4 {
     impl Ipv4Rep: AsUnsafeU32 {
         // this is pretty dastardly, i know
         unsafe fn as_u32() -> u32 {
-            *((ptr::addr_of(self)) as *u32)
+            *((ptr::addr_of(&self)) as *u32)
         }
     }
     fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {

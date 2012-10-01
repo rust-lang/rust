@@ -231,7 +231,7 @@ fn unix_time_in_microseconds() -> u64 unsafe {
         mut tv_sec: 0 as c_ulonglong,
         mut tv_usec: 0 as c_ulonglong
     };
-    lib_c::gettimeofday(ptr::addr_of(x), ptr::null());
+    lib_c::gettimeofday(ptr::addr_of(&x), ptr::null());
     return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 

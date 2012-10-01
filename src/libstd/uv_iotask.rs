@@ -13,7 +13,7 @@ export interact;
 export exit;
 
 use libc::c_void;
-use ptr::addr_of;
+use ptr::p2::addr_of;
 use comm = core::comm;
 use comm::{Port, Chan, listen};
 use task::TaskBuilder;
@@ -96,7 +96,7 @@ fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
     // set up the special async handle we'll use to allow multi-task
     // communication with this loop
     let async = ll::async_t();
-    let async_handle = addr_of(async);
+    let async_handle = addr_of(&async);
 
     // associate the async handle with the loop
     ll::async_init(loop_ptr, async_handle, wake_up_cb);
@@ -106,7 +106,7 @@ fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
         async_handle: async_handle,
         msg_po: Port()
     };
-    ll::set_data_for_uv_handle(async_handle, addr_of(data));
+    ll::set_data_for_uv_handle(async_handle, addr_of(&data));
 
     // Send out a handle through which folks can talk to us
     // while we dwell in the I/O loop
@@ -188,14 +188,14 @@ mod test {
     };
     fn impl_uv_iotask_async(iotask: IoTask) unsafe {
         let async_handle = ll::async_t();
-        let ah_ptr = ptr::addr_of(async_handle);
+        let ah_ptr = ptr::addr_of(&async_handle);
         let exit_po = core::comm::Port::<()>();
         let exit_ch = core::comm::Chan(exit_po);
         let ah_data = {
             iotask: iotask,
             exit_ch: exit_ch
         };
-        let ah_data_ptr = ptr::addr_of(ah_data);
+        let ah_data_ptr = ptr::addr_of(&ah_data);
         do interact(iotask) |loop_ptr| unsafe {
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);

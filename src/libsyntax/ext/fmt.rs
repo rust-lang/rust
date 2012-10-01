@@ -188,7 +188,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             return make_conv_call(cx, arg.span, ~"float", cnv, arg);
           }
           TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv,
-                                          mk_addr_of(cx, sp, arg))
+                       mk_addr_of(cx, sp, arg))
         }
     }
     fn log_conv(c: Conv) {
