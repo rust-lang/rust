@@ -270,7 +270,10 @@ mod ct {
     }
 }
 
-// OLD CODE -- eventually remove
+// Functions used by the fmt extension at runtime. For now there are a lot of
+// decisions made a runtime. If it proves worthwhile then some of these
+// conditions can be evaluated at compile-time. For now though it's cleaner to
+// implement it 0this way, I think.
 mod rt {
     #[legacy_exports];
     const flag_none : u32 = 0u32;
@@ -286,7 +289,7 @@ mod rt {
     type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
 
     pure fn conv_int(cv: Conv, i: int) -> ~str {
-        let radix = 10u;
+        let radix = 10;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
@@ -320,13 +323,13 @@ mod rt {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pure fn conv_str(cv: Conv, s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, +s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
           CountImplied => s.to_unique(),
           CountIs(max) => if max as uint < str::char_len(s) {
-            str::substr(s, 0, max as uint)
+            str::substr(s, 0u, max as uint)
           } else {
             s.to_unique()
           }
@@ -336,7 +339,7 @@ mod rt {
     pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
-              CountImplied => (float::to_str, 6)
+              CountImplied => (float::to_str, 6u)
         };
         let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
@@ -348,8 +351,8 @@ mod rt {
         }
         return unsafe { pad(cv, s, PadFloat) };
     }
-    pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
-        let s = sys::log_str(&v);
+    pure fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
+        let s = sys::log_str(v);
         return conv_str(cv, s);
     }
 
@@ -460,7 +463,7 @@ mod rt {
     }
 }
 
-// NEW CODE
+// Remove after snapshot
 
 // Functions used by the fmt extension at runtime. For now there are a lot of
 // decisions made a runtime. If it proves worthwhile then some of these
