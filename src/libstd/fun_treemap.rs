@@ -15,13 +15,7 @@ use core::cmp::{Eq, Ord};
 use option::{Some, None};
 use option = option;
 
-export Treemap;
-export init;
-export insert;
-export find;
-export traverse;
-
-type Treemap<K, V> = @TreeNode<K, V>;
+pub type Treemap<K, V> = @TreeNode<K, V>;
 
 enum TreeNode<K, V> {
     Empty,
@@ -29,10 +23,10 @@ enum TreeNode<K, V> {
 }
 
 /// Create a treemap
-fn init<K, V>() -> Treemap<K, V> { @Empty }
+pub fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
+pub fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
   -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
@@ -47,7 +41,7 @@ fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
 }
 
 /// Find a value based on the key
-fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
+pub fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
     match *m {
       Empty => None,
       Node(@ref kk, @copy v, left, right) => {
@@ -59,7 +53,7 @@ fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn((&K), (&V))) {
+pub fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn((&K), (&V))) {
     match *m {
       Empty => (),
       /*

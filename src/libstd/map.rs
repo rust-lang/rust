@@ -11,16 +11,12 @@ use core::cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-export HashMap, hashfn, eqfn, Set, Map, chained, set_add;
-export hash_from_vec;
-export vec_from_set;
-
 /// A convenience type to treat a hashmap as a set
-type Set<K:Eq IterBytes Hash> = HashMap<K, ()>;
+pub type Set<K:Eq IterBytes Hash> = HashMap<K, ()>;
 
-type HashMap<K:Eq IterBytes Hash, V> = chained::T<K, V>;
+pub type HashMap<K:Eq IterBytes Hash, V> = chained::T<K, V>;
 
-trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
+pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
     /// Return the number of elements in the map
     pure fn size() -> uint;
 
@@ -82,10 +78,9 @@ trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
 }
 
 mod util {
-    #[legacy_exports];
-    type Rational = {num: int, den: int}; // : int::positive(*.den);
+    pub type Rational = {num: int, den: int}; // : int::positive(*.den);
 
-    pure fn rational_leq(x: Rational, y: Rational) -> bool {
+    pub pure fn rational_leq(x: Rational, y: Rational) -> bool {
         // NB: Uses the fact that rationals have positive denominators WLOG:
 
         x.num * y.den <= y.num * x.den
@@ -95,9 +90,7 @@ mod util {
 
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
-mod chained {
-    #[legacy_exports];
-    export T, mk, HashMap;
+pub mod chained {
 
     const initial_capacity: uint = 32u; // 2^5
 
@@ -113,7 +106,7 @@ mod chained {
         mut chains: ~[mut Option<@Entry<K,V>>]
     }
 
-    type T<K:Eq IterBytes Hash, V> = @HashMap_<K, V>;
+    pub type T<K:Eq IterBytes Hash, V> = @HashMap_<K, V>;
 
     enum SearchResult<K, V> {
         NotFound,
@@ -366,7 +359,7 @@ mod chained {
         vec::to_mut(vec::from_elem(nchains, None))
     }
 
-    fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {
+    pub fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {
         let slf: T<K, V> = @HashMap_ {count: 0u,
                                       chains: chains(initial_capacity)};
         slf
@@ -378,18 +371,18 @@ Function: hashmap
 
 Construct a hashmap.
 */
-fn HashMap<K:Eq IterBytes Hash Const, V: Copy>()
+pub fn HashMap<K:Eq IterBytes Hash Const, V: Copy>()
         -> HashMap<K, V> {
     chained::mk()
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
-fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, +key: K) -> bool {
+pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, +key: K) -> bool {
     set.insert(key, ())
 }
 
 /// Convert a set into a vector.
-fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
+pub fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.size()) |push| {
         for s.each_key() |k| {
             push(k);
@@ -398,7 +391,7 @@ fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
 }
 
 /// Construct a hashmap from a vector
-fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
+pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     items: &[(K, V)]) -> HashMap<K, V> {
     let map = HashMap();
     for vec::each(items) |item| {
@@ -517,7 +510,6 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
 
     #[test]
     fn test_simple() {

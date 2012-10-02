@@ -77,11 +77,8 @@ mod comm;
 
 mod bitv;
 mod deque;
-#[legacy_exports]
 mod fun_treemap;
-#[legacy_exports]
 mod list;
-#[legacy_exports]
 mod map;
 mod rope;
 mod smallintmap;
