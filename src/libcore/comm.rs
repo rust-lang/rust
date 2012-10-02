@@ -33,7 +33,7 @@ will once again be the preferred module for intertask communication.
 */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use either::Either;
@@ -166,7 +166,7 @@ fn as_raw_port<T: Send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
  * Constructs a channel. The channel is bound to the port used to
  * construct it.
  */
-pub fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
+pub fn Chan<T: Send>(&&p: Port<T>) -> Chan<T> {
     Chan_(rustrt::get_port_id((**p).po))
 }
 

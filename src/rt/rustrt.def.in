@@ -27,6 +27,7 @@ rust_port_select
 rand_free
 rand_new
 rand_new_seeded
+rand_new_seeded2
 rand_next
 rand_seed
 rust_get_sched_id
@@ -40,6 +41,7 @@ rust_get_stdin
 rust_get_stdout
 rust_get_stderr
 rust_list_files
+rust_list_files2
 rust_log_console_on
 rust_log_console_off
 rust_port_begin_detach

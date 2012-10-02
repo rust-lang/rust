@@ -35,7 +35,7 @@ extern mod rustrt {
     fn rust_getcwd() -> ~str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
-    fn rust_list_files(path: ~str) -> ~[~str];
+    fn rust_list_files2(&&path: ~str) -> ~[~str];
     fn rust_process_wait(handle: c_int) -> c_int;
     fn last_os_error() -> ~str;
     fn rust_set_exit_status(code: libc::intptr_t);
@@ -582,7 +582,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
     #[cfg(windows)]
     fn star(p: &Path) -> Path { p.push("*") }
 
-    do rustrt::rust_list_files(star(p).to_str()).filter |filename| {
+    do rustrt::rust_list_files2(star(p).to_str()).filter |filename| {
         *filename != ~"." && *filename != ~".."
     }
 }

@@ -221,7 +221,7 @@ fn under(n: uint, it: fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn as_str(f: fn@(io::Writer)) -> ~str {
+fn as_str(f: fn@(+x: io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 

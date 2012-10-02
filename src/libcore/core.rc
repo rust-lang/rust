@@ -36,7 +36,6 @@ Implicitly, all crates behave as if they included the following prologue:
 // Don't link to core. We are core.
 #[no_core];
 
-#[legacy_modes];
 #[legacy_exports];
 
 #[warn(deprecated_mode)];

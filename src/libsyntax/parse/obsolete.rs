@@ -36,7 +36,7 @@ impl ObsoleteSyntax : cmp::Eq {
 
 impl ObsoleteSyntax: to_bytes::IterBytes {
     #[inline(always)]
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f);
     }
 }
