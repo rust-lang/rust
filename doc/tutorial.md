@@ -82,7 +82,7 @@ supported build environments that are most likely to work.
 
 > ***Note:*** Windows users should read the detailed
 > [getting started][wiki-start] notes on the wiki. Even when using
-> the binary installer the windows build requires a MinGW installation,
+> the binary installer the Windows build requires a MinGW installation,
 > the precise details of which are not discussed in this tutorial.
 
 To build from source you will also need the following prerequisite
