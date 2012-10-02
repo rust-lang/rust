@@ -473,7 +473,7 @@ impl TaskBuilder {
     }
 
     /**
-     * Creates and exucutes a new child task
+     * Creates and executes a new child task
      *
      * Sets up a new task with its own call stack and schedules it to run
      * the provided unique closure. The task has the properties and behavior
