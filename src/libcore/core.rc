@@ -216,7 +216,6 @@ mod dlist_iter {
 mod send_map;
 
 // Concurrency
-#[legacy_exports]
 mod comm;
 #[legacy_exports]
 mod task {

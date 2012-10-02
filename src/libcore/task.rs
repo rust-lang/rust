@@ -32,54 +32,11 @@ use result::Result;
 use pipes::{stream, Chan, Port};
 use local_data_priv::{local_get, local_set};
 
-export Task;
-export TaskResult;
-export Notification;
-export SchedMode;
-export SchedOpts;
-export TaskOpts;
-export TaskBuilder;
-
-export task;
-export default_task_opts;
-export get_opts;
-export set_opts;
-export set_sched_mode;
-export add_wrapper;
-export run;
-
-export future_result;
-export run_listener;
-export run_with;
-
-export spawn;
-export spawn_unlinked;
-export spawn_supervised;
-export spawn_with;
-export spawn_listener;
-export spawn_conversation;
-export spawn_sched;
-export try;
-
-export yield;
-export failing;
-export get_task;
-export unkillable, rekillable;
-export atomically;
-
-export local_data;
-
-export SingleThreaded;
-export ThreadPerCore;
-export ThreadPerTask;
-export ManualThreads;
-export PlatformThread;
-
 use rt::task_id;
 use rt::rust_task;
 
 /// A handle to a task
-enum Task {
+pub enum Task {
     TaskHandle(task_id)
 }
 
@@ -99,7 +56,7 @@ impl Task : cmp::Eq {
  * If you wish for this result's delivery to block until all linked and/or
  * children tasks complete, recommend using a result future.
  */
-enum TaskResult {
+pub enum TaskResult {
     Success,
     Failure,
 }
@@ -115,7 +72,7 @@ impl TaskResult : Eq {
 }
 
 /// A message type for notifying of task lifecycle events
-enum Notification {
+pub enum Notification {
     /// Sent when a task exits with the task handle and result
     Exit(Task, TaskResult)
 }
@@ -134,7 +91,7 @@ impl Notification : cmp::Eq {
 }
 
 /// Scheduler modes
-enum SchedMode {
+pub enum SchedMode {
     /// All tasks run in the same OS thread
     SingleThreaded,
     /// Tasks are distributed among available CPUs
@@ -207,7 +164,7 @@ impl SchedMode : cmp::Eq {
  *     default these foreign stacks have unspecified size, but with this
  *     option their size can be precisely specified.
  */
-type SchedOpts = {
+pub type SchedOpts = {
     mode: SchedMode,
     foreign_stack_size: Option<uint>
 };
@@ -239,7 +196,7 @@ type SchedOpts = {
  *     into foreign code that blocks. Without doing so in a different
  *     scheduler other tasks will be impeded or even blocked indefinitely.
  */
-type TaskOpts = {
+pub type TaskOpts = {
     linked: bool,
     supervised: bool,
     mut notify_chan: Option<Chan<Notification>>,
@@ -260,7 +217,7 @@ type TaskOpts = {
 // the run function move them in.
 
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
-enum TaskBuilder = {
+pub enum TaskBuilder = {
     opts: TaskOpts,
     gen_body: fn@(+v: fn~()) -> fn~(),
     can_not_copy: Option<util::NonCopyable>,
@@ -272,7 +229,7 @@ enum TaskBuilder = {
  * configuration methods can be chained.
  * For example, task().unlinked().spawn is equivalent to spawn_unlinked.
  */
-fn task() -> TaskBuilder {
+pub fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
         gen_body: |body| move body, // Identity function
@@ -580,7 +537,7 @@ impl TaskBuilder {
 
 /* Task construction */
 
-fn default_task_opts() -> TaskOpts {
+pub fn default_task_opts() -> TaskOpts {
     /*!
      * The default task options
      *
@@ -598,7 +555,7 @@ fn default_task_opts() -> TaskOpts {
 
 /* Spawn convenience functions */
 
-fn spawn(+f: fn~()) {
+pub fn spawn(+f: fn~()) {
     /*!
      * Creates and executes a new child task
      *
@@ -611,7 +568,7 @@ fn spawn(+f: fn~()) {
     task().spawn(move f)
 }
 
-fn spawn_unlinked(+f: fn~()) {
+pub fn spawn_unlinked(+f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -620,7 +577,7 @@ fn spawn_unlinked(+f: fn~()) {
     task().unlinked().spawn(move f)
 }
 
-fn spawn_supervised(+f: fn~()) {
+pub fn spawn_supervised(+f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -629,7 +586,7 @@ fn spawn_supervised(+f: fn~()) {
     task().supervised().spawn(move f)
 }
 
-fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
+pub fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -643,7 +600,7 @@ fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
     task().spawn_with(move arg, move f)
 }
 
-fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+pub fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
@@ -653,7 +610,7 @@ fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     task().spawn_listener(move f)
 }
 
-fn spawn_conversation<A: Send, B: Send>
+pub fn spawn_conversation<A: Send, B: Send>
     (+f: fn~(comm::Port<A>, comm::Chan<B>))
     -> (comm::Port<B>, comm::Chan<A>) {
     /*!
@@ -665,7 +622,7 @@ fn spawn_conversation<A: Send, B: Send>
     task().spawn_conversation(move f)
 }
 
-fn spawn_sched(mode: SchedMode, +f: fn~()) {
+pub fn spawn_sched(mode: SchedMode, +f: fn~()) {
     /*!
      * Creates a new scheduler and executes a task on it
      *
@@ -682,7 +639,7 @@ fn spawn_sched(mode: SchedMode, +f: fn~()) {
     task().sched_mode(mode).spawn(move f)
 }
 
-fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
+pub fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -696,7 +653,7 @@ fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
 
 /* Lifecycle functions */
 
-fn yield() {
+pub fn yield() {
     //! Yield control to the task scheduler
 
     let task_ = rt::rust_get_task();
@@ -706,13 +663,13 @@ fn yield() {
     }
 }
 
-fn failing() -> bool {
+pub fn failing() -> bool {
     //! True if the running task has failed
 
     rt::rust_task_is_unwinding(rt::rust_get_task())
 }
 
-fn get_task() -> Task {
+pub fn get_task() -> Task {
     //! Get a handle to the running task
 
     TaskHandle(rt::get_task_id())
@@ -733,7 +690,7 @@ fn get_task() -> Task {
  * }
  * ~~~
  */
-unsafe fn unkillable<U>(f: fn() -> U) -> U {
+pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
     struct AllowFailure {
         t: *rust_task,
         drop { rt::rust_task_allow_kill(self.t); }
@@ -752,7 +709,7 @@ unsafe fn unkillable<U>(f: fn() -> U) -> U {
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
-unsafe fn rekillable<U>(f: fn() -> U) -> U {
+pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
     struct DisallowFailure {
         t: *rust_task,
         drop { rt::rust_task_inhibit_kill(self.t); }
@@ -774,7 +731,7 @@ unsafe fn rekillable<U>(f: fn() -> U) -> U {
  * A stronger version of unkillable that also inhibits scheduling operations.
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
-unsafe fn atomically<U>(f: fn() -> U) -> U {
+pub unsafe fn atomically<U>(f: fn() -> U) -> U {
     struct DeferInterrupts {
         t: *rust_task,
         drop {
@@ -1102,7 +1059,6 @@ fn test_spawn_sched_childs_on_same_sched() {
 #[nolink]
 #[cfg(test)]
 extern mod testrt {
-    #[legacy_exports];
     fn rust_dbg_lock_create() -> *libc::c_void;
     fn rust_dbg_lock_destroy(lock: *libc::c_void);
     fn rust_dbg_lock_lock(lock: *libc::c_void);
