@@ -23,11 +23,6 @@
  * facilities.
  */
 
-use ll = uv_ll;
-export ll;
-
-use iotask = uv_iotask;
-export iotask;
-
-use global_loop = uv_global_loop;
-export global_loop;
+pub use ll = uv_ll;
+pub use iotask = uv_iotask;
+pub use global_loop = uv_global_loop;

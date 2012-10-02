@@ -27,13 +27,13 @@ use comm = core::comm;
 use ptr::to_unsafe_ptr;
 
 // libuv struct mappings
-type uv_ip4_addr = {
+pub type uv_ip4_addr = {
     ip: ~[u8],
     port: int
 };
-type uv_ip6_addr = uv_ip4_addr;
+pub type uv_ip6_addr = uv_ip4_addr;
 
-enum uv_handle_type {
+pub enum uv_handle_type {
     UNKNOWN_HANDLE = 0,
     UV_TCP,
     UV_UDP,
@@ -51,9 +51,9 @@ enum uv_handle_type {
     UV_FS_EVENT
 }
 
-type handle_type = libc::c_uint;
+pub type handle_type = libc::c_uint;
 
-type uv_handle_fields = {
+pub type uv_handle_fields = {
    loop_handle: *libc::c_void,
    type_: handle_type,
    close_cb: *u8,
@@ -61,7 +61,7 @@ type uv_handle_fields = {
 };
 
 // unix size: 8
-type uv_err_t = {
+pub type uv_err_t = {
     code: libc::c_int,
     sys_errno_: libc::c_int
 };
@@ -71,13 +71,13 @@ type uv_err_t = {
 // in other types as a pointer to be used in other
 // operations (so mostly treat it as opaque, once you
 // have it in this form..)
-type uv_stream_t = {
+pub type uv_stream_t = {
     fields: uv_handle_fields
 };
 
 // 64bit unix size: 272
 #[cfg(unix)]
-type uv_tcp_t = {
+pub type uv_tcp_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -91,11 +91,11 @@ type uv_tcp_t = {
 };
 // 32bit unix size: 328 (164)
 #[cfg(target_arch="x86_64")]
-type uv_tcp_t_32bit_unix_riders = {
+pub type uv_tcp_t_32bit_unix_riders = {
     a29: *u8
 };
 #[cfg(target_arch="x86")]
-type uv_tcp_t_32bit_unix_riders = {
+pub type uv_tcp_t_32bit_unix_riders = {
     a29: *u8, a30: *u8, a31: *u8,
     a32: *u8, a33: *u8, a34: *u8,
     a35: *u8, a36: *u8
@@ -103,7 +103,7 @@ type uv_tcp_t_32bit_unix_riders = {
 
 // 32bit win32 size: 240 (120)
 #[cfg(windows)]
-type uv_tcp_t = {
+pub type uv_tcp_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -116,20 +116,20 @@ type uv_tcp_t = {
 
 // unix size: 48
 #[cfg(unix)]
-type uv_connect_t = {
+pub type uv_connect_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8
 };
 // win32 size: 88 (44)
 #[cfg(windows)]
-type uv_connect_t = {
+pub type uv_connect_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8, a10: *u8
 };
 
 // unix size: 16
-type uv_buf_t = {
+pub type uv_buf_t = {
     base: *u8,
     len: libc::size_t
 };
@@ -138,7 +138,7 @@ type uv_buf_t = {
 
 // unix size: 144
 #[cfg(unix)]
-type uv_write_t = {
+pub type uv_write_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -147,16 +147,16 @@ type uv_write_t = {
     a14: uv_write_t_32bit_unix_riders
 };
 #[cfg(target_arch="x86_64")]
-type uv_write_t_32bit_unix_riders = {
+pub type uv_write_t_32bit_unix_riders = {
     a13: *u8
 };
 #[cfg(target_arch="x86")]
-type uv_write_t_32bit_unix_riders = {
+pub type uv_write_t_32bit_unix_riders = {
     a13: *u8, a14: *u8
 };
 // win32 size: 136 (68)
 #[cfg(windows)]
-type uv_write_t = {
+pub type uv_write_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -166,7 +166,7 @@ type uv_write_t = {
 // 64bit unix size: 120
 // 32bit unix size: 152 (76)
 #[cfg(unix)]
-type uv_async_t = {
+pub type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -174,16 +174,16 @@ type uv_async_t = {
     a11: uv_async_t_32bit_unix_riders
 };
 #[cfg(target_arch="x86_64")]
-type uv_async_t_32bit_unix_riders = {
+pub type uv_async_t_32bit_unix_riders = {
     a10: *u8
 };
 #[cfg(target_arch="x86")]
-type uv_async_t_32bit_unix_riders = {
+pub type uv_async_t_32bit_unix_riders = {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8
 };
 // win32 size 132 (68)
 #[cfg(windows)]
-type uv_async_t = {
+pub type uv_async_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -194,7 +194,7 @@ type uv_async_t = {
 // 64bit unix size: 128
 // 32bit unix size: 84
 #[cfg(unix)]
-type uv_timer_t = {
+pub type uv_timer_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -202,17 +202,17 @@ type uv_timer_t = {
     a11: uv_timer_t_32bit_unix_riders
 };
 #[cfg(target_arch="x86_64")]
-type uv_timer_t_32bit_unix_riders = {
+pub type uv_timer_t_32bit_unix_riders = {
     a10: *u8, a11: *u8
 };
 #[cfg(target_arch="x86")]
-type uv_timer_t_32bit_unix_riders = {
+pub type uv_timer_t_32bit_unix_riders = {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8,
     a14: *u8, a15: *u8, a16: *u8
 };
 // win32 size: 64
 #[cfg(windows)]
-type uv_timer_t = {
+pub type uv_timer_t = {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -220,7 +220,7 @@ type uv_timer_t = {
 };
 
 // unix size: 16
-type sockaddr_in = {
+pub type sockaddr_in = {
     mut sin_family: u16,
     mut sin_port: u16,
     mut sin_addr: u32, // in_addr: this is an opaque, per-platform struct
@@ -230,12 +230,12 @@ type sockaddr_in = {
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
 #[cfg(target_arch="x86_64")]
-type sockaddr_in6 = {
+pub type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8
 };
 #[cfg(target_arch="x86")]
-type sockaddr_in6 = {
+pub type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
     a4: *u8, a5: *u8,
@@ -244,17 +244,16 @@ type sockaddr_in6 = {
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
-type addr_in = addr_in_impl::addr_in;
+pub type addr_in = addr_in_impl::addr_in;
 #[cfg(unix)]
-mod addr_in_impl {
-    #[legacy_exports];
+pub mod addr_in_impl {
     #[cfg(target_arch="x86_64")]
-    type addr_in = {
+    pub type addr_in = {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8
     };
     #[cfg(target_arch="x86")]
-    type addr_in = {
+    pub type addr_in = {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8,
         a4: *u8, a5: *u8,
@@ -262,65 +261,60 @@ mod addr_in_impl {
     };
 }
 #[cfg(windows)]
-mod addr_in_impl {
-    #[legacy_exports];
-    type addr_in = {
+pub mod addr_in_impl {
+    pub type addr_in = {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8
     };
 }
 
 // unix size: 48, 32bit: 32
-type addrinfo = addrinfo_impl::addrinfo;
+pub type addrinfo = addrinfo_impl::addrinfo;
 #[cfg(target_os="linux")]
-mod addrinfo_impl {
-    #[legacy_exports];
+pub mod addrinfo_impl {
     #[cfg(target_arch="x86_64")]
-    type addrinfo = {
+    pub type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8
     };
     #[cfg(target_arch="x86")]
-    type addrinfo = {
+    pub type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8, a06: *u8, a07: *u8
     };
 }
 #[cfg(target_os="macos")]
 #[cfg(target_os="freebsd")]
-mod addrinfo_impl {
-    #[legacy_exports];
-    type addrinfo = {
+pub mod addrinfo_impl {
+    pub type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8
     };
 }
 #[cfg(windows)]
-mod addrinfo_impl {
-    #[legacy_exports];
-    type addrinfo = {
+pub mod addrinfo_impl {
+    pub type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8
     };
 }
 
 // unix size: 72
-type uv_getaddrinfo_t = {
+pub type uv_getaddrinfo_t = {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8, a04: *u8, a05: *u8,
     a06: *u8, a07: *u8, a08: *u8
 };
 
-mod uv_ll_struct_stubgen {
-    #[legacy_exports];
-    fn gen_stub_uv_tcp_t() -> uv_tcp_t {
+pub mod uv_ll_struct_stubgen {
+    pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         return gen_stub_os();
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "freebsd")]
-        fn gen_stub_os() -> uv_tcp_t {
+        pub fn gen_stub_os() -> uv_tcp_t {
             return gen_stub_arch();
             #[cfg(target_arch="x86_64")]
-            fn gen_stub_arch() -> uv_tcp_t {
+            pub fn gen_stub_arch() -> uv_tcp_t {
                 return { fields: { loop_handle: ptr::null(), type_: 0u32,
                                 close_cb: ptr::null(),
                                 mut data: ptr::null() },
@@ -345,7 +339,7 @@ mod uv_ll_struct_stubgen {
                 };
             }
             #[cfg(target_arch="x86")]
-            fn gen_stub_arch() -> uv_tcp_t {
+            pub fn gen_stub_arch() -> uv_tcp_t {
                 return { fields: { loop_handle: ptr::null(), type_: 0u32,
                                 close_cb: ptr::null(),
                                 mut data: ptr::null() },
@@ -373,7 +367,7 @@ mod uv_ll_struct_stubgen {
             }
         }
         #[cfg(windows)]
-        fn gen_stub_os() -> uv_tcp_t {
+        pub fn gen_stub_os() -> uv_tcp_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -394,7 +388,7 @@ mod uv_ll_struct_stubgen {
         }
     }
     #[cfg(unix)]
-    fn gen_stub_uv_connect_t() -> uv_connect_t {
+    pub fn gen_stub_uv_connect_t() -> uv_connect_t {
         return {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
@@ -402,7 +396,7 @@ mod uv_ll_struct_stubgen {
         };
     }
     #[cfg(windows)]
-    fn gen_stub_uv_connect_t() -> uv_connect_t {
+    pub fn gen_stub_uv_connect_t() -> uv_connect_t {
         return {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
@@ -412,10 +406,10 @@ mod uv_ll_struct_stubgen {
         };
     }
     #[cfg(unix)]
-    fn gen_stub_uv_async_t() -> uv_async_t {
+    pub fn gen_stub_uv_async_t() -> uv_async_t {
         return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
-        fn gen_stub_arch() -> uv_async_t {
+        pub fn gen_stub_arch() -> uv_async_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -430,7 +424,7 @@ mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch = "x86")]
-        fn gen_stub_arch() -> uv_async_t {
+        pub fn gen_stub_arch() -> uv_async_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -447,7 +441,7 @@ mod uv_ll_struct_stubgen {
         }
     }
     #[cfg(windows)]
-    fn gen_stub_uv_async_t() -> uv_async_t {
+    pub fn gen_stub_uv_async_t() -> uv_async_t {
         return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
@@ -461,10 +455,10 @@ mod uv_ll_struct_stubgen {
         };
     }
     #[cfg(unix)]
-    fn gen_stub_uv_timer_t() -> uv_timer_t {
+    pub fn gen_stub_uv_timer_t() -> uv_timer_t {
         return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
-        fn gen_stub_arch() -> uv_timer_t {
+        pub fn gen_stub_arch() -> uv_timer_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -479,7 +473,7 @@ mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch = "x86")]
-        fn gen_stub_arch() -> uv_timer_t {
+        pub fn gen_stub_arch() -> uv_timer_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -498,7 +492,7 @@ mod uv_ll_struct_stubgen {
         }
     }
     #[cfg(windows)]
-    fn gen_stub_uv_timer_t() -> uv_timer_t {
+    pub fn gen_stub_uv_timer_t() -> uv_timer_t {
         return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
@@ -511,10 +505,10 @@ mod uv_ll_struct_stubgen {
         };
     }
     #[cfg(unix)]
-    fn gen_stub_uv_write_t() -> uv_write_t {
+    pub fn gen_stub_uv_write_t() -> uv_write_t {
         return gen_stub_arch();
         #[cfg(target_arch="x86_64")]
-        fn gen_stub_arch() -> uv_write_t {
+        pub fn gen_stub_arch() -> uv_write_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -528,7 +522,7 @@ mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch="x86")]
-        fn gen_stub_arch() -> uv_write_t {
+        pub fn gen_stub_arch() -> uv_write_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
@@ -543,7 +537,7 @@ mod uv_ll_struct_stubgen {
         }
     }
     #[cfg(windows)]
-    fn gen_stub_uv_write_t() -> uv_write_t {
+    pub fn gen_stub_uv_write_t() -> uv_write_t {
         return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
@@ -556,7 +550,7 @@ mod uv_ll_struct_stubgen {
             a12: 0 as *u8
         };
     }
-    fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
+    pub fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
         {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
@@ -567,7 +561,6 @@ mod uv_ll_struct_stubgen {
 
 #[nolink]
 extern mod rustrt {
-    #[legacy_exports];
     // libuv public API
     fn rust_uv_loop_new() -> *libc::c_void;
     fn rust_uv_loop_delete(lp: *libc::c_void);
@@ -686,32 +679,32 @@ extern mod rustrt {
     fn rust_uv_helper_addr_in_size() -> libc::c_uint;
 }
 
-unsafe fn loop_new() -> *libc::c_void {
+pub unsafe fn loop_new() -> *libc::c_void {
     return rustrt::rust_uv_loop_new();
 }
 
-unsafe fn loop_delete(loop_handle: *libc::c_void) {
+pub unsafe fn loop_delete(loop_handle: *libc::c_void) {
     rustrt::rust_uv_loop_delete(loop_handle);
 }
 
-unsafe fn loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int {
+pub unsafe fn loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int {
     return rustrt::rust_uv_loop_refcount(loop_ptr);
 }
 
-unsafe fn run(loop_handle: *libc::c_void) {
+pub unsafe fn run(loop_handle: *libc::c_void) {
     rustrt::rust_uv_run(loop_handle);
 }
 
-unsafe fn close<T>(handle: *T, cb: *u8) {
+pub unsafe fn close<T>(handle: *T, cb: *u8) {
     rustrt::rust_uv_close(handle as *libc::c_void, cb);
 }
 
-unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
+pub unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
     -> libc::c_int {
     return rustrt::rust_uv_tcp_init(loop_handle, handle);
 }
 // FIXME ref #2064
-unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
+pub unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       tcp_handle_ptr: *uv_tcp_t,
                       addr_ptr: *sockaddr_in,
                       after_connect_cb: *u8)
@@ -722,7 +715,7 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
-unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
+pub unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
                       tcp_handle_ptr: *uv_tcp_t,
                       addr_ptr: *sockaddr_in6,
                       after_connect_cb: *u8)
@@ -731,30 +724,30 @@ unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
-unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
+pub unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in) -> libc::c_int {
     return rustrt::rust_uv_tcp_bind(tcp_server_ptr,
                                  addr_ptr);
 }
 // FIXME ref #2064
-unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
+pub unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in6) -> libc::c_int {
     return rustrt::rust_uv_tcp_bind6(tcp_server_ptr,
                                  addr_ptr);
 }
 
-unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
+pub unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
     return rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
 }
 
-unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
+pub unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
     -> libc::c_int {
     return rustrt::rust_uv_accept(server as *libc::c_void,
                                client as *libc::c_void);
 }
 
-unsafe fn write<T>(req: *uv_write_t, stream: *T,
+pub unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::raw::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
@@ -762,28 +755,28 @@ unsafe fn write<T>(req: *uv_write_t, stream: *T,
                               stream as *libc::c_void,
                               buf_ptr, buf_cnt, cb);
 }
-unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
+pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
                      on_read: *u8) -> libc::c_int {
     return rustrt::rust_uv_read_start(stream as *libc::c_void,
                                    on_alloc, on_read);
 }
 
-unsafe fn read_stop(stream: *uv_stream_t) -> libc::c_int {
+pub unsafe fn read_stop(stream: *uv_stream_t) -> libc::c_int {
     return rustrt::rust_uv_read_stop(stream as *libc::c_void);
 }
 
-unsafe fn last_error(loop_handle: *libc::c_void) -> uv_err_t {
+pub unsafe fn last_error(loop_handle: *libc::c_void) -> uv_err_t {
     return rustrt::rust_uv_last_error(loop_handle);
 }
 
-unsafe fn strerror(err: *uv_err_t) -> *libc::c_char {
+pub unsafe fn strerror(err: *uv_err_t) -> *libc::c_char {
     return rustrt::rust_uv_strerror(err);
 }
-unsafe fn err_name(err: *uv_err_t) -> *libc::c_char {
+pub unsafe fn err_name(err: *uv_err_t) -> *libc::c_char {
     return rustrt::rust_uv_err_name(err);
 }
 
-unsafe fn async_init(loop_handle: *libc::c_void,
+pub unsafe fn async_init(loop_handle: *libc::c_void,
                      async_handle: *uv_async_t,
                      cb: *u8) -> libc::c_int {
     return rustrt::rust_uv_async_init(loop_handle,
@@ -791,10 +784,10 @@ unsafe fn async_init(loop_handle: *libc::c_void,
                                    cb);
 }
 
-unsafe fn async_send(async_handle: *uv_async_t) {
+pub unsafe fn async_send(async_handle: *uv_async_t) {
     return rustrt::rust_uv_async_send(async_handle);
 }
-unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
+pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(&out_buf);
     log(debug, fmt!("buf_init - input %u len %u out_buf: %u",
@@ -814,21 +807,21 @@ unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     return out_buf;
     //return result;
 }
-unsafe fn ip4_addr(ip: &str, port: int)
+pub unsafe fn ip4_addr(ip: &str, port: int)
 -> sockaddr_in {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip4_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-unsafe fn ip6_addr(ip: &str, port: int)
+pub unsafe fn ip6_addr(ip: &str, port: int)
 -> sockaddr_in6 {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
+pub unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     // ipv4 addr max size: 15 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
@@ -844,7 +837,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
         str::raw::from_buf(dst_buf)
     }
 }
-unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
+pub unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
     // ipv6 addr max size: 45 + 1 trailing null byte
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
@@ -865,19 +858,19 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
     }
 }
 
-unsafe fn timer_init(loop_ptr: *libc::c_void,
+pub unsafe fn timer_init(loop_ptr: *libc::c_void,
                      timer_ptr: *uv_timer_t) -> libc::c_int {
     return rustrt::rust_uv_timer_init(loop_ptr, timer_ptr);
 }
-unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
+pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
                       repeat: uint) -> libc::c_int {
     return rustrt::rust_uv_timer_start(timer_ptr, cb, timeout as libc::c_uint,
                                     repeat as libc::c_uint);
 }
-unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
+pub unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
     return rustrt::rust_uv_timer_stop(timer_ptr);
 }
-unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
+pub unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
                            handle: *uv_getaddrinfo_t,
                            cb: *u8,
                            node_name_ptr: *u8,
@@ -890,83 +883,84 @@ unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
                            service_name_ptr,
                            hints)
 }
-unsafe fn freeaddrinfo(res: *addrinfo) {
+pub unsafe fn freeaddrinfo(res: *addrinfo) {
     rustrt::rust_uv_freeaddrinfo(res);
 }
 
 // libuv struct initializers
-unsafe fn tcp_t() -> uv_tcp_t {
+pub unsafe fn tcp_t() -> uv_tcp_t {
     return uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
 }
-unsafe fn connect_t() -> uv_connect_t {
+pub unsafe fn connect_t() -> uv_connect_t {
     return uv_ll_struct_stubgen::gen_stub_uv_connect_t();
 }
-unsafe fn write_t() -> uv_write_t {
+pub unsafe fn write_t() -> uv_write_t {
     return uv_ll_struct_stubgen::gen_stub_uv_write_t();
 }
-unsafe fn async_t() -> uv_async_t {
+pub unsafe fn async_t() -> uv_async_t {
     return uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
-unsafe fn timer_t() -> uv_timer_t {
+pub unsafe fn timer_t() -> uv_timer_t {
     return uv_ll_struct_stubgen::gen_stub_uv_timer_t();
 }
-unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
+pub unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
     return uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
 // data access helpers
-unsafe fn get_loop_for_uv_handle<T>(handle: *T)
+pub unsafe fn get_loop_for_uv_handle<T>(handle: *T)
     -> *libc::c_void {
     return rustrt::rust_uv_get_loop_for_uv_handle(handle as *libc::c_void);
 }
-unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t)
+pub unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t)
     -> *uv_stream_t {
     return rustrt::rust_uv_get_stream_handle_from_connect_req(
         connect);
 }
-unsafe fn get_stream_handle_from_write_req(
+pub unsafe fn get_stream_handle_from_write_req(
     write_req: *uv_write_t)
     -> *uv_stream_t {
     return rustrt::rust_uv_get_stream_handle_from_write_req(
         write_req);
 }
-unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
+pub unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
     rustrt::rust_uv_get_data_for_uv_loop(loop_ptr)
 }
-unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void, data: *libc::c_void) {
+pub unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void,
+                                   data: *libc::c_void) {
     rustrt::rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
-unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
+pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
     return rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
 }
-unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
+pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
                     data: *U) {
     rustrt::rust_uv_set_data_for_uv_handle(handle as *libc::c_void,
                                            data as *libc::c_void);
 }
-unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
+pub unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
     return rustrt::rust_uv_get_data_for_req(req as *libc::c_void);
 }
-unsafe fn set_data_for_req<T, U>(req: *T,
+pub unsafe fn set_data_for_req<T, U>(req: *T,
                     data: *U) {
     rustrt::rust_uv_set_data_for_req(req as *libc::c_void,
                                      data as *libc::c_void);
 }
-unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
+pub unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
     return rustrt::rust_uv_get_base_from_buf(buf);
 }
-unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
+pub unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
     return rustrt::rust_uv_get_len_from_buf(buf);
 }
-unsafe fn malloc_buf_base_of(suggested_size: libc::size_t)
+pub unsafe fn malloc_buf_base_of(suggested_size: libc::size_t)
     -> *u8 {
     return rustrt::rust_uv_malloc_buf_base_of(suggested_size);
 }
-unsafe fn free_base_of_buf(buf: uv_buf_t) {
+pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
     rustrt::rust_uv_free_base_of_buf(buf);
 }
 
-unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
+pub unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::addr_of(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -975,7 +969,7 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
                     err_name, err_msg);
 }
 
-unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
+pub unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err = last_error(uv_loop);
     let err_ptr = ptr::addr_of(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
@@ -983,33 +977,33 @@ unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     { err_name: err_name, err_msg: err_msg }
 }
 
-type uv_err_data = {
+pub type uv_err_data = {
     err_name: ~str,
     err_msg: ~str
 };
 
-unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
+pub unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
     rustrt::rust_uv_is_ipv4_addrinfo(input)
 }
-unsafe fn is_ipv6_addrinfo(input: *addrinfo) -> bool {
+pub unsafe fn is_ipv6_addrinfo(input: *addrinfo) -> bool {
     rustrt::rust_uv_is_ipv6_addrinfo(input)
 }
-unsafe fn get_INADDR_NONE() -> u32 {
+pub unsafe fn get_INADDR_NONE() -> u32 {
     rustrt::rust_uv_helper_get_INADDR_NONE()
 }
-unsafe fn get_next_addrinfo(input: *addrinfo) -> *addrinfo {
+pub unsafe fn get_next_addrinfo(input: *addrinfo) -> *addrinfo {
     rustrt::rust_uv_get_next_addrinfo(input)
 }
-unsafe fn addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in {
+pub unsafe fn addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in {
     rustrt::rust_uv_addrinfo_as_sockaddr_in(input)
 }
-unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
+pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
     rustrt::rust_uv_addrinfo_as_sockaddr_in6(input)
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
+pub mod test {
+
     enum tcp_read_data {
         tcp_read_eof,
         tcp_read_more(~[u8]),
@@ -1510,22 +1504,19 @@ mod test {
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
-    mod tcp_and_server_client_test {
-        #[legacy_exports];
+    pub mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
-        mod impl64 {
-            #[legacy_exports];
+        pub mod impl64 {
             #[test]
-            fn test_uv_ll_tcp_server_and_request() unsafe {
+            pub fn test_uv_ll_tcp_server_and_request() unsafe {
                 impl_uv_tcp_server_and_request();
             }
         }
         #[cfg(target_arch="x86")]
-        mod impl32 {
-            #[legacy_exports];
+        pub mod impl32 {
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            fn test_uv_ll_tcp_server_and_request() unsafe {
+            pub fn test_uv_ll_tcp_server_and_request() unsafe {
                 impl_uv_tcp_server_and_request();
             }
         }
