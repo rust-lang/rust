@@ -295,6 +295,163 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
 
+# TODO
+
+# Handling task failure
+
+Rust has a built-in mechanism for raising exceptions, written `fail`
+(or `fail ~"reason"`, or sometimes `assert expr`), and it causes the
+task to unwind its stack, running destructors and freeing memory along
+the way, and then exit itself. Unlike C++, exceptions in Rust are
+unrecoverable within a single task - once a task fails there is no way
+to "catch" the exception.
+
+All tasks are, by default, _linked_ to each other, meaning their fate
+is interwined, and if one fails so do all of them.
+
+~~~
+# use task::spawn;
+# fn do_some_work() { loop { task::yield() } }
+# do task::try {
+// Create a child task that fails
+do spawn { fail }
+
+// This will also fail because the task we spawned failed
+do_some_work();
+# };
+~~~
+
+While it isn't possible for a task to recover from failure,
+tasks may be notified when _other_ tasks fail. The simplest way
+of handling task failure is with the `try` function, which is
+similar to spawn, but immediately blocks waiting for the child
+task to finish.
+
+~~~
+# fn some_condition() -> bool { false }
+# fn calculate_result() -> int { 0 }
+let result: Result<int, ()> = do task::try {
+    if some_condition() {
+        calculate_result()
+    } else {
+        fail ~"oops!";
+    }
+};
+assert result.is_err();
+~~~
+
+Unlike `spawn`, the function spawned using `try` may return a value,
+which `try` will dutifully propagate back to the caller in a [`Result`]
+enum. If the child task terminates successfully, `try` will
+return an `Ok` result; if the child task fails, `try` will return
+an `Error` result.
+
+[`Result`]: core/result.html
+
+> ***Note:*** A failed task does not currently produce a useful error
+> value (all error results from `try` are equal to `Err(())`). In the
+> future it may be possible for tasks to intercept the value passed to
+> `fail`.
+
+TODO: Need discussion of `future_result` in order to make failure
+modes useful.
+
+But not all failure is created equal. In some cases you might need to
+abort the entire program (perhaps you're writing an assert which, if
+it trips, indicates an unrecoverable logic error); in other cases you
+might want to contain the failure at a certain boundary (perhaps a
+small piece of input from the outside world, which you happen to be
+processing in parallel, is malformed and its processing task can't
+proceed). Hence the need for different _linked failure modes_.
+
+## Failure modes
+
+By default, task failure is _bidirectionally linked_, which means if
+either task dies, it kills the other one.
+
+~~~
+# fn sleep_forever() { loop { task::yield() } }
+# do task::try {
+do task::spawn {
+    do task::spawn {
+        fail;  // All three tasks will die.
+    }
+    sleep_forever();  // Will get woken up by force, then fail
+}
+sleep_forever();  // Will get woken up by force, then fail
+# };
+~~~
+
+If you want parent tasks to kill their children, but not for a child
+task's failure to kill the parent, you can call
+`task::spawn_supervised` for _unidirectionally linked_ failure. The
+function `task::try`, which we saw previously, uses `spawn_supervised`
+internally, with additional logic to wait for the child task to finish
+before returning. Hence:
+
+~~~
+# use pipes::{stream, Chan, Port};
+# use task::{spawn, try};
+# fn sleep_forever() { loop { task::yield() } }
+# do task::try {
+let (sender, receiver): (Chan<int>, Port<int>) = stream();
+do spawn {  // Bidirectionally linked
+    // Wait for the supervised child task to exist.
+    let message = receiver.recv();
+    // Kill both it and the parent task.
+    assert message != 42;
+}
+do try {  // Unidirectionally linked
+    sender.send(42);
+    sleep_forever();  // Will get woken up by force
+}
+// Flow never reaches here -- parent task was killed too.
+# };
+~~~
+
+Supervised failure is useful in any situation where one task manages
+multiple fallible child tasks, and the parent task can recover
+if any child files. On the other hand, if the _parent_ (supervisor) fails
+then there is nothing the children can do to recover, so they should
+also fail.
+
+Supervised task failure propagates across multiple generations even if
+an intermediate generation has already exited:
+
+~~~
+# fn sleep_forever() { loop { task::yield() } }
+# fn wait_for_a_while() { for 1000.times { task::yield() } }
+# do task::try::<int> {
+do task::spawn_supervised {
+    do task::spawn_supervised {
+        sleep_forever();  // Will get woken up by force, then fail
+    }
+    // Intermediate task immediately exits
+}
+wait_for_a_while();
+fail;  // Will kill grandchild even if child has already exited
+# };
+~~~
+
+Finally, tasks can be configured to not propagate failure to each
+other at all, using `task::spawn_unlinked` for _isolated failure_.
+
+~~~
+# fn random() -> int { 100 }
+# fn sleep_for(i: int) { for i.times { task::yield() } }
+# do task::try::<()> {
+let (time1, time2) = (random(), random());
+do task::spawn_unlinked {
+    sleep_for(time2);  // Won't get forced awake
+    fail;
+}
+sleep_for(time1);  // Won't get forced awake
+fail;
+// It will take MAX(time1,time2) for the program to finish.
+# };
+~~~
+
+
 # Unfinished notes
 
 ## Actor patterns
