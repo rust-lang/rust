@@ -1,5 +1,7 @@
 #[doc(hidden)]; // FIXME #3538
 
+#[legacy_modes]; // tjc: remove after snapshot
+
 // NB: transitionary, de-mode-ing.
 // XXX: Can't do this because frame_address needs a deprecated mode.
 //#[forbid(deprecated_mode)];

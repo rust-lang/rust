@@ -37,7 +37,7 @@ use local_data_priv::{
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<T: Owned> = &fn(+v: @T);
+pub type LocalDataKey<T: Owned> = &fn(v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the
@@ -62,7 +62,7 @@ pub unsafe fn local_data_get<T: Owned>(
  * that value is overwritten (and its destructor is run).
  */
 pub unsafe fn local_data_set<T: Owned>(
-    key: LocalDataKey<T>, +data: @T) {
+    key: LocalDataKey<T>, data: @T) {
 
     local_set(rt::rust_get_task(), key, data)
 }
@@ -79,7 +79,7 @@ pub unsafe fn local_data_modify<T: Owned>(
 
 #[test]
 pub fn test_tls_multitask() unsafe {
-    fn my_key(+_x: @~str) { }
+    fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"parent data");
     do task::spawn unsafe {
         assert local_data_get(my_key).is_none(); // TLS shouldn't carry over.
@@ -95,7 +95,7 @@ pub fn test_tls_multitask() unsafe {
 
 #[test]
 pub fn test_tls_overwrite() unsafe {
-    fn my_key(+_x: @~str) { }
+    fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"first data");
     local_data_set(my_key, @~"next data"); // Shouldn't leak.
     assert *(local_data_get(my_key).get()) == ~"next data";
@@ -103,7 +103,7 @@ pub fn test_tls_overwrite() unsafe {
 
 #[test]
 pub fn test_tls_pop() unsafe {
-    fn my_key(+_x: @~str) { }
+    fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"weasel");
     assert *(local_data_pop(my_key).get()) == ~"weasel";
     // Pop must remove the data from the map.
@@ -112,7 +112,7 @@ pub fn test_tls_pop() unsafe {
 
 #[test]
 pub fn test_tls_modify() unsafe {
-    fn my_key(+_x: @~str) { }
+    fn my_key(_x: @~str) { }
     local_data_modify(my_key, |data| {
         match data {
             Some(@ref val) => fail ~"unwelcome value: " + *val,
@@ -136,7 +136,7 @@ pub fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // jump over to the rust stack, which causes next_c_sp to get recorded as
     // Something within a rust stack segment. Then a subsequent upcall (esp.
     // for logging, think vsnprintf) would run on a stack smaller than 1 MB.
-    fn my_key(+_x: @~str) { }
+    fn my_key(_x: @~str) { }
     do task::spawn {
         unsafe { local_data_set(my_key, @~"hax"); }
     }
@@ -144,9 +144,9 @@ pub fn test_tls_crust_automorestack_memorial_bug() unsafe {
 
 #[test]
 pub fn test_tls_multiple_types() unsafe {
-    fn str_key(+_x: @~str) { }
-    fn box_key(+_x: @@()) { }
-    fn int_key(+_x: @int) { }
+    fn str_key(_x: @~str) { }
+    fn box_key(_x: @@()) { }
+    fn int_key(_x: @int) { }
     do task::spawn unsafe {
         local_data_set(str_key, @~"string data");
         local_data_set(box_key, @@());
@@ -156,9 +156,9 @@ pub fn test_tls_multiple_types() unsafe {
 
 #[test]
 pub fn test_tls_overwrite_multiple_types() {
-    fn str_key(+_x: @~str) { }
-    fn box_key(+_x: @@()) { }
-    fn int_key(+_x: @int) { }
+    fn str_key(_x: @~str) { }
+    fn box_key(_x: @@()) { }
+    fn int_key(_x: @int) { }
     do task::spawn unsafe {
         local_data_set(str_key, @~"string data");
         local_data_set(int_key, @42);
@@ -172,9 +172,9 @@ pub fn test_tls_overwrite_multiple_types() {
 #[should_fail]
 #[ignore(cfg(windows))]
 pub fn test_tls_cleanup_on_failure() unsafe {
-    fn str_key(+_x: @~str) { }
-    fn box_key(+_x: @@()) { }
-    fn int_key(+_x: @int) { }
+    fn str_key(_x: @~str) { }
+    fn box_key(_x: @@()) { }
+    fn int_key(_x: @int) { }
     local_data_set(str_key, @~"parent data");
     local_data_set(box_key, @@());
     do task::spawn unsafe { // spawn_linked

@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 //! A type that represents one of two alternatives
@@ -114,7 +114,8 @@ pub pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     match *eith { Right(_) => true, _ => false }
 }
 
-pub pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
+// tjc: fix the next two after a snapshot
+pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match move eith {
@@ -122,7 +123,7 @@ pub pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
     }
 }
 
-pub pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
+pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match move eith {

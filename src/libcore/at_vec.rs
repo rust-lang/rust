@@ -1,7 +1,7 @@
 //! Managed vectors
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
@@ -48,7 +48,7 @@ pub pure fn capacity<T>(v: @[const T]) -> uint {
  */
 #[inline(always)]
 pub pure fn build_sized<A>(size: uint,
-                           builder: &fn(push: pure fn(+v: A))) -> @[A] {
+                           builder: &fn(push: pure fn(v: A))) -> @[A] {
     let mut vec: @[const A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
     builder(|+x| unsafe { raw::push(&mut vec, move x) });
@@ -66,7 +66,7 @@ pub pure fn build_sized<A>(size: uint,
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build<A>(builder: &fn(push: pure fn(+v: A))) -> @[A] {
+pub pure fn build<A>(builder: &fn(push: pure fn(v: A))) -> @[A] {
     build_sized(4, builder)
 }
 
@@ -83,8 +83,8 @@ pub pure fn build<A>(builder: &fn(push: pure fn(+v: A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build_sized_opt<A>(+size: Option<uint>,
-                               builder: &fn(push: pure fn(+v: A))) -> @[A] {
+pub pure fn build_sized_opt<A>(size: Option<uint>,
+                               builder: &fn(push: pure fn(v: A))) -> @[A] {
     build_sized(size.get_default(4), builder)
 }
 
@@ -126,7 +126,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, +t: T) -> @[T] {
+pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(copy t); i += 1u; }
@@ -166,7 +166,7 @@ pub mod raw {
     }
 
     #[inline(always)]
-    pub unsafe fn push<T>(v: &mut @[const T], +initval: T) {
+    pub unsafe fn push<T>(v: &mut @[const T], initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
@@ -178,7 +178,7 @@ pub mod raw {
     }
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
-    pub unsafe fn push_fast<T>(v: &mut @[const T], +initval: T) {
+    pub unsafe fn push_fast<T>(v: &mut @[const T], initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
@@ -187,7 +187,7 @@ pub mod raw {
         rusti::move_val_init(*p, move initval);
     }
 
-    pub unsafe fn push_slow<T>(v: &mut @[const T], +initval: T) {
+    pub unsafe fn push_slow<T>(v: &mut @[const T], initval: T) {
         reserve_at_least(v, v.len() + 1u);
         push_fast(v, move initval);
     }

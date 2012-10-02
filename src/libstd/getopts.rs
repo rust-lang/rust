@@ -232,7 +232,7 @@ type Result = result::Result<Matches, Fail_>;
  */
 fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
     let n_opts = vec::len::<Opt>(opts);
-    fn f(_x: uint) -> ~[Optval] { return ~[]; }
+    fn f(+_x: uint) -> ~[Optval] { return ~[]; }
     let vals = vec::to_mut(vec::from_fn(n_opts, f));
     let mut free: ~[~str] = ~[];
     let l = vec::len(args);

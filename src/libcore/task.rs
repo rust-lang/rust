@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 /*!
@@ -232,7 +232,7 @@ pub enum TaskBuilder = {
 pub fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
-        gen_body: |body| move body, // Identity function
+        gen_body: |+body| move body, // Identity function
         can_not_copy: None,
         mut consumed: false,
     })
@@ -347,7 +347,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(blk: fn(+v: future::Future<TaskResult>)) -> TaskBuilder {
+    fn future_result(blk: fn(v: future::Future<TaskResult>)) -> TaskBuilder {
         // FIXME (#1087, #1857): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -459,9 +459,9 @@ impl TaskBuilder {
         spawn::spawn_raw(move opts, x.gen_body(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Send>(+arg: A, +f: fn~(+v: A)) {
+    fn spawn_with<A: Send>(arg: A, +f: fn~(+v: A)) {
         let arg = ~mut Some(move arg);
-        do self.spawn |move arg, move f|{
+        do self.spawn |move arg, move f| {
             f(option::swap_unwrap(arg))
         }
     }
@@ -473,7 +473,7 @@ impl TaskBuilder {
      * child task, passes the port to child's body, and returns a channel
      * linked to the port to the parent.
      *
-     * This encapsulates Some boilerplate handshaking logic that would
+     * This encapsulates some boilerplate handshaking logic that would
      * otherwise be required to establish communication from the parent
      * to the child.
      */
@@ -1149,7 +1149,7 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener() {
-    do avoid_copying_the_body |f| {
+    do avoid_copying_the_body |+f| {
         spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });
@@ -1167,7 +1167,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener_1() {
-    do avoid_copying_the_body |f| {
+    do avoid_copying_the_body |+f| {
         task().spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });

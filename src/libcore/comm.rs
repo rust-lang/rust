@@ -32,8 +32,8 @@ will once again be the preferred module for intertask communication.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[warn(deprecated_mode)];
+// NB: transitionary, de-mode-ing
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use either::Either;
@@ -75,7 +75,7 @@ pub fn Port<T: Send>() -> Port<T> {
 impl<T: Send> Port<T> {
 
     fn chan() -> Chan<T> { Chan(self) }
-    fn send(+v: T) { self.chan().send(move v) }
+    fn send(v: T) { self.chan().send(move v) }
     fn recv() -> T { recv(self) }
     fn peek() -> bool { peek(self) }
 
@@ -84,7 +84,7 @@ impl<T: Send> Port<T> {
 impl<T: Send> Chan<T> {
 
     fn chan() -> Chan<T> { self }
-    fn send(+v: T) { send(self, move v) }
+    fn send(v: T) { send(self, move v) }
     fn recv() -> T { recv_chan(self) }
     fn peek() -> bool { peek_chan(self) }
 
@@ -174,7 +174,7 @@ pub fn Chan<T: Send>(&&p: Port<T>) -> Chan<T> {
  * Sends data over a channel. The sent data is moved into the channel,
  * whereupon the caller loses access to it.
  */
-pub fn send<T: Send>(ch: Chan<T>, +data: T) {
+pub fn send<T: Send>(ch: Chan<T>, data: T) {
     let Chan_(p) = ch;
     let data_ptr = ptr::addr_of(&data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);

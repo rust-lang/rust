@@ -117,7 +117,7 @@ unsafe fn local_get<T: Owned>(
 }
 
 unsafe fn local_set<T: Owned>(
-    task: *rust_task, key: LocalDataKey<T>, +data: @T) {
+    task: *rust_task, key: LocalDataKey<T>, data: @T) {
 
     let map = get_task_local_map(task);
     // Store key+data as *voids. Data is invisibly referenced once; key isn't.

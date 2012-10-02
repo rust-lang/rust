@@ -683,8 +683,12 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                        mode_to_str(arg_ast.mode));
                 match arg_ast.mode {
                     ast::expl(ast::by_copy) => {
-                        // This should warn, but we can't yet
-                        // since it's still used. -- tjc
+                        if !tcx.legacy_modes {
+                            tcx.sess.span_lint(
+                                deprecated_mode, id, id, span,
+                                fmt!("argument %d uses by-copy mode",
+                                     counter));
+                        }
                     }
 
                     ast::expl(_) => {

@@ -763,7 +763,7 @@ impl TcpSocket {
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint {
+    fn read(buf: &[mut u8], +len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
             let read_result = read(&self.data.sock, 0u);
@@ -799,13 +799,13 @@ impl TcpSocketBuf: io::Reader {
         let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
-    fn unread_byte(amt: int) {
+    fn unread_byte(+amt: int) {
         self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
         false // noop
     }
-    fn seek(dist: int, seek: io::SeekStyle) {
+    fn seek(+dist: int, +seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
@@ -827,7 +827,7 @@ impl TcpSocketBuf: io::Writer {
                              err_data.err_name, err_data.err_msg));
         }
     }
-    fn seek(dist: int, seek: io::SeekStyle) {
+    fn seek(+dist: int, +seek: io::SeekStyle) {
       log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }

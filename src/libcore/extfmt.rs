@@ -87,7 +87,7 @@ mod ct {
         let mut pieces: ~[Piece] = ~[];
         let lim = str::len(s);
         let mut buf = ~"";
-        fn flush_buf(+buf: ~str, pieces: &mut ~[Piece]) -> ~str {
+        fn flush_buf(buf: ~str, pieces: &mut ~[Piece]) -> ~str {
             if buf.len() > 0 {
                 let piece = PieceString(move buf);
                 pieces.push(move piece);
@@ -323,7 +323,7 @@ mod rt {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pure fn conv_str(cv: Conv, +s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -405,7 +405,7 @@ mod rt {
         pure fn ne(other: &PadMode) -> bool { !self.eq(other) }
     }
 
-    fn pad(cv: Conv, +s: ~str, mode: PadMode) -> ~str {
+    fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {
         let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
           CountImplied => return s,
@@ -518,7 +518,7 @@ mod rt2 {
         let mut s = str::from_char(c);
         return unsafe { pad(cv, s, PadNozero) };
     }
-    pure fn conv_str(cv: Conv, +s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
@@ -600,7 +600,7 @@ mod rt2 {
         pure fn ne(other: &PadMode) -> bool { !self.eq(other) }
     }
 
-    fn pad(cv: Conv, +s: ~str, mode: PadMode) -> ~str {
+    fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {
         let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
           CountImplied => return s,

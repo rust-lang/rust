@@ -813,7 +813,7 @@ pub mod fsync {
         }
     }
 
-    pub fn Res<t: Copy>(+arg: Arg<t>) -> Res<t>{
+    pub fn Res<t: Copy>(arg: Arg<t>) -> Res<t>{
         Res {
             arg: move arg
         }
@@ -822,17 +822,17 @@ pub mod fsync {
     pub type Arg<t> = {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: fn@(+f: t, Level) -> int
+        fsync_fn: fn@(f: t, Level) -> int
     };
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
-                         blk: fn(+v: Res<*libc::FILE>)) {
+                         blk: fn(v: Res<*libc::FILE>)) {
         blk(move Res({
             val: file.f, opt_level: opt_level,
-            fsync_fn: fn@(+file: *libc::FILE, l: Level) -> int {
+            fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
                 return os::fsync_fd(libc::fileno(file), l) as int;
             }
         }));
@@ -840,10 +840,10 @@ pub mod fsync {
 
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
-                       blk: fn(+v: Res<fd_t>)) {
+                       blk: fn(v: Res<fd_t>)) {
         blk(move Res({
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: fn@(+fd: fd_t, l: Level) -> int {
+            fsync_fn: fn@(fd: fd_t, l: Level) -> int {
                 return os::fsync_fd(fd, l) as int;
             }
         }));
@@ -853,11 +853,11 @@ pub mod fsync {
     pub trait FSyncable { fn fsync(l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    pub fn obj_sync(+o: FSyncable, opt_level: Option<Level>,
-                    blk: fn(+v: Res<FSyncable>)) {
+    pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
+                    blk: fn(v: Res<FSyncable>)) {
         blk(Res({
             val: o, opt_level: opt_level,
-            fsync_fn: fn@(+o: FSyncable, l: Level) -> int {
+            fsync_fn: fn@(o: FSyncable, l: Level) -> int {
                 return o.fsync(l);
             }
         }));

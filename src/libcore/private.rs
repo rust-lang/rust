@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 #[doc(hidden)];
@@ -340,7 +340,7 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
     }
 }
 
-pub unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
+pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
@@ -413,7 +413,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
  */
 pub type SharedMutableState<T: Send> = ArcDestruct<T>;
 
-pub unsafe fn shared_mutable_state<T: Send>(+data: T) ->
+pub unsafe fn shared_mutable_state<T: Send>(data: T) ->
         SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
@@ -502,7 +502,7 @@ struct ExData<T: Send> { lock: LittleLock, mut failed: bool, mut data: T, }
  */
 pub struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
 
-pub fn exclusive<T:Send >(+user_data: T) -> Exclusive<T> {
+pub fn exclusive<T:Send >(user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: user_data
     };
@@ -544,7 +544,7 @@ impl<T: Send> Exclusive<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive
-pub fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
+pub fn unwrap_exclusive<T: Send>(arc: Exclusive<T>) -> T {
     let Exclusive { x: x } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let ExData { data: data, _ } <- inner;

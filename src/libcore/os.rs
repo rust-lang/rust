@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid
 #[forbid(deprecated_pattern)];
 
 /*!
@@ -768,7 +768,7 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
-fn overridden_arg_key(+_v: @OverriddenArgs) {}
+fn overridden_arg_key(_v: @OverriddenArgs) {}
 
 pub fn args() -> ~[~str] {
     unsafe {
@@ -779,7 +779,7 @@ pub fn args() -> ~[~str] {
     }
 }
 
-pub fn set_args(+new_args: ~[~str]) {
+pub fn set_args(new_args: ~[~str]) {
     unsafe {
         let overridden_args = @OverriddenArgs { val: copy new_args };
         task::local_data::local_data_set(overridden_arg_key, overridden_args);

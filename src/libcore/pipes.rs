@@ -73,7 +73,7 @@ bounded and unbounded protocols allows for less code duplication.
 */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
@@ -169,7 +169,7 @@ impl PacketHeader {
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T: Send>(+b: ~Buffer<T>) unsafe {
+    fn set_buffer<T: Send>(b: ~Buffer<T>) unsafe {
         self.buffer = reinterpret_cast(&b);
     }
 }
@@ -227,7 +227,7 @@ pub fn packet<T: Send>() -> *Packet<T> {
 
 #[doc(hidden)]
 pub fn entangle_buffer<T: Send, Tstart: Send>(
-    +buffer: ~Buffer<T>,
+    buffer: ~Buffer<T>,
     init: fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
@@ -239,12 +239,12 @@ pub fn entangle_buffer<T: Send, Tstart: Send>(
 #[abi = "rust-intrinsic"]
 #[doc(hidden)]
 extern mod rusti {
-    fn atomic_xchg(dst: &mut int, +src: int) -> int;
-    fn atomic_xchg_acq(dst: &mut int, +src: int) -> int;
-    fn atomic_xchg_rel(dst: &mut int, +src: int) -> int;
+    fn atomic_xchg(dst: &mut int, src: int) -> int;
+    fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
+    fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
 
-    fn atomic_xadd_acq(dst: &mut int, +src: int) -> int;
-    fn atomic_xsub_rel(dst: &mut int, +src: int) -> int;
+    fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
+    fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
 }
 
 // If I call the rusti versions directly from a polymorphic function,
@@ -265,7 +265,7 @@ pub fn atomic_sub_rel(dst: &mut int, src: int) -> int {
 }
 
 #[doc(hidden)]
-pub fn swap_task(+dst: &mut *rust_task, src: *rust_task) -> *rust_task {
+pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
     unsafe {
@@ -304,14 +304,14 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 }
 
 #[doc(hidden)]
-fn swap_state_acq(+dst: &mut State, src: State) -> State {
+fn swap_state_acq(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(rusti::atomic_xchg_acq(transmute(move dst), src as int))
     }
 }
 
 #[doc(hidden)]
-fn swap_state_rel(+dst: &mut State, src: State) -> State {
+fn swap_state_rel(dst: &mut State, src: State) -> State {
     unsafe {
         transmute(rusti::atomic_xchg_rel(transmute(move dst), src as int))
     }
@@ -343,7 +343,7 @@ struct BufferResource<T: Send> {
     }
 }
 
-fn BufferResource<T: Send>(+b: ~Buffer<T>) -> BufferResource<T> {
+fn BufferResource<T: Send>(b: ~Buffer<T>) -> BufferResource<T> {
     //let p = ptr::addr_of(*b);
     //error!("take %?", p);
     atomic_add_acq(&mut b.header.ref_count, 1);
@@ -354,8 +354,8 @@ fn BufferResource<T: Send>(+b: ~Buffer<T>) -> BufferResource<T> {
 }
 
 #[doc(hidden)]
-pub fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
-                                    +payload: T) -> bool {
+pub fn send<T: Send, Tbuffer: Send>(p: SendPacketBuffered<T, Tbuffer>,
+                                    payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
@@ -398,7 +398,7 @@ pub fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
 Fails if the sender closes the connection.
 
 */
-pub fn recv<T: Send, Tbuffer: Send>(+p: RecvPacketBuffered<T, Tbuffer>) -> T {
+pub fn recv<T: Send, Tbuffer: Send>(p: RecvPacketBuffered<T, Tbuffer>) -> T {
     option::unwrap_expect(try_recv(move p), "connection closed")
 }
 
@@ -408,7 +408,7 @@ Returns `none` if the sender has closed the connection without sending
 a message, or `Some(T)` if a message was received.
 
 */
-pub fn try_recv<T: Send, Tbuffer: Send>(+p: RecvPacketBuffered<T, Tbuffer>)
+pub fn try_recv<T: Send, Tbuffer: Send>(p: RecvPacketBuffered<T, Tbuffer>)
     -> Option<T>
 {
     let p_ = p.unwrap();
@@ -655,8 +655,8 @@ this case, `select2` may return either `left` or `right`.
 
 */
 pub fn select2<A: Send, Ab: Send, B: Send, Bb: Send>(
-    +a: RecvPacketBuffered<A, Ab>,
-    +b: RecvPacketBuffered<B, Bb>)
+    a: RecvPacketBuffered<A, Ab>,
+    b: RecvPacketBuffered<B, Bb>)
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
               (RecvPacketBuffered<A, Ab>, Option<B>)>
 {
@@ -697,7 +697,7 @@ pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
  list of the remaining endpoints.
 
 */
-pub fn select<T: Send, Tb: Send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
+pub fn select<T: Send, Tb: Send>(endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
@@ -859,7 +859,7 @@ endpoint is passed to the new task.
 pub fn spawn_service<T: Send, Tb: Send>(
     init: extern fn() -> (SendPacketBuffered<T, Tb>,
                           RecvPacketBuffered<T, Tb>),
-    +service: fn~(+v: RecvPacketBuffered<T, Tb>))
+    +service: fn~(v: RecvPacketBuffered<T, Tb>))
     -> SendPacketBuffered<T, Tb>
 {
     let (client, server) = init();
@@ -883,7 +883,7 @@ receive state.
 pub fn spawn_service_recv<T: Send, Tb: Send>(
     init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                           SendPacketBuffered<T, Tb>),
-    +service: fn~(+v: SendPacketBuffered<T, Tb>))
+    +service: fn~(v: SendPacketBuffered<T, Tb>))
     -> RecvPacketBuffered<T, Tb>
 {
     let (client, server) = init();
@@ -914,10 +914,10 @@ pub trait Channel<T: Send> {
     // built in send kind.
 
     /// Sends a message.
-    fn send(+x: T);
+    fn send(x: T);
 
     /// Sends a message, or report if the receiver has closed the connection.
-    fn try_send(+x: T) -> bool;
+    fn try_send(x: T) -> bool;
 }
 
 /// A trait for things that can receive multiple messages.
@@ -966,14 +966,14 @@ pub fn stream<T:Send>() -> (Chan<T>, Port<T>) {
 }
 
 impl<T: Send> Chan<T>: Channel<T> {
-    fn send(+x: T) {
+    fn send(x: T) {
         let mut endp = None;
         endp <-> self.endp;
         self.endp = Some(
             streamp::client::data(unwrap(move endp), move x))
     }
 
-    fn try_send(+x: T) -> bool {
+    fn try_send(x: T) -> bool {
         let mut endp = None;
         endp <-> self.endp;
         match move streamp::client::try_data(unwrap(move endp), move x) {
@@ -1041,7 +1041,7 @@ pub fn PortSet<T: Send>() -> PortSet<T>{
 
 impl<T: Send> PortSet<T> : Recv<T> {
 
-    fn add(+port: pipes::Port<T>) {
+    fn add(port: pipes::Port<T>) {
         self.ports.push(move port)
     }
 
@@ -1091,7 +1091,7 @@ impl<T: Send> PortSet<T> : Recv<T> {
 pub type SharedChan<T: Send> = private::Exclusive<Chan<T>>;
 
 impl<T: Send> SharedChan<T>: Channel<T> {
-    fn send(+x: T) {
+    fn send(x: T) {
         let mut xx = Some(move x);
         do self.with_imm |chan| {
             let mut x = None;
@@ -1100,7 +1100,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
         }
     }
 
-    fn try_send(+x: T) -> bool {
+    fn try_send(x: T) -> bool {
         let mut xx = Some(move x);
         do self.with_imm |chan| {
             let mut x = None;
@@ -1111,7 +1111,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
 }
 
 /// Converts a `chan` into a `shared_chan`.
-pub fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
+pub fn SharedChan<T:Send>(c: Chan<T>) -> SharedChan<T> {
     private::exclusive(move c)
 }
 
@@ -1165,13 +1165,13 @@ pub fn oneshot<T: Send>() -> (ChanOne<T>, PortOne<T>) {
  * Receive a message from a oneshot pipe, failing if the connection was
  * closed.
  */
-pub fn recv_one<T: Send>(+port: PortOne<T>) -> T {
+pub fn recv_one<T: Send>(port: PortOne<T>) -> T {
     let oneshot::send(message) = recv(move port);
     move message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
-pub fn try_recv_one<T: Send> (+port: PortOne<T>) -> Option<T> {
+pub fn try_recv_one<T: Send> (port: PortOne<T>) -> Option<T> {
     let message = try_recv(move port);
 
     if message.is_none() { None }
@@ -1182,7 +1182,7 @@ pub fn try_recv_one<T: Send> (+port: PortOne<T>) -> Option<T> {
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
-pub fn send_one<T: Send>(+chan: ChanOne<T>, +data: T) {
+pub fn send_one<T: Send>(chan: ChanOne<T>, data: T) {
     oneshot::client::send(move chan, move data);
 }
 
@@ -1190,7 +1190,7 @@ pub fn send_one<T: Send>(+chan: ChanOne<T>, +data: T) {
  * Send a message on a oneshot pipe, or return false if the connection was
  * closed.
  */
-pub fn try_send_one<T: Send>(+chan: ChanOne<T>, +data: T)
+pub fn try_send_one<T: Send>(chan: ChanOne<T>, data: T)
         -> bool {
     oneshot::client::try_send(move chan, move data).is_some()
 }
@@ -1198,7 +1198,7 @@ pub fn try_send_one<T: Send>(+chan: ChanOne<T>, +data: T)
 pub mod rt {
     // These are used to hide the option constructors from the
     // compiler because their names are changing
-    pub fn make_some<T>(+val: T) -> Option<T> { Some(move val) }
+    pub fn make_some<T>(val: T) -> Option<T> { Some(move val) }
     pub fn make_none<T>() -> Option<T> { None }
 }
 
