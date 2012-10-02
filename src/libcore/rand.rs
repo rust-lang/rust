@@ -308,6 +308,33 @@ pub fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
     {mut x: x, mut y: y, mut z: z, mut w: w} as Rng
 }
 
+
+// used to make space in TLS for a random number generator
+fn tls_rng_state(+_v: @RandRes) {}
+
+/**
+ * Gives back a lazily initialized task-local random number generator,
+ * seeded by the system. Intended to be used in method chaining style, ie
+ * task_rng().gen_int().
+ */
+pub fn task_rng() -> Rng {
+    let r : Option<@RandRes>;
+    unsafe {
+        r = task::local_data::local_data_get(tls_rng_state);
+    }
+    match r {
+        None => {
+            let rng = @RandRes(rustrt::rand_new());
+            unsafe {
+                task::local_data::local_data_set(tls_rng_state, rng);
+            }
+            rng as Rng
+        }
+        Some(rng) => rng as Rng
+    }
+}
+
+
 #[cfg(test)]
 pub mod tests {
     #[test]
