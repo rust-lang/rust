@@ -487,6 +487,14 @@ pub mod tests {
         assert r.shuffle(~[]) == empty;
         assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
     }
+
+    #[test]
+    pub fn task_rng() {
+        let r = rand::task_rng();
+        r.gen_int();
+        assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
+        assert r.gen_uint_range(0u, 1u) == 0u;
+    }
 }
 
 
