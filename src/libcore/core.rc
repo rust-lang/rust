@@ -201,22 +201,16 @@ mod util;
 
 // Data structure modules
 
-#[legacy_exports]
 mod dvec;
 #[path="iter-trait"]
 mod dvec_iter {
-    #[legacy_exports];
     #[path = "dvec.rs"]
-    #[legacy_exports]
     mod inst;
 }
-#[legacy_exports]
 mod dlist;
 #[path="iter-trait"]
 mod dlist_iter {
-    #[legacy_exports];
     #[path ="dlist.rs"]
-    #[legacy_exports]
     mod inst;
 }
 mod send_map;
