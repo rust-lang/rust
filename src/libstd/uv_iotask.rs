@@ -7,11 +7,6 @@
 
 #[forbid(deprecated_mode)];
 
-export IoTask;
-export spawn_iotask;
-export interact;
-export exit;
-
 use libc::c_void;
 use ptr::p2::addr_of;
 use comm = core::comm;
@@ -20,14 +15,14 @@ use task::TaskBuilder;
 use ll = uv_ll;
 
 /// Used to abstract-away direct interaction with a libuv loop.
-enum IoTask {
+pub enum IoTask {
     IoTask_({
         async_handle: *ll::uv_async_t,
         op_chan: Chan<IoTaskMsg>
     })
 }
 
-fn spawn_iotask(+task: task::TaskBuilder) -> IoTask {
+pub fn spawn_iotask(+task: task::TaskBuilder) -> IoTask {
 
     do listen |iotask_ch| {
 
@@ -64,7 +59,7 @@ fn spawn_iotask(+task: task::TaskBuilder) -> IoTask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-unsafe fn interact(iotask: IoTask,
+pub unsafe fn interact(iotask: IoTask,
                    +cb: fn~(*c_void)) {
     send_msg(iotask, Interaction(move cb));
 }
@@ -76,7 +71,7 @@ unsafe fn interact(iotask: IoTask,
  * async handle and do a sanity check to make sure that all other handles are
  * closed, causing a failure otherwise.
  */
-fn exit(iotask: IoTask) unsafe {
+pub fn exit(iotask: IoTask) unsafe {
     send_msg(iotask, TeardownLoop);
 }
 
@@ -170,7 +165,6 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, fmt!("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)

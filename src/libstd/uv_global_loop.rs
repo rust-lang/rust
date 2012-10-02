@@ -2,8 +2,6 @@
 
 #[forbid(deprecated_mode)];
 
-export get;
-
 use ll = uv_ll;
 use iotask = uv_iotask;
 use get_gl = get;
@@ -15,7 +13,6 @@ use task::TaskBuilder;
 use either::{Left, Right};
 
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
@@ -31,7 +28,7 @@ extern mod rustrt {
  * * A `hl::high_level_loop` that encapsulates communication with the global
  * loop.
  */
-fn get() -> IoTask {
+pub fn get() -> IoTask {
     return get_monitor_task_gl();
 }
 
@@ -112,7 +109,6 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *comm::Chan<bool>;

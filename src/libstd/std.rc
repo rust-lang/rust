@@ -55,13 +55,9 @@ mod net_tcp;
 mod net_url;
 
 // libuv modules
-#[legacy_exports]
 mod uv;
-#[legacy_exports]
 mod uv_ll;
-#[legacy_exports]
 mod uv_iotask;
-#[legacy_exports]
 mod uv_global_loop;
 
 
