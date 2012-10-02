@@ -775,7 +775,8 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len) != 0 { len += 1; }
 
             // Push it onto the list.
-            vec::push(&mut args, vec::raw::form_slice(ptr, len, str::from_utf16));
+            vec::push(&mut args, vec::raw::form_slice(ptr, len,
+                                                      str::from_utf16));
         }
     }
 
