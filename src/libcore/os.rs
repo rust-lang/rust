@@ -754,6 +754,11 @@ fn real_args() -> ~[~str] {
     fail    // Needs implementing.
 }
 
+#[cfg(target_os = "freebsd")]
+fn real_args() -> ~[~str] {
+    fail    // Needs implementing.
+}
+
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
     fail    // Needs implementing.
