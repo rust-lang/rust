@@ -763,7 +763,7 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
-fn overridden_arg_key(+v: @OverriddenArgs) {}
+fn overridden_arg_key(+_v: @OverriddenArgs) {}
 
 pub fn args() -> ~[~str] {
     unsafe {
