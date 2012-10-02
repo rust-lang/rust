@@ -168,7 +168,6 @@ do spawn {
 
 some_other_expensive_computation();
 let result = port.recv();
-
 # fn some_expensive_computation() -> int { 42 }
 # fn some_other_expensive_computation() {}
 ~~~~
@@ -189,10 +188,10 @@ spawns the child task.
 
 ~~~~
 # use task::{spawn};
-# use comm::{Port, Chan};
+# use task::spawn;
+# use pipes::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-# let port = Port();
-# let chan = port.chan();
+# let (chan, port) = stream();
 do spawn {
     let result = some_expensive_computation();
     chan.send(result);
@@ -221,10 +220,29 @@ let result = port.recv();
 The `Port` and `Chan` pair created by `stream` enable efficient
 communication between a single sender and a single receiver, but
 multiple senders cannot use a single `Chan`, nor can multiple
-receivers use a single `Port`. What if our example needed to
-perform multiple computations across a number of tasks? In that
-case we might use a `SharedChan`, a type that allows a single
-`Chan` to be used by multiple senders.
+receivers use a single `Port`.  What if our example needed to perform
+multiple computations across a number of tasks? The following cannot
+be written:
+
+~~~ {.xfail-test}
+# use task::{spawn};
+# use pipes::{stream, Port, Chan};
+# fn some_expensive_computation() -> int { 42 }
+let (chan, port) = stream();
+
+do spawn {
+    chan.send(some_expensive_computation());
+}
+
+// ERROR! The previous spawn statement already owns the channel,
+// so the compiler will not allow it to be captured again
+do spawn {
+    chan.send(some_expensive_computation());
+}
+~~~
+
+Instead we can use a `SharedChan`, a type that allows a single
+`Chan` to be shared by multiple senders.
 
 ~~~
 # use task::spawn;
@@ -263,13 +281,12 @@ might look like the example below.
 # use task::spawn;
 # use pipes::{stream, Port, Chan};
 
+// Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
     let (chan, port) = stream();
-
     do spawn {
         chan.send(some_expensive_computation(init_val));
     }
-
     port
 };
 
