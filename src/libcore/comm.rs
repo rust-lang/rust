@@ -274,7 +274,6 @@ type port_id = int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_port_id_send(target_port: port_id, data: *()) -> libc::uintptr_t;
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
@@ -297,7 +296,6 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
     fn init<T>() -> T;
 }
 
