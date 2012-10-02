@@ -159,7 +159,7 @@ fn get_lint_dict() -> lint_dict {
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: ~"types, variants and traits should have camel case names",
-           default: warn}),
+           default: allow}),
 
         (~"managed_heap_memory",
          @{lint: managed_heap_memory,
