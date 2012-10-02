@@ -4,7 +4,7 @@
 
 Borrowed pointers are one of the more flexible and powerful tools
 available in Rust. A borrowed pointer can be used to point anywhere:
-into the shared and exchange heaps, into the stack, and even into the
+into the managed and exchange heaps, into the stack, and even into the
 interior of another data structure. With regard to flexibility, it is
 comparable to a C pointer or C++ reference. However, unlike C and C++,
 the Rust compiler includes special checks that ensure that borrowed
@@ -29,10 +29,10 @@ a limit duration. Borrowed pointers never claim any kind of ownership
 over the data that they point at: instead, they are used for cases
 where you like to make use of data for a short time.
 
-As an example, consider a simple struct type `point`:
+As an example, consider a simple struct type `Point`:
 
 ~~~
-struct point {x: float, y: float}
+struct Point {x: float, y: float}
 ~~~
 
 We can use this simple definition to allocate points in many ways. For
@@ -40,10 +40,10 @@ example, in this code, each of these three local variables contains a
 point, but allocated in a different place:
 
 ~~~
-# type point = {x: float, y: float};
-let on_the_stack : point  =  {x: 3.0, y: 4.0};
-let shared_box   : @point = @{x: 5.0, y: 1.0};
-let unique_box   : ~point = ~{x: 7.0, y: 9.0};
+# struct Point {x: float, y: float}
+let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};
+let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
+let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance
@@ -59,9 +59,9 @@ define a function that takes the points by pointer. We can use
 borrowed pointers to do this:
 
 ~~~
-# type point = {x: float, y: float};
+# struct Point {x: float, y: float}
 # fn sqrt(f: float) -> float { 0f }
-fn compute_distance(p1: &point, p2: &point) -> float {
+fn compute_distance(p1: &Point, p2: &Point) -> float {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
     sqrt(x_d * x_d + y_d * y_d)
@@ -71,17 +71,17 @@ fn compute_distance(p1: &point, p2: &point) -> float {
 Now we can call `compute_distance()` in various ways:
 
 ~~~
-# type point = {x: float, y: float};
-# let on_the_stack : point  =  {x: 3.0, y: 4.0};
-# let shared_box   : @point = @{x: 5.0, y: 1.0};
-# let unique_box   : ~point = ~{x: 7.0, y: 9.0};
-# fn compute_distance(p1: &point, p2: &point) -> float { 0f }
+# struct Point {x: float, y: float}
+# let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};
+# let shared_box   : @Point = @Point{x: 5.0, y: 1.0};
+# let unique_box   : ~Point = ~Point{x: 7.0, y: 9.0};
+# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
 compute_distance(&on_the_stack, shared_box);
 compute_distance(shared_box, unique_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
-`on_the_stack`; this is because `on_the_stack` has the type `point`
+`on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are created an alias: that is, another
@@ -89,8 +89,8 @@ route to the same data.
 
 In the case of the boxes `shared_box` and `unique_box`, however, no
 explicit action is necessary. The compiler will automatically convert
-a box like `@point` or `~point` to a borrowed pointer like
-`&point`. This is another form of borrowing; in this case, the
+a box like `@Point` or `~Point` to a borrowed pointer like
+`&Point`. This is another form of borrowing; in this case, the
 contents of the shared/unique box is being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
@@ -108,8 +108,8 @@ it again.
 In the previous example, the value `on_the_stack` was defined like so:
 
 ~~~
-# type point = {x: float, y: float};
-let on_the_stack : point = {x: 3.0, y: 4.0};
+# struct Point {x: float, y: float}
+let on_the_stack: Point = Point {x: 3.0, y: 4.0};
 ~~~
 
 This results in a by-value variable. As a consequence, we had to
@@ -118,20 +118,20 @@ pointer. Sometimes however it is more convenient to move the &
 operator into the definition of `on_the_stack`:
 
 ~~~
-# type point = {x: float, y: float};
-let on_the_stack2 : &point = &{x: 3.0, y: 4.0};
+# struct Point {x: float, y: float}
+let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
 ~~~
 
 Applying `&` to an rvalue (non-assignable location) is just a convenient
 shorthand for creating a temporary and taking its address:
 
 ~~~
-# type point = {x: float, y: float};
-let tmp = {x: 3.0, y: 4.0};
-let on_the_stack2 : &point = &tmp;
+# struct Point {x: float, y: float}
+let tmp = Point {x: 3.0, y: 4.0};
+let on_the_stack2 : &Point = &tmp;
 ~~~
 
-Taking the address of fields
+# Taking the address of fields
 
 As in C, the `&` operator is not limited to taking the address of
 local variables. It can also be used to take the address of fields or
@@ -139,39 +139,45 @@ individual array elements. For example, consider this type definition
 for `rectangle`:
 
 ~~~
-type point = {x: float, y: float}; // as before
-type size = {w: float, h: float}; // as before
-type rectangle = {origin: point, size: size};
+struct Point {x: float, y: float} // as before
+struct Size {w: float, h: float} // as before
+struct Rectangle {origin: Point, size: Size}
 ~~~
 
 Now again I can define rectangles in a few different ways:
 
 ~~~
-let rect_stack  = &{origin: {x: 1f, y: 2f}, size: {w: 3f, h: 4f}};
-let rect_shared = @{origin: {x: 3f, y: 4f}, size: {w: 3f, h: 4f}};
-let rect_unique = ~{origin: {x: 5f, y: 6f}, size: {w: 3f, h: 4f}};
+# struct Point {x: float, y: float}
+# struct Size {w: float, h: float} // as before
+# struct Rectangle {origin: Point, size: Size}
+let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},
+                               size: Size {w: 3f, h: 4f}};
+let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},
+                               size: Size {w: 3f, h: 4f}};
+let rect_unique  = ~Rectangle {origin: Point {x: 5f, y: 6f},
+                               size: Size {w: 3f, h: 4f}};
 ~~~
 
 In each case I can use the `&` operator to extact out individual
 subcomponents. For example, I could write:
 
 ~~~
-# type point = {x: float, y: float};
-# type size = {w: float, h: float}; // as before
-# type rectangle = {origin: point, size: size};
-# let rect_stack  = &{origin: {x: 1f, y: 2f}, size: {w: 3f, h: 4f}};
-# let rect_shared = @{origin: {x: 3f, y: 4f}, size: {w: 3f, h: 4f}};
-# let rect_unique = ~{origin: {x: 5f, y: 6f}, size: {w: 3f, h: 4f}};
-# fn compute_distance(p1: &point, p2: &point) -> float { 0f }
-compute_distance(&rect_stack.origin, &rect_shared.origin);
+# struct Point {x: float, y: float} // as before
+# struct Size {w: float, h: float} // as before
+# struct Rectangle {origin: Point, size: Size}
+# let rect_stack  = &{origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
+# let rect_managed = @{origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
+# let rect_unique = ~{origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
+# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
+compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
 
 which would borrow the field `origin` from the rectangle on the stack
-from the shared box and then compute the distance between them.
+from the managed box and then compute the distance between them.
 
-# Borrowing shared boxes and rooting
+# Borrowing managed boxes and rooting
 
-We’ve seen a few examples so far where heap boxes (both shared and
+We’ve seen a few examples so far where heap boxes (both managed and
 unique) are borrowed. Up till this point, we’ve glossed over issues of
 safety. As stated in the introduction, at runtime a borrowed pointer
 is simply a pointer, nothing more. Therefore, if we wish to avoid the
@@ -192,8 +198,9 @@ relatively easy, such as when taking the address of a local variable
 or a field that is stored on the stack:
 
 ~~~
+struct X { f: int }
 fn example1() {
-    let mut x = {f: 3};
+    let mut x = X { f: 3 };
     let y = &mut x.f;  // -+ L
     ...                //  |
 }                      // -+
@@ -207,8 +214,9 @@ The situation gets more complex when borrowing data that resides in
 heap boxes:
 
 ~~~
+# struct X { f: int }
 fn example2() {
-    let mut x = @{f: 3};
+    let mut x = @X { f: 3 };
     let y = &x.f;      // -+ L
     ...                //  |
 }                      // -+
@@ -218,20 +226,21 @@ In this example, the value `x` is in fact a heap box, and `y` is
 therefore a pointer into that heap box. Again the lifetime of `y` will
 be L, the remainder of the function body. But there is a crucial
 difference: suppose `x` were reassigned during the lifetime L? If
-we’re not careful, that could mean that the shared box would become
+we’re not careful, that could mean that the managed box would become
 unrooted and therefore be subject to garbage collection
 
 > ***Note:***In our current implementation, the garbage collector is
 > implemented using reference counting and cycle detection.
 
-For this reason, whenever the interior of a shared box stored in a
+For this reason, whenever the interior of a managed box stored in a
 mutable location is borrowed, the compiler will insert a temporary
-that ensures that the shared box remains live for the entire
+that ensures that the managed box remains live for the entire
 lifetime. So, the above example would be compiled as:
 
 ~~~
+# struct X { f: int }
 fn example2() {
-    let mut x = @{f: 3};
+    let mut x = @X {f: 3};
     let x1 = x;
     let y = &x1.f;     // -+ L
     ...                //  |
@@ -239,19 +248,19 @@ fn example2() {
 ~~~
 
 Now if `x` is reassigned, the pointer `y` will still remain valid. This
-process is called “rooting”.
+process is called *rooting*.
 
 # Borrowing unique boxes
 
-The previous example demonstrated `rooting`, the process by which the
-compiler ensures that shared boxes remain live for the duration of a
+The previous example demonstrated *rooting*, the process by which the
+compiler ensures that managed boxes remain live for the duration of a
 borrow. Unfortunately, rooting does not work if the data being
 borrowed is a unique box, as it is not possible to have two references
 to a unique box.
 
-For unique boxes, therefore, the compiler will only allow a borrow `if
+For unique boxes, therefore, the compiler will only allow a borrow *if
 the compiler can guarantee that the unique box will not be reassigned
-or moved for the lifetime of the pointer`. This does not necessarily
+or moved for the lifetime of the pointer*. This does not necessarily
 mean that the unique box is stored in immutable memory. For example,
 the following function is legal:
 
@@ -283,7 +292,7 @@ rejected by the compiler):
 
 ~~~ {.xfail-test}
 fn example3() -> int {
-    let mut x = ~{f: 3};
+    let mut x = ~X {f: 3};
     let y = &x.f;
     x = ~{f: 4};  // Error reported here.
     *y
@@ -349,17 +358,20 @@ Things get tricker when the unique box is not uniquely owned by the
 stack frame (or when the compiler doesn’t know who the owner
 is). Consider a program like this:
 
-~~~ {.xfail-test}
-fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
+~~~
+struct R { g: int }
+struct S { mut f: ~R }
+fn example5a(x: @S ...) -> int {
     let y = &x.f.g;   // Error reported here.
     ...
+#   return 0;
 }
 ~~~
 
 Here the heap looks something like:
 
 ~~~ {.notrust}
-     Stack            Shared Heap       Exchange Heap
+     Stack            Managed Heap       Exchange Heap
 
   x +------+        +-------------+       +------+
     | @... | ---->  | mut f: ~... | --+-> | g: 3 |
@@ -371,7 +383,7 @@ Here the heap looks something like:
 In this case, the owning reference to the value being borrowed is in
 fact `x.f`. Moreover, `x.f` is both mutable and aliasable. Aliasable
 means that it is possible that there are other pointers to that same
-shared box, so even if the compiler were to prevent `x.f` from being
+managed box, so even if the compiler were to prevent `x.f` from being
 mutated, the field might still be changed through some alias of
 `x`. Therefore, to be safe, the compiler only accepts pure actions
 during the lifetime of `y`. We’ll have a final example on purity but
@@ -382,7 +394,9 @@ unique found in aliasable memory is to ensure that it is stored within
 unique fields, as in the following example:
 
 ~~~
-fn example5b(x: @{f: ~{g: int}}) -> int {
+struct R { g: int }
+struct S { f: ~R }
+fn example5b(x: @S) -> int {
     let y = &x.f.g;
     ...
 # return 0;
@@ -397,21 +411,32 @@ If you do have a unique box in a mutable field, and you wish to borrow
 it, one option is to use the swap operator to bring that unique box
 onto your stack:
 
-~~~ {.xfail-test}
-fn example5c(x: @{mut f: ~int}) -> int {
-    let mut v = ~0;
+~~~
+struct R { g: int }
+struct S { mut f: ~R }
+fn example5c(x: @S) -> int {
+    let mut v = ~R {g: 0};
     v <-> x.f;         // Swap v and x.f
-    let y = &v;
-    ...
+    { // Block constrains the scope of `y`:
+        let y = &v.g;
+        ...
+    }
     x.f <- v;          // Replace x.f
     ...
 # return 0;
 }
 ~~~
 
-Of course, this has the side effect of modifying your shared box for
-the duration of the borrow, so it works best when you know that you
-won’t be accessing that same box again.
+Of course, this has the side effect of modifying your managed box for
+the duration of the borrow, so it only works when you know that you
+won’t be accessing that same box for the duration of the loan.  Note
+also that sometimes it is necessary to introduce additional blocks to
+constrain the scope of the loan.  In this example, the borrowed
+pointer `y` would still be in scope when you moved the value `v` back
+into `x.f`, and hence moving `v` would be considered illegal.  You
+cannot move values if they are outstanding loans which are still
+valid.  By introducing the block, the scope of `y` is restricted and so
+the move is legal.
 
 # Borrowing and enums
 
@@ -425,11 +450,11 @@ As an example, let’s look at the following `shape` type that can
 represent both rectangles and circles:
 
 ~~~
-type point = {x: float, y: float}; // as before
-type size = {w: float, h: float}; // as before
-enum shape {
-    circle(point, float),   // origin, radius
-    rectangle(point, size)  // upper-left, dimensions
+struct Point {x: float, y: float}; // as before
+struct Size {w: float, h: float}; // as before
+enum Shape {
+    Circle(Point, float),   // origin, radius
+    Rectangle(Point, Size)  // upper-left, dimensions
 }
 ~~~
 
@@ -438,17 +463,17 @@ function takes a borrowed pointer to a shape to avoid the need of
 copying them.
 
 ~~~
-# type point = {x: float, y: float}; // as before
-# type size = {w: float, h: float}; // as before
-# enum shape {
-#     circle(point, float),   // origin, radius
-#     rectangle(point, size)  // upper-left, dimensions
+# struct Point {x: float, y: float}; // as before
+# struct Size {w: float, h: float}; // as before
+# enum Shape {
+#     Circle(Point, float),   // origin, radius
+#     Rectangle(Point, Size)  // upper-left, dimensions
 # }
 # const tau: float = 6.28f;
-fn compute_area(shape: &shape) -> float {
+fn compute_area(shape: &Shape) -> float {
     match *shape {
-        circle(_, radius) => 0.5 * tau * radius * radius,
-        rectangle(_, ref size) => size.w * size.h
+        Circle(_, radius) => 0.5 * tau * radius * radius,
+        Rectangle(_, ref size) => size.w * size.h
     }
 }
 ~~~
@@ -514,53 +539,60 @@ same rules as the ones we saw for borrowing the interior of a unique
 box: it must be able to guarantee that the enum will not be
 overwritten for the duration of the borrow.  In fact, the example I
 gave earlier would be considered safe. This is because the shape
-pointer has type `&shape`, which means “borrowed pointer to immutable
+pointer has type `&Shape`, which means “borrowed pointer to immutable
 memory containing a shape”. If however the type of that pointer were
-`&const shape` or `&mut shape`, then the ref binding would not be
+`&const Shape` or `&mut Shape`, then the ref binding would not be
 permitted. Just as with unique boxes, the compiler will permit ref
 bindings into data owned by the stack frame even if it is mutable, but
 otherwise it requires that the data reside in immutable memory.
 
-> ***Note:*** Right now, all pattern bindings are by-reference. We
-> expect this to change so that copies are the default and references
-> must be noted explicitly.
+> ***Note:*** Right now, pattern bindings not explicitly annotated
+> with `ref` or `copy` use a special mode of "implicit by reference".
+> This is changing as soon as we finish updating all the existing code
+> in the compiler that relies on the current settings.
 
 # Returning borrowed pointers
 
 So far, all of the examples we’ve looked at use borrowed pointers in a
 “downward” direction. That is, the borrowed pointer is created and
-then used during the method or code block which created it. In some
-cases, it is also possible to return borrowed pointers to the caller,
-but as we’ll see this is more limited.
+then used during the method or code block which created it. It is also
+possible to return borrowed pointers to the caller, but as we'll see
+this requires some explicit annotation.
 
 For example, we could write a subroutine like this:
 
-~~~ {.xfail-test}
-type point = {x: float, y: float};
-fn get_x(p: &point) -> &float { &p.x }
+~~~
+struct Point {x: float, y: float}
+fn get_x(p: &r/Point) -> &r/float { &p.x }
 ~~~
 
 Here, the function `get_x()` returns a pointer into the structure it was
-given. You’ll note that _both_ the parameter and the return value are
-borrowed pointers; this is important. In general, it is only possible
-to return borrowed pointers if they are derived from a borrowed
-pointer which was given as input to the procedure.
+given. The type of the parameter (`&r/Point`) and return type (`&r/float`) both
+make use of a new syntactic form that we have not seen so far.  Here the identifier `r`
+serves as an explicit name for the lifetime of the pointer.  So in effect
+this function is declaring that it takes in a pointer with lifetime `r` and returns
+a pointer with that same lifetime.
 
-In the example, `get_x()` took a borrowed pointer to a `point` as
-input. In general, for all borrowed pointers that appear in the
-signature of a function (such as the parameter and return types), the
-compiler assigns the same symbolic lifetime L (we will see later that
-there are ways to differentiate the lifetimes of different parameters
-if that should be necessary). This means that, from the compiler’s
-point of view, `get_x()` takes and returns two pointers with the same
-lifetime. Now, unlike other lifetimes, this lifetime is a bit
-abstract: it doesn’t refer to a specific expression within `get_x()`,
-but rather to some expression within the caller. This is called a
-_lifetime parameter_, because the lifetime L is effectively defined by
-the caller to `get_x()`, just as the value for the parameter `p` is
-defined by the caller.
+In general, it is only possible to return borrowed pointers if they
+are derived from a borrowed pointer which was given as input to the
+procedure.  In that case, they will always have the same lifetime as
+one of the parameters; named lifetimes are used to indicate which
+parameter that is.
 
-In any case, whatever the lifetime L is, the pointer produced by
+In the examples before, function parameter types did not include a
+lifetime name.  In this case, the compiler simply creates a new,
+anonymous name, meaning that the parameter is assumed to have a
+distinct lifetime from all other parameters.
+
+Named lifetimes that appear in function signatures are conceptually
+the same as the other lifetimes we've seen before, but they are a bit
+abstract: they don’t refer to a specific expression within `get_x()`,
+but rather to some expression within the *caller of `get_x()`*.  The
+lifetime `r` is actually a kind of *lifetime parameter*: it is defined
+by the caller to `get_x()`, just as the value for the parameter `p` is
+defined by that caller.
+
+In any case, whatever the lifetime `r` is, the pointer produced by
 `&p.x` always has the same lifetime as `p` itself, as a pointer to a
 field of a struct is valid as long as the struct is valid. Therefore,
 the compiler is satisfied with the function `get_x()`.
@@ -569,13 +601,13 @@ To drill in this point, let’s look at a variation on the example, this
 time one which does not compile:
 
 ~~~ {.xfail-test}
-struct point {x: float, y: float}
-fn get_x_sh(p: @point) -> &float {
+struct Point {x: float, y: float}
+fn get_x_sh(p: @Point) -> &float {
     &p.x // Error reported here
 }
 ~~~
 
-Here, the function `get_x_sh()` takes a shared box as input and
+Here, the function `get_x_sh()` takes a managed box as input and
 returns a borrowed pointer. As before, the lifetime of the borrowed
 pointer that will be returned is a parameter (specified by the
 caller). That means that effectively `get_x_sh()` is promising to
@@ -585,121 +617,114 @@ promised to return a pointer that was valid for as long as the pointer
 it was given.
 
 Within `get_x_sh()`, we see the expression `&p.x` which takes the
-address of a field of a shared box. This implies that the compiler
+address of a field of a managed box. This implies that the compiler
 must guarantee that, so long as the resulting pointer is valid, the
-shared box will not be reclaimed by the garbage collector. But recall
-that get_x_sh() also promised to return a pointer that was valid for
+managed box will not be reclaimed by the garbage collector. But recall
+that `get_x_sh()` also promised to return a pointer that was valid for
 as long as the caller wanted it to be. Clearly, `get_x_sh()` is not in
 a position to make both of these guarantees; in fact, it cannot
 guarantee that the pointer will remain valid at all once it returns,
 as the parameter `p` may or may not be live in the caller. Therefore,
 the compiler will report an error here.
 
-In general, if you borrow a shared (or unique) box to create a
+In general, if you borrow a managed (or unique) box to create a
 borrowed pointer, the pointer will only be valid within the function
-and cannot be returned. Generally, the only way to return borrowed
-pointers is to take borrowed pointers as input.
+and cannot be returned. This is why the typical way to return borrowed
+pointers is to take borrowed pointers as input (the only other case in
+which it can be legal to return a borrowed pointer is if the pointer
+points at a static constant).
 
 # Named lifetimes
 
-So far we have always used the notation `&T` for a borrowed
-pointer. However, sometimes if a function takes many parameters, it is
-useful to be able to group those parameters by lifetime. For example,
-consider this function:
+Let's look at named lifetimes in more detail.  In effect, the use of
+named lifetimes allows you to group parameters by lifetime.  For
+example, consider this function:
 
-~~~ {.xfail-test}
-# type point = {x: float, y: float}; // as before
-# type size = {w: float, h: float}; // as before
-# enum shape {
-#     circle(point, float),   // origin, radius
-#     rectangle(point, size)  // upper-left, dimensions
+~~~
+# struct Point {x: float, y: float}; // as before
+# struct Size {w: float, h: float}; // as before
+# enum Shape {
+#     Circle(Point, float),   // origin, radius
+#     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &shape) -> float { 0f }
-fn select<T>(shape: &shape, threshold: float,
-             a: &T, b: &T) -> &T {
+# fn compute_area(shape: &Shape) -> float { 0f }
+fn select<T>(shape: &r/Shape, threshold: float,
+             a: &r/T, b: &r/T) -> &r/T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
 
-This function takes three borrowed pointers. Because of the way that
-the system works, each will be assigned the same lifetime: the default
-lifetime parameter. In practice, this means that, in the caller, the
-lifetime of the returned value will be the intersection of the
-lifetime of the three region parameters. This may be overloy
-conservative, as in this example:
+This function takes three borrowed pointers and assigns each the same
+lifetime `r`.  In practice, this means that, in the caller, the
+lifetime `r` will be the *intersection of the lifetime of the three
+region parameters*. This may be overly conservative, as in this
+example:
 
-~~~ {.xfail-test}
-# type point = {x: float, y: float}; // as before
-# type size = {w: float, h: float}; // as before
-# enum shape {
-#     circle(point, float),   // origin, radius
-#     rectangle(point, size)  // upper-left, dimensions
+~~~
+# struct Point {x: float, y: float}; // as before
+# struct Size {w: float, h: float}; // as before
+# enum Shape {
+#     Circle(Point, float),   // origin, radius
+#     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &shape) -> float { 0f }
-# fn select<T>(shape: &shape, threshold: float,
-#              a: &T, b: &T) -> &T {
+# fn compute_area(shape: &Shape) -> float { 0f }
+# fn select<T>(shape: &Shape, threshold: float,
+#              a: &r/T, b: &r/T) -> &r/T {
 #     if compute_area(shape) > threshold {a} else {b}
 # }
-
-                                              // -+ L
-fn select_based_on_unit_circle<T>(            //  |-+ B
-    threshold: float, a: &T, b: &T) -> &T {   //  | |
-                                              //  | |
-    let shape = circle({x: 0, y: 0}, 1);      //  | |
-    select(&shape, threshold, a, b)           //  | |
-}                                             //  |-+
-                                              // -+
+                                                  // -+ r
+fn select_based_on_unit_circle<T>(                //  |-+ B
+    threshold: float, a: &r/T, b: &r/T) -> &r/T { //  | |
+                                                  //  | |
+    let shape = Circle(Point {x: 0., y: 0.}, 1.); //  | |
+    select(&shape, threshold, a, b)               //  | |
+}                                                 //  |-+
+                                                  // -+
 ~~~
 
 In this call to `select()`, the lifetime of the first parameter shape
 is B, the function body. Both of the second two parameters `a` and `b`
-share the same lifetime, L, which is the lifetime parameter of
+share the same lifetime, `r`, which is a lifetime parameter of
 `select_based_on_unit_circle()`. The caller will infer the
-intersection of these three lifetimes as the lifetime of the returned
+intersection of these two lifetimes as the lifetime of the returned
 value, and hence the return value of `shape()` will be assigned a
-return value of B. This will in turn lead to a compilation error,
-because `select_based_on_unit_circle()` is supposed to return a value
-with the lifetime L.
+lifetime of B. This will in turn lead to a compilation error, because
+`select_based_on_unit_circle()` is supposed to return a value with the
+lifetime `r`.
 
-To address this, we could modify the definition of `select()` to
+To address this, we can modify the definition of `select()` to
 distinguish the lifetime of the first parameter from the lifetime of
 the latter two. After all, the first parameter is not being
-returned. To do so, we make use of the notation `&lt/T`, which is a
-borrowed pointer with an explicit lifetime. This effectively creates a
-second lifetime parameter for the function; named lifetime parameters
-do not need to be declared, you just use them. Here is how the new
-`select()` might look:
+returned. Here is how the new `select()` might look:
 
-~~~ {.xfail-test}
-# type point = {x: float, y: float}; // as before
-# type size = {w: float, h: float}; // as before
-# enum shape {
-#     circle(point, float),   // origin, radius
-#     rectangle(point, size)  // upper-left, dimensions
+~~~
+# struct Point {x: float, y: float}; // as before
+# struct Size {w: float, h: float}; // as before
+# enum Shape {
+#     Circle(Point, float),   // origin, radius
+#     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &shape) -> float { 0f }
-fn select<T>(shape: &tmp/shape, threshold: float,
-             a: &T, b: &T) -> &T {
+# fn compute_area(shape: &Shape) -> float { 0f }
+fn select<T>(shape: &tmp/Shape, threshold: float,
+             a: &r/T, b: &r/T) -> &r/T {
     if compute_area(shape) > threshold {a} else {b}
 }
 ~~~
 
 Here you can see the lifetime of shape is now being called `tmp`. The
-parameters `a`, `b`, and the return value all remain with the default
-lifetime parameter.
+parameters `a`, `b`, and the return value are all given the lifetime
+`r`.  However, since the lifetime `tmp` is not returned, it would be shorter
+to just omit the named lifetime for `shape` altogether:
 
-You could also write `select()` using all named lifetime parameters,
-which might look like:
-
-~~~ {.xfail-test}
-# type point = {x: float, y: float}; // as before
-# type size = {w: float, h: float}; // as before
-# enum shape {
-#     circle(point, float),   // origin, radius
-#     rectangle(point, size)  // upper-left, dimensions
+~~~
+# struct Point {x: float, y: float}; // as before
+# struct Size {w: float, h: float}; // as before
+# enum Shape {
+#     Circle(Point, float),   // origin, radius
+#     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &shape) -> float { 0f }
-fn select<T>(shape: &tmp/shape, threshold: float,
+# fn compute_area(shape: &Shape) -> float { 0f }
+fn select<T>(shape: &Shape, threshold: float,
              a: &r/T, b: &r/T) -> &r/T {
     if compute_area(shape) > threshold {a} else {b}
 }
@@ -724,7 +749,9 @@ a unique box found in an aliasable, mutable location, only now we’ve
 replaced the `...` with some specific code:
 
 ~~~
-fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
+struct R { g: int }
+struct S { mut f: ~R }
+fn example5a(x: @S ...) -> int {
     let y = &x.f.g;   // Unsafe
     *y + 1        
 }
@@ -742,9 +769,11 @@ fn add_one(x: &int) -> int { *x + 1 }
 
 We can now update `example5a()` to use `add_one()`:
 
-~~~ {.xfail-test}
-# fn add_one(x: &int) -> int { *x + 1 }
-fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
+~~~
+# struct R { g: int }
+# struct S { mut f: ~R }
+# pure fn add_one(x: &int) -> int { *x + 1 }
+fn example5a(x: @S ...) -> int {
     let y = &x.f.g;
     add_one(y)        // Error reported here
 }
