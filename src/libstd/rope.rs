@@ -379,7 +379,7 @@ Section: Iterating
  * `true` If execution proceeded correctly, `false` if it was interrupted,
  * that is if `it` returned `false` at any point.
  */
-pub fn loop_chars(rope: Rope, it: fn(char) -> bool) -> bool {
+pub fn loop_chars(rope: Rope, it: fn(+c: char) -> bool) -> bool {
    match (rope) {
       node::Empty => return true,
       node::Content(x) => return node::loop_chars(x, it)
@@ -1037,7 +1037,7 @@ mod node {
         return result;
     }
 
-    pub fn loop_chars(node: @Node, it: fn(char) -> bool) -> bool {
+    pub fn loop_chars(node: @Node, it: fn(+c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
             str::all_between(*leaf.content,
                              leaf.byte_offset,

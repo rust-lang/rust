@@ -15,7 +15,7 @@ use to_bytes::IterBytes;
 pub trait SendMap<K:Eq Hash, V: Copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
-    fn insert(&mut self, +k: K, +v: V) -> bool;
+    fn insert(&mut self, k: K, +v: V) -> bool;
     fn remove(&mut self, k: &K) -> bool;
     fn clear(&mut self);
     pure fn len(&const self) -> uint;
@@ -161,7 +161,7 @@ pub mod linear {
             }
         }
 
-        fn insert_opt_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
+        fn insert_opt_bucket(&mut self, bucket: Option<Bucket<K,V>>) {
             match move bucket {
                 Some(Bucket {hash: move hash,
                              key: move key,
@@ -175,7 +175,7 @@ pub mod linear {
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
-        fn insert_internal(&mut self, hash: uint, +k: K, +v: V) -> bool {
+        fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
                 TableFull => { fail ~"Internal logic error"; }
                 FoundHole(idx) => {
@@ -206,7 +206,7 @@ pub mod linear {
     }
 
     impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
-        fn insert(&mut self, +k: K, +v: V) -> bool {
+        fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is

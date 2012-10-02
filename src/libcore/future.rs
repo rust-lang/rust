@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 /*!
@@ -55,7 +55,7 @@ impl<A> Future<A> {
     }
 }
 
-pub fn from_value<A>(+val: A) -> Future<A> {
+pub fn from_value<A>(val: A) -> Future<A> {
     /*!
      * Create a future from a value
      *
@@ -66,7 +66,7 @@ pub fn from_value<A>(+val: A) -> Future<A> {
     Future {state: Forced(~(move val))}
 }
 
-pub fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) ->
+pub fn from_port<A:Send>(port: future_pipe::client::waiting<A>) ->
         Future<A> {
     /*!
      * Create a future from a port

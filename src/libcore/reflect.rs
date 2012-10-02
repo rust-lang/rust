@@ -27,7 +27,7 @@ fn align(size: uint, align: uint) -> uint {
 struct MovePtrAdaptor<V: TyVisitor MovePtr> {
     inner: V
 }
-pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(+v: V) -> MovePtrAdaptor<V> {
+pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: move v }
 }
 

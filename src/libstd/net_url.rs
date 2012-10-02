@@ -735,7 +735,7 @@ impl Url : Eq {
 }
 
 impl Url: IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         unsafe { self.to_str() }.iter_bytes(lsb0, f)
     }
 }

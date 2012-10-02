@@ -1,7 +1,7 @@
 //! A type representing either success or failure
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
@@ -102,7 +102,7 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
  *         ok(parse_bytes(buf))
  *     }
  */
-pub fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
+pub fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(t: T)
     -> Result<U, V>) -> Result<U, V> {
     // XXX: Should be writable with move + match
     if res.is_ok() {
@@ -121,8 +121,8 @@ pub fn chain<T, U: Copy, V: Copy>(+res: Result<T, V>, op: fn(+t: T)
  * successful result while handling an error.
  */
 pub fn chain_err<T: Copy, U: Copy, V: Copy>(
-    +res: Result<T, V>,
-    op: fn(+t: V) -> Result<T, U>)
+    res: Result<T, V>,
+    op: fn(t: V) -> Result<T, U>)
     -> Result<T, U> {
     match move res {
       Ok(move t) => Ok(t),
@@ -247,12 +247,12 @@ impl<T, E: Copy> Result<T, E> {
 }
 
 impl<T: Copy, E: Copy> Result<T, E> {
-    fn chain<U:Copy>(op: fn(+t: T) -> Result<U,E>) -> Result<U,E> {
+    fn chain<U:Copy>(op: fn(t: T) -> Result<U,E>) -> Result<U,E> {
         // XXX: Bad copy
         chain(copy self, op)
     }
 
-    fn chain_err<F:Copy>(op: fn(+t: E) -> Result<T,F>) -> Result<T,F> {
+    fn chain_err<F:Copy>(op: fn(t: E) -> Result<T,F>) -> Result<T,F> {
         // XXX: Bad copy
         chain_err(copy self, op)
     }
@@ -348,7 +348,7 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
-pub fn unwrap<T, U>(+res: Result<T, U>) -> T {
+pub fn unwrap<T, U>(res: Result<T, U>) -> T {
     match move res {
       Ok(move t) => move t,
       Err(_) => fail ~"unwrap called on an err result"
@@ -356,7 +356,7 @@ pub fn unwrap<T, U>(+res: Result<T, U>) -> T {
 }
 
 /// Unwraps a result, assuming it is an `err(U)`
-pub fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
+pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
     match move res {
       Err(move u) => move u,
       Ok(_) => fail ~"unwrap called on an ok result"
@@ -389,7 +389,7 @@ mod tests {
     #[legacy_exports];
     fn op1() -> result::Result<int, ~str> { result::Ok(666) }
 
-    fn op2(+i: int) -> result::Result<uint, ~str> {
+    fn op2(i: int) -> result::Result<uint, ~str> {
         result::Ok(i as uint + 1u)
     }
 

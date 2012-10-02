@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
@@ -224,7 +224,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         drop { destroy_repr(&self.r); }
     }
 
-    fn ProgRes(+r: ProgRepr) -> ProgRes {
+    fn ProgRes(r: ProgRepr) -> ProgRes {
         ProgRes {
             r: r
         }
@@ -328,7 +328,7 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     return {status: status, out: move outs, err: move errs};
 }
 
-fn writeclose(fd: c_int, +s: ~str) {
+fn writeclose(fd: c_int, s: ~str) {
     use io::WriterUtil;
 
     error!("writeclose %d, %s", fd as int, s);

@@ -77,6 +77,6 @@ pub trait Shr<RHS,Result> {
 
 #[lang="index"]
 pub trait Index<Index,Result> {
-    pure fn index(+index: Index) -> Result;
+    pure fn index(index: Index) -> Result;
 }
 

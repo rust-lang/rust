@@ -82,7 +82,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert was_present;
 }
-fn taskset_each(tasks: &TaskSet, blk: fn(+v: *rust_task) -> bool) {
+fn taskset_each(tasks: &TaskSet, blk: fn(v: *rust_task) -> bool) {
     tasks.each_key(|k| blk(*k))
 }
 
@@ -303,8 +303,8 @@ struct TCB {
     }
 }
 
-fn TCB(me: *rust_task, +tasks: TaskGroupArc, +ancestors: AncestorList,
-       is_main: bool, +notifier: Option<AutoNotify>) -> TCB {
+fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
+       is_main: bool, notifier: Option<AutoNotify>) -> TCB {
 
     let notifier = move notifier;
     notifier.iter(|x| { x.failed = false; });
@@ -327,7 +327,7 @@ struct AutoNotify {
     }
 }
 
-fn AutoNotify(+chan: Chan<Notification>) -> AutoNotify {
+fn AutoNotify(chan: Chan<Notification>) -> AutoNotify {
     AutoNotify {
         notify_chan: chan,
         failed: true // Un-set above when taskgroup successfully made.
@@ -377,13 +377,13 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
     // see 'None' if Somebody already failed and we got a kill signal.)
     if newstate.is_some() {
         let group = option::unwrap(move newstate);
-        for taskset_each(&group.members) |+sibling| {
+        for taskset_each(&group.members) |sibling| {
             // Skip self - killing ourself won't do much good.
             if sibling != me {
                 rt::rust_task_kill_other(sibling);
             }
         }
-        for taskset_each(&group.descendants) |+child| {
+        for taskset_each(&group.descendants) |child| {
             assert child != me;
             rt::rust_task_kill_other(child);
         }
@@ -486,7 +486,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     }
 }
 
-fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
+fn spawn_raw(opts: TaskOpts, +f: fn~()) {
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -528,9 +528,9 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
     // (3a) If any of those fails, it leaves all groups, and does nothing.
     // (3b) Otherwise it builds a task control structure and puts it in TLS,
     // (4) ...and runs the provided body function.
-    fn make_child_wrapper(child: *rust_task, +child_arc: TaskGroupArc,
-                          +ancestors: AncestorList, is_main: bool,
-                          +notify_chan: Option<Chan<Notification>>,
+    fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
+                          ancestors: AncestorList, is_main: bool,
+                          notify_chan: Option<Chan<Notification>>,
                           +f: fn~()) -> fn~() {
         let child_data = ~mut Some((move child_arc, move ancestors));
         return fn~(move notify_chan, move child_data, move f) {

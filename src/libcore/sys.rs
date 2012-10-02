@@ -83,7 +83,7 @@ pub pure fn pref_align_of<T>() -> uint {
 
 /// Returns the refcount of a shared box (as just before calling this)
 #[inline(always)]
-pub pure fn refcount<T>(+t: @T) -> uint {
+pub pure fn refcount<T>(t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = cast::reinterpret_cast(&t);
         *ref_ptr - 1

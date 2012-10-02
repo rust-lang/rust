@@ -175,7 +175,7 @@ pub fn push_str(lhs: &const ~str, rhs: &str) {
 
 /// Concatenate two strings together
 #[inline(always)]
-pub pure fn append(+lhs: ~str, rhs: &str) -> ~str {
+pub pure fn append(lhs: ~str, rhs: &str) -> ~str {
     let mut v <- lhs;
     unsafe {
         push_str_no_overallocate(&mut v, rhs);

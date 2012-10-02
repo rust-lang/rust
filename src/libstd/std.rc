@@ -18,6 +18,9 @@ not required in or otherwise suitable for the core library.
 
 #[no_core];
 
+// tjc: Added legacy_modes back in because it still uses + mode.
+// Remove once + mode gets expunged from std.
+#[legacy_modes];
 #[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];

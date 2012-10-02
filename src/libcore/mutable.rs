@@ -8,8 +8,7 @@ dynamic checks: your program will fail if you attempt to perform
 mutation when the data structure should be immutable.
 
 */
-
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use util::with;
@@ -24,11 +23,11 @@ struct Data<T> {
 
 pub type Mut<T> = Data<T>;
 
-pub fn Mut<T>(+t: T) -> Mut<T> {
+pub fn Mut<T>(t: T) -> Mut<T> {
     Data {value: t, mode: ReadOnly}
 }
 
-pub fn unwrap<T>(+m: Mut<T>) -> T {
+pub fn unwrap<T>(m: Mut<T>) -> T {
     // Borrowck should prevent us from calling unwrap while the value
     // is in use, as that would be a move from a borrowed value.
     assert (m.mode as uint) == (ReadOnly as uint);

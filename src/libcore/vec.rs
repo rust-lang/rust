@@ -47,7 +47,7 @@ pub pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
  * * v - A vector
  * * n - The number of elements to reserve space for
  */
-pub fn reserve<T>(+v: &mut ~[T], +n: uint) {
+pub fn reserve<T>(v: &mut ~[T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
         unsafe {
@@ -119,7 +119,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, +t: T) -> ~[T] {
+pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> ~[T] {
     from_fn(n_elts, |_i| copy t)
 }
 
@@ -148,9 +148,9 @@ pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
  */
 #[inline(always)]
 pub pure fn build_sized<A>(size: uint,
-                       builder: fn(push: pure fn(+v: A))) -> ~[A] {
+                       builder: fn(push: pure fn(v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
-    builder(|+x| unsafe { vec.push(move x) });
+    builder(|x| unsafe { vec.push(move x) });
     move vec
 }
 
@@ -165,7 +165,7 @@ pub pure fn build_sized<A>(size: uint,
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pub pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> ~[A] {
+pub pure fn build<A>(builder: fn(push: pure fn(v: A))) -> ~[A] {
     build_sized(4, builder)
 }
 
@@ -183,17 +183,17 @@ pub pure fn build<A>(builder: fn(push: pure fn(+v: A))) -> ~[A] {
  */
 #[inline(always)]
 pub pure fn build_sized_opt<A>(size: Option<uint>,
-                           builder: fn(push: pure fn(+v: A))) -> ~[A] {
+                           builder: fn(push: pure fn(v: A))) -> ~[A] {
     build_sized(size.get_default(4), builder)
 }
 
 /// Produces a mut vector from an immutable vector.
-pub pure fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
+pub pure fn to_mut<T>(v: ~[T]) -> ~[mut T] {
     unsafe { ::cast::transmute(move v) }
 }
 
 /// Produces an immutable vector from a mut vector.
-pub pure fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
+pub pure fn from_mut<T>(v: ~[mut T]) -> ~[T] {
     unsafe { ::cast::transmute(move v) }
 }
 
@@ -412,13 +412,13 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
 }
 
 /// Prepend an element to the vector
-pub fn unshift<T>(v: &mut ~[T], +x: T) {
+pub fn unshift<T>(v: &mut ~[T], x: T) {
     let mut vv = ~[move x];
     *v <-> vv;
     v.push_all_move(vv);
 }
 
-pub fn consume<T>(+v: ~[T], f: fn(uint, +v: T)) unsafe {
+pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
     let mut v = move v; // FIXME(#3488)
 
     do as_imm_buf(v) |p, ln| {
@@ -431,7 +431,7 @@ pub fn consume<T>(+v: ~[T], f: fn(uint, +v: T)) unsafe {
     raw::set_len(&mut v, 0);
 }
 
-pub fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +v: T)) {
+pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
     consume(vec::from_mut(v), f)
 }
 
@@ -468,7 +468,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
 
 /// Append an element to a vector
 #[inline(always)]
-pub fn push<T>(v: &mut ~[T], +initval: T) {
+pub fn push<T>(v: &mut ~[T], initval: T) {
     unsafe {
         let repr: **raw::VecRepr = ::cast::transmute(copy v);
         let fill = (**repr).unboxed.fill;
@@ -483,7 +483,7 @@ pub fn push<T>(v: &mut ~[T], +initval: T) {
 
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
-unsafe fn push_fast<T>(+v: &mut ~[T], +initval: T) {
+unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     let repr: **raw::VecRepr = ::cast::transmute(v);
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::size_of::<T>();
@@ -493,13 +493,13 @@ unsafe fn push_fast<T>(+v: &mut ~[T], +initval: T) {
 }
 
 #[inline(never)]
-fn push_slow<T>(+v: &mut ~[T], +initval: T) {
+fn push_slow<T>(v: &mut ~[T], initval: T) {
     reserve_at_least(v, v.len() + 1u);
     unsafe { push_fast(v, move initval) }
 }
 
 #[inline(always)]
-pub fn push_all<T: Copy>(+v: &mut ~[T], rhs: &[const T]) {
+pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
     reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
@@ -508,7 +508,7 @@ pub fn push_all<T: Copy>(+v: &mut ~[T], rhs: &[const T]) {
 }
 
 #[inline(always)]
-pub fn push_all_move<T>(v: &mut ~[T], +rhs: ~[T]) {
+pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
     let mut rhs = move rhs; // FIXME(#3488)
     reserve(v, v.len() + rhs.len());
     unsafe {
@@ -573,7 +573,7 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
 
 // Appending
 #[inline(always)]
-pub pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
+pub pure fn append<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
     let mut v <- lhs;
     unsafe {
         v.push_all(rhs);
@@ -582,14 +582,14 @@ pub pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
 }
 
 #[inline(always)]
-pub pure fn append_one<T>(+lhs: ~[T], +x: T) -> ~[T] {
+pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     let mut v <- lhs;
     unsafe { v.push(move x); }
     move v
 }
 
 #[inline(always)]
-pure fn append_mut<T: Copy>(+lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
+pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
     to_mut(append(from_mut(lhs), rhs))
 }
 
@@ -642,7 +642,7 @@ pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
  * of the vector, expands the vector by replicating `initval` to fill the
  * intervening space.
  */
-pub fn grow_set<T: Copy>(v: &mut ~[T], index: uint, initval: &T, +val: T) {
+pub fn grow_set<T: Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
     let l = v.len();
     if index >= l { grow(v, index - l + 1u, initval); }
     v[index] = move val;
@@ -661,7 +661,7 @@ pub pure fn map<T, U>(v: &[T], f: fn(t: &T) -> U) -> ~[U] {
     move result
 }
 
-pub fn map_consume<T, U>(+v: ~[T], f: fn(+v: T) -> U) -> ~[U] {
+pub fn map_consume<T, U>(v: ~[T], f: fn(v: T) -> U) -> ~[U] {
     let mut result = ~[];
     do consume(move v) |_i, x| {
         result.push(f(move x));
@@ -758,7 +758,7 @@ pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
 }
 
 /// Reduce a vector from left to right
-pub pure fn foldl<T: Copy, U>(+z: T, v: &[U], p: fn(+t: T, u: &U) -> T) -> T {
+pub pure fn foldl<T: Copy, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
     let mut accum = z;
     for each(v) |elt| {
         // it should be possible to move accum in, but the liveness analysis
@@ -769,7 +769,7 @@ pub pure fn foldl<T: Copy, U>(+z: T, v: &[U], p: fn(+t: T, u: &U) -> T) -> T {
 }
 
 /// Reduce a vector from right to left
-pub pure fn foldr<T, U: Copy>(v: &[T], +z: U, p: fn(t: &T, +u: U) -> U) -> U {
+pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
     let mut accum = z;
     for rev_each(v) |elt| {
         accum = p(elt, accum);
@@ -992,7 +992,7 @@ pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
  * and the i-th element of the second vector contains the second element
  * of the i-th tuple of the input vector.
  */
-pub pure fn unzip<T,U>(+v: ~[(T, U)]) -> (~[T], ~[U]) {
+pub pure fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     unsafe {
         do consume(move v) |_i, p| {
@@ -1023,7 +1023,7 @@ pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
  * Returns a vector of tuples, where the i-th tuple contains contains the
  * i-th elements from each of the input vectors.
  */
-pub pure fn zip<T, U>(+v: ~[T], +u: ~[U]) -> ~[(T, U)] {
+pub pure fn zip<T, U>(v: ~[T], u: ~[U]) -> ~[(T, U)] {
     let mut v = move v, u = move u; // FIXME(#3488)
     let mut i = len(v);
     assert i == len(u);
@@ -1190,7 +1190,7 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pure fn each_permutation<T: Copy>(+v: &[T], put: fn(ts: &[T]) -> bool) {
+pure fn each_permutation<T: Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -1435,7 +1435,7 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
 
 pub trait ImmutableVector<T> {
     pure fn view(start: uint, end: uint) -> &self/[T];
-    pure fn foldr<U: Copy>(+z: U, p: fn(t: &T, +u: U) -> U) -> U;
+    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
@@ -1459,7 +1459,7 @@ impl<T> &[T]: ImmutableVector<T> {
     }
     /// Reduce a vector from right to left
     #[inline]
-    pure fn foldr<U: Copy>(+z: U, p: fn(t: &T, +u: U) -> U) -> U {
+    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, u: U) -> U) -> U {
         foldr(self, z, p)
     }
     /// Apply a function to each element of a vector and return the results
@@ -1582,11 +1582,11 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
 }
 
 pub trait MutableVector<T> {
-    fn push(&mut self, +t: T);
-    fn push_all_move(&mut self, +rhs: ~[T]);
+    fn push(&mut self, t: T);
+    fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
     fn shift(&mut self) -> T;
-    fn unshift(&mut self, +x: T);
+    fn unshift(&mut self, x: T);
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
 }
@@ -1595,7 +1595,7 @@ pub trait MutableCopyableVector<T: Copy> {
     fn push_all(&mut self, rhs: &[const T]);
     fn grow(&mut self, n: uint, initval: &T);
     fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
-    fn grow_set(&mut self, index: uint, initval: &T, +val: T);
+    fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
 trait MutableEqVector<T: Eq> {
@@ -1603,11 +1603,11 @@ trait MutableEqVector<T: Eq> {
 }
 
 impl<T> ~[T]: MutableVector<T> {
-    fn push(&mut self, +t: T) {
+    fn push(&mut self, t: T) {
         push(self, move t);
     }
 
-    fn push_all_move(&mut self, +rhs: ~[T]) {
+    fn push_all_move(&mut self, rhs: ~[T]) {
         push_all_move(self, move rhs);
     }
 
@@ -1619,7 +1619,7 @@ impl<T> ~[T]: MutableVector<T> {
         shift(self)
     }
 
-    fn unshift(&mut self, +x: T) {
+    fn unshift(&mut self, x: T) {
         unshift(self, x)
     }
 
@@ -1645,7 +1645,7 @@ impl<T: Copy> ~[T]: MutableCopyableVector<T> {
         grow_fn(self, n, op);
     }
 
-    fn grow_set(&mut self, index: uint, initval: &T, +val: T) {
+    fn grow_set(&mut self, index: uint, initval: &T, val: T) {
         grow_set(self, index, initval, val);
     }
 }
@@ -1717,21 +1717,21 @@ pub mod raw {
      * would also make any pointers to it invalid.
      */
     #[inline(always)]
-    pub unsafe fn to_ptr<T>(+v: &[T]) -> *T {
+    pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_const_ptr<T>(+v: &[const T]) -> *const T {
+    pub unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_mut_ptr<T>(+v: &[mut T]) -> *mut T {
+    pub unsafe fn to_mut_ptr<T>(v: &[mut T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
@@ -1764,7 +1764,7 @@ pub mod raw {
      * is newly allocated.
      */
     #[inline(always)]
-    pub unsafe fn init_elem<T>(v: &[mut T], i: uint, +val: T) {
+    pub unsafe fn init_elem<T>(v: &[mut T], i: uint, val: T) {
         let mut box = Some(move val);
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
@@ -1896,7 +1896,7 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     }
     pub pure fn all(blk: fn(&A) -> bool) -> bool { iter::all(&self, blk) }
     pub pure fn any(blk: fn(&A) -> bool) -> bool { iter::any(&self, blk) }
-    pub pure fn foldl<B>(+b0: B, blk: fn(&B, &A) -> B) -> B {
+    pub pure fn foldl<B>(b0: B, blk: fn(&B, &A) -> B) -> B {
         iter::foldl(&self, move b0, blk)
     }
     pub pure fn position(f: fn(&A) -> bool) -> Option<uint> {
@@ -1910,10 +1910,10 @@ impl<A: Eq> &[A]: iter::EqIter<A> {
 }
 
 impl<A: Copy> &[A]: iter::CopyableIter<A> {
-    pure fn filter_to_vec(pred: fn(+a: A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(pred: fn(a: A) -> bool) -> ~[A] {
         iter::filter_to_vec(&self, pred)
     }
-    pure fn map_to_vec<B>(op: fn(+v: A) -> B) -> ~[B] {
+    pure fn map_to_vec<B>(op: fn(v: A) -> B) -> ~[B] {
         iter::map_to_vec(&self, op)
     }
     pure fn to_vec() -> ~[A] { iter::to_vec(&self) }
@@ -1923,7 +1923,7 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    pub pure fn find(p: fn(+a: A) -> bool) -> Option<A> {
+    pub pure fn find(p: fn(a: A) -> bool) -> Option<A> {
         iter::find(&self, p)
     }
 }
@@ -1951,7 +1951,7 @@ mod tests {
         return if *n % 2u == 1u { Some(*n * *n) } else { None };
     }
 
-    fn add(+x: uint, y: &uint) -> uint { return x + *y; }
+    fn add(x: uint, y: &uint) -> uint { return x + *y; }
 
     #[test]
     fn test_unsafe_ptrs() {
@@ -2193,7 +2193,7 @@ mod tests {
 
     #[test]
     fn test_dedup() {
-        fn case(+a: ~[uint], +b: ~[uint]) {
+        fn case(a: ~[uint], b: ~[uint]) {
             let mut v = a;
             v.dedup();
             assert(v == b);
@@ -2323,7 +2323,7 @@ mod tests {
 
     #[test]
     fn test_foldl2() {
-        fn sub(+a: int, b: &int) -> int {
+        fn sub(a: int, b: &int) -> int {
             a - *b
         }
         let mut v = ~[1, 2, 3, 4];
@@ -2333,7 +2333,7 @@ mod tests {
 
     #[test]
     fn test_foldr() {
-        fn sub(a: &int, +b: int) -> int {
+        fn sub(a: &int, b: int) -> int {
             *a - b
         }
         let mut v = ~[1, 2, 3, 4];

@@ -5,25 +5,25 @@ Miscellaneous helpers for common patterns.
 */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
 
 /// The identity function.
 #[inline(always)]
-pub pure fn id<T>(+x: T) -> T { move x }
+pub pure fn id<T>(x: T) -> T { move x }
 
 /// Ignores a value.
 #[inline(always)]
-pub pure fn ignore<T>(+_x: T) { }
+pub pure fn ignore<T>(_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
 /// original value of `*ptr`.
 #[inline(always)]
 pub fn with<T: Copy, R>(
     ptr: &mut T,
-    +new_value: T,
+    new_value: T,
     op: &fn() -> R) -> R
 {
     // NDM: if swap operator were defined somewhat differently,
@@ -50,7 +50,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * value, without deinitialising or copying either one.
  */
 #[inline(always)]
-pub fn replace<T>(dest: &mut T, +src: T) -> T {
+pub fn replace<T>(dest: &mut T, src: T) -> T {
     let mut tmp <- src;
     swap(dest, &mut tmp);
     move tmp
