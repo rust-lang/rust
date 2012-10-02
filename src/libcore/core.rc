@@ -216,17 +216,11 @@ mod send_map;
 
 // Concurrency
 mod comm;
-#[legacy_exports]
 mod task {
-    #[legacy_exports];
-    #[legacy_exports]
-    mod local_data;
-    #[legacy_exports]
+    pub mod local_data;
     mod local_data_priv;
-    #[legacy_exports]
-    mod spawn;
-    #[legacy_exports]
-    mod rt;
+    pub mod spawn;
+    pub mod rt;
 }
 mod future;
 mod pipes;
