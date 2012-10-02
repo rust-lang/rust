@@ -11,7 +11,7 @@ enum rctx {}
 extern mod rustrt {
     fn rand_seed() -> ~[u8];
     fn rand_new() -> *rctx;
-    fn rand_new_seeded(seed: ~[u8]) -> *rctx;
+    fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
     fn rand_next(c: *rctx) -> u32;
     fn rand_free(c: *rctx);
 }
@@ -276,7 +276,7 @@ pub fn Rng() -> Rng {
  * length.
  */
 pub fn seeded_rng(seed: &~[u8]) -> Rng {
-    @RandRes(rustrt::rand_new_seeded(*seed)) as Rng
+    @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
 }
 
 type XorShiftState = {

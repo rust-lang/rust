@@ -21,7 +21,7 @@ extern mod libc_ {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    fn addr_of<T>(val: T) -> *T;
+    fn addr_of<T>(&&val: T) -> *T;
 }
 
 /// Get an unsafe pointer to a value

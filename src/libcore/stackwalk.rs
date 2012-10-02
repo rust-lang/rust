@@ -1,7 +1,8 @@
 #[doc(hidden)]; // FIXME #3538
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// XXX: Can't do this because frame_address needs a deprecated mode.
+//#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cast::reinterpret_cast;
@@ -74,7 +75,7 @@ fn breakpoint() {
     rustrt::rust_dbg_breakpoint()
 }
 
-fn frame_address(f: fn(*u8)) {
+fn frame_address(f: fn(++x: *u8)) {
     rusti::frame_address(f)
 }
 
@@ -86,5 +87,5 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn frame_address(f: fn(*u8));
+    fn frame_address(f: fn(++x: *u8));
 }

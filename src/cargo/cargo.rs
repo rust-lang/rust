@@ -144,7 +144,7 @@ fn is_uuid(id: ~str) -> bool {
     if vec::len(parts) == 5u {
         let mut correct = 0u;
         for vec::eachi(parts) |i, part| {
-            fn is_hex_digit(ch: char) -> bool {
+            fn is_hex_digit(+ch: char) -> bool {
                 ('0' <= ch && ch <= '9') ||
                 ('a' <= ch && ch <= 'f') ||
                 ('A' <= ch && ch <= 'F')
@@ -402,7 +402,7 @@ fn need_dir(s: &Path) {
 }
 
 fn valid_pkg_name(s: &str) -> bool {
-    fn is_valid_digit(c: char) -> bool {
+    fn is_valid_digit(+c: char) -> bool {
         ('0' <= c && c <= '9') ||
         ('a' <= c && c <= 'z') ||
         ('A' <= c && c <= 'Z') ||

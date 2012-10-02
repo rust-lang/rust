@@ -94,7 +94,7 @@ type devnull = {dn: int};
 
 impl devnull: io::Writer {
     fn write(_b: &[const u8]) {}
-    fn seek(_i: int, _s: io::SeekStyle) {}
+    fn seek(+_i: int, +_s: io::SeekStyle) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
     fn get_type() -> io::WriterType { io::File }

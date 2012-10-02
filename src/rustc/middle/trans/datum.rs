@@ -146,7 +146,7 @@ impl DatumMode: cmp::Eq {
 }
 
 impl DatumMode: to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f)
     }
 }

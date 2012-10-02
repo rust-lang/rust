@@ -18,7 +18,6 @@ not required in or otherwise suitable for the core library.
 
 #[no_core];
 
-#[legacy_modes];
 #[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];

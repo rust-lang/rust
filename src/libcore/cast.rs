@@ -3,7 +3,7 @@
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn forget<T>(-x: T);
-    fn reinterpret_cast<T, U>(e: T) -> U;
+    fn reinterpret_cast<T, U>(&&e: T) -> U;
 }
 
 /// Casts the value at `src` to U. The two types must have the same length.
