@@ -3,7 +3,7 @@
 use local_data::LocalDataKey;
 use rt::rust_task;
 
-trait LocalData { }
+pub trait LocalData { }
 impl<T: Owned> @T: LocalData { }
 
 impl LocalData: Eq {
@@ -17,11 +17,11 @@ impl LocalData: Eq {
 
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
-type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
+pub type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
+pub type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 
-extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
+pub extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
     let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
@@ -29,7 +29,7 @@ extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
-unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
+pub unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
 
     // Relies on the runtime initialising the pointer to null.
     // NOTE: The map's box lives in TLS invisibly referenced once. Each time
@@ -52,7 +52,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T: Owned>(
+pub unsafe fn key_to_key_value<T: Owned>(
     key: LocalDataKey<T>) -> *libc::c_void {
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
@@ -62,7 +62,7 @@ unsafe fn key_to_key_value<T: Owned>(
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
-unsafe fn local_data_lookup<T: Owned>(
+pub unsafe fn local_data_lookup<T: Owned>(
     map: TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
@@ -80,7 +80,7 @@ unsafe fn local_data_lookup<T: Owned>(
     }
 }
 
-unsafe fn local_get_helper<T: Owned>(
+pub unsafe fn local_get_helper<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
@@ -102,21 +102,21 @@ unsafe fn local_get_helper<T: Owned>(
 }
 
 
-unsafe fn local_pop<T: Owned>(
+pub unsafe fn local_pop<T: Owned>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, true)
 }
 
-unsafe fn local_get<T: Owned>(
+pub unsafe fn local_get<T: Owned>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, false)
 }
 
-unsafe fn local_set<T: Owned>(
+pub unsafe fn local_set<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>, data: @T) {
 
     let map = get_task_local_map(task);
@@ -148,7 +148,7 @@ unsafe fn local_set<T: Owned>(
     }
 }
 
-unsafe fn local_modify<T: Owned>(
+pub unsafe fn local_modify<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 
