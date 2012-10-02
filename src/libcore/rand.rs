@@ -334,6 +334,13 @@ pub fn task_rng() -> Rng {
     }
 }
 
+/**
+ * Returns a random uint, using the task's based random number generator.
+ */
+pub fn random() -> uint {
+    task_rng().gen_uint()
+}
+
 
 #[cfg(test)]
 pub mod tests {
@@ -494,6 +501,12 @@ pub mod tests {
         r.gen_int();
         assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
         assert r.gen_uint_range(0u, 1u) == 0u;
+    }
+
+    #[test]
+    pub fn random() {
+        // not sure how to test this aside from just getting a number
+        let _n : uint = rand::random();
     }
 }
 
