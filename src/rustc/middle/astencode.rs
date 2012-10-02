@@ -832,6 +832,12 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             }
         }
     }
+
+    do option::iter(&tcx.legacy_boxed_traits.find(id)) |_x| {
+        do ebml_w.tag(c::tag_table_legacy_boxed_trait) {
+            ebml_w.id(id);
+        }
+    }
 }
 
 trait doc_decoder_helpers {
@@ -963,6 +969,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             } else if tag == (c::tag_table_adjustments as uint) {
                 let adj = @ty::deserialize_AutoAdjustment(val_dsr).tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
+            } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
+                dcx.tcx.legacy_boxed_traits.insert(id, ());
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));

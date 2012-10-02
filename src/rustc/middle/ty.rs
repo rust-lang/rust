@@ -356,7 +356,8 @@ type ctxt =
       inferred_modes: HashMap<ast::node_id, ast::mode>,
       adjustments: HashMap<ast::node_id, @AutoAdjustment>,
       normalized_cache: HashMap<t, t>,
-      lang_items: middle::lang_items::LanguageItems};
+      lang_items: middle::lang_items::LanguageItems,
+      legacy_boxed_traits: HashMap<node_id, ()>};
 
 enum tbox_flag {
     has_params = 1,
@@ -875,7 +876,8 @@ fn mk_ctxt(s: session::session,
       inferred_modes: HashMap(),
       adjustments: HashMap(),
       normalized_cache: new_ty_hash(),
-      lang_items: move lang_items}
+      lang_items: move lang_items,
+      legacy_boxed_traits: HashMap()}
 }
 
 
