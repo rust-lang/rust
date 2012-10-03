@@ -58,30 +58,30 @@ pub use types::os::arch::posix08::*;
 pub use types::os::arch::bsd44::*;
 pub use types::os::arch::extra::*;
 
-use consts::os::c95::*;
-use consts::os::c99::*;
-use consts::os::posix88::*;
-use consts::os::posix01::*;
-use consts::os::posix08::*;
-use consts::os::bsd44::*;
-use consts::os::extra::*;
+pub use consts::os::c95::*;
+pub use consts::os::c99::*;
+pub use consts::os::posix88::*;
+pub use consts::os::posix01::*;
+pub use consts::os::posix08::*;
+pub use consts::os::bsd44::*;
+pub use consts::os::extra::*;
 
-use funcs::c95::ctype::*;
-use funcs::c95::stdio::*;
-use funcs::c95::stdlib::*;
-use funcs::c95::string::*;
+pub use funcs::c95::ctype::*;
+pub use funcs::c95::stdio::*;
+pub use funcs::c95::stdlib::*;
+pub use funcs::c95::string::*;
 
-use funcs::posix88::stat::*;
-use funcs::posix88::stdio::*;
-use funcs::posix88::fcntl::*;
-use funcs::posix88::dirent::*;
-use funcs::posix88::unistd::*;
+pub use funcs::posix88::stat::*;
+pub use funcs::posix88::stdio::*;
+pub use funcs::posix88::fcntl::*;
+pub use funcs::posix88::dirent::*;
+pub use funcs::posix88::unistd::*;
 
-use funcs::posix01::unistd::*;
-use funcs::posix08::unistd::*;
+pub use funcs::posix01::unistd::*;
+pub use funcs::posix08::unistd::*;
 
-use funcs::bsd44::*;
-use funcs::extra::*;
+pub use funcs::bsd44::*;
+pub use funcs::extra::*;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
