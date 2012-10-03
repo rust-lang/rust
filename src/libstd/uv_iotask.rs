@@ -8,7 +8,7 @@
 // tjc: forbid deprecated modes again after a snapshot
 
 use libc::c_void;
-use ptr::p2::addr_of;
+use ptr::addr_of;
 use comm = core::comm;
 use comm::{Port, Chan, listen};
 use task::TaskBuilder;
