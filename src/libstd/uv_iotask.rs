@@ -5,7 +5,7 @@
  * `interact` function you can execute code in a uv callback.
  */
 
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after a snapshot
 
 use libc::c_void;
 use ptr::p2::addr_of;
@@ -22,7 +22,7 @@ pub enum IoTask {
     })
 }
 
-pub fn spawn_iotask(+task: task::TaskBuilder) -> IoTask {
+pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
 
     do listen |iotask_ch| {
 

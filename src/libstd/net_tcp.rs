@@ -129,7 +129,7 @@ enum TcpConnectErrData {
  * the remote host. In the event of failure, a
  * `net::tcp::tcp_connect_err_data` instance will be returned
  */
-fn connect(+input_ip: ip::IpAddr, port: uint,
+fn connect(input_ip: ip::IpAddr, port: uint,
            iotask: IoTask)
     -> result::Result<TcpSocket, TcpConnectErrData> unsafe {
     let result_po = core::comm::Port::<ConnAttempt>();
@@ -570,7 +570,7 @@ fn accept(new_conn: TcpNewConnection)
  * successful/normal shutdown, and a `tcp_listen_err_data` enum in the event
  * of listen exiting because of an error
  */
-fn listen(+host_ip: ip::IpAddr, port: uint, backlog: uint,
+fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
           +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
           +new_connect_cb: fn~(TcpNewConnection,
@@ -587,7 +587,7 @@ fn listen(+host_ip: ip::IpAddr, port: uint, backlog: uint,
     }
 }
 
-fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
+fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
           +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
           +on_connect_cb: fn~(*uv::ll::uv_tcp_t))
@@ -728,7 +728,7 @@ fn listen_common(+host_ip: ip::IpAddr, port: uint, backlog: uint,
  *
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
-fn socket_buf(+sock: TcpSocket) -> TcpSocketBuf {
+fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
     TcpSocketBuf(@{ sock: move sock, mut buf: ~[] })
 }
 
@@ -738,7 +738,7 @@ impl TcpSocket {
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
         read_start(&self)
     }
-    fn read_stop(+read_port:
+    fn read_stop(read_port:
                  comm::Port<result::Result<~[u8], TcpErrData>>) ->
         result::Result<(), TcpErrData> {
         read_stop(&self, move read_port)
@@ -1476,7 +1476,7 @@ mod test {
         */
     }
 
-    fn buf_write<W:io::Writer>(+w: &W, val: &str) {
+    fn buf_write<W:io::Writer>(w: &W, val: &str) {
         log(debug, fmt!("BUF_WRITE: val len %?", str::len(val)));
         do str::byte_slice(val) |b_slice| {
             log(debug, fmt!("BUF_WRITE: b_slice len %?",
@@ -1485,7 +1485,7 @@ mod test {
         }
     }
 
-    fn buf_read<R:io::Reader>(+r: &R, len: uint) -> ~str {
+    fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {
         let new_bytes = (*r).read_bytes(len);
         log(debug, fmt!("in buf_read.. new_bytes len: %?",
                         vec::len(new_bytes)));

@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 /**
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.
@@ -66,7 +66,7 @@ impl &Condvar {
 struct ARC<T: Const Send> { x: SharedMutableState<T> }
 
 /// Create an atomically reference counted wrapper.
-pub fn ARC<T: Const Send>(+data: T) -> ARC<T> {
+pub fn ARC<T: Const Send>(data: T) -> ARC<T> {
     ARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
@@ -98,7 +98,7 @@ pub fn clone<T: Const Send>(rc: &ARC<T>) -> ARC<T> {
  * unwrap from a task that holds another reference to the same ARC; it is
  * guaranteed to deadlock.
  */
-fn unwrap<T: Const Send>(+rc: ARC<T>) -> T {
+fn unwrap<T: Const Send>(rc: ARC<T>) -> T {
     let ARC { x: x } <- rc;
     unsafe { unwrap_shared_mutable_state(move x) }
 }
@@ -113,14 +113,14 @@ struct MutexARCInner<T: Send> { lock: Mutex, failed: bool, data: T }
 struct MutexARC<T: Send> { x: SharedMutableState<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
-pub fn MutexARC<T: Send>(+user_data: T) -> MutexARC<T> {
+pub fn MutexARC<T: Send>(user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a mutex-protected ARC with the supplied data and a specified number
  * of condvars (as sync::mutex_with_condvars).
  */
-pub fn mutex_arc_with_condvars<T: Send>(+user_data: T,
+pub fn mutex_arc_with_condvars<T: Send>(user_data: T,
                                     num_condvars: uint) -> MutexARC<T> {
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
@@ -191,7 +191,7 @@ impl<T: Send> &MutexARC<T> {
  * Will additionally fail if another task has failed while accessing the arc.
  */
 // FIXME(#2585) make this a by-move method on the arc
-pub fn unwrap_mutex_arc<T: Send>(+arc: MutexARC<T>) -> T {
+pub fn unwrap_mutex_arc<T: Send>(arc: MutexARC<T>) -> T {
     let MutexARC { x: x } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let MutexARCInner { failed: failed, data: data, _ } <- inner;
@@ -247,14 +247,14 @@ struct RWARC<T: Const Send> {
 }
 
 /// Create a reader/writer ARC with the supplied data.
-pub fn RWARC<T: Const Send>(+user_data: T) -> RWARC<T> {
+pub fn RWARC<T: Const Send>(user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a reader/writer ARC with the supplied data and a specified number
  * of condvars (as sync::rwlock_with_condvars).
  */
-pub fn rw_arc_with_condvars<T: Const Send>(+user_data: T,
+pub fn rw_arc_with_condvars<T: Const Send>(user_data: T,
                                        num_condvars: uint) -> RWARC<T> {
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
@@ -334,7 +334,7 @@ impl<T: Const Send> &RWARC<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+v: RWWriteMode<T>) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(v: RWWriteMode<T>) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_downgrade |write_mode| {
             check_poison(false, state.failed);
@@ -344,7 +344,7 @@ impl<T: Const Send> &RWARC<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
+    fn downgrade(token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
         let RWWriteMode((data, t, _poison)) <- token;
@@ -369,7 +369,7 @@ impl<T: Const Send> &RWARC<T> {
  * in write mode.
  */
 // FIXME(#2585) make this a by-move method on the arc
-pub fn unwrap_rw_arc<T: Const Send>(+arc: RWARC<T>) -> T {
+pub fn unwrap_rw_arc<T: Const Send>(arc: RWARC<T>) -> T {
     let RWARC { x: x, _ } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let RWARCInner { failed: failed, data: data, _ } <- inner;

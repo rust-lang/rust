@@ -29,7 +29,7 @@ pub fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-pub fn foldl<T: Copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
+pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(&accum, elt);}
     accum

@@ -1,6 +1,6 @@
 //! Utilities that leverage libuv's `uv_timer_*` API
 
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 
 use uv = uv;
 use uv::iotask;
@@ -24,7 +24,7 @@ use comm = core::comm;
  * * val - a value of type T to send over the provided `ch`
  */
 pub fn delayed_send<T: Copy Send>(iotask: IoTask,
-                                  msecs: uint, ch: comm::Chan<T>, +val: T) {
+                                  msecs: uint, ch: comm::Chan<T>, val: T) {
         unsafe {
             let timer_done_po = core::comm::Port::<()>();
             let timer_done_ch = core::comm::Chan(timer_done_po);

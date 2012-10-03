@@ -1,4 +1,4 @@
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 //! Unsafe debugging functions for inspecting values.
 
 use cast::reinterpret_cast;
@@ -20,7 +20,7 @@ pub fn debug_tydesc<T>() {
     rustrt::debug_tydesc(sys::get_type_desc::<T>());
 }
 
-pub fn debug_opaque<T>(+x: T) {
+pub fn debug_opaque<T>(x: T) {
     rustrt::debug_opaque(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
 }
 
@@ -28,11 +28,11 @@ pub fn debug_box<T>(x: @T) {
     rustrt::debug_box(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
 }
 
-pub fn debug_tag<T>(+x: T) {
+pub fn debug_tag<T>(x: T) {
     rustrt::debug_tag(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
 }
 
-pub fn debug_fn<T>(+x: T) {
+pub fn debug_fn<T>(x: T) {
     rustrt::debug_fn(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
 }
 

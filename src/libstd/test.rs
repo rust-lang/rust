@@ -270,7 +270,7 @@ enum TestEvent {
 type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts, tests: &[TestDesc],
-             callback: fn@(+e: TestEvent)) {
+             callback: fn@(e: TestEvent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
     callback(TeFiltered(copy filtered_tests));
@@ -379,7 +379,7 @@ fn filter_tests(opts: &TestOpts,
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
 
-fn run_test(+test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
+fn run_test(test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
     if test.ignore {
         core::comm::send(monitor_ch, (copy test, TrIgnored));
         return;

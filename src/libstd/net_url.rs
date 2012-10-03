@@ -1,5 +1,5 @@
 //! Types/fns concerning URLs (see RFC 3986)
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after a snapshot
 
 use core::cmp::Eq;
 use map::HashMap;
@@ -36,7 +36,7 @@ type UserInfo = {
 
 type Query = ~[(~str, ~str)];
 
-fn Url(+scheme: ~str, +user: Option<UserInfo>, +host: ~str,
+fn Url(scheme: ~str, +user: Option<UserInfo>, +host: ~str,
        +port: Option<~str>, +path: ~str, +query: Query,
        +fragment: Option<~str>) -> Url {
     Url { scheme: move scheme, user: move user, host: move host,
@@ -44,7 +44,7 @@ fn Url(+scheme: ~str, +user: Option<UserInfo>, +host: ~str,
          fragment: move fragment }
 }
 
-fn UserInfo(+user: ~str, +pass: Option<~str>) -> UserInfo {
+fn UserInfo(user: ~str, +pass: Option<~str>) -> UserInfo {
     {user: move user, pass: move pass}
 }
 
@@ -306,7 +306,7 @@ fn userinfo_from_str(uinfo: &str) -> UserInfo {
     return UserInfo(user, pass);
 }
 
-fn userinfo_to_str(+userinfo: UserInfo) -> ~str {
+fn userinfo_to_str(userinfo: UserInfo) -> ~str {
     if option::is_some(&userinfo.pass) {
         return str::concat(~[copy userinfo.user, ~":",
                           option::unwrap(copy userinfo.pass),
@@ -334,7 +334,7 @@ fn query_from_str(rawquery: &str) -> Query {
     return query;
 }
 
-fn query_to_str(+query: Query) -> ~str {
+fn query_to_str(query: Query) -> ~str {
     let mut strvec = ~[];
     for query.each |kv| {
         let (k, v) = copy *kv;
@@ -681,7 +681,7 @@ impl Url : FromStr {
  * result in just "http://somehost.com".
  *
  */
-fn to_str(+url: Url) -> ~str {
+fn to_str(url: Url) -> ~str {
     let user = if url.user.is_some() {
       userinfo_to_str(option::unwrap(copy url.user))
     } else {

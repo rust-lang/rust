@@ -1,4 +1,4 @@
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 
 use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
@@ -589,7 +589,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 }
 
-fn strftime(format: &str, +tm: Tm) -> ~str {
+fn strftime(format: &str, tm: Tm) -> ~str {
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || #fmt("strftime: can't understand this format %c ",

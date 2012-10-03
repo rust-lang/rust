@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 /**
  * The concurrency primitives you know and love.
  *
@@ -69,7 +69,7 @@ struct SemInner<Q> {
 enum Sem<Q: Send> = Exclusive<SemInner<Q>>;
 
 #[doc(hidden)]
-fn new_sem<Q: Send>(count: int, +q: Q) -> Sem<Q> {
+fn new_sem<Q: Send>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         mut count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -535,7 +535,7 @@ impl &RWlock {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+v: RWlockWriteMode) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(v: RWlockWriteMode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
         let mut _release = None;
@@ -551,7 +551,7 @@ impl &RWlock {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
+    fn downgrade(token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
         if !ptr::ref_eq(self, token.lock) {
             fail ~"Can't downgrade() with a different rwlock's write_mode!";
         }
@@ -957,7 +957,7 @@ mod tests {
             drop { self.c.send(()); }
         }
 
-        fn SendOnFailure(+c: pipes::Chan<()>) -> SendOnFailure {
+        fn SendOnFailure(c: pipes::Chan<()>) -> SendOnFailure {
             SendOnFailure {
                 c: c
             }
@@ -1038,7 +1038,7 @@ mod tests {
         }
     }
     #[cfg(test)]
-    fn test_rwlock_exclusion(+x: ~RWlock, mode1: RWlockMode,
+    fn test_rwlock_exclusion(x: ~RWlock, mode1: RWlockMode,
                              mode2: RWlockMode) {
         // Test mutual exclusion between readers and writers. Just like the
         // mutex mutual exclusion test, a ways above.
@@ -1083,7 +1083,7 @@ mod tests {
         test_rwlock_exclusion(~RWlock(), Downgrade, Downgrade);
     }
     #[cfg(test)]
-    fn test_rwlock_handshake(+x: ~RWlock, mode1: RWlockMode,
+    fn test_rwlock_handshake(x: ~RWlock, mode1: RWlockMode,
                              mode2: RWlockMode, make_mode2_go_first: bool) {
         // Much like sem_multi_resource.
         let x2 = ~x.clone();
