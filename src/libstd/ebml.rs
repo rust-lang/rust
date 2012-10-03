@@ -4,31 +4,6 @@
 use core::Option;
 use option::{Some, None};
 
-export Doc;
-export doc_at;
-export maybe_get_doc;
-export get_doc;
-export docs;
-export tagged_docs;
-export doc_data;
-export doc_as_str;
-export doc_as_u8;
-export doc_as_u16;
-export doc_as_u32;
-export doc_as_u64;
-export doc_as_i8;
-export doc_as_i16;
-export doc_as_i32;
-export doc_as_i64;
-export Writer;
-export serializer;
-export ebml_deserializer;
-export EbmlDeserializer;
-export deserializer;
-export with_doc_data;
-export get_doc;
-export extensions;
-
 type EbmlTag = {id: uint, size: uint};
 
 type EbmlState = {ebml_tag: EbmlTag, tag_pos: uint, data_pos: uint};
@@ -37,7 +12,7 @@ type EbmlState = {ebml_tag: EbmlTag, tag_pos: uint, data_pos: uint};
 // separate modules within this file.
 
 // ebml reading
-type Doc = {data: @~[u8], start: uint, end: uint};
+pub type Doc = {data: @~[u8], start: uint, end: uint};
 
 type TaggedDoc = {tag: uint, doc: Doc};
 
@@ -72,11 +47,11 @@ fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     } else { error!("vint too big"); fail; }
 }
 
-fn Doc(data: @~[u8]) -> Doc {
+pub fn Doc(data: @~[u8]) -> Doc {
     return {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
-fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
+pub fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
     let elt_tag = vuint_at(*data, start);
     let elt_size = vuint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
@@ -84,7 +59,7 @@ fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
          doc: {data: data, start: elt_size.next, end: end}};
 }
 
-fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
+pub fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -101,7 +76,7 @@ fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
     return None::<Doc>;
 }
 
-fn get_doc(d: Doc, tg: uint) -> Doc {
+pub fn get_doc(d: Doc, tg: uint) -> Doc {
     match maybe_get_doc(d, tg) {
       Some(d) => return d,
       None => {
@@ -111,7 +86,7 @@ fn get_doc(d: Doc, tg: uint) -> Doc {
     }
 }
 
-fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
+pub fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -123,7 +98,7 @@ fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
     }
 }
 
-fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
+pub fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -137,43 +112,43 @@ fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
     }
 }
 
-fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
+pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
-fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
+pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
     return f(vec::view(*d.data, d.start, d.end));
 }
 
-fn doc_as_str(d: Doc) -> ~str { return str::from_bytes(doc_data(d)); }
+pub fn doc_as_str(d: Doc) -> ~str { return str::from_bytes(doc_data(d)); }
 
-fn doc_as_u8(d: Doc) -> u8 {
+pub fn doc_as_u8(d: Doc) -> u8 {
     assert d.end == d.start + 1u;
     return (*d.data)[d.start];
 }
 
-fn doc_as_u16(d: Doc) -> u16 {
+pub fn doc_as_u16(d: Doc) -> u16 {
     assert d.end == d.start + 2u;
     return io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
 }
 
-fn doc_as_u32(d: Doc) -> u32 {
+pub fn doc_as_u32(d: Doc) -> u32 {
     assert d.end == d.start + 4u;
     return io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
 }
 
-fn doc_as_u64(d: Doc) -> u64 {
+pub fn doc_as_u64(d: Doc) -> u64 {
     assert d.end == d.start + 8u;
     return io::u64_from_be_bytes(*d.data, d.start, 8u);
 }
 
-fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
-fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
-fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
-fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
+pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
+pub fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
+pub fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
+pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
 type Writer_ = {writer: io::Writer, mut size_positions: ~[uint]};
 
-enum Writer {
+pub enum Writer {
     Writer_(Writer_)
 }
 
@@ -197,7 +172,7 @@ fn write_vuint(w: io::Writer, n: uint) {
     fail fmt!("vint to write too big: %?", n);
 }
 
-fn Writer(w: io::Writer) -> Writer {
+pub fn Writer(w: io::Writer) -> Writer {
     let size_positions: ~[uint] = ~[];
     return Writer_({writer: w, mut size_positions: size_positions});
 }
@@ -409,11 +384,11 @@ impl ebml::Writer: serialization::Serializer {
 type EbmlDeserializer_ = {mut parent: ebml::Doc,
                           mut pos: uint};
 
-enum EbmlDeserializer {
+pub enum EbmlDeserializer {
     EbmlDeserializer_(EbmlDeserializer_)
 }
 
-fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
+pub fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
     EbmlDeserializer_({mut parent: d, mut pos: d.start})
 }
 

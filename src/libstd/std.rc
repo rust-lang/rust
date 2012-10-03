@@ -89,9 +89,7 @@ mod treemap;
 
 // And ... other stuff
 
-#[legacy_exports]
 mod ebml;
-#[legacy_exports]
 mod ebml2;
 mod dbg;
 #[legacy_exports]
