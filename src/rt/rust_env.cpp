@@ -107,7 +107,7 @@ copyenv(const char* name) {
 }
 
 rust_env*
-load_env() {
+load_env(int argc, char **argv) {
     rust_env *env = (rust_env*)malloc(sizeof(rust_env));
 
     env->num_sched_threads = (size_t)get_num_threads();
@@ -118,7 +118,8 @@ load_env() {
     env->detailed_leaks = getenv(DETAILED_LEAKS) != NULL;
     env->rust_seed = copyenv(RUST_SEED);
     env->poison_on_free = getenv(RUST_POISON_ON_FREE) != NULL;
-
+    env->argc = argc;
+    env->argv = argv;
     return env;
 }
 

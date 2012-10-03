@@ -31,6 +31,8 @@ rand_new_seeded2
 rand_next
 rand_seed
 rust_get_sched_id
+rust_get_argc
+rust_get_argv
 rust_new_sched
 rust_new_task_in_sched
 rust_num_threads
