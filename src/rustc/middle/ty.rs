@@ -1093,12 +1093,15 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    return if type_is_fn(ty) {
-        //    ^^^^^^^^^^^^^^
-        // FIXME(#2202) --- We retain by-ref by default to workaround a memory
-        // leak that otherwise results when @fn is upcast to &fn.
-        ast::by_ref
-    } else if tcx.legacy_modes {
+        // FIXME(#2202) --- We retain by-ref for fn& things to workaround a
+        // memory leak that otherwise results when @fn is upcast to &fn.
+    if type_is_fn(ty) {
+        match ty_fn_proto(ty) {
+           proto_vstore(vstore_slice(_)) => return ast::by_ref,
+            _ => ()
+        }
+    }
+    return if tcx.legacy_modes {
         if type_is_borrowed(ty) {
             // the old mode default was ++ for things like &ptr, but to be
             // forward-compatible with non-legacy, we should use +
