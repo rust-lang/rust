@@ -74,6 +74,7 @@ endif
 
 CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
+CFG_GCCISH_CXXFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
 ifdef CFG_DISABLE_OPTIMIZE
@@ -449,9 +450,10 @@ TSREQS :=											\
 		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
 FUZZ := $(HBIN2_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN2_H_$(CFG_HOST_TRIPLE))/cargo$(X)
+RUSTI := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rusti$(X)
 RUSTDOC := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
 
-all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
+all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) $(RUSTI)
 
 endif
 

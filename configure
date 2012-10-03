@@ -508,6 +508,12 @@ do
     make_dir rustllvm/$t
 done
 
+make_dir linenoise
+for t in $CFG_TARGET_TRIPLES
+do
+    make_dir linenoise/$t
+done
+
 make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do

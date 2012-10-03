@@ -30,6 +30,8 @@ compiletest/       The test runner
 
 cargo/             The package manager
 
+rusti/			   The JIT REPL
+
 rustdoc/           The Rust API documentation tool
 
 llvm/              The LLVM submodule
@@ -37,6 +39,8 @@ llvm/              The LLVM submodule
 libuv/             The libuv submodule
 
 rustllvm/          LLVM support code
+
+linenoise\		   Minimalistic libreadline alternative
 
 fuzzer/            A collection of fuzz testers
 

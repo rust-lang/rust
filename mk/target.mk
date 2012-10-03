@@ -12,10 +12,26 @@ USE_SNAPSHOT_RUNTIME=0
 USE_SNAPSHOT_CORELIB=0
 USE_SNAPSHOT_STDLIB=0
 
+LINENOISE_OBJS_$(2) := linenoise/$(2)/linenoise.o
+ALL_OBJ_FILES += $$(LINENOISE_OBJS_$(2))
+
+linenoise/$(2)/linenoise.o: linenoise/linenoise.c $$(MKFILE_DEPS)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(2), $$@,) $$<
+
+linenoise/$(2)/liblinenoise.a: $$(LINENOISE_OBJS_$(2))
+	@$$(call E, link: $$@)
+	$$(Q)ar rcs $$@ $$<
+
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 		rt/$(2)/arch/$$(HOST_$(2))/libmorestack.a
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/liblinenoise.a: \
+		linenoise/$(2)/liblinenoise.a
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
