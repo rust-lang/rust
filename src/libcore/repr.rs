@@ -13,7 +13,8 @@ use cast::transmute;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use reflect::{MovePtr, MovePtrAdaptor};
 use vec::raw::{VecRepr, UnboxedVecRepr, SliceRepr};
-use box::raw::{BoxRepr, BoxHeaderRepr};
+pub use box::raw::BoxRepr;
+use box::raw::BoxHeaderRepr;
 
 /// Helpers
 

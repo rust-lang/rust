@@ -367,8 +367,7 @@ struct ImportResolution {
     mut used: bool,
 }
 
-fn ImportResolution(privacy: Privacy,
-                    span: span) -> ImportResolution {
+fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
         span: span,
@@ -1639,11 +1638,20 @@ impl Resolver {
 
         match *subclass {
             SingleImport(target, _, _) => {
+                debug!("(building import directive) building import \
+                        directive: privacy %? %s::%s",
+                       privacy,
+                       self.idents_to_str(module_path.get()),
+                       self.session.str_of(target));
+
                 match module_.import_resolutions.find(target) {
                     Some(resolution) => {
+                        debug!("(building import directive) bumping \
+                                reference");
                         resolution.outstanding_references += 1u;
                     }
                     None => {
+                        debug!("(building import directive) creating new");
                         let resolution = @ImportResolution(privacy, span);
                         resolution.outstanding_references = 1u;
                         module_.import_resolutions.insert(target, resolution);
@@ -1966,6 +1974,12 @@ impl Resolver {
                         fn get_binding(import_resolution: @ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
+
+                            // Import resolutions must be declared with "pub"
+                            // in order to be exported.
+                            if import_resolution.privacy == Private {
+                                return UnboundResult;
+                            }
 
                             match (*import_resolution).
                                     target_for_namespace(namespace) {
@@ -4229,7 +4243,8 @@ impl Resolver {
 
         // Next, search import resolutions.
         match containing_module.import_resolutions.find(name) {
-            Some(import_resolution) => {
+            Some(import_resolution) if import_resolution.privacy == Public ||
+                                       xray == Xray => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
                         match (*target.bindings)
@@ -4252,7 +4267,7 @@ impl Resolver {
                     }
                 }
             }
-            None => {
+            Some(_) | None => {
                 return NoNameDefinition;
             }
         }
