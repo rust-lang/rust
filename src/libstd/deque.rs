@@ -1,5 +1,5 @@
 //! A deque. Untested as of yet. Likely buggy
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 #[forbid(non_camel_case_types)];
 
 use option::{Some, None};
@@ -8,8 +8,8 @@ use core::cmp::{Eq};
 
 pub trait Deque<T> {
     fn size() -> uint;
-    fn add_front(+v: T);
-    fn add_back(+v: T);
+    fn add_front(v: T);
+    fn add_back(v: T);
     fn pop_front() -> T;
     fn pop_back() -> T;
     fn peek_front() -> T;
@@ -27,7 +27,7 @@ pub fn create<T: Copy>() -> Deque<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: Copy>(nelts: uint, lo: uint, +elts: ~[Cell<T>])
+    fn grow<T: Copy>(nelts: uint, lo: uint, elts: ~[Cell<T>])
       -> ~[Cell<T>] {
         let mut elts = move elts;
         assert (nelts == vec::len(elts));
@@ -55,7 +55,7 @@ pub fn create<T: Copy>() -> Deque<T> {
 
     impl <T: Copy> Repr<T>: Deque<T> {
         fn size() -> uint { return self.nelts; }
-        fn add_front(+t: T) {
+        fn add_front(t: T) {
             let oldlo: uint = self.lo;
             if self.lo == 0u {
                 self.lo = self.elts.len() - 1u;
@@ -68,7 +68,7 @@ pub fn create<T: Copy>() -> Deque<T> {
             self.elts.set_elt(self.lo, Some(t));
             self.nelts += 1u;
         }
-        fn add_back(+t: T) {
+        fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
                 self.elts.swap(|v| grow(self.nelts, self.lo, move v));
                 self.lo = 0u;
@@ -200,7 +200,7 @@ mod tests {
         assert (deq.get(3) == d);
     }
 
-    fn test_parameterized<T: Copy Eq Owned>(+a: T, +b: T, +c: T, +d: T) {
+    fn test_parameterized<T: Copy Eq Owned>(a: T, +b: T, +c: T, +d: T) {
         let deq: deque::Deque<T> = deque::create::<T>();
         assert (deq.size() == 0u);
         deq.add_front(a);

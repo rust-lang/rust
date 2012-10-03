@@ -1,4 +1,4 @@
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 /// A dynamic, mutable location.
 ///
 /// Similar to a mutable option type, but friendlier.
@@ -8,7 +8,7 @@ pub struct Cell<T> {
 }
 
 /// Creates a new full cell with the given value.
-pub fn Cell<T>(+value: T) -> Cell<T> {
+pub fn Cell<T>(value: T) -> Cell<T> {
     Cell { value: Some(move value) }
 }
 
@@ -29,7 +29,7 @@ impl<T> Cell<T> {
     }
 
     /// Returns the value, failing if the cell is full.
-    fn put_back(+value: T) {
+    fn put_back(value: T) {
         if !self.is_empty() {
             fail ~"attempt to put a value back into a full cell";
         }

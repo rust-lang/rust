@@ -1,6 +1,6 @@
 //! A map type
 
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 
 use io::WriterUtil;
 use to_str::ToStr;
@@ -28,10 +28,10 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      *
      * Returns true if the key did not already exist in the map
      */
-    fn insert(+v: K, +v: V) -> bool;
+    fn insert(v: K, +v: V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
-    fn contains_key(+key: K) -> bool;
+    fn contains_key(key: K) -> bool;
 
     /// Returns true if the map contains a value for the specified
     /// key, taking the key by reference.
@@ -41,31 +41,31 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      * Get the value for the specified key. Fails if the key does not exist in
      * the map.
      */
-    fn get(+key: K) -> V;
+    fn get(key: K) -> V;
 
     /**
      * Get the value for the specified key. If the key does not exist in
      * the map then returns none.
      */
-    pure fn find(+key: K) -> Option<V>;
+    pure fn find(key: K) -> Option<V>;
 
     /**
      * Remove and return a value from the map. Returns true if the
      * key was present in the map, otherwise false.
      */
-    fn remove(+key: K) -> bool;
+    fn remove(key: K) -> bool;
 
     /// Clear the map, removing all key/value pairs.
     fn clear();
 
     /// Iterate over all the key/value pairs in the map by value
-    pure fn each(fn(+key: K, +value: V) -> bool);
+    pure fn each(fn(key: K, +value: V) -> bool);
 
     /// Iterate over all the keys in the map by value
-    pure fn each_key(fn(+key: K) -> bool);
+    pure fn each_key(fn(key: K) -> bool);
 
     /// Iterate over all the values in the map by value
-    pure fn each_value(fn(+value: V) -> bool);
+    pure fn each_value(fn(value: V) -> bool);
 
     /// Iterate over all the key/value pairs in the map by reference
     pure fn each_ref(fn(key: &K, value: &V) -> bool);
@@ -201,7 +201,7 @@ pub mod chained {
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: Map<K, V> {
         pure fn size() -> uint { self.count }
 
-        fn contains_key(+k: K) -> bool {
+        fn contains_key(k: K) -> bool {
             self.contains_key_ref(&k)
         }
 
@@ -213,7 +213,7 @@ pub mod chained {
             }
         }
 
-        fn insert(+k: K, +v: V) -> bool {
+        fn insert(k: K, +v: V) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(&k, hash) {
               NotFound => {
@@ -255,7 +255,7 @@ pub mod chained {
             }
         }
 
-        pure fn find(+k: K) -> Option<V> {
+        pure fn find(k: K) -> Option<V> {
             unsafe {
                 match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
                   NotFound => None,
@@ -265,7 +265,7 @@ pub mod chained {
             }
         }
 
-        fn get(+k: K) -> V {
+        fn get(k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
                 fail fmt!("Key not found in table: %?", k);
@@ -273,7 +273,7 @@ pub mod chained {
             option::unwrap(move opt_v)
         }
 
-        fn remove(+k: K) -> bool {
+        fn remove(k: K) -> bool {
             match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
               NotFound => false,
               FoundFirst(idx, entry) => {
@@ -294,15 +294,15 @@ pub mod chained {
             self.chains = chains(initial_capacity);
         }
 
-        pure fn each(blk: fn(+key: K, +value: V) -> bool) {
+        pure fn each(blk: fn(key: K, +value: V) -> bool) {
             self.each_ref(|k, v| blk(*k, *v))
         }
 
-        pure fn each_key(blk: fn(+key: K) -> bool) {
+        pure fn each_key(blk: fn(key: K) -> bool) {
             self.each_key_ref(|p| blk(*p))
         }
 
-        pure fn each_value(blk: fn(+value: V) -> bool) {
+        pure fn each_value(blk: fn(value: V) -> bool) {
             self.each_value_ref(|p| blk(*p))
         }
 
@@ -377,7 +377,7 @@ pub fn HashMap<K:Eq IterBytes Hash Const, V: Copy>()
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
-pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, +key: K) -> bool {
+pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
     set.insert(key, ())
 }
 
@@ -415,13 +415,13 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    fn insert(+key: K, +value: V) -> bool {
+    fn insert(key: K, value: V) -> bool {
         do self.borrow_mut |p| {
             p.insert(key, value)
         }
     }
 
-    fn contains_key(+key: K) -> bool {
+    fn contains_key(key: K) -> bool {
         do self.borrow_const |p| {
             p.contains_key(&key)
         }
@@ -433,13 +433,13 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    fn get(+key: K) -> V {
+    fn get(key: K) -> V {
         do self.borrow_const |p| {
             p.get(&key)
         }
     }
 
-    pure fn find(+key: K) -> Option<V> {
+    pure fn find(key: K) -> Option<V> {
         unsafe {
             do self.borrow_const |p| {
                 p.find(&key)
@@ -447,7 +447,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    fn remove(+key: K) -> bool {
+    fn remove(key: K) -> bool {
         do self.borrow_mut |p| {
             p.remove(&key)
         }
@@ -459,7 +459,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    pure fn each(op: fn(+key: K, +value: V) -> bool) {
+    pure fn each(op: fn(key: K, +value: V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
                 p.each(|k, v| op(*k, *v))
@@ -467,7 +467,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    pure fn each_key(op: fn(+key: K) -> bool) {
+    pure fn each_key(op: fn(key: K) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
                 p.each_key(|k| op(*k))
@@ -475,7 +475,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    pure fn each_value(op: fn(+value: V) -> bool) {
+    pure fn each_value(op: fn(value: V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
                 p.each_value(|v| op(*v))

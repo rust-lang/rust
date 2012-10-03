@@ -1,6 +1,6 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 #[forbid(non_camel_case_types)];
 
 //! json serialization
@@ -370,7 +370,7 @@ priv impl Parser {
         self.ch
     }
 
-    fn error<T>(+msg: ~str) -> Result<T, Error> {
+    fn error<T>(msg: ~str) -> Result<T, Error> {
         Err(Error { line: self.line, col: self.col, msg: @msg })
     }
 

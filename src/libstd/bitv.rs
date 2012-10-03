@@ -1,4 +1,4 @@
-#[forbid(deprecated_mode)];
+// tjc: forbid deprecated modes again after snap
 
 use vec::{to_mut, from_elem};
 
@@ -95,7 +95,7 @@ struct BigBitv {
     mut storage: ~[mut uint]
 }
 
-fn BigBitv(+storage: ~[mut uint]) -> BigBitv {
+fn BigBitv(storage: ~[mut uint]) -> BigBitv {
     BigBitv {storage: storage}
 }
 
