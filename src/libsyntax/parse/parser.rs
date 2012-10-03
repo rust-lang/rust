@@ -3511,8 +3511,8 @@ impl parser {
                 self.token_is_keyword(~"mod", next_tok))
     }
 
-    fn parse_view_item(+attrs: ~[attribute]) -> @view_item {
-        let lo = self.span.lo, vis = self.parse_visibility();
+    fn parse_view_item(+attrs: ~[attribute], vis: visibility) -> @view_item {
+        let lo = self.span.lo;
         let node = if self.eat_keyword(~"use") {
             self.parse_use()
         } else if self.eat_keyword(~"export") {
@@ -3644,7 +3644,7 @@ impl parser {
               _ => self.unexpected()
             }
         } else if self.is_view_item() {
-            let vi = self.parse_view_item(outer_attrs);
+            let vi = self.parse_view_item(outer_attrs, vis);
             return spanned(lo, vi.span.hi, cdir_view_item(vi));
         }
         return self.fatal(~"expected crate directive");

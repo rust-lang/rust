@@ -22,7 +22,7 @@
 
 use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
            mode_t, pid_t, FILE};
-use libc::{close, fclose};
+pub use libc::{close, fclose};
 
 use option::{Some, None};
 
@@ -225,7 +225,7 @@ mod global_env {
         pub fn setenv(n: &str, v: &str) {
             do str::as_c_str(n) |nbuf| {
                 do str::as_c_str(v) |vbuf| {
-                    libc::setenv(nbuf, vbuf, 1i32);
+                    libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1i32);
                 }
             }
         }
@@ -384,8 +384,8 @@ pub fn self_exe_path() -> Option<Path> {
     #[cfg(target_os = "macos")]
     fn load_self() -> Option<~str> {
         do fill_charp_buf() |buf, sz| {
-            libc::_NSGetExecutablePath(buf, ptr::mut_addr_of(&(sz as u32)))
-                == (0 as c_int)
+            libc::funcs::extra::_NSGetExecutablePath(
+                buf, ptr::mut_addr_of(&(sz as u32))) == (0 as c_int)
         }
     }
 

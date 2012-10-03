@@ -29,7 +29,7 @@ with destructors.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-use stackwalk::Word;
+pub use stackwalk::Word;
 use libc::size_t;
 use libc::uintptr_t;
 use send_map::linear::LinearMap;
