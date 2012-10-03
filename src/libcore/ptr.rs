@@ -1,5 +1,8 @@
 //! Unsafe pointer utility functions
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::{Eq, Ord};
 use libc::{c_void, size_t};
 

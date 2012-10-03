@@ -4,6 +4,9 @@ The iteration traits and common implementation
 
 */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::{Eq, Ord};
 
 /// A function used to initialize the elements of a sequence

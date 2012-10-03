@@ -7,8 +7,8 @@
  * some heavy-duty uses, try std::rope.
  */
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
 use libc::size_t;

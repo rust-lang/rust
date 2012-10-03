@@ -1,5 +1,6 @@
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+// tjc: Deprecated modes allowed because of function arg issue
+// in task::spawn. Re-forbid after snapshot.
 #[forbid(deprecated_pattern)];
 
 /*!

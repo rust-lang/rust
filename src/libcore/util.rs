@@ -5,7 +5,7 @@ Miscellaneous helpers for common patterns.
 */
 
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;

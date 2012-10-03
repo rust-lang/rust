@@ -1,5 +1,6 @@
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+// tjc: Re-forbid deprecated modes once a snapshot fixes the
+// function problem
 #[forbid(deprecated_pattern)];
 
 #[doc(hidden)];
