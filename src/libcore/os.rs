@@ -32,6 +32,8 @@ use task::TaskBuilder;
 // FIXME: move these to str perhaps? #2620
 
 extern mod rustrt {
+    fn rust_get_argc() -> c_int;
+    fn rust_get_argv() -> **c_char;
     fn rust_getcwd() -> ~str;
     fn rust_path_is_dir(path: *libc::c_char) -> c_int;
     fn rust_path_exists(path: *libc::c_char) -> c_int;
@@ -732,6 +734,14 @@ pub fn set_exit_status(code: int) {
     rustrt::rust_set_exit_status(code as libc::intptr_t);
 }
 
+unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
+    let mut args = ~[];
+    for uint::range(0, argc as uint) |i| {
+        vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
+    }
+    return args;
+}
+
 /**
  * Returns the command line arguments
  *
@@ -740,23 +750,20 @@ pub fn set_exit_status(code: int) {
 #[cfg(target_os = "macos")]
 fn real_args() -> ~[~str] {
     unsafe {
-        let (argc, argv) = (*_NSGetArgc() as uint, *_NSGetArgv());
-        let mut args = ~[];
-        for uint::range(0, argc) |i| {
-            vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
-        }
-        return args;
+        let (argc, argv) = (*_NSGetArgc() as c_int,
+                            *_NSGetArgv() as **c_char);
+        load_argc_and_argv(argc, argv)
     }
 }
 
 #[cfg(target_os = "linux")]
-fn real_args() -> ~[~str] {
-    fail    // Needs implementing.
-}
-
 #[cfg(target_os = "freebsd")]
 fn real_args() -> ~[~str] {
-    fail    // Needs implementing.
+    unsafe {
+        let argc = rustrt::rust_get_argc();
+        let argv = rustrt::rust_get_argv();
+        load_argc_and_argv(argc, argv)
+    }
 }
 
 #[cfg(windows)]
@@ -775,8 +782,9 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len) != 0 { len += 1; }
 
             // Push it onto the list.
-            vec::push(&mut args, vec::raw::form_slice(ptr, len,
-                                                      str::from_utf16));
+            vec::push(&mut args,
+                      vec::raw::buf_as_slice(ptr, len,
+                                             str::from_utf16));
         }
     }
 

@@ -86,7 +86,7 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     // Load runtime configuration options from the environment.
     // FIXME #1497: Should provide a way to get these from the command
     // line as well.
-    rust_env *env = load_env();
+    rust_env *env = load_env(argc, argv);
 
     global_crate_map = crate_map;
 

@@ -588,6 +588,18 @@ rust_num_threads() {
     return task->kernel->env->num_sched_threads;
 }
 
+extern "C" CDECL int
+rust_get_argc() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env->argc;
+}
+
+extern "C" CDECL char**
+rust_get_argv() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env->argv;
+}
+
 extern "C" CDECL rust_sched_id
 rust_new_sched(uintptr_t threads) {
     rust_task *task = rust_get_current_task();
