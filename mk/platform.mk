@@ -212,20 +212,33 @@ ifeq ($(CFG_C_COMPILER),clang)
   ifeq ($(origin CPP),default)
     CPP=clang -E
   endif
-  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
+  CFG_GCCISH_CFLAGS += -Wall -Werror -g
+  CFG_GCCISH_CXXFLAGS += -fno-rtti
   CFG_GCCISH_LINK_FLAGS += -g
   # These flags will cause the compiler to produce a .d file
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
   define CFG_MAKE_CC
-	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+  CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC)  \
+    $$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)    \
+    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
+      $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))        \
+        $$(CFG_DEPEND_FLAGS)                            \
+    -c -o $$(1) $$(2)
+    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC) \
+    $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)      \
+    $$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))   \
+        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)      \
+      $$(call CFG_INSTALL_NAME,$$(4))
+	CFG_COMPILE_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
 		$$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)		\
+    $$(CFG_GCCISH_CXXFLAGS)                       \
 		$$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
 	    $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))				\
         $$(CFG_DEPEND_FLAGS)                            \
 		-c -o $$(1) $$(2)
-    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+    CFG_LINK_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
 		$$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
 		$$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))		\
         $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)			\
@@ -245,21 +258,35 @@ ifeq ($(CFG_C_COMPILER),gcc)
   ifeq ($(origin CPP),default)
     CPP=gcc -E
   endif
-  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -g
+  CFG_GCCISH_CFLAGS += -Wall -Werror -g
+  CFG_GCCISH_CXXFLAGS += -fno-rtti
   CFG_GCCISH_LINK_FLAGS += -g
   # These flags will cause the compiler to produce a .d file
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
   define CFG_MAKE_CC
-	CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+  CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC)  \
+        $$(CFG_GCCISH_CFLAGS)             \
+      $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
+        $$(CFG_GCC_CFLAGS)                \
+        $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))        \
+        $$(CFG_DEPEND_FLAGS)                            \
+        -c -o $$(1) $$(2)
+    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC) \
+        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)      \
+    $$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))   \
+        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)      \
+        $$(call CFG_INSTALL_NAME,$$(4))
+	CFG_COMPILE_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
         $$(CFG_GCCISH_CFLAGS)							\
+        $$(CFG_GCCISH_CXXFLAGS)           \
 	    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))				\
         $$(CFG_GCC_CFLAGS)								\
         $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))				\
         $$(CFG_DEPEND_FLAGS)                            \
         -c -o $$(1) $$(2)
-    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
+    CFG_LINK_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)	\
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)			\
 		$$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))		\
         $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)			\
