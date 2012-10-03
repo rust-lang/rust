@@ -536,6 +536,7 @@ fn trans_trait_cast(bcx: block,
                     dest: expr::Dest)
     -> block
 {
+    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("impl::trans_cast");
 
     let lldest = match dest {
@@ -548,16 +549,24 @@ fn trans_trait_cast(bcx: block,
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
 
-    // Allocate an @ box and store the value into it
-    let {bcx: bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
-    add_clean_free(bcx, llbox, heap_shared);
-    let bcx = expr::trans_into(bcx, val, SaveIn(body));
-    revoke_clean(bcx, llbox);
+    let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
+    llboxdest = PointerCast(bcx, llboxdest,
+                            T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
 
-    // Store the @ box into the pair
-    Store(bcx, llbox, PointerCast(bcx,
-                                  GEPi(bcx, lldest, [0u, 1u]),
-                                  T_ptr(val_ty(llbox))));
+    if bcx.tcx().legacy_boxed_traits.contains_key(id) {
+        // Allocate an @ box and store the value into it
+        let {bcx: new_bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
+        bcx = new_bcx;
+        add_clean_free(bcx, llbox, heap_shared);
+        bcx = expr::trans_into(bcx, val, SaveIn(body));
+        revoke_clean(bcx, llbox);
+
+        // Store the @ box into the pair
+        Store(bcx, llbox, llboxdest);
+    } else {
+        // Just store the @ box into the pair.
+        bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+    }
 
     // Store the vtable into the pair
     let orig = ccx.maps.vtable_map.get(id)[0];

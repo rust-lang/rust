@@ -929,6 +929,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
+        } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
+            dcx.tcx.legacy_boxed_traits.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = ebml::ebml_deserializer(val_doc);
@@ -969,8 +971,6 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             } else if tag == (c::tag_table_adjustments as uint) {
                 let adj = @ty::deserialize_AutoAdjustment(val_dsr).tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
-            } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
-                dcx.tcx.legacy_boxed_traits.insert(id, ());
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));
