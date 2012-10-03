@@ -20,14 +20,8 @@ use get_data_for_req = uv::ll::get_data_for_req;
 use ll = uv::ll;
 use comm = core::comm;
 
-export IpAddr, parse_addr_err;
-export format_addr;
-export v4, v6;
-export get_addr;
-export Ipv4, Ipv6;
-
 /// An IP address
-enum IpAddr {
+pub enum IpAddr {
     /// An IPv4 address
     Ipv4(sockaddr_in),
     Ipv6(sockaddr_in6)
@@ -45,7 +39,7 @@ type ParseAddrErr = {
  *
  * * ip - a `std::net::ip::ip_addr`
  */
-fn format_addr(ip: &IpAddr) -> ~str {
+pub fn format_addr(ip: &IpAddr) -> ~str {
     match *ip {
       Ipv4(ref addr) =>  unsafe {
         let result = uv_ip4_name(addr);
@@ -83,7 +77,7 @@ enum IpGetAddrErr {
  * a vector of `ip_addr` results, in the case of success, or an error
  * object in the case of failure
  */
-fn get_addr(node: &str, iotask: iotask)
+pub fn get_addr(node: &str, iotask: iotask)
         -> result::Result<~[IpAddr], IpGetAddrErr> {
     do core::comm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| unsafe {
@@ -116,8 +110,7 @@ fn get_addr(node: &str, iotask: iotask)
     }
 }
 
-mod v4 {
-    #[legacy_exports];
+pub mod v4 {
     /**
      * Convert a str to `ip_addr`
      *
@@ -133,7 +126,7 @@ mod v4 {
      *
      * * an `ip_addr` of the `ipv4` variant
      */
-    fn parse_addr(ip: &str) -> IpAddr {
+    pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(copy addr) => addr,
           result::Err(ref err_data) => fail err_data.err_msg
@@ -141,9 +134,9 @@ mod v4 {
     }
     // the simple, old style numberic representation of
     // ipv4
-    type Ipv4Rep = { a: u8, b: u8, c: u8, d:u8 };
+    pub type Ipv4Rep = { a: u8, b: u8, c: u8, d:u8 };
 
-    trait AsUnsafeU32 {
+    pub trait AsUnsafeU32 {
         unsafe fn as_u32() -> u32;
     }
 
@@ -153,7 +146,7 @@ mod v4 {
             *((ptr::addr_of(&self)) as *u32)
         }
     }
-    fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
+    pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             match uint::from_str(*s) {
               Some(n) if n <= 255 => n,
@@ -171,7 +164,7 @@ mod v4 {
                         c: parts[2] as u8, d: parts[3] as u8})
         }
     }
-    fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
+    pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             let INADDR_NONE = ll::get_INADDR_NONE();
             let ip_rep_result = parse_to_ipv4_rep(ip);
@@ -203,8 +196,7 @@ mod v4 {
         }
     }
 }
-mod v6 {
-    #[legacy_exports];
+pub mod v6 {
     /**
      * Convert a str to `ip_addr`
      *
@@ -220,13 +212,13 @@ mod v6 {
      *
      * * an `ip_addr` of the `ipv6` variant
      */
-    fn parse_addr(ip: &str) -> IpAddr {
+    pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(copy addr) => addr,
           result::Err(copy err_data) => fail err_data.err_msg
         }
     }
-    fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
+    pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
             let new_addr = uv_ip6_addr(str::from_slice(ip), 22);
@@ -251,7 +243,7 @@ type GetAddrData = {
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
-                     res: *addrinfo) unsafe {
+                      res: *addrinfo) unsafe {
     log(debug, ~"in get_addr_cb");
     let handle_data = get_data_for_req(handle) as
         *GetAddrData;
@@ -311,7 +303,6 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = ~"127.0.0.1";
