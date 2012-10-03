@@ -51,13 +51,8 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                match lookup_vtable(fcx, expr, *ty, i_ty, allow_unsafe,
-                                    is_early) {
-                    None => {}
-                    Some(vtable) => {
-                        result.push(vtable);
-                    }
-                }
+                result.push(lookup_vtable(fcx, expr, *ty, i_ty,
+                                          allow_unsafe, is_early));
               }
               _ => ()
             }
@@ -96,7 +91,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                  trait_ty: ty::t,
                  allow_unsafe: bool,
                  is_early: bool)
-    -> Option<vtable_origin>
+    -> vtable_origin
 {
 
     debug!("lookup_vtable(ty=%s, trait_ty=%s)",
@@ -118,7 +113,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
             // The type has unconstrained type variables in it, so we can't
             // do early resolution on it. Return some completely bogus vtable
             // information: we aren't storing it anyways.
-            return Some(vtable_param(0, 0));
+            return vtable_param(0, 0);
         }
     };
 
@@ -140,7 +135,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                                            idid);
                                     relate_trait_tys(fcx, expr,
                                                      trait_ty, ity);
-                                    return Some(vtable_param(n, n_bound));
+                                    return vtable_param(n, n_bound);
                                 }
                             }
                             _ => tcx.sess.impossible_case(
@@ -175,7 +170,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                     }
                 }
             }
-            return Some(vtable_trait(did, substs.tps));
+            return vtable_trait(did, substs.tps);
         }
 
         _ => {
@@ -308,7 +303,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                                 None => {
                                     assert is_early;
                                     // Bail out with a bogus answer
-                                    return Some(vtable_param(0, 0));
+                                    return vtable_param(0, 0);
                                 }
                             };
 
@@ -346,20 +341,23 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
             match found.len() {
                 0 => { /* fallthrough */ }
-                1 => { return Some(found[0]); }
+                1 => { return found[0]; }
                 _ => {
                     if !is_early {
                         fcx.ccx.tcx.sess.span_err(
                             expr.span,
                             ~"multiple applicable methods in scope");
                     }
-                    return Some(found[0]);
+                    return found[0];
                 }
             }
         }
     }
 
-    return None;
+    tcx.sess.span_fatal(
+        expr.span,
+        fmt!("failed to find an implementation of trait %s for %s",
+             ty_to_str(tcx, trait_ty), ty_to_str(tcx, ty)));
 }
 
 fn fixup_ty(fcx: @fn_ctxt,
@@ -461,26 +459,13 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
             Look up vtables for the type we're casting to,
             passing in the source and target type
             */
-            let ty = fcx.expr_ty(src);
-            let vtable_opt = lookup_vtable(fcx, ex, ty, target_ty, true,
-                                           is_early);
-            match vtable_opt {
-                None => {
-                    fcx.tcx().sess.span_err(
-                        ex.span,
-                        fmt!("failed to find an implementation of trait %s \
-                              for %s",
-                             ty_to_str(fcx.tcx(), target_ty),
-                             ty_to_str(fcx.tcx(), ty)));
-                }
-                Some(vtable) => {
-                    /*
-                    Map this expression to that vtable (that is: "ex has
-                    vtable <vtable>")
-                    */
-                    if !is_early { cx.vtable_map.insert(ex.id, @~[vtable]); }
-                }
-            }
+            let vtable = lookup_vtable(fcx, ex, fcx.expr_ty(src),
+                                       target_ty, true, is_early);
+            /*
+            Map this expression to that vtable (that is: "ex has
+            vtable <vtable>")
+            */
+            if !is_early { cx.vtable_map.insert(ex.id, @~[vtable]); }
           }
           _ => ()
         }
