@@ -1,7 +1,7 @@
 //! Vectors
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
 use cmp::{Eq, Ord};

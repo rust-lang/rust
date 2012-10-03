@@ -61,6 +61,7 @@
  ****************************************************************************/
 
 #[doc(hidden)]; // FIXME #3538
+#[warn(deprecated_mode)];
 
 use rt::rust_task;
 use rt::rust_closure;

@@ -10,7 +10,7 @@ Note that recursive use is not permitted.
 */
 
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cast::reinterpret_cast;

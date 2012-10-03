@@ -1,4 +1,5 @@
 //! Unsafe operations
+#[forbid(deprecated_mode)]
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {

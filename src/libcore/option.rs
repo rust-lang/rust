@@ -31,8 +31,7 @@ let unwrapped_msg = match move msg {
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;

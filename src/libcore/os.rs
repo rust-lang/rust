@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 /*!

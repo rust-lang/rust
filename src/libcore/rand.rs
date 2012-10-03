@@ -1,7 +1,7 @@
 //! Random number generation
 
 // NB: transitional, de-mode-ing.
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 #[allow(non_camel_case_types)] // runtime type
@@ -310,7 +310,7 @@ pub fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
 
 
 // used to make space in TLS for a random number generator
-fn tls_rng_state(+_v: @RandRes) {}
+fn tls_rng_state(_v: @RandRes) {}
 
 /**
  * Gives back a lazily initialized task-local random number generator,
