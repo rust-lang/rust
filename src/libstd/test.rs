@@ -286,7 +286,7 @@ fn run_tests(opts: &TestOpts, tests: &[TestDesc],
     let mut done_idx = 0;
 
     let p = core::comm::Port();
-    let ch = core::comm::Chan(p);
+    let ch = core::comm::Chan(&p);
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
@@ -421,7 +421,7 @@ mod tests {
             should_fail: false
         };
         let p = core::comm::Port();
-        let ch = core::comm::Chan(p);
+        let ch = core::comm::Chan(&p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res != TrOk;
@@ -437,7 +437,7 @@ mod tests {
             should_fail: false
         };
         let p = core::comm::Port();
-        let ch = core::comm::Chan(p);
+        let ch = core::comm::Chan(&p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == TrIgnored;
@@ -454,7 +454,7 @@ mod tests {
             should_fail: true
         };
         let p = core::comm::Port();
-        let ch = core::comm::Chan(p);
+        let ch = core::comm::Chan(&p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == TrOk;
@@ -470,7 +470,7 @@ mod tests {
             should_fail: true
         };
         let p = core::comm::Port();
-        let ch = core::comm::Chan(p);
+        let ch = core::comm::Chan(&p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == TrFailed;

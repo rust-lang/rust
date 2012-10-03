@@ -2952,7 +2952,7 @@ An example of a `spawn` call:
 
 ~~~~
 let po = comm::Port();
-let ch = comm::Chan(po);
+let ch = comm::Chan(&po);
 
 do task::spawn {
     // let task run, do other things
@@ -2974,7 +2974,7 @@ An example of a send:
 
 ~~~~
 let po = comm::Port();
-let ch = comm::Chan(po);
+let ch = comm::Chan(&po);
 comm::send(ch, ~"hello, world");
 ~~~~
 
@@ -2990,7 +2990,7 @@ An example of a *receive*:
 
 ~~~~~~~~
 # let po = comm::Port();
-# let ch = comm::Chan(po);
+# let ch = comm::Chan(&po);
 # comm::send(ch, ~"");
 let s = comm::recv(po);
 ~~~~~~~~

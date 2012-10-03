@@ -14,11 +14,11 @@ fn test(f: int) -> test {
 
 fn main() {
     let p = Port();
-    let c = Chan(p);
+    let c = Chan(&p);
 
     do spawn() {
         let p = Port();
-        c.send(Chan(p));
+        c.send(Chan(&p));
 
         let _r = p.recv();
     }

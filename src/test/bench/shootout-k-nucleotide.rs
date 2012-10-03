@@ -142,7 +142,7 @@ fn main() {
    // initialize each sequence sorter
    let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
    let from_child = vec::map (sizes, |_sz| comm::Port() );
-   let to_parent  = vec::mapi(sizes, |ii, _sz| comm::Chan(from_child[ii]) );
+   let to_parent  = vec::mapi(sizes, |ii, _sz| comm::Chan(&from_child[ii]) );
    let to_child   = vec::mapi(sizes, |ii, sz| {
        let ii = ii;
        let sz = *sz;

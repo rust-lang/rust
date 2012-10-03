@@ -229,7 +229,7 @@ bug and need to present an error.
 */
 fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = comm::Port();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
 
     match do task::try |move f| {
 

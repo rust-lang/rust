@@ -133,12 +133,12 @@ mod test {
 
     fn impl_uv_hl_simple_timer(iotask: IoTask) unsafe {
         let exit_po = core::comm::Port::<bool>();
-        let exit_ch = core::comm::Chan(exit_po);
-        let exit_ch_ptr = ptr::p2::addr_of(&exit_ch);
+        let exit_ch = core::comm::Chan(&exit_po);
+        let exit_ch_ptr = ptr::addr_of(&exit_ch);
         log(debug, fmt!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                        exit_ch_ptr));
         let timer_handle = ll::timer_t();
-        let timer_ptr = ptr::p2::addr_of(&timer_handle);
+        let timer_ptr = ptr::addr_of(&timer_handle);
         do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, ~"user code inside interact loop!!!");
             let init_status = ll::timer_init(loop_ptr, timer_ptr);
@@ -166,7 +166,7 @@ mod test {
     fn test_gl_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
         let exit_po = comm::Port::<()>();
-        let exit_ch = comm::Chan(exit_po);
+        let exit_ch = comm::Chan(&exit_po);
         task::spawn_sched(task::ManualThreads(1u), || {
             impl_uv_hl_simple_timer(hl_loop);
             core::comm::send(exit_ch, ());
@@ -182,7 +182,7 @@ mod test {
     fn test_stress_gl_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
         let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(exit_po);
+        let exit_ch = core::comm::Chan(&exit_po);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             task::spawn_sched(task::ManualThreads(1u), || {

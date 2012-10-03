@@ -326,10 +326,10 @@ impl<T: Eq> Option<T> : Eq {
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;
-    let addr_x = ptr::p2::addr_of(&(*x));
+    let addr_x = ptr::addr_of(&(*x));
     let opt = Some(x);
     let y = unwrap(opt);
-    let addr_y = ptr::p2::addr_of(&(*y));
+    let addr_y = ptr::addr_of(&(*y));
     assert addr_x == addr_y;
 }
 

@@ -7,7 +7,7 @@ fn start(+token: int) {
     use iter::*;
 
     let p = comm::Port();
-    let mut ch = comm::Chan(p);
+    let mut ch = comm::Chan(&p);
     for int::range(2, n_threads + 1) |i| {
         let id = n_threads + 2 - i;
         let to_child = do task::spawn_listener::<int> |p, copy ch| {

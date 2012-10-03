@@ -184,7 +184,7 @@ mod test {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(&async_handle);
         let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(exit_po);
+        let exit_ch = core::comm::Chan(&exit_po);
         let ah_data = {
             iotask: iotask,
             exit_ch: exit_ch
@@ -202,7 +202,7 @@ mod test {
     // high_level_loop
     unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> IoTask {
         let iotask_port = comm::Port::<IoTask>();
-        let iotask_ch = comm::Chan(iotask_port);
+        let iotask_ch = comm::Chan(&iotask_port);
         do task::spawn_sched(task::ManualThreads(1u)) {
             run_loop(iotask_ch);
             exit_ch.send(());
@@ -223,7 +223,7 @@ mod test {
     #[test]
     fn test_uv_iotask_async() unsafe {
         let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(exit_po);
+        let exit_ch = core::comm::Chan(&exit_po);
         let iotask = spawn_test_loop(exit_ch);
 
         // using this handle to manage the lifetime of the high_level_loop,
@@ -233,7 +233,7 @@ mod test {
         // lives until, at least, all of the impl_uv_hl_async() runs have been
         // called, at least.
         let work_exit_po = core::comm::Port::<()>();
-        let work_exit_ch = core::comm::Chan(work_exit_po);
+        let work_exit_ch = core::comm::Chan(&work_exit_po);
         for iter::repeat(7u) {
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_iotask_async(iotask);

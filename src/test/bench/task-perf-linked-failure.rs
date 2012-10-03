@@ -11,7 +11,7 @@
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 fn grandchild_group(num_tasks: uint) {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
 
     for num_tasks.times {
         do task::spawn { // linked

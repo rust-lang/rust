@@ -8,7 +8,7 @@ use comm::recv;
 
 fn main() {
     let po = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     send(ch, 10);
     let i = recv(po);
     assert (i == 10);

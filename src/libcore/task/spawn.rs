@@ -636,7 +636,7 @@ pub fn spawn_raw(opts: TaskOpts, +f: fn~()) {
 #[test]
 fn test_spawn_raw_simple() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     do spawn_raw(default_task_opts()) {
         comm::send(ch, ());
     }
