@@ -187,6 +187,7 @@ fn tim_sort<T: Ord>(array: &[mut T]) {
     }
 
     let ms = &MergeState();
+    ms.array = array;
     let min_run = min_run_length(size);
 
     let mut idx = 0;
@@ -401,10 +402,23 @@ struct RunState {
 struct MergeState<T> {
     mut min_gallop: uint,
     mut tmp: ~[T],
+    mut last_hi: bool,
+    mut mergePt: uint,
+    mut tmpPt: uint,
+    mut array: &[mut T],
     runs: DVec<RunState>,
 
     drop {
         unsafe {
+            let size = self.tmp.len();
+            // Move tmp back into invalid part of array
+            if self.last_hi && size > 0 {
+                self.mergePt -= self.tmpPt;
+                move_vec(self.array, self.mergePt, self.tmp, 0, self.tmpPt);
+            } else if !self.last_hi && size > 0 {
+                move_vec(self.array, self.mergePt,
+                        self.tmp, self.tmpPt, size-self.tmpPt);
+            }
             vec::raw::set_len(self.tmp, 0);
         }
     }
@@ -416,6 +430,10 @@ fn MergeState<T>() -> MergeState<T> {
     MergeState {
         min_gallop: MIN_GALLOP,
         tmp: tmp,
+        last_hi: false,
+        mergePt: 0,
+        tmpPt: 0,
+        array: &[mut],
         runs: DVec(),
     }
 }
@@ -448,11 +466,13 @@ impl<T: Ord> &MergeState<T> {
             }
 
             let slice = vec::mut_view(array, b1, b1+l1);
+            self.mergePt = b1;
             let k = gallop_right(&const array[b2], slice, 0);
             b1 += k;
             l1 -= k;
             if l1 != 0 {
                 let slice = vec::mut_view(array, b2, b2+l2);
+                self.mergePt = b2;
                 let l2 = gallop_left(
                     &const array[b1+l1-1],slice,l2-1);
                 if l2 > 0 {
@@ -465,6 +485,7 @@ impl<T: Ord> &MergeState<T> {
             }
         }
         self.runs.pop();
+        self.mergePt = 0;
     }
 
     fn merge_lo(array: &[mut T], base1: uint, len1: uint,
@@ -472,11 +493,14 @@ impl<T: Ord> &MergeState<T> {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
         vec::reserve(&mut self.tmp, len1);
+        self.last_hi = false;
 
         unsafe {
             vec::raw::set_len(self.tmp, len1);
             move_vec(self.tmp, 0, array, base1, len1);
         }
+        self.tmpPt = 0;
+        self.mergePt = base1;
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -486,6 +510,7 @@ impl<T: Ord> &MergeState<T> {
 
         array[dest] <-> array[c2];
         dest += 1; c2 += 1; len2 -= 1;
+        self.mergePt += 1;
 
         if len2 == 0 {
             unsafe {
@@ -514,6 +539,7 @@ impl<T: Ord> &MergeState<T> {
                 if array[c2] < self.tmp[c1] {
                     array[dest] <-> array[c2];
                     dest += 1; c2 += 1; len2 -= 1;
+                    self.mergePt += 1;
                     count2 += 1; count1 = 0;
                     if len2 == 0 {
                         break_outer = true;
@@ -521,6 +547,8 @@ impl<T: Ord> &MergeState<T> {
                 } else {
                     array[dest] <-> self.tmp[c1];
                     dest += 1; c1 += 1; len1 -= 1;
+                    self.mergePt += 1;
+                    self.tmpPt += 1;
                     count1 += 1; count2 = 0;
                     if len1 == 1 {
                         break_outer = true;
@@ -536,17 +564,19 @@ impl<T: Ord> &MergeState<T> {
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                let tmp_view = vec::mut_view(self.tmp, c1, c1+len1);
+                let tmp_view = vec::const_view(self.tmp, c1, c1+len1);
                 count1 = gallop_right(&const array[c2], tmp_view, 0);
                 if count1 != 0 {
                     unsafe {
                         move_vec(array, dest, self.tmp, c1, count1);
                     }
                     dest += count1; c1 += count1; len1 -= count1;
+                    self.mergePt += count1; self.tmpPt += count1;
                     if len1 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c2];
                 dest += 1; c2 += 1; len2 -= 1;
+                self.mergePt += 1;
                 if len2 == 0 { break_outer = true; break; }
 
                 let tmp_view = vec::mut_view(array, c2, c2+len2);
@@ -556,10 +586,12 @@ impl<T: Ord> &MergeState<T> {
                         move_vec(array, dest, array, c2, count2);
                     }
                     dest += count2; c2 += count2; len2 -= count2;
+                    self.mergePt += count2;
                     if len2 == 0 { break_outer = true; break; }
                 }
                 array[dest] <-> self.tmp[c1];
                 dest += 1; c1 += 1; len1 -= 1;
+                self.mergePt += 1; self.tmpPt += 1;
                 if len1 == 1 { break_outer = true; break; }
                 min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
@@ -587,6 +619,7 @@ impl<T: Ord> &MergeState<T> {
                 move_vec(array, dest, self.tmp, c1, len1);
             }
         }
+        self.tmpPt = 0;
         unsafe { vec::raw::set_len(self.tmp, 0); }
     }
 
@@ -595,6 +628,7 @@ impl<T: Ord> &MergeState<T> {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
         vec::reserve(&mut self.tmp, len2);
+        self.last_hi = true;
 
         unsafe {
             vec::raw::set_len(self.tmp, len2);
@@ -606,6 +640,9 @@ impl<T: Ord> &MergeState<T> {
         let mut dest = base2 + len2 - 1;
         let mut len1 = len1;
         let mut len2 = len2;
+
+        self.mergePt = dest;
+        self.tmpPt = len2 - 1;
 
         array[dest] <-> array[c1];
         dest -= 1; c1 -= 1; len1 -= 1;
@@ -639,6 +676,7 @@ impl<T: Ord> &MergeState<T> {
                 if self.tmp[c2] < array[c1] {
                     array[dest] <-> array[c1];
                     dest -= 1; c1 -= 1; len1 -= 1;
+                    self.mergePt -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 0 {
                         break_outer = true;
@@ -646,6 +684,7 @@ impl<T: Ord> &MergeState<T> {
                 } else {
                     array[dest] <-> self.tmp[c2];
                     dest -= 1; c2 -= 1; len2 -= 1;
+                    self.mergePt -= 1; self.tmpPt -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 1 {
                         break_outer = true;
@@ -667,6 +706,7 @@ impl<T: Ord> &MergeState<T> {
 
                 if count1 != 0 {
                     dest -= count1; c1 -= count1; len1 -= count1;
+                    self.mergePt -= count1;
                     unsafe {
                         move_vec(array, dest+1, array, c1+1, count1);
                     }
@@ -675,6 +715,7 @@ impl<T: Ord> &MergeState<T> {
 
                 array[dest] <-> self.tmp[c2];
                 dest -= 1; c2 -= 1; len2 -= 1;
+                self.mergePt -= 1; self.tmpPt -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
                 let tmp_view = vec::mut_view(self.tmp, 0, len2);
@@ -682,6 +723,7 @@ impl<T: Ord> &MergeState<T> {
                     &const array[c1], tmp_view, len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
+                    self.mergePt -= count2; self.tmpPt -= count2;
                     unsafe {
                         move_vec(array, dest+1, self.tmp, c2+1, count2);
                     }
@@ -689,6 +731,7 @@ impl<T: Ord> &MergeState<T> {
                 }
                 array[dest] <-> array[c1];
                 dest -= 1; c1 -= 1; len1 -= 1;
+                self.mergePt -= 1;
                 if len1 == 0 { break_outer = true; break; }
                 min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
@@ -719,6 +762,7 @@ impl<T: Ord> &MergeState<T> {
                 move_vec(array, dest-(len2-1), self.tmp, 0, len2);
             }
         }
+        self.tmpPt = 0;
         unsafe { vec::raw::set_len(self.tmp, 0); }
     }
 
@@ -941,6 +985,23 @@ mod tests {
 #[cfg(test)]
 mod test_timsort {
     #[legacy_exports];
+    struct CVal {
+        val: ~float,
+    }
+
+    impl CVal: Ord {
+        pure fn lt(other: &CVal) -> bool {
+            unsafe {
+                let rng = rand::Rng();
+                if rng.gen_float() > 0.995 { fail ~"It's happening!!!"; }
+            }
+            self.val < other.val
+        }
+        pure fn le(other: &CVal) -> bool { self.val <= other.val }
+        pure fn gt(other: &CVal) -> bool { self.val > other.val }
+        pure fn ge(other: &CVal) -> bool { self.val >= other.val }
+    }
+
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         timsort::<int>(v1);
@@ -975,6 +1036,18 @@ mod test_timsort {
             let v2 = ~[mut 3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
+    }
+
+    #[test]
+    #[should_fail]
+    fn crash_test() {
+        let arr = do vec::from_fn |_i| {
+            let randVal = rng.gen_float();
+            CVal { val: ~randVal }
+        };
+
+        tim_sort(arr);
+        fail ~"Guarantee the fail";
     }
 }
 
