@@ -213,8 +213,8 @@ fn main() {
 }
 ~~~~
 
-The `let` keyword, introduces a local variable. By default, variables
-are immutable. `let mut` can be used to introduce a local variable
+The `let` keyword introduces a local variable. Variables are immutable
+by default, so `let mut` can be used to introduce a local variable
 that can be reassigned.
 
 ~~~~
@@ -229,13 +229,16 @@ while count < 10 {
 
 Although Rust can almost always infer the types of local variables, it
 can help readability to specify a variable's type by following it with
-a colon, then the type name. Local variables may shadow earlier
-declarations, making the earlier variables inaccessible.
+a colon, then the type name. 
 
 ~~~~
 let my_favorite_value: float = 57.8;
 let my_favorite_value: int = my_favorite_value as int;
 ~~~~
+
+Local variables may shadow earlier declarations, as in the previous
+example in which `my_favorite_value` is first declared as a `float`
+then a second `my_favorite_value` is declared as an int.
 
 Rust identifiers follow the same rules as C; they start with an alphabetic
 character or an underscore, and after that may contain any sequence of
@@ -1632,8 +1635,9 @@ fn contains(v: &[int], elt: int) -> bool {
 # Generics
 
 Throughout this tutorial, we've been defining functions that act only on
-single data types. With type parameters we can also define functions that
-may be invoked on multiple types.
+specific data types. With type parameters we can also define functions whose
+arguments represent generic types, and which can be invoked with a variety
+of types. Consider a generic `map` function.
 
 ~~~~
 fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
@@ -1653,7 +1657,7 @@ each other.
 Inside a generic function, the names of the type parameters
 (capitalized by convention) stand for opaque types. You can't look
 inside them, but you can pass them around.  Note that instances of
-generic types are almost always passed by pointer.  For example, the
+generic types are often passed by pointer.  For example, the
 parameter `function()` is supplied with a pointer to a value of type
 `T` and not a value of type `T` itself.  This ensures that the
 function works with the broadest set of types possible, since some
@@ -1679,11 +1683,11 @@ These declarations produce valid types like `Set<int>`, `Stack<int>`
 and `Maybe<int>`.
 
 Generic functions in Rust are compiled to very efficient runtime code
-through a process called _monomorphisation_. This big word just means
-that, for each generic function you call, the compiler generates a
-specialized version that is optimized specifically for the argument
-types. In this respect Rust's generics have similar performance
-characteristics to C++ templates.
+through a process called _monomorphisation_. This is a fancy way of
+saying that, for each generic function you call, the compiler
+generates a specialized version that is optimized specifically for the
+argument types. In this respect Rust's generics have similar
+performance characteristics to C++ templates.
 
 ## Traits
 
@@ -1748,13 +1752,10 @@ types by the compiler, and may not be overridden:
 
 ## Declaring and implementing traits
 
-A trait consists of a set of methods, or may be empty, as is the case
-with `Copy`, `Send`, and `Const`. A method is a function that
-can be applied to a `self` value and a number of arguments, using the
-dot notation: `self.foo(arg1, arg2)`.
-
-For example, we could declare the trait `Printable` for things that
-can be printed to the console, with a single method:
+A trait consists of a set of methods, without bodies, or may be empty,
+as is the case with `Copy`, `Send`, and `Const`. For example, we could
+declare the trait `Printable` for things that can be printed to the
+console, with a single method:
 
 ~~~~
 trait Printable {
@@ -1762,9 +1763,12 @@ trait Printable {
 }
 ~~~~
 
-To actually implement a trait for a given type, the `impl` form is
-used. This defines implementations of `Printable` for the `int` and
-`~str` types.
+Traits may be implemented for specific types with [impls]. An impl
+that implements a trait includes the name of the trait at the start of 
+the definition, as in the following impls of `Printable` for `int`
+and `~str`.
+
+[impls]: #functions-and-methods
 
 ~~~~
 # trait Printable { fn print(); }
@@ -1780,14 +1784,10 @@ impl ~str: Printable {
 # (~"foo").print();
 ~~~~
 
-Given these, we may call `1.print()` to print `"1"`, or
-`(~"foo").print()` to print `"foo"` again, as with . This is basically a form of
-static overloading—when the Rust compiler sees the `print` method
-call, it looks for an implementation that matches the type with a
-method that matches the name, and simply calls that.
-
-Traits may themselves contain type parameters. A trait for
-generalized sequence types might look like the following:
+Methods defined in an implementation of a trait may be called just as
+any other method, using dot notation, as in `1.print()`. Traits may
+themselves contain type parameters. A trait for generalized sequence
+types might look like the following:
 
 ~~~~
 trait Seq<T> {
