@@ -92,9 +92,7 @@ mod treemap;
 mod ebml;
 mod ebml2;
 mod dbg;
-#[legacy_exports]
 mod getopts;
-#[legacy_exports]
 mod json;
 mod sha1;
 mod md4;
