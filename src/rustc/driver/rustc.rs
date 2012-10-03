@@ -61,7 +61,7 @@ Options:
     --save-temps       Write intermediate files (.bc, .opt.bc, .o)
                        in addition to normal output
     --static           Use or produce static libraries or binaries
-    --stats            Print compilation statistics
+                       (experimental)
     --sysroot <path>   Override the system root
     --test             Build a test harness
     --target <triple>  Target cpu-manufacturer-kernel[-os] to compile for
