@@ -12,7 +12,7 @@ fn starship(&&ch: comm::Chan<~str>) {
 fn starbase() {
     for int::range(0, 10) |_i| {
         let p = comm::Port();
-        let c = comm::Chan(p);
+        let c = comm::Chan(&p);
         task::spawn(|| starship(c) );
         task::yield();
     }

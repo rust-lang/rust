@@ -43,7 +43,7 @@ trait word_reader {
 type joinable_task = Port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
     let p = Port();
-    let c = Chan(p);
+    let c = Chan(&p);
     do task::spawn() |move f| {
         f();
         c.send(());
@@ -206,7 +206,7 @@ mod map_reduce {
     {
         let p = Port();
 
-        send(out, Chan(p));
+        send(out, Chan(&p));
 
         let mut ref_count = 0;
         let mut is_done = false;
@@ -268,7 +268,7 @@ mod map_reduce {
                   None => {
                     // log(error, "creating new reducer for " + k);
                     let p = Port();
-                    let ch = Chan(p);
+                    let ch = Chan(&p);
                     let r = reduce, kk = k;
                     tasks.push(spawn_joinable(|| reduce_task(r, kk, ch) ));
                     c = recv(p);

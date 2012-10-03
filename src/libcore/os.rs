@@ -132,7 +132,7 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = comm::Port();
         comm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     comm::Chan(po)));
+                                     comm::Chan(&po)));
         comm::recv(po)
     }
 
@@ -141,14 +141,14 @@ mod global_env {
         let po = comm::Port();
         comm::send(env_ch, MsgSetEnv(str::from_slice(n),
                                      str::from_slice(v),
-                                     comm::Chan(po)));
+                                     comm::Chan(&po)));
         comm::recv(po)
     }
 
     pub fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
         let po = comm::Port();
-        comm::send(env_ch, MsgEnv(comm::Chan(po)));
+        comm::send(env_ch, MsgEnv(comm::Chan(&po)));
         comm::recv(po)
     }
 

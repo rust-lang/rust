@@ -29,7 +29,7 @@ fn main() {
     let mut n: int = 2 + 3 * 7;
     let s: ~str = ~"hello there";
     let p = comm::Port();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut x: int = 10;

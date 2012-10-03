@@ -5,7 +5,7 @@ use comm::*;
 
 fn main() {
     let p = Port();
-    let ch = Chan(p);
+    let ch = Chan(&p);
     let mut y: int;
 
     task::spawn(|| child(ch) );

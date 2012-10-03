@@ -18,7 +18,7 @@ extern mod rustrt {
 
 fn main() unsafe {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     let parent_sched_id = rustrt::rust_get_sched_id();
     error!("parent %?", parent_sched_id);
     let num_threads = 1u;

@@ -14,7 +14,7 @@ fn producer(c: Chan<~[u8]>) {
 
 fn packager(cb: Chan<Chan<~[u8]>>, msg: Chan<msg>) {
     let p: Port<~[u8]> = Port();
-    send(cb, Chan(p));
+    send(cb, Chan(&p));
     loop {
         debug!("waiting for bytes");
         let data = recv(p);
@@ -35,9 +35,9 @@ fn packager(cb: Chan<Chan<~[u8]>>, msg: Chan<msg>) {
 
 fn main() {
     let p: Port<msg> = Port();
-    let ch = Chan(p);
+    let ch = Chan(&p);
     let recv_reader: Port<Chan<~[u8]>> = Port();
-    let recv_reader_chan = Chan(recv_reader);
+    let recv_reader_chan = Chan(&recv_reader);
     let pack = task::spawn(|| packager(recv_reader_chan, ch) );
 
     let source_chan: Chan<~[u8]> = recv(recv_reader);

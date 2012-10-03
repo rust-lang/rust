@@ -109,14 +109,14 @@ fn pandoc_writer(
         os::close(pipe_in.out);
 
         let stdout_po = comm::Port();
-        let stdout_ch = comm::Chan(stdout_po);
+        let stdout_ch = comm::Chan(&stdout_po);
         do task::spawn_sched(task::SingleThreaded) {
             comm::send(stdout_ch, readclose(pipe_out.in));
         }
         let stdout = comm::recv(stdout_po);
 
         let stderr_po = comm::Port();
-        let stderr_ch = comm::Chan(stderr_po);
+        let stderr_ch = comm::Chan(&stderr_po);
         do task::spawn_sched(task::SingleThreaded) {
             comm::send(stderr_ch, readclose(pipe_err.in));
         }
@@ -268,10 +268,10 @@ fn write_file(path: &Path, s: ~str) {
 fn future_writer_factory(
 ) -> (WriterFactory, comm::Port<(doc::Page, ~str)>) {
     let markdown_po = comm::Port();
-    let markdown_ch = comm::Chan(markdown_po);
+    let markdown_ch = comm::Chan(&markdown_po);
     let writer_factory = fn~(page: doc::Page) -> Writer {
         let writer_po = comm::Port();
-        let writer_ch = comm::Chan(writer_po);
+        let writer_ch = comm::Chan(&writer_po);
         do task::spawn {
             let (writer, future) = future_writer();
             comm::send(writer_ch, writer);

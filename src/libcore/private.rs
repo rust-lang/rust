@@ -63,7 +63,7 @@ pub unsafe fn chan_from_global_ptr<T: Send>(
         let (setup_po, setup_ch) = do task_fn().spawn_conversation
             |move f, setup_po, setup_ch| {
             let po = comm::Port::<T>();
-            let ch = comm::Chan(po);
+            let ch = comm::Chan(&po);
             comm::send(setup_ch, ch);
 
             // Wait to hear if we are the official instance of
@@ -109,7 +109,7 @@ pub fn test_from_global_chan1() {
 
     // The global channel
     let globchan = 0;
-    let globchanp = ptr::p2::addr_of(&globchan);
+    let globchanp = ptr::addr_of(&globchan);
 
     // Create the global channel, attached to a new task
     let ch = unsafe {
@@ -122,7 +122,7 @@ pub fn test_from_global_chan1() {
     };
     // Talk to it
     let po = comm::Port();
-    comm::send(ch, comm::Chan(po));
+    comm::send(ch, comm::Chan(&po));
     assert comm::recv(po) == true;
 
     // This one just reuses the previous channel
@@ -135,7 +135,7 @@ pub fn test_from_global_chan1() {
 
     // Talk to the original global task
     let po = comm::Port();
-    comm::send(ch, comm::Chan(po));
+    comm::send(ch, comm::Chan(&po));
     assert comm::recv(po) == true;
 }
 
@@ -145,10 +145,10 @@ pub fn test_from_global_chan2() {
     for iter::repeat(100) {
         // The global channel
         let globchan = 0;
-        let globchanp = ptr::p2::addr_of(&globchan);
+        let globchanp = ptr::addr_of(&globchan);
 
         let resultpo = comm::Port();
-        let resultch = comm::Chan(resultpo);
+        let resultch = comm::Chan(&resultpo);
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
@@ -165,7 +165,7 @@ pub fn test_from_global_chan2() {
                     }
                 };
                 let po = comm::Port();
-                comm::send(ch, comm::Chan(po));
+                comm::send(ch, comm::Chan(&po));
                 // We are The winner if our version of the
                 // task was installed
                 let winner = comm::recv(po);
@@ -203,7 +203,7 @@ pub fn test_from_global_chan2() {
  */
 pub unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     unsafe {
         rustrt::rust_task_weaken(cast::reinterpret_cast(&ch));
     }

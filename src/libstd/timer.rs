@@ -27,7 +27,7 @@ pub fn delayed_send<T: Copy Send>(iotask: IoTask,
                                   msecs: uint, ch: comm::Chan<T>, val: T) {
         unsafe {
             let timer_done_po = core::comm::Port::<()>();
-            let timer_done_ch = core::comm::Chan(timer_done_po);
+            let timer_done_ch = core::comm::Chan(&timer_done_po);
             let timer_done_ch_ptr = ptr::addr_of(&timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(&timer);
@@ -74,7 +74,7 @@ pub fn delayed_send<T: Copy Send>(iotask: IoTask,
  */
 pub fn sleep(iotask: IoTask, msecs: uint) {
     let exit_po = core::comm::Port::<()>();
-    let exit_ch = core::comm::Chan(exit_po);
+    let exit_ch = core::comm::Chan(&exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
     core::comm::recv(exit_po);
 }
@@ -103,7 +103,7 @@ pub fn recv_timeout<T: Copy Send>(iotask: IoTask,
                               msecs: uint,
                               wait_po: comm::Port<T>) -> Option<T> {
     let timeout_po = comm::Port::<()>();
-    let timeout_ch = comm::Chan(timeout_po);
+    let timeout_ch = comm::Chan(&timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
     // FIXME: This could be written clearer (#2618)
     either::either(
@@ -162,7 +162,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress2() {
         let po = core::comm::Port();
-        let ch = core::comm::Chan(po);
+        let ch = core::comm::Chan(&po);
         let hl_loop = uv::global_loop::get();
 
         let repeat = 20u;
@@ -240,7 +240,7 @@ mod test {
         for iter::repeat(times as uint) {
             let expected = rand::Rng().gen_str(16u);
             let test_po = core::comm::Port::<~str>();
-            let test_ch = core::comm::Chan(test_po);
+            let test_ch = core::comm::Chan(&test_po);
 
             do task::spawn() {
                 delayed_send(hl_loop, 50u, test_ch, expected);

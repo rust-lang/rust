@@ -22,7 +22,7 @@ fn f(c: comm::Chan<bool>) {
 
 fn main() {
     let p = comm::Port();
-    let c = comm::Chan(p);
+    let c = comm::Chan(&p);
     task::spawn_unlinked(|| f(c) );
     error!("hiiiiiiiii");
     assert comm::recv(p);

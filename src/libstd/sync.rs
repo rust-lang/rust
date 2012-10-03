@@ -773,7 +773,7 @@ mod tests {
         let m = ~Mutex();
         let m2 = ~m.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::p2::addr_of(&(*sharedstate));
+        let ptr = ptr::addr_of(&(*sharedstate));
         do task::spawn {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };
@@ -1045,7 +1045,7 @@ mod tests {
         let (c,p) = pipes::stream();
         let x2 = ~x.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::p2::addr_of(&(*sharedstate));
+        let ptr = ptr::addr_of(&(*sharedstate));
         do task::spawn {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };

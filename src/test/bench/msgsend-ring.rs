@@ -35,7 +35,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let num_port = Port();
-    let mut num_chan = Chan(num_port);
+    let mut num_chan = Chan(&num_port);
 
     let start = time::precise_time_s();
 
@@ -44,12 +44,12 @@ fn main() {
 
     for uint::range(1u, num_tasks) |i| {
         let get_chan = Port();
-        let get_chan_chan = Chan(get_chan);
+        let get_chan_chan = Chan(&get_chan);
 
         let new_future = do future::spawn
             |copy num_chan, move get_chan_chan| {
             let p = Port();
-            get_chan_chan.send(Chan(p));
+            get_chan_chan.send(Chan(&p));
             thread_ring(i, msg_per_task, num_chan,  p)
         };
         futures.push(new_future);
