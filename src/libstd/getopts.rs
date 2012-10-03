@@ -381,7 +381,6 @@ pub fn opt_str(mm: Matches, nm: &str) -> ~str {
  * option took an argument
  */
 pub fn opts_str(mm: Matches, names: &[~str]) -> ~str {
->>>>>>> Remove uses of + mode from libstd
     for vec::each(names) |nm| {
         match opt_val(mm, *nm) {
           Val(copy s) => return s,
