@@ -240,8 +240,13 @@ let monster_size: int = 50;
 ~~~~
 
 Local variables may shadow earlier declarations, as in the previous
-example in which `my_favorite_value` is first declared as a `float`
-then a second `my_favorite_value` is declared as an int.
+example in which `monster_size` is first declared as a `float`
+then a second `monster_size` is declared as an int. If you were to actually
+compile this example though, the compiler will see that the second
+`monster_size` is unused, assume that you have made a mistake, and issue
+a warning. For occasions where unused variables are intentional, their
+name may be prefixed with an underscore to silence the warning, like
+`let _monster_size = 50;`.
 
 Rust identifiers follow the same rules as C; they start with an alphabetic
 character or an underscore, and after that may contain any sequence of
