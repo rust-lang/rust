@@ -550,9 +550,6 @@ fn trans_trait_cast(bcx: block,
     let v_ty = expr_ty(bcx, val);
 
     let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-    llboxdest = PointerCast(bcx, llboxdest,
-                            T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
-
     if bcx.tcx().legacy_boxed_traits.contains_key(id) {
         // Allocate an @ box and store the value into it
         let {bcx: new_bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
@@ -562,9 +559,11 @@ fn trans_trait_cast(bcx: block,
         revoke_clean(bcx, llbox);
 
         // Store the @ box into the pair
-        Store(bcx, llbox, llboxdest);
+        Store(bcx, llbox, PointerCast(bcx, llboxdest, T_ptr(val_ty(llbox))));
     } else {
         // Just store the @ box into the pair.
+        llboxdest = PointerCast(bcx, llboxdest,
+                                T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
         bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
     }
 
