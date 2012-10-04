@@ -235,7 +235,7 @@ name.
 
 ~~~~
 let monster_size: float = 57.8;
-let imaginary_size = monster_size * 10;
+let imaginary_size = monster_size * 10.0;
 let monster_size: int = 50;
 ~~~~
 
