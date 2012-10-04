@@ -1869,6 +1869,11 @@ pub pure fn escape_unicode(s: &str) -> ~str {
     move out
 }
 
+extern mod rustrt {
+    #[rust_stack]
+    pure fn upcall_str_new_shared(cstr: *libc::c_char, len: size_t) -> @str;
+}
+
 /// Unsafe operations
 pub mod raw {
 
@@ -2090,6 +2095,7 @@ pub trait StrSlice {
     pure fn trim_left() -> ~str;
     pure fn trim_right() -> ~str;
     pure fn to_unique() -> ~str;
+    pure fn to_managed() -> @str;
     pure fn char_at(i: uint) -> char;
 }
 
@@ -2212,6 +2218,14 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn to_unique() -> ~str { self.slice(0, self.len()) }
+
+    #[inline]
+    pure fn to_managed() -> @str {
+        do str::as_buf(self) |p, _len| {
+            rustrt::upcall_str_new_shared(p as *libc::c_char,
+                                          self.len() as size_t)
+        }
+    }
 
     #[inline]
     pure fn char_at(i: uint) -> char { char_at(self, i) }
@@ -3188,6 +3202,12 @@ mod tests {
             ~"\\U00010000\\U0010ffff";
         assert escape_default(~"ab\ufb00") == ~"ab\\ufb00";
         assert escape_default(~"\U0001d4ea\r") == ~"\\U0001d4ea\\r";
+    }
+
+    #[test]
+    fn test_to_managed() {
+        assert (~"abc").to_managed() == @"abc";
+        assert view("abcdef", 1, 5).to_managed() == @"bcde";
     }
 
 }
