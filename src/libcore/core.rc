@@ -246,7 +246,6 @@ pub mod reflect;
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
 
-#[legacy_exports]
 pub mod extfmt;
 // The test harness links against core, so don't include runtime in tests.
 #[cfg(notest)]
