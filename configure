@@ -344,8 +344,11 @@ probe CFG_PDFLATEX         pdflatex
 probe CFG_XETEX            xetex
 probe CFG_LUATEX           luatex
 probe CFG_NODE             nodejs node
-probe CFG_PAXCTL           paxctl /sbin/paxctl
-probe CFG_ZCAT             zcat
+if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
+then
+    probe CFG_PAXCTL           paxctl /sbin/paxctl
+    probe CFG_ZCAT             zcat
+fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
@@ -370,8 +373,7 @@ then
         GRSEC_DETECTED=
 
         # /dev/grsec only exists if CONFIG_GRKERNSEC_NO_RBAC is not set.
-        # /proc is normally only available to root and users in the CONFIG_GRKERNSEC_PROC_GID group,
-        # and /proc/sys/kernel/grsecurity is not available if ÇONFIG_GRKERNSEC_SYSCTL is not set.
+        # /proc/sys/kernel/grsecurity is not available if ÇONFIG_GRKERNSEC_SYSCTL is not set.
         if [ -e /dev/grsec -o -d /proc/sys/kernel/grsecurity ]
         then
             GRSEC_DETECTED=1
