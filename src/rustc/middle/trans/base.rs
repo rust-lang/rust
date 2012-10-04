@@ -2347,10 +2347,15 @@ fn trap(bcx: block) {
 }
 
 fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
-    if ccx.rtcalls.contains_key(name) {
-        ccx.sess.bug(fmt!("multiple definitions for runtime call %s", name));
+    match ccx.rtcalls.find(name) {
+        Some(existing_did) if did != existing_did => {
+            ccx.sess.fatal(fmt!("multiple definitions for runtime call %s",
+                                name));
+        }
+        Some(_) | None => {
+            ccx.rtcalls.insert(name, did);
+        }
     }
-    ccx.rtcalls.insert(name, did);
 }
 
 fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
