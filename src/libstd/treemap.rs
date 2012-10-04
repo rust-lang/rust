@@ -11,28 +11,28 @@ use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
 use Option = core::Option;
 
-pub type TreeMap<K, V> = @mut TreeEdge<K, V>;
+pub type TreeMap<K: Copy Eq Ord, V: Copy> = @mut TreeEdge<K, V>;
 
-type TreeEdge<K, V> = Option<@TreeNode<K, V>>;
+type TreeEdge<K: Copy Eq Ord, V: Copy> = Option<@TreeNode<K, V>>;
 
-enum TreeNode<K, V> = {
+struct TreeNode<K: Copy Eq Ord, V: Copy> {
     key: K,
     mut value: V,
     mut left: TreeEdge<K, V>,
     mut right: TreeEdge<K, V>
-};
+}
 
 /// Create a treemap
-pub fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
+pub fn TreeMap<K: Copy Eq Ord, V: Copy>() -> TreeMap<K, V> { @mut None }
 
 /// Insert a value into the map
 pub fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, k: K, v: V) {
     match copy *m {
       None => {
-        *m = Some(@TreeNode({key: k,
-                              mut value: v,
-                              mut left: None,
-                              mut right: None}));
+        *m = Some(@TreeNode {key: k,
+                             mut value: v,
+                             mut left: None,
+                             mut right: None});
         return;
       }
       Some(node) => {
@@ -67,7 +67,8 @@ pub fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, k: K)
 }
 
 /// Visit all pairs in the map in order.
-pub fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
+pub fn traverse<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, 
+                                         f: fn((&K), (&V))) {
     match copy *m {
       None => (),
       Some(node) => {
@@ -78,6 +79,19 @@ pub fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
       }
     }
 }
+
+/// Compare two treemaps and return true iff 
+/// they contain same keys and values
+pub fn equals<K: Copy Eq Ord, V: Copy Eq>(t1: &const TreeEdge<K, V>,
+                                          t2: &const TreeEdge<K, V>) 
+                                        -> bool {
+    let mut v1 = ~[];
+    let mut v2 = ~[];
+    traverse(t1, |k,v| { v1.push((copy *k, copy *v)) });
+    traverse(t2, |k,v| { v2.push((copy *k, copy *v)) });
+    return v1 == v2;
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -125,6 +139,28 @@ mod tests {
             assert (*n == k); *n += 1;
         }
         traverse(m, |x,y| t(n, *x, *y));
+    }
+
+    #[test]
+    fn equality() {
+        let m1 = TreeMap();
+        insert(m1, 3, ());
+        insert(m1, 0, ());
+        insert(m1, 4, ());
+        insert(m1, 2, ());
+        insert(m1, 1, ());
+        let m2 = TreeMap();
+        insert(m2, 2, ());
+        insert(m2, 1, ());
+        insert(m2, 3, ());
+        insert(m2, 0, ());
+        insert(m2, 4, ());
+
+        assert equals(m1, m2);
+
+        let m3 = TreeMap();
+        assert !equals(m1,m3);
+
     }
 
     #[test]
