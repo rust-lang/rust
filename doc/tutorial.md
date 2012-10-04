@@ -505,7 +505,7 @@ don't match the types of the arguments.
 ~~~~
 # let mystery_object = ();
 
-io::println(fmt!("%s is %d", "the answer", 42));
+io::println(fmt!("%s is %d", "the answer", 43));
 
 // %? will conveniently print any type
 io::println(fmt!("what is this thing: %?", mystery_object));
