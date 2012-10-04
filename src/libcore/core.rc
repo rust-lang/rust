@@ -36,7 +36,7 @@ Implicitly, all crates behave as if they included the following prologue:
 // Don't link to core. We are core.
 #[no_core];
 
-#[legacy_exports];
+//#[legacy_exports];
 
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
@@ -44,6 +44,7 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
+/*
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
 export float, f32, f64;
@@ -81,182 +82,182 @@ export option_iter;
 // This creates some APIs that I do not want to commit to, but it must be
 // exported from core in order for uv to remain in std (see #2648).
 export private;
-
+*/
 
 // Built-in-type support modules
 
 /// Operations and constants for `int`
 #[path = "int-template"]
-mod int {
+pub mod int {
     pub use inst::{ pow };
     #[path = "int.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `i8`
 #[path = "int-template"]
-mod i8 {
+pub mod i8 {
     #[path = "i8.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `i16`
 #[path = "int-template"]
-mod i16 {
+pub mod i16 {
     #[path = "i16.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `i32`
 #[path = "int-template"]
-mod i32 {
+pub mod i32 {
     #[path = "i32.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `i64`
 #[path = "int-template"]
-mod i64 {
+pub mod i64 {
     #[path = "i64.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `uint`
 #[path = "uint-template"]
-mod uint {
+pub mod uint {
     pub use inst::{
         div_ceil, div_round, div_floor, iterate,
         next_power_of_two
     };
     #[path = "uint.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `u8`
 #[path = "uint-template"]
-mod u8 {
+pub mod u8 {
     pub use inst::is_ascii;
     #[path = "u8.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `u16`
 #[path = "uint-template"]
-mod u16 {
+pub mod u16 {
     #[path = "u16.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `u32`
 #[path = "uint-template"]
-mod u32 {
+pub mod u32 {
     #[path = "u32.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 /// Operations and constants for `u64`
 #[path = "uint-template"]
-mod u64 {
+pub mod u64 {
     #[path = "u64.rs"]
-    mod inst;
+    pub mod inst;
 }
 
 
-mod box;
-mod char;
-mod float;
-mod f32;
-mod f64;
-mod str;
-mod ptr;
-mod vec;
-mod at_vec;
-mod bool;
-mod tuple;
-mod unit;
-mod uniq;
+pub mod box;
+pub mod char;
+pub mod float;
+pub mod f32;
+pub mod f64;
+pub mod str;
+pub mod ptr;
+pub mod vec;
+pub mod at_vec;
+pub mod bool;
+pub mod tuple;
+pub mod unit;
+pub mod uniq;
 
 // Ubiquitous-utility-type modules
 
 #[cfg(notest)]
-mod ops;
-mod cmp;
-mod num;
-mod hash;
-mod either;
-mod iter;
-mod logging;
-mod option;
+pub mod ops;
+pub mod cmp;
+pub mod num;
+pub mod hash;
+pub mod either;
+pub mod iter;
+pub mod logging;
+pub mod option;
 #[path="iter-trait"]
-mod option_iter {
+pub mod option_iter {
     #[path = "option.rs"]
-    mod inst;
+    pub mod inst;
 }
-mod result;
-mod to_str;
-mod to_bytes;
-mod from_str;
-mod util;
+pub mod result;
+pub mod to_str;
+pub mod to_bytes;
+pub mod from_str;
+pub mod util;
 
 // Data structure modules
 
-mod dvec;
+pub mod dvec;
 #[path="iter-trait"]
-mod dvec_iter {
+pub mod dvec_iter {
     #[path = "dvec.rs"]
-    mod inst;
+    pub mod inst;
 }
-mod dlist;
+pub mod dlist;
 #[path="iter-trait"]
-mod dlist_iter {
+pub mod dlist_iter {
     #[path ="dlist.rs"]
-    mod inst;
+    pub mod inst;
 }
-mod send_map;
+pub mod send_map;
 
 // Concurrency
-mod comm;
-mod task {
+pub mod comm;
+pub mod task {
     pub mod local_data;
     mod local_data_priv;
     pub mod spawn;
     pub mod rt;
 }
-mod future;
-mod pipes;
+pub mod future;
+pub mod pipes;
 
 // Runtime and language-primitive support
 
-mod gc;
-mod io;
-mod libc;
-mod os;
-mod path;
-mod rand;
-mod run;
-mod sys;
-mod cast;
-mod mutable;
-mod flate;
-mod repr;
-mod cleanup;
-mod reflect;
+pub mod gc;
+pub mod io;
+pub mod libc;
+pub mod os;
+pub mod path;
+pub mod rand;
+pub mod run;
+pub mod sys;
+pub mod cast;
+pub mod mutable;
+pub mod flate;
+pub mod repr;
+pub mod cleanup;
+pub mod reflect;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
 
 #[legacy_exports]
-mod extfmt;
+pub mod extfmt;
 // The test harness links against core, so don't include runtime in tests.
 #[cfg(notest)]
 #[legacy_exports]
-mod rt;
+pub mod rt;
 
 
 // For internal use, not exported
 
+pub mod private;
 mod unicode;
-mod private;
 mod cmath;
 mod stackwalk;
 
