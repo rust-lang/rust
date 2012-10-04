@@ -152,9 +152,9 @@ example, by changing `io::println` to some nonexistent function), and
 then compile it, you'll see an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: io::print_it
-hello.rs:2     io::print_it("hello? yes, this is rust");
-               ^~~~~~~~~~~~
+hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
+hello.rs:2     io::print_with_unicorns("hello? yes, this is rust");
+               ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
 In its simplest form, a Rust program is a `.rs` file with some types
@@ -178,9 +178,11 @@ included in that directory. In particular, if you are running emacs
 24, then using emacs's internal package manager to install `rust-mode`
 is the easiest way to keep it up to date. There is also a package for
 Sublime Text 2, available both [standalone][sublime] and through
-[Sublime Package Control][sublime-pkg].
+[Sublime Package Control][sublime-pkg], and support for Kate
+under `src/etc/kate`.
 
-Other editors are not provided for yet. If you end up writing a Rust
+There is ctags support via `src/etc/ctags.rust`, but many other
+tools and editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
 [sublime]: http://github.com/dbp/sublime-rust
@@ -191,7 +193,7 @@ mode for your favorite editor, let us know so that we can link to it.
 Assuming you've programmed in any C-family language (C++, Java,
 JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
 in blocks delineated by curly braces; there are control structures
-for branching and looping, like the familiar `if` and `when`; function
+for branching and looping, like the familiar `if` and `while`; function
 calls are written `myfunc(arg1, arg2)`; operators are written the same
 and mostly have the same precedence as in C; comments are again like C.
 
@@ -227,13 +229,14 @@ while count < 10 {
 }
 ~~~~
 
-Although Rust can almost always infer the types of local variables, it
-can help readability to specify a variable's type by following it with
-a colon, then the type name. 
+Although Rust can almost always infer the types of local variables, you
+can specify a variable's type by following it with a colon, then the type
+name. 
 
 ~~~~
-let my_favorite_value: float = 57.8;
-let my_favorite_value: int = my_favorite_value as int;
+let monster_size: float = 57.8;
+let imaginary_size = monster_size * 10;
+let monster_size: int = 50;
 ~~~~
 
 Local variables may shadow earlier declarations, as in the previous
@@ -248,14 +251,14 @@ underscores where they help readability, while writing types in camel case.
 
 ~~~
 let my_variable = 100;
-type MyType = int; // built-in types though are _not_ camel case
+type MyType = int;     // some built-in types are _not_ camel case
 ~~~
 
 ## Expression syntax
 
 Though it isn't apparent in all code, there is a fundamental
-difference between Rust's syntax and its predecessors in this family
-of languages. Many constructs that are statements in C are expressions
+difference between Rust's syntax and predecessors like C.
+Many constructs that are statements in C are expressions
 in Rust, allowing code to be more concise. For example, you might
 write a piece of code like this:
 
@@ -275,24 +278,25 @@ But, in Rust, you don't have to repeat the name `price`:
 
 ~~~~
 # let item = "salad";
-let price = if item == "salad" {
-    3.50
-} else if item == "muffin" {
-    2.25
-} else {
-    2.00
-};
+let price =
+    if item == "salad" {
+        3.50
+    } else if item == "muffin" {
+        2.25
+    } else {
+        2.00
+    };
 ~~~~
 
 Both pieces of code are exactly equivalent—they assign a value to
-`price` depending on the condition that holds. Note that the
-semicolons are omitted from the blocks in the second snippet. This is
+`price` depending on the condition that holds. Note that there
+are not semicolons in the blocks of the second snippet. This is
 important; the lack of a semicolon after the last statement in a
 braced block gives the whole block the value of that last expression.
 
 Put another way, the semicolon in Rust *ignores the value of an expression*.
 Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
-would simply assign nil (void) to `price`. But without the semicolon, each
+would simply assign `()` (nil or void) to `price`. But without the semicolon, each
 branch has a different value, and `price` gets the value of the branch that
 was taken.
 
@@ -346,8 +350,7 @@ if x {
 let y = if x { foo() } else { bar() };
 ~~~
 
-This may sound a bit intricate, but it is super-useful, and it will
-grow on you (hopefully).
+This may sound a intricate, but it is super-useful and will grow on you.
 
 ## Types
 
@@ -365,7 +368,8 @@ The basic types include the usual boolean, integral, and floating point types.
 ------------------------- -----------------------------------------------
 
 These can be combined in composite types, which will be described in
-more detail later on (the `T`s here stand for any other type):
+more detail later on (the `T`s here stand for any other type,
+while N should be a literal number):
 
 ------------------------- -----------------------------------------------
 `[T * N]`                 Vector (like an array in other languages) with N elements
@@ -392,7 +396,7 @@ the type `fn() -> bool` or the function declaration `fn foo() -> bool
 optionally write `-> ()`, but usually the return annotation is simply
 left off, as in `fn main() { ... }`.
 
-Types can be given names with `type` declarations:
+Types can be given names or aliases with `type` declarations:
 
 ~~~~
 type MonsterSize = uint;
@@ -401,9 +405,25 @@ type MonsterSize = uint;
 This will provide a synonym, `MonsterSize`, for unsigned integers. It will not
 actually create a new, incompatible type—`MonsterSize` and `uint` can be used
 interchangeably, and using one where the other is expected is not a type
-error. Read about [single-variant enums](#single_variant_enum)
-further on if you need to create a type name that's not just a
-synonym.
+error.
+
+To create data types which are not synonyms, `struct` and `enum`
+can be used. They're described in more detail below, but they look like this:
+
+~~~~
+enum HidingPlaces {
+   Closet(uint),
+   UnderTheBed(uint)
+}
+
+struct HeroicBabysitter {
+   bedtime_stories: uint,
+   sharpened_stakes: uint
+}
+
+struct BabysitterSize(uint);  // a single-variant struct
+enum MonsterSize = uint;      // a single-variant enum
+~~~~
 
 ## Literals
 
@@ -435,7 +455,7 @@ The nil literal is written just like the type: `()`. The keywords
 
 Character literals are written between single quotes, as in `'x'`. Just as in
 C, Rust understands a number of character escapes, using the backslash
-character, `\n`, `\r`, and `\t` being the most common. String literals,
+character, such as `\n`, `\r`, and `\t`. String literals,
 written between double quotes, allow the same escape sequences. Rust strings
 may contain newlines.
 
@@ -466,8 +486,8 @@ assert y == 4u;
 
 The main difference with C is that `++` and `--` are missing, and that
 the logical bitwise operators have higher precedence — in C, `x & 2 > 0`
-comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
-more likely to be what you expect (unless you are a C veteran).
+means `x & (2 > 0)`, but in Rust, it means `(x & 2) > 0`, which is
+more likely what a novice expects.
 
 ## Syntax extensions
 
@@ -485,7 +505,7 @@ don't match the types of the arguments.
 ~~~~
 # let mystery_object = ();
 
-io::println(fmt!("%s is %d", "the answer", 43));
+io::println(fmt!("%s is %d", "the answer", 42));
 
 // %? will conveniently print any type
 io::println(fmt!("what is this thing: %?", mystery_object));
@@ -556,18 +576,14 @@ underscore (`_`) is a wildcard pattern that matches everything.
 
 The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
-convenient to use a block expression for a case, in which case the
+convenient to use a block expression for each case, in which case the
 commas are optional.
 
 ~~~
 # let my_number = 1;
 match my_number {
-  0 => {
-    io::println("zero")
-  }
-  _ => {
-    io::println("something else")
-  }
+  0 => { io::println("zero") }
+  _ => { io::println("something else") }
 }
 ~~~
 
