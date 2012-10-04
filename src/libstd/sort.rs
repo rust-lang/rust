@@ -10,7 +10,7 @@ export le;
 export merge_sort;
 export quick_sort;
 export quick_sort3;
-export timsort;
+export tim_sort;
 export Sort;
 
 type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
@@ -415,7 +415,7 @@ struct MergeState<T> {
             if self.last_hi && size > 0 {
                 self.mergePt -= self.tmpPt;
                 move_vec(self.array, self.mergePt, self.tmp, 0, self.tmpPt);
-            } else if !self.last_hi && size > 0 {
+            } else if !self.last_hi && size-self.tmpPt > 0 {
                 move_vec(self.array, self.mergePt,
                         self.tmp, self.tmpPt, size-self.tmpPt);
             }
@@ -982,9 +982,9 @@ mod tests {
     }
 }
 
-#[cfg(test)]
-mod test_timsort {
-    #[legacy_exports];
+//#[cfg(test)]
+//mod test_tim_sort {
+//    #[legacy_exports];
     struct CVal {
         val: ~float,
     }
@@ -1004,7 +1004,7 @@ mod test_timsort {
 
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
-        timsort::<int>(v1);
+        tim_sort::<int>(v1);
         let mut i = 0u;
         while i < len {
             log(debug, v2[i]);
@@ -1037,11 +1037,12 @@ mod test_timsort {
             check_sort(v1, v2);
         }
     }
-
-    #[test]
-    #[should_fail]
+//}
+    //#[test]
+    //#[should_fail]
     fn crash_test() {
-        let arr = do vec::from_fn |_i| {
+        let rng = rand::Rng();
+        let mut arr = do vec::from_fn(1000) |_i| {
             let randVal = rng.gen_float();
             CVal { val: ~randVal }
         };
@@ -1049,7 +1050,126 @@ mod test_timsort {
         tim_sort(arr);
         fail ~"Guarantee the fail";
     }
-}
+//}
+
+//#[cfg(test)]
+/*mod big_tests {
+
+    #[test]
+    fn sorts_test() {
+        let low = 5;
+        let high = 10;
+
+        //pure fn le(a: &~float, b: &~float) -> bool { *a <= *b }
+
+        //let sorts = ~[
+            //let s1 = fn(arr: &[mut ~float]) { tim_sort(arr); };
+            //let s2 = fn(arr: &[mut ~float]) { quick_sort(arr, le); };
+            //let s3 = fn(arr: &[mut ~float]) { quick_sort3(arr); };
+            //let s4 = fn(arr: &[mut ~float]) { let rs = merge_sort(arr, le);
+             //                        for rs.eachi |i, v| {arr[i] = *v}};
+        //];
+
+        tabulate_unique(low, high);
+        //tabulate_managed(low, high, tim_sort);
+        //tabulate_linear(low, high, tim_sort);
+    }
+
+    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[mut T] {
+        let size = arr.len();
+        let res = do vec::from_fn(num) |i| {
+            arr[i % size]
+        };
+        vec::to_mut(res)
+    }
+
+    fn makeRange(n: uint) -> ~[uint] {
+        let one = do vec::from_fn(n) |i| { i };
+        let mut two = copy one;
+        vec::reverse(two);
+        vec::append(two, one)
+    }
+
+    fn tabulate_unique(lo: uint, hi: uint) {
+        fn isSorted<T: Ord>(arr: &[const T]) {
+            for uint::range(0, arr.len()-1) |i| {
+                if arr[i] > arr[i+1] {
+                    fail ~"Array not sorted";
+                }
+            }
+        }
+
+        let rng = rand::Rng();
+
+        for uint::range(lo, hi) |i| {
+            let n = 1 << i;
+            let arr = do vec::from_fn(n) |_i| {
+                ~rng.gen_float()
+            };
+            let arr = vec::to_mut(arr);
+
+            tim_sort(arr); // *sort
+            isSorted(arr);
+
+            vec::reverse(arr);
+            tim_sort(arr); // \sort
+            isSorted(arr);
+
+            tim_sort(arr); // /sort
+            isSorted(arr);
+
+            for 3.times {
+                let i1 = rng.gen_uint_range(0, n);
+                let i2 = rng.gen_uint_range(0, n);
+                arr[i1] <-> arr[i2];
+            }
+            tim_sort(arr); // 3sort
+            isSorted(arr);
+
+            if n >= 10 {
+                let size = arr.len();
+                let mut idx = 1;
+                while idx <= 10 {
+                    arr[size-idx] = ~rng.gen_float();
+                    idx += 1;
+                }
+            }
+            tim_sort(arr); // +sort
+            isSorted(arr);
+
+            for (n/100).times {
+                let idx = rng.gen_uint_range(0, n);
+                arr[idx] = ~rng.gen_float();
+            }
+            tim_sort(arr);
+            isSorted(arr);
+
+            let arr = if n > 4 {
+                let part = vec::view(arr, 0, 4);
+                multiplyVec(part, n)
+            } else { arr };
+            tim_sort(arr); // ~sort
+            isSorted(arr);
+
+            let mut arr = vec::from_elem(n, ~(-0.5));
+            tim_sort(arr); // =sort
+            isSorted(arr);
+
+            let half = n / 2;
+            let mut arr = makeRange(half).map(|i| ~(*i as float));
+            tim_sort(arr); // !sort
+            isSorted(arr);
+        }
+    }
+
+    fn tabulate_managed(lo: uint, hi: uint, sort: fn(x: &[mut ~float])) {
+
+    }
+
+    fn tabulate_linear(lo: uint, hi: uint, sort: fn(x: &[mut ~float])) {
+
+    }
+}*/
 
 // Local Variables:
 // mode: rust;
