@@ -1,3 +1,3 @@
-// error-pattern:expected `extern fn(++v: ~[~str])
+// error-pattern:expected `fn()
 
 fn main(x: int) { }

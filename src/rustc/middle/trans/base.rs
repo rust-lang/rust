@@ -1953,32 +1953,23 @@ fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
     let is_main = is_main_name(path) && !ccx.sess.building_library;
-    if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
+    if is_main { create_main_wrapper(ccx, sp, llfn); }
     llfn
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
-                       main_node_type: ty::t) {
+fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
 
     if ccx.main_fn != None::<ValueRef> {
         ccx.sess.span_fatal(sp, ~"multiple 'main' functions");
     }
 
-    let main_takes_argv =
-        // invariant!
-        match ty::get(main_node_type).sty {
-          ty::ty_fn(ref fn_ty) => fn_ty.sig.inputs.len() != 0u,
-          _ => ccx.sess.span_fatal(sp, ~"main has a non-function type")
-        };
-
-    let llfn = create_main(ccx, main_llfn, main_takes_argv);
+    let llfn = create_main(ccx, main_llfn);
     ccx.main_fn = Some(llfn);
     create_entry_fn(ccx, llfn);
 
-    fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef,
-                   takes_argv: bool) -> ValueRef {
+    fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
         let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
@@ -1998,9 +1989,6 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = ~[lloutputarg, llenvarg];
-        if takes_argv {
-            args.push(llvm::LLVMGetParam(llfdecl, 2 as c_uint));
-        }
         Call(bcx, main_llfn, args);
 
         build_return(bcx);

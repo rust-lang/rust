@@ -1889,7 +1889,8 @@ Commands:
     set-method      Change the method for a source.");
 }
 
-fn main(argv: ~[~str]) {
+fn main() {
+    let argv = os::args();
     let o = build_cargo_options(argv);
 
     if vec::len(o.free) < 2u {

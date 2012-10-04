@@ -70,7 +70,8 @@ fn make_repeat_fasta(wr: io::Writer, id: ~str, desc: ~str, s: ~str, n: int) unsa
 
 fn acid(ch: char, prob: u32) -> aminoacids { return {ch: ch, prob: prob}; }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
         ~[~"", ~"5000000"]

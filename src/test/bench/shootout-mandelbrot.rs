@@ -151,7 +151,8 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
     }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"4000", ~"10"]
     } else {

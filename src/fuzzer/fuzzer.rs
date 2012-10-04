@@ -599,7 +599,8 @@ fn check_variants(files: &[Path], cx: context) {
     }
 }
 
-fn main(args: ~[~str]) {
+fn main() {
+    let args = os::args();
     if vec::len(args) != 2u {
         error!("usage: %s <testdir>", args[0]);
         return;

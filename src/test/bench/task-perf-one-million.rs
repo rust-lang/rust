@@ -48,7 +48,8 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
     comm::send(parent_ch, done(sum + 1));
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"100000"]
     } else if args.len() <= 1u {
