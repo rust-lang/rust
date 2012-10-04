@@ -239,7 +239,8 @@ pub fn deserialize_bool<D: Deserializer>(&&d: D) -> bool {
     d.read_bool()
 }
 
-pub fn serialize_Option<S: Serializer,T>(&&s: S, &&v: Option<T>, st: fn(&&x: T)) {
+pub fn serialize_Option<S: Serializer,T>(&&s: S, &&v: Option<T>,
+                                         st: fn(&&x: T)) {
     do s.emit_enum(~"option") {
         match v {
           None => do s.emit_enum_variant(~"none", 0u, 0u) {
