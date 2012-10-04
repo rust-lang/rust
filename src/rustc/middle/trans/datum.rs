@@ -146,7 +146,7 @@ impl DatumMode: cmp::Eq {
 }
 
 impl DatumMode: to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f)
     }
 }
@@ -204,7 +204,7 @@ fn appropriate_mode(ty: ty::t) -> DatumMode {
     *
     * Indicates the "appropriate" mode for this value,
     * which is either by ref or by value, depending
-    * on whether type is iimmediate or what. */
+    * on whether type is immediate or not. */
 
     if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
         ByValue

@@ -1,15 +1,11 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+// tjc: forbid deprecated modes again after snap
 /**
  * The concurrency primitives you know and love.
  *
  * Maybe once we have a "core exports x only to std" mechanism, these can be
  * in std.
  */
-
-export Condvar, Semaphore, Mutex, mutex_with_condvars;
-export RWlock, rwlock_with_condvars, RWlockReadMode, RWlockWriteMode;
 
 use private::{Exclusive, exclusive};
 
@@ -73,7 +69,7 @@ struct SemInner<Q> {
 enum Sem<Q: Send> = Exclusive<SemInner<Q>>;
 
 #[doc(hidden)]
-fn new_sem<Q: Send>(count: int, +q: Q) -> Sem<Q> {
+fn new_sem<Q: Send>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         mut count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -82,7 +78,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
         -> Sem<~[mut Waitqueue]> {
     let mut queues = ~[];
     for num_condvars.times {
-        vec::push(queues, new_waitqueue());
+        queues.push(new_waitqueue());
     }
     new_sem(count, vec::to_mut(move queues))
 }
@@ -177,7 +173,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
+pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
 
 impl &Condvar {
     /**
@@ -380,14 +376,14 @@ impl &Semaphore {
 struct Mutex { priv sem: Sem<~[mut Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
-fn Mutex() -> Mutex { mutex_with_condvars(1) }
+pub fn Mutex() -> Mutex { mutex_with_condvars(1) }
 /**
  * Create a new mutex, with a specified number of associated condvars. This
  * will allow calling wait_on/signal_on/broadcast_on with condvar IDs between
  * 0 and num_condvars-1. (If num_condvars is 0, lock_cond will be allowed but
  * any operations on the condvar will fail.)
  */
-fn mutex_with_condvars(num_condvars: uint) -> Mutex {
+pub fn mutex_with_condvars(num_condvars: uint) -> Mutex {
     Mutex { sem: new_sem_and_signal(1, num_condvars) }
 }
 
@@ -430,13 +426,13 @@ struct RWlock {
 }
 
 /// Create a new rwlock, with one associated condvar.
-fn RWlock() -> RWlock { rwlock_with_condvars(1) }
+pub fn RWlock() -> RWlock { rwlock_with_condvars(1) }
 
 /**
  * Create a new rwlock, with a specified number of associated condvars.
  * Similar to mutex_with_condvars.
  */
-fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
+pub fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
     RWlock { order_lock: semaphore(1),
              access_lock: new_sem_and_signal(1, num_condvars),
              state: exclusive(RWlockInner { read_mode:  false,
@@ -539,7 +535,7 @@ impl &RWlock {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+v: RWlockWriteMode) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(v: RWlockWriteMode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
         let mut _release = None;
@@ -555,7 +551,7 @@ impl &RWlock {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
+    fn downgrade(token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
         if !ptr::ref_eq(self, token.lock) {
             fail ~"Can't downgrade() with a different rwlock's write_mode!";
         }
@@ -647,9 +643,9 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
+pub struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
-struct RWlockReadMode  { priv lock: &RWlock, drop { } }
+pub struct RWlockReadMode  { priv lock: &RWlock, drop { } }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
@@ -777,7 +773,7 @@ mod tests {
         let m = ~Mutex();
         let m2 = ~m.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(*sharedstate);
+        let ptr = ptr::p2::addr_of(&(*sharedstate));
         do task::spawn {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };
@@ -840,7 +836,7 @@ mod tests {
         for num_waiters.times {
             let mi = ~m.clone();
             let (chan, port) = pipes::stream();
-            vec::push(ports, port);
+            ports.push(port);
             do task::spawn {
                 do mi.lock_cond |cond| {
                     chan.send(());
@@ -930,7 +926,7 @@ mod tests {
             for 2.times {
                 let (c,p) = pipes::stream();
                 let c = ~mut Some(c);
-                vec::push(sibling_convos, p);
+                sibling_convos.push(p);
                 let mi = ~m2.clone();
                 // spawn sibling task
                 do task::spawn { // linked
@@ -961,7 +957,7 @@ mod tests {
             drop { self.c.send(()); }
         }
 
-        fn SendOnFailure(+c: pipes::Chan<()>) -> SendOnFailure {
+        fn SendOnFailure(c: pipes::Chan<()>) -> SendOnFailure {
             SendOnFailure {
                 c: c
             }
@@ -1042,14 +1038,14 @@ mod tests {
         }
     }
     #[cfg(test)]
-    fn test_rwlock_exclusion(+x: ~RWlock, mode1: RWlockMode,
+    fn test_rwlock_exclusion(x: ~RWlock, mode1: RWlockMode,
                              mode2: RWlockMode) {
         // Test mutual exclusion between readers and writers. Just like the
         // mutex mutual exclusion test, a ways above.
         let (c,p) = pipes::stream();
         let x2 = ~x.clone();
         let mut sharedstate = ~0;
-        let ptr = ptr::addr_of(*sharedstate);
+        let ptr = ptr::p2::addr_of(&(*sharedstate));
         do task::spawn {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };
@@ -1087,7 +1083,7 @@ mod tests {
         test_rwlock_exclusion(~RWlock(), Downgrade, Downgrade);
     }
     #[cfg(test)]
-    fn test_rwlock_handshake(+x: ~RWlock, mode1: RWlockMode,
+    fn test_rwlock_handshake(x: ~RWlock, mode1: RWlockMode,
                              mode2: RWlockMode, make_mode2_go_first: bool) {
         // Much like sem_multi_resource.
         let x2 = ~x.clone();
@@ -1194,7 +1190,7 @@ mod tests {
         for num_waiters.times {
             let xi = ~x.clone();
             let (chan, port) = pipes::stream();
-            vec::push(ports, port);
+            ports.push(port);
             do task::spawn {
                 do lock_cond(xi, dg1) |cond| {
                     chan.send(());

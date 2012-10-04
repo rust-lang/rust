@@ -49,7 +49,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
               ast::item_enum(_, _) => {
                 let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
-                do vec::iter2(*vs_here, *vs_there) |here, there| {
+                for vec::each2(*vs_here, *vs_there) |here, there| {
                     if there.id == fn_id { my_id = here.id.node; }
                     ccx.external.insert(there.id, Some(here.id.node));
                 }

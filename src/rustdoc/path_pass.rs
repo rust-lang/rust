@@ -43,9 +43,9 @@ fn fold_item(fold: fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
 fn fold_mod(fold: fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
     let is_topmod = doc.id() == ast::crate_node_id;
 
-    if !is_topmod { vec::push(fold.ctxt.path, doc.name()); }
+    if !is_topmod { fold.ctxt.path.push(doc.name()); }
     let doc = fold::default_any_fold_mod(fold, doc);
-    if !is_topmod { vec::pop(fold.ctxt.path); }
+    if !is_topmod { fold.ctxt.path.pop(); }
 
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
@@ -54,9 +54,9 @@ fn fold_mod(fold: fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
 }
 
 fn fold_nmod(fold: fold::Fold<Ctxt>, doc: doc::NmodDoc) -> doc::NmodDoc {
-    vec::push(fold.ctxt.path, doc.name());
+    fold.ctxt.path.push(doc.name());
     let doc = fold::default_seq_fold_nmod(fold, doc);
-    vec::pop(fold.ctxt.path);
+    fold.ctxt.path.pop();
 
     {
         item: fold.fold_item(fold, doc.item),

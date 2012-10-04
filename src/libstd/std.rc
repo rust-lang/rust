@@ -18,11 +18,11 @@ not required in or otherwise suitable for the core library.
 
 #[no_core];
 
-#[legacy_modes];
 #[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
+#[forbid(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
 use core::*;
@@ -34,116 +34,81 @@ export sync, arc, comm;
 export bitv, deque, fun_treemap, list, map;
 export smallintmap, sort, treemap;
 export rope, arena, par;
-export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
-export test, tempfile, serialization;
+export ebml, ebml2;
+export dbg, getopts, json, rand, sha1, term, time;
+export prettyprint, prettyprint2;
+export test, tempfile, serialization, serialization2;
 export cmp;
 export base64;
 export cell;
 
 // General io and system-services modules
 
-#[legacy_exports]
 mod net;
-#[legacy_exports]
 mod net_ip;
-#[legacy_exports]
 mod net_tcp;
-#[legacy_exports]
 mod net_url;
 
 // libuv modules
-#[legacy_exports]
 mod uv;
-#[legacy_exports]
 mod uv_ll;
-#[legacy_exports]
 mod uv_iotask;
-#[legacy_exports]
 mod uv_global_loop;
 
 
 // Utility modules
 
-#[legacy_exports]
 mod c_vec;
-#[legacy_exports]
 mod timer;
-#[legacy_exports]
 mod cell;
 
 // Concurrency
 
-#[legacy_exports]
 mod sync;
-#[legacy_exports]
 mod arc;
-#[legacy_exports]
 mod comm;
 
 // Collections
 
-#[legacy_exports]
 mod bitv;
-#[legacy_exports]
 mod deque;
-#[legacy_exports]
 mod fun_treemap;
-#[legacy_exports]
 mod list;
-#[legacy_exports]
 mod map;
-#[legacy_exports]
 mod rope;
-#[legacy_exports]
 mod smallintmap;
-#[legacy_exports]
 mod sort;
-#[legacy_exports]
 mod treemap;
-#[legacy_exports]
 
 // And ... other stuff
 
-#[legacy_exports]
 mod ebml;
-#[legacy_exports]
+mod ebml2;
 mod dbg;
-#[legacy_exports]
 mod getopts;
-#[legacy_exports]
 mod json;
-#[legacy_exports]
 mod sha1;
-#[legacy_exports]
 mod md4;
-#[legacy_exports]
 mod tempfile;
-#[legacy_exports]
 mod term;
-#[legacy_exports]
 mod time;
-#[legacy_exports]
 mod prettyprint;
-#[legacy_exports]
+mod prettyprint2;
 mod arena;
-#[legacy_exports]
 mod par;
-#[legacy_exports]
 mod cmp;
-#[legacy_exports]
 mod base64;
 
 #[cfg(unicode)]
-#[legacy_exports]
 mod unicode;
 
 
 // Compiler support modules
 
-#[legacy_exports]
 mod test;
 #[legacy_exports]
 mod serialization;
+mod serialization2;
 
 // Local Variables:
 // mode: rust;

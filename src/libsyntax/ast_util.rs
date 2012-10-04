@@ -23,7 +23,7 @@ pure fn dummy_sp() -> span { return mk_sp(0u, 0u); }
 
 
 
-pure fn path_name_i(idents: ~[ident], intr: token::ident_interner) -> ~str {
+pure fn path_name_i(idents: ~[ident], intr: @token::ident_interner) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map(|i| *intr.get(*i)), ~"::")
 }
@@ -254,7 +254,7 @@ pure fn is_call_expr(e: @expr) -> bool {
 // This makes def_id hashable
 impl def_id : core::to_bytes::IterBytes {
     #[inline(always)]
-    pure fn iter_bytes(lsb0: bool, f: core::to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: core::to_bytes::Cb) {
         core::to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
@@ -275,14 +275,14 @@ fn ident_to_path(s: span, +i: ident) -> @path {
       rp: None, types: ~[]}
 }
 
-pure fn is_unguarded(&&a: arm) -> bool {
+pure fn is_unguarded(a: &arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pure fn unguarded_pat(a: arm) -> Option<~[@pat]> {
+pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
     if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
@@ -313,8 +313,8 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
-          required(tm) => vec::push(reqd, tm),
-          provided(m) => vec::push(provd, m)
+          required(tm) => reqd.push(tm),
+          provided(m) => provd.push(m)
         }
     };
     (reqd, provd)
@@ -398,10 +398,8 @@ fn operator_prec(op: ast::binop) -> uint {
 
 fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
-    // dtor has one argument, of type ()
-    {inputs: ~[{mode: ast::expl(ast::by_ref),
-                ty: nil_t, ident: parse::token::special_idents::underscore,
-                id: 0}],
+    // dtor has no args
+    {inputs: ~[],
      output: nil_t, cf: return_val}
 }
 

@@ -42,17 +42,17 @@ fn kind_to_str(k: kind) -> ~str {
     let mut kinds = ~[];
 
     if ty::kind_lteq(kind_const(), k) {
-        vec::push(kinds, ~"const");
+        kinds.push(~"const");
     }
 
     if ty::kind_can_be_copied(k) {
-        vec::push(kinds, ~"copy");
+        kinds.push(~"copy");
     }
 
     if ty::kind_can_be_sent(k) {
-        vec::push(kinds, ~"send");
+        kinds.push(~"send");
     } else if ty::kind_is_owned(k) {
-        vec::push(kinds, ~"owned");
+        kinds.push(~"owned");
     }
 
     str::connect(kinds, ~" ")
@@ -199,13 +199,13 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let id = ast_util::def_id_of_def(fv.def).node;
 
             // skip over free variables that appear in the cap clause
-            if captured_vars.contains(id) { loop; }
+            if captured_vars.contains(&id) { loop; }
 
             // if this is the last use of the variable, then it will be
             // a move and not a copy
             let is_move = {
                 match cx.last_use_map.find(fn_id) {
-                  Some(vars) => (*vars).contains(id),
+                  Some(vars) => (*vars).contains(&id),
                   None => false
                 }
             };
@@ -264,16 +264,16 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 ~"non path/method call expr has type substs??")
           }
         };
-        if vec::len(ts) != vec::len(*bounds) {
+        if vec::len(*ts) != vec::len(*bounds) {
             // Fail earlier to make debugging easier
             fail fmt!("Internal error: in kind::check_expr, length \
                        mismatch between actual and declared bounds: actual = \
                         %s (%u tys), declared = %? (%u tys)",
-                      tys_to_str(cx.tcx, ts), ts.len(),
+                      tys_to_str(cx.tcx, *ts), ts.len(),
                       *bounds, (*bounds).len());
         }
-        do vec::iter2(ts, *bounds) |ty, bound| {
-            check_bounds(cx, id_to_use, e.span, ty, bound)
+        for vec::each2(*ts, *bounds) |ty, bound| {
+            check_bounds(cx, id_to_use, e.span, *ty, *bound)
         }
     }
 
@@ -376,8 +376,8 @@ fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
         do option::iter(&cx.tcx.node_type_substs.find(id)) |ts| {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
-            do vec::iter2(ts, *bounds) |ty, bound| {
-                check_bounds(cx, aty.id, aty.span, ty, bound)
+            for vec::each2(*ts, *bounds) |ty, bound| {
+                check_bounds(cx, aty.id, aty.span, *ty, *bound)
             }
         }
       }
@@ -588,7 +588,7 @@ fn check_cast_for_escaping_regions(
     do ty::walk_ty(source_ty) |ty| {
         match ty::get(ty).sty {
           ty::ty_param(source_param) => {
-            if target_params.contains(source_param) {
+            if target_params.contains(&source_param) {
                 /* case (2) */
             } else {
                 check_owned(cx.tcx, ty, source.span); /* case (3) */

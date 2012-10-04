@@ -18,7 +18,7 @@ export read_crates;
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(diag: span_handler, crate: ast::crate,
                cstore: cstore::cstore, filesearch: filesearch,
-               os: loader::os, static: bool, intr: ident_interner) {
+               os: loader::os, static: bool, intr: @ident_interner) {
     let e = @{diag: diag,
               filesearch: filesearch,
               cstore: cstore,
@@ -63,9 +63,9 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
             partition(crate_cache.map_to_vec(|entry| {
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
-                    Left(*entry)
+                    Left(entry)
                 } else {
-                    Right(*entry)
+                    Right(entry)
                 }
             }));
 
@@ -94,7 +94,7 @@ type env = @{diag: span_handler,
              static: bool,
              crate_cache: DVec<cache_entry>,
              mut next_crate_num: ast::crate_num,
-             intr: ident_interner};
+             intr: @ident_interner};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
     match i.node {
@@ -248,7 +248,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let cnum_map = HashMap::<int,ast::crate_num>();
+    let cnum_map = HashMap();
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;

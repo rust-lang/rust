@@ -179,7 +179,7 @@ fn default_any_fold_mod<T:Send Copy>(
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |ItemTag, copy fold| {
-            fold_ItemTag(fold, ItemTag)
+            fold_ItemTag(fold, *ItemTag)
         }),
         .. *doc
     })
@@ -205,7 +205,7 @@ fn default_par_fold_mod<T:Send Copy>(
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |ItemTag, copy fold| {
-            fold_ItemTag(fold, ItemTag)
+            fold_ItemTag(fold, *ItemTag)
         }),
         .. *doc
     })
@@ -218,7 +218,7 @@ fn default_any_fold_nmod<T:Send Copy>(
     {
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, copy fold| {
-            fold.fold_fn(fold, FnDoc)
+            fold.fold_fn(fold, *FnDoc)
         }),
         .. doc
     }
@@ -244,7 +244,7 @@ fn default_par_fold_nmod<T:Send Copy>(
     {
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, copy fold| {
-            fold.fold_fn(fold, FnDoc)
+            fold.fold_fn(fold, *FnDoc)
         }),
         .. doc
     }

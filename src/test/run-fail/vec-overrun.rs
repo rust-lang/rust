@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern:bounds check
+// error-pattern:index out of bounds: the len is 1 but the index is 2
 fn main() {
     let v: ~[int] = ~[10];
     let x: int = 0;

@@ -183,7 +183,7 @@ impl check_loan_ctxt {
         debug!("check_pure_callee_or_arg(pc=%?, expr=%?, \
                 callee_id=%d, ty=%s)",
                pc,
-               opt_expr.map(|e| pprust::expr_to_str(e, tcx.sess.intr()) ),
+               opt_expr.map(|e| pprust::expr_to_str(*e, tcx.sess.intr()) ),
                callee_id,
                ty_to_str(self.tcx(), ty::node_id_to_type(tcx, callee_id)));
 
@@ -204,7 +204,7 @@ impl check_loan_ctxt {
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
-                    (*self.fn_args).contains(did.node);
+                    (*self.fn_args).contains(&(did.node));
                 if is_fn_arg { return; } // case (a) above
               }
               ast::expr_fn_block(*) | ast::expr_fn(*) |
@@ -251,7 +251,7 @@ impl check_loan_ctxt {
             let def = self.tcx().def_map.get(expr.id);
             let did = ast_util::def_id_of_def(def);
             did.crate == ast::local_crate &&
-                (*self.fn_args).contains(did.node)
+                (*self.fn_args).contains(&(did.node))
           }
           ast::expr_fn_block(*) | ast::expr_fn(*) => {
             self.is_stack_closure(expr.id)
@@ -524,10 +524,10 @@ impl check_loan_ctxt {
         let arg_tys =
             ty::ty_fn_args(
                 ty::node_id_to_type(self.tcx(), callee_id));
-        do vec::iter2(args, arg_tys) |arg, arg_ty| {
+        for vec::each2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
                 ast::by_move => {
-                    self.check_move_out(arg);
+                    self.check_move_out(*arg);
                 }
                 ast::by_mutbl_ref | ast::by_ref |
                 ast::by_copy | ast::by_val => {

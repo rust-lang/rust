@@ -28,19 +28,19 @@ enum Linkage {
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 4,
-    WeakODRLinkage = 5,
-    AppendingLinkage = 6,
-    InternalLinkage = 7,
-    PrivateLinkage = 8,
-    DLLImportLinkage = 9,
-    DLLExportLinkage = 10,
-    ExternalWeakLinkage = 11,
-    GhostLinkage = 12,
-    CommonLinkage = 13,
-    LinkerPrivateLinkage = 14,
-    LinkerPrivateWeakLinkage = 15,
-    LinkerPrivateWeakDefAutoLinkage = 16,
+    LinkOnceODRAutoHideLinkage = 4,
+    WeakAnyLinkage = 5,
+    WeakODRLinkage = 6,
+    AppendingLinkage = 7,
+    InternalLinkage = 8,
+    PrivateLinkage = 9,
+    DLLImportLinkage = 10,
+    DLLExportLinkage = 11,
+    ExternalWeakLinkage = 12,
+    GhostLinkage = 13,
+    CommonLinkage = 14,
+    LinkerPrivateLinkage = 15,
+    LinkerPrivateWeakLinkage = 16,
 }
 
 enum Attribute {
@@ -91,6 +91,7 @@ enum IntPredicate {
 
 // enum for the LLVM RealPredicate type
 enum RealPredicate {
+    RealPredicateFalse = 0,
     RealOEQ = 1,
     RealOGT = 2,
     RealOGE = 3,
@@ -105,6 +106,7 @@ enum RealPredicate {
     RealULT = 12,
     RealULE = 13,
     RealUNE = 14,
+    RealPredicateTrue = 15,
 }
 
 // enum for the LLVM TypeKind type - must stay in sync with the def of
@@ -990,15 +992,19 @@ extern mod llvm {
         call. */
     fn LLVMRustGetLastError() -> *c_char;
 
-    /** Load a shared library to resolve symbols against. */
-    fn LLVMRustLoadLibrary(Filename: *c_char) -> bool;
+    /** Prepare the JIT. Returns a memory manager that can load crates. */
+    fn LLVMRustPrepareJIT(__morestack: *()) -> *();
 
-    /** Create and execute the JIT engine. */
-    fn LLVMRustJIT(__morestack: *(),
-                   PM: PassManagerRef,
-                   M: ModuleRef,
-                   OptLevel: c_int,
-                   EnableSegmentedStacks: bool) -> *();
+    /** Load a crate into the memory manager. */
+    fn LLVMRustLoadCrate(MM: *(),
+                         Filename: *c_char) -> bool;
+
+    /** Execute the JIT engine. */
+    fn LLVMRustExecuteJIT(MM: *(),
+                          PM: PassManagerRef,
+                          M: ModuleRef,
+                          OptLevel: c_int,
+                          EnableSegmentedStacks: bool) -> *();
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;

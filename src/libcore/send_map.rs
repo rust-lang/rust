@@ -12,10 +12,10 @@ use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-trait SendMap<K:Eq Hash, V: Copy> {
+pub trait SendMap<K:Eq Hash, V: Copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
-    fn insert(&mut self, +k: K, +v: V) -> bool;
+    fn insert(&mut self, k: K, +v: V) -> bool;
     fn remove(&mut self, k: &K) -> bool;
     fn clear(&mut self);
     pure fn len(&const self) -> uint;
@@ -31,17 +31,15 @@ trait SendMap<K:Eq Hash, V: Copy> {
 }
 
 /// Open addressing with linear probing.
-mod linear {
-    #[legacy_exports];
-    export LinearMap, linear_map, linear_map_with_capacity, public_methods;
-
+pub mod linear {
     const initial_capacity: uint = 32u; // 2^5
+
     struct Bucket<K:Eq Hash,V> {
         hash: uint,
         key: K,
         value: V,
     }
-    struct LinearMap<K:Eq Hash,V> {
+    pub struct LinearMap<K:Eq Hash,V> {
         k0: u64,
         k1: u64,
         resize_at: uint,
@@ -60,11 +58,11 @@ mod linear {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
+    pub fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
         linear_map_with_capacity(32)
     }
 
-    fn linear_map_with_capacity<K:Eq Hash,V>(
+    pub fn linear_map_with_capacity<K:Eq Hash,V>(
         initial_capacity: uint) -> LinearMap<K,V> {
         let r = rand::Rng();
         linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
@@ -137,7 +135,7 @@ mod linear {
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
-                    Some(bkt) => if bkt.hash == hash && *k == bkt.key {
+                    Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
                         return FoundEntry(i);
                     },
                     None => return FoundHole(i)
@@ -163,7 +161,7 @@ mod linear {
             }
         }
 
-        fn insert_opt_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
+        fn insert_opt_bucket(&mut self, bucket: Option<Bucket<K,V>>) {
             match move bucket {
                 Some(Bucket {hash: move hash,
                              key: move key,
@@ -177,7 +175,7 @@ mod linear {
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
-        fn insert_internal(&mut self, hash: uint, +k: K, +v: V) -> bool {
+        fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
                 TableFull => { fail ~"Internal logic error"; }
                 FoundHole(idx) => {
@@ -208,7 +206,7 @@ mod linear {
     }
 
     impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
-        fn insert(&mut self, +k: K, +v: V) -> bool {
+        fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is
@@ -285,18 +283,9 @@ mod linear {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
                         Some(ref bkt) => {
-                            let ptr = unsafe {
-                                // FIXME(#3148)--region inference
-                                // fails to capture needed deps.
-                                // Here, the bucket value is known to
-                                // live as long as self, because self
-                                // is immutable.  But the region
-                                // inference stupidly infers a
-                                // lifetime for `ref bkt` that is
-                                // shorter than it needs to be.
-                                cast::copy_lifetime(self, &bkt.value)
-                            };
-                            Some(ptr)
+                            // FIXME(#3148)---should be inferred
+                            let bkt: &self/Bucket<K,V> = bkt;
+                            Some(&bkt.value)
                         }
                         None => {
                             fail ~"LinearMap::find: internal logic error"
@@ -344,7 +333,7 @@ mod linear {
                     // FIXME (#3148): Once we rewrite found_entry, this
                     // failure case won't be necessary
                     match self.buckets[idx] {
-                        Some(bkt) => {Some(copy bkt.value)}
+                        Some(Bucket {value: copy value, _}) => {Some(value)}
                         None => fail ~"LinearMap::find: internal logic error"
                     }
                 }
@@ -366,13 +355,11 @@ mod linear {
 }
 
 #[test]
-mod test {
-    #[legacy_exports];
-
+pub mod test {
     use linear::LinearMap;
 
     #[test]
-    fn inserts() {
+    pub fn inserts() {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
@@ -381,7 +368,7 @@ mod test {
     }
 
     #[test]
-    fn overwrite() {
+    pub fn overwrite() {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
@@ -390,7 +377,7 @@ mod test {
     }
 
     #[test]
-    fn conflicts() {
+    pub fn conflicts() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -401,7 +388,7 @@ mod test {
     }
 
     #[test]
-    fn conflict_remove() {
+    pub fn conflict_remove() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -412,7 +399,7 @@ mod test {
     }
 
     #[test]
-    fn empty() {
+    pub fn empty() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
@@ -421,7 +408,7 @@ mod test {
     }
 
     #[test]
-    fn iterate() {
+    pub fn iterate() {
         let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert m.insert(i, i*2);
@@ -435,7 +422,7 @@ mod test {
     }
 
     #[test]
-    fn find_ref() {
+    pub fn find_ref() {
         let mut m = ~LinearMap();
         assert m.find_ref(&1).is_none();
         m.insert(1, 2);

@@ -1,9 +1,6 @@
 //! A process-wide libuv event loop for library use.
 
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
-export get;
 
 use ll = uv_ll;
 use iotask = uv_iotask;
@@ -16,7 +13,6 @@ use task::TaskBuilder;
 use either::{Left, Right};
 
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
@@ -32,7 +28,7 @@ extern mod rustrt {
  * * A `hl::high_level_loop` that encapsulates communication with the global
  * loop.
  */
-fn get() -> IoTask {
+pub fn get() -> IoTask {
     return get_monitor_task_gl();
 }
 
@@ -113,7 +109,6 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *comm::Chan<bool>;
@@ -139,11 +134,11 @@ mod test {
     fn impl_uv_hl_simple_timer(iotask: IoTask) unsafe {
         let exit_po = core::comm::Port::<bool>();
         let exit_ch = core::comm::Chan(exit_po);
-        let exit_ch_ptr = ptr::addr_of(exit_ch);
+        let exit_ch_ptr = ptr::p2::addr_of(&exit_ch);
         log(debug, fmt!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                        exit_ch_ptr));
         let timer_handle = ll::timer_t();
-        let timer_ptr = ptr::addr_of(timer_handle);
+        let timer_ptr = ptr::p2::addr_of(&timer_handle);
         do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, ~"user code inside interact loop!!!");
             let init_status = ll::timer_init(loop_ptr, timer_ptr);

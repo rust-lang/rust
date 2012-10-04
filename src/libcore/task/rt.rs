@@ -7,16 +7,16 @@ The task interface to the runtime
 #[doc(hidden)]; // FIXME #3538
 
 #[allow(non_camel_case_types)] // runtime type
-type sched_id = int;
+pub type sched_id = int;
 #[allow(non_camel_case_types)] // runtime type
-type task_id = int;
+pub type task_id = int;
 
 // These are both opaque runtime/compiler types that we don't know the
 // structure of and should only deal with via unsafe pointer
 #[allow(non_camel_case_types)] // runtime type
-type rust_task = libc::c_void;
+pub type rust_task = libc::c_void;
 #[allow(non_camel_case_types)] // runtime type
-type rust_closure = libc::c_void;
+pub type rust_closure = libc::c_void;
 
 extern {
     #[rust_stack]

@@ -33,7 +33,7 @@ proto! pingpong_unbounded (
 
 // This stuff should go in libcore::pipes
 macro_rules! move_it (
-    { $x:expr } => { let t <- *ptr::addr_of($x); t }
+    { $x:expr } => { let t <- *ptr::addr_of(&($x)); t }
 )
 
 macro_rules! follow (

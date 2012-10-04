@@ -1,2 +1,2 @@
-type T = i32;
-const bits: uint = u32::bits;
+pub type T = i32;
+pub const bits: uint = u32::bits;

@@ -51,7 +51,7 @@ impl infer_ctxt {
         +new_v: var_value<V, T>) {
 
         let old_v = vb.vals.get(vid.to_uint());
-        vec::push(vb.bindings, (vid, old_v));
+        vb.bindings.push((vid, old_v));
         vb.vals.insert(vid.to_uint(), new_v);
 
         debug!("Updating variable %s from %s to %s",

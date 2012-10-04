@@ -149,7 +149,7 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: ~"warn about deprecated uses of modes",
-           default: allow}),
+           default: warn}),
 
         (~"deprecated_pattern",
          @{lint: deprecated_pattern,
@@ -159,7 +159,7 @@ fn get_lint_dict() -> lint_dict {
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: ~"types, variants and traits should have camel case names",
-           default: warn}),
+           default: allow}),
 
         (~"managed_heap_memory",
          @{lint: managed_heap_memory,
@@ -288,7 +288,7 @@ impl ctxt {
                     for metas.each |meta| {
                         match meta.node {
                           ast::meta_word(lintname) => {
-                            vec::push(triples, (*meta, *level, lintname));
+                            triples.push((*meta, *level, lintname));
                           }
                           _ => {
                             self.sess.span_err(
@@ -396,6 +396,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_non_camel_case_types(cx, i);
     check_item_heap(cx, i);
     check_item_structural_records(cx, i);
+    check_item_deprecated_modes(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -666,43 +667,114 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     }
 
     let fn_ty = ty::node_id_to_type(tcx, id);
+    check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
+}
+
+fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
+                             span: span, id: ast::node_id) {
     match ty::get(fn_ty).sty {
-      ty::ty_fn(fn_ty) => {
-        let mut counter = 0;
-        do vec::iter2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
-            counter += 1;
-            debug!("arg %d, ty=%s, mode=%s",
-                   counter,
-                   ty_to_str(tcx, arg_ty.ty),
-                   mode_to_str(arg_ast.mode));
-            match arg_ast.mode {
-              ast::expl(ast::by_copy) => {
-                /* always allow by-copy */
-              }
+        ty::ty_fn(fn_ty) => {
+            let mut counter = 0;
+            for vec::each2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
+                counter += 1;
+                debug!("arg %d, ty=%s, mode=%s",
+                       counter,
+                       ty_to_str(tcx, arg_ty.ty),
+                       mode_to_str(arg_ast.mode));
+                match arg_ast.mode {
+                    ast::expl(ast::by_copy) => {
+                        if !tcx.legacy_modes {
+                            tcx.sess.span_lint(
+                                deprecated_mode, id, id, span,
+                                fmt!("argument %d uses by-copy mode",
+                                     counter));
+                        }
+                    }
 
-              ast::expl(_) => {
-                tcx.sess.span_lint(
-                    deprecated_mode, id, id,
-                    span,
-                    fmt!("argument %d uses an explicit mode", counter));
-              }
+                    ast::expl(_) => {
+                        tcx.sess.span_lint(
+                            deprecated_mode, id, id,
+                            span,
+                         fmt!("argument %d uses an explicit mode", counter));
+                    }
 
-              ast::infer(_) => {
-                let kind = ty::type_kind(tcx, arg_ty.ty);
-                if !ty::kind_is_safe_for_default_mode(kind) {
-                    tcx.sess.span_lint(
-                        deprecated_mode, id, id,
-                        span,
-                        fmt!("argument %d uses the default mode \
-                              but shouldn't",
-                             counter));
+                    ast::infer(_) => {
+                        if tcx.legacy_modes {
+                            let kind = ty::type_kind(tcx, arg_ty.ty);
+                            if !ty::kind_is_safe_for_default_mode(kind) {
+                                tcx.sess.span_lint(
+                                    deprecated_mode, id, id,
+                                    span,
+                                    fmt!("argument %d uses the default mode \
+                                          but shouldn't",
+                                         counter));
+                            }
+                        }
+                    }
                 }
-              }
+
+                match ty::get(arg_ty.ty).sty {
+                    ty::ty_fn(*) => {
+                        let span = arg_ast.ty.span;
+                        // Recurse to check fn-type argument
+                        match arg_ast.ty.node {
+                            ast::ty_fn(_, _, _, decl) => {
+                                check_fn_deprecated_modes(tcx, arg_ty.ty,
+                                                          decl, span, id);
+                            }
+                            ast::ty_path(*) => {
+                                // This is probably a typedef, so we can't
+                                // see the actual fn decl
+                                // e.g. fn foo(f: InitOp<T>)
+                            }
+                            ast::ty_rptr(_, mt)
+                            | ast::ty_box(mt)
+                            | ast::ty_uniq(mt) => {
+                                // Functions with preceding sigil are parsed
+                                // as pointers of functions
+                                match mt.ty.node {
+                                    ast::ty_fn(_, _, _, decl) => {
+                                        check_fn_deprecated_modes(
+                                            tcx, arg_ty.ty,
+                                            decl, span, id);
+                                    }
+                                    _ => fail
+                                }
+                            }
+                            _ => {
+                                tcx.sess.span_warn(span, ~"what");
+                                error!("arg %d, ty=%s, mode=%s",
+                                       counter,
+                                       ty_to_str(tcx, arg_ty.ty),
+                                       mode_to_str(arg_ast.mode));
+                                error!("%?",arg_ast.ty.node);
+                                fail
+                            }
+                        };
+                    }
+                    _ => ()
+                }
             }
         }
-      }
-      _ => tcx.sess.impossible_case(span, ~"check_fn: function has \
-             non-fn type")
+
+        _ => tcx.sess.impossible_case(span, ~"check_fn: function has \
+                                              non-fn type")
+    }
+}
+
+fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
+    match it.node {
+        ast::item_ty(ty, _) => {
+            match ty.node {
+                ast::ty_fn(_, _, _, decl) => {
+                    let fn_ty = ty::node_id_to_type(tcx, it.id);
+                    check_fn_deprecated_modes(
+                        tcx, fn_ty, decl, ty.span, it.id)
+                }
+                _ => ()
+            }
+        }
+        _ => ()
     }
 }
 

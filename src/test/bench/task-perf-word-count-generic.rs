@@ -20,7 +20,7 @@ use option::None;
 use std::map;
 use std::map::HashMap;
 use hash::Hash;
-use io::WriterUtil;
+use io::{ReaderUtil, WriterUtil};
 
 use std::time;
 
@@ -32,7 +32,7 @@ use cmp::Eq;
 use to_bytes::IterBytes;
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
 )
 
 trait word_reader {
@@ -155,8 +155,8 @@ mod map_reduce {
             let (ctrl, ctrl_server) = ctrl_proto::init();
             let ctrl = box(ctrl);
             let i = copy *i;
-            vec::push(tasks, spawn_joinable(|move i| map_task(map, ctrl, i)));
-            vec::push(ctrls, ctrl_server);
+            tasks.push(spawn_joinable(|move i| map_task(map, ctrl, i)));
+            ctrls.push(ctrl_server);
         }
         return tasks;
     }
@@ -270,8 +270,7 @@ mod map_reduce {
                     let p = Port();
                     let ch = Chan(p);
                     let r = reduce, kk = k;
-                    vec::push(tasks,
-                              spawn_joinable(|| reduce_task(r, kk, ch) ));
+                    tasks.push(spawn_joinable(|| reduce_task(r, kk, ch) ));
                     c = recv(p);
                     reducers.insert(k, c);
                   }

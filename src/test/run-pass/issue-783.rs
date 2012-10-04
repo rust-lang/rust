@@ -1,6 +1,6 @@
 extern mod std;
 use comm::*;
-use task::*;
+use task::spawn;
 
 fn a() {
     fn doit() {

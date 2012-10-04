@@ -57,7 +57,7 @@ struct icx_popper {
     ccx: @crate_ctxt,
     drop {
       if self.ccx.sess.count_llvm_insns() {
-          vec::pop(*(self.ccx.stats.llvm_insn_ctxt));
+          self.ccx.stats.llvm_insn_ctxt.pop();
       }
     }
 }
@@ -76,7 +76,7 @@ impl @crate_ctxt: get_insn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
-            vec::push(*self.stats.llvm_insn_ctxt, str::from_slice(s));
+            self.stats.llvm_insn_ctxt.push(str::from_slice(s));
         }
         icx_popper(self)
     }
@@ -98,7 +98,7 @@ fn log_fn_time(ccx: @crate_ctxt, name: ~str, start: time::Timespec,
                end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
-    vec::push(*ccx.stats.fn_times, {ident: name, time: elapsed});
+    ccx.stats.fn_times.push({ident: name, time: elapsed});
 }
 
 fn decl_fn(llmod: ModuleRef, name: ~str, cc: lib::llvm::CallConv,
@@ -383,7 +383,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
                 parent_id: ast::def_id, substs: ~[ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
-    if (substs.len() > 0u) {
+    if (substs.is_not_empty()) {
         let did = if did.crate != ast::local_crate {
             inline::maybe_instantiate_inline(ccx, did)
         } else { did };
@@ -1153,7 +1153,7 @@ fn cleanup_and_leave(bcx: block, upto: Option<BasicBlockRef>,
             }
             let sub_cx = sub_block(bcx, ~"cleanup");
             Br(bcx, sub_cx.llbb);
-            vec::push(inf.cleanup_paths, {target: leave, dest: sub_cx.llbb});
+            inf.cleanup_paths.push({target: leave, dest: sub_cx.llbb});
             bcx = trans_block_cleanups_(sub_cx, block_cleanups(cur), is_lpad);
           }
           _ => ()
@@ -1252,7 +1252,7 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         do option::iter(&simple_name) |name| {
-            str::as_c_str(cx.ccx().sess.str_of(name), |buf| {
+            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
                 llvm::LLVMSetValueName(val, buf)
             });
         }
@@ -1406,9 +1406,9 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           mut llself: None,
           mut personality: None,
           mut loop_ret: None,
-          llargs: HashMap::<int,local_val>(),
-          lllocals: HashMap::<int,local_val>(),
-          llupvars: HashMap::<int,ValueRef>(),
+          llargs: HashMap(),
+          lllocals: HashMap(),
+          llupvars: HashMap(),
           id: id,
           param_substs: param_substs,
           span: sp,
@@ -1496,7 +1496,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
 
         // For certain mode/type combinations, the raw llarg values are passed
         // by value.  However, within the fn body itself, we want to always
-        // have all locals and argumenst be by-ref so that we can cancel the
+        // have all locals and arguments be by-ref so that we can cancel the
         // cleanup and for better interaction with LLVM's debug info.  So, if
         // the argument would be passed by value, we store it into an alloca.
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
@@ -1767,9 +1767,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
 
   /* The dtor takes a (null) output pointer, and a self argument,
      and returns () */
-  let lldty = T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(tcx))),
-                    T_ptr(type_of(ccx, class_ty))],
-                   llvm::LLVMVoidType());
+  let lldty = type_of_dtor(ccx, class_ty);
 
   let s = get_dtor_symbol(ccx, path, dtor_id, psubsts);
 
@@ -1780,7 +1778,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   /* If we're monomorphizing, register the monomorphized decl
      for the dtor */
     do option::iter(&hash_id) |h_id| {
-    ccx.monomorphized.insert(h_id, lldecl);
+    ccx.monomorphized.insert(*h_id, lldecl);
   }
   /* Translate the dtor body */
   trans_fn(ccx, path, ast_util::dtor_dec(),
@@ -1833,7 +1831,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                                          *path,
                                          ~[path_name(item.ident)]),
                                      decl, body, llfndecl, item.id);
-        } else if tps.len() == 0u {
+        } else if tps.is_empty() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(*path, ~[path_name(item.ident)]),
@@ -2001,7 +1999,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = ~[lloutputarg, llenvarg];
         if takes_argv {
-            vec::push(args, llvm::LLVMGetParam(llfdecl, 2 as c_uint));
+            args.push(llvm::LLVMGetParam(llfdecl, 2 as c_uint));
         }
         Call(bcx, main_llfn, args);
 
@@ -2315,7 +2313,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let frameaddress = decl_cdecl_fn(llmod, ~"llvm.frameaddress",
                                      T_fn(T_frameaddress_args,
                                           T_ptr(T_i8())));
-    let intrinsics = HashMap::<~str,ValueRef>();
+    let intrinsics = HashMap();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
@@ -2349,10 +2347,15 @@ fn trap(bcx: block) {
 }
 
 fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
-    if ccx.rtcalls.contains_key(name) {
-        fail fmt!("multiple definitions for runtime call %s", name);
+    match ccx.rtcalls.find(name) {
+        Some(existing_did) if did != existing_did => {
+            ccx.sess.fatal(fmt!("multiple definitions for runtime call %s",
+                                name));
+        }
+        Some(_) | None => {
+            ccx.rtcalls.insert(name, did);
+        }
     }
-    ccx.rtcalls.insert(name, did);
 }
 
 fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
@@ -2451,10 +2454,10 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     for ccx.module_data.each |key, val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
-        vec::push(elts, elt);
+        elts.push(elt);
     }
     let term = C_struct(~[C_int(ccx, 0), C_int(ccx, 0)]);
-    vec::push(elts, term);
+    elts.push(term);
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     return map;
 }
@@ -2492,10 +2495,10 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
         let cr = str::as_c_str(nm, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
         });
-        vec::push(subcrates, p2i(ccx, cr));
+        subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    vec::push(subcrates, C_int(ccx, 0));
+    subcrates.push(C_int(ccx, 0));
 
     let llannihilatefn;
     let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn.get();
@@ -2627,17 +2630,17 @@ fn trans_crate(sess: session::session,
           llmod: llmod,
           td: td,
           tn: tn,
-          externs: HashMap::<~str,ValueRef>(),
+          externs: HashMap(),
           intrinsics: intrinsics,
-          item_vals: HashMap::<int,ValueRef>(),
+          item_vals: HashMap(),
           exp_map2: emap2,
           reachable: reachable,
-          item_symbols: HashMap::<int,~str>(),
+          item_symbols: HashMap(),
           mut main_fn: None::<ValueRef>,
           link_meta: link_meta,
           enum_sizes: ty::new_ty_hash(),
           discrims: HashMap(),
-          discrim_symbols: HashMap::<int,~str>(),
+          discrim_symbols: HashMap(),
           tydescs: ty::new_ty_hash(),
           mut finished_tydescs: false,
           external: HashMap(),
@@ -2646,15 +2649,15 @@ fn trans_crate(sess: session::session,
           type_use_cache: HashMap(),
           vtables: map::HashMap(),
           const_cstr_cache: HashMap(),
-          const_globals: HashMap::<int,ValueRef>(),
-          module_data: HashMap::<~str,ValueRef>(),
+          const_globals: HashMap(),
+          module_data: HashMap(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(sess.parse_sess.interner),
           next_addrspace: new_addrspace_gen(),
           symbol_hasher: symbol_hasher,
           type_hashcodes: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
-          all_llvm_symbols: HashMap::<~str,()>(),
+          all_llvm_symbols: HashMap(),
           tcx: tcx,
           maps: maps,
           stats:
@@ -2672,7 +2675,7 @@ fn trans_crate(sess: session::session,
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
-          rtcalls: HashMap::<~str,ast::def_id>(),
+          rtcalls: HashMap(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
@@ -2683,7 +2686,7 @@ fn trans_crate(sess: session::session,
           crate_map: crate_map,
           mut uses_gc: false,
           dbg_cx: dbg_cx,
-          class_ctors: HashMap::<int,ast::def_id>(),
+          class_ctors: HashMap(),
           mut do_not_commit_warning_issued: false};
 
 
@@ -2701,11 +2704,7 @@ fn trans_crate(sess: session::session,
 
     decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, crate_map);
-    // NB: Must call force_declare_tydescs before emit_tydescs to break
-    // cyclical dependency with shape code! See shape.rs for details.
-    force_declare_tydescs(ccx);
     glue::emit_tydescs(ccx);
-    gen_shape_tables(ccx);
     write_abi_version(ccx);
 
     // Translate the metadata.

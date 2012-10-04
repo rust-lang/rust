@@ -25,7 +25,7 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: Option<codemap>,
-      intr: token::ident_interner,
+      intr: @token::ident_interner,
       comments: Option<~[comments::cmnt]>,
       literals: Option<~[comments::lit]>,
       mut cur_cmnt: uint,
@@ -43,7 +43,7 @@ fn end(s: ps) {
     pp::end(s.s);
 }
 
-fn rust_printer(writer: io::Writer, intr: ident_interner) -> ps {
+fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
              cm: None::<codemap>,
              intr: intr,
@@ -63,7 +63,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, intr: ident_interner,
+fn print_crate(cm: codemap, intr: @ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {
@@ -91,40 +91,40 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty, intr: ident_interner) -> ~str {
+fn ty_to_str(ty: @ast::ty, intr: @ident_interner) -> ~str {
     to_str(ty, print_type, intr)
 }
 
-fn pat_to_str(pat: @ast::pat, intr: ident_interner) -> ~str {
+fn pat_to_str(pat: @ast::pat, intr: @ident_interner) -> ~str {
     to_str(pat, print_pat, intr)
 }
 
-fn expr_to_str(e: @ast::expr, intr: ident_interner) -> ~str {
+fn expr_to_str(e: @ast::expr, intr: @ident_interner) -> ~str {
     to_str(e, print_expr, intr)
 }
 
-fn tt_to_str(tt: ast::token_tree, intr: ident_interner) -> ~str {
+fn tt_to_str(tt: ast::token_tree, intr: @ident_interner) -> ~str {
     to_str(tt, print_tt, intr)
 }
 
-fn stmt_to_str(s: ast::stmt, intr: ident_interner) -> ~str {
+fn stmt_to_str(s: ast::stmt, intr: @ident_interner) -> ~str {
     to_str(s, print_stmt, intr)
 }
 
-fn item_to_str(i: @ast::item, intr: ident_interner) -> ~str {
+fn item_to_str(i: @ast::item, intr: @ident_interner) -> ~str {
     to_str(i, print_item, intr)
 }
 
-fn typarams_to_str(tps: ~[ast::ty_param], intr: ident_interner) -> ~str {
+fn typarams_to_str(tps: ~[ast::ty_param], intr: @ident_interner) -> ~str {
     to_str(tps, print_type_params, intr)
 }
 
-fn path_to_str(&&p: @ast::path, intr: ident_interner) -> ~str {
+fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
-              params: ~[ast::ty_param], intr: ident_interner) -> ~str {
+              params: ~[ast::ty_param], intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         print_fn(s, decl, None, name, params, None, ast::inherited);
@@ -147,7 +147,7 @@ fn test_fun_to_str() {
     assert fun_to_str(decl, "a", ~[]) == "fn a()";
 }
 
-fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
+fn block_to_str(blk: ast::blk, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         // containing cbox, will be closed by print-block at }
@@ -159,15 +159,15 @@ fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
     }
 }
 
-fn meta_item_to_str(mi: @ast::meta_item, intr: ident_interner) -> ~str {
+fn meta_item_to_str(mi: @ast::meta_item, intr: @ident_interner) -> ~str {
     to_str(mi, print_meta_item, intr)
 }
 
-fn attribute_to_str(attr: ast::attribute, intr: ident_interner) -> ~str {
+fn attribute_to_str(attr: ast::attribute, intr: @ident_interner) -> ~str {
     to_str(attr, print_attribute, intr)
 }
 
-fn variant_to_str(var: ast::variant, intr: ident_interner) -> ~str {
+fn variant_to_str(var: ast::variant, intr: @ident_interner) -> ~str {
     to_str(var, print_variant, intr)
 }
 
@@ -443,6 +443,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
     s.ann.pre(ann_node);
+    print_visibility(s, item.vis);
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
@@ -979,7 +980,7 @@ fn print_mac(s: ps, m: ast::mac) {
           Some(@{node: ast::expr_vec(_, _), _}) => (),
           _ => word(s.s, ~" ")
         }
-        arg.iter(|a| print_expr(s, a));
+        arg.iter(|a| print_expr(s, *a));
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_invoc_tt(pth, tts) => {
@@ -1111,7 +1112,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_call(func, args, has_block) => {
         let mut base_args = args;
         let blk = if has_block {
-            let blk_arg = vec::pop(base_args);
+            let blk_arg = base_args.pop();
             match blk_arg.node {
               ast::expr_loop_body(_) => { head(s, ~"for"); }
               ast::expr_do_body(_) => { head(s, ~"do"); }
@@ -1177,7 +1178,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
         print_block(s, blk);
       }
       ast::expr_match(expr, arms) => {
@@ -1360,12 +1361,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, ident); space(s.s)});
+        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
@@ -2059,7 +2060,7 @@ fn print_string(s: ps, st: ~str) {
     word(s.s, ~"\"");
 }
 
-fn to_str<T>(t: T, f: fn@(ps, T), intr: ident_interner) -> ~str {
+fn to_str<T>(t: T, f: fn@(ps, T), intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         f(s, t);

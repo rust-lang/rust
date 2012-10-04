@@ -158,7 +158,7 @@ fn trans_log(log_ex: @ast::expr,
     let modpath = vec::append(
         ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
         vec::filter(bcx.fcx.path, |e|
-            match e { path_mod(_) => true, _ => false }
+            match *e { path_mod(_) => true, _ => false }
         ));
     let modname = path_str(ccx.sess, modpath);
 
@@ -344,3 +344,21 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
     Unreachable(bcx);
     return bcx;
 }
+
+fn trans_fail_bounds_check(bcx: block, sp: span,
+                           index: ValueRef, len: ValueRef) -> block {
+    let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
+    let ccx = bcx.ccx();
+
+    let loc = codemap::lookup_char_pos(bcx.sess().parse_sess.cm, sp.lo);
+    let line = C_int(ccx, loc.line as int);
+    let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
+    let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+
+    let args = ~[filename, line, index, len];
+    let bcx = callee::trans_rtcall(bcx, ~"fail_bounds_check", args,
+                                   expr::Ignore);
+    Unreachable(bcx);
+    return bcx;
+}
+

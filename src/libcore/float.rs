@@ -7,26 +7,10 @@
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
-export to_str_common, to_str_exact, to_str, from_str;
-export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
-export is_positive, is_negative, is_nonpositive, is_nonnegative;
-export is_zero, is_infinite, is_finite;
-export NaN, is_NaN, infinity, neg_infinity;
-export consts;
-export logarithm;
-export acos, asin, atan, atan2, cbrt, ceil, copysign, cos, cosh, floor;
-export erf, erfc, exp, expm1, exp2, abs, abs_sub;
-export mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp;
-export lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix;
-export modf, pow, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc;
-export signbit;
-export pow_with_uint;
 
-export num;
 
 // export when m_float == c_double
 
-export j0, j1, jn, y0, y1, yn;
 
 // PORT this must match in width according to architecture
 
@@ -44,56 +28,54 @@ use f64::{j0, j1, jn, y0, y1, yn};
 use cmp::{Eq, Ord};
 use num::from_int;
 
-const NaN: float = 0.0/0.0;
+pub const NaN: float = 0.0/0.0;
 
-const infinity: float = 1.0/0.0;
+pub const infinity: float = 1.0/0.0;
 
-const neg_infinity: float = -1.0/0.0;
+pub const neg_infinity: float = -1.0/0.0;
 
 /* Module: consts */
-mod consts {
-    #[legacy_exports];
-
+pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
     /// Archimedes' constant
-    const pi: float = 3.14159265358979323846264338327950288;
+    pub const pi: float = 3.14159265358979323846264338327950288;
 
     /// pi/2.0
-    const frac_pi_2: float = 1.57079632679489661923132169163975144;
+    pub const frac_pi_2: float = 1.57079632679489661923132169163975144;
 
     /// pi/4.0
-    const frac_pi_4: float = 0.785398163397448309615660845819875721;
+    pub const frac_pi_4: float = 0.785398163397448309615660845819875721;
 
     /// 1.0/pi
-    const frac_1_pi: float = 0.318309886183790671537767526745028724;
+    pub const frac_1_pi: float = 0.318309886183790671537767526745028724;
 
     /// 2.0/pi
-    const frac_2_pi: float = 0.636619772367581343075535053490057448;
+    pub const frac_2_pi: float = 0.636619772367581343075535053490057448;
 
     /// 2.0/sqrt(pi)
-    const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
+    pub const frac_2_sqrtpi: float = 1.12837916709551257389615890312154517;
 
     /// sqrt(2.0)
-    const sqrt2: float = 1.41421356237309504880168872420969808;
+    pub const sqrt2: float = 1.41421356237309504880168872420969808;
 
     /// 1.0/sqrt(2.0)
-    const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
+    pub const frac_1_sqrt2: float = 0.707106781186547524400844362104849039;
 
     /// Euler's number
-    const e: float = 2.71828182845904523536028747135266250;
+    pub const e: float = 2.71828182845904523536028747135266250;
 
     /// log2(e)
-    const log2_e: float = 1.44269504088896340735992468100189214;
+    pub const log2_e: float = 1.44269504088896340735992468100189214;
 
     /// log10(e)
-    const log10_e: float = 0.434294481903251827651128918916605082;
+    pub const log10_e: float = 0.434294481903251827651128918916605082;
 
     /// ln(2.0)
-    const ln_2: float = 0.693147180559945309417232121458176568;
+    pub const ln_2: float = 0.693147180559945309417232121458176568;
 
     /// ln(10.0)
-    const ln_10: float = 2.30258509299404568401799145468436421;
+    pub const ln_10: float = 2.30258509299404568401799145468436421;
 }
 
 /**
@@ -109,7 +91,7 @@ mod consts {
  * * digits - The number of significant digits
  * * exact - Whether to enforce the exact number of significant digits
  */
-fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
+pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     if is_NaN(num) { return ~"NaN"; }
     if num == infinity { return ~"inf"; }
     if num == neg_infinity { return ~"-inf"; }
@@ -139,11 +121,11 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
 
     // while we still need digits
     // build stack of digits
-    while ii > 0u && (frac >= epsilon_prime || exact) {
+    while ii > 0 && (frac >= epsilon_prime || exact) {
         // store the next digit
         frac *= 10.0;
         let digit = frac as uint;
-        vec::push(fractionalParts, digit);
+        fractionalParts.push(digit);
 
         // calculate the next frac
         frac -= digit as float;
@@ -153,25 +135,25 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
 
     let mut acc;
     let mut racc = ~"";
-    let mut carry = if frac * 10.0 as uint >= 5u { 1u } else { 0u };
+    let mut carry = if frac * 10.0 as uint >= 5 { 1 } else { 0 };
 
     // turn digits into string
     // using stack of digits
-    while vec::len(fractionalParts) > 0u {
-        let mut adjusted_digit = carry + vec::pop(fractionalParts);
+    while fractionalParts.is_not_empty() {
+        let mut adjusted_digit = carry + fractionalParts.pop();
 
-        if adjusted_digit == 10u {
-            carry = 1u;
-            adjusted_digit %= 10u
+        if adjusted_digit == 10 {
+            carry = 1;
+            adjusted_digit %= 10
         } else {
-            carry = 0u
+            carry = 0;
         };
 
         racc = uint::str(adjusted_digit) + racc;
     }
 
     // pad decimals with trailing zeroes
-    while str::len(racc) < digits && exact {
+    while racc.len() < digits && exact {
         racc += ~"0"
     }
 
@@ -194,12 +176,12 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str_exact(num: float, digits: uint) -> ~str {
+pub fn to_str_exact(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, true)
 }
 
 #[test]
-fn test_to_str_exact_do_decimal() {
+pub fn test_to_str_exact_do_decimal() {
     let s = to_str_exact(5.0, 4u);
     assert s == ~"5.0000";
 }
@@ -214,7 +196,7 @@ fn test_to_str_exact_do_decimal() {
  * * num - The float value
  * * digits - The number of significant digits
  */
-fn to_str(num: float, digits: uint) -> ~str {
+pub fn to_str(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, false)
 }
 
@@ -244,7 +226,7 @@ fn to_str(num: float, digits: uint) -> ~str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-fn from_str(num: &str) -> Option<float> {
+pub fn from_str(num: &str) -> Option<float> {
    if num == "inf" {
        return Some(infinity as float);
    } else if num == "-inf" {
@@ -379,7 +361,7 @@ fn from_str(num: &str) -> Option<float> {
  *
  * `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
  */
-fn pow_with_uint(base: uint, pow: uint) -> float {
+pub fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {
             return NaN as float;
@@ -399,40 +381,40 @@ fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
-pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
-pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
-pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
-pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
-pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
-pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
-pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
-pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
+pub pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
+pub pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
+pub pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
+pub pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
+pub pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
+pub pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
+pub pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
+pub pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
-pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
-pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
-pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
-pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
-pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
-pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
+pub pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
+pub pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
+pub pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
+pub pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
+pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
+pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl float : Eq {
-    pure fn eq(other: &float) -> bool { self == (*other) }
-    pure fn ne(other: &float) -> bool { self != (*other) }
+    pub pure fn eq(other: &float) -> bool { self == (*other) }
+    pub pure fn ne(other: &float) -> bool { self != (*other) }
 }
 
 impl float : Ord {
-    pure fn lt(other: &float) -> bool { self < (*other) }
-    pure fn le(other: &float) -> bool { self <= (*other) }
-    pure fn ge(other: &float) -> bool { self >= (*other) }
-    pure fn gt(other: &float) -> bool { self > (*other) }
+    pub pure fn lt(other: &float) -> bool { self < (*other) }
+    pub pure fn le(other: &float) -> bool { self <= (*other) }
+    pub pure fn ge(other: &float) -> bool { self >= (*other) }
+    pub pure fn gt(other: &float) -> bool { self > (*other) }
 }
 
 impl float: num::Num {
-    pure fn add(&&other: float)    -> float { return self + other; }
-    pure fn sub(&&other: float)    -> float { return self - other; }
-    pure fn mul(&&other: float)    -> float { return self * other; }
-    pure fn div(&&other: float)    -> float { return self / other; }
-    pure fn modulo(&&other: float) -> float { return self % other; }
+    pub pure fn add(other: &float)    -> float { return self + *other; }
+    pub pure fn sub(other: &float)    -> float { return self - *other; }
+    pub pure fn mul(other: &float)    -> float { return self * *other; }
+    pub pure fn div(other: &float)    -> float { return self / *other; }
+    pure fn modulo(other: &float) -> float { return self % *other; }
     pure fn neg()                  -> float { return -self;        }
 
     pure fn to_int()         -> int   { return self as int; }
@@ -440,7 +422,7 @@ impl float: num::Num {
 }
 
 #[test]
-fn test_from_str() {
+pub fn test_from_str() {
    assert from_str(~"3") == Some(3.);
    assert from_str(~"3") == Some(3.);
    assert from_str(~"3.14") == Some(3.14);
@@ -483,7 +465,7 @@ fn test_from_str() {
 }
 
 #[test]
-fn test_positive() {
+pub fn test_positive() {
   assert(is_positive(infinity));
   assert(is_positive(1.));
   assert(is_positive(0.));
@@ -494,7 +476,7 @@ fn test_positive() {
 }
 
 #[test]
-fn test_negative() {
+pub fn test_negative() {
   assert(!is_negative(infinity));
   assert(!is_negative(1.));
   assert(!is_negative(0.));
@@ -505,7 +487,7 @@ fn test_negative() {
 }
 
 #[test]
-fn test_nonpositive() {
+pub fn test_nonpositive() {
   assert(!is_nonpositive(infinity));
   assert(!is_nonpositive(1.));
   assert(!is_nonpositive(0.));
@@ -516,7 +498,7 @@ fn test_nonpositive() {
 }
 
 #[test]
-fn test_nonnegative() {
+pub fn test_nonnegative() {
   assert(is_nonnegative(infinity));
   assert(is_nonnegative(1.));
   assert(is_nonnegative(0.));
@@ -527,24 +509,24 @@ fn test_nonnegative() {
 }
 
 #[test]
-fn test_to_str_inf() {
+pub fn test_to_str_inf() {
     assert to_str(infinity, 10u) == ~"inf";
     assert to_str(-infinity, 10u) == ~"-inf";
 }
 
 #[test]
-fn test_traits() {
+pub fn test_traits() {
     fn test<U:num::Num cmp::Eq>(ten: &U) {
         assert (ten.to_int() == 10);
 
         let two: U = from_int(2);
         assert (two.to_int() == 2);
 
-        assert (ten.add(two) == from_int(12));
-        assert (ten.sub(two) == from_int(8));
-        assert (ten.mul(two) == from_int(20));
-        assert (ten.div(two) == from_int(5));
-        assert (ten.modulo(two) == from_int(0));
+        assert (ten.add(&two) == from_int(12));
+        assert (ten.sub(&two) == from_int(8));
+        assert (ten.mul(&two) == from_int(20));
+        assert (ten.div(&two) == from_int(5));
+        assert (ten.modulo(&two) == from_int(0));
     }
 
     test(&10.0);

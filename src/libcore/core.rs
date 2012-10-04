@@ -2,8 +2,6 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-#[legacy_exports];
-
 use option::{Some, None};
 use Option = option::Option;
 use result::{Result, Ok, Err};
@@ -17,6 +15,7 @@ use tuple::{TupleOps, ExtendedTupleOps};
 use str::{StrSlice, UniqueStr};
 use vec::{ConstVector, CopyableVector, ImmutableVector};
 use vec::{ImmutableEqVector, ImmutableCopyableVector};
+use vec::{MutableVector, MutableCopyableVector};
 use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 use iter::{CopyableOrderedIter, Times, TimesIx};
 use num::Num;
@@ -33,6 +32,7 @@ export Num, Times, TimesIx;
 export StrSlice, UniqueStr;
 export ConstVector, CopyableVector, ImmutableVector;
 export ImmutableEqVector, ImmutableCopyableVector, IterTraitExtensions;
+export MutableVector, MutableCopyableVector;
 export BaseIter, CopyableIter, CopyableOrderedIter, ExtendedIter, EqIter;
 export TupleOps, ExtendedTupleOps;
 export Ptr;

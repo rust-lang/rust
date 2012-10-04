@@ -15,17 +15,16 @@ provides three kinds of material:
 
 This document does not serve as a tutorial introduction to the
 language. Background familiarity with the language is assumed. A separate
-tutorial document is available at <http://doc.rust-lang.org/doc/tutorial.html>
-to help acquire such background familiarity.
+[tutorial] document is available to help acquire such background familiarity.
 
-This document also does not serve as a reference to the core or standard
+This document also does not serve as a reference to the [core] or [standard]
 libraries included in the language distribution. Those libraries are
 documented separately by extracting documentation attributes from their
-source code. Formatted documentation can be found at the following
-locations:
+source code.
 
-  - Core library: <http://doc.rust-lang.org/doc/core>
-  - Standard library: <http://doc.rust-lang.org/doc/std>
+[tutorial]: tutorial.html
+[core]: core/index.html
+[standard]: std/index.html
 
 ## Disclaimer
 
@@ -42,14 +41,17 @@ If you have suggestions to make, please try to focus them on *reductions* to
 the language: possible features that can be combined or omitted. We aim to
 keep the size and complexity of the language under control.
 
-**Note on grammar:** The grammar for Rust given in this document is rough and
-very incomplete; only a modest number of sections have accompanying grammar
-rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
-but future versions of this document will contain a complete
-grammar. Moreover, we hope that this grammar will be extracted and verified
-as LL(1) by an automated grammar-analysis tool, and further tested against the
-Rust sources. Preliminary versions of this automation exist, but are not yet
-complete.
+> **Note:** This manual is very out of date. The best source of Rust
+> documentation is currently the tutorial.
+
+> **Note:** The grammar for Rust given in this document is rough and
+> very incomplete; only a modest number of sections have accompanying grammar
+> rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
+> but future versions of this document will contain a complete
+> grammar. Moreover, we hope that this grammar will be extracted and verified
+> as LL(1) by an automated grammar-analysis tool, and further tested against the
+> Rust sources. Preliminary versions of this automation exist, but are not yet
+> complete.
 
 # Notation
 
@@ -118,19 +120,16 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted as a sequence of Unicode codepoints encoded in
-UTF-8. No normalization is performed during input processing. Most Rust
-grammar rules are defined in terms of printable ASCII-range codepoints, but
-a small number are defined in terms of Unicode properties or explicit
-codepoint lists. ^[Surrogate definitions for the special Unicode productions
-are provided to the grammar verifier, restricted to ASCII range, when
-verifying the grammar in this document.]
+Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8,
+normalized to Unicode normalization form NFKC.
+Most Rust grammar rules are defined in terms of printable ASCII-range codepoints,
+but a small number are defined in terms of Unicode properties or explicit codepoint lists.
+^[Substitute definitions for the special Unicode productions are provided to the grammar verifier, restricted to ASCII range, when verifying the grammar in this document.]
 
 ## Special Unicode Productions
 
-The following productions in the Rust grammar are defined in terms of
-Unicode properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash`,
-`non_single_quote` and `non_double_quote`.
+The following productions in the Rust grammar are defined in terms of Unicode properties:
+`ident`, `non_null`, `non_star`, `non_eol`, `non_slash`, `non_single_quote` and `non_double_quote`.
 
 ### Identifiers
 
@@ -203,26 +202,26 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 The keywords in [crate files](#crate-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-export use mod
+mod priv pub use
 ~~~~~~~~
 
 The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-again assert
+as assert
 break
-check const copy
-drop
-else enum export extern
+const copy
+do drop
+else enum extern
 fail false fn for
 if impl
 let log loop
-match mod mut
-pure
-return
-struct
+match mod move mut
+priv pub pure
+ref return
+self static struct
 true trait type
-unsafe
+unsafe use
 while
 ~~~~~~~~
 
@@ -619,7 +618,7 @@ or a *configuration* in Mesa.] A crate file describes:
   and copyright. These are used for linking, versioning and distributing
   crates.
 * The source-file and directory modules that make up the crate.
-* Any `use`, `extern mod` or `export` [view items](#view-items) that apply to
+* Any `use` or `extern mod` [view items](#view-items) that apply to
   the anonymous module at the top-level of the crate's module tree.
 
 An example of a crate file:
@@ -767,7 +766,7 @@ mod math {
 #### View items
 
 ~~~~~~~~ {.ebnf .gram}
-view_item : extern_mod_decl | use_decl | export_decl ;
+view_item : extern_mod_decl | use_decl ;
 ~~~~~~~~
 
 A view item manages the namespace of a module; it does not define new items
@@ -776,7 +775,6 @@ view item:
 
  * [extern mod declarations](#extern-mod-declarations)
  * [use declarations](#use-declarations)
- * [export declarations](#export-declarations)
 
 ##### Extern mod declarations
 
@@ -786,9 +784,8 @@ link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
 
-An _extern mod declaration_ specifies a dependency on an external crate. The
-external crate is then imported into the declaring scope as the `ident`
-provided in the `extern_mod_decl`.
+An _extern mod declaration_ specifies a dependency on an external crate.
+The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
@@ -828,16 +825,16 @@ linkage-dependency with external crates. Linkage dependencies are
 independently declared with
 [`extern mod` declarations](#extern-mod-declarations).
 
-Imports support a number of "convenience" notations:
+Use declarations support a number of "convenience" notations:
 
-  * Importing as a different name than the imported name, using the
+  * Rebinding the target name as a new local name, using the
     syntax `use x = p::q::r;`.
-  * Importing a list of paths differing only in final element, using
-    the glob-like brace syntax `use a::b::{c,d,e,f};`
-  * Importing all paths matching a given prefix, using the glob-like
-    asterisk syntax `use a::b::*;`
+  * Simultaneously binding a list of paths differing only in final element,
+    using the glob-like brace syntax `use a::b::{c,d,e,f};`
+  * Binding all paths matching a given prefix,
+    using the glob-like asterisk syntax `use a::b::*;`
 
-An example of imports:
+An example of `use` declarations:
 
 ~~~~
 use foo = core::info;
@@ -858,82 +855,11 @@ fn main() {
 }
 ~~~~
 
-##### Export declarations
-
-~~~~~~~~ {.ebnf .gram}
-export_decl : "export" ident [ ',' ident ] *
-            | "export" ident "::{}"
-            | "export" ident '{' ident [ ',' ident ] * '}' ;
-~~~~~~~~
-
-An _export declaration_ restricts the set of local names within a module that
-can be accessed from code outside the module. By default, all _local items_ in
-a module are exported; imported paths are not automatically re-exported by
-default. If a module contains an explicit `export` declaration, this
-declaration replaces the default export with the export specified.
-
-An example of an export:
-
-~~~~~~~~
-pub mod foo {
-	#[legacy_exports];
-    export primary;
-
-    fn primary() {
-        helper(1, 2);
-        helper(3, 4);
-    }
-
-    fn helper(x: int, y: int) {
-        ...
-    }
-}
-
-fn main() {
-    foo::primary();  // Will compile.
-}
-~~~~~~~~
-
-If, instead of calling `foo::primary` in main, you were to call `foo::helper`
-then it would fail to compile:
-
-~~~~~~~~{.ignore}
-    foo::helper(2,3) // ERROR: will not compile.
-~~~~~~~~
-
-Multiple names may be exported from a single export declaration:
-
-~~~~~~~~
-mod foo {
-    export primary, secondary;
-
-    fn primary() {
-        helper(1, 2);
-        helper(3, 4);
-    }
-
-    fn secondary() {
-        ...
-    }
-
-    fn helper(x: int, y: int) {
-        ...
-    }
-}
-~~~~~~~~
-
-When exporting the name of an `enum` type `t`, by default, the module does
-*not* implicitly export any of `t`'s constructors. For example:
-
-~~~~~~~~
-mod foo {
-    export t;
-
-    enum t {a, b, c}
-}
-~~~~~~~~
-
-Here, `foo` imports `t`, but not `a`, `b`, and `c`.
+Like items, `use` declarations are private to the containing module, by default.
+Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
+A public `use` declaration can therefore be used to _redirect_ some public name to a different target definition,
+even a definition with a private canonical path, inside a different module.
+If a sequence of such redirections form a cycle or cannot be unambiguously resolved, they represent a compile-time error.
 
 ### Functions
 
@@ -1076,7 +1002,7 @@ pure fn pure_length<T>(ls: List<T>) -> uint {
 Despite its name, `pure_foldl` is a `fn`, not a `pure fn`, because there is no
 way in Rust to specify that the higher-order function argument `f` is a pure
 function. So, to use `foldl` in a pure list length function that a pure function
-could then use, we must use an `unchecked` block wrapped around the call to
+could then use, we must use an `unsafe` block wrapped around the call to
 `pure_foldl` in the definition of `pure_length`.
 
 #### Generic functions
@@ -1092,7 +1018,7 @@ fn iter<T>(seq: ~[T], f: fn(T)) {
 }
 fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
-    for seq.each |elt| { vec::push(acc, f(elt)); }
+    for seq.each |elt| { acc.push(f(elt)); }
     acc
 }
 ~~~~
@@ -1299,14 +1225,6 @@ impl circle: shape {
     }
 }
 ~~~~
-
-This defines an implementation named `circle_shape` of trait
-`shape` for type `circle`. The name of the implementation is the name
-by which it is imported and exported, but has no further significance.
-It may be omitted to default to the name of the trait that was
-implemented. Implementation names do not conflict the way other names
-do: multiple implementations with the same name may exist in a scope at
-the same time.
 
 It is possible to define an implementation without referring to a
 trait.  The methods in such an implementation can only be used

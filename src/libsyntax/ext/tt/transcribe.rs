@@ -25,7 +25,7 @@ type tt_frame = @{
 
 type tt_reader = @{
     sp_diag: span_handler,
-    interner: ident_interner,
+    interner: @ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::HashMap<ident, @named_match>,
@@ -39,7 +39,7 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
+fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
                  interp: Option<std::map::HashMap<ident,@named_match>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
@@ -47,7 +47,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                None => std::map::HashMap::<uint,@named_match>(),
+                None => std::map::HashMap(),
                 Some(x) => x
               },
               mut repeat_idx: ~[],
@@ -82,13 +82,13 @@ pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
 
 pure fn lookup_cur_matched_by_matched(r: tt_reader,
                                       start: @named_match) -> @named_match {
-    pure fn red(&&ad: @named_match, &&idx: uint) -> @named_match {
+    pure fn red(+ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
           matched_nonterminal(_) => {
             // end of the line; duplicate henceforth
             ad
           }
-          matched_seq(ads, _) => ads[idx]
+          matched_seq(ads, _) => ads[*idx]
         }
     }
     vec::foldl(start, r.repeat_idx, red)
@@ -122,8 +122,8 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
     }
     match t {
       tt_delim(tts) | tt_seq(_, tts, _, _) => {
-        vec::foldl(lis_unconstrained, tts, {|lis, tt|
-            lis_merge(lis, lockstep_iter_size(tt, r), r) })
+        vec::foldl(lis_unconstrained, tts, |lis, tt|
+            lis_merge(lis, lockstep_iter_size(*tt, r), r))
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
@@ -148,7 +148,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               }
               tt_frame_up(Some(tt_f)) => {
                 if r.cur.dotdotdoted {
-                    vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
+                    r.repeat_idx.pop();
+                    r.repeat_len.pop();
                 }
 
                 r.cur = tt_f;
@@ -205,8 +206,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     r.cur.idx += 1u;
                     return tt_next_token(r);
                 } else {
-                    vec::push(r.repeat_len, len);
-                    vec::push(r.repeat_idx, 0u);
+                    r.repeat_len.push(len);
+                    r.repeat_idx.push(0u);
                     r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
                               sep: sep, up: tt_frame_up(option::Some(r.cur))};
                 }

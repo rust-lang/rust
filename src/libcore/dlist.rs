@@ -9,11 +9,8 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
-
-export DList;
-export new_dlist, from_elem, from_vec, extensions;
 
 type DListLink<T> = Option<DListNode<T>>;
 
@@ -24,7 +21,7 @@ enum DListNode<T> = @{
     mut next: DListLink<T>
 };
 
-enum DList<T> {
+pub enum DList<T> {
     DList_(@{
         mut size: uint,
         mut hd:   DListLink<T>,
@@ -83,7 +80,7 @@ impl<T> DListNode<T> {
 }
 
 /// Creates a new dlist node with the given data.
-pure fn new_dlist_node<T>(+data: T) -> DListNode<T> {
+pure fn new_dlist_node<T>(data: T) -> DListNode<T> {
     DListNode(@{data: move data, mut linked: false,
                  mut prev: None, mut next: None})
 }
@@ -94,15 +91,15 @@ pure fn DList<T>() -> DList<T> {
 }
 
 /// Creates a new dlist with a single element
-pure fn from_elem<T>(+data: T) -> DList<T> {
+pub pure fn from_elem<T>(data: T) -> DList<T> {
     let list = DList();
     unsafe { list.push(move data); }
     list
 }
 
-fn from_vec<T: Copy>(+vec: &[T]) -> DList<T> {
+pub fn from_vec<T: Copy>(vec: &[T]) -> DList<T> {
     do vec::foldl(DList(), vec) |list,data| {
-        list.push(data); // Iterating left-to-right -- add newly to the tail.
+        list.push(*data); // Iterating left-to-right -- add newly to the tail.
         list
     }
 }
@@ -118,7 +115,7 @@ fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
 }
 
 priv impl<T> DList<T> {
-    pure fn new_link(-data: T) -> DListLink<T> {
+    pure fn new_link(data: T) -> DListLink<T> {
         Some(DListNode(@{data: move data, mut linked: true,
                           mut prev: None, mut next: None}))
     }
@@ -145,7 +142,7 @@ priv impl<T> DList<T> {
     // Link two nodes together. If either of them are 'none', also sets
     // the head and/or tail pointers appropriately.
     #[inline(always)]
-    fn link(+before: DListLink<T>, +after: DListLink<T>) {
+    fn link(before: DListLink<T>, after: DListLink<T>) {
         match before {
             Some(neighbour) => neighbour.next = after,
             None            => self.hd        = after
@@ -166,12 +163,12 @@ priv impl<T> DList<T> {
         self.size -= 1;
     }
 
-    fn add_head(+nobe: DListLink<T>) {
+    fn add_head(nobe: DListLink<T>) {
         self.link(nobe, self.hd); // Might set tail too.
         self.hd = nobe;
         self.size += 1;
     }
-    fn add_tail(+nobe: DListLink<T>) {
+    fn add_tail(nobe: DListLink<T>) {
         self.link(self.tl, nobe); // Might set head too.
         self.tl = nobe;
         self.size += 1;
@@ -201,27 +198,27 @@ impl<T> DList<T> {
     pure fn is_not_empty() -> bool { self.len() != 0 }
 
     /// Add data to the head of the list. O(1).
-    fn push_head(+data: T) {
+    fn push_head(data: T) {
         self.add_head(self.new_link(move data));
     }
     /**
      * Add data to the head of the list, and get the new containing
      * node. O(1).
      */
-    fn push_head_n(+data: T) -> DListNode<T> {
+    fn push_head_n(data: T) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.add_head(nobe);
         option::get(&nobe)
     }
     /// Add data to the tail of the list. O(1).
-    fn push(+data: T) {
+    fn push(data: T) {
         self.add_tail(self.new_link(move data));
     }
     /**
      * Add data to the tail of the list, and get the new containing
      * node. O(1).
      */
-    fn push_n(+data: T) -> DListNode<T> {
+    fn push_n(data: T) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.add_tail(nobe);
         option::get(&nobe)
@@ -230,7 +227,7 @@ impl<T> DList<T> {
      * Insert data into the middle of the list, left of the given node.
      * O(1).
      */
-    fn insert_before(+data: T, neighbour: DListNode<T>) {
+    fn insert_before(data: T, neighbour: DListNode<T>) {
         self.insert_left(self.new_link(move data), neighbour);
     }
     /**
@@ -245,7 +242,7 @@ impl<T> DList<T> {
      * Insert data in the middle of the list, left of the given node,
      * and get its containing node. O(1).
      */
-    fn insert_before_n(+data: T, neighbour: DListNode<T>) -> DListNode<T> {
+    fn insert_before_n(data: T, neighbour: DListNode<T>) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.insert_left(nobe, neighbour);
         option::get(&nobe)
@@ -254,7 +251,7 @@ impl<T> DList<T> {
      * Insert data into the middle of the list, right of the given node.
      * O(1).
      */
-    fn insert_after(+data: T, neighbour: DListNode<T>) {
+    fn insert_after(data: T, neighbour: DListNode<T>) {
         self.insert_right(neighbour, self.new_link(move data));
     }
     /**
@@ -269,7 +266,7 @@ impl<T> DList<T> {
      * Insert data in the middle of the list, right of the given node,
      * and get its containing node. O(1).
      */
-    fn insert_after_n(+data: T, neighbour: DListNode<T>) -> DListNode<T> {
+    fn insert_after_n(data: T, neighbour: DListNode<T>) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.insert_right(neighbour, nobe);
         option::get(&nobe)
@@ -278,13 +275,13 @@ impl<T> DList<T> {
     /// Remove a node from the head of the list. O(1).
     fn pop_n() -> Option<DListNode<T>> {
         let hd = self.peek_n();
-        hd.map(|nobe| self.unlink(nobe));
+        hd.map(|nobe| self.unlink(*nobe));
         hd
     }
     /// Remove a node from the tail of the list. O(1).
     fn pop_tail_n() -> Option<DListNode<T>> {
         let tl = self.peek_tail_n();
-        tl.map(|nobe| self.unlink(nobe));
+        tl.map(|nobe| self.unlink(*nobe));
         tl
     }
     /// Get the node at the list's head. O(1).
@@ -678,7 +675,7 @@ mod tests {
     #[test]
     fn test_dlist_foldl() {
         let l = from_vec(vec::from_fn(101, |x|x));
-        assert iter::foldl(l, 0, |accum,elem| accum+elem) == 5050;
+        assert iter::foldl(&l, 0, |accum,elem| *accum+*elem) == 5050;
     }
     #[test]
     fn test_dlist_break_early() {

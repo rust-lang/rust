@@ -107,7 +107,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
         // Thread defids, chpos and byte_pos through the parsers
         cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
-        vec::push(items, i);
+        items.push(i);
       }
       ast::cdir_dir_mod(vis, id, cdirs, attrs) => {
         let path = Path(cdir_path_opt(*cx.sess.interner.get(id), attrs));
@@ -126,9 +126,9 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
               vis: vis,
               span: cdir.span};
         cx.sess.next_id += 1;
-        vec::push(items, i);
+        items.push(i);
       }
-      ast::cdir_view_item(vi) => vec::push(view_items, vi),
+      ast::cdir_view_item(vi) => view_items.push(vi),
       ast::cdir_syntax(*) => ()
     }
 }

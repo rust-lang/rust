@@ -1,20 +1,19 @@
 //! A standard linked list
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+#[warn(deprecated_mode)];
 
 use core::cmp::Eq;
 use core::option;
 use option::*;
 use option::{Some, None};
 
-enum List<T> {
+pub enum List<T> {
     Cons(T, @List<T>),
     Nil,
 }
 
 /// Cregate a list from a vector
-fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
-    vec::foldr(v, @Nil::<T>, |h, t| @Cons(h, t))
+pub fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
+    vec::foldr(v, @Nil::<T>, |h, t| @Cons(*h, t))
 }
 
 /**
@@ -30,9 +29,9 @@ fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-fn foldl<T: Copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
+pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
-    do iter(ls) |elt| { accum = f(&accum, &elt);}
+    do iter(ls) |elt| { accum = f(&accum, elt);}
     accum
 }
 
@@ -43,12 +42,12 @@ fn foldl<T: Copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
+pub fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
-          Cons(hd, tl) => {
-            if f(&hd) { return Some(hd); }
+          Cons(ref hd, tl) => {
+            if f(hd) { return Some(*hd); }
             tl
           }
           Nil => return None
@@ -57,15 +56,15 @@ fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
 }
 
 /// Returns true if a list contains an element with the given value
-fn has<T: Copy Eq>(ls: @List<T>, +elt: T) -> bool {
+pub fn has<T: Copy Eq>(ls: @List<T>, +elt: T) -> bool {
     for each(ls) |e| {
-        if e == elt { return true; }
+        if *e == elt { return true; }
     }
     return false;
 }
 
 /// Returns true if the list is empty
-pure fn is_empty<T: Copy>(ls: @List<T>) -> bool {
+pub pure fn is_empty<T: Copy>(ls: @List<T>) -> bool {
     match *ls {
         Nil => true,
         _ => false
@@ -73,19 +72,19 @@ pure fn is_empty<T: Copy>(ls: @List<T>) -> bool {
 }
 
 /// Returns true if the list is not empty
-pure fn is_not_empty<T: Copy>(ls: @List<T>) -> bool {
+pub pure fn is_not_empty<T: Copy>(ls: @List<T>) -> bool {
     return !is_empty(ls);
 }
 
 /// Returns the length of a list
-fn len<T>(ls: @List<T>) -> uint {
+pub fn len<T>(ls: @List<T>) -> uint {
     let mut count = 0u;
     iter(ls, |_e| count += 1u);
     count
 }
 
 /// Returns all but the first element of a list
-pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
+pub pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
     match *ls {
         Cons(_, tl) => return tl,
         Nil => fail ~"list empty"
@@ -93,19 +92,19 @@ pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
 }
 
 /// Returns the first element of a list
-pure fn head<T: Copy>(ls: @List<T>) -> T {
+pub pure fn head<T: Copy>(ls: @List<T>) -> T {
     match *ls {
-      Cons(hd, _) => hd,
+      Cons(copy hd, _) => hd,
       // makes me sad
       _ => fail ~"head invoked on empty list"
     }
 }
 
 /// Appends one list to another
-pure fn append<T: Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
+pub pure fn append<T: Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
     match *l {
       Nil => return m,
-      Cons(x, xs) => {
+      Cons(copy x, xs) => {
         let rest = append(xs, m);
         return @Cons(x, rest);
       }
@@ -121,11 +120,11 @@ pure fn push<T: Copy>(ll: &mut @list<T>, +vv: T) {
 */
 
 /// Iterate over a list
-fn iter<T>(l: @List<T>, f: fn(T)) {
+pub fn iter<T>(l: @List<T>, f: fn((&T))) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          Cons(hd, tl) => {
+          Cons(ref hd, tl) => {
             f(hd);
             tl
           }
@@ -135,11 +134,11 @@ fn iter<T>(l: @List<T>, f: fn(T)) {
 }
 
 /// Iterate over a list
-fn each<T>(l: @List<T>, f: fn(T) -> bool) {
+pub fn each<T>(l: @List<T>, f: fn((&T)) -> bool) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          Cons(hd, tl) => {
+          Cons(ref hd, tl) => {
             if !f(hd) { return; }
             tl
           }
@@ -151,9 +150,9 @@ fn each<T>(l: @List<T>, f: fn(T) -> bool) {
 impl<T:Eq> List<T> : Eq {
     pure fn eq(other: &List<T>) -> bool {
         match self {
-            Cons(e0a, e1a) => {
+            Cons(ref e0a, e1a) => {
                 match (*other) {
-                    Cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    Cons(ref e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }

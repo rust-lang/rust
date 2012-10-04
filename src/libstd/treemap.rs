@@ -5,19 +5,13 @@
  * very naive algorithm, but it will probably be updated to be a
  * red-black tree or something else.
  */
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+#[warn(deprecated_mode)];
 
 use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
 use Option = core::Option;
 
-export TreeMap;
-export insert;
-export find;
-export traverse;
-
-type TreeMap<K, V> = @mut TreeEdge<K, V>;
+pub type TreeMap<K, V> = @mut TreeEdge<K, V>;
 
 type TreeEdge<K, V> = Option<@TreeNode<K, V>>;
 
@@ -29,10 +23,10 @@ enum TreeNode<K, V> = {
 };
 
 /// Create a treemap
-fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
+pub fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
 
 /// Insert a value into the map
-fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
+pub fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
     match copy *m {
       None => {
         *m = Some(@TreeNode({key: k,
@@ -54,7 +48,7 @@ fn insert<K: Copy Eq Ord, V: Copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
 }
 
 /// Find a value based on the key
-fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
+pub fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
                               -> Option<V> {
     match copy *m {
       None => None,
@@ -73,13 +67,13 @@ fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, +k: K)
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn(K, V)) {
+pub fn traverse<K, V: Copy>(m: &const TreeEdge<K, V>, f: fn((&K), (&V))) {
     match copy *m {
       None => (),
       Some(node) => {
         traverse(&const node.left, f);
         // copy of value is req'd as f() requires an immutable ptr
-        f(node.key, copy node.value);
+        f(&node.key, &copy node.value);
         traverse(&const node.right, f);
       }
     }
@@ -130,7 +124,7 @@ mod tests {
         fn t(n: @mut int, +k: int, +_v: ()) {
             assert (*n == k); *n += 1;
         }
-        traverse(m, |x,y| t(n, x, y));
+        traverse(m, |x,y| t(n, *x, *y));
     }
 
     #[test]

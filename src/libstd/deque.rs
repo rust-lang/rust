@@ -1,16 +1,15 @@
 //! A deque. Untested as of yet. Likely buggy
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+// tjc: forbid deprecated modes again after snap
 #[forbid(non_camel_case_types)];
 
 use option::{Some, None};
 use dvec::DVec;
 use core::cmp::{Eq};
 
-trait Deque<T> {
+pub trait Deque<T> {
     fn size() -> uint;
-    fn add_front(T);
-    fn add_back(T);
+    fn add_front(v: T);
+    fn add_back(v: T);
     fn pop_front() -> T;
     fn pop_back() -> T;
     fn peek_front() -> T;
@@ -20,7 +19,7 @@ trait Deque<T> {
 
 // FIXME (#2343) eventually, a proper datatype plus an exported impl would
 // be preferrable.
-fn create<T: Copy>() -> Deque<T> {
+pub fn create<T: Copy>() -> Deque<T> {
     type Cell<T> = Option<T>;
 
     let initial_capacity: uint = 32u; // 2^5
@@ -28,7 +27,7 @@ fn create<T: Copy>() -> Deque<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: Copy>(nelts: uint, lo: uint, +elts: ~[Cell<T>])
+    fn grow<T: Copy>(nelts: uint, lo: uint, elts: ~[Cell<T>])
       -> ~[Cell<T>] {
         let mut elts = move elts;
         assert (nelts == vec::len(elts));
@@ -38,15 +37,15 @@ fn create<T: Copy>() -> Deque<T> {
         let nalloc = uint::next_power_of_two(nelts + 1u);
         while i < nalloc {
             if i < nelts {
-                vec::push(rv, elts[(lo + i) % nelts]);
-            } else { vec::push(rv, None); }
+                rv.push(elts[(lo + i) % nelts]);
+            } else { rv.push(None); }
             i += 1u;
         }
 
         move rv
     }
     fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
-        match (*elts).get_elt(i) { Some(t) => t, _ => fail }
+        match (*elts).get_elt(i) { Some(move t) => t, _ => fail }
     }
 
     type Repr<T> = {mut nelts: uint,
@@ -120,7 +119,6 @@ fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
     #[test]
     fn test_simple() {
         let d: deque::Deque<int> = deque::create::<int>();
@@ -202,7 +200,7 @@ mod tests {
         assert (deq.get(3) == d);
     }
 
-    fn test_parameterized<T: Copy Eq Owned>(+a: T, +b: T, +c: T, +d: T) {
+    fn test_parameterized<T: Copy Eq Owned>(a: T, +b: T, +c: T, +d: T) {
         let deq: deque::Deque<T> = deque::create::<T>();
         assert (deq.size() == 0u);
         deq.add_front(a);

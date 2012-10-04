@@ -7,7 +7,7 @@ fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert start < end;
     let mut i = start;
     let mut r = ~[];
-    while i <= end { vec::push(r, i as char); i += 1u as u8; }
+    while i <= end { r.push(i as char); i += 1u as u8; }
     return r;
 }
 
@@ -15,7 +15,7 @@ fn enum_uints(start: uint, end: uint) -> ~[uint] {
     assert start < end;
     let mut i = start;
     let mut r = ~[];
-    while i <= end { vec::push(r, i); i += 1u; }
+    while i <= end { r.push(i); i += 1u; }
     return r;
 }
 

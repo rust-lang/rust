@@ -27,17 +27,17 @@ fn replace_bound_regions_in_fn_ty(
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              { ty: ty::mk_self(tcx), mutbl: m });
-        vec::push(all_tys, ty);
+        all_tys.push(ty);
       }
       _ => {}
     }
 
 
-    for self_ty.each |t| { vec::push(all_tys, *t) }
+    for self_ty.each |t| { all_tys.push(*t) }
 
     debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",
-           self_ty.map(|t| ty_to_str(tcx, t)),
+           self_ty.map(|t| ty_to_str(tcx, *t)),
            ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
            all_tys.map(|t| ty_to_str(tcx, *t)));
     let _i = indenter();
@@ -50,11 +50,11 @@ fn replace_bound_regions_in_fn_ty(
     let t_fn = ty::fold_sty_to_ty(tcx, &ty_fn, |t| {
         replace_bound_regions(tcx, isr, t)
     });
-    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
+    let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, *t));
 
     debug!("result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
                 fn_ty=%s",
-           t_self.map(|t| ty_to_str(tcx, t)),
+           t_self.map(|t| ty_to_str(tcx, *t)),
            ty_to_str(tcx, t_fn));
 
 
@@ -111,14 +111,14 @@ fn replace_bound_regions_in_fn_ty(
 
         // For each type `ty` in `tys`...
         do tys.foldl(isr) |isr, ty| {
-            let mut isr = isr;
+            let mut isr = *isr;
 
             // Using fold_regions is inefficient, because it
             // constructs new types, but it avoids code duplication in
             // terms of locating all the regions within the various
             // kinds of types.  This had already caused me several
             // bugs so I decided to switch over.
-            do ty::fold_regions(tcx, ty) |r, in_fn| {
+            do ty::fold_regions(tcx, *ty) |r, in_fn| {
                 if !in_fn { isr = append_isr(isr, to_r, r); }
                 r
             };

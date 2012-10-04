@@ -507,7 +507,7 @@ fn rollback_to<V:Copy vid, T:Copy>(
     vb: &vals_and_bindings<V, T>, len: uint) {
 
     while vb.bindings.len() != len {
-        let (vid, old_v) = vec::pop(vb.bindings);
+        let (vid, old_v) = vb.bindings.pop();
         vb.vals.insert(vid.to_uint(), old_v);
     }
 }

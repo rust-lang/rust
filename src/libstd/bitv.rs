@@ -1,9 +1,6 @@
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+// tjc: forbid deprecated modes again after snap
 
 use vec::{to_mut, from_elem};
-
-export Bitv, from_bytes, from_bools, from_fn;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -98,7 +95,7 @@ struct BigBitv {
     mut storage: ~[mut uint]
 }
 
-fn BigBitv(+storage: ~[mut uint]) -> BigBitv {
+fn BigBitv(storage: ~[mut uint]) -> BigBitv {
     BigBitv {storage: storage}
 }
 
@@ -140,17 +137,17 @@ impl BigBitv {
     }
 
     #[inline(always)]
-     fn each_storage(op: fn(&v: uint) -> bool) {
+     fn each_storage(op: fn(v: &mut uint) -> bool) {
         for uint::range(0, self.storage.len()) |i| {
             let mut w = self.storage[i];
-            let b = !op(w);
+            let b = !op(&mut w);
             self.storage[i] = w;
             if !b { break; }
         }
      }
 
     #[inline(always)]
-    fn invert() { for self.each_storage() |w| { w = !w } }
+    fn invert() { for self.each_storage() |w| { *w = !*w } }
 
     #[inline(always)]
     fn union(b: &BigBitv, nbits: uint) -> bool {
@@ -210,12 +207,12 @@ enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
 enum Op {Union, Intersect, Assign, Difference}
 
 // The bitvector type
-struct Bitv {
+pub struct Bitv {
     rep: BitvVariant,
     nbits: uint
 }
 
-fn Bitv (nbits: uint, init: bool) -> Bitv {
+pub fn Bitv (nbits: uint, init: bool) -> Bitv {
     let rep = if nbits <= 32 {
         Small(~SmallBitv(if init {!0} else {0}))
     }
@@ -241,22 +238,22 @@ priv impl Bitv {
             self.die();
         }
         match self.rep {
-          Small(s) => match other.rep {
-            Small(s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
+          Small(ref s) => match other.rep {
+            Small(ref s1) => match op {
+              Union      => s.union(*s1,      self.nbits),
+              Intersect  => s.intersect(*s1,  self.nbits),
+              Assign     => s.become(*s1,     self.nbits),
+              Difference => s.difference(*s1, self.nbits)
             },
             Big(_) => self.die()
           },
-          Big(s) => match other.rep {
+          Big(ref s) => match other.rep {
             Small(_) => self.die(),
-            Big(s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
+            Big(ref s1) => match op {
+              Union      => s.union(*s1,      self.nbits),
+              Intersect  => s.intersect(*s1,  self.nbits),
+              Assign     => s.become(*s1,     self.nbits),
+              Difference => s.difference(*s1, self.nbits)
             }
           }
         }
@@ -297,10 +294,10 @@ impl Bitv {
     #[inline(always)]
     fn clone() -> ~Bitv {
         ~match self.rep {
-          Small(b) => {
+          Small(ref b) => {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
-          Big(b) => {
+          Big(ref b) => {
             let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
@@ -314,8 +311,8 @@ impl Bitv {
     pure fn get(i: uint) -> bool {
        assert (i < self.nbits);
        match self.rep {
-         Big(b)   => b.get(i),
-         Small(s) => s.get(i)
+         Big(ref b)   => b.get(i),
+         Small(ref s) => s.get(i)
        }
     }
 
@@ -328,8 +325,8 @@ impl Bitv {
     fn set(i: uint, x: bool) {
       assert (i < self.nbits);
       match self.rep {
-        Big(b)   => b.set(i, x),
-        Small(s) => s.set(i, x)
+        Big(ref b)   => b.set(i, x),
+        Small(ref s) => s.set(i, x)
       }
     }
 
@@ -340,15 +337,15 @@ impl Bitv {
      * bitvectors contain identical elements.
      */
     #[inline(always)]
-    fn equal(v1: Bitv) -> bool {
+    fn equal(v1: &Bitv) -> bool {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
-        Small(b) => match v1.rep {
-          Small(b1) => b.equals(b1, self.nbits),
+        Small(ref b) => match v1.rep {
+          Small(ref b1) => b.equals(*b1, self.nbits),
           _ => false
         },
-        Big(s) => match v1.rep {
-          Big(s1) => s.equals(s1, self.nbits),
+        Big(ref s) => match v1.rep {
+          Big(ref s1) => s.equals(*s1, self.nbits),
           Small(_) => return false
         }
       }
@@ -358,8 +355,8 @@ impl Bitv {
     #[inline(always)]
     fn clear() {
         match self.rep {
-          Small(b) => b.clear(),
-          Big(s) => for s.each_storage() |w| { w = 0u }
+          Small(ref b) => b.clear(),
+          Big(ref s) => for s.each_storage() |w| { *w = 0u }
         }
     }
 
@@ -367,16 +364,16 @@ impl Bitv {
     #[inline(always)]
     fn set_all() {
       match self.rep {
-        Small(b) => b.set_all(),
-        Big(s) => for s.each_storage() |w| { w = !0u } }
+        Small(ref b) => b.set_all(),
+        Big(ref s) => for s.each_storage() |w| { *w = !0u } }
     }
 
     /// Invert all bits
     #[inline(always)]
     fn invert() {
       match self.rep {
-        Small(b) => b.invert(),
-        Big(s) => for s.each_storage() |w| { w = !w } }
+        Small(ref b) => b.invert(),
+        Big(ref s) => for s.each_storage() |w| { *w = !*w } }
     }
 
     /**
@@ -389,13 +386,13 @@ impl Bitv {
      * Returns `true` if `v0` was changed.
      */
     #[inline(always)]
-    fn difference(v: ~Bitv) -> bool { self.do_op(Difference, v) }
+    fn difference(v: &Bitv) -> bool { self.do_op(Difference, v) }
 
     /// Returns true if all bits are 1
     #[inline(always)]
     fn is_true() -> bool {
       match self.rep {
-        Small(b) => b.is_true(self.nbits),
+        Small(ref b) => b.is_true(self.nbits),
         _ => {
           for self.each() |i| { if !i { return false; } }
           true
@@ -415,7 +412,7 @@ impl Bitv {
     /// Returns true if all bits are 0
     fn is_false() -> bool {
       match self.rep {
-        Small(b) => b.is_false(self.nbits),
+        Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
           for self.each() |i| { if i { return false; } }
           true
@@ -520,7 +517,7 @@ impl Bitv {
  * with the most significant bits of each byte coming first. Each
  * bit becomes true if equal to 1 or false if equal to 0.
  */
-fn from_bytes(bytes: &[u8]) -> Bitv {
+pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
         let b = bytes[i / 8] as uint;
         let offset = i % 8;
@@ -531,7 +528,7 @@ fn from_bytes(bytes: &[u8]) -> Bitv {
 /**
  * Transform a [bool] into a bitv by converting each bool into a bit.
  */
-fn from_bools(bools: &[bool]) -> Bitv {
+pub fn from_bools(bools: &[bool]) -> Bitv {
     from_fn(bools.len(), |i| bools[i])
 }
 
@@ -539,7 +536,7 @@ fn from_bools(bools: &[bool]) -> Bitv {
  * Create a bitv of the specified length where the value at each
  * index is f(index).
  */
-fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
+pub fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     let bitv = Bitv(len, false);
     for uint::range(0, len) |i| {
         bitv.set(i, f(i));
@@ -556,7 +553,7 @@ pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
 impl Bitv: ops::Index<uint,bool> {
-    pure fn index(&&i: uint) -> bool {
+    pure fn index(+i: uint) -> bool {
         self.get(i)
     }
 }
@@ -866,14 +863,14 @@ mod tests {
     fn test_equal_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(11u, false);
-        assert !v0.equal(v1);
+        assert !v0.equal(&v1);
     }
 
     #[test]
     fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(110u, false);
-        assert !v0.equal(v1);
+        assert !v0.equal(&v1);
     }
 
     #[test]
@@ -884,7 +881,7 @@ mod tests {
         let b = bitv::Bitv(1, true);
         b.set(0, true);
 
-        assert a.equal(b);
+        assert a.equal(&b);
     }
 
     #[test]
@@ -899,7 +896,7 @@ mod tests {
             b.set(i, true);
         }
 
-        assert a.equal(b);
+        assert a.equal(&b);
     }
 
     #[test]

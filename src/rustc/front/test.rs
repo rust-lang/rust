@@ -81,8 +81,8 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     }
 
     let mod_nomain =
-        {view_items: m.view_items, items: vec::filter_map(m.items,
-                                                          |i| nomain(cx, i))};
+        {view_items: m.view_items,
+         items: vec::filter_map(m.items, |i| nomain(cx, *i))};
     return fold::noop_fold_mod(mod_nomain, fld);
 }
 
@@ -99,7 +99,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
    Option<@ast::item> {
 
-    vec::push(cx.path, i.ident);
+    cx.path.push(i.ident);
     debug!("current path: %s",
            ast_util::path_name_i(cx.path, cx.sess.parse_sess.interner));
 
@@ -122,7 +122,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
     }
 
     let res = fold::noop_fold_item(i, fld);
-    vec::pop(cx.path);
+    cx.path.pop();
     return res;
 }
 
@@ -152,7 +152,7 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, ~"ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
-        |&&i| attr::get_meta_item_list(i) ));
+        |i| attr::get_meta_item_list(*i)));
     return if vec::is_not_empty(ignoreitems) {
         config::metas_in_cfg(cx.crate.node.config, cfg_metas)
     } else {
@@ -286,7 +286,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for cx.testfns.each |test| {
-        vec::push(descs, mk_test_desc_rec(cx, *test));
+        descs.push(mk_test_desc_rec(cx, *test));
     }
 
     let inner_expr = @{id: cx.sess.next_node_id(),

@@ -12,10 +12,12 @@
 #[no_core];
 
 #[legacy_modes];
+#[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
-// #[warn(deprecated_pattern)];
+#[allow(deprecated_mode)];
+#[allow(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
 extern mod std(vers = "0.4");
@@ -86,6 +88,7 @@ mod middle {
         mod type_use;
         #[legacy_exports]
         mod reachable;
+        mod machine;
     }
     #[legacy_exports]
     mod ty;

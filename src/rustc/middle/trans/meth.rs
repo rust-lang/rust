@@ -364,8 +364,8 @@ fn combine_impl_and_methods_origins(bcx: block,
 
     // Flatten out to find the number of vtables the method expects.
     let m_vtables = m_boundss.foldl(0, |sum, m_bounds| {
-        m_bounds.foldl(sum, |sum, m_bound| {
-            sum + match m_bound {
+        m_bounds.foldl(*sum, |sum, m_bound| {
+            (*sum) + match (*m_bound) {
                 ty::bound_copy | ty::bound_owned |
                 ty::bound_send | ty::bound_const => 0,
                 ty::bound_trait(_) => 1
@@ -536,6 +536,7 @@ fn trans_trait_cast(bcx: block,
                     dest: expr::Dest)
     -> block
 {
+    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("impl::trans_cast");
 
     let lldest = match dest {
@@ -548,16 +549,23 @@ fn trans_trait_cast(bcx: block,
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
 
-    // Allocate an @ box and store the value into it
-    let {bcx: bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
-    add_clean_free(bcx, llbox, heap_shared);
-    let bcx = expr::trans_into(bcx, val, SaveIn(body));
-    revoke_clean(bcx, llbox);
+    let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
+    if bcx.tcx().legacy_boxed_traits.contains_key(id) {
+        // Allocate an @ box and store the value into it
+        let {bcx: new_bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
+        bcx = new_bcx;
+        add_clean_free(bcx, llbox, heap_shared);
+        bcx = expr::trans_into(bcx, val, SaveIn(body));
+        revoke_clean(bcx, llbox);
 
-    // Store the @ box into the pair
-    Store(bcx, llbox, PointerCast(bcx,
-                                  GEPi(bcx, lldest, [0u, 1u]),
-                                  T_ptr(val_ty(llbox))));
+        // Store the @ box into the pair
+        Store(bcx, llbox, PointerCast(bcx, llboxdest, T_ptr(val_ty(llbox))));
+    } else {
+        // Just store the @ box into the pair.
+        llboxdest = PointerCast(bcx, llboxdest,
+                                T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
+        bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+    }
 
     // Store the vtable into the pair
     let orig = ccx.maps.vtable_map.get(id)[0];

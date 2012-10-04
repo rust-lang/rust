@@ -181,7 +181,7 @@ impl isr_alist: get_and_find_region {
 
     fn find(br: ty::bound_region) -> Option<ty::region> {
         for list::each(self) |isr| {
-            let (isr_br, isr_r) = isr;
+            let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
         }
         return None;
@@ -279,7 +279,7 @@ fn check_fn(ccx: @crate_ctxt,
 
     // Update the self_info to contain an accurate self type (taking
     // into account explicit self).
-    let self_info = do self_info.chain |info| {
+    let self_info = do self_info.chain_ref |info| {
         // If the self type is sty_static, we don't have a self ty.
         if info.explicit_self.node == ast::sty_static {
             None
@@ -288,7 +288,7 @@ fn check_fn(ccx: @crate_ctxt,
             let ty = method::transform_self_type_for_method(
                 fcx.tcx(), self_region,
                 info.self_ty, info.explicit_self.node);
-            Some({self_ty: ty,.. info})
+            Some({self_ty: ty,.. *info})
         }
     };
 
@@ -308,8 +308,8 @@ fn check_fn(ccx: @crate_ctxt,
     for self_info.each |info| {
         fcx.write_ty(info.self_id, info.self_ty);
     }
-    do vec::iter2(decl.inputs, arg_tys) |input, arg| {
-        fcx.write_ty(input.id, arg);
+    for vec::each2(decl.inputs, arg_tys) |input, arg| {
+        fcx.write_ty(input.id, *arg);
     }
 
     // If we don't have any enclosing function scope, it is time to
@@ -351,8 +351,8 @@ fn check_fn(ccx: @crate_ctxt,
         }
 
         // Add formal parameters.
-        do vec::iter2(arg_tys, decl.inputs) |arg_ty, input| {
-            assign(input.ty.span, input.id, Some(arg_ty));
+        for vec::each2(arg_tys, decl.inputs) |arg_ty, input| {
+            assign(input.ty.span, input.id, Some(*arg_ty));
             debug!("Argument %s is assigned to %s",
                    tcx.sess.str_of(input.ident),
                    fcx.inh.locals.get(input.id).to_str());
@@ -605,7 +605,7 @@ impl @fn_ctxt: region_scope {
 }
 
 impl @fn_ctxt {
-    fn tag() -> ~str { fmt!("%x", ptr::addr_of(*self) as uint) }
+    fn tag() -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
 
     fn expr_to_str(expr: @ast::expr) -> ~str {
         fmt!("expr(%?:%s)", expr.id,
@@ -807,7 +807,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
                     _ => ()
                 }
             }
-            ty::ty_enum(did, _) => {
+            ty::ty_enum(ref did, _) => {
                 // Watch out for a type like `enum t = @t`.  Such a
                 // type would otherwise infinitely auto-deref.  Only
                 // autoderef loops during typeck (basically, this one
@@ -818,7 +818,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
                 if vec::contains(enum_dids, did) {
                     return (t1, autoderefs);
                 }
-                vec::push(enum_dids, did);
+                enum_dids.push(*did);
             }
             _ => { /*ok*/ }
         }
@@ -1864,7 +1864,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(fields, base) => {
-        option::iter(&base, |b| { check_expr(fcx, b, expected); });
+        option::iter(&base, |b| { check_expr(fcx, *b, expected); });
         let expected = if expected.is_none() && base.is_some() {
             Some(fcx.expr_ty(base.get()))
         } else { expected };
@@ -1872,8 +1872,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             match sty { ty::ty_rec(flds) => Some(flds), _ => None }
         );
         let fields_t = vec::map(fields, |f| {
-            bot |= check_expr(fcx, f.node.expr, flds.chain(|flds|
-                vec::find(flds, |tf| tf.ident == f.node.ident)
+            bot |= check_expr(fcx, f.node.expr, flds.chain_ref(|flds|
+                vec::find(*flds, |tf| tf.ident == f.node.ident)
             ).map(|tf| tf.mt.ty));
             let expr_t = fcx.expr_ty(f.node.expr);
             let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
@@ -2029,8 +2029,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         let name = class_field.ident;
                         let (_, seen) = class_field_map.get(name);
                         if !seen {
-                            vec::push(missing_fields,
-                                      ~"`" + tcx.sess.str_of(name) + ~"`");
+                            missing_fields.push(
+                                ~"`" + tcx.sess.str_of(name) + ~"`");
                         }
                     }
 
@@ -2294,11 +2294,11 @@ fn check_enum_variants(ccx: @crate_ctxt,
               }
               _ => ()
             }
-            if vec::contains(*disr_vals, *disr_val) {
+            if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
                                       ~"discriminator value already exists");
             }
-            vec::push(*disr_vals, *disr_val);
+            disr_vals.push(*disr_val);
             let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
             let arg_tys;
 
@@ -2321,7 +2321,8 @@ fn check_enum_variants(ccx: @crate_ctxt,
             match arg_tys {
                 None => {}
                 Some(arg_tys) => {
-                    vec::push(*variants, @{args: arg_tys, ctor_ty: ctor_ty,
+                    variants.push(
+                        @{args: arg_tys, ctor_ty: ctor_ty,
                           name: v.node.name, id: local_def(v.node.id),
                           disr_val: this_disr_val});
                 }

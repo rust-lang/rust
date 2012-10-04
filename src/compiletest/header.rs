@@ -28,7 +28,7 @@ fn load_props(testfile: &Path) -> test_props {
     let mut pp_exact = option::None;
     for iter_header(testfile) |ln| {
         match parse_error_pattern(ln) {
-          option::Some(ep) => vec::push(error_patterns, ep),
+          option::Some(ep) => error_patterns.push(ep),
           option::None => ()
         };
 
@@ -41,11 +41,11 @@ fn load_props(testfile: &Path) -> test_props {
         }
 
         do parse_aux_build(ln).iter |ab| {
-            vec::push(aux_builds, ab);
+            aux_builds.push(*ab);
         }
 
         do parse_exec_env(ln).iter |ee| {
-            vec::push(exec_env, ee);
+            exec_env.push(*ee);
         }
     };
     return {
@@ -73,7 +73,7 @@ fn is_test_ignored(config: config, testfile: &Path) -> bool {
 }
 
 fn iter_header(testfile: &Path, it: fn(~str) -> bool) -> bool {
-    let rdr = result::get(io::file_reader(testfile));
+    let rdr = io::file_reader(testfile).get();
     while !rdr.eof() {
         let ln = rdr.read_line();
 
@@ -103,7 +103,7 @@ fn parse_compile_flags(line: ~str) -> Option<~str> {
 fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
-        let strs = str::splitn_char(nv, '=', 1u);
+        let strs = str::splitn_char(*nv, '=', 1u);
         match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),

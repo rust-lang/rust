@@ -19,7 +19,7 @@ use io::WriterUtil;
 use pipes::{Port, Chan, SharedChan};
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
 )
 
 enum request {
@@ -60,7 +60,7 @@ fn run(args: &[~str]) {
     for uint::range(0u, workers) |i| {
         let to_child = to_child.clone();
         do task::task().future_result(|+r| {
-            vec::push(worker_results, r);
+            worker_results.push(r);
         }).spawn {
             for uint::range(0u, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);

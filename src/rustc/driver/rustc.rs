@@ -12,6 +12,7 @@ use core::*;
 
 // -*- rust -*-
 use result::{Ok, Err};
+use io::ReaderUtil;
 use std::getopts;
 use std::map::HashMap;
 use getopts::{opt_present};
@@ -60,7 +61,7 @@ Options:
     --save-temps       Write intermediate files (.bc, .opt.bc, .o)
                        in addition to normal output
     --static           Use or produce static libraries or binaries
-    --stats            Print compilation statistics
+                       (experimental)
     --sysroot <path>   Override the system root
     --test             Build a test harness
     --target <triple>  Target cpu-manufacturer-kernel[-os] to compile for
@@ -121,7 +122,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     logging::console_off();
 
     let mut args = args;
-    let binary = vec::shift(args);
+    let binary = args.shift();
 
     if vec::len(args) == 0u { usage(binary); return; }
 
@@ -140,12 +141,12 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
                                  getopts::opt_strs(matches, ~"warn"));
-    if lint_flags.contains(~"help") {
+    if lint_flags.contains(&~"help") {
         describe_warnings();
         return;
     }
 
-    if getopts::opt_strs(matches, ~"Z").contains(~"help") {
+    if getopts::opt_strs(matches, ~"Z").contains(&~"help") {
         describe_debug_flags();
         return;
     }
@@ -171,14 +172,14 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
-    let odir = odir.map(|o| Path(o));
+    let odir = odir.map(|o| Path(*o));
     let ofile = getopts::opt_maybe_str(matches, ~"o");
-    let ofile = ofile.map(|o| Path(o));
+    let ofile = ofile.map(|o| Path(*o));
     let cfg = build_configuration(sess, binary, input);
     let pretty =
         option::map(&getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
-                    |a| parse_pretty(sess, a) );
+                    |a| parse_pretty(sess, *a) );
     match pretty {
       Some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);
@@ -235,7 +236,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
         let demitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
-                           msg: ~str, lvl: diagnostic::level) {
+                           msg: &str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
                 comm::send(ch, fatal);
             }

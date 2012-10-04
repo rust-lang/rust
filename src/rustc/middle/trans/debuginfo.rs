@@ -90,7 +90,7 @@ type debug_ctxt = {
     crate_file: ~str
 };
 
-fn mk_ctxt(crate: ~str, intr: ident_interner) -> debug_ctxt {
+fn mk_ctxt(crate: ~str, intr: @ident_interner) -> debug_ctxt {
     {llmetadata: map::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
@@ -383,7 +383,7 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
 
 fn add_member(cx: @struct_ctxt, name: ~str, line: int, size: int, align: int,
               ty: ValueRef) {
-    vec::push(cx.members, create_derived_type(MemberTag, cx.file, name, line,
+    cx.members.push(create_derived_type(MemberTag, cx.file, name, line,
                                        size * 8, align * 8, cx.total_size,
                                        ty));
     cx.total_size += size * 8;
@@ -529,7 +529,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
           ty::ty_rec(fields) {
             let fs = ~[];
             for field in fields {
-                vec::push(fs, {node: {ident: field.ident,
+                fs.push({node: {ident: field.ident,
                                mt: {ty: t_to_ty(cx, field.mt.ty, span),
                                     mutbl: field.mt.mutbl}},
                         span: span});

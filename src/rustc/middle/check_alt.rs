@@ -67,7 +67,7 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
               }
               _ => ()
             }
-            if arm.guard.is_none() { vec::push(seen, v); }
+            if arm.guard.is_none() { seen.push(v); }
         }
     }
 }
@@ -195,7 +195,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
             }
           }
           Some(ctor) => {
-            match is_useful(tcx, vec::filter_map(m, |r| default(tcx, r) ),
+            match is_useful(tcx, vec::filter_map(m, |r| default(tcx, *r) ),
                           vec::tail(v)) {
               useful_ => useful(left_ty, ctor),
               u => u
@@ -212,7 +212,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
 
 fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: ~[@pat], ctor: ctor,
                           arity: uint, lty: ty::t) -> useful {
-    let ms = vec::filter_map(m, |r| specialize(tcx, r, ctor, arity, lty) );
+    let ms = vec::filter_map(m, |r| specialize(tcx, *r, ctor, arity, lty) );
     let could_be_useful = is_useful(
         tcx, ms, specialize(tcx, v, ctor, arity, lty).get());
     match could_be_useful {
@@ -269,13 +269,15 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
         let mut found = ~[];
         for m.each |r| {
             do option::iter(&pat_ctor_id(tcx, r[0])) |id| {
-                if !vec::contains(found, id) { vec::push(found, id); }
+                if !vec::contains(found, id) {
+                    found.push(*id);
+                }
             }
         }
         let variants = ty::enum_variants(tcx, eid);
         if found.len() != (*variants).len() {
             for vec::each(*variants) |v| {
-                if !found.contains(variant(v.id)) {
+                if !found.contains(&(variant(v.id))) {
                     return Some(variant(v.id));
                 }
             }
@@ -430,7 +432,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
     }
 }
 
-fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
+fn is_refutable(tcx: ty::ctxt, pat: &pat) -> bool {
     match tcx.def_map.find(pat.id) {
       Some(def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u {
@@ -455,10 +457,10 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         fields.any(|f| is_refutable(tcx, f.pat))
       }
       pat_tup(elts) => {
-        elts.any(|elt| is_refutable(tcx, elt))
+        elts.any(|elt| is_refutable(tcx, *elt))
       }
       pat_enum(_, Some(args)) => {
-        args.any(|a| is_refutable(tcx, a))
+        args.any(|a| is_refutable(tcx, *a))
       }
       pat_enum(_,_) => { false }
     }

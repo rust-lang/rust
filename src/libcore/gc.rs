@@ -29,14 +29,10 @@ with destructors.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-use stackwalk::Word;
+pub use stackwalk::Word;
 use libc::size_t;
 use libc::uintptr_t;
 use send_map::linear::LinearMap;
-
-export Word;
-export gc;
-export cleanup_stack_for_failure;
 
 // Mirrors rust_stack.h stk_seg
 struct StackSegment {
@@ -268,7 +264,7 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     }
 }
 
-fn gc() {
+pub fn gc() {
     unsafe {
         // Abort when GC is disabled.
         if get_safe_point_count() == 0 {
@@ -301,7 +297,7 @@ fn expect_sentinel() -> bool { false }
 // This should only be called from fail, as it will drop the roots
 // which are *live* on the stack, rather than dropping those that are
 // dead.
-fn cleanup_stack_for_failure() {
+pub fn cleanup_stack_for_failure() {
     unsafe {
         // Abort when GC is disabled.
         if get_safe_point_count() == 0 {
@@ -320,7 +316,7 @@ fn cleanup_stack_for_failure() {
         // own stack roots on the stack anyway.
         let sentinel_box = ~0;
         let sentinel: **Word = if expect_sentinel() {
-            cast::reinterpret_cast(&ptr::addr_of(sentinel_box))
+            cast::reinterpret_cast(&ptr::addr_of(&sentinel_box))
         } else {
             ptr::null()
         };

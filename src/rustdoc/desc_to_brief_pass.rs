@@ -44,7 +44,7 @@ fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
     {
         methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc),
-            .. doc
+            .. *doc
         }),
         .. doc
     }
@@ -56,7 +56,7 @@ fn fold_impl(fold: fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
     {
         methods: par::map(doc.methods, |doc| {
             brief: extract(doc.desc),
-            .. doc
+            .. *doc
         }),
         .. doc
     }
@@ -165,7 +165,7 @@ fn paragraphs(s: ~str) -> ~[~str] {
     let paras = do vec::foldl(~[], lines) |paras, line| {
         let mut res = paras;
 
-        if str::is_whitespace(line) {
+        if str::is_whitespace(*line) {
             whitespace_lines += 1;
         } else {
             if whitespace_lines > 0 {
@@ -178,9 +178,9 @@ fn paragraphs(s: ~str) -> ~[~str] {
             whitespace_lines = 0;
 
             accum = if str::is_empty(accum) {
-                line
+                *line
             } else {
-                accum + ~"\n" + line
+                accum + ~"\n" + *line
             }
         }
 

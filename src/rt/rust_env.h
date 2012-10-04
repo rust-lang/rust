@@ -13,9 +13,11 @@ struct rust_env {
     bool detailed_leaks;
     char* rust_seed;
     bool poison_on_free;
+    int argc;
+    char **argv;
 };
 
-rust_env* load_env();
+rust_env* load_env(int argc, char **argv);
 void free_env(rust_env *rust_env);
 
 #endif

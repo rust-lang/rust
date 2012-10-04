@@ -141,7 +141,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
             match region_map.find(scope) {
                 None => return result,
                 Some(superscope) => {
-                    vec::push(result, superscope);
+                    result.push(superscope);
                     scope = superscope;
                 }
             }
@@ -485,7 +485,7 @@ impl determine_rp_ctxt {
             }
         };
         let dep = {ambient_variance: self.ambient_variance, id: self.item_id};
-        if !vec.contains(dep) { vec.push(dep); }
+        if !vec.contains(&dep) { vec.push(dep); }
     }
 
     // Determines whether a reference to a region that appears in the

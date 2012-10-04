@@ -4,31 +4,6 @@
 use core::Option;
 use option::{Some, None};
 
-export Doc;
-export doc_at;
-export maybe_get_doc;
-export get_doc;
-export docs;
-export tagged_docs;
-export doc_data;
-export doc_as_str;
-export doc_as_u8;
-export doc_as_u16;
-export doc_as_u32;
-export doc_as_u64;
-export doc_as_i8;
-export doc_as_i16;
-export doc_as_i32;
-export doc_as_i64;
-export Writer;
-export serializer;
-export ebml_deserializer;
-export EbmlDeserializer;
-export deserializer;
-export with_doc_data;
-export get_doc;
-export extensions;
-
 type EbmlTag = {id: uint, size: uint};
 
 type EbmlState = {ebml_tag: EbmlTag, tag_pos: uint, data_pos: uint};
@@ -37,12 +12,12 @@ type EbmlState = {ebml_tag: EbmlTag, tag_pos: uint, data_pos: uint};
 // separate modules within this file.
 
 // ebml reading
-type Doc = {data: @~[u8], start: uint, end: uint};
+pub type Doc = {data: @~[u8], start: uint, end: uint};
 
 type TaggedDoc = {tag: uint, doc: Doc};
 
 impl Doc: ops::Index<uint,Doc> {
-    pure fn index(&&tag: uint) -> Doc {
+    pure fn index(+tag: uint) -> Doc {
         unsafe {
             get_doc(self, tag)
         }
@@ -72,11 +47,11 @@ fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     } else { error!("vint too big"); fail; }
 }
 
-fn Doc(data: @~[u8]) -> Doc {
+pub fn Doc(data: @~[u8]) -> Doc {
     return {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
-fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
+pub fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
     let elt_tag = vuint_at(*data, start);
     let elt_size = vuint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
@@ -84,7 +59,7 @@ fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
          doc: {data: data, start: elt_size.next, end: end}};
 }
 
-fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
+pub fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -101,7 +76,7 @@ fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
     return None::<Doc>;
 }
 
-fn get_doc(d: Doc, tg: uint) -> Doc {
+pub fn get_doc(d: Doc, tg: uint) -> Doc {
     match maybe_get_doc(d, tg) {
       Some(d) => return d,
       None => {
@@ -111,7 +86,7 @@ fn get_doc(d: Doc, tg: uint) -> Doc {
     }
 }
 
-fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
+pub fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -123,7 +98,7 @@ fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
     }
 }
 
-fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
+pub fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -137,43 +112,43 @@ fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
     }
 }
 
-fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
+pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
-fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
+pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
     return f(vec::view(*d.data, d.start, d.end));
 }
 
-fn doc_as_str(d: Doc) -> ~str { return str::from_bytes(doc_data(d)); }
+pub fn doc_as_str(d: Doc) -> ~str { return str::from_bytes(doc_data(d)); }
 
-fn doc_as_u8(d: Doc) -> u8 {
+pub fn doc_as_u8(d: Doc) -> u8 {
     assert d.end == d.start + 1u;
     return (*d.data)[d.start];
 }
 
-fn doc_as_u16(d: Doc) -> u16 {
+pub fn doc_as_u16(d: Doc) -> u16 {
     assert d.end == d.start + 2u;
     return io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
 }
 
-fn doc_as_u32(d: Doc) -> u32 {
+pub fn doc_as_u32(d: Doc) -> u32 {
     assert d.end == d.start + 4u;
     return io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
 }
 
-fn doc_as_u64(d: Doc) -> u64 {
+pub fn doc_as_u64(d: Doc) -> u64 {
     assert d.end == d.start + 8u;
     return io::u64_from_be_bytes(*d.data, d.start, 8u);
 }
 
-fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
-fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
-fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
-fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
+pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
+pub fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
+pub fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
+pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
 type Writer_ = {writer: io::Writer, mut size_positions: ~[uint]};
 
-enum Writer {
+pub enum Writer {
     Writer_(Writer_)
 }
 
@@ -197,7 +172,7 @@ fn write_vuint(w: io::Writer, n: uint) {
     fail fmt!("vint to write too big: %?", n);
 }
 
-fn Writer(w: io::Writer) -> Writer {
+pub fn Writer(w: io::Writer) -> Writer {
     let size_positions: ~[uint] = ~[];
     return Writer_({writer: w, mut size_positions: size_positions});
 }
@@ -211,13 +186,13 @@ impl Writer {
         write_vuint(self.writer, tag_id);
 
         // Write a placeholder four-byte size.
-        vec::push(self.size_positions, self.writer.tell());
+        self.size_positions.push(self.writer.tell());
         let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
         self.writer.write(zeroes);
     }
 
     fn end_tag() {
-        let last_size_pos = vec::pop::<uint>(self.size_positions);
+        let last_size_pos = self.size_positions.pop();
         let cur_pos = self.writer.tell();
         self.writer.seek(last_size_pos as int, io::SeekSet);
         let size = (cur_pos - last_size_pos - 4u);
@@ -292,7 +267,7 @@ impl Writer {
         self.writer.write(b);
     }
 
-    fn wr_str(s: ~str) {
+    fn wr_str(s: &str) {
         debug!("Write str: %?", s);
         self.writer.write(str::to_bytes(s));
     }
@@ -409,16 +384,16 @@ impl ebml::Writer: serialization::Serializer {
 type EbmlDeserializer_ = {mut parent: ebml::Doc,
                           mut pos: uint};
 
-enum EbmlDeserializer {
+pub enum EbmlDeserializer {
     EbmlDeserializer_(EbmlDeserializer_)
 }
 
-fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
+pub fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
     EbmlDeserializer_({mut parent: d, mut pos: d.start})
 }
 
 priv impl EbmlDeserializer {
-    fn _check_label(lbl: ~str) {
+    fn _check_label(lbl: &str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =
                 ebml::doc_at(self.parent.data, self.pos);
@@ -516,7 +491,7 @@ impl EbmlDeserializer: serialization::Deserializer {
     fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(EsStr)) }
 
     // Compound types:
-    fn read_enum<T>(name: ~str, f: fn() -> T) -> T {
+    fn read_enum<T>(name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         self._check_label(name);
         self.push_doc(self.next_doc(EsEnum), f)
@@ -565,7 +540,7 @@ impl EbmlDeserializer: serialization::Deserializer {
         f()
     }
 
-    fn read_rec_field<T>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T {
+    fn read_rec_field<T>(f_name: &str, f_idx: uint, f: fn() -> T) -> T {
         debug!("read_rec_field(%s, idx=%u)", f_name, f_idx);
         self._check_label(f_name);
         f()
@@ -588,11 +563,11 @@ impl EbmlDeserializer: serialization::Deserializer {
 
 #[test]
 fn test_option_int() {
-    fn serialize_1<S: serialization::Serializer>(s: S, v: int) {
+    fn serialize_1<S: serialization::Serializer>(&&s: S, v: int) {
         s.emit_i64(v as i64);
     }
 
-    fn serialize_0<S: serialization::Serializer>(s: S, v: Option<int>) {
+    fn serialize_0<S: serialization::Serializer>(&&s: S, v: Option<int>) {
         do s.emit_enum(~"core::option::t") {
             match v {
               None => s.emit_enum_variant(
@@ -606,11 +581,11 @@ fn test_option_int() {
         }
     }
 
-    fn deserialize_1<S: serialization::Deserializer>(s: S) -> int {
+    fn deserialize_1<S: serialization::Deserializer>(&&s: S) -> int {
         s.read_i64() as int
     }
 
-    fn deserialize_0<S: serialization::Deserializer>(s: S) -> Option<int> {
+    fn deserialize_0<S: serialization::Deserializer>(&&s: S) -> Option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
                 match i {

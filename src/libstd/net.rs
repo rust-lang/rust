@@ -1,10 +1,5 @@
 //! Top-level module for network-related functionality
 
-use tcp = net_tcp;
-export tcp;
-
-use ip = net_ip;
-export ip;
-
-use url = net_url;
-export url;
+pub use tcp = net_tcp;
+pub use ip = net_ip;
+pub use url = net_url;

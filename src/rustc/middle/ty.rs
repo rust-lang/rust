@@ -248,7 +248,7 @@ impl creader_cache_key : cmp::Eq {
 }
 
 impl creader_cache_key : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
     }
 }
@@ -263,7 +263,7 @@ impl intern_key : cmp::Eq {
 }
 
 impl intern_key : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
     }
 }
@@ -356,7 +356,8 @@ type ctxt =
       inferred_modes: HashMap<ast::node_id, ast::mode>,
       adjustments: HashMap<ast::node_id, @AutoAdjustment>,
       normalized_cache: HashMap<t, t>,
-      lang_items: middle::lang_items::LanguageItems};
+      lang_items: middle::lang_items::LanguageItems,
+      legacy_boxed_traits: HashMap<node_id, ()>};
 
 enum tbox_flag {
     has_params = 1,
@@ -406,7 +407,7 @@ enum closure_kind {
 }
 
 impl closure_kind : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -424,7 +425,7 @@ enum fn_proto {
 }
 
 impl fn_proto : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           proto_bare =>
           0u8.iter_bytes(lsb0, f),
@@ -502,7 +503,7 @@ impl param_ty : cmp::Eq {
 }
 
 impl param_ty : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
     }
 }
@@ -676,7 +677,7 @@ enum InferTy {
 }
 
 impl InferTy : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f)
@@ -685,7 +686,7 @@ impl InferTy : to_bytes::IterBytes {
 }
 
 impl param_bound : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           bound_copy => 0u8.iter_bytes(lsb0, f),
           bound_owned => 1u8.iter_bytes(lsb0, f),
@@ -749,25 +750,25 @@ impl purity: purity_to_str {
 }
 
 impl RegionVid : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl TyVid : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl IntVid : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl FnVid : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
@@ -875,7 +876,8 @@ fn mk_ctxt(s: session::session,
       inferred_modes: HashMap(),
       adjustments: HashMap(),
       normalized_cache: new_ty_hash(),
-      lang_items: move lang_items}
+      lang_items: move lang_items,
+      legacy_boxed_traits: HashMap()}
 }
 
 
@@ -902,7 +904,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
         for substs.tps.each |tt| { f |= get(*tt).flags; }
-        substs.self_r.iter(|r| f |= rflags(r));
+        substs.self_r.iter(|r| f |= rflags(*r));
         return f;
     }
     match st {
@@ -1091,12 +1093,15 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    return if type_is_fn(ty) {
-        //    ^^^^^^^^^^^^^^
-        // FIXME(#2202) --- We retain by-ref by default to workaround a memory
-        // leak that otherwise results when @fn is upcast to &fn.
-        ast::by_ref
-    } else if tcx.legacy_modes {
+        // FIXME(#2202) --- We retain by-ref for fn& things to workaround a
+        // memory leak that otherwise results when @fn is upcast to &fn.
+    if type_is_fn(ty) {
+        match ty_fn_proto(ty) {
+           proto_vstore(vstore_slice(_)) => return ast::by_ref,
+            _ => ()
+        }
+    }
+    return if tcx.legacy_modes {
         if type_is_borrowed(ty) {
             // the old mode default was ++ for things like &ptr, but to be
             // forward-compatible with non-legacy, we should use +
@@ -1177,7 +1182,7 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
 fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
-         self_ty: substs.self_ty.map(|t| fldop(t)),
+         self_ty: substs.self_ty.map(|t| fldop(*t)),
          tps: substs.tps.map(|t| fldop(*t))}
     }
 
@@ -1273,8 +1278,8 @@ fn fold_regions_and_ty(
         fldr: fn(r: region) -> region,
         fldt: fn(t: t) -> t) -> substs {
 
-        {self_r: substs.self_r.map(|r| fldr(r)),
-         self_ty: substs.self_ty.map(|t| fldt(t)),
+        {self_r: substs.self_r.map(|r| fldr(*r)),
+         self_ty: substs.self_ty.map(|t| fldt(*t)),
          tps: substs.tps.map(|t| fldt(*t))}
     }
 
@@ -1403,8 +1408,8 @@ fn substs_is_noop(substs: &substs) -> bool {
 
 fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
-         substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
-         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
+         substs.self_r.map_default(~"none", |r| region_to_str(cx, *r)),
+         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, *t)),
          tys_to_str(cx, substs.tps))
 }
 
@@ -2137,25 +2142,25 @@ fn type_size(cx: ctxt, ty: t) -> uint {
       }
 
       ty_rec(flds) => {
-        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
       ty_class(did, ref substs) => {
         let flds = class_items_as_fields(cx, did, substs);
-        flds.foldl(0, |s, f| s + type_size(cx, f.mt.ty))
+        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
       ty_tup(tys) => {
-        tys.foldl(0, |s, t| s + type_size(cx, t))
+        tys.foldl(0, |s, t| *s + type_size(cx, *t))
       }
 
       ty_enum(did, ref substs) => {
         let variants = substd_enum_variants(cx, did, substs);
         variants.foldl( // find max size of any variant
             0,
-            |m, v| uint::max(m,
+            |m, v| uint::max(*m,
                              // find size of this variant:
-                             v.args.foldl(0, |s, a| s + type_size(cx, a))))
+                             v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
       }
 
       ty_param(_) | ty_self => {
@@ -2238,38 +2243,38 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false
           }
 
-          ty_class(did, _) if vec::contains(*seen, did) => {
+          ty_class(ref did, _) if vec::contains(*seen, did) => {
             false
           }
 
           ty_class(did, ref substs) => {
-            vec::push(*seen, did);
-            let r = vec::any(class_items_as_fields(cx, did, substs),
-                             |f| type_requires(cx, seen, r_ty, f.mt.ty));
-            vec::pop(*seen);
+              seen.push(did);
+              let r = vec::any(class_items_as_fields(cx, did, substs),
+                               |f| type_requires(cx, seen, r_ty, f.mt.ty));
+              seen.pop();
             r
           }
 
           ty_tup(ts) => {
-            vec::any(ts, |t| type_requires(cx, seen, r_ty, t))
+            vec::any(ts, |t| type_requires(cx, seen, r_ty, *t))
           }
 
-          ty_enum(did, _) if vec::contains(*seen, did) => {
+          ty_enum(ref did, _) if vec::contains(*seen, did) => {
             false
           }
 
-          ty_enum(did, ref substs) => {
-            vec::push(*seen, did);
-            let vs = enum_variants(cx, did);
-            let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
-                vec::any(variant.args, |aty| {
-                    let sty = subst(cx, substs, aty);
-                    type_requires(cx, seen, r_ty, sty)
-                })
-            });
-            vec::pop(*seen);
-            r
-          }
+            ty_enum(did, ref substs) => {
+                seen.push(did);
+                let vs = enum_variants(cx, did);
+                let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
+                    vec::any(variant.args, |aty| {
+                        let sty = subst(cx, substs, *aty);
+                        type_requires(cx, seen, r_ty, sty)
+                    })
+                });
+                seen.pop();
+                r
+            }
         };
 
         debug!("subtypes_require(%s, %s)? %b",
@@ -2505,7 +2510,7 @@ fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
 }
 
 impl bound_region : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           ty::br_self => 0u8.iter_bytes(lsb0, f),
 
@@ -2522,7 +2527,7 @@ impl bound_region : to_bytes::IterBytes {
 }
 
 impl region : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           re_bound(ref br) =>
           to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
@@ -2542,7 +2547,7 @@ impl region : to_bytes::IterBytes {
 }
 
 impl vstore : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           vstore_fixed(ref u) =>
           to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
@@ -2557,7 +2562,7 @@ impl vstore : to_bytes::IterBytes {
 }
 
 impl substs : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
                                  &self.self_ty,
                                  &self.tps, lsb0, f)
@@ -2565,28 +2570,28 @@ impl substs : to_bytes::IterBytes {
 }
 
 impl mt : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
                                  &self.mutbl, lsb0, f)
     }
 }
 
 impl field : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
                                  &self.mt, lsb0, f)
     }
 }
 
 impl arg : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.mode,
                                  &self.ty, lsb0, f)
     }
 }
 
 impl sty : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           ty_nil => 0u8.iter_bytes(lsb0, f),
           ty_bool => 1u8.iter_bytes(lsb0, f),
@@ -3036,7 +3041,7 @@ fn param_tys_in_type(ty: t) -> ~[param_ty] {
     do walk_ty(ty) |ty| {
         match get(ty).sty {
           ty_param(p) => {
-            vec::push(rslt, p);
+            rslt.push(p);
           }
           _ => ()
         }
@@ -3052,7 +3057,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
         let mut rslt = ~[];
         do walk_ty(ty) |ty| {
             match get(ty).sty {
-              ty_infer(TyVar(v)) => vec::push(rslt, v),
+              ty_infer(TyVar(v)) => rslt.push(v),
               _ => ()
             }
         }
@@ -3063,7 +3068,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     if !type_needs_infer(rt) { return; }
 
     // Occurs check!
-    if vec::contains(vars_in_type(rt), vid) {
+    if vec::contains(vars_in_type(rt), &vid) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
@@ -3704,10 +3709,10 @@ fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
     for fields.each |field| {
         match field.node.kind {
             named_field(ident, mutability, visibility) => {
-                vec::push(rslt, {ident: ident,
-                                 id: ast_util::local_def(field.node.id),
-                                 vis: visibility,
-                                 mutability: mutability});
+                rslt.push({ident: ident,
+                           id: ast_util::local_def(field.node.id),
+                           vis: visibility,
+                           mutability: mutability});
             }
             unnamed_field => {}
        }
@@ -3747,7 +3752,7 @@ fn class_item_fields(cx:ctxt,
     for lookup_class_fields(cx, did).each |f| {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-       vec::push(rslt, {ident: f.ident, mt:
+       rslt.push({ident: f.ident, mt:
                {ty: lookup_field_type(cx, did, f.id, substs),
                     mutbl: frob_mutability(f.mutability)}});
     }

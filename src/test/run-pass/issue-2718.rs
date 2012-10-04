@@ -201,7 +201,7 @@ mod pingpong {
 
     fn liberate_ping(-p: ping) -> pipes::send_packet<pong> unsafe {
         let addr : *pipes::send_packet<pong> = match p {
-          ping(x) => { cast::transmute(ptr::addr_of(x)) }
+          ping(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
         let liberated_value <- *addr;
         cast::forget(p);
@@ -210,7 +210,7 @@ mod pingpong {
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
         let addr : *pipes::send_packet<ping> = match p {
-          pong(x) => { cast::transmute(ptr::addr_of(x)) }
+          pong(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
         let liberated_value <- *addr;
         cast::forget(p);

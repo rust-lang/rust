@@ -13,9 +13,6 @@ use std::serialization::{Serializer,
                             deserialize_bool};
 
 #[auto_serialize]
-type str_num = uint;
-
-#[auto_serialize]
 enum binop {
     PLUS,
     MINUS,
@@ -72,17 +69,17 @@ enum token {
     LIT_INT(i64, ast::int_ty),
     LIT_UINT(u64, ast::uint_ty),
     LIT_INT_UNSUFFIXED(i64),
-    LIT_FLOAT(str_num, ast::float_ty),
-    LIT_STR(str_num),
+    LIT_FLOAT(ast::ident, ast::float_ty),
+    LIT_STR(ast::ident),
 
     /* Name components */
-    IDENT(str_num, bool),
+    IDENT(ast::ident, bool),
     UNDERSCORE,
 
     /* For interpolation */
     INTERPOLATED(nonterminal),
 
-    DOC_COMMENT(str_num),
+    DOC_COMMENT(ast::ident),
     EOF,
 }
 
@@ -95,7 +92,7 @@ enum nonterminal {
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),
     nt_ty(  @ast::ty),
-    nt_ident(str_num, bool),
+    nt_ident(ast::ident, bool),
     nt_path(@ast::path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
@@ -116,7 +113,7 @@ fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-fn to_str(in: interner<@~str>, t: token) -> ~str {
+fn to_str(in: @ident_interner, t: token) -> ~str {
     match t {
       EQ => ~"=",
       LT => ~"<",
@@ -174,7 +171,7 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
         }
         body + ast_util::float_ty_to_str(t)
       }
-      LIT_STR(s) => { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
+      LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + ~"\"" }
 
       /* Name components */
       IDENT(s, _) => *in.get(s),
@@ -281,49 +278,66 @@ pure fn is_bar(t: token) -> bool {
 mod special_idents {
     #[legacy_exports];
     use ast::ident;
-    const underscore : ident = 0u;
-    const anon : ident = 1u;
-    const dtor : ident = 2u; // 'drop', but that's reserved
-    const invalid : ident = 3u; // ''
-    const unary : ident = 4u;
-    const not_fn : ident = 5u;
-    const idx_fn : ident = 6u;
-    const unary_minus_fn : ident = 7u;
-    const clownshoes_extensions : ident = 8u;
+    const underscore : ident = ident { repr: 0u };
+    const anon : ident = ident { repr: 1u };
+    const dtor : ident = ident { repr: 2u }; // 'drop', but that's reserved
+    const invalid : ident = ident { repr: 3u }; // ''
+    const unary : ident = ident { repr: 4u };
+    const not_fn : ident = ident { repr: 5u };
+    const idx_fn : ident = ident { repr: 6u };
+    const unary_minus_fn : ident = ident { repr: 7u };
+    const clownshoes_extensions : ident = ident { repr: 8u };
 
-    const self_ : ident = 9u; // 'self'
+    const self_ : ident = ident { repr: 9u }; // 'self'
 
     /* for matcher NTs */
-    const item : ident = 10u;
-    const block : ident = 11u;
-    const stmt : ident = 12u;
-    const pat : ident = 13u;
-    const expr : ident = 14u;
-    const ty : ident = 15u;
-    const ident : ident = 16u;
-    const path : ident = 17u;
-    const tt : ident = 18u;
-    const matchers : ident = 19u;
+    const item : ident = ident { repr: 10u };
+    const block : ident = ident { repr: 11u };
+    const stmt : ident = ident { repr: 12u };
+    const pat : ident = ident { repr: 13u };
+    const expr : ident = ident { repr: 14u };
+    const ty : ident = ident { repr: 15u };
+    const ident : ident = ident { repr: 16u };
+    const path : ident = ident { repr: 17u };
+    const tt : ident = ident { repr: 18u };
+    const matchers : ident = ident { repr: 19u };
 
-    const str : ident = 20u; // for the type
+    const str : ident = ident { repr: 20u }; // for the type
 
     /* outside of libsyntax */
-    const ty_visitor : ident = 21u;
-    const arg : ident = 22u;
-    const descrim : ident = 23u;
-    const clownshoe_abi : ident = 24u;
-    const clownshoe_stack_shim : ident = 25u;
-    const tydesc : ident = 26u;
-    const literally_dtor : ident = 27u;
-    const main : ident = 28u;
-    const opaque : ident = 29u;
-    const blk : ident = 30u;
-    const static : ident = 31u;
-    const intrinsic : ident = 32u;
-    const clownshoes_foreign_mod: ident = 33;
+    const ty_visitor : ident = ident { repr: 21u };
+    const arg : ident = ident { repr: 22u };
+    const descrim : ident = ident { repr: 23u };
+    const clownshoe_abi : ident = ident { repr: 24u };
+    const clownshoe_stack_shim : ident = ident { repr: 25u };
+    const tydesc : ident = ident { repr: 26u };
+    const literally_dtor : ident = ident { repr: 27u };
+    const main : ident = ident { repr: 28u };
+    const opaque : ident = ident { repr: 29u };
+    const blk : ident = ident { repr: 30u };
+    const static : ident = ident { repr: 31u };
+    const intrinsic : ident = ident { repr: 32u };
+    const clownshoes_foreign_mod: ident = ident { repr: 33 };
 }
 
-type ident_interner = util::interner::interner<@~str>;
+struct ident_interner {
+    priv interner: util::interner::interner<@~str>,
+}
+
+impl ident_interner {
+    fn intern(val: @~str) -> ast::ident {
+        ast::ident { repr: self.interner.intern(val) }
+    }
+    fn gensym(val: @~str) -> ast::ident {
+        ast::ident { repr: self.interner.gensym(val) }
+    }
+    pure fn get(idx: ast::ident) -> @~str {
+        self.interner.get(idx.repr)
+    }
+    fn len() -> uint {
+        self.interner.len()
+    }
+}
 
 /** Key for thread-local data for sneaking interner information to the
  * serializer/deserializer. It sounds like a hack because it is one.
@@ -335,7 +349,7 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
-fn mk_ident_interner() -> ident_interner {
+fn mk_ident_interner() -> @ident_interner {
     /* the indices here must correspond to the numbers in special_idents */
     let init_vec = ~[@~"_", @~"anon", @~"drop", @~"", @~"unary", @~"!",
                      @~"[]", @~"unary-", @~"__extensions__", @~"self",
@@ -346,7 +360,9 @@ fn mk_ident_interner() -> ident_interner {
                      @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
                      @~"intrinsic", @~"__foreign_mod__"];
 
-    let rv = interner::mk_prefill::<@~str>(init_vec);
+    let rv = @ident_interner {
+        interner: interner::mk_prefill::<@~str>(init_vec)
+    };
 
     /* having multiple interners will just confuse the serializer */
     unsafe {
@@ -360,8 +376,8 @@ fn mk_ident_interner() -> ident_interner {
 
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
-fn mk_fake_ident_interner() -> ident_interner {
-    interner::mk::<@~str>()
+fn mk_fake_ident_interner() -> @ident_interner {
+    @ident_interner { interner: interner::mk::<@~str>() }
 }
 
 /**

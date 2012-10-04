@@ -17,6 +17,7 @@ Ben Striegel <ben.striegel@gmail.com>
 Benjamin Herr <ben@0x539.de>
 Benjamin Jackman <ben@jackman.biz>
 Benjamin Kircher <benjamin.kircher@gmail.com>
+Benjamin Peterson <benjamin@python.org>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
@@ -66,6 +67,7 @@ Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
 Lindsey Kuper <lindsey@rockstargirl.org>
+Luca Bruno <lucab@debian.org>
 Magnus Auvinen <magnus.auvinen@gmail.com>
 Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
@@ -76,6 +78,7 @@ Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
+Orphée Lafond-Lummis <o@orftz.com>
 Patrick Walton <pwalton@mozilla.com>
 Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Stansifer <paul.stansifer@gmail.com>

@@ -32,10 +32,10 @@ rust_thread::start() {
    thread = CreateThread(NULL, stack_sz, rust_thread_start, this, 0, NULL);
 #else
    pthread_attr_t attr;
-   pthread_attr_init(&attr);
-   pthread_attr_setstacksize(&attr, stack_sz);
-   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-   pthread_create(&thread, &attr, rust_thread_start, (void *) this);
+   CHECKED(pthread_attr_init(&attr));
+   CHECKED(pthread_attr_setstacksize(&attr, stack_sz));
+   CHECKED(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE));
+   CHECKED(pthread_create(&thread, &attr, rust_thread_start, (void *) this));
 #endif
 }
 
@@ -46,7 +46,7 @@ rust_thread::join() {
      WaitForSingleObject(thread, INFINITE);
 #else
    if (thread)
-     pthread_join(thread, NULL);
+     CHECKED(pthread_join(thread, NULL));
 #endif
    thread = 0;
 }
@@ -56,6 +56,6 @@ rust_thread::detach() {
 #if !defined(__WIN32__)
     // Don't leak pthread resources.
     // http://crosstantine.blogspot.com/2010/01/pthreadcreate-memory-leak.html
-    pthread_detach(thread);
+    CHECKED(pthread_detach(thread));
 #endif
 }

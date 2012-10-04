@@ -81,7 +81,7 @@ fn main(++args: ~[~str]) {
     };
 
     let writer = if os::getenv(~"RUST_BENCH").is_some() {
-        result::get(io::file_writer(&Path("./shootout-fasta.data"),
+        result::get(&io::file_writer(&Path("./shootout-fasta.data"),
                                     ~[io::Truncate, io::Create]))
     } else {
         io::stdout()

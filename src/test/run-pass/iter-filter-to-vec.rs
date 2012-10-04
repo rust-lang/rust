@@ -1,9 +1,9 @@
-fn is_even(&&x: uint) -> bool { (x % 2u) == 0u }
+fn is_even(+x: uint) -> bool { (x % 2) == 0 }
 
 fn main() {
-    assert [1u, 3u]/_.filter_to_vec(is_even) == ~[];
-    assert [1u, 2u, 3u]/_.filter_to_vec(is_even) == ~[2u];
+    assert [1, 3]/_.filter_to_vec(is_even) == ~[];
+    assert [1, 2, 3]/_.filter_to_vec(is_even) == ~[2];
     assert None.filter_to_vec(is_even) == ~[];
-    assert Some(1u).filter_to_vec(is_even) == ~[];
-    assert Some(2u).filter_to_vec(is_even) == ~[2u];
+    assert Some(1).filter_to_vec(is_even) == ~[];
+    assert Some(2).filter_to_vec(is_even) == ~[2];
 }

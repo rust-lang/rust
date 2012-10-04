@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 //! A type that represents one of two alternatives
@@ -8,13 +8,13 @@ use cmp::Eq;
 use result::Result;
 
 /// The either type
-enum Either<T, U> {
+pub enum Either<T, U> {
     Left(T),
     Right(U)
 }
 
-fn either<T, U, V>(f_left: fn((&T)) -> V,
-                   f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
+pub fn either<T, U, V>(f_left: fn((&T)) -> V,
+                       f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
@@ -29,33 +29,34 @@ fn either<T, U, V>(f_left: fn((&T)) -> V,
     }
 }
 
-fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
+pub fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
-    let mut result: ~[T] = ~[];
-    for vec::each(eithers) |elt| {
-        match *elt {
-          Left(l) => vec::push(result, l),
-          _ => { /* fallthrough */ }
+    do vec::build_sized(eithers.len()) |push| {
+        for vec::each(eithers) |elt| {
+            match *elt {
+                Left(ref l) => { push(*l); }
+                _ => { /* fallthrough */ }
+            }
         }
     }
-    move result
 }
 
-fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
+pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
-    let mut result: ~[U] = ~[];
-    for vec::each(eithers) |elt| {
-        match *elt {
-          Right(r) => vec::push(result, r),
-          _ => { /* fallthrough */ }
+    do vec::build_sized(eithers.len()) |push| {
+        for vec::each(eithers) |elt| {
+            match *elt {
+                Right(ref r) => { push(*r); }
+                _ => { /* fallthrough */ }
+            }
         }
     }
-    move result
 }
 
-fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
+// XXX bad copies. take arg by val
+pub fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
      * Extracts from a vector of either all the left values and right values
@@ -68,23 +69,26 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     let mut rights: ~[U] = ~[];
     for vec::each(eithers) |elt| {
         match *elt {
-          Left(l) => vec::push(lefts, l),
-          Right(r) => vec::push(rights, r)
+          Left(copy l) => lefts.push(l),
+          Right(copy r) => rights.push(r)
         }
     }
     return {lefts: move lefts, rights: move rights};
 }
 
-pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
+// XXX bad copies
+pub pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match *eith {
-      Right(r) => Left(r),
-      Left(l) => Right(l)
+      Right(copy r) => Left(r),
+      Left(copy l) => Right(l)
     }
 }
 
-pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
+// XXX bad copies
+pub pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>)
+    -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -93,24 +97,25 @@ pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
      */
 
     match *eith {
-      Right(r) => result::Ok(r),
-      Left(l) => result::Err(l)
+      Right(copy r) => result::Ok(r),
+      Left(copy l) => result::Err(l)
     }
 }
 
-pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
+pub pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
     match *eith { Left(_) => true, _ => false }
 }
 
-pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
+pub pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
     match *eith { Right(_) => true, _ => false }
 }
 
-pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
+// tjc: fix the next two after a snapshot
+pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match move eith {
@@ -118,7 +123,7 @@ pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
     }
 }
 
-pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
+pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match move eith {
@@ -129,16 +134,16 @@ pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
 impl<T:Eq,U:Eq> Either<T,U> : Eq {
     pure fn eq(other: &Either<T,U>) -> bool {
         match self {
-            Left(a) => {
+            Left(ref a) => {
                 match (*other) {
-                    Left(ref b) => a.eq(b),
+                    Left(ref b) => (*a).eq(b),
                     Right(_) => false
                 }
             }
-            Right(a) => {
+            Right(ref a) => {
                 match (*other) {
                     Left(_) => false,
-                    Right(ref b) => a.eq(b)
+                    Right(ref b) => (*a).eq(b)
                 }
             }
         }

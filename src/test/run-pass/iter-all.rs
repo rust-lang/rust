@@ -1,4 +1,4 @@
-fn is_even(&&x: uint) -> bool { (x % 2u) == 0u }
+fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
 fn main() {
     assert ![1u, 2u]/_.all(is_even);

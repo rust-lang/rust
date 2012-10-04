@@ -19,7 +19,7 @@ impl test_mode : cmp::Eq {
 
 fn write_file(filename: &Path, content: ~str) {
     result::get(
-        io::file_writer(filename, ~[io::Create, io::Truncate]))
+        &io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
 }
 
@@ -30,7 +30,7 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
 fn find_rust_files(files: &mut ~[Path], path: &Path) {
     if path.filetype() == Some(~".rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
-        vec::push(*files, *path);
+        files.push(*path);
     } else if os::path_is_dir(path)
         && !contains(path.to_str(), ~"compile-fail")
         && !contains(path.to_str(), ~"build") {
@@ -124,7 +124,7 @@ fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
                e: @ast::ty,
                tm: test_mode) {
     if c(e, tm) {
-        vec::push(*es,*e);
+        es.push(*e);
     } else {/* now my indices are wrong :( */ }
 }
 
@@ -221,7 +221,7 @@ fn under(n: uint, it: fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn as_str(f: fn@(io::Writer)) -> ~str {
+fn as_str(f: fn@(+x: io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
@@ -229,7 +229,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                          filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
-                                  |a| safe_to_use_expr(a, cx.mode) );
+                                  |a| safe_to_use_expr(*a, cx.mode) );
     check_variants_T(crate, codemap, filename, ~"expr",
                      extra_exprs + stolen.exprs, pprust::expr_to_str,
                      replace_expr_in_crate, cx);
@@ -243,7 +243,7 @@ fn check_variants_T<T: Copy>(
   filename: &Path,
   thing_label: ~str,
   things: ~[T],
-  stringifier: fn@(@T, syntax::parse::token::ident_interner) -> ~str,
+  stringifier: fn@(@T, @syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
@@ -543,7 +543,7 @@ fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
         if !file_might_not_converge(file) {
-            let s = @result::get(io::read_whole_file_str(file));
+            let s = @result::get(&io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
                 error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
@@ -563,7 +563,7 @@ fn check_variants(files: &[Path], cx: context) {
             loop;
         }
 
-        let s = @result::get(io::read_whole_file_str(file));
+        let s = @result::get(&io::read_whole_file_str(file));
         if contains(*s, ~"#") {
             loop; // Macros are confusing
         }

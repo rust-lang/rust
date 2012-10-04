@@ -28,7 +28,7 @@ fn check_item(sess: session, ast_map: ast_map::map,
       item_enum(enum_definition, _) => {
         for enum_definition.variants.each |var| {
             do option::iter(&var.node.disr_expr) |ex| {
-                v.visit_expr(ex, true, v);
+                v.visit_expr(*ex, true, v);
             }
         }
       }
@@ -169,7 +169,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
     visitor.visit_item(it, env, visitor);
 
     fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
-        if (*env.idstack).contains(it.id) {
+        if (*env.idstack).contains(&(it.id)) {
             env.sess.span_fatal(env.root_it.span, ~"recursive constant");
         }
         (*env.idstack).push(it.id);
