@@ -246,7 +246,7 @@ define a struct type with the same contents, and declare
 `gettimeofday` to take a pointer to such a struct.
 
 The second argument to `gettimeofday` (the time zone) is not used by
-this program, so it simply declares it to be a pointer to the unit
+this program, so it simply declares it to be a pointer to the nil
 type. Since all null pointers have the same representation regardless of
 their referent type, this is safe.
 
