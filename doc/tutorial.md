@@ -329,7 +329,6 @@ something—in which case you'll have embedded it in a bigger statement.
 # fn foo() -> bool { true }
 # fn bar() -> bool { true }
 # fn baz() -> bool { true }
-
 // `let` is not an expression, so it is semi-colon terminated;
 let x = foo();
 
@@ -711,8 +710,8 @@ Structs can be destructured in `match` patterns. The basic syntax is
 # struct Point { x: float, y: float }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x: 0.0, y: y } => { io::println(y.to_str());                    }
-    Point { x: x, y: y }   => { io::println(x.to_str() + " " + y.to_str()); }
+    Point { x: 0.0, y: yy } => { io::println(yy.to_str());                     }
+    Point { x: xx,  y: yy } => { io::println(xx.to_str() + " " + yy.to_str()); }
 }
 ~~~~
 
@@ -802,7 +801,7 @@ dereference (`*`) unary operator:
 
 ~~~~
 # enum GizmoId = int;
-let my_gizmo_id = GizmoId(10);
+let my_gizmo_id: GizmoId = GizmoId(10);
 let id_int: int = *my_gizmo_id;
 ~~~~
 
@@ -863,12 +862,8 @@ back to [later](#modules-and-crates)). They are introduced with the
 the return type follows the arrow.
 
 ~~~~
-fn repeat(string: &str, count: int) -> ~str {
-    let mut result = ~"";
-    for count.times {
-        result += string;
-    }
-    return result;
+fn line(a: int, b: int, x: int) -> int {
+    return a*x + b;
 }
 ~~~~
 
@@ -889,10 +884,8 @@ fn int_to_str(i: int) -> ~str {
 ~~~~
 
 ~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus { ~"tube sock" }
-    else { ~"violin" }
+fn line(a: int, b: int, x: int) -> int {
+    a*x + b
 }
 ~~~~
 
@@ -904,6 +897,16 @@ the definition. The following two functions are equivalent.
 fn do_nothing_the_hard_way() -> () { return (); }
 
 fn do_nothing_the_easy_way() { }
+~~~~
+
+Ending the function with a semicolon like so is equivalent to returning `()`.
+
+~~~~
+fn line(a: int, b: int, x: int) -> int { a*x + b  }
+fn oops(a: int, b: int, x: int) -> ()  { a*x + b; }
+
+assert 8  == line(5,3,1);
+assert () == oops(5,3,1);
 ~~~~
 
 Methods are like functions, except that they are defined for a specific
@@ -1005,7 +1008,7 @@ easy for programmers to reason about. Heap isolation has the
 additional benefit that garbage collection must only be done
 per-heap. Rust never "stops the world" to reclaim memory.
 
-Complete isolation of heaps between tasks implies that any data
+Complete isolation of heaps between tasks would, however, mean that any data
 transferred between tasks must be copied. While this is a fine and
 useful way to implement communication between tasks, it is also very
 inefficient for large data structures.  Because of this, Rust also
@@ -1117,6 +1120,9 @@ If you really want to copy a unique box you must say so explicitly.
 ~~~~
 let x = ~10;
 let y = copy x;
+
+let z = *x + *y;
+assert z = 20;
 ~~~~
 
 This is where the 'move' operator comes in. It is similar to
@@ -1125,9 +1131,11 @@ from `x` to `y`, without violating the constraint that it only has a
 single owner (if you used assignment instead of the move operator, the
 box would, in principle, be copied).
 
-~~~~
+~~~~ {.ignore}
 let x = ~10;
 let y = move x;
+
+let z = *x + *y; // would cause an error: use of moved variable: `x`
 ~~~~
 
 Owned boxes, when they do not contain any managed boxes, can be sent
@@ -1265,7 +1273,7 @@ also done with square brackets (zero-based):
 #               BananaMania, Beaver, Bittersweet };
 # fn draw_scene(c: Crayon) { }
 
-let crayons = [BananaMania, Beaver, Bittersweet];
+let crayons: [Crayon] = [BananaMania, Beaver, Bittersweet];
 match crayons[0] {
     Bittersweet => draw_scene(crayons[0]),
     _ => ()
@@ -1282,7 +1290,7 @@ elements. Mutable vector literals are written `[mut]` (empty) or `[mut
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
 
-let crayons = [mut BananaMania, Beaver, Bittersweet];
+let crayons: [mut Crayon] = [mut BananaMania, Beaver, Bittersweet];
 crayons[0] = AtomicTangerine;
 ~~~~
 
@@ -1318,8 +1326,8 @@ my_crayons += your_crayons;
 > not well supported yet, owned vectors are often the most
 > usable.
 
-Strings are simply vectors of `[u8]`, though they have a distinct
-type. They support most of the same allocation aptions as
+Strings are implemented with vectors of `[u8]`, though they have a distinct
+type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
 Where
@@ -1328,7 +1336,7 @@ Where
 // A plain string is a slice to read-only (static) memory
 let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
 
-// The same thing, but without
+// The same thing, but with the `&`
 let stack_crayons: &str = &"Almond, AntiqueBrass, Apricot";
 
 // A local heap (managed) string
@@ -1511,9 +1519,12 @@ call_twice(bare_function);
 
 ## Do syntax
 
-Closures in Rust are frequently used in combination with higher-order
-functions to simulate control structures like `if` and
-`loop`. Consider this function that iterates over a vector of
+The `do` expression is syntactic sugar for use with functions which
+take a closure as a final argument, because closures in Rust
+are so frequently used in combination with higher-order
+functions.
+
+Consider this function which iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
@@ -1558,8 +1569,7 @@ do each(&[1, 2, 3]) |n| {
 The call is prefixed with the keyword `do` and, instead of writing the
 final closure inside the argument list it is moved outside of the
 parenthesis where it looks visually more like a typical block of
-code. The `do` expression is purely syntactic sugar for a call that
-takes a final closure argument.
+code.
 
 `do` is often used for task spawning.
 
@@ -1652,6 +1662,10 @@ fn contains(v: &[int], elt: int) -> bool {
 ~~~~
 
 `for` syntax only works with stack closures.
+
+> ***Note:*** This is, essentially, a special loop protocol:
+> the keywords `break`, `loop`, and `return` work, in varying degree,
+> with `while`, `loop`, `do`, and `for` constructs.
 
 # Generics
 
@@ -2057,6 +2071,9 @@ The compiler will now look for `poultry/chicken.rs` and
 and `poultry::turkey`. You can also provide a `poultry.rs` to add
 content to the `poultry` module itself.
 
+The compiler then builds the crate as a platform-specific shared library or
+executable which can be distributed.
+
 ## Using other crates
 
 Having compiled a crate that contains the `#[crate_type = "lib"]`
@@ -2111,22 +2128,22 @@ Now for something that you can actually compile yourself. We have
 these two files:
 
 ~~~~
-// mylib.rs
-#[link(name = "mylib", vers = "1.0")];
-fn world() -> ~str { ~"world" }
+// world.rs
+#[link(name = "world", vers = "1.0")];
+fn explore() -> ~str { ~"world" }
 ~~~~
 
 ~~~~ {.ignore}
 // main.rs
-extern mod mylib;
-fn main() { io::println(~"hello " + mylib::world()); }
+extern mod world;
+fn main() { io::println(~"hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
 
 ~~~~ {.notrust}
-> rustc --lib mylib.rs
-> rustc main.rs -L .
+> rustc --lib world.rs  # compiles libworld-94839cbfe144198-1.0.so
+> rustc main.rs -L .    # compiles main
 > ./main
 "hello world"
 ~~~~
@@ -2146,12 +2163,14 @@ fn main() {
 }
 ~~~~
 
+
 It is also possible to import just the name of a module (`use
 std::list;`, then use `list::find`), to import all identifiers exported
 by a given module (`use io::*`), or to import a specific set
 of identifiers (`use math::{min, max, pi}`).
 
-You can rename an identifier when importing using the `=` operator:
+Rust uses different namespaces for modules, types, and values.  You
+can also rename an identifier when importing using the `=` operator:
 
 ~~~~
 use prnt = io::println;
@@ -2175,27 +2194,6 @@ This defines a rock-solid encryption algorithm. Code outside of the
 module can refer to the `enc::encrypt` and `enc::decrypt` identifiers
 just fine, but it does not have access to `enc::super_secret_number`.
 
-## Namespaces
-
-Rust uses three different namespaces: one for modules, one for types,
-and one for values. This means that this code is valid:
-
-~~~~
-#[legacy_exports]
-mod buffalo {
-    type buffalo = int;
-    fn buffalo<buffalo>(+buffalo: buffalo) -> buffalo { buffalo }
-}
-fn main() {
-    let buffalo: buffalo::buffalo = 1;
-    buffalo::buffalo::<buffalo::buffalo>(buffalo::buffalo(buffalo));
-}
-~~~~
-
-You don't want to write things like that, but it *is* very practical
-to not have to worry about name clashes between types, values, and
-modules.
-
 ## Resolution
 
 The resolution process in Rust simply goes up the chain of contexts,
@@ -2211,7 +2209,7 @@ Identifiers can shadow each other. In this program, `x` is of type
 type MyType = ~str;
 fn main() {
     type MyType = int;
-    let x: MyType;
+    let x: MyType = 17;
 }
 ~~~~
 
@@ -2219,13 +2217,17 @@ An `use` directive will only import into the namespaces for which
 identifiers are actually found. Consider this example:
 
 ~~~~
-mod foo { fn bar() {} }
-fn baz() {
-    let bar = 10u;
+mod foo {
+   fn bar() {}
+}
+
+fn main() {
+    let bar = 10;
 
     {
         use foo::bar;
         let quux = bar;
+        assert quux == 10;
     }
 }
 ~~~~
