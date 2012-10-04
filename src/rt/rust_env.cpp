@@ -10,7 +10,6 @@
 #define RUST_MIN_STACK "RUST_MIN_STACK"
 #define RUST_MAX_STACK "RUST_MAX_STACK"
 #define RUST_LOG "RUST_LOG"
-#define CHECK_CLAIMS "CHECK_CLAIMS"
 #define DETAILED_LEAKS "DETAILED_LEAKS"
 #define RUST_SEED "RUST_SEED"
 #define RUST_POISON_ON_FREE "RUST_POISON_ON_FREE"
@@ -114,7 +113,6 @@ load_env(int argc, char **argv) {
     env->min_stack_size = get_min_stk_size();
     env->max_stack_size = get_max_stk_size();
     env->logspec = copyenv(RUST_LOG);
-    env->check_claims = getenv(CHECK_CLAIMS) != NULL;
     env->detailed_leaks = getenv(DETAILED_LEAKS) != NULL;
     env->rust_seed = copyenv(RUST_SEED);
     env->poison_on_free = getenv(RUST_POISON_ON_FREE) != NULL;

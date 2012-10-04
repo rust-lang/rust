@@ -69,10 +69,6 @@ extern "C" {
 #define FASTCALL
 #endif
 
-/* Controls whether claims are turned into checks */
-/* Variable name must be kept consistent with trans.rs */
-extern "C" int check_claims;
-
 #define CHECKED(call)                                               \
     {                                                               \
     int res = (call);                                               \
