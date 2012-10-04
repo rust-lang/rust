@@ -301,14 +301,12 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
             }
             let mut ok = ty::type_is_nil(fn_ty.sig.output);
             let num_args = vec::len(fn_ty.sig.inputs);
-            ok &= num_args == 0u || num_args == 1u &&
-                arg_is_argv_ty(tcx, fn_ty.sig.inputs[0]);
+            ok &= num_args == 0u;
             if !ok {
                 tcx.sess.span_err(
                     main_span,
                     fmt!("Wrong type in main function: found `%s`, \
-                          expected `extern fn(++v: ~[~str]) -> ()` \
-                          or `extern fn() -> ()`",
+                          expected `fn() -> ()`",
                          ty_to_str(tcx, main_t)));
             }
         }

@@ -25,7 +25,8 @@ fn bottom_up_tree(arena: &r/arena::Arena,
     return arena.alloc(|| nil);
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"17"]
     } else if args.len() <= 1u {

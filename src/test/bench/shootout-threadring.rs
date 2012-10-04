@@ -37,7 +37,8 @@ fn roundtrip(id: int, p: comm::Port<int>, ch: comm::Chan<int>) {
     }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"2000000"]
     } else if args.len() <= 1u {

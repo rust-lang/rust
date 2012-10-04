@@ -178,7 +178,8 @@ fn rendezvous(nn: uint, set: ~[color]) {
     io::println(show_number(creatures_met));
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"200000"]
     } else if args.len() <= 1u {

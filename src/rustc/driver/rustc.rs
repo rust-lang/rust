@@ -277,7 +277,8 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     }
 }
 
-fn main(args: ~[~str]) {
+fn main() {
+    let args = os::args();
     do monitor |demitter| {
         run_compiler(args, demitter);
     }
