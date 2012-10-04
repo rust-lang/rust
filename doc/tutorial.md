@@ -294,11 +294,11 @@ are not semicolons in the blocks of the second snippet. This is
 important; the lack of a semicolon after the last statement in a
 braced block gives the whole block the value of that last expression.
 
-Put another way, the semicolon in Rust *ignores the value of an expression*.
-Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
-would simply assign `()` (nil or void) to `price`. But without the semicolon, each
-branch has a different value, and `price` gets the value of the branch that
-was taken.
+Put another way, the semicolon in Rust *ignores the value of an
+expression*.  Thus, if the branches of the `if` had looked like `{ 4; }`,
+the above example would simply assign `()` (unit or void) to
+`price`. But without the semicolon, each branch has a different value,
+and `price` gets the value of the branch that was taken.
 
 In short, everything that's not a declaration (`let` for variables,
 `fn` for functions, et cetera) is an expression, including function bodies.
@@ -839,7 +839,7 @@ fn point_from_direction(dir: Direction) -> Point {
 Tuples in Rust behave exactly like structs, except that their fields
 do not have names (and can thus not be accessed with dot notation).
 Tuples can have any arity except for 0 or 1 (though you may consider
-nil, `()`, as the empty tuple if you like).
+unit, `()`, as the empty tuple if you like).
 
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
@@ -891,7 +891,7 @@ fn int_to_str(i: int) -> ~str {
 }
 ~~~~
 
-Functions that do not return a value are said to return nil, `()`,
+Functions that do not return a value are said to return unit, `()`,
 and both the return type and the return value may be omitted from
 the definition. The following two functions are equivalent.
 
