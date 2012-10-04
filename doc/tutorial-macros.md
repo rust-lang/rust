@@ -65,7 +65,7 @@ forbidden.
 To take as an argument a fragment of Rust code, write `$` followed by a name
  (for use on the right-hand side), followed by a `:`, followed by the sort of
 fragment to match (the most common ones are `ident`, `expr`, `ty`, `pat`, and
-`block`). Anything not preceeded by a `$` is taken literally. The standard
+`block`). Anything not preceded by a `$` is taken literally. The standard
 rules of tokenization apply,
 
 So `($x:ident => (($e:expr)))`, though excessively fancy, would create a macro
@@ -88,7 +88,7 @@ position).
 
 Going back to the motivating example, suppose that we wanted each invocation
 of `early_return` to potentially accept multiple "special" identifiers. The
-syntax `$(...)*` accepts zero or more occurences of its contents, much like
+syntax `$(...)*` accepts zero or more occurrences of its contents, much like
 the Kleene star operator in regular expressions. It also supports a separator
 token (a comma-separated list could be written `$(...),*`), and `+` instead of
 `*` to mean "at least one".

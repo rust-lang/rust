@@ -47,7 +47,7 @@ In particular, there are currently two independent modules that provide
 a message passing interface to Rust code: `core::comm` and `core::pipes`.
 `core::comm` is an older, less efficient system that is being phased out
 in favor of `pipes`. At some point the existing `core::comm` API will
-be romoved and the user-facing portions of `core::pipes` will be moved
+be removed and the user-facing portions of `core::pipes` will be moved
 to `core::comm`. In this tutorial we will discuss `pipes` and ignore
 the `comm` API.
 
@@ -58,7 +58,7 @@ concurrency at the moment.
 * [`core::comm`] - The deprecated message passing API
 * [`core::pipes`] - The new message passing infrastructure and API
 * [`std::comm`] - Higher level messaging types based on `core::pipes`
-* [`std::sync`] - More exotic synchronization tools, including locks 
+* [`std::sync`] - More exotic synchronization tools, including locks
 * [`std::arc`] - The ARC type, for safely sharing immutable data
 * [`std::par`] - Some basic tools for implementing parallel algorithms
 
@@ -151,7 +151,7 @@ commonly used, which we will cover presently.
 
 The simplest way to create a pipe is to use the `pipes::stream`
 function to create a `(Chan, Port)` pair. In Rust parlance a 'channel'
-is a sending endpoint of a pipe, and a 'port' is the recieving
+is a sending endpoint of a pipe, and a 'port' is the receiving
 endpoint. Consider the following example of performing two calculations
 concurrently.
 
@@ -183,7 +183,7 @@ let (chan, port): (Chan<int>, Port<int>) = stream();
 ~~~~
 
 The channel will be used by the child task to send data to the parent task,
-which will wait to recieve the data on the port. The next statement
+which will wait to receive the data on the port. The next statement
 spawns the child task.
 
 ~~~~
@@ -307,7 +307,7 @@ unrecoverable within a single task - once a task fails there is no way
 to "catch" the exception.
 
 All tasks are, by default, _linked_ to each other, meaning their fate
-is interwined, and if one fails so do all of them.
+is intertwined, and if one fails so do all of them.
 
 ~~~
 # use task::spawn;
