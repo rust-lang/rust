@@ -295,6 +295,7 @@ opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer clang to gcc for building the runtime"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
+opt pax-marks 0 "apply PaX markings to rustc binaries (required for GRSecurity/PaX-patched kernels)"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
@@ -343,6 +344,8 @@ probe CFG_PDFLATEX         pdflatex
 probe CFG_XETEX            xetex
 probe CFG_LUATEX           luatex
 probe CFG_NODE             nodejs node
+probe CFG_PAXCTL           paxctl /sbin/paxctl
+probe CFG_ZCAT             zcat
 
 if [ ! -z "$CFG_PANDOC" ]
 then
@@ -351,6 +354,52 @@ then
     then
 	step_msg "pandoc $PV is too old. disabling"
 	BAD_PANDOC=1
+    fi
+fi
+
+if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
+then
+    if [ ! -z "$CFG_ENABLE_PAX_MARKS" -a -z "$CFG_PAXCTL" ]
+    then
+        err "enabled PaX markings but no paxctl binary found"
+    fi
+
+    if [ -z "$CFG_DISABLE_PAX_MARKS" ]
+    then
+        # GRSecurity/PaX detection. This can be very flaky.
+        GRSEC_DETECTED=
+
+        # /dev/grsec only exists if CONFIG_GRKERNSEC_NO_RBAC is not set.
+        # /proc is normally only available to root and users in the CONFIG_GRKERNSEC_PROC_GID group,
+        # and /proc/sys/kernel/grsecurity is not available if ÇONFIG_GRKERNSEC_SYSCTL is not set.
+        if [ -e /dev/grsec -o -d /proc/sys/kernel/grsecurity ]
+        then
+            GRSEC_DETECTED=1
+        # /proc/config.gz is normally only available to root, and only if CONFIG_IKCONFIG_PROC has been set.
+        elif [ -r /proc/config.gz -a ! -z "$CFG_ZCAT" ]
+        then
+            if "$CFG_ZCAT" /proc/config.gz | grep --quiet "CONFIG_GRKERNSEC=y"
+            then
+                GRSEC_DETECTED=1
+            fi
+        # Flaky.
+        elif grep --quiet grsec /proc/version
+        then
+            GRSEC_DETECTED=1
+        fi
+
+        if [ ! -z "$GRSEC_DETECTED" ]
+        then
+            step_msg "GRSecurity: yes"
+            if [ ! -z "$CFG_PAXCTL" ]
+            then
+                CFG_ENABLE_PAX_MARKS=1
+            else
+                warn "GRSecurity kernel detected but no paxctl binary found: not setting CFG_ENABLE_PAX_MARKS"
+            fi
+        else
+            step_msg "GRSecurity: no"
+        fi
     fi
 fi
 
@@ -698,6 +747,12 @@ putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
+
+if [ ! -z "$CFG_ENABLE_PAX_MARKS" ]
+then
+    putvar CFG_ENABLE_PAX_MARKS
+    putvar CFG_PAXCTL
+fi
 
 if [ ! -z $BAD_PANDOC ]
 then
