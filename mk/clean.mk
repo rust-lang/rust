@@ -57,6 +57,9 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/cargo$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBFUZZER)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBCARGO)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_CORELIB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
@@ -66,6 +69,9 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBFUZZER_GLOB)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBCARGO_GLOB)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 
@@ -83,6 +89,9 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/cargo$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/serializer$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBCARGO)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
@@ -92,6 +101,9 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_GLOB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBFUZZER_GLOB)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBCARGO_GLOB)
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
