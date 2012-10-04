@@ -78,6 +78,7 @@ Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
+Orphée Lafond-Lummis <o@orftz.com>
 Patrick Walton <pwalton@mozilla.com>
 Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Stansifer <paul.stansifer@gmail.com>
