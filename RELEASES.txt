@@ -8,13 +8,14 @@ Version 0.4 (September 2012)
       * Keyword removal: 'again', 'import', 'check', 'new', 'owned', 'send',
         'of', 'with', 'to', 'class'.
       * Classes are replaced with simpler structs
-      * Method self types
+      * Explicit method self types
       * `ret` became `return` and `alt` became `match`
       * `import` is now `use`; `use is now `extern mod`
       * `extern mod { ... }` is now `extern { ... }`
       * `use mod` is the recommended way to import modules
       * `pub` and `priv` replace deprecated export lists
       * The syntax of `match` pattern arms now uses fat arrow (=>)
+      * `main` no longer accepts an args vector; use `os::args` instead
 
    * Semantics
       * Trait implementations are now coherent, ala Haskell typeclasses
@@ -25,15 +26,13 @@ Version 0.4 (September 2012)
       * Typestate was removed
       * Resolution rewritten to be more reliable
       * Support for 'dual-mode' data structures (freezing and thawing)
-      * Last-use analysis is only used for warnings now. Moves must be explicit
-        for lvalues (TODO: confirm)
 
    * Libraries
       * Most binary operators can now be overloaded via the traits in
         `core::ops'
       * `std::net::url` for representing URLs
       * Sendable hash maps in `core::send_map`
-      * `core::task' gained a (currently very unsafe) task-local storage API
+      * `core::task' gained a (currently unsafe) task-local storage API
 
    * Concurrency
       * An efficient new intertask communication primitive called the pipe,
@@ -52,8 +51,7 @@ Version 0.4 (September 2012)
       * Extensive architectural improvements to rustc
       * Begun a transition away from buggy C++-based reflection (shape) code to
         Rust-based (visitor) code
-      * Hash functions improved across the codebase (TODO: need details)
-      * New lint checks (TODO: which?)
+      * All hash functions and tables converted to secure, randomized SipHash
 
 Version 0.3  (July 2012)
 ------------------------
