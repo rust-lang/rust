@@ -30,7 +30,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
 
     if os::getenv(~"RUST_BENCH").is_some() { run_test = true }
     else if argv.len() > 0 {
-        run_test = argv.contains(~"all") || argv.contains(name)
+        run_test = argv.contains(&~"all") || argv.contains(&name)
     }
 
     if !run_test { return }
@@ -47,7 +47,7 @@ fn shift_push() {
     let mut v2 = ~[];
 
     while v1.len() > 0 {
-        vec::push(v2, vec::shift(v1));
+        v2.push(v1.shift());
     }
 }
 
@@ -56,7 +56,7 @@ fn read_line() {
         .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
 
     for int::range(0, 3) |_i| {
-        let reader = result::get(io::file_reader(&path));
+        let reader = result::get(&io::file_reader(&path));
         while !reader.eof() {
             reader.read_line();
         }
@@ -122,11 +122,11 @@ fn vec_push_all() {
     for uint::range(0, 1500) |i| {
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen_bool() {
-            vec::push_all(v, rv);
+            v.push_all(rv);
         }
         else {
             v <-> rv;
-            vec::push_all(v, rv);
+            v.push_all(rv);
         }
     }
 }

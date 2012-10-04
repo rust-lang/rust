@@ -122,6 +122,6 @@ fn compute_capture_vars(tcx: ty::ctxt,
     }
 
     let mut result = ~[];
-    for cap_map.each_value |cap_var| { vec::push(result, cap_var); }
+    for cap_map.each_value |cap_var| { result.push(cap_var); }
     return result;
 }

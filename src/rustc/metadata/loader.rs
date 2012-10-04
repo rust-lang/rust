@@ -35,7 +35,7 @@ type ctxt = {
     hash: ~str,
     os: os,
     static: bool,
-    intr: ident_interner
+    intr: @ident_interner
 };
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
@@ -90,7 +90,7 @@ fn find_library_crate_aux(cx: ctxt,
                     option::None::<()>
                 } else {
                     debug!("found %s with matching metadata", path.to_str());
-                    vec::push(matches, {ident: path.to_str(), data: cvec});
+                    matches.push({ident: path.to_str(), data: cvec});
                     option::None::<()>
                 }
               }
@@ -135,7 +135,7 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
     }
 }
 
-fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
+fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
                       attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
         diag.handler().note(fmt!("meta: %s",
@@ -193,7 +193,7 @@ fn get_metadata_section(os: os,
                        vlen);
                 let minsz = uint::min(vlen, csz);
                 let mut version_ok = false;
-                do vec::raw::form_slice(cvbuf, minsz) |buf0| {
+                do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
                     version_ok = (buf0 ==
                                   encoder::metadata_encoding_version);
                 }
@@ -202,7 +202,7 @@ fn get_metadata_section(os: os,
                 let cvbuf1 = ptr::offset(cvbuf, vlen);
                 debug!("inflating %u bytes of compressed metadata",
                        csz - vlen);
-                do vec::raw::form_slice(cvbuf1, csz-vlen) |bytes| {
+                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
                     found = move Some(@(move inflated));
                 }
@@ -226,7 +226,7 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(intr: ident_interner,
+fn list_file_metadata(intr: @ident_interner,
                       os: os, path: &Path, out: io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),

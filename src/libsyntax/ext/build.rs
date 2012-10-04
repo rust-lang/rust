@@ -50,6 +50,10 @@ fn mk_access(cx: ext_ctxt, sp: span, p: ~[ast::ident], m: ast::ident)
     let pathexpr = mk_path(cx, sp, p);
     return mk_access_(cx, sp, pathexpr, m);
 }
+fn mk_addr_of(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+    return mk_expr(cx, sp, ast::expr_addr_of(ast::m_imm, e));
+}
+
 fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
             args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, false))
@@ -96,7 +100,7 @@ fn mk_rec_e(cx: ext_ctxt, sp: span,
         let val = field.ex;
         let astfield =
             {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
-        vec::push(astfields, astfield);
+        astfields.push(astfield);
     }
     let recexpr = ast::expr_rec(astfields, option::None::<@ast::expr>);
     mk_expr(cx, sp, recexpr)

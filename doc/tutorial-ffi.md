@@ -1,4 +1,6 @@
-# Interacting with foreign code
+% Rust Foreign Function Interface Tutorial
+
+# Introduction
 
 One of Rust's aims, as a system programming language, is to
 interoperate well with C code.
@@ -38,7 +40,7 @@ fn main(args: ~[~str]) {
 }
 ~~~~
 
-## Foreign modules
+# Foreign modules
 
 Before we can call `SHA1`, we have to declare it. That is what this
 part of the program is responsible for:
@@ -68,7 +70,7 @@ extern mod something {
 }
 ~~~~
 
-## Foreign calling conventions
+# Foreign calling conventions
 
 Most foreign code will be C code, which usually uses the `cdecl` calling
 convention, so that is what Rust uses by default when calling foreign
@@ -88,7 +90,7 @@ The `"abi"` attribute applies to a foreign module (it can not be applied
 to a single function within a module), and must be either `"cdecl"`
 or `"stdcall"`. Other conventions may be defined in the future.
 
-## Unsafe pointers
+# Unsafe pointers
 
 The foreign `SHA1` function is declared to take three arguments, and
 return a pointer.
@@ -118,7 +120,7 @@ caution—unlike Rust's other pointer types, unsafe pointers are
 completely unmanaged, so they might point at invalid memory, or be
 null pointers.
 
-## Unsafe blocks
+# Unsafe blocks
 
 The `sha1` function is the most obscure part of the program.
 
@@ -159,7 +161,7 @@ unsafe fn kaboom() { ~"I'm harmless!"; }
 This function can only be called from an unsafe block or another
 unsafe function.
 
-## Pointer fiddling
+# Pointer fiddling
 
 The standard library defines a number of helper functions for dealing
 with unsafe data, casting between types, and generally subverting
@@ -202,10 +204,10 @@ unsafe pointer that was returned by `SHA1`. SHA1 digests are always
 twenty bytes long, so we can pass `20u` for the length of the new
 vector.
 
-## Passing structures
+# Passing structures
 
 C functions often take pointers to structs as arguments. Since Rust
-records are binary-compatible with C structs, Rust programs can call
+structs are binary-compatible with C structs, Rust programs can call
 such functions directly.
 
 This program uses the POSIX function `gettimeofday` to get a
@@ -215,15 +217,21 @@ microsecond-resolution timer.
 extern mod std;
 use libc::c_ulonglong;
 
-type timeval = {mut tv_sec: c_ulonglong,
-                mut tv_usec: c_ulonglong};
+struct timeval {
+    mut tv_sec: c_ulonglong,
+    mut tv_usec: c_ulonglong
+}
+
 #[nolink]
 extern mod lib_c {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
 fn unix_time_in_microseconds() -> u64 unsafe {
-    let x = {mut tv_sec: 0 as c_ulonglong, mut tv_usec: 0 as c_ulonglong};
-    lib_c::gettimeofday(ptr::addr_of(x), ptr::null());
+    let x = timeval {
+        mut tv_sec: 0 as c_ulonglong,
+        mut tv_usec: 0 as c_ulonglong
+    };
+    lib_c::gettimeofday(ptr::addr_of(&x), ptr::null());
     return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
@@ -234,8 +242,8 @@ The `#[nolink]` attribute indicates that there's no foreign library to
 link in. The standard C library is already linked with Rust programs.
 
 A `timeval`, in C, is a struct with two 32-bit integers. Thus, we
-define a record type with the same contents, and declare
-`gettimeofday` to take a pointer to such a record.
+define a struct type with the same contents, and declare
+`gettimeofday` to take a pointer to such a struct.
 
 The second argument to `gettimeofday` (the time zone) is not used by
 this program, so it simply declares it to be a pointer to the nil

@@ -37,7 +37,7 @@ fn run(args: ~[~str]) {
     let mut worker_results = ~[];
     for uint::range(0u, workers) |_i| {
         do task::task().future_result(|+r| {
-            vec::push(worker_results, r);
+            worker_results.push(r);
         }).spawn {
             for uint::range(0u, size / workers) |_i| {
                 comm::send(to_child, bytes(100u));

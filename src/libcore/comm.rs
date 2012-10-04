@@ -32,14 +32,13 @@ will once again be the preferred module for intertask communication.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+// NB: transitionary, de-mode-ing
+// tjc: re-forbid deprecated modes after snapshot
 #[forbid(deprecated_pattern)];
 
 use either::Either;
 use libc::size_t;
-
-
+// After snapshot, change p2::addr_of => addr_of
 
 /**
  * A communication endpoint that can receive messages
@@ -76,7 +75,7 @@ pub fn Port<T: Send>() -> Port<T> {
 impl<T: Send> Port<T> {
 
     fn chan() -> Chan<T> { Chan(self) }
-    fn send(+v: T) { self.chan().send(move v) }
+    fn send(v: T) { self.chan().send(move v) }
     fn recv() -> T { recv(self) }
     fn peek() -> bool { peek(self) }
 
@@ -85,7 +84,7 @@ impl<T: Send> Port<T> {
 impl<T: Send> Chan<T> {
 
     fn chan() -> Chan<T> { self }
-    fn send(+v: T) { send(self, move v) }
+    fn send(v: T) { send(self, move v) }
     fn recv() -> T { recv_chan(self) }
     fn peek() -> bool { peek_chan(self) }
 
@@ -104,7 +103,7 @@ struct PortPtr<T:Send> {
         // Once the port is detached it's guaranteed not to receive further
         // messages
         let yield = 0;
-        let yieldp = ptr::addr_of(yield);
+        let yieldp = ptr::addr_of(&yield);
         rustrt::rust_port_begin_detach(self.po, yieldp);
         if yield != 0 {
             // Need to wait for the port to be detached
@@ -167,7 +166,7 @@ fn as_raw_port<T: Send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
  * Constructs a channel. The channel is bound to the port used to
  * construct it.
  */
-pub fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
+pub fn Chan<T: Send>(&&p: Port<T>) -> Chan<T> {
     Chan_(rustrt::get_port_id((**p).po))
 }
 
@@ -175,9 +174,9 @@ pub fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
  * Sends data over a channel. The sent data is moved into the channel,
  * whereupon the caller loses access to it.
  */
-pub fn send<T: Send>(ch: Chan<T>, +data: T) {
+pub fn send<T: Send>(ch: Chan<T>, data: T) {
     let Chan_(p) = ch;
-    let data_ptr = ptr::addr_of(data) as *();
+    let data_ptr = ptr::addr_of(&data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);
     if res != 0 unsafe {
         // Data sent successfully
@@ -207,10 +206,10 @@ fn peek_chan<T: Send>(ch: comm::Chan<T>) -> bool {
 /// Receive on a raw port pointer
 fn recv_<T: Send>(p: *rust_port) -> T {
     let yield = 0;
-    let yieldp = ptr::addr_of(yield);
+    let yieldp = ptr::addr_of(&yield);
     let mut res;
     res = rusti::init::<T>();
-    rustrt::port_recv(ptr::addr_of(res) as *uint, p, yieldp);
+    rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
     if yield != 0 {
         // Data isn't available yet, so res has not been initialized.
@@ -234,12 +233,12 @@ fn peek_(p: *rust_port) -> bool {
 pub fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
     -> Either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
-    let yield = 0, yieldp = ptr::addr_of(yield);
+    let yield = 0, yieldp = ptr::addr_of(&yield);
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
     do vec::as_imm_buf(ports) |ports, n_ports| {
-        rustrt::rust_port_select(ptr::addr_of(resport), ports,
+        rustrt::rust_port_select(ptr::addr_of(&resport), ports,
                                  n_ports as size_t, yieldp);
     }
 
@@ -275,7 +274,6 @@ type port_id = int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
     fn rust_port_id_send(target_port: port_id, data: *()) -> libc::uintptr_t;
 
     fn new_port(unit_sz: libc::size_t) -> *rust_port;
@@ -298,7 +296,6 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
     fn init<T>() -> T;
 }
 
@@ -459,7 +456,7 @@ fn test_recv_chan_wrong_task() {
     let po = Port();
     let ch = Chan(po);
     send(ch, ~"flower");
-    assert result::is_err(task::try(||
+    assert result::is_err(&task::try(||
         recv_chan(ch)
     ))
 }

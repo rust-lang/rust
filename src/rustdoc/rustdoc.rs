@@ -5,7 +5,7 @@ use config::Config;
 
 fn main(args: ~[~str]) {
 
-    if args.contains(~"-h") || args.contains(~"--help") {
+    if args.contains(&~"-h") || args.contains(&~"--help") {
         config::usage();
         return;
     }

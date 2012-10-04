@@ -28,7 +28,7 @@ mod pingpong {
         do pipes::entangle_buffer(buffer) |buffer, data| {
             data.ping.set_buffer_(buffer);
             data.pong.set_buffer_(buffer);
-            ptr::addr_of(data.ping)
+            ptr::addr_of(&(data.ping))
         }
     }
     enum ping = server::pong;
@@ -38,8 +38,8 @@ mod pingpong {
         fn ping(+pipe: ping) -> pong {
             {
                 let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(ptr::addr_of(b.buffer.data.pong));
-                let c = RecvPacketBuffered(ptr::addr_of(b.buffer.data.pong));
+                let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
+                let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
                 let message = pingpong::ping(s);
                 pipes::send(pipe, message);
                 c
@@ -57,8 +57,8 @@ mod pingpong {
         fn pong(+pipe: pong) -> ping {
             {
                 let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(ptr::addr_of(b.buffer.data.ping));
-                let c = RecvPacketBuffered(ptr::addr_of(b.buffer.data.ping));
+                let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
+                let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
                 let message = pingpong::pong(s);
                 pipes::send(pipe, message);
                 c

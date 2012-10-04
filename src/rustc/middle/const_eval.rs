@@ -41,7 +41,7 @@ enum constness {
 }
 
 fn join(a: constness, b: constness) -> constness {
-    match (a,b) {
+    match (a, b) {
       (integral_const, integral_const) => integral_const,
       (integral_const, general_const)
       | (general_const, integral_const)
@@ -51,7 +51,7 @@ fn join(a: constness, b: constness) -> constness {
 }
 
 fn join_all(cs: &[constness]) -> constness {
-    vec::foldl(integral_const, cs, join)
+    vec::foldl(integral_const, cs, |a, b| join(a, *b))
 }
 
 fn classify(e: @expr,

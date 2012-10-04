@@ -813,7 +813,7 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
                   nid: ast::node_id) -> Datum {
         let is_last_use = match bcx.ccx().maps.last_use_map.find(ref_id) {
             None => false,
-            Some(vars) => (*vars).contains(nid)
+            Some(vars) => (*vars).contains(&nid)
         };
 
         let source = if is_last_use {FromLastUseLvalue} else {FromLvalue};
@@ -946,7 +946,9 @@ fn trans_index(bcx: block,
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
     let bcx = do with_cond(bcx, bounds_check) |bcx| {
-        controlflow::trans_fail(bcx, Some(index_expr.span), ~"bounds check")
+        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
+        controlflow::trans_fail_bounds_check(bcx, index_expr.span,
+                                             ix_val, unscaled_len)
     };
     let elt = InBoundsGEP(bcx, base, ~[ix_val]);
     let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
@@ -993,7 +995,7 @@ fn trans_rec_or_struct(bcx: block,
             let dest = GEPi(bcx, addr, struct_field(ix));
             bcx = trans_into(bcx, field.node.expr, SaveIn(dest));
             add_clean_temp_mem(bcx, dest, field_tys[ix].mt.ty);
-            vec::push(temp_cleanups, dest);
+            temp_cleanups.push(dest);
         }
 
         // copy over any remaining fields from the base (for
@@ -1046,7 +1048,7 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
         let e_ty = expr_ty(bcx, *e);
         bcx = trans_into(bcx, *e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
-        vec::push(temp_cleanups, dest);
+        temp_cleanups.push(dest);
     }
     for vec::each(temp_cleanups) |cleanup| {
         revoke_clean(bcx, *cleanup);

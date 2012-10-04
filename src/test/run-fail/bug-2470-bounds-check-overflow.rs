@@ -1,4 +1,4 @@
-// error-pattern:bounds check
+// error-pattern:index out of bounds
 
 fn main() {
 

@@ -58,7 +58,7 @@ fn parse_config(args: ~[~str]) -> config {
              } else { option::None },
          logfile: option::map(&getopts::opt_maybe_str(matches,
                                                      ~"logfile"),
-                              |s| Path(s)),
+                              |s| Path(*s)),
          runtool: getopts::opt_maybe_str(matches, ~"runtool"),
          rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
          jit: getopts::opt_present(matches, ~"jit"),
@@ -141,7 +141,7 @@ fn make_tests(config: config) -> ~[test::TestDesc] {
         let file = copy *file;
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
-            vec::push(tests, make_test(config, file))
+            tests.push(make_test(config, file))
         }
     }
     return tests;

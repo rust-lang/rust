@@ -13,7 +13,7 @@ use libc::c_void;
  * data structure, and implement both `MovePtr` for it as well as `TyVisitor`;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
-trait MovePtr {
+pub trait MovePtr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void);
 }
 
@@ -27,7 +27,7 @@ fn align(size: uint, align: uint) -> uint {
 struct MovePtrAdaptor<V: TyVisitor MovePtr> {
     inner: V
 }
-pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(+v: V) -> MovePtrAdaptor<V> {
+pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: move v }
 }
 

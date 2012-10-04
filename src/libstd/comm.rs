@@ -6,14 +6,11 @@ Higher level communication abstractions.
 
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use pipes::{Channel, Recv, Chan, Port, Selectable};
 
-export DuplexStream;
-
 /// An extension of `pipes::stream` that allows both sending and receiving.
-struct DuplexStream<T: Send, U: Send> {
+pub struct DuplexStream<T: Send, U: Send> {
     priv chan: Chan<T>,
     priv port: Port <U>,
 }
@@ -49,7 +46,7 @@ impl<T: Send, U: Send> DuplexStream<T, U> : Selectable {
 }
 
 /// Creates a bidirectional stream.
-fn DuplexStream<T: Send, U: Send>()
+pub fn DuplexStream<T: Send, U: Send>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (c2, p1) = pipes::stream();

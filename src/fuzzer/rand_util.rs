@@ -61,7 +61,7 @@ fn weighted_vec<T: copy>(v : ~[weighted<T>]) -> ~[T] {
     for {weight: weight, item: item} in v {
         let i = 0u;
         while i < weight {
-            vec::push(r, item);
+            r.push(item);
             i += 1u;
         }
     }

@@ -58,7 +58,7 @@ type cstore_private =
       mut used_crate_files: ~[Path],
       mut used_libraries: ~[~str],
       mut used_link_args: ~[~str],
-      intr: ident_interner};
+      intr: @ident_interner};
 
 // Map from node_id's of local use statements to crate numbers
 type use_crate_map = map::HashMap<ast::node_id, ast::crate_num>;
@@ -68,9 +68,9 @@ pure fn p(cstore: cstore) -> cstore_private {
     match cstore { private(p) => p }
 }
 
-fn mk_cstore(intr: ident_interner) -> cstore {
-    let meta_cache = map::HashMap::<int,crate_metadata>();
-    let crate_map = map::HashMap::<int,ast::crate_num>();
+fn mk_cstore(intr: @ident_interner) -> cstore {
+    let meta_cache = map::HashMap();
+    let crate_map = map::HashMap();
     let mod_path_map = HashMap();
     return private(@{metas: meta_cache,
                      use_crate_map: crate_map,
@@ -114,8 +114,8 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
 }
 
 fn add_used_crate_file(cstore: cstore, lib: &Path) {
-    if !vec::contains(p(cstore).used_crate_files, copy *lib) {
-        vec::push(p(cstore).used_crate_files, copy *lib);
+    if !vec::contains(p(cstore).used_crate_files, lib) {
+        p(cstore).used_crate_files.push(copy *lib);
     }
 }
 
@@ -126,8 +126,8 @@ fn get_used_crate_files(cstore: cstore) -> ~[Path] {
 fn add_used_library(cstore: cstore, lib: ~str) -> bool {
     assert lib != ~"";
 
-    if vec::contains(p(cstore).used_libraries, lib) { return false; }
-    vec::push(p(cstore).used_libraries, lib);
+    if vec::contains(p(cstore).used_libraries, &lib) { return false; }
+    p(cstore).used_libraries.push(lib);
     return true;
 }
 
@@ -136,7 +136,7 @@ fn get_used_libraries(cstore: cstore) -> ~[~str] {
 }
 
 fn add_used_link_args(cstore: cstore, args: ~str) {
-    vec::push_all(p(cstore).used_link_args, str::split_char(args, ' '));
+    p(cstore).used_link_args.push_all(str::split_char(args, ' '));
 }
 
 fn get_used_link_args(cstore: cstore) -> ~[~str] {
@@ -163,7 +163,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[~str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);
-        vec::push(result, {name: cdata.name, hash: hash});
+        result.push({name: cdata.name, hash: hash});
     };
     pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
     let sorted = std::sort::merge_sort(result, lteq);
@@ -177,7 +177,7 @@ fn get_dep_hashes(cstore: cstore) -> ~[~str] {
 
 fn get_path(cstore: cstore, d: ast::def_id) -> ~[~str] {
     option::map_default(&p(cstore).mod_path_map.find(d), ~[],
-                        |ds| str::split_str(*ds, ~"::"))
+                        |ds| str::split_str(**ds, ~"::"))
 }
 // Local Variables:
 // mode: rust

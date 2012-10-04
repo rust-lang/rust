@@ -302,7 +302,7 @@ fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
 impl IrMaps {
     fn add_live_node(lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
-        vec::push(self.lnks, lnk);
+        self.lnks.push(lnk);
         self.num_live_nodes += 1u;
 
         debug!("%s is of kind %?", ln.to_str(), lnk);
@@ -319,7 +319,7 @@ impl IrMaps {
 
     fn add_variable(vk: VarKind) -> Variable {
         let v = Variable(self.num_vars);
-        vec::push(self.var_kinds, vk);
+        self.var_kinds.push(vk);
         self.num_vars += 1u;
 
         match vk {
@@ -416,7 +416,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let fn_maps = @IrMaps(self.tcx, self.method_map,
                           self.last_use_map);
 
-    debug!("creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint);
+    debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
     for decl.inputs.each |arg| {
         debug!("adding argument %d", arg.id);
@@ -540,7 +540,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
                   cap_move | cap_drop => true, // var must be dead afterwards
                   cap_copy | cap_ref => false // var can still be used
                 };
-                vec::push(call_caps, {ln: cv_ln, is_move: is_move, rv: rv});
+                call_caps.push({ln: cv_ln, is_move: is_move, rv: rv});
               }
               None => {}
             }
@@ -659,7 +659,7 @@ impl Liveness {
           expr_path(_) => {
             let def = self.tcx.def_map.get(expr.id);
             relevant_def(def).map(
-                |rdef| self.variable_from_rdef(rdef, expr.span)
+                |rdef| self.variable_from_rdef(*rdef, expr.span)
             )
           }
           _ => None
@@ -675,7 +675,7 @@ impl Liveness {
         match self.tcx.def_map.find(node_id) {
           Some(def) => {
             relevant_def(def).map(
-                |rdef| self.variable_from_rdef(rdef, span)
+                |rdef| self.variable_from_rdef(*rdef, span)
             )
           }
           None => {
@@ -955,7 +955,7 @@ impl Liveness {
     fn propagate_through_block(blk: blk, succ: LiveNode) -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
         do blk.node.stmts.foldr(succ) |stmt, succ| {
-            self.propagate_through_stmt(stmt, succ)
+            self.propagate_through_stmt(*stmt, succ)
         }
     }
 
@@ -975,7 +975,7 @@ impl Liveness {
         match decl.node {
           decl_local(locals) => {
             do locals.foldr(succ) |local, succ| {
-                self.propagate_through_local(local, succ)
+                self.propagate_through_local(*local, succ)
             }
           }
           decl_item(_) => {
@@ -1007,14 +1007,14 @@ impl Liveness {
     fn propagate_through_exprs(exprs: ~[@expr],
                                succ: LiveNode) -> LiveNode {
         do exprs.foldr(succ) |expr, succ| {
-            self.propagate_through_expr(expr, succ)
+            self.propagate_through_expr(*expr, succ)
         }
     }
 
     fn propagate_through_opt_expr(opt_expr: Option<@expr>,
                                   succ: LiveNode) -> LiveNode {
         do opt_expr.foldl(succ) |succ, expr| {
-            self.propagate_through_expr(expr, succ)
+            self.propagate_through_expr(*expr, *succ)
         }
     }
 
@@ -1396,7 +1396,7 @@ impl Liveness {
                 // Note: the field_map is empty unless we are in a ctor
                 return self.ir.field_map.find(fld).map(|var| {
                     let ln = self.live_node(expr.id, expr.span);
-                    (ln, var)
+                    (ln, *var)
                 });
               }
               _ => return None
@@ -1571,11 +1571,11 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
       expr_call(f, args, _) => {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
-        do vec::iter2(args, targs) |arg_expr, arg_ty| {
+        for vec::each2(args, targs) |arg_expr, arg_ty| {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
                 by_val | by_copy | by_ref | by_mutbl_ref => {}
                 by_move => {
-                    self.check_move_from_expr(arg_expr, vt);
+                    self.check_move_from_expr(*arg_expr, vt);
                 }
             }
         }

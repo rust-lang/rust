@@ -259,16 +259,16 @@ fn build_closure(bcx0: block,
         match cap_var.mode {
             capture::cap_ref => {
                 assert ck == ty::ck_block;
-                vec::push(env_vals, EnvValue {action: EnvRef,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvRef,
+                                        datum: datum});
             }
             capture::cap_copy => {
-                vec::push(env_vals, EnvValue {action: EnvStore,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvStore,
+                                        datum: datum});
             }
             capture::cap_move => {
-                vec::push(env_vals, EnvValue {action: EnvMove,
-                                              datum: datum});
+                env_vals.push(EnvValue {action: EnvMove,
+                                        datum: datum});
             }
             capture::cap_drop => {
                 bcx = datum.drop_val(bcx);
@@ -281,10 +281,10 @@ fn build_closure(bcx0: block,
     // variables:
     do option::iter(&include_ret_handle) |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
-        let flag_datum = Datum {val: flagptr, ty: ty::mk_bool(tcx),
+        let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
                                 mode: ByRef, source: FromLvalue};
-        vec::push(env_vals, EnvValue {action: EnvRef,
-                                      datum: flag_datum});
+        env_vals.push(EnvValue {action: EnvRef,
+                                datum: flag_datum});
 
         // Return value (we just pass a by-ref () and cast it later to
         // the right thing):
@@ -295,8 +295,8 @@ fn build_closure(bcx0: block,
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
                                mode: ByRef, source: FromLvalue};
-        vec::push(env_vals, EnvValue {action: EnvRef,
-                                      datum: ret_datum});
+        env_vals.push(EnvValue {action: EnvRef,
+                                datum: ret_datum});
     }
 
     return store_environment(bcx, env_vals, ck);
@@ -363,7 +363,7 @@ fn trans_expr_fn(bcx: block,
     let llfnty = type_of_fn_from_ty(ccx, fty);
     let sub_path = vec::append_one(bcx.fcx.path,
                                    path_name(special_idents::anon));
-    let s = mangle_internal_name_by_path(ccx, sub_path);
+    let s = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> Result {

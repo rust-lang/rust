@@ -75,10 +75,7 @@ Write intermediate files (.bc, .opt.bc, .o)
 in addition to normal output
 .TP
 \fB\-\-static\fR
-Use or produce static libraries or binaries
-.TP
-\fB\-\-stats\fR
-Print compilation statistics
+Use or produce static libraries or binaries (experimental)
 .TP
 \fB\-\-sysroot\fR <path>
 Override the system root
@@ -87,10 +84,9 @@ Override the system root
 Build a test harness
 .TP
 \fB\-\-target\fR <triple>
-Target cpu\-manufacturer\-kernel[\-os] to compile for
-(default: host triple)
-(see http://sources.redhat.com/autobook/autobook/
-autobook_17.html for detail)
+Target cpu\-manufacturer\-kernel[\-os] to compile for (default: host triple)
+(see <\fBhttp://sources.redhat.com/autobook/autobook/autobook_17.html\fR> for
+detail)
 .TP
 \fB\-W\fR <foo>
 enable warning <foo>
@@ -121,7 +117,7 @@ To build either with a crate (.rc) file:
     $ rustc hello.rc
 
 .SH "BUGS"
-See \fBhttps://github.com/mozilla/rust/issues\fR for a list of known bugs.
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for a list of known bugs.
 
 .SH "AUTHOR"
 See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare

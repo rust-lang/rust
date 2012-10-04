@@ -9,18 +9,18 @@
  */
 
 // NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
+#[warn(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
 
 /// The option type
-enum Option<T> {
+pub enum Option<T> {
     None,
     Some(T),
 }
 
-pure fn get<T: Copy>(opt: &Option<T>) -> T {
+pub pure fn get<T: Copy>(opt: &Option<T>) -> T {
     /*!
      * Gets the value out of an option
      *
@@ -30,12 +30,12 @@ pure fn get<T: Copy>(opt: &Option<T>) -> T {
      */
 
     match *opt {
-      Some(x) => return x,
+      Some(copy x) => return x,
       None => fail ~"option::get none"
     }
 }
 
-pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
+pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     /*!
      * Gets an immutable reference to the value inside an option.
      *
@@ -49,7 +49,7 @@ pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pure fn expect<T: Copy>(opt: &Option<T>, +reason: ~str) -> T {
+pub pure fn expect<T: Copy>(opt: &Option<T>, reason: ~str) -> T {
     /*!
      * Gets the value out of an option, printing a specified message on
      * failure
@@ -58,22 +58,17 @@ pure fn expect<T: Copy>(opt: &Option<T>, +reason: ~str) -> T {
      *
      * Fails if the value equals `none`
      */
-    match *opt { Some(x) => x, None => fail reason }
+    match *opt { Some(copy x) => x, None => fail reason }
 }
 
-pure fn map<T, U>(opt: &Option<T>, f: fn(T) -> U) -> Option<U> {
-    //! Maps a `some` value from one type to another
-
-    match *opt { Some(x) => Some(f(x)), None => None }
-}
-
-pure fn map_ref<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
+pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
 }
 
-pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+v: T) -> U) -> Option<U> {
+pub pure fn map_consume<T, U>(opt: Option<T>,
+                              f: fn(v: T) -> U) -> Option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
@@ -81,17 +76,23 @@ pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+v: T) -> U) -> Option<U> {
     if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
 }
 
-pure fn chain<T, U>(opt: &Option<T>, f: fn(T) -> Option<U>) -> Option<U> {
+pub pure fn chain<T, U>(opt: Option<T>,
+                        f: fn(t: T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content through a
      * function that returns an option.
      */
 
-    match *opt { Some(x) => f(x), None => None }
+    // XXX write with move match
+    if opt.is_some() {
+        f(unwrap(opt))
+    } else {
+        None
+    }
 }
 
-pure fn chain_ref<T, U>(opt: &Option<T>,
-                        f: fn(x: &T) -> Option<U>) -> Option<U> {
+pub pure fn chain_ref<T, U>(opt: &Option<T>,
+                            f: fn(x: &T) -> Option<U>) -> Option<U> {
     /*!
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
@@ -100,7 +101,7 @@ pure fn chain_ref<T, U>(opt: &Option<T>,
     match *opt { Some(ref x) => f(x), None => None }
 }
 
-pure fn or<T>(+opta: Option<T>, +optb: Option<T>) -> Option<T> {
+pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost some() value, or none if both are none.
      */
@@ -111,7 +112,7 @@ pure fn or<T>(+opta: Option<T>, +optb: Option<T>) -> Option<T> {
 }
 
 #[inline(always)]
-pure fn while_some<T>(+x: Option<T>, blk: fn(+v: T) -> Option<T>) {
+pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
     let mut opt <- x;
@@ -120,54 +121,38 @@ pure fn while_some<T>(+x: Option<T>, blk: fn(+v: T) -> Option<T>) {
     }
 }
 
-pure fn is_none<T>(opt: &Option<T>) -> bool {
+pub pure fn is_none<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option equals `none`
 
     match *opt { None => true, Some(_) => false }
 }
 
-pure fn is_some<T>(opt: &Option<T>) -> bool {
+pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
 }
 
-pure fn get_default<T: Copy>(opt: &Option<T>, +def: T) -> T {
+pub pure fn get_default<T: Copy>(opt: &Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
-    match *opt { Some(x) => x, None => def }
+    match *opt { Some(copy x) => x, None => def }
 }
 
-pure fn map_default<T, U>(opt: &Option<T>, +def: U, f: fn(T) -> U) -> U {
-    //! Applies a function to the contained value or returns a default
-
-    match *opt { None => move def, Some(t) => f(t) }
-}
-
-// This should replace map_default.
-pure fn map_default_ref<T, U>(opt: &Option<T>, +def: U,
+pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
                               f: fn(x: &T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
     match *opt { None => move def, Some(ref t) => f(t) }
 }
 
-// This should change to by-copy mode; use iter_ref below for by reference
-pure fn iter<T>(opt: &Option<T>, f: fn(T)) {
-    //! Performs an operation on the contained value or does nothing
-
-    match *opt { None => (), Some(t) => f(t) }
-}
-
-pure fn iter_ref<T>(opt: &Option<T>, f: fn(x: &T)) {
+pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
 }
 
-// tjc: shouldn't this be - instead of +?
-// then could get rid of some superfluous moves
 #[inline(always)]
-pure fn unwrap<T>(+opt: Option<T>) -> T {
+pub pure fn unwrap<T>(opt: Option<T>) -> T {
     /*!
      * Moves a value out of an option type and returns it.
      *
@@ -182,12 +167,12 @@ pure fn unwrap<T>(+opt: Option<T>) -> T {
 
 /// The ubiquitous option dance.
 #[inline(always)]
-fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
+pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
     if opt.is_none() { fail ~"option::swap_unwrap none" }
     unwrap(util::replace(opt, None))
 }
 
-pure fn unwrap_expect<T>(+opt: Option<T>, reason: &str) -> T {
+pub pure fn unwrap_expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     if opt.is_none() { fail reason.to_unique(); }
     unwrap(move opt)
@@ -195,22 +180,10 @@ pure fn unwrap_expect<T>(+opt: Option<T>, reason: &str) -> T {
 
 // Some of these should change to be &Option<T>, some should not. See below.
 impl<T> Option<T> {
-    /**
-     * Update an optional value by optionally running its content through a
-     * function that returns an option.
-     */
-    pure fn chain<U>(f: fn(T) -> Option<U>) -> Option<U> { chain(&self, f) }
-    /// Applies a function to the contained value or returns a default
-    pure fn map_default<U>(+def: U, f: fn(T) -> U) -> U
-        { map_default(&self, move def, f) }
-    /// Performs an operation on the contained value or does nothing
-    pure fn iter(f: fn(T)) { iter(&self, f) }
     /// Returns true if the option equals `none`
     pure fn is_none() -> bool { is_none(&self) }
     /// Returns true if the option contains some value
     pure fn is_some() -> bool { is_some(&self) }
-    /// Maps a `some` value from one type to another
-    pure fn map<U>(f: fn(T) -> U) -> Option<U> { map(&self, f) }
 }
 
 impl<T> &Option<T> {
@@ -222,12 +195,12 @@ impl<T> &Option<T> {
         chain_ref(self, f)
     }
     /// Applies a function to the contained value or returns a default
-    pure fn map_default_ref<U>(+def: U, f: fn(x: &T) -> U) -> U
-        { map_default_ref(self, move def, f) }
+    pure fn map_default<U>(def: U, f: fn(x: &T) -> U) -> U
+        { map_default(self, move def, f) }
     /// Performs an operation on the contained value by reference
-    pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
+    pure fn iter(f: fn(x: &T)) { iter(self, f) }
     /// Maps a `some` value from one type to another by reference
-    pure fn map_ref<U>(f: fn(x: &T) -> U) -> Option<U> { map_ref(self, f) }
+    pure fn map<U>(f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
     /// Gets an immutable reference to the value inside a `some`.
     pure fn get_ref() -> &self/T { get_ref(self) }
 }
@@ -241,7 +214,7 @@ impl<T: Copy> Option<T> {
      * Fails if the value equals `none`
      */
     pure fn get() -> T { get(&self) }
-    pure fn get_default(+def: T) -> T { get_default(&self, def) }
+    pure fn get_default(def: T) -> T { get_default(&self, def) }
     /**
      * Gets the value out of an option, printing a specified message on
      * failure
@@ -250,9 +223,9 @@ impl<T: Copy> Option<T> {
      *
      * Fails if the value equals `none`
      */
-    pure fn expect(+reason: ~str) -> T { expect(&self, reason) }
+    pure fn expect(reason: ~str) -> T { expect(&self, reason) }
     /// Applies a function zero or more times until the result is none.
-    pure fn while_some(blk: fn(+v: T) -> Option<T>) { while_some(self, blk) }
+    pure fn while_some(blk: fn(v: T) -> Option<T>) { while_some(self, blk) }
 }
 
 impl<T: Eq> Option<T> : Eq {
@@ -264,11 +237,11 @@ impl<T: Eq> Option<T> : Eq {
                     Some(_) => false
                 }
             }
-            Some(self_contents) => {
+            Some(ref self_contents) => {
                 match (*other) {
                     None => false,
                     Some(ref other_contents) =>
-                        self_contents.eq(other_contents)
+                        (*self_contents).eq(other_contents)
                 }
             }
         }
@@ -279,20 +252,20 @@ impl<T: Eq> Option<T> : Eq {
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;
-    let addr_x = ptr::addr_of(*x);
+    let addr_x = ptr::p2::addr_of(&(*x));
     let opt = Some(x);
     let y = unwrap(opt);
-    let addr_y = ptr::addr_of(*y);
+    let addr_y = ptr::p2::addr_of(&(*y));
     assert addr_x == addr_y;
 }
 
 #[test]
 fn test_unwrap_str() {
     let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| ptr::addr_of(buf));
-    let opt = Some(x);
-    let y = unwrap(opt);
-    let addr_y = str::as_buf(y, |buf, _len| ptr::addr_of(buf));
+    let addr_x = str::as_buf(x, |buf, _len| buf);
+    let opt = Some(move x);
+    let y = unwrap(move opt);
+    let addr_y = str::as_buf(y, |buf, _len| buf);
     assert addr_x == addr_y;
 }
 

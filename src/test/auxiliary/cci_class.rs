@@ -1,3 +1,4 @@
+#[legacy_exports];
 mod kitties {
     #[legacy_exports];
 

@@ -20,10 +20,10 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let fmtspan = args[0].span;
     debug!("Format string:");
     log(debug, fmt);
-    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: ~str) -> ! {
+    fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
-    let parse_fmt_err = fn@(s: ~str) -> ! {
+    let parse_fmt_err = fn@(s: &str) -> ! {
         parse_fmt_err_(cx, fmtspan, s)
     };
     let pieces = parse_fmt_string(fmt, parse_fmt_err);
@@ -187,7 +187,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           TyFloat => {
             return make_conv_call(cx, arg.span, ~"float", cnv, arg);
           }
-          TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv, arg)
+          TyPoly => return make_conv_call(cx, arg.span, ~"poly", cnv,
+                       mk_addr_of(cx, sp, arg))
         }
     }
     fn log_conv(c: Conv) {
@@ -245,7 +246,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     for pieces.each |pc| {
         match *pc {
           PieceString(s) => {
-            vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s))
+            piece_exprs.push(mk_uniq_str(cx, fmt_sp, s))
           }
           PieceConv(conv) => {
             n += 1u;
@@ -258,7 +259,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
-            vec::push(piece_exprs, c_expr);
+            piece_exprs.push(c_expr);
           }
         }
     }

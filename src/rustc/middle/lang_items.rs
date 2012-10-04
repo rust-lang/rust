@@ -179,7 +179,7 @@ impl LanguageItemCollector {
     }
 
     fn collect_local_language_items() {
-        let this = unsafe { ptr::addr_of(self) };
+        let this = unsafe { ptr::addr_of(&self) };
         visit_crate(*self.crate, (), mk_simple_visitor(@{
             visit_item: |item| {
                 for item.attrs.each |attribute| {

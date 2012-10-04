@@ -25,9 +25,9 @@ use syntax::parse::token::ident_interner;
 use syntax::ast::ident;
 
 type namegen = fn@(~str) -> ident;
-fn new_namegen(intr: ident_interner) -> namegen {
+fn new_namegen(intr: @ident_interner) -> namegen {
     return fn@(prefix: ~str) -> ident {
-        return intr.gensym(@fmt!("%s_%u", prefix, intr.gensym(@prefix)))
+        return intr.gensym(@fmt!("%s_%u", prefix, intr.gensym(@prefix).repr))
     };
 }
 
@@ -348,9 +348,9 @@ fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |info| {
-        vec::push(info.cleanups,
-                  clean(|a| glue::drop_ty_root(a, root, rooted, t),
-                        cleanup_type));
+        info.cleanups.push(
+            clean(|a| glue::drop_ty_root(a, root, rooted, t),
+                  cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -362,9 +362,9 @@ fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
            ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups,
-                  clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
-                             cleanup_type));
+        info.cleanups.push(
+            clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
+                       cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -376,9 +376,9 @@ fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |info| {
-        vec::push(info.cleanups,
-                  clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
-                             cleanup_type));
+        info.cleanups.push(
+            clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
+                       cleanup_type));
         scope_clean_changed(info);
     }
 }
@@ -388,8 +388,8 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
       heap_exchange => |a| glue::trans_unique_free(a, ptr)
     };
     do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups, clean_temp(ptr, free_fn,
-                                     normal_exit_and_unwind));
+        info.cleanups.push(clean_temp(ptr, free_fn,
+                                      normal_exit_and_unwind));
         scope_clean_changed(info);
     }
 }
@@ -402,7 +402,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |info| {
         let cleanup_pos = vec::position(
             info.cleanups,
-            |cu| match cu {
+            |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
@@ -472,7 +472,7 @@ type optional_boxed_ast_expr = Option<@ast::expr>;
 
 impl optional_boxed_ast_expr: get_node_info {
     fn info() -> Option<node_info> {
-        self.chain(|s| s.info())
+        self.chain_ref(|s| s.info())
     }
 }
 
@@ -645,7 +645,7 @@ impl block {
             fmt!("[block %d]", node_info.id)
           }
           None => {
-            fmt!("[block %x]", ptr::addr_of(*self) as uint)
+            fmt!("[block %x]", ptr::addr_of(&(*self)) as uint)
           }
         }
     }
@@ -1024,7 +1024,7 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(fmt!("str%u", cx.names(~"str")),
+        str::as_c_str(fmt!("str%u", cx.names(~"str").repr),
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -1050,7 +1050,7 @@ fn C_postr(s: ~str) -> ValueRef {
 fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let mut i = 0u;
     let mut elts: ~[ValueRef] = ~[];
-    while i < size { vec::push(elts, C_u8(0u)); i += 1u; }
+    while i < size { elts.push(C_u8(0u)); i += 1u; }
     return llvm::LLVMConstArray(T_i8(), vec::raw::to_ptr(elts),
                              elts.len() as c_uint);
 }
@@ -1086,7 +1086,8 @@ fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes_plus_null(bytes);
-    let llglobal = str::as_c_str(fmt!("shape%u", ccx.names(~"shape")), |buf| {
+    let name = fmt!("shape%u", ccx.names(~"shape").repr);
+    let llglobal = str::as_c_str(name, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
@@ -1141,7 +1142,7 @@ impl mono_id_ : cmp::Eq {
 }
 
 impl mono_param_id : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           mono_precise(t, mids) =>
           to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), &mids, lsb0, f),
@@ -1155,7 +1156,7 @@ impl mono_param_id : to_bytes::IterBytes {
 }
 
 impl mono_id_ : core::to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
 }
@@ -1221,7 +1222,7 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
 fn node_vtables(bcx: block, id: ast::node_id) -> Option<typeck::vtable_res> {
     let raw_vtables = bcx.ccx().maps.vtable_map.find(id);
     raw_vtables.map(
-        |vts| meth::resolve_vtables_in_fn_ctxt(bcx.fcx, vts))
+        |vts| meth::resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
 fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)

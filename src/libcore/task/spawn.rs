@@ -66,28 +66,28 @@ use rt::rust_task;
 use rt::rust_closure;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); move y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
 )
 
-type TaskSet = send_map::linear::LinearMap<*rust_task,()>;
+pub type TaskSet = send_map::linear::LinearMap<*rust_task,()>;
 
-fn new_taskset() -> TaskSet {
+pub fn new_taskset() -> TaskSet {
     send_map::linear::LinearMap()
 }
-fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
+pub fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task, ());
     assert didnt_overwrite;
 }
-fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
+pub fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert was_present;
 }
-fn taskset_each(tasks: &TaskSet, blk: fn(+v: *rust_task) -> bool) {
+pub fn taskset_each(tasks: &TaskSet, blk: fn(v: *rust_task) -> bool) {
     tasks.each_key(|k| blk(*k))
 }
 
 // One of these per group of linked-failure tasks.
-type TaskGroupData = {
+pub type TaskGroupData = {
     // All tasks which might kill this group. When this is empty, the group
     // can be "GC"ed (i.e., its link in the ancestor list can be removed).
     mut members:     TaskSet,
@@ -95,12 +95,12 @@ type TaskGroupData = {
     // tasks in this group.
     mut descendants: TaskSet,
 };
-type TaskGroupArc = private::Exclusive<Option<TaskGroupData>>;
+pub type TaskGroupArc = private::Exclusive<Option<TaskGroupData>>;
 
-type TaskGroupInner = &mut Option<TaskGroupData>;
+pub type TaskGroupInner = &mut Option<TaskGroupData>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
-pure fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
+pub pure fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
     (&tg.members).is_empty()
 }
 
@@ -111,7 +111,7 @@ pure fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
 // taskgroup which was spawned-unlinked. Tasks from intermediate generations
 // have references to the middle of the list; when intermediate generations
 // die, their node in the list will be collected at a descendant's spawn-time.
-type AncestorNode = {
+pub type AncestorNode = {
     // Since the ancestor list is recursive, we end up with references to
     // exclusives within other exclusives. This is dangerous business (if
     // circular references arise, deadlock and memory leaks are imminent).
@@ -124,16 +124,16 @@ type AncestorNode = {
     // Recursive rest of the list.
     mut ancestors:    AncestorList,
 };
-enum AncestorList = Option<private::Exclusive<AncestorNode>>;
+pub enum AncestorList = Option<private::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
-fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
+pub fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
     unsafe { x.with(blk) }
 }
 
 #[inline(always)]
-fn access_ancestors<U>(x: &private::Exclusive<AncestorNode>,
+pub fn access_ancestors<U>(x: &private::Exclusive<AncestorNode>,
                        blk: fn(x: &mut AncestorNode) -> U) -> U {
     unsafe { x.with(blk) }
 }
@@ -146,9 +146,9 @@ fn access_ancestors<U>(x: &private::Exclusive<AncestorNode>,
 // (3) As a bonus, coalesces away all 'dead' taskgroup nodes in the list.
 // FIXME(#2190): Change Option<fn@(...)> to Option<fn&(...)>, to save on
 // allocations. Once that bug is fixed, changing the sigil should suffice.
-fn each_ancestor(list:        &mut AncestorList,
-                 bail_opt:    Option<fn@(TaskGroupInner)>,
-                 forward_blk: fn(TaskGroupInner) -> bool)
+pub fn each_ancestor(list:        &mut AncestorList,
+                     bail_opt:    Option<fn@(TaskGroupInner)>,
+                     forward_blk: fn(TaskGroupInner) -> bool)
         -> bool {
     // "Kickoff" call - there was no last generation.
     return !coalesce(list, bail_opt, forward_blk, uint::max_value);
@@ -200,7 +200,7 @@ fn each_ancestor(list:        &mut AncestorList,
         // the end of the list, which doesn't make sense to coalesce.
         return do (**ancestors).map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
-            do access_ancestors(&ancestor_arc) |nobe| {
+            do access_ancestors(ancestor_arc) |nobe| {
                 // Check monotonicity
                 assert last_generation > nobe.generation;
                 /*##########################################################*
@@ -240,7 +240,7 @@ fn each_ancestor(list:        &mut AncestorList,
                 if need_unwind && !nobe_is_dead {
                     do bail_opt.iter |bail_blk| {
                         do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
-                            bail_blk(tg_opt)
+                            (*bail_blk)(tg_opt)
                         }
                     }
                 }
@@ -271,7 +271,7 @@ fn each_ancestor(list:        &mut AncestorList,
 }
 
 // One of these per task.
-struct TCB {
+pub struct TCB {
     me:            *rust_task,
     // List of tasks with whose fates this one's is intertwined.
     tasks:         TaskGroupArc, // 'none' means the group has failed.
@@ -303,8 +303,8 @@ struct TCB {
     }
 }
 
-fn TCB(me: *rust_task, +tasks: TaskGroupArc, +ancestors: AncestorList,
-       is_main: bool, +notifier: Option<AutoNotify>) -> TCB {
+pub fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
+       is_main: bool, notifier: Option<AutoNotify>) -> TCB {
 
     let notifier = move notifier;
     notifier.iter(|x| { x.failed = false; });
@@ -318,7 +318,7 @@ fn TCB(me: *rust_task, +tasks: TaskGroupArc, +ancestors: AncestorList,
     }
 }
 
-struct AutoNotify {
+pub struct AutoNotify {
     notify_chan: Chan<Notification>,
     mut failed:  bool,
     drop {
@@ -327,15 +327,15 @@ struct AutoNotify {
     }
 }
 
-fn AutoNotify(+chan: Chan<Notification>) -> AutoNotify {
+pub fn AutoNotify(chan: Chan<Notification>) -> AutoNotify {
     AutoNotify {
         notify_chan: chan,
         failed: true // Un-set above when taskgroup successfully made.
     }
 }
 
-fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
-                       is_member: bool) -> bool {
+pub fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
+                           is_member: bool) -> bool {
     let newstate = util::replace(state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
@@ -350,7 +350,8 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
-fn leave_taskgroup(state: TaskGroupInner, me: *rust_task, is_member: bool) {
+pub fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
+                       is_member: bool) {
     let newstate = util::replace(state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
@@ -362,7 +363,7 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task, is_member: bool) {
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
-fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
+pub fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
     // NB: We could do the killing iteration outside of the group arc, by
     // having "let mut newstate" here, swapping inside, and iterating after.
     // But that would let other exiting tasks fall-through and exit while we
@@ -377,13 +378,13 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
     // see 'None' if Somebody already failed and we got a kill signal.)
     if newstate.is_some() {
         let group = option::unwrap(move newstate);
-        for taskset_each(&group.members) |+sibling| {
+        for taskset_each(&group.members) |sibling| {
             // Skip self - killing ourself won't do much good.
             if sibling != me {
                 rt::rust_task_kill_other(sibling);
             }
         }
-        for taskset_each(&group.descendants) |+child| {
+        for taskset_each(&group.descendants) |child| {
             assert child != me;
             rt::rust_task_kill_other(child);
         }
@@ -404,8 +405,8 @@ macro_rules! taskgroup_key (
     () => (cast::transmute((-2 as uint, 0u)))
 )
 
-fn gen_child_taskgroup(linked: bool, supervised: bool)
-        -> (TaskGroupArc, AncestorList, bool) {
+pub fn gen_child_taskgroup(linked: bool, supervised: bool)
+    -> (TaskGroupArc, AncestorList, bool) {
     let spawner = rt::rust_get_task();
     /*######################################################################*
      * Step 1. Get spawner's taskgroup info.
@@ -451,7 +452,9 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 match *old_ancestors {
-                    Some(arc) => access_ancestors(&arc, |a| a.generation+1),
+                    Some(ref arc) => {
+                        access_ancestors(arc, |a| a.generation+1)
+                    }
                     None      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
@@ -484,7 +487,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     }
 }
 
-fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
+pub fn spawn_raw(opts: TaskOpts, +f: fn~()) {
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -509,8 +512,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
 
             let child_wrapper = make_child_wrapper(new_task, move child_tg,
                   move ancestors, is_main, move notify_chan, move f);
-            let fptr = ptr::addr_of(child_wrapper);
-            let closure: *rust_closure = cast::reinterpret_cast(&fptr);
+
+            let closure = cast::transmute(&child_wrapper);
 
             // Getting killed between these two calls would free the child's
             // closure. (Reordering them wouldn't help - then getting killed
@@ -526,9 +529,9 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
     // (3a) If any of those fails, it leaves all groups, and does nothing.
     // (3b) Otherwise it builds a task control structure and puts it in TLS,
     // (4) ...and runs the provided body function.
-    fn make_child_wrapper(child: *rust_task, +child_arc: TaskGroupArc,
-                          +ancestors: AncestorList, is_main: bool,
-                          +notify_chan: Option<Chan<Notification>>,
+    fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
+                          ancestors: AncestorList, is_main: bool,
+                          notify_chan: Option<Chan<Notification>>,
                           +f: fn~()) -> fn~() {
         let child_data = ~mut Some((move child_arc, move ancestors));
         return fn~(move notify_chan, move child_data, move f) {
@@ -541,8 +544,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
 
             //let mut notifier = None;//notify_chan.map(|c| AutoNotify(c));
             let notifier = match notify_chan {
-                Some(notify_chan_value) => {
-                    let moved_ncv = move_it!(notify_chan_value);
+                Some(ref notify_chan_value) => {
+                    let moved_ncv = move_it!(*notify_chan_value);
                     Some(AutoNotify(move moved_ncv))
                 }
                 _ => None

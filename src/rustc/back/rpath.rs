@@ -81,8 +81,8 @@ fn get_rpaths(os: session::os,
     log_rpaths(~"fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
-    vec::push_all(rpaths, abs_rpaths);
-    vec::push_all(rpaths, fallback_rpaths);
+    rpaths.push_all(abs_rpaths);
+    rpaths.push_all(fallback_rpaths);
 
     // Remove duplicates
     let rpaths = minimize_rpaths(rpaths);
@@ -136,9 +136,9 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     }
 
     let mut path = ~[];
-    for uint::range(start_idx, len1 - 1) |_i| { vec::push(path, ~".."); };
+    for uint::range(start_idx, len1 - 1) |_i| { path.push(~".."); };
 
-    vec::push_all(path, vec::view(split2, start_idx, len2 - 1));
+    path.push_all(vec::view(split2, start_idx, len2 - 1));
 
     if vec::is_not_empty(path) {
         return Path("").push_many(path);
@@ -172,7 +172,7 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     for rpaths.each |rpath| {
         let s = rpath.to_str();
         if !set.contains_key(s) {
-            vec::push(minimized, *rpath);
+            minimized.push(*rpath);
             set.insert(s, ());
         }
     }

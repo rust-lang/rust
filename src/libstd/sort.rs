@@ -1,17 +1,9 @@
 //! Sorting methods
 #[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use vec::{len, push};
 use core::cmp::{Eq, Ord};
 use dvec::DVec;
-
-export le;
-export merge_sort;
-export quick_sort;
-export quick_sort3;
-export tim_sort;
-export Sort;
 
 type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
 
@@ -21,7 +13,7 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
+pub fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
     return merge_sort_(v, (0u, len(v)), le);
@@ -49,9 +41,9 @@ fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
         let mut b_ix = 0u;
         while a_ix < a_len && b_ix < b_len {
             if le(&a[a_ix], &b[b_ix]) {
-                vec::push(rs, a[a_ix]);
+                rs.push(a[a_ix]);
                 a_ix += 1u;
-            } else { vec::push(rs, b[b_ix]); b_ix += 1u; }
+            } else { rs.push(b[b_ix]); b_ix += 1u; }
         }
         rs = vec::append(rs, vec::slice(a, a_ix, a_len));
         rs = vec::append(rs, vec::slice(b, b_ix, b_len));
@@ -95,7 +87,7 @@ fn qsort<T: Copy>(arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: Copy>(arr: &[mut T], compare_func: Le<T>) {
+pub fn quick_sort<T: Copy>(arr: &[mut T], compare_func: Le<T>) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
 }
@@ -157,12 +149,12 @@ fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
+pub fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
 
-trait Sort {
+pub trait Sort {
     fn qsort(self);
 }
 
@@ -923,7 +915,7 @@ mod tests {
 
     fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
-        pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
@@ -953,7 +945,7 @@ mod tests {
 
     #[test]
     fn test_merge_sort_mutable() {
-        pure fn le(a: &int, b: &int) -> bool { *a <= *b }
+        pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let v1 = ~[mut 3, 2, 1];
         let v2 = merge_sort(v1, le);
         assert v2 == ~[1, 2, 3];

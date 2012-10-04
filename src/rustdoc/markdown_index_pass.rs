@@ -58,7 +58,7 @@ fn build_mod_index(
 ) -> doc::Index {
     {
         entries: par::map(doc.items, |doc| {
-            item_to_entry(doc, config)
+            item_to_entry(*doc, config)
         })
     }
 }
@@ -69,7 +69,7 @@ fn build_nmod_index(
 ) -> doc::Index {
     {
         entries: par::map(doc.fns, |doc| {
-            item_to_entry(doc::FnTag(doc), config)
+            item_to_entry(doc::FnTag(*doc), config)
         })
     }
 }

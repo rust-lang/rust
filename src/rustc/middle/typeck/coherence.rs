@@ -198,7 +198,7 @@ impl CoherenceChecker {
                                               existing trait",
                                               sess.str_of(mi.ident));
                                       let mut method_infos = mis;
-                                      push(method_infos, mi);
+                                      method_infos.push(mi);
                                       pmm.insert(item.id, method_infos);
                                     }
                                     None => {
@@ -484,7 +484,7 @@ impl CoherenceChecker {
 
                                         let trait_def_id =
                                             self.trait_ref_to_trait_def_id(
-                                                trait_ref);
+                                                *trait_ref);
 
                                         if trait_def_id.crate != local_crate {
                                             let session =
@@ -547,7 +547,7 @@ impl CoherenceChecker {
                     debug!(
                         "(creating impl) adding provided method `%s` to impl",
                         sess.str_of(provided_method.ident));
-                    push(methods, *provided_method);
+                    methods.push(*provided_method);
                 }
             }
 
@@ -559,8 +559,7 @@ impl CoherenceChecker {
                 let mut methods = ~[];
 
                 for ast_methods.each |ast_method| {
-                    push(methods,
-                         method_to_MethodInfo(*ast_method));
+                    methods.push(method_to_MethodInfo(*ast_method));
                 }
 
                 // For each trait that the impl implements, see what
@@ -619,7 +618,7 @@ impl CoherenceChecker {
                             -> @Impl {
         let mut methods = ~[];
         for struct_def.methods.each |ast_method| {
-            push(methods, @{
+            methods.push(@{
                 did: local_def(ast_method.id),
                 n_tps: ast_method.tps.len(),
                 ident: ast_method.ident,
@@ -654,6 +653,10 @@ impl CoherenceChecker {
                                                 module_def_id,
                                                 None);
         for (*implementations).each |implementation| {
+            debug!("coherence: adding impl from external crate: %s",
+                   ty::item_path_str(self.crate_context.tcx,
+                                     implementation.did));
+
             // Make sure we don't visit the same implementation
             // multiple times.
             match impls_seen.find(implementation.did) {

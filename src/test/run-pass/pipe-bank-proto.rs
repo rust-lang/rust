@@ -33,7 +33,7 @@ proto! bank (
 )
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
 )
 
 fn switch<T: Send, U>(+endp: pipes::RecvPacket<T>,

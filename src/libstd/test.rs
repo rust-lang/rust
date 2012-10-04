@@ -5,8 +5,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
+#[warn(deprecated_mode)];
 
 use core::cmp::Eq;
 use either::Either;
@@ -15,17 +14,6 @@ use io::WriterUtil;
 use libc::size_t;
 use task::TaskBuilder;
 use comm = core::comm;
-
-export TestName;
-export TestFn;
-export TestDesc;
-export test_main;
-export TestResult;
-export TestOpts;
-export TrOk;
-export TrFailed;
-export TrIgnored;
-export run_tests_console;
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -37,17 +25,17 @@ extern mod rustrt {
 // paths; i.e. it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
-type TestName = ~str;
+pub type TestName = ~str;
 
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-type TestFn = fn~();
+pub type TestFn = fn~();
 
 // The definition of a single test. A test runner will run a list of
 // these.
-type TestDesc = {
+pub type TestDesc = {
     name: TestName,
     testfn: TestFn,
     ignore: bool,
@@ -56,16 +44,16 @@ type TestDesc = {
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-fn test_main(args: &[~str], tests: &[TestDesc]) {
+pub fn test_main(args: &[~str], tests: &[TestDesc]) {
     let opts =
         match parse_opts(args) {
-          either::Left(o) => o,
-          either::Right(m) => fail m
+          either::Left(move o) => o,
+          either::Right(move m) => fail m
         };
     if !run_tests_console(&opts, tests) { fail ~"Some tests failed"; }
 }
 
-type TestOpts = {filter: Option<~str>, run_ignored: bool,
+pub type TestOpts = {filter: Option<~str>, run_ignored: bool,
                   logfile: Option<~str>};
 
 type OptRes = Either<TestOpts, ~str>;
@@ -76,8 +64,8 @@ fn parse_opts(args: &[~str]) -> OptRes {
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
-          Ok(m) => m,
-          Err(f) => return either::Right(getopts::fail_str(f))
+          Ok(move m) => m,
+          Err(move f) => return either::Right(getopts::fail_str(f))
         };
 
     let filter =
@@ -94,7 +82,7 @@ fn parse_opts(args: &[~str]) -> OptRes {
     return either::Left(test_opts);
 }
 
-enum TestResult { TrOk, TrFailed, TrIgnored, }
+pub enum TestResult { TrOk, TrFailed, TrIgnored, }
 
 impl TestResult : Eq {
     pure fn eq(other: &TestResult) -> bool {
@@ -114,19 +102,20 @@ type ConsoleTestState =
       mut failures: ~[TestDesc]};
 
 // A simple console test runner
-fn run_tests_console(opts: &TestOpts,
+pub fn run_tests_console(opts: &TestOpts,
                      tests: &[TestDesc]) -> bool {
 
     fn callback(event: &TestEvent, st: ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match *event {
-          TeFiltered(filtered_tests) => {
-            st.total = vec::len(filtered_tests);
+          TeFiltered(ref filtered_tests) => {
+            st.total = filtered_tests.len();
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
             st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
-          TeWait(test) => st.out.write_str(fmt!("test %s ... ", test.name)),
-          TeResult(test, result) => {
+          TeWait(ref test) => st.out.write_str(
+              fmt!("test %s ... ", test.name)),
+          TeResult(copy test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, result, &test),
                 None => ()
@@ -141,7 +130,7 @@ fn run_tests_console(opts: &TestOpts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
-                vec::push(st.failures, copy test);
+                st.failures.push(test);
               }
               TrIgnored => {
                 st.ignored += 1u;
@@ -154,11 +143,11 @@ fn run_tests_console(opts: &TestOpts,
     }
 
     let log_out = match opts.logfile {
-        Some(path) => match io::file_writer(&Path(path),
+        Some(ref path) => match io::file_writer(&Path(*path),
                                             ~[io::Create, io::Truncate]) {
           result::Ok(w) => Some(w),
-          result::Err(s) => {
-              fail(fmt!("can't open output file: %s", s))
+          result::Err(ref s) => {
+              fail(fmt!("can't open output file: %s", *s))
           }
         },
         None => None
@@ -281,7 +270,7 @@ enum TestEvent {
 type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts, tests: &[TestDesc],
-             callback: fn@(TestEvent)) {
+             callback: fn@(e: TestEvent)) {
 
     let mut filtered_tests = filter_tests(opts, tests);
     callback(TeFiltered(copy filtered_tests));
@@ -347,7 +336,7 @@ fn filter_tests(opts: &TestOpts,
     } else {
         let filter_str =
             match opts.filter {
-          option::Some(f) => f,
+          option::Some(copy f) => f,
           option::None => ~""
         };
 
@@ -358,7 +347,7 @@ fn filter_tests(opts: &TestOpts,
             } else { return option::None; }
         }
 
-        vec::filter_map(filtered, |x| filter_fn(&x, filter_str))
+        vec::filter_map(filtered, |x| filter_fn(x, filter_str))
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -374,7 +363,7 @@ fn filter_tests(opts: &TestOpts,
             } else { return option::None; }
         };
 
-        vec::filter_map(filtered, |x| filter(&x))
+        vec::filter_map(filtered, |x| filter(x))
     };
 
     // Sort the tests alphabetically
@@ -390,7 +379,7 @@ fn filter_tests(opts: &TestOpts,
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
 
-fn run_test(+test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
+fn run_test(test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
     if test.ignore {
         core::comm::send(monitor_ch, (copy test, TrIgnored));
         return;
@@ -491,7 +480,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
+          either::Left(copy o) => o,
           _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
         };
         assert ~"filter" == opts.filter.get();
@@ -501,7 +490,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
+          either::Left(copy o) => o,
           _ => fail ~"Malformed arg in parse_ignored_flag"
         };
         assert (opts.run_ignored);
@@ -545,7 +534,7 @@ mod tests {
             for vec::each(names) |name| {
                 let test = {name: *name, testfn: copy testfn, ignore: false,
                             should_fail: false};
-                vec::push(tests, test);
+                tests.push(test);
             }
             tests
         };
@@ -564,7 +553,7 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (a, b) => { assert (a == b.name); }
+                (ref a, ref b) => { assert (*a == b.name); }
             }
         }
     }

@@ -97,7 +97,7 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
         let k = r.gen_uint_range(0u, graph.len());
 
         if graph[k].len() > 0u && vec::any(graph[k], |i| {
-            i != k as node_id
+            *i != k as node_id
         }) {
             map::set_add(keys, k as node_id);
         }
@@ -160,8 +160,8 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         }
     };
 
-    fn is_gray(c: color) -> bool {
-        match c {
+    fn is_gray(c: &color) -> bool {
+        match *c {
           gray(_) => { true }
           _ => { false }
         }
@@ -183,7 +183,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
                 let mut color = white;
 
                 do neighbors.each() |k| {
-                    if is_gray(colors[*k]) {
+                    if is_gray(&colors[*k]) {
                         color = gray(*k);
                         false
                     }
@@ -231,18 +231,18 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
     };
 
     #[inline(always)]
-    fn is_gray(c: color) -> bool {
-        match c {
+    fn is_gray(c: &color) -> bool {
+        match *c {
           gray(_) => { true }
           _ => { false }
         }
     }
 
-    let mut i = 0u;
+    let mut i = 0;
     while par::any(colors, is_gray) {
         // Do the BFS.
         log(info, fmt!("PBFS iteration %?", i));
-        i += 1u;
+        i += 1;
         let old_len = colors.len();
 
         let color = arc::ARC(colors);
@@ -251,7 +251,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         colors = do par::mapi_factory(*color_vec) {
             let colors = arc::clone(&color);
             let graph = arc::clone(&graph);
-            fn~(i: uint, c: color) -> color {
+            fn~(+i: uint, +c: color) -> color {
                 let c : color = c;
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
@@ -264,7 +264,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
                     let mut color = white;
 
                     do neighbors.each() |k| {
-                        if is_gray(colors[*k]) {
+                        if is_gray(&colors[*k]) {
                             color = gray(*k);
                             false
                         }
@@ -282,7 +282,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
 
     // Convert the results.
     do par::map(colors) |c| {
-        match c {
+        match *c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail ~"Found remaining gray nodes in BFS" }
@@ -314,11 +314,11 @@ fn validate(edges: ~[(node_id, node_id)],
         }
         else {
             while parent != root {
-                if vec::contains(path, parent) {
+                if vec::contains(path, &parent) {
                     status = false;
                 }
 
-                vec::push(path, parent);
+                path.push(parent);
                 parent = tree[parent];
             }
 
@@ -336,8 +336,8 @@ fn validate(edges: ~[(node_id, node_id)],
     log(info, ~"Verifying tree edges...");
 
     let status = do tree.alli() |k, parent| {
-        if parent != root && parent != -1i64 {
-            level[parent] == level[k] - 1
+        if *parent != root && *parent != -1i64 {
+            level[*parent] == level[k] - 1
         }
         else {
             true
@@ -352,7 +352,7 @@ fn validate(edges: ~[(node_id, node_id)],
     log(info, ~"Verifying graph edges...");
 
     let status = do edges.all() |e| {
-        let (u, v) = e;
+        let (u, v) = *e;
 
         abs(level[u] - level[v]) <= 1
     };
@@ -370,11 +370,11 @@ fn validate(edges: ~[(node_id, node_id)],
 
     let status = do par::alli(tree) |u, v| {
         let u = u as node_id;
-        if v == -1i64 || u == root {
+        if *v == -1i64 || u == root {
             true
         }
         else {
-            edges.contains((u, v)) || edges.contains((v, u))
+            edges.contains(&(u, *v)) || edges.contains(&(*v, u))
         }
     };
 

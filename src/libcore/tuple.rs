@@ -6,7 +6,7 @@
 
 use cmp::{Eq, Ord};
 
-trait TupleOps<T,U> {
+pub trait TupleOps<T,U> {
     pure fn first() -> T;
     pure fn second() -> U;
     pure fn swap() -> (U, T);
@@ -34,49 +34,54 @@ impl<T: Copy, U: Copy> (T, U): TupleOps<T,U> {
 
 }
 
-trait ExtendedTupleOps<A,B> {
-    fn zip() -> ~[(A, B)];
-    fn map<C>(f: fn(A, B) -> C) -> ~[C];
+pub trait ExtendedTupleOps<A,B> {
+    fn zip(&self) -> ~[(A, B)];
+    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
 
 impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
-
-    fn zip() -> ~[(A, B)] {
-        let (a, b) = self;
-        vec::zip_slice(a, b)
+    fn zip(&self) -> ~[(A, B)] {
+        match *self {
+            (ref a, ref b) => {
+                vec::zip_slice(*a, *b)
+            }
+        }
     }
 
-    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
-        let (a, b) = self;
-        vec::map2(a, b, f)
+    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
+        match *self {
+            (ref a, ref b) => {
+                vec::map2(*a, *b, f)
+            }
+        }
     }
 }
 
 impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
-    fn zip() -> ~[(A, B)] {
-        // FIXME #2543: Bad copy
-        let (a, b) = copy self;
-        vec::zip(move a, move b)
+    fn zip(&self) -> ~[(A, B)] {
+        match *self {
+            (ref a, ref b) => {
+                vec::zip_slice(*a, *b)
+            }
+        }
     }
 
-    fn map<C>(f: fn(A, B) -> C) -> ~[C] {
-        // FIXME #2543: Bad copy
-        let (a, b) = copy self;
-        vec::map2(a, b, f)
+    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
+        match *self {
+            (ref a, ref b) => {
+                vec::map2(*a, *b, f)
+            }
+        }
     }
 }
 
 impl<A: Eq, B: Eq> (A, B) : Eq {
     pure fn eq(other: &(A, B)) -> bool {
-        // XXX: This would be a lot less wordy with ref bindings, but I don't
-        // trust that they work yet.
         match self {
-            (self_a, self_b) => {
-                match (*other) {
-                    (ref other_a, ref other_b) => {
-                        self_a.eq(other_a) && self_b.eq(other_b)
-                    }
+            (ref self_a, ref self_b) => match other {
+                &(ref other_a, ref other_b) => {
+                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
                 }
             }
         }
@@ -106,16 +111,11 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
 
 impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
     pure fn eq(other: &(A, B, C)) -> bool {
-        // XXX: This would be a lot less wordy with ref bindings, but I don't
-        // trust that they work yet.
         match self {
-            (self_a, self_b, self_c) => {
-                match (*other) {
-                    (ref other_a, ref other_b, ref other_c) => {
-                        self_a.eq(other_a) &&
-                        self_b.eq(other_b) &&
-                        self_c.eq(other_c)
-                    }
+            (ref self_a, ref self_b, ref self_c) => match other {
+                &(ref other_a, ref other_b, ref other_c) => {
+                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
+                        && (*self_c).eq(other_c)
                 }
             }
         }

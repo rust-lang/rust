@@ -7,7 +7,7 @@ fn broken() -> int {
         y += ~[&mut z]; //~ ERROR illegal borrow
         x += 1;
     }
-    vec::foldl(0, y, |v, p| v + *p )
+    vec::foldl(0, y, |v, p| v + **p )
 }
 
 fn main() { }

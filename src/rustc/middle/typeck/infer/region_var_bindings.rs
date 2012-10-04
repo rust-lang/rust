@@ -350,7 +350,7 @@ impl Constraint : cmp::Eq {
 }
 
 impl Constraint : to_bytes::IterBytes {
-   pure  fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+   pure  fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
@@ -377,7 +377,7 @@ impl TwoRegions : cmp::Eq {
 }
 
 impl TwoRegions : to_bytes::IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
     }
 }
@@ -830,7 +830,7 @@ impl RegionVarBindings {
         // It would be nice to write this using map():
         let mut edges = vec::with_capacity(num_edges);
         for self.constraints.each_ref |constraint, span| {
-            vec::push(edges, GraphEdge {
+            edges.push(GraphEdge {
                 next_edge: [mut uint::max_value, uint::max_value],
                 constraint: *constraint,
                 span: *span
@@ -1192,7 +1192,7 @@ impl RegionVarBindings {
         set.insert(*orig_node_idx, ());
         let mut result = ~[];
         while !vec::is_empty(stack) {
-            let node_idx = vec::pop(stack);
+            let node_idx = stack.pop();
             for self.each_edge(graph, node_idx, dir) |edge| {
                 match edge.constraint {
                   ConstrainVarSubVar(from_vid, to_vid) => {
@@ -1201,13 +1201,13 @@ impl RegionVarBindings {
                       Outgoing => to_vid
                     };
                     if set.insert(*vid, ()) {
-                        vec::push(stack, vid);
+                        stack.push(vid);
                     }
                   }
 
                   ConstrainRegSubVar(region, _) => {
                     assert dir == Incoming;
-                    vec::push(result, SpannedRegion {
+                    result.push(SpannedRegion {
                         region: region,
                         span: edge.span
                     });
@@ -1215,7 +1215,7 @@ impl RegionVarBindings {
 
                   ConstrainVarSubReg(_, region) => {
                     assert dir == Outgoing;
-                    vec::push(result, SpannedRegion {
+                    result.push(SpannedRegion {
                         region: region,
                         span: edge.span
                     });

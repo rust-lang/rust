@@ -7,7 +7,7 @@ fn main() {
 
     unsafe {
         let a = 0;
-        let v = ptr::mut_addr_of(a);
+        let v = ptr::mut_addr_of(&a);
         f(v);
     }
 }

@@ -1,2 +1,2 @@
-type T = i8;
-const bits: uint = u8::bits;
+pub type T = i8;
+pub const bits: uint = u8::bits;

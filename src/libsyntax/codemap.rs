@@ -84,7 +84,7 @@ fn mk_substr_filename(cm: codemap, sp: span) -> ~str
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
-    vec::push(file.lines, {ch: chpos, byte: byte_pos + file.start_pos.byte});
+    file.lines.push({ch: chpos, byte: byte_pos + file.start_pos.byte});
 }
 
 type lookup_fn = pure fn(file_pos) -> uint;
@@ -204,7 +204,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
     let hi = lookup_char_pos(cm, sp.hi);
     let mut lines = ~[];
     for uint::range(lo.line - 1u, hi.line as uint) |i| {
-        vec::push(lines, i);
+        lines.push(i);
     };
     return @{file: lo.file, lines: lines};
 }

@@ -25,7 +25,7 @@ type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: ident_interner,
+    interner: @ident_interner,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
@@ -73,7 +73,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
-    let companionmod = input.filestem().map(|s| Path(s));
+    let companionmod = input.filestem().map(|s| Path(*s));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
         cx, cdirs, &prefix, &companionmod);
     let mut hi = p.span.hi;

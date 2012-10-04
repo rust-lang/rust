@@ -1,5 +1,5 @@
-
-
-
 // -*- rust -*-
-fn main() { debug!("hello, world."); }
+
+fn main() {
+    io::println("hello, world");
+}

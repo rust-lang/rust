@@ -154,7 +154,7 @@ fn main(++args: ~[~str]) {
     let seed = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     {
-        let rng = rand::seeded_rng(copy seed);
+        let rng = rand::seeded_rng(&seed);
         let mut results = empty_results();
         int_benchmarks::<map::HashMap<uint, uint>>(
             map::HashMap, rng, num_keys, &mut results);
@@ -164,7 +164,7 @@ fn main(++args: ~[~str]) {
     }
 
     {
-        let rng = rand::seeded_rng(copy seed);
+        let rng = rand::seeded_rng(&seed);
         let mut results = empty_results();
         int_benchmarks::<@Mut<LinearMap<uint, uint>>>(
             || @Mut(LinearMap()),

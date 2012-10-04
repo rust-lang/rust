@@ -65,7 +65,7 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
     let mut self_live = ~[];
     for colive.eachi |i, bv| {
         if bv.get(i) {
-            vec::push(self_live, proto.get_state_by_id(i))
+            self_live.push(proto.get_state_by_id(i))
         }
     }
 

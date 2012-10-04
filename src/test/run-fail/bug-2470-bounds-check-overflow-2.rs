@@ -1,5 +1,5 @@
 // xfail-test
-// error-pattern:bounds check
+// error-pattern:index out of bounds
 
 fn main() {
     let x = ~[1u,2u,3u];

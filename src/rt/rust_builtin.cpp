@@ -180,6 +180,11 @@ rand_new_seeded(rust_vec_box* seed) {
     return rctx;
 }
 
+extern "C" CDECL void *
+rand_new_seeded2(rust_vec_box** seed) {
+    return rand_new_seeded(*seed);
+}
+
 extern "C" CDECL size_t
 rand_next(randctx *rctx) {
     return isaac_rand(rctx);
@@ -369,6 +374,11 @@ rust_list_files(rust_str *path) {
   vec->body.fill = vec->body.alloc = alloc_sz;
   memcpy(&vec->body.data[0], strings.data(), alloc_sz);
   return vec;
+}
+
+extern "C" CDECL rust_vec_box*
+rust_list_files2(rust_str **path) {
+    return rust_list_files(*path);
 }
 
 extern "C" CDECL int
@@ -576,6 +586,18 @@ extern "C" CDECL uintptr_t
 rust_num_threads() {
     rust_task *task = rust_get_current_task();
     return task->kernel->env->num_sched_threads;
+}
+
+extern "C" CDECL int
+rust_get_argc() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env->argc;
+}
+
+extern "C" CDECL char**
+rust_get_argv() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env->argv;
 }
 
 extern "C" CDECL rust_sched_id

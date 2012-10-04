@@ -192,16 +192,16 @@ fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt, field: uint,
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
         if field == abi::tydesc_field_take_glue {
             ti.take_glue =
-                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_drop_glue {
             ti.drop_glue =
-                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_free_glue {
             ti.free_glue =
-                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, *v));
         } else if field == abi::tydesc_field_visit_glue {
             ti.visit_glue =
-                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, v));
+                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, *v));
         }
         return true;
     }
@@ -398,7 +398,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_class(did, ref substs) => {
         // Call the dtor if there is one
         do option::map_default(&ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
-            trans_class_drop(bcx, v, dt_id, did, substs)
+            trans_class_drop(bcx, v, *dt_id, did, substs)
         }
       }
       _ => bcx
@@ -426,8 +426,8 @@ fn trans_class_drop(bcx: block,
         // Class dtors have no explicit args, so the params should
         // just consist of the output pointer and the environment
         // (self)
-        assert(params.len() == 2u);
-        let self_arg = PointerCast(bcx, v0, params[1u]);
+        assert(params.len() == 2);
+        let self_arg = PointerCast(bcx, v0, params[1]);
         let args = ~[bcx.fcx.llretptr, self_arg];
         Call(bcx, dtor_addr, args);
 
@@ -440,7 +440,7 @@ fn trans_class_drop(bcx: block,
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
-        Store(bcx, C_u8(0u), drop_flag);
+        Store(bcx, C_u8(0), drop_flag);
         bcx
     }
 }
@@ -679,7 +679,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    for ccx.tydescs.each |key, val| {
+    for ccx.tydescs.each |_key, val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
 
@@ -720,10 +720,8 @@ fn emit_tydescs(ccx: @crate_ctxt) {
               }
             };
 
-        let shape = shape_of(ccx, key);
-        let shape_tables =
-            llvm::LLVMConstPointerCast(ccx.shape_cx.llshapetables,
-                                       T_ptr(T_i8()));
+        let shape = C_null(T_ptr(T_i8()));
+        let shape_tables = C_null(T_ptr(T_i8()));
 
         let tydesc =
             C_named_struct(ccx.tydesc_type,
@@ -733,7 +731,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
                              drop_glue, // drop_glue
                              free_glue, // free_glue
                              visit_glue, // visit_glue
-                             C_shape(ccx, shape), // shape
+                             shape, // shape
                              shape_tables]); // shape_tables
 
         let gvar = ti.tydesc;

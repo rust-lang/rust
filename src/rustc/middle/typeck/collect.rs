@@ -725,7 +725,7 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
 fn compute_bounds(ccx: @crate_ctxt,
                   ast_bounds: @~[ast::ty_param_bound]) -> ty::param_bounds {
     @do vec::flat_map(*ast_bounds) |b| {
-        match b {
+        match *b {
           ast::bound_send => ~[ty::bound_send],
           ast::bound_copy => ~[ty::bound_copy],
           ast::bound_const => ~[ty::bound_const],

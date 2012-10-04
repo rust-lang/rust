@@ -73,7 +73,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: None})
     }
-    let syntax_expanders = HashMap::<~str,syntax_extension>();
+    let syntax_expanders = HashMap();
     syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert(~"macro_rules",
@@ -82,6 +82,12 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(~"auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
+    syntax_expanders.insert(
+        ~"auto_serialize2",
+        item_decorator(ext::auto_serialize2::expand_auto_serialize));
+    syntax_expanders.insert(
+        ~"auto_deserialize2",
+        item_decorator(ext::auto_serialize2::expand_auto_deserialize));
     syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
@@ -131,12 +137,12 @@ trait ext_ctxt {
     fn mod_path() -> ~[ast::ident];
     fn bt_push(ei: codemap::expn_info_);
     fn bt_pop();
-    fn span_fatal(sp: span, msg: ~str) -> !;
-    fn span_err(sp: span, msg: ~str);
-    fn span_warn(sp: span, msg: ~str);
-    fn span_unimpl(sp: span, msg: ~str) -> !;
-    fn span_bug(sp: span, msg: ~str) -> !;
-    fn bug(msg: ~str) -> !;
+    fn span_fatal(sp: span, msg: &str) -> !;
+    fn span_err(sp: span, msg: &str);
+    fn span_warn(sp: span, msg: &str);
+    fn span_unimpl(sp: span, msg: &str) -> !;
+    fn span_bug(sp: span, msg: &str) -> !;
+    fn bug(msg: &str) -> !;
     fn next_id() -> ast::node_id;
     pure fn trace_macros() -> bool;
     fn set_trace_macros(x: bool);
@@ -158,8 +164,8 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
         fn backtrace() -> expn_info { self.backtrace }
-        fn mod_push(i: ast::ident) { vec::push(self.mod_path, i); }
-        fn mod_pop() { vec::pop(self.mod_path); }
+        fn mod_push(i: ast::ident) { self.mod_path.push(i); }
+        fn mod_pop() { self.mod_path.pop(); }
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             match ei {
@@ -180,27 +186,27 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
               _ => self.bug(~"tried to pop without a push")
             }
         }
-        fn span_fatal(sp: span, msg: ~str) -> ! {
+        fn span_fatal(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_fatal(sp, msg);
         }
-        fn span_err(sp: span, msg: ~str) {
+        fn span_err(sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_err(sp, msg);
         }
-        fn span_warn(sp: span, msg: ~str) {
+        fn span_warn(sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_warn(sp, msg);
         }
-        fn span_unimpl(sp: span, msg: ~str) -> ! {
+        fn span_unimpl(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
         }
-        fn span_bug(sp: span, msg: ~str) -> ! {
+        fn span_bug(sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_bug(sp, msg);
         }
-        fn bug(msg: ~str) -> ! {
+        fn bug(msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }

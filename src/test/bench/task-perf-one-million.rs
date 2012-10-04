@@ -21,7 +21,7 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
     for iter::repeat (children) {
         match comm::recv(port) {
           ready(child_ch) => {
-            vec::push(child_chs, child_ch);
+            child_chs.push(child_ch);
           }
           _ => fail ~"task-perf-one-million failed (port not ready)"
         }

@@ -1,4 +1,4 @@
-fn add(&&x: float, &&y: uint) -> float { x + (y as float) }
+fn add(x: &float, y: &uint) -> float { *x + ((*y) as float) }
 
 fn main() {
     assert [1u, 3u]/_.foldl(20f, add) == 24f;

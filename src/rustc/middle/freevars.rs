@@ -63,7 +63,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
                       if i == depth { // Made it to end of loop
                         let dnum = ast_util::def_id_of_def(def).node;
                         if !seen.contains_key(dnum) {
-                            vec::push(*refs, @{def:def, span:expr.span});
+                            refs.push(@{def:def, span:expr.span});
                             seen.insert(dnum, ());
                         }
                       }

@@ -13,6 +13,8 @@
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
+#[allow(deprecated_mode)];
+#[allow(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
 extern mod std(vers = "0.4");
@@ -128,6 +130,8 @@ mod ext {
     mod log_syntax;
     #[legacy_exports]
     mod auto_serialize;
+    #[legacy_exports]
+    mod auto_serialize2;
     #[legacy_exports]
     mod source_util;
 

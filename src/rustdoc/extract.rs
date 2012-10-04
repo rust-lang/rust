@@ -21,7 +21,7 @@ fn to_str(id: ast::ident) -> ~str {
     return *(*intr.get()).get(id);
 }
 
-fn interner() -> syntax::parse::token::ident_interner {
+fn interner() -> @syntax::parse::token::ident_interner {
     return *(unsafe{ local_data_get(interner_key!()) }).get();
 }
 
@@ -140,7 +140,7 @@ fn nmoddoc_from_mod(
         let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {
-            vec::push(fns, fndoc_from_fn(ItemDoc));
+            fns.push(fndoc_from_fn(ItemDoc));
           }
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }

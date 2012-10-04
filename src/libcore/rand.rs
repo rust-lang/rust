@@ -1,29 +1,29 @@
 //! Random number generation
 
-export Rng, seed, seeded_rng, Weighted, extensions;
-export xorshift, seeded_xorshift;
+// NB: transitional, de-mode-ing.
+#[warn(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 #[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
     fn rand_seed() -> ~[u8];
     fn rand_new() -> *rctx;
-    fn rand_new_seeded(seed: ~[u8]) -> *rctx;
+    fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
     fn rand_next(c: *rctx) -> u32;
     fn rand_free(c: *rctx);
 }
 
 /// A random number generator
-trait Rng {
+pub trait Rng {
     /// Return the next random integer
     fn next() -> u32;
 }
 
 /// A value with a particular weight compared to other values
-type Weighted<T> = { weight: uint, item: T };
+pub type Weighted<T> = { weight: uint, item: T };
 
 /// Extension methods for random number generators
 impl Rng {
@@ -123,7 +123,7 @@ impl Rng {
     /**
      * Return a char randomly chosen from chars, failing if chars is empty
      */
-    fn gen_char_from(chars: ~str) -> char {
+    fn gen_char_from(chars: &str) -> char {
         assert !chars.is_empty();
         self.choose(str::chars(chars))
     }
@@ -218,7 +218,7 @@ impl Rng {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
-                vec::push(r, item.item);
+                r.push(item.item);
             }
         }
         move r
@@ -260,12 +260,12 @@ impl @RandRes: Rng {
 }
 
 /// Create a new random seed for seeded_rng
-fn seed() -> ~[u8] {
+pub fn seed() -> ~[u8] {
     rustrt::rand_seed()
 }
 
 /// Create a random number generator with a system specified seed
-fn Rng() -> Rng {
+pub fn Rng() -> Rng {
     @RandRes(rustrt::rand_new()) as Rng
 }
 
@@ -275,8 +275,8 @@ fn Rng() -> Rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-fn seeded_rng(seed: ~[u8]) -> Rng {
-    @RandRes(rustrt::rand_new_seeded(seed)) as Rng
+pub fn seeded_rng(seed: &~[u8]) -> Rng {
+    @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
 }
 
 type XorShiftState = {
@@ -299,40 +299,72 @@ impl XorShiftState: Rng {
     }
 }
 
-fn xorshift() -> Rng {
+pub fn xorshift() -> Rng {
     // constants taken from http://en.wikipedia.org/wiki/Xorshift
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
 
-fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
+pub fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
     {mut x: x, mut y: y, mut z: z, mut w: w} as Rng
 }
 
-#[cfg(test)]
-mod tests {
-    #[legacy_exports];
 
+// used to make space in TLS for a random number generator
+fn tls_rng_state(+_v: @RandRes) {}
+
+/**
+ * Gives back a lazily initialized task-local random number generator,
+ * seeded by the system. Intended to be used in method chaining style, ie
+ * task_rng().gen_int().
+ */
+pub fn task_rng() -> Rng {
+    let r : Option<@RandRes>;
+    unsafe {
+        r = task::local_data::local_data_get(tls_rng_state);
+    }
+    match r {
+        None => {
+            let rng = @RandRes(rustrt::rand_new());
+            unsafe {
+                task::local_data::local_data_set(tls_rng_state, rng);
+            }
+            rng as Rng
+        }
+        Some(rng) => rng as Rng
+    }
+}
+
+/**
+ * Returns a random uint, using the task's based random number generator.
+ */
+pub fn random() -> uint {
+    task_rng().gen_uint()
+}
+
+
+#[cfg(test)]
+pub mod tests {
     #[test]
-    fn rng_seeded() {
+    pub fn rng_seeded() {
         let seed = rand::seed();
-        let ra = rand::seeded_rng(seed);
-        let rb = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
+        let rb = rand::seeded_rng(&seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
-    fn rng_seeded_custom_seed() {
+    pub fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
         let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(seed);
-        let rb = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
+        let rb = rand::seeded_rng(&seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
-    fn rng_seeded_custom_seed2() {
+    pub fn rng_seeded_custom_seed2() {
         let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(seed);
+        let ra = rand::seeded_rng(&seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);
@@ -341,7 +373,7 @@ mod tests {
     }
 
     #[test]
-    fn gen_int_range() {
+    pub fn gen_int_range() {
         let r = rand::Rng();
         let a = r.gen_int_range(-3, 42);
         assert a >= -3 && a < 42;
@@ -352,12 +384,12 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn gen_int_from_fail() {
+    pub fn gen_int_from_fail() {
         rand::Rng().gen_int_range(5, -2);
     }
 
     #[test]
-    fn gen_uint_range() {
+    pub fn gen_uint_range() {
         let r = rand::Rng();
         let a = r.gen_uint_range(3u, 42u);
         assert a >= 3u && a < 42u;
@@ -368,12 +400,12 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn gen_uint_range_fail() {
+    pub fn gen_uint_range_fail() {
         rand::Rng().gen_uint_range(5u, 2u);
     }
 
     #[test]
-    fn gen_float() {
+    pub fn gen_float() {
         let r = rand::Rng();
         let a = r.gen_float();
         let b = r.gen_float();
@@ -381,14 +413,14 @@ mod tests {
     }
 
     #[test]
-    fn gen_weighted_bool() {
+    pub fn gen_weighted_bool() {
         let r = rand::Rng();
         assert r.gen_weighted_bool(0u) == true;
         assert r.gen_weighted_bool(1u) == true;
     }
 
     #[test]
-    fn gen_str() {
+    pub fn gen_str() {
         let r = rand::Rng();
         log(debug, r.gen_str(10u));
         log(debug, r.gen_str(10u));
@@ -399,7 +431,7 @@ mod tests {
     }
 
     #[test]
-    fn gen_bytes() {
+    pub fn gen_bytes() {
         let r = rand::Rng();
         assert r.gen_bytes(0u).len() == 0u;
         assert r.gen_bytes(10u).len() == 10u;
@@ -407,13 +439,13 @@ mod tests {
     }
 
     #[test]
-    fn choose() {
+    pub fn choose() {
         let r = rand::Rng();
         assert r.choose([1, 1, 1]) == 1;
     }
 
     #[test]
-    fn choose_option() {
+    pub fn choose_option() {
         let r = rand::Rng();
         let x: Option<int> = r.choose_option([]);
         assert x.is_none();
@@ -421,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn choose_weighted() {
+    pub fn choose_weighted() {
         let r = rand::Rng();
         assert r.choose_weighted(~[{weight: 1u, item: 42}]) == 42;
         assert r.choose_weighted(~[
@@ -431,7 +463,7 @@ mod tests {
     }
 
     #[test]
-    fn choose_weighted_option() {
+    pub fn choose_weighted_option() {
         let r = rand::Rng();
         assert r.choose_weighted_option(~[{weight: 1u, item: 42}]) ==
                Some(42);
@@ -444,7 +476,7 @@ mod tests {
     }
 
     #[test]
-    fn weighted_vec() {
+    pub fn weighted_vec() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert r.weighted_vec(~[]) == empty;
@@ -456,11 +488,25 @@ mod tests {
     }
 
     #[test]
-    fn shuffle() {
+    pub fn shuffle() {
         let r = rand::Rng();
         let empty: ~[int] = ~[];
         assert r.shuffle(~[]) == empty;
         assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
+    }
+
+    #[test]
+    pub fn task_rng() {
+        let r = rand::task_rng();
+        r.gen_int();
+        assert r.shuffle(~[1, 1, 1]) == ~[1, 1, 1];
+        assert r.gen_uint_range(0u, 1u) == 0u;
+    }
+
+    #[test]
+    pub fn random() {
+        // not sure how to test this aside from just getting a number
+        let _n : uint = rand::random();
     }
 }
 

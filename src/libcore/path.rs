@@ -10,19 +10,19 @@ Cross-platform file path handling
 
 use cmp::Eq;
 
-struct WindowsPath {
+pub struct WindowsPath {
     host: Option<~str>,
     device: Option<~str>,
     is_absolute: bool,
     components: ~[~str],
 }
 
-struct PosixPath {
+pub struct PosixPath {
     is_absolute: bool,
     components: ~[~str],
 }
 
-trait GenericPath {
+pub trait GenericPath {
 
     static pure fn from_str((&str)) -> self;
 
@@ -45,18 +45,18 @@ trait GenericPath {
 }
 
 #[cfg(windows)]
-type Path = WindowsPath;
+pub type Path = WindowsPath;
 
 #[cfg(windows)]
-pure fn Path(s: &str) -> Path {
+pub pure fn Path(s: &str) -> Path {
     from_str::<WindowsPath>(s)
 }
 
 #[cfg(unix)]
-type Path = PosixPath;
+pub type Path = PosixPath;
 
 #[cfg(unix)]
-pure fn Path(s: &str) -> Path {
+pub pure fn Path(s: &str) -> Path {
     from_str::<PosixPath>(s)
 }
 
@@ -167,7 +167,7 @@ impl PosixPath : GenericPath {
         if t.len() == 0 {
             match self.filestem() {
               None => copy self,
-              Some(s) => self.with_filename(s)
+              Some(ref s) => self.with_filename(*s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
@@ -206,7 +206,7 @@ impl PosixPath : GenericPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { vec::push_all_move(v, move ss); }
+            unsafe { v.push_all_move(move ss); }
         }
         PosixPath { components: move v, ..self }
     }
@@ -214,14 +214,14 @@ impl PosixPath : GenericPath {
     pure fn push(s: &str) -> PosixPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { vec::push_all_move(v, move ss); }
+        unsafe { v.push_all_move(move ss); }
         PosixPath { components: move v, ..self }
     }
 
     pure fn pop() -> PosixPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { vec::pop(cs); }
+            unsafe { cs.pop(); }
         }
         return PosixPath { components: move cs, ..self }
     }
@@ -239,11 +239,11 @@ impl WindowsPath : ToStr {
     fn to_str() -> ~str {
         let mut s = ~"";
         match self.host {
-          Some(h) => { s += "\\\\"; s += h; }
+          Some(ref h) => { s += "\\\\"; s += *h; }
           None => { }
         }
         match self.device {
-          Some(d) => { s += d; s += ":"; }
+          Some(ref d) => { s += *d; s += ":"; }
           None => { }
         }
         if self.is_absolute {
@@ -358,7 +358,7 @@ impl WindowsPath : GenericPath {
         if t.len() == 0 {
             match self.filestem() {
               None => copy self,
-              Some(s) => self.with_filename(s)
+              Some(ref s) => self.with_filename(*s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
@@ -400,7 +400,7 @@ impl WindowsPath : GenericPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { vec::push_all_move(v, move ss); }
+            unsafe { v.push_all_move(move ss); }
         }
         return WindowsPath { components: move v, ..self }
     }
@@ -408,14 +408,14 @@ impl WindowsPath : GenericPath {
     pure fn push(s: &str) -> WindowsPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { vec::push_all_move(v, move ss); }
+        unsafe { v.push_all_move(move ss); }
         return WindowsPath { components: move v, ..self }
     }
 
     pure fn pop() -> WindowsPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unsafe { vec::pop(cs); }
+            unsafe { cs.pop(); }
         }
         return WindowsPath { components: move cs, ..self }
     }
@@ -429,7 +429,7 @@ impl WindowsPath : GenericPath {
 }
 
 
-pure fn normalize(components: &[~str]) -> ~[~str] {
+pub pure fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
     unsafe {
         for components.each |c| {
@@ -437,10 +437,10 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
                 if *c == ~"." && components.len() > 1 { loop; }
                 if *c == ~"" { loop; }
                 if *c == ~".." && cs.len() != 0 {
-                    vec::pop(cs);
+                    cs.pop();
                     loop;
                 }
-                vec::push(cs, copy *c);
+                cs.push(copy *c);
             }
         }
     }
@@ -462,7 +462,6 @@ fn test_double_slash_collapsing()
 }
 
 mod posix {
-    #[legacy_exports];
 
     #[cfg(test)]
     fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
@@ -553,14 +552,13 @@ mod posix {
 
 // Various windows helpers, and tests for the impl.
 mod windows {
-    #[legacy_exports];
 
     #[inline(always)]
-    pure fn is_sep(u: u8) -> bool {
+    pub pure fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
     }
 
-    pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
+    pub pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
         if (s.len() > 1 &&
             s[0] == '\\' as u8 &&
             s[1] == '\\' as u8) {
@@ -577,7 +575,7 @@ mod windows {
         None
     }
 
-    pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
+    pub pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
         unsafe {
             if (s.len() > 1 &&
                 libc::isalpha(s[0] as libc::c_int) != 0 &&

@@ -38,7 +38,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 
    // map -> [(k,%)]
    mm.each(fn&(key: ~[u8], val: uint) -> bool {
-      vec::push(pairs, (key, pct(val, total)));
+      pairs.push((key, pct(val, total)));
       return true;
    });
 
@@ -131,7 +131,7 @@ fn main(++args: ~[~str]) {
        // get to this massive data set, but #include_bin chokes on it (#2598)
        let path = Path(env!("CFG_SRC_DIR"))
            .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
-       result::get(io::file_reader(&path))
+       result::get(&io::file_reader(&path))
    } else {
       io::stdin()
    };

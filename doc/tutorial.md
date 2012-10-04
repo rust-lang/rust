@@ -82,7 +82,7 @@ supported build environments that are most likely to work.
 
 > ***Note:*** Windows users should read the detailed
 > [getting started][wiki-start] notes on the wiki. Even when using
-> the binary installer the windows build requires a MinGW installation,
+> the binary installer the Windows build requires a MinGW installation,
 > the precise details of which are not discussed in this tutorial.
 
 To build from source you will also need the following prerequisite
@@ -111,12 +111,9 @@ can be adjusted by passing a `--prefix` argument to
 `configure`. Various other options are also supported, pass `--help`
 for more information on them.
 
-When complete, `make install` will place the following programs into
-`/usr/local/bin`:
-
-  * `rustc`, the Rust compiler
-  * `rustdoc`, the API-documentation tool
-  * `cargo`, the Rust package manager
+When complete, `make install` will place several programs into
+`/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
+API-documentation tool, and `cargo`, the Rust package manager.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
@@ -216,8 +213,8 @@ fn main() {
 }
 ~~~~
 
-The `let` keyword, introduces a local variable. By default, variables
-are immutable. `let mut` can be used to introduce a local variable
+The `let` keyword introduces a local variable. Variables are immutable
+by default, so `let mut` can be used to introduce a local variable
 that can be reassigned.
 
 ~~~~
@@ -232,13 +229,16 @@ while count < 10 {
 
 Although Rust can almost always infer the types of local variables, it
 can help readability to specify a variable's type by following it with
-a colon, then the type name. Local variables may shadow earlier
-declarations, making the earlier variables inaccessible.
+a colon, then the type name. 
 
 ~~~~
 let my_favorite_value: float = 57.8;
 let my_favorite_value: int = my_favorite_value as int;
 ~~~~
+
+Local variables may shadow earlier declarations, as in the previous
+example in which `my_favorite_value` is first declared as a `float`
+then a second `my_favorite_value` is declared as an int.
 
 Rust identifiers follow the same rules as C; they start with an alphabetic
 character or an underscore, and after that may contain any sequence of
@@ -371,7 +371,7 @@ more detail later on (the `T`s here stand for any other type):
 `[T * N]`                 Vector (like an array in other languages) with N elements
 `[mut T * N]`             Mutable vector with N elements
 `(T1, T2)`                Tuple type. Any arity above 1 is supported
-`@T`, `~T`, `&T`          [Pointer types](#boxes-and-pointers)
+`&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
 ------------------------- -----------------------------------------------
 
 Some types can only be manipulated by pointer, never directly. For instance,
@@ -421,7 +421,7 @@ Rust will assume that an unsuffixed integer literal has type
 ~~~~
 let a = 1;       // a is an int
 let b = 10i;     // b is an int, due to the 'i' suffix
-let c = 100u;    // c as a uint
+let c = 100u;    // c is a uint
 let d = 1000i32; // d is an i32
 ~~~~
 
@@ -619,7 +619,7 @@ literals and most enum variants.
 
 `while` produces a loop that runs as long as its given condition
 (which must have type `bool`) evaluates to true. Inside a loop, the
-keyword `break` can be used to abort the loop, and `again` can be used
+keyword `break` can be used to abort the loop, and `loop` can be used
 to abort the current iteration and continue with the next.
 
 ~~~~
@@ -713,16 +713,16 @@ enum Shape {
 }
 ~~~~
 
-A value of this type is either a Circle, in which case it contains a
-point struct and a float, or a Rectangle, in which case it contains
-two point records. The run-time representation of such a value
+A value of this type is either a `Circle`, in which case it contains a
+`Point` struct and a float, or a `Rectangle`, in which case it contains
+two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 'tagged union' pattern in C, but with better ergonomics.
 
-The above declaration will define a type `shape` that can be used to
-refer to such shapes, and two functions, `circle` and `rectangle`,
+The above declaration will define a type `Shape` that can be used to
+refer to such shapes, and two functions, `Circle` and `Rectangle`,
 which can be used to construct values of the type (taking arguments of
-the specified types). So `circle({x: 0f, y: 0f}, 10f)` is the way to
+the specified types). So `Circle(Point {x: 0f, y: 0f}, 10f)` is the way to
 create a new circle.
 
 Enum variants need not have type parameters. This, for example, is
@@ -820,7 +820,7 @@ fn point_from_direction(dir: Direction) -> Point {
 
 ## Tuples
 
-Tuples in Rust behave exactly like records, except that their fields
+Tuples in Rust behave exactly like structs, except that their fields
 do not have names (and can thus not be accessed with dot notation).
 Tuples can have any arity except for 0 or 1 (though you may consider
 nil, `()`, as the empty tuple if you like).
@@ -957,7 +957,7 @@ Rust has three competing goals that inform its view of memory:
 Most languages that offer strong memory safety guarantees rely upon a
 garbage-collected heap to manage all of the objects. This approach is
 straightforward both in concept and in implementation, but has
-significant costs. Languages that take this approach tend to
+significant costs. Languages that follow this path tend to
 aggressively pursue ways to ameliorate allocation costs (think the
 Java Virtual Machine). Rust supports this strategy with _managed
 boxes_: memory allocated on the heap whose lifetime is managed
@@ -982,7 +982,7 @@ tasks. Experience in other languages has proven that isolating each
 task's heap from the others is a reliable strategy and one that is
 easy for programmers to reason about. Heap isolation has the
 additional benefit that garbage collection must only be done
-per-heap. Rust never "stops the world" to garbage-collect memory.
+per-heap. Rust never "stops the world" to reclaim memory.
 
 Complete isolation of heaps between tasks implies that any data
 transferred between tasks must be copied. While this is a fine and
@@ -995,27 +995,18 @@ _owned boxes_. All tasks may allocate objects on the exchange heap,
 then transfer ownership of those objects to other tasks, avoiding
 expensive copies.
 
-## What to be aware of
-
-Rust has three "realms" in which objects can be allocated: the stack,
-the local heap, and the exchange heap. These realms have corresponding
-pointer types: the borrowed pointer (`&T`), the managed box (`@T`),
-and the owned box (`~T`). These three sigils will appear
-repeatedly as we explore the language. Learning the appropriate role
-of each is key to using Rust effectively.
-
 # Boxes and pointers
 
-In contrast to a lot of modern languages, aggregate types like records
+In contrast to a lot of modern languages, aggregate types like structs
 and enums are _not_ represented as pointers to allocated memory in
 Rust. They are, as in C and C++, represented directly. This means that
-if you `let x = {x: 1f, y: 1f};`, you are creating a record on the
-stack. If you then copy it into a data structure, the whole record is
+if you `let x = Point {x: 1f, y: 1f};`, you are creating a struct on the
+stack. If you then copy it into a data structure, the whole struct is
 copied, not just a pointer.
 
-For small records like `point`, this is usually more efficient than
-allocating memory and going through a pointer. But for big records, or
-records with mutable fields, it can be useful to have a single copy on
+For small structs like `Point`, this is usually more efficient than
+allocating memory and going through a pointer. But for big structs, or
+those with mutable fields, it can be useful to have a single copy on
 the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The safe pointer types are
@@ -1191,8 +1182,8 @@ compute_distance(shared_box, unique_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
-`on_the_stack`; this is because `on_the_stack` has the type `point`
-(that is, a record value) and we have to take its address to get a
+`on_the_stack`; this is because `on_the_stack` has the type `Point`
+(that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are created an alias: that is, another
 route to the same data.
@@ -1517,7 +1508,7 @@ fn each(v: &[int], op: fn(v: &int)) {
 The reason we pass in a *pointer* to an integer rather than the
 integer itself is that this is how the actual `each()` function for
 vectors works.  Using a pointer means that the function can be used
-for vectors of any type, even large records that would be impractical
+for vectors of any type, even large structs that would be impractical
 to copy out of the vector on each iteration.  As a caller, if we use a
 closure to provide the final operator argument, we can write it in a
 way that has a pleasant, block-like structure.
@@ -1576,7 +1567,7 @@ Empty argument lists can be omitted from `do` expressions.
 
 Most iteration in Rust is done with `for` loops. Like `do`,
 `for` is a nice syntax for doing control flow with closures.
-Additionally, within a `for` loop, `break`, `again`, and `return`
+Additionally, within a `for` loop, `break`, `loop`, and `return`
 work just as they do with `while` and `loop`.
 
 Consider again our `each` function, this time improved to
@@ -1611,7 +1602,7 @@ With `for`, functions like `each` can be treated more
 like builtin looping structures. When calling `each`
 in a `for` loop, instead of returning `false` to break
 out of the loop, you just write `break`. To skip ahead
-to the next iteration, write `again`.
+to the next iteration, write `loop`.
 
 ~~~~
 # use each = vec::each;
@@ -1644,14 +1635,15 @@ fn contains(v: &[int], elt: int) -> bool {
 # Generics
 
 Throughout this tutorial, we've been defining functions that act only on
-single data types. With type parameters we can also define functions that
-may be invoked on multiple types.
+specific data types. With type parameters we can also define functions whose
+arguments represent generic types, and which can be invoked with a variety
+of types. Consider a generic `map` function.
 
 ~~~~
 fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
-        vec::push(accumulator, function(element));
+        accumulator.push(function(element));
     }
     return accumulator;
 }
@@ -1665,7 +1657,7 @@ each other.
 Inside a generic function, the names of the type parameters
 (capitalized by convention) stand for opaque types. You can't look
 inside them, but you can pass them around.  Note that instances of
-generic types are almost always passed by pointer.  For example, the
+generic types are often passed by pointer.  For example, the
 parameter `function()` is supplied with a pointer to a value of type
 `T` and not a value of type `T` itself.  This ensures that the
 function works with the broadest set of types possible, since some
@@ -1691,11 +1683,11 @@ These declarations produce valid types like `Set<int>`, `Stack<int>`
 and `Maybe<int>`.
 
 Generic functions in Rust are compiled to very efficient runtime code
-through a process called _monomorphisation_. This big word just means
-that, for each generic function you call, the compiler generates a
-specialized version that is optimized specifically for the argument
-types. In this respect Rust's generics have similar performance
-characteristics to C++ templates.
+through a process called _monomorphisation_. This is a fancy way of
+saying that, for each generic function you call, the compiler
+generates a specialized version that is optimized specifically for the
+argument types. In this respect Rust's generics have similar
+performance characteristics to C++ templates.
 
 ## Traits
 
@@ -1760,13 +1752,10 @@ types by the compiler, and may not be overridden:
 
 ## Declaring and implementing traits
 
-A trait consists of a set of methods, or may be empty, as is the case
-with `Copy`, `Send`, and `Const`. A method is a function that
-can be applied to a `self` value and a number of arguments, using the
-dot notation: `self.foo(arg1, arg2)`.
-
-For example, we could declare the trait `Printable` for things that
-can be printed to the console, with a single method:
+A trait consists of a set of methods, without bodies, or may be empty,
+as is the case with `Copy`, `Send`, and `Const`. For example, we could
+declare the trait `Printable` for things that can be printed to the
+console, with a single method:
 
 ~~~~
 trait Printable {
@@ -1774,9 +1763,12 @@ trait Printable {
 }
 ~~~~
 
-To actually implement a trait for a given type, the `impl` form is
-used. This defines implementations of `Printable` for the `int` and
-`~str` types.
+Traits may be implemented for specific types with [impls]. An impl
+that implements a trait includes the name of the trait at the start of 
+the definition, as in the following impls of `Printable` for `int`
+and `~str`.
+
+[impls]: #functions-and-methods
 
 ~~~~
 # trait Printable { fn print(); }
@@ -1792,14 +1784,10 @@ impl ~str: Printable {
 # (~"foo").print();
 ~~~~
 
-Given these, we may call `1.print()` to print `"1"`, or
-`(~"foo").print()` to print `"foo"` again, as with . This is basically a form of
-static overloading—when the Rust compiler sees the `print` method
-call, it looks for an implementation that matches the type with a
-method that matches the name, and simply calls that.
-
-Traits may themselves contain type parameters. A trait for
-generalized sequence types might look like the following:
+Methods defined in an implementation of a trait may be called just as
+any other method, using dot notation, as in `1.print()`. Traits may
+themselves contain type parameters. A trait for generalized sequence
+types might look like the following:
 
 ~~~~
 trait Seq<T> {

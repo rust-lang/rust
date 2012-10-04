@@ -612,7 +612,7 @@ fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
 
 fn main() {
     let r = (1,2,3,true,false,{x:5,y:4,z:3});
-    let p = ptr::addr_of(r) as *c_void;
+    let p = ptr::addr_of(&r) as *c_void;
     let u = my_visitor(@{mut ptr1: p,
                          mut ptr2: p,
                          mut vals: ~[]});

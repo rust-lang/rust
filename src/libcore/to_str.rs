@@ -8,7 +8,7 @@ The `ToStr` trait for converting to strings
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-trait ToStr { fn to_str() -> ~str; }
+pub trait ToStr { fn to_str() -> ~str; }
 
 impl int: ToStr {
     fn to_str() -> ~str { int::str(self) }
@@ -101,7 +101,6 @@ impl<A: ToStr> ~A: ToStr {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
-    #[legacy_exports];
     #[test]
     fn test_simple_types() {
         assert 1.to_str() == ~"1";
