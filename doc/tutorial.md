@@ -350,7 +350,7 @@ if x {
 let y = if x { foo() } else { bar() };
 ~~~
 
-This may sound a intricate, but it is super-useful and will grow on you.
+This may sound intricate, but it is super-useful and will grow on you.
 
 ## Types
 
