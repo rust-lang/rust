@@ -12,6 +12,7 @@ Andreas Gal <gal@mozilla.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
 Austin Seipp <mad.one@gmail.com>
+auREAX <mark@xn--hwg34fba.ws>
 Ben Blum <bblum@andrew.cmu.edu>
 Ben Striegel <ben.striegel@gmail.com>
 Benjamin Herr <ben@0x539.de>
