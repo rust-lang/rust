@@ -215,7 +215,7 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
 
     let mut pivot = ~[];
     vec::reserve(&mut pivot, 1);
-    unsafe { vec::raw::set_len(pivot, 1); };
+    unsafe { vec::raw::set_len(&mut pivot, 1); };
 
     while start < size {
         unsafe {
@@ -243,7 +243,7 @@ fn binarysort<T: Ord>(array: &[mut T], start: uint) {
         array[left] <-> pivot[0];
         start += 1;
     }
-    unsafe { vec::raw::set_len(pivot, 0); } // Forget the boxed element
+    unsafe { vec::raw::set_len(&mut pivot, 0); } // Forget the boxed element
 }
 
 /// Reverse the order of elements in a slice, in place
@@ -411,7 +411,7 @@ struct MergeState<T> {
                 move_vec(self.array, self.mergePt,
                         self.tmp, self.tmpPt, size-self.tmpPt);
             }
-            vec::raw::set_len(self.tmp, 0);
+            vec::raw::set_len(&mut self.tmp, 0);
         }
     }
 }
@@ -488,7 +488,7 @@ impl<T: Ord> &MergeState<T> {
         self.last_hi = false;
 
         unsafe {
-            vec::raw::set_len(self.tmp, len1);
+            vec::raw::set_len(&mut self.tmp, len1);
             move_vec(self.tmp, 0, array, base1, len1);
         }
         self.tmpPt = 0;
@@ -507,7 +507,7 @@ impl<T: Ord> &MergeState<T> {
         if len2 == 0 {
             unsafe {
                 move_vec(array, dest, self.tmp, 0, len1);
-                vec::raw::set_len(self.tmp, 0); // Forget the elements
+                vec::raw::set_len(&mut self.tmp, 0); // Forget the elements
             }
             return;
         }
@@ -515,7 +515,7 @@ impl<T: Ord> &MergeState<T> {
             unsafe {
                 move_vec(array, dest, array, c2, len2);
                 array[dest+len2] <-> self.tmp[c1];
-                vec::raw::set_len(self.tmp, 0); // Forget the element
+                vec::raw::set_len(&mut self.tmp, 0); // Forget the element
             }
             return;
         }
@@ -556,8 +556,9 @@ impl<T: Ord> &MergeState<T> {
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                let tmp_view = vec::const_view(self.tmp, c1, c1+len1);
-                count1 = gallop_right(&const array[c2], tmp_view, 0);
+                //let tmp_view = vec::const_view(self.tmp, c1, c1+len1);
+                count1 = gallop_right(&const array[c2],
+                    vec::const_view(self.tmp, c1, c1+len1), 0);
                 if count1 != 0 {
                     unsafe {
                         move_vec(array, dest, self.tmp, c1, count1);
@@ -571,7 +572,7 @@ impl<T: Ord> &MergeState<T> {
                 self.mergePt += 1;
                 if len2 == 0 { break_outer = true; break; }
 
-                let tmp_view = vec::mut_view(array, c2, c2+len2);
+                let tmp_view = vec::const_view(array, c2, c2+len2);
                 count2 = gallop_left(&const self.tmp[c1], tmp_view, 0);
                 if count2 != 0 {
                     unsafe {
@@ -612,7 +613,7 @@ impl<T: Ord> &MergeState<T> {
             }
         }
         self.tmpPt = 0;
-        unsafe { vec::raw::set_len(self.tmp, 0); }
+        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
     fn merge_hi(array: &[mut T], base1: uint, len1: uint,
@@ -623,7 +624,7 @@ impl<T: Ord> &MergeState<T> {
         self.last_hi = true;
 
         unsafe {
-            vec::raw::set_len(self.tmp, len2);
+            vec::raw::set_len(&mut self.tmp, len2);
             move_vec(self.tmp, 0, array, base2, len2);
         }
 
@@ -642,7 +643,7 @@ impl<T: Ord> &MergeState<T> {
         if len1 == 0 {
             unsafe {
                 move_vec(array, dest-(len2-1), self.tmp, 0, len2);
-                vec::raw::set_len(self.tmp, 0); // Forget the elements
+                vec::raw::set_len(&mut self.tmp, 0); // Forget the elements
             }
             return;
         }
@@ -652,7 +653,7 @@ impl<T: Ord> &MergeState<T> {
             unsafe {
                 move_vec(array, dest+1, array, c1+1, len1);
                 array[dest] <-> self.tmp[c2];
-                vec::raw::set_len(self.tmp, 0); // Forget the element
+                vec::raw::set_len(&mut self.tmp, 0); // Forget the element
             }
             return;
         }
@@ -710,9 +711,9 @@ impl<T: Ord> &MergeState<T> {
                 self.mergePt -= 1; self.tmpPt -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
-                let tmp_view = vec::mut_view(self.tmp, 0, len2);
-                let count2 = len2 - gallop_left(
-                    &const array[c1], tmp_view, len2-1);
+                //let tmp_view = vec::mut_view(self.tmp, 0, len2);
+                let count2 = len2 - gallop_left(&const array[c1],
+                            vec::mut_view(self.tmp, 0, len2), len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     self.mergePt -= count2; self.tmpPt -= count2;
@@ -755,7 +756,7 @@ impl<T: Ord> &MergeState<T> {
             }
         }
         self.tmpPt = 0;
-        unsafe { vec::raw::set_len(self.tmp, 0); }
+        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
     fn merge_collapse(array: &[mut T]) {
@@ -974,9 +975,9 @@ mod tests {
     }
 }
 
-//#[cfg(test)]
-//mod test_tim_sort {
-//    #[legacy_exports];
+#[cfg(test)]
+mod test_tim_sort {
+    #[legacy_exports];
     struct CVal {
         val: ~float,
     }
@@ -1029,9 +1030,9 @@ mod tests {
             check_sort(v1, v2);
         }
     }
-//}
-    //#[test]
-    //#[should_fail]
+
+    #[test]
+    #[should_fail]
     fn crash_test() {
         let rng = rand::Rng();
         let mut arr = do vec::from_fn(1000) |_i| {
@@ -1042,7 +1043,7 @@ mod tests {
         tim_sort(arr);
         fail ~"Guarantee the fail";
     }
-//}
+}
 
 //#[cfg(test)]
 /*mod big_tests {
