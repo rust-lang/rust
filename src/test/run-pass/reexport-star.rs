@@ -1,3 +1,6 @@
+// xfail-pretty
+// FIXME #3654
+
 mod a {
     pub fn f() {}
     pub fn g() {}
