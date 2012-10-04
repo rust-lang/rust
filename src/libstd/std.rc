@@ -18,8 +18,6 @@ not required in or otherwise suitable for the core library.
 
 #[no_core];
 
-#[legacy_exports];
-
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[forbid(deprecated_pattern)];
@@ -27,77 +25,62 @@ not required in or otherwise suitable for the core library.
 extern mod core(vers = "0.4");
 use core::*;
 
-export net, net_tcp, net_ip, net_url;
-export uv, uv_ll, uv_iotask, uv_global_loop;
-export c_vec, timer;
-export sync, arc, comm;
-export bitv, deque, fun_treemap, list, map;
-export smallintmap, sort, treemap;
-export rope, arena, par;
-export ebml, ebml2;
-export dbg, getopts, json, rand, sha1, term, time;
-export prettyprint, prettyprint2;
-export test, tempfile, serialization, serialization2;
-export cmp;
-export base64;
-export cell;
-
 // General io and system-services modules
 
-mod net;
-mod net_ip;
-mod net_tcp;
-mod net_url;
+pub mod net;
+pub mod net_ip;
+pub mod net_tcp;
+pub mod net_url;
 
 // libuv modules
-mod uv;
-mod uv_ll;
-mod uv_iotask;
-mod uv_global_loop;
+pub mod uv;
+pub mod uv_ll;
+pub mod uv_iotask;
+pub mod uv_global_loop;
 
 
 // Utility modules
 
-mod c_vec;
-mod timer;
-mod cell;
+pub mod c_vec;
+pub mod timer;
+pub mod cell;
 
 // Concurrency
 
-mod sync;
-mod arc;
-mod comm;
+pub mod sync;
+pub mod arc;
+pub mod comm;
 
 // Collections
 
-mod bitv;
-mod deque;
-mod fun_treemap;
-mod list;
-mod map;
-mod rope;
-mod smallintmap;
-mod sort;
-mod treemap;
+pub mod bitv;
+pub mod deque;
+pub mod fun_treemap;
+pub mod list;
+pub mod map;
+pub mod rope;
+pub mod smallintmap;
+pub mod sort;
+pub mod treemap;
 
 // And ... other stuff
 
-mod ebml;
-mod ebml2;
-mod dbg;
-mod getopts;
-mod json;
-mod sha1;
-mod md4;
-mod tempfile;
-mod term;
-mod time;
-mod prettyprint;
-mod prettyprint2;
-mod arena;
-mod par;
-mod cmp;
-mod base64;
+pub mod ebml;
+pub mod ebml2;
+pub mod dbg;
+pub mod getopts;
+pub mod json;
+pub mod sha1;
+pub mod md4;
+pub mod tempfile;
+pub mod term;
+pub mod time;
+pub mod prettyprint;
+pub mod prettyprint2;
+pub mod arena;
+pub mod par;
+pub mod cmp;
+pub mod base64;
 
 #[cfg(unicode)]
 mod unicode;
@@ -105,10 +88,9 @@ mod unicode;
 
 // Compiler support modules
 
-mod test;
-#[legacy_exports]
-mod serialization;
-mod serialization2;
+pub mod test;
+pub mod serialization;
+pub mod serialization2;
 
 // Local Variables:
 // mode: rust;
