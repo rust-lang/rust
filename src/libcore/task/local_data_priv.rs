@@ -17,11 +17,11 @@ impl LocalData: Eq {
 
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
-pub type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
+type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-pub type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
+type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 
-pub extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
+extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
     let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
@@ -29,7 +29,7 @@ pub extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
-pub unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
+unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
 
     // Relies on the runtime initialising the pointer to null.
     // NOTE: The map's box lives in TLS invisibly referenced once. Each time
@@ -52,7 +52,7 @@ pub unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     }
 }
 
-pub unsafe fn key_to_key_value<T: Owned>(
+unsafe fn key_to_key_value<T: Owned>(
     key: LocalDataKey<T>) -> *libc::c_void {
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
@@ -62,7 +62,7 @@ pub unsafe fn key_to_key_value<T: Owned>(
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
-pub unsafe fn local_data_lookup<T: Owned>(
+unsafe fn local_data_lookup<T: Owned>(
     map: TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
@@ -80,7 +80,7 @@ pub unsafe fn local_data_lookup<T: Owned>(
     }
 }
 
-pub unsafe fn local_get_helper<T: Owned>(
+unsafe fn local_get_helper<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
