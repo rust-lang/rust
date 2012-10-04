@@ -42,6 +42,7 @@ Evan McClanahan <evan@evanmcc.com>
 Francisco Souza <f@souza.cc>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
 Glenn Willen <gwillen@nerdnet.org>
+Gonçalo Cabrita <_@gmcabrita.com>
 Graham Fawcett <fawcett@uwindsor.ca>
 Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
