@@ -574,18 +574,22 @@ then
     msg "git: submodule sync"
     "${CFG_GIT}" submodule --quiet sync
 
-    # NB: this is just for the sake of getting the submodule SHA1 values
-    # and status written into the build log.
-    msg "git: submodule status"
-    "${CFG_GIT}" submodule status --recursive
-
     msg "git: submodule update"
-    "${CFG_GIT}" submodule --quiet update --init --recursive
+    "${CFG_GIT}" submodule --quiet update --init
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
     "${CFG_GIT}" submodule --quiet foreach --recursive git submodule sync
     need_ok "git failed"
+
+    msg "git: submodule foreach update"
+    "${CFG_GIT}" submodule --quiet update --init --recursive
+    need_ok "git failed"
+
+    # NB: this is just for the sake of getting the submodule SHA1 values
+    # and status written into the build log.
+    msg "git: submodule status"
+    "${CFG_GIT}" submodule status --recursive
 
     msg "git: submodule clobber"
     "${CFG_GIT}" submodule --quiet foreach --recursive git clean -dxf
