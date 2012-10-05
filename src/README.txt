@@ -1,4 +1,4 @@
-This is preliminary version of the Rust compiler, libraries and tools
+This is a preliminary version of the Rust compiler, libraries and tools
 
 Source layout:
 
