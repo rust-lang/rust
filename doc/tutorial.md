@@ -1509,7 +1509,7 @@ fn call_twice(f: fn()) { f(); f(); }
 call_twice(|| { ~"I am an inferred stack closure"; } );
 call_twice(fn&() { ~"I am also a stack closure"; } );
 call_twice(fn@() { ~"I am a managed closure"; });
-call_twice(fn~() { ~"I am a owned closure"; });
+call_twice(fn~() { ~"I am an owned closure"; });
 fn bare_function() { ~"I am a plain function"; }
 call_twice(bare_function);
 ~~~~
@@ -2121,7 +2121,7 @@ Rust program.
 
 This library is documented [here][core].
 
-[core]: http://doc.rust-lang.org/doc/core
+[core]: core/index.html
 
 ## A minimal example
 
