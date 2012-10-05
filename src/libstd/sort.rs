@@ -1045,27 +1045,34 @@ mod test_tim_sort {
     }
 }
 
-//#[cfg(test)]
-/*mod big_tests {
+/*fn f<T: Ord>(array: &[mut T]) { array[0] <-> array[0] }
 
-    #[test]
+fn ice_test() {
+    let _s1 = &fn(arr: &[mut ~float]) { tim_sort(arr); };
+}*/
+
+//#[cfg(test)]
+mod big_tests {
+
+    //#[test]
     fn sorts_test() {
         let low = 5;
         let high = 10;
 
         //pure fn le(a: &~float, b: &~float) -> bool { *a <= *b }
 
-        //let sorts = ~[
-            //let s1 = fn(arr: &[mut ~float]) { tim_sort(arr); };
-            //let s2 = fn(arr: &[mut ~float]) { quick_sort(arr, le); };
-            //let s3 = fn(arr: &[mut ~float]) { quick_sort3(arr); };
-            //let s4 = fn(arr: &[mut ~float]) { let rs = merge_sort(arr, le);
-             //                        for rs.eachi |i, v| {arr[i] = *v}};
-        //];
+        //let s1 = fn(arr: &[mut ~float]) { tim_sort(arr); };
+        //let s2 = fn(arr: &[mut ~float]) { quick_sort(arr, le); };
+        //let s3 = fn(arr: &[mut ~float]) { quick_sort3(arr); };
+        //let s4 = fn(arr: &[mut ~float]) { let rs = merge_sort(arr, le);
+        //                        for rs.eachi |i, v| {arr[i] = *v}};
 
-        tabulate_unique(low, high);
-        //tabulate_managed(low, high, tim_sort);
-        //tabulate_linear(low, high, tim_sort);
+
+        // Run tabulate_unique and tabulate_managed
+        // with the other sorts at some point
+        //tabulate_unique(low, high);
+        //tabulate_managed(low, high);
+        //tabulate_linear(low, high);
     }
 
     fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[mut T] {
@@ -1083,7 +1090,7 @@ mod test_tim_sort {
         vec::append(two, one)
     }
 
-    fn tabulate_unique(lo: uint, hi: uint) {
+    /*fn tabulate_unique(lo: uint, hi: uint) {
         fn isSorted<T: Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
@@ -1153,16 +1160,137 @@ mod test_tim_sort {
             tim_sort(arr); // !sort
             isSorted(arr);
         }
+    }*/
+
+    /*fn tabulate_managed(lo: uint, hi: uint) {
+        fn isSorted<T: Ord>(arr: &[const @T], expected_refcount: uint) {
+            for uint::range(0, arr.len()-1) |i| {
+                if arr[i] > arr[i+1] {
+                    fail ~"Array not sorted";
+                }
+                assert sys::refcount(arr[i]) == expected_refcount;
+            }
+        }
+
+        let rng = rand::Rng();
+
+        for uint::range(lo, hi) |i| {
+            let n = 1 << i;
+            let arr = do vec::from_fn(n) |_i| {
+                @rng.gen_float()
+            };
+            let arr = vec::to_mut(arr);
+
+            tim_sort(arr); // *sort
+            isSorted(arr, 1);
+
+            vec::reverse(arr);
+            tim_sort(arr); // \sort
+            isSorted(arr, 1);
+
+            tim_sort(arr); // /sort
+            isSorted(arr, 1);
+
+            for 3.times {
+                let i1 = rng.gen_uint_range(0, n);
+                let i2 = rng.gen_uint_range(0, n);
+                arr[i1] <-> arr[i2];
+            }
+            tim_sort(arr); // 3sort
+            isSorted(arr, 1);
+
+            if n >= 10 {
+                let size = arr.len();
+                let mut idx = 1;
+                while idx <= 10 {
+                    arr[size-idx] = @rng.gen_float();
+                    idx += 1;
+                }
+            }
+            tim_sort(arr); // +sort
+            isSorted(arr, 1);
+
+            for (n/100).times {
+                let idx = rng.gen_uint_range(0, n);
+                arr[idx] = @rng.gen_float();
+            }
+            tim_sort(arr);
+            isSorted(arr, 1);
+
+            let arr = if n > 4 {
+                let part = vec::view(arr, 0, 4);
+                multiplyVec(part, n)
+            } else { arr };
+            tim_sort(arr); // ~sort
+            isSorted(arr, n/4+1);
+
+            let mut arr = vec::from_elem(n, @(-0.5));
+            tim_sort(arr); // =sort
+            isSorted(arr, n);
+
+            let half = n / 2;
+            let mut arr = makeRange(half).map(|i| @(*i as float));
+            tim_sort(arr); // !sort
+            isSorted(arr, 2);
+        }
+    }
+*/
+/*
+    struct LVal {
+        val: uint,
+        key: fn(@uint),
+
+        drop {
+            let x = unsafe { task::local_data::local_data_get(self.key) };
+            match x {
+                Some(@y) => {
+                    unsafe {
+                        task::local_data::local_data_set(self.key, @(y+1));
+                    }
+                }
+                _ => fail ~"Expected key to work",
+            }
+        }
     }
 
-    fn tabulate_managed(lo: uint, hi: uint, sort: fn(x: &[mut ~float])) {
-
+    impl LVal: Ord {
+        pure fn lt(other: &LVal) -> bool { self.val < other.val }
+        pure fn le(other: &LVal) -> bool { self.val <= other.val }
+        pure fn gt(other: &LVal) -> bool { self.val > other.val }
+        pure fn ge(other: &LVal) -> bool { self.val >= other.val }
     }
 
-    fn tabulate_linear(lo: uint, hi: uint, sort: fn(x: &[mut ~float])) {
+    fn tabulate_linear(lo: uint, hi: uint) {
+        fn key(+_x: @uint) { }
+        fn isSorted<T: Ord>(arr: &[const T]) {
+            for uint::range(0, arr.len()-1) |i| {
+                if arr[i] > arr[i+1] {
+                    fail ~"Array not sorted";
+                }
+            }
+        }
 
+        let n = 1000;
+        unsafe {
+            task::local_data::local_data_set(key, @0u);
+        }
+
+        {
+            let mut arr = do vec::from_fn(n) |i| {
+                LVal { val: i, key: key }
+            };
+            //tim_sort(arr);
+            isSorted(arr);
+        }
+
+        let @dropped = unsafe {
+            task::local_data::local_data_get(key).get()
+        };
+
+        assert n == dropped;
     }
-}*/
+    */
+}
 
 // Local Variables:
 // mode: rust;
