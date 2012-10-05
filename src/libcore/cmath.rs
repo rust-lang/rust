@@ -40,15 +40,15 @@ pub extern mod c_double {
     #[link_name="fmax"] pure fn fmax(a: c_double, b: c_double) -> c_double;
     #[link_name="fmin"] pure fn fmin(a: c_double, b: c_double) -> c_double;
     pure fn nextafter(x: c_double, y: c_double) -> c_double;
-    pure fn frexp(n: c_double, &value: c_int) -> c_double;
+    pure fn frexp(n: c_double, value: &mut c_int) -> c_double;
     pure fn hypot(x: c_double, y: c_double) -> c_double;
     pure fn ldexp(x: c_double, n: c_int) -> c_double;
     #[cfg(unix)]
     #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
-                                           &sign: c_int) -> c_double;
+                                           sign: &mut c_int) -> c_double;
     #[cfg(windows)]
     #[link_name="__lgamma_r"] pure fn lgamma(n: c_double,
-                                             &sign: c_int) -> c_double;
+                                             sign: &mut c_int) -> c_double;
     // renamed: log is a reserved keyword; ln seems more natural, too
     #[link_name="log"] pure fn ln(n: c_double) -> c_double;
     // renamed: "logb" /often/ is confused for log2 by beginners
@@ -58,7 +58,7 @@ pub extern mod c_double {
     pure fn log10(n: c_double) -> c_double;
     pure fn log2(n: c_double) -> c_double;
     #[link_name="ilogb"] pure fn ilog_radix(n: c_double) -> c_int;
-    pure fn modf(n: c_double, &iptr: c_double) -> c_double;
+    pure fn modf(n: c_double, iptr: &mut c_double) -> c_double;
     pure fn pow(n: c_double, e: c_double) -> c_double;
 // FIXME (#1379): enable when rounding modes become available
 //    pure fn rint(n: c_double) -> c_double;
@@ -110,7 +110,7 @@ pub extern mod c_float {
     #[link_name="fdimf"] pure fn abs_sub(a: c_float, b: c_float) -> c_float;
     #[link_name="floorf"] pure fn floor(n: c_float) -> c_float;
     #[link_name="frexpf"] pure fn frexp(n: c_float,
-                                        &value: c_int) -> c_float;
+                                        value: &mut c_int) -> c_float;
     #[link_name="fmaf"] pure fn mul_add(a: c_float,
                                         b: c_float, c: c_float) -> c_float;
     #[link_name="fmaxf"] pure fn fmax(a: c_float, b: c_float) -> c_float;
@@ -122,11 +122,11 @@ pub extern mod c_float {
 
     #[cfg(unix)]
     #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
-                                            &sign: c_int) -> c_float;
+                                            sign: &mut c_int) -> c_float;
 
     #[cfg(windows)]
     #[link_name="__lgammaf_r"] pure fn lgamma(n: c_float,
-                                              &sign: c_int) -> c_float;
+                                              sign: &mut c_int) -> c_float;
 
     #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
     #[link_name="logbf"] pure fn log_radix(n: c_float) -> c_float;
@@ -135,7 +135,7 @@ pub extern mod c_float {
     #[link_name="log10f"] pure fn log10(n: c_float) -> c_float;
     #[link_name="ilogbf"] pure fn ilog_radix(n: c_float) -> c_int;
     #[link_name="modff"] pure fn modf(n: c_float,
-                                      &iptr: c_float) -> c_float;
+                                      iptr: &mut c_float) -> c_float;
     #[link_name="powf"] pure fn pow(n: c_float, e: c_float) -> c_float;
 // FIXME (#1379): enable when rounding modes become available
 //    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
