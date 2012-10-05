@@ -2510,27 +2510,53 @@ tuple of arguments.
 Enumerated types cannot be denoted *structurally* as types, but must be
 denoted by named reference to an [*enumeration* item](#enumerations).
 
-### Box types
+### Pointer types
 
-Box types are represented as pointers. There are three flavours of
-pointers:
+All pointers in Rust are explicit first-class values.
+They can be copied, stored into data structures, and returned from functions.
+There are four varieties of pointer in Rust:
 
-Shared boxes (`@`)
-  : These are reference-counted boxes. Their type is written
-    `@content`, for example `@int` means a shared box containing an
-    integer. Copying a value of such a type means copying the pointer
-    and increasing the reference count.
+Managed pointers (`@`)
+  : These point to managed heap allocations (or "boxes") in the task-local, managed heap.
+    Managed pointers are written `@content`,
+    for example `@int` means a managed pointer to a managed box containing an integer.
+    Copying a managed pointer is a "shallow" operation:
+    it involves only copying the pointer itself
+    (as well as any reference-count or GC-barriers required by the managed heap).
+    Dropping a managed pointer does not necessarily release the box it points to;
+    the lifecycles of managed boxes are subject to an unspecified garbage collection algorithm.
 
-Unique boxes (`~`)
-  : Unique boxes have only a single owner, and are freed when their
-    owner releases them. They are written `~content`. Copying a
-    unique box involves copying the contents into a new box.
+Owning pointers (`~`)
+  : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
+    Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
+    Owning pointers are written `~content`,
+    for example `~int` means an owning pointer to an owned box containing an integer.
+    Copying an owned box is a "deep" operation:
+    it involves allocating a new owned box and copying the contents of the old box into the new box.
+    Releasing an owning pointer immediately releases its corresponding owned box.
 
-Unsafe pointers (`*`)
-  : Unsafe pointers are pointers without safety guarantees or
-    language-enforced semantics. Their type is written `*content`.
-    They can be copied and dropped freely. Dereferencing an unsafe
-    pointer is part of the unsafe sub-dialect of Rust.
+Borrowed pointers (`&`)
+  : These point to memory _owned by some other value_.
+    Borrowed pointers arise by (automatic) conversion from owning pointers, managed pointers,
+    or by applying the borrowing operator `&` to some other value,
+    including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
+    Borrowed pointers are written `&content`, or in some cases `&f/content` for some lifetime-variable `f`,
+    for example `&int` means a borrowed pointer to an integer.
+    Copying a borrowed pointer is a "shallow" operation:
+    it involves only copying the pointer itself.
+    Releasing a borrowed pointer typically has no effect on the value it points to,
+    with the exception of temporary values,
+    which are released when the last borrowed pointer to them is released.
+
+Raw pointers (`*`)
+  : Raw pointers are pointers without safety or liveness guarantees.
+    Raw pointers are written `*content`,
+    for example `*int` means a raw pointer to an integer.
+    Copying or dropping a raw pointer is has no effect on the lifecycle of any other value.
+    Dereferencing a raw pointer or converting it to any other pointer type is an [`unsafe` operation](#unsafe-functions).
+    Raw pointers are generally discouraged in Rust code;
+    they exist to support interoperability with foreign code,
+    and writing performance-critical or low-level functions.
 
 ### Function types
 
