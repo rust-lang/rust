@@ -1468,6 +1468,25 @@ structure of expressions. Blocks themselves are expressions, so the nesting
 sequence of block, statement, expression, and block can repeatedly nest to an
 arbitrary depth.
 
+#### Lvalues, rvalues and temporaries
+
+Expressions are divided into two main categories: _lvalues_ and _rvalues_.
+Likewise within each expression, sub-expressions may occur in _lvalue context_ or _rvalue context_.
+The evaluation of an expression depends both on its own category and the context it occurs within.
+
+Path, field and index expressions are lvalues.
+All other expressions are rvalues.
+
+The left operand of an assignment expression and the operand of the borrow operator are lvalue contexts.
+All other expression contexts are rvalue contexts.
+
+When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
+when evaluated in an _rvalue context_, it denotes the value held _in_ that memory location.
+
+When an rvalue is used in lvalue context, a temporary un-named lvalue is created and used instead.
+A temporary's lifetime equals the largest lifetime of any borrowed pointer that points to it.
+
+
 ### Literal expressions
 
 A _literal expression_ consists of one of the [literal](#literals)
