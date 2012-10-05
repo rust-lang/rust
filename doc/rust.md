@@ -960,24 +960,12 @@ pure fn pure_length<T>(ls: List<T>) -> uint { ... }
 pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
-*TODO:* should actually define referential transparency.
-
-The effect checking rules previously enumerated are a restricted set
-of typechecking rules meant to approximate the universe of observably
-referentially transparent Rust procedures conservatively. Sometimes,
-these rules are *too* restrictive. Rust allows programmers to violate
-these rules by writing pure functions that the compiler cannot prove
-to be referentially transparent, using "unsafe blocks". When writing
-code that uses unsafe blocks, programmers should always be aware that
-they have an obligation to show that the code *behaves* referentially
-transparently at all times, even if the compiler cannot *prove*
-automatically that the code is referentially transparent. In the
-presence of unsafe blocks, the compiler provides no static guarantee
-that the code will behave as expected at runtime. Rather, the
-programmer has an independent obligation to verify the semantics of
-the pure functions they write.
-
-*TODO:* last two sentences are vague.
+These purity-checking rules approximate the concept of referential transparency:
+that a call-expression could be rewritten with the literal-expression of its return value, without changing the meaning of the program.
+Since they are an approximation, sometimes these rules are *too* restrictive.
+Rust allows programmers to violate these rules using [`unsafe` blocks](#unsafe-blocks).
+As with any `unsafe` block, those that violate static purity carry transfer the burden of safety-proof from the compiler to the programmer.
+Programmers should exercise caution when breaking such rules.
 
 An example of a pure function that uses an unsafe block:
 
@@ -1045,6 +1033,28 @@ Similarly, [trait](#traits) bounds can be specified for type
 parameters to allow methods with that trait to be called on values
 of that type.
 
+#### Unsafe functions
+
+Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
+
+Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
+Specifically, the following operations are considered unsafe:
+
+  - Dereferencing a [raw pointer](#pointer-types)
+  - Casting a [raw pointer](#pointer-types) to a safe pointer type
+  - Breaking the [purity-checking rules](#pure-functions)
+  - Calling an unsafe function
+
+##### Unsafe blocks
+
+A block of code can also be prefixed with the `unsafe` keyword,
+to permit a sequence of unsafe operations in an otherwise-safe function.
+This facility exists because the static semantics of a Rust are a necessary approximation of the dynamic semantics.
+When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe,
+they can encapsulate that sequence (taken as a whole) within an `unsafe` block.
+The compiler will consider uses of such code "safe", to the surrounding context.
+
+
 #### Extern functions
 
 Extern functions are part of Rust's foreign function interface, providing
@@ -1059,7 +1069,7 @@ extern fn new_vec() -> ~[int] { ~[] }
 ~~~
 
 Extern functions may not be called from Rust code, but their value
-may be taken as an unsafe `u8` pointer.
+may be taken as a raw `u8` pointer.
 
 ~~~
 # extern fn new_vec() -> ~[int] { ~[] }
@@ -2852,7 +2862,7 @@ exploiting.]
 ### Communication between tasks
 
 Rust tasks are isolated and generally unable to interfere with one another's memory directly,
-except through [`unsafe` code](#unsafe-code).
+except through [`unsafe` code](#unsafe-functions).
 All contact between tasks is mediated by safe forms of ownership transfer,
 and data races on memory are prohibited by the type system.
 
