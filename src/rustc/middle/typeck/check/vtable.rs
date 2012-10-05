@@ -51,8 +51,8 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                match lookup_vtable(fcx, expr, *ty, i_ty, allow_unsafe,
-                                    is_early) {
+                match lookup_vtable_covariant(fcx, expr, *ty, i_ty,
+                                              allow_unsafe, is_early) {
                     Some(vtable) => result.push(vtable),
                     None => {
                         fcx.tcx().sess.span_fatal(
@@ -91,20 +91,67 @@ fn relate_trait_tys(fcx: @fn_ctxt, expr: @ast::expr,
     demand::suptype(fcx, expr.span, exp_trait_ty, act_trait_ty)
 }
 
-/*
-Look up the vtable to use when treating an item of type <t>
-as if it has type <trait_ty>
-*/
-fn lookup_vtable(fcx: @fn_ctxt,
-                 expr: @ast::expr,
-                 ty: ty::t,
-                 trait_ty: ty::t,
-                 allow_unsafe: bool,
-                 is_early: bool)
-    -> Option<vtable_origin>
-{
+// Look up the vtable to use when treating an item of type `t` as if it has
+// type `trait_ty`. This does allow subtraits.
+fn lookup_vtable_covariant(fcx: @fn_ctxt,
+                           expr: @ast::expr,
+                           ty: ty::t,
+                           trait_ty: ty::t,
+                           allow_unsafe: bool,
+                           is_early: bool)
+                        -> Option<vtable_origin> {
+    let worklist = dvec::DVec();
+    worklist.push(trait_ty);
+    while worklist.len() > 0 {
+        let trait_ty = worklist.pop();
+        let result = lookup_vtable_invariant(fcx, expr, ty, trait_ty,
+                                             allow_unsafe, is_early);
+        if result.is_some() {
+            return result;
+        }
 
-    debug!("lookup_vtable(ty=%s, trait_ty=%s)",
+        // Add subtraits to the worklist, if applicable.
+        match ty::get(trait_ty).sty {
+            ty::ty_trait(trait_id, _, _) => {
+                let table = fcx.ccx.coherence_info.supertrait_to_subtraits;
+                match table.find(trait_id) {
+                    None => {}
+                    Some(subtraits) => {
+                        for subtraits.each |subtrait_id| {
+                            // XXX: This is wrong; subtraits should themselves
+                            // have substs.
+                            let substs =
+                                { self_r: None, self_ty: None, tps: ~[] };
+                            let trait_ty = ty::mk_trait(fcx.ccx.tcx,
+                                                        *subtrait_id,
+                                                        substs,
+                                                        ty::vstore_box);
+                            worklist.push(trait_ty);
+                        }
+                    }
+                }
+            }
+            _ => {
+                fcx.ccx.tcx.sess.impossible_case(expr.span,
+                                                 "lookup_vtable_covariant: \
+                                                  non-trait in worklist");
+            }
+        }
+    }
+
+    return None;
+}
+
+// Look up the vtable to use when treating an item of type `t` as if it has
+// type `trait_ty`. This does not allow subtraits.
+fn lookup_vtable_invariant(fcx: @fn_ctxt,
+                           expr: @ast::expr,
+                           ty: ty::t,
+                           trait_ty: ty::t,
+                           allow_unsafe: bool,
+                           is_early: bool)
+                        -> Option<vtable_origin> {
+    debug!("lookup_vtable_invariant(ty=%s, trait_ty=%s)",
            fcx.infcx().ty_to_str(ty), fcx.inh.infcx.ty_to_str(trait_ty));
     let _i = indenter();
 
@@ -112,7 +159,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
     let (trait_id, trait_substs) = match ty::get(trait_ty).sty {
         ty::ty_trait(did, substs, _) => (did, substs),
         _ => tcx.sess.impossible_case(expr.span,
-                                      "lookup_vtable: \
+                                      "lookup_vtable_invariant: \
                                        don't know how to handle a non-trait")
     };
     let ty = match fixup_ty(fcx, expr, ty, is_early) {
@@ -150,7 +197,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             }
                             _ => tcx.sess.impossible_case(
                                 expr.span,
-                                "lookup_vtable: in loop, \
+                                "lookup_vtable_invariant: in loop, \
                                  don't know how to handle a non-trait ity")
                         }
                         n_bound += 1u;
@@ -462,13 +509,14 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
         let target_ty = fcx.expr_ty(ex);
         match ty::get(target_ty).sty {
           ty::ty_trait(*) => {
-            /*
-            Look up vtables for the type we're casting to,
-            passing in the source and target type
-            */
+            // Look up vtables for the type we're casting to, passing in the
+            // source and target type.
+            //
+            // XXX: This is invariant and shouldn't be. --pcw
+
             let ty = fcx.expr_ty(src);
-            let vtable_opt = lookup_vtable(fcx, ex, ty, target_ty, true,
-                                           is_early);
+            let vtable_opt = lookup_vtable_invariant(fcx, ex, ty, target_ty,
+                                                     true, is_early);
             match vtable_opt {
                 None => {
                     // Try the new-style boxed trait; "@int as @Trait".
@@ -476,10 +524,10 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                     let ty = structurally_resolved_type(fcx, ex.span, ty);
                     match ty::get(ty).sty {
                         ty::ty_box(boxed_ty) => {
-                            let vtable_opt = lookup_vtable(fcx, ex,
-                                                           boxed_ty.ty,
-                                                           target_ty, true,
-                                                           is_early);
+                            let vtable_opt =
+                                lookup_vtable_invariant(fcx, ex, boxed_ty.ty,
+                                                        target_ty, true,
+                                                        is_early);
                             match vtable_opt {
                                 Some(vtable) => {
                                     /*
