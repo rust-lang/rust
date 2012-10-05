@@ -127,14 +127,14 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
     }
 }
 
-fn push_blank_line_comment(rdr: string_reader, comments: &mut ~[cmnt]) {
+fn push_blank_line_comment(rdr: string_reader, &comments: ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
     comments.push({style: blank_line, lines: v, pos: rdr.chpos});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
-                                           comments: &mut ~[cmnt]) {
+                                           &comments: ~[cmnt]) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) {
         if rdr.col == 0u && rdr.curr == '\n' {
             push_blank_line_comment(rdr, comments);
@@ -145,7 +145,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 
 
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
-                                            comments: &mut ~[cmnt]) {
+                                                        &comments: ~[cmnt]) {
     debug!(">>> shebang comment");
     let p = rdr.chpos;
     debug!("<<< shebang comment");
@@ -157,7 +157,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 }
 
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
-                                          comments: &mut ~[cmnt]) {
+                                                        &comments: ~[cmnt]) {
     debug!(">>> line comments");
     let p = rdr.chpos;
     let mut lines: ~[~str] = ~[];
@@ -188,8 +188,8 @@ fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
     return true;
 }
 
-fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
-                                        s: ~str, col: uint) {
+fn trim_whitespace_prefix_and_push_line(&lines: ~[~str],
+                                        s: ~str, col: uint) unsafe {
     let mut s1;
     let len = str::len(s);
     if all_whitespace(s, 0u, uint::min(len, col)) {
@@ -202,7 +202,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
 }
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
-                                          comments: &mut ~[cmnt]) {
+                                                        &comments: ~[cmnt]) {
     debug!(">>> block comment");
     let p = rdr.chpos;
     let mut lines: ~[~str] = ~[];
@@ -228,7 +228,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
         debug!("=== block comment level %d", level);
         if is_eof(rdr) {(rdr as reader).fatal(~"unterminated block comment");}
         if rdr.curr == '\n' {
-            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+            trim_whitespace_prefix_and_push_line(lines, curr_line, col);
             curr_line = ~"";
             bump(rdr);
         } else {
@@ -248,8 +248,8 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
             }
         }
     }
-    if str::len(curr_line) != 0 {
-        trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+    if str::len(curr_line) != 0u {
+        trim_whitespace_prefix_and_push_line(lines, curr_line, col);
     }
     let mut style = if code_to_the_left { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
@@ -267,7 +267,7 @@ fn peeking_at_comment(rdr: string_reader) -> bool {
 }
 
 fn consume_comment(rdr: string_reader, code_to_the_left: bool,
-                   comments: &mut ~[cmnt]) {
+                   &comments: ~[cmnt]) {
     debug!(">>> consume comment");
     if rdr.curr == '/' && nextch(rdr) == '/' {
         read_line_comments(rdr, code_to_the_left, comments);
@@ -299,11 +299,11 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
             consume_non_eol_whitespace(rdr);
             if rdr.curr == '\n' {
                 code_to_the_left = false;
-                consume_whitespace_counting_blank_lines(rdr, &mut comments);
+                consume_whitespace_counting_blank_lines(rdr, comments);
             }
             while peeking_at_comment(rdr) {
-                consume_comment(rdr, code_to_the_left, &mut comments);
-                consume_whitespace_counting_blank_lines(rdr, &mut comments);
+                consume_comment(rdr, code_to_the_left, comments);
+                consume_whitespace_counting_blank_lines(rdr, comments);
             }
             break;
         }

@@ -592,7 +592,7 @@ fn trans_arg_expr(bcx: block,
             DoAutorefArg => { val = arg_datum.to_ref_llval(bcx); }
             DontAutorefArg => {
                 match arg_mode {
-                    ast::by_ref => {
+                    ast::by_ref | ast::by_mutbl_ref => {
                         val = arg_datum.to_ref_llval(bcx);
                     }
 

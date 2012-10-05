@@ -230,7 +230,7 @@ pure fn can_begin_expr(t: token) -> bool {
 }
 
 /// what's the opposite delimiter?
-fn flip_delimiter(t: token::token) -> token::token {
+fn flip_delimiter(&t: token::token) -> token::token {
     match t {
       token::LPAREN => token::RPAREN,
       token::LBRACE => token::RBRACE,
