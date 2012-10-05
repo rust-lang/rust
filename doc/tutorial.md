@@ -873,17 +873,6 @@ also return a value by having its top level block produce an
 expression.
 
 ~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus {
-        return ~"tube sock";
-    } else {
-        return ~"violin";
-    }
-}
-~~~~
-
-~~~~
 fn line(a: int, b: int, x: int) -> int {
     a*x + b
 }
@@ -1122,7 +1111,7 @@ let x = ~10;
 let y = copy x;
 
 let z = *x + *y;
-assert z = 20;
+assert z == 20;
 ~~~~
 
 This is where the 'move' operator comes in. It is similar to
@@ -1131,7 +1120,7 @@ from `x` to `y`, without violating the constraint that it only has a
 single owner (if you used assignment instead of the move operator, the
 box would, in principle, be copied).
 
-~~~~ {.ignore}
+~~~~ {.xfail-test}
 let x = ~10;
 let y = move x;
 
@@ -1273,7 +1262,7 @@ also done with square brackets (zero-based):
 #               BananaMania, Beaver, Bittersweet };
 # fn draw_scene(c: Crayon) { }
 
-let crayons: [Crayon] = [BananaMania, Beaver, Bittersweet];
+let crayons: [Crayon * 3] = [BananaMania, Beaver, Bittersweet];
 match crayons[0] {
     Bittersweet => draw_scene(crayons[0]),
     _ => ()
@@ -1290,7 +1279,7 @@ elements. Mutable vector literals are written `[mut]` (empty) or `[mut
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
 
-let crayons: [mut Crayon] = [mut BananaMania, Beaver, Bittersweet];
+let crayons: [mut Crayon * 3] = [mut BananaMania, Beaver, Bittersweet];
 crayons[0] = AtomicTangerine;
 ~~~~
 
@@ -1330,7 +1319,8 @@ Strings are implemented with vectors of `[u8]`, though they have a distinct
 type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
-Where
+Wheras plain vectors are stack-allocated fixed length vectors,
+plain strings are region pointers to read-only memory.
 
 ~~~
 // A plain string is a slice to read-only (static) memory
