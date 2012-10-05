@@ -358,7 +358,7 @@ This may sound intricate, but it is super-useful and will grow on you.
 
 ## Types
 
-The basic types include the usual boolean, integral, and floating point types.
+The basic types include the usual boolean, integral, and floating-point types.
 
 ------------------------- -----------------------------------------------
 `()`                      Nil, the type that has only a single value
@@ -367,8 +367,8 @@ The basic types include the usual boolean, integral, and floating point types.
 `i8`, `i16`, `i32`, `i64` Signed integers with a specific size (in bits)
 `u8`, `u16`, `u32`, `u64` Unsigned integers with a specific size
 `float`                   The largest floating-point type efficiently supported on the target machine
-`f32`, `f64`              Floating-point types with a specific size.
-`char`                    A Unicode character (32 bits).
+`f32`, `f64`              Floating-point types with a specific size
+`char`                    A Unicode character (32 bits)
 ------------------------- -----------------------------------------------
 
 These can be combined in composite types, which will be described in
@@ -378,7 +378,7 @@ while N should be a literal number):
 ------------------------- -----------------------------------------------
 `[T * N]`                 Vector (like an array in other languages) with N elements
 `[mut T * N]`             Mutable vector with N elements
-`(T1, T2)`                Tuple type. Any arity above 1 is supported
+`(T1, T2)`                Tuple type; any arity above 1 is supported
 `&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
 ------------------------- -----------------------------------------------
 
@@ -863,7 +863,7 @@ the return type follows the arrow.
 
 ~~~~
 fn line(a: int, b: int, x: int) -> int {
-    return a*x + b;
+    return a * x + b;
 }
 ~~~~
 
@@ -874,7 +874,7 @@ expression.
 
 ~~~~
 fn line(a: int, b: int, x: int) -> int {
-    a*x + b
+    a * x + b
 }
 ~~~~
 
@@ -891,11 +891,11 @@ fn do_nothing_the_easy_way() { }
 Ending the function with a semicolon like so is equivalent to returning `()`.
 
 ~~~~
-fn line(a: int, b: int, x: int) -> int { a*x + b  }
-fn oops(a: int, b: int, x: int) -> ()  { a*x + b; }
+fn line(a: int, b: int, x: int) -> int { a * x + b  }
+fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
 
-assert 8  == line(5,3,1);
-assert () == oops(5,3,1);
+assert 8  == line(5, 3, 1);
+assert () == oops(5, 3, 1);
 ~~~~
 
 Methods are like functions, except that they are defined for a specific
@@ -1319,7 +1319,7 @@ Strings are implemented with vectors of `[u8]`, though they have a distinct
 type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
-Wheras plain vectors are stack-allocated fixed length vectors,
+Whereas plain vectors are stack-allocated fixed-length vectors,
 plain strings are region pointers to read-only memory.
 
 ~~~
