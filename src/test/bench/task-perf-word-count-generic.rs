@@ -10,8 +10,6 @@
 
 // xfail-pretty
 
-#[legacy_modes];
-
 extern mod std;
 
 use option = option;
@@ -70,18 +68,18 @@ fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
     let f = f();
     loop {
         match f.read_word() {
-          Some(w) => { emit(w, 1); }
+          Some(w) => { emit(&w, 1); }
           None => { break; }
         }
     }
 }
 
-fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
+fn reduce(word: &~str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
     loop { match get() { Some(_) => { count += 1; } None => { break; } } }
 
-    io::println(fmt!("%s\t%?", word, count));
+    io::println(fmt!("%s\t%?", *word, count));
 }
 
 struct box<T> {
@@ -116,13 +114,13 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter<K: Send, V: Send> = fn(K, V);
+    type putter<K: Send, V: Send> = fn(&K, V);
 
     type mapper<K1: Send, K2: Send, V: Send> = fn~(K1, putter<K2, V>);
 
     type getter<V: Send> = fn() -> Option<V>;
 
-    type reducer<K: Copy Send, V: Copy Send> = fn~(K, getter<V>);
+    type reducer<K: Copy Send, V: Copy Send> = fn~(&K, getter<V>);
 
     enum ctrl_proto<K: Copy Send, V: Copy Send> {
         find_reducer(K, Chan<Chan<reduce_proto<V>>>),
@@ -145,9 +143,9 @@ mod map_reduce {
 
     fn start_mappers<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send,
                      V: Copy Send>(
-        map: mapper<K1, K2, V>,
+        map: &mapper<K1, K2, V>,
         &ctrls: ~[ctrl_proto::server::open<K2, V>],
-        inputs: ~[K1])
+        inputs: &~[K1])
         -> ~[joinable_task]
     {
         let mut tasks = ~[];
@@ -155,7 +153,8 @@ mod map_reduce {
             let (ctrl, ctrl_server) = ctrl_proto::init();
             let ctrl = box(ctrl);
             let i = copy *i;
-            tasks.push(spawn_joinable(|move i| map_task(map, ctrl, i)));
+            let m = copy *map;
+            tasks.push(spawn_joinable(|move i| map_task(m, &ctrl, i)));
             ctrls.push(ctrl_server);
         }
         return tasks;
@@ -163,20 +162,22 @@ mod map_reduce {
 
     fn map_task<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
         map: mapper<K1, K2, V>,
-        ctrl: box<ctrl_proto::client::open<K2, V>>,
+        ctrl: &box<ctrl_proto::client::open<K2, V>>,
         input: K1)
     {
         // log(error, "map_task " + input);
-        let intermediates = map::HashMap();
+        let intermediates: HashMap<K2, Chan<reduce_proto<V>>>
+            = map::HashMap();
 
-        do map(input) |key, val| {
+        do map(input) |key: &K2, val| {
             let mut c = None;
-            let found = intermediates.find(key);
+            let found: Option<Chan<reduce_proto<V>>>
+                = intermediates.find(*key);
             match found {
               Some(_c) => { c = Some(_c); }
               None => {
                 do ctrl.swap |ctrl| {
-                    let ctrl = ctrl_proto::client::find_reducer(ctrl, key);
+                    let ctrl = ctrl_proto::client::find_reducer(ctrl, *key);
                     match pipes::recv(ctrl) {
                       ctrl_proto::reducer(c_, ctrl) => {
                         c = Some(c_);
@@ -184,7 +185,7 @@ mod map_reduce {
                       }
                     }
                 }
-                intermediates.insert(key, c.get());
+                intermediates.insert(*key, c.get());
                 send(c.get(), addref);
               }
             }
@@ -200,7 +201,7 @@ mod map_reduce {
     }
 
     fn reduce_task<K: Copy Send, V: Copy Send>(
-        reduce: reducer<K, V>, 
+        reduce: ~reducer<K, V>, 
         key: K,
         out: Chan<Chan<reduce_proto<V>>>)
     {
@@ -231,7 +232,7 @@ mod map_reduce {
             return None;
         }
 
-        reduce(key, || get(p, ref_count, is_done) );
+        (*reduce)(&key, || get(p, ref_count, is_done) );
     }
 
     fn map_reduce<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
@@ -245,7 +246,7 @@ mod map_reduce {
         // to do the rest.
 
         let reducers = map::HashMap();
-        let mut tasks = start_mappers(map, ctrl, inputs);
+        let mut tasks = start_mappers(&map, ctrl, &inputs);
         let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
@@ -270,7 +271,7 @@ mod map_reduce {
                     let p = Port();
                     let ch = Chan(&p);
                     let r = reduce, kk = k;
-                    tasks.push(spawn_joinable(|| reduce_task(r, kk, ch) ));
+                    tasks.push(spawn_joinable(|| reduce_task(~r, kk, ch) ));
                     c = recv(p);
                     reducers.insert(k, c);
                   }

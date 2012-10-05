@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 /**
  * The concurrency primitives you know and love.
  *

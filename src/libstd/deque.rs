@@ -1,5 +1,5 @@
 //! A deque. Untested as of yet. Likely buggy
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
 use option::{Some, None};
@@ -200,7 +200,7 @@ mod tests {
         assert (deq.get(3) == d);
     }
 
-    fn test_parameterized<T: Copy Eq Owned>(a: T, +b: T, +c: T, +d: T) {
+    fn test_parameterized<T: Copy Eq Owned>(a: T, b: T, c: T, d: T) {
         let deq: deque::Deque<T> = deque::create::<T>();
         assert (deq.size() == 0u);
         deq.add_front(a);

@@ -16,11 +16,11 @@ pub struct DuplexStream<T: Send, U: Send> {
 }
 
 impl<T: Send, U: Send> DuplexStream<T, U> : Channel<T> {
-    fn send(+x: T) {
+    fn send(x: T) {
         self.chan.send(move x)
     }
 
-    fn try_send(+x: T) -> bool {
+    fn try_send(x: T) -> bool {
         self.chan.try_send(move x)
     }
 }

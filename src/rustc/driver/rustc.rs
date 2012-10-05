@@ -22,15 +22,15 @@ use syntax::diagnostic;
 use rustc::driver::session;
 use rustc::middle::lint;
 
-fn version(argv0: ~str) {
+fn version(argv0: &str) {
     let mut vers = ~"unknown version";
     let env_vers = env!("CFG_VERSION");
-    if str::len(env_vers) != 0u { vers = env_vers; }
+    if env_vers.len() != 0 { vers = env_vers; }
     io::println(fmt!("%s %s", argv0, vers));
     io::println(fmt!("host: %s", host_triple()));
 }
 
-fn usage(argv0: ~str) {
+fn usage(argv0: &str) {
     io::println(fmt!("Usage: %s [options] <input>\n", argv0) +
                  ~"
 Options:
@@ -86,7 +86,7 @@ fn describe_warnings() {
     let lint_dict = lint::get_lint_dict();
     let mut max_key = 0;
     for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
-    fn padded(max: uint, s: ~str) -> ~str {
+    fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
     io::println(fmt!("\nAvailable lint checks:\n"));
@@ -117,14 +117,14 @@ fn describe_debug_flags() {
     }
 }
 
-fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
+fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
-    let mut args = args;
+    let mut args = *args;
     let binary = args.shift();
 
-    if vec::len(args) == 0u { usage(binary); return; }
+    if args.is_empty() { usage(binary); return; }
 
     let matches =
         match getopts::getopts(args, opts()) {
@@ -278,9 +278,9 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 }
 
 fn main() {
-    let args = os::args();
-    do monitor |demitter| {
-        run_compiler(args, demitter);
+    let mut args = os::args();
+    do monitor |move args, demitter| {
+        run_compiler(&args, demitter);
     }
 }
 

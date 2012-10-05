@@ -220,7 +220,7 @@ pub type TaskOpts = {
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
 pub enum TaskBuilder = {
     opts: TaskOpts,
-    gen_body: fn@(+v: fn~()) -> fn~(),
+    gen_body: fn@(v: fn~()) -> fn~(),
     can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
 };
@@ -233,7 +233,7 @@ pub enum TaskBuilder = {
 pub fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
-        gen_body: |+body| move body, // Identity function
+        gen_body: |body| move body, // Identity function
         can_not_copy: None,
         mut consumed: false,
     })
@@ -410,7 +410,7 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(wrapper: fn@(+v: fn~()) -> fn~()) -> TaskBuilder {
+    fn add_wrapper(wrapper: fn@(v: fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
         let notify_chan = if self.opts.notify_chan.is_none() {
             None
@@ -442,7 +442,7 @@ impl TaskBuilder {
      * When spawning into a new scheduler, the number of threads requested
      * must be greater than zero.
      */
-    fn spawn(+f: fn~()) {
+    fn spawn(f: fn~()) {
         let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
@@ -460,7 +460,7 @@ impl TaskBuilder {
         spawn::spawn_raw(move opts, x.gen_body(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Send>(arg: A, +f: fn~(+v: A)) {
+    fn spawn_with<A: Send>(arg: A, f: fn~(v: A)) {
         let arg = ~mut Some(move arg);
         do self.spawn |move arg, move f| {
             f(option::swap_unwrap(arg))
@@ -478,7 +478,7 @@ impl TaskBuilder {
      * otherwise be required to establish communication from the parent
      * to the child.
      */
-    fn spawn_listener<A: Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+    fn spawn_listener<A: Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
         let setup_po = comm::Port();
         let setup_ch = comm::Chan(&setup_po);
         do self.spawn |move f| {
@@ -494,7 +494,7 @@ impl TaskBuilder {
      * Runs a new task, setting up communication in both directions
      */
     fn spawn_conversation<A: Send, B: Send>
-        (+f: fn~(comm::Port<A>, comm::Chan<B>))
+        (f: fn~(comm::Port<A>, comm::Chan<B>))
         -> (comm::Port<B>, comm::Chan<A>) {
         let from_child = comm::Port();
         let to_parent = comm::Chan(&from_child);
@@ -517,7 +517,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: Send>(+f: fn~() -> T) -> Result<T,()> {
+    fn try<T: Send>(f: fn~() -> T) -> Result<T,()> {
         let po = comm::Port();
         let ch = comm::Chan(&po);
         let mut result = None;
@@ -556,7 +556,7 @@ pub fn default_task_opts() -> TaskOpts {
 
 /* Spawn convenience functions */
 
-pub fn spawn(+f: fn~()) {
+pub fn spawn(f: fn~()) {
     /*!
      * Creates and executes a new child task
      *
@@ -569,7 +569,7 @@ pub fn spawn(+f: fn~()) {
     task().spawn(move f)
 }
 
-pub fn spawn_unlinked(+f: fn~()) {
+pub fn spawn_unlinked(f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -578,7 +578,7 @@ pub fn spawn_unlinked(+f: fn~()) {
     task().unlinked().spawn(move f)
 }
 
-pub fn spawn_supervised(+f: fn~()) {
+pub fn spawn_supervised(f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -587,7 +587,7 @@ pub fn spawn_supervised(+f: fn~()) {
     task().supervised().spawn(move f)
 }
 
-pub fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
+pub fn spawn_with<A:Send>(arg: A, f: fn~(v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -601,7 +601,7 @@ pub fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
     task().spawn_with(move arg, move f)
 }
 
-pub fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+pub fn spawn_listener<A:Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
@@ -612,7 +612,7 @@ pub fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
 }
 
 pub fn spawn_conversation<A: Send, B: Send>
-    (+f: fn~(comm::Port<A>, comm::Chan<B>))
+    (f: fn~(comm::Port<A>, comm::Chan<B>))
     -> (comm::Port<B>, comm::Chan<A>) {
     /*!
      * Runs a new task, setting up communication in both directions
@@ -623,7 +623,7 @@ pub fn spawn_conversation<A: Send, B: Send>
     task().spawn_conversation(move f)
 }
 
-pub fn spawn_sched(mode: SchedMode, +f: fn~()) {
+pub fn spawn_sched(mode: SchedMode, f: fn~()) {
     /*!
      * Creates a new scheduler and executes a task on it
      *
@@ -640,7 +640,7 @@ pub fn spawn_sched(mode: SchedMode, +f: fn~()) {
     task().sched_mode(mode).spawn(move f)
 }
 
-pub fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
+pub fn try<T:Send>(f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -1127,7 +1127,7 @@ fn test_spawn_sched_blocking() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: fn(+v: fn~())) {
+fn avoid_copying_the_body(spawnfn: fn(v: fn~())) {
     let p = comm::Port::<uint>();
     let ch = comm::Chan(&p);
 
@@ -1150,7 +1150,7 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener() {
-    do avoid_copying_the_body |+f| {
+    do avoid_copying_the_body |f| {
         spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });
@@ -1168,7 +1168,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener_1() {
-    do avoid_copying_the_body |+f| {
+    do avoid_copying_the_body |f| {
         task().spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });

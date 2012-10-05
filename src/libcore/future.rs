@@ -87,7 +87,7 @@ pub fn from_port<A:Send>(port: future_pipe::client::waiting<A>) ->
     }
 }
 
-pub fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
+pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
@@ -99,7 +99,7 @@ pub fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
     Future {state: Pending(move f)}
 }
 
-pub fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
+pub fn spawn<A:Send>(blk: fn~() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *

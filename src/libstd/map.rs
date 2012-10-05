@@ -1,6 +1,5 @@
 //! A map type
-
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use io::WriterUtil;
 use to_str::ToStr;
@@ -28,7 +27,7 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      *
      * Returns true if the key did not already exist in the map
      */
-    fn insert(v: K, +v: V) -> bool;
+    fn insert(v: K, v: V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
     fn contains_key(key: K) -> bool;
@@ -59,7 +58,7 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
     fn clear();
 
     /// Iterate over all the key/value pairs in the map by value
-    pure fn each(fn(key: K, +value: V) -> bool);
+    pure fn each(fn(key: K, value: V) -> bool);
 
     /// Iterate over all the keys in the map by value
     pure fn each_key(fn(key: K) -> bool);
@@ -213,7 +212,7 @@ pub mod chained {
             }
         }
 
-        fn insert(k: K, +v: V) -> bool {
+        fn insert(k: K, v: V) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(&k, hash) {
               NotFound => {
@@ -294,7 +293,7 @@ pub mod chained {
             self.chains = chains(initial_capacity);
         }
 
-        pure fn each(blk: fn(key: K, +value: V) -> bool) {
+        pure fn each(blk: fn(key: K, value: V) -> bool) {
             self.each_ref(|k, v| blk(*k, *v))
         }
 
@@ -348,7 +347,7 @@ pub mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
-        pure fn index(+k: K) -> V {
+        pure fn index(k: K) -> V {
             unsafe {
                 self.get(k)
             }
@@ -459,7 +458,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    pure fn each(op: fn(key: K, +value: V) -> bool) {
+    pure fn each(op: fn(key: K, value: V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
                 p.each(|k, v| op(*k, *v))

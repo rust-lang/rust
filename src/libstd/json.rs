@@ -1,6 +1,6 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
 //! json serialization
@@ -399,7 +399,7 @@ priv impl Parser {
         while char::is_whitespace(self.ch) { self.bump(); }
     }
 
-    fn parse_ident(ident: &str, +value: Json) -> Result<Json, Error> {
+    fn parse_ident(ident: &str, value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
             Ok(move value)
