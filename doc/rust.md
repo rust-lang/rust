@@ -2733,20 +2733,17 @@ the box values pointing to it. Since box values may themselves be passed in
 and out of frames, or stored in the heap, heap allocations may outlive the
 frame they are allocated within.
 
-
 ### Memory ownership
 
 A task owns all memory it can *safely* reach through local variables,
-shared or unique boxes, and/or references. Sharing memory between tasks can
-only be accomplished using *unsafe* constructs, such as raw pointer
-operations or calling C code.
+as well as managed, owning and borrowed pointers.
 
-When a task sends a value that has the `send` trait over a channel, it
-loses ownership of the value sent and can no longer refer to it. This is
-statically guaranteed by the combined use of "move semantics" and the
-compiler-checked _meaning_ of the `send` trait: it is only instantiated
-for (transitively) unique kinds of data constructor and pointers, never shared
-pointers.
+When a task sends a value that has the `Send` trait to another task,
+it loses ownership of the value sent and can no longer refer to it.
+This is statically guaranteed by the combined use of "move semantics",
+and the compiler-checked _meaning_ of the `Send` trait:
+it is only instantiated for (transitively) sendable kinds of data constructor and pointers,
+never including managed or borrowed pointers.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both shared and owned) are dropped.
