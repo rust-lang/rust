@@ -117,7 +117,7 @@ fn encode_mutability(ebml_w: ebml::Writer, mt: class_mutability) {
 type entry<T> = {val: T, pos: uint};
 
 fn add_to_index(ecx: @encode_ctxt, ebml_w: ebml::Writer, path: &[ident],
-                &index: ~[entry<~str>], name: ident) {
+                index: &mut ~[entry<~str>], name: ident) {
     let mut full_path = ~[];
     full_path.push_all(path);
     full_path.push(name);

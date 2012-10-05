@@ -831,9 +831,9 @@ impl Liveness {
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
             changed |= copy_if_invalid(copy self.users[succ_idx].reader,
-                                       self.users[idx].reader);
+                                       &mut self.users[idx].reader);
             changed |= copy_if_invalid(copy self.users[succ_idx].writer,
-                                       self.users[idx].writer);
+                                       &mut self.users[idx].writer);
             if self.users[succ_idx].used && !self.users[idx].used {
                 self.users[idx].used = true;
                 changed = true;
@@ -844,10 +844,10 @@ impl Liveness {
                ln.to_str(), self.ln_str(succ_ln), first_merge, changed);
         return changed;
 
-        fn copy_if_invalid(src: LiveNode, &dst: LiveNode) -> bool {
+        fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
             if src.is_valid() {
                 if !dst.is_valid() {
-                    dst = src;
+                    *dst = src;
                     return true;
                 }
             }
