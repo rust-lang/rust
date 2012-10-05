@@ -1,5 +1,6 @@
 //! High-level interface to libuv's TCP functionality
-#[warn(deprecated_mode)];
+// XXX Need FFI fixes
+#[allow(deprecated_mode)];
 
 use ip = net_ip;
 use uv::iotask;
