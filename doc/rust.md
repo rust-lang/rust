@@ -2832,54 +2832,21 @@ exploiting.]
 
 ### Communication between tasks
 
-With the exception of *unsafe* blocks, Rust tasks are isolated from
-interfering with one another's memory directly. Instead of manipulating shared
-storage, Rust tasks communicate with one another using a typed, asynchronous,
-simplex message-passing system.
+Rust tasks are isolated and generally unable to interfere with one another's memory directly,
+except through [`unsafe` code](#unsafe-code).
+All contact between tasks is mediated by safe forms of ownership transfer,
+and data races on memory are prohibited by the type system.
 
-A _port_ is a communication endpoint that can *receive* messages. Ports
-receive messages from channels.
+Inter-task communication and co-ordination facilities are provided in the standard library.
+These include:
+  - synchronous and asynchronous communication channels with various communication topologies
+  - read-only and read-write shared variables with various safe mutual exclusion patterns
+  - simple locks and semaphores
 
-A _channel_ is a communication endpoint that can *send* messages. Channels
-send messages to ports.
-
-Each port is implicitly boxed and mutable; as such a port has a unique
-per-task identity and cannot be replicated or transmitted. If a port value is
-copied, both copies refer to the *same* port. New ports can be
-constructed dynamically and stored in data structures.
-
-Each channel is bound to a port when the channel is constructed, so the
-destination port for a channel must exist before the channel itself. A channel
-cannot be rebound to a different port from the one it was constructed with.
-
-Channels are weak: a channel does not keep the port it is bound to
-alive. Ports are owned by their allocating task and cannot be sent over
-channels; if a task dies its ports die with it, and all channels bound to
-those ports no longer function. Messages sent to a channel connected to a dead
-port will be dropped.
-
-Channels are immutable types with meaning known to the runtime; channels can
-be sent over channels.
-
-Many channels can be bound to the same port, but each channel is bound to a
-single port. In other words, channels and ports exist in an N:1 relationship,
-N channels to 1 port. ^[It may help to remember nautical terminology
-when differentiating channels from ports.  Many different waterways --
-channels -- may lead to the same port.]
-
-Each port and channel can carry only one type of message. The message type is
-encoded as a parameter of the channel or port type. The message type of a
-channel is equal to the message type of the port it is bound to. The types of
-messages must satisfy the `send` built-in trait.
-
-Messages are generally sent asynchronously, with optional
-rate-limiting on the transmit side.  Each port contains a message
-queue and sending a message over a channel merely means inserting it
-into the associated port's queue; message receipt is the
-responsibility of the receiving task.
-
-Messages are sent on channels and received on ports using standard library
-functions.
+When such facilities carry values, the values are restricted to the [`Send` type-kind](#type-kinds).
+Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
+Thus access to an entire data structure can be mediated through its owning "root" value;
+no further locking or copying is required to avoid data races within the substructure of such a value.
 
 
 ### Task lifecycle
