@@ -1,5 +1,7 @@
 //! Support code for serialization.
 
+#[allow(deprecated_mode)];
+
 /*
 Core serialization interfaces.
 */
