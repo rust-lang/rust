@@ -773,8 +773,8 @@ A view item manages the namespace of a module; it does not define new items
 but simply changes the visibility of other items. There are several kinds of
 view item:
 
- * [extern mod declarations](#extern-mod-declarations)
- * [use declarations](#use-declarations)
+ * [`extern mod` declarations](#extern-mod-declarations)
+ * [`use` declarations](#use-declarations)
 
 ##### Extern mod declarations
 
@@ -784,7 +784,7 @@ link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
 
-An _extern mod declaration_ specifies a dependency on an external crate.
+An _`extern mod` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
@@ -1737,9 +1737,9 @@ A type cast expression is denoted with the binary operator `as`.
 Executing an `as` expression casts the value on the left-hand side to the type
 on the right-hand side.
 
-A numeric value can be cast to any numeric type.  An unsafe pointer value can
-be cast to or from any integral type or unsafe pointer type.  Any other cast
-is unsupported and will fail to compile.
+A numeric value can be cast to any numeric type.
+A raw pointer value can be cast to or from any integral type or raw pointer type.
+Any other cast is unsupported and will fail to compile.
 
 An example of an `as` expression:
 
