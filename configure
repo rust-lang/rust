@@ -583,6 +583,10 @@ then
     "${CFG_GIT}" submodule --quiet update --init --recursive
     need_ok "git failed"
 
+    msg "git: submodule foreach sync"
+    "${CFG_GIT}" submodule --quiet foreach --recursive git submodule sync
+    need_ok "git failed"
+
     msg "git: submodule clobber"
     "${CFG_GIT}" submodule --quiet foreach --recursive git clean -dxf
     need_ok "git failed"
