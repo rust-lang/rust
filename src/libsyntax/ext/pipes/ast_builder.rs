@@ -48,7 +48,6 @@ trait ext_ctxt_ast_builder {
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param;
     fn arg(name: ident, ty: @ast::ty) -> ast::arg;
-    fn arg_mode(name: ident, ty: @ast::ty, mode: ast::rmode) -> ast::arg;
     fn expr_block(e: @ast::expr) -> ast::blk;
     fn fn_decl(+inputs: ~[ast::arg], output: @ast::ty) -> ast::fn_decl;
     fn item(name: ident, span: span, +node: ast::item_) -> @ast::item;
@@ -172,13 +171,6 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn arg(name: ident, ty: @ast::ty) -> ast::arg {
         {mode: ast::infer(self.next_id()),
-         ty: ty,
-         ident: name,
-         id: self.next_id()}
-    }
-
-    fn arg_mode(name: ident, ty: @ast::ty, mode: ast::rmode) -> ast::arg {
-        {mode: ast::expl(mode),
          ty: ty,
          ident: name,
          id: self.next_id()}

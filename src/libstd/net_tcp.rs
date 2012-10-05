@@ -1,4 +1,5 @@
 //! High-level interface to libuv's TCP functionality
+#[warn(deprecated_mode)];
 
 use ip = net_ip;
 use uv::iotask;
@@ -324,7 +325,7 @@ pub fn read_start(sock: &TcpSocket)
  * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
  */
 pub fn read_stop(sock: &TcpSocket,
-             +read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
+             read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
     result::Result<(), TcpErrData> unsafe {
     log(debug, fmt!("taking the read_port out of commission %?", read_port));
     let socket_data = ptr::addr_of(&(*sock.socket_data));
@@ -558,8 +559,8 @@ pub fn accept(new_conn: TcpNewConnection)
  */
 pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
-          +new_connect_cb: fn~(TcpNewConnection,
+          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
     do listen_common(move host_ip, port, backlog, iotask, on_establish_cb)
@@ -575,8 +576,8 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
 
 fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
-          +on_connect_cb: fn~(*uv::ll::uv_tcp_t))
+          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          on_connect_cb: fn~(*uv::ll::uv_tcp_t))
     -> result::Result<(), TcpListenErrData> unsafe {
     let stream_closed_po = core::comm::Port::<()>();
     let kill_po = core::comm::Port::<Option<TcpErrData>>();
@@ -749,7 +750,7 @@ impl TcpSocket {
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
-    fn read(buf: &[mut u8], +len: uint) -> uint {
+    fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
             let read_result = read(&self.data.sock, 0u);
@@ -785,13 +786,13 @@ impl TcpSocketBuf: io::Reader {
         let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
-    fn unread_byte(+amt: int) {
+    fn unread_byte(amt: int) {
         self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
         false // noop
     }
-    fn seek(+dist: int, +seek: io::SeekStyle) {
+    fn seek(dist: int, seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
@@ -813,7 +814,7 @@ impl TcpSocketBuf: io::Writer {
                              err_data.err_name, err_data.err_msg));
         }
     }
-    fn seek(+dist: int, +seek: io::SeekStyle) {
+    fn seek(dist: int, seek: io::SeekStyle) {
       log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
@@ -1474,7 +1475,7 @@ mod test {
         str::from_bytes(new_bytes)
     }
 
-    fn run_tcp_test_server(server_ip: &str, server_port: uint, +resp: ~str,
+    fn run_tcp_test_server(server_ip: &str, server_port: uint, resp: ~str,
                           server_ch: comm::Chan<~str>,
                           cont_ch: comm::Chan<()>,
                           iotask: IoTask) -> ~str {

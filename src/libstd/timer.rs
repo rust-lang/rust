@@ -1,6 +1,6 @@
 //! Utilities that leverage libuv's `uv_timer_*` API
 
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use uv = uv;
 use uv::iotask;

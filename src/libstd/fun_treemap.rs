@@ -1,4 +1,4 @@
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
 
 /*!
  * A functional key,value store that works on anything.
@@ -26,7 +26,7 @@ enum TreeNode<K, V> {
 pub fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-pub fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
+pub fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, k: K, v: V)
   -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
@@ -41,7 +41,7 @@ pub fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
 }
 
 /// Find a value based on the key
-pub fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
+pub fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, k: K) -> Option<V> {
     match *m {
       Empty => None,
       Node(@ref kk, @copy v, left, right) => {

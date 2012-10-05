@@ -860,7 +860,7 @@ endpoint is passed to the new task.
 pub fn spawn_service<T: Send, Tb: Send>(
     init: extern fn() -> (SendPacketBuffered<T, Tb>,
                           RecvPacketBuffered<T, Tb>),
-    +service: fn~(v: RecvPacketBuffered<T, Tb>))
+    service: fn~(v: RecvPacketBuffered<T, Tb>))
     -> SendPacketBuffered<T, Tb>
 {
     let (client, server) = init();
@@ -884,7 +884,7 @@ receive state.
 pub fn spawn_service_recv<T: Send, Tb: Send>(
     init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                           SendPacketBuffered<T, Tb>),
-    +service: fn~(v: SendPacketBuffered<T, Tb>))
+    service: fn~(v: SendPacketBuffered<T, Tb>))
     -> RecvPacketBuffered<T, Tb>
 {
     let (client, server) = init();

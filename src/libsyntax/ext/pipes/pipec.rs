@@ -47,16 +47,15 @@ impl message: gen_send {
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
 
             let args_ast = (arg_names, tys).map(
-                |n, t| cx.arg_mode(*n, *t, ast::by_copy)
+                |n, t| cx.arg(*n, *t)
             );
 
             let pipe_ty = cx.ty_path_ast_builder(
                 path(~[this.data_name()], span)
                 .add_tys(cx.ty_vars(this.ty_params)));
             let args_ast = vec::append(
-                ~[cx.arg_mode(cx.ident_of(~"pipe"),
-                              pipe_ty,
-                              ast::by_copy)],
+                ~[cx.arg(cx.ident_of(~"pipe"),
+                              pipe_ty)],
                 args_ast);
 
             let mut body = ~"{\n";
@@ -129,15 +128,14 @@ impl message: gen_send {
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
                 let args_ast = (arg_names, tys).map(
-                    |n, t| cx.arg_mode(cx.ident_of(*n), *t, ast::by_copy)
+                    |n, t| cx.arg(cx.ident_of(*n), *t)
                 );
 
                 let args_ast = vec::append(
-                    ~[cx.arg_mode(cx.ident_of(~"pipe"),
+                    ~[cx.arg(cx.ident_of(~"pipe"),
                                   cx.ty_path_ast_builder(
                                       path(~[this.data_name()], span)
-                                      .add_tys(cx.ty_vars(this.ty_params))),
-                                  ast::by_copy)],
+                                      .add_tys(cx.ty_vars(this.ty_params))))],
                     args_ast);
 
                 let message_args = if arg_names.len() == 0 {

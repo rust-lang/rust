@@ -4,8 +4,7 @@
  * The I/O task runs in its own single-threaded scheduler.  By using the
  * `interact` function you can execute code in a uv callback.
  */
-
-// tjc: forbid deprecated modes again after a snapshot
+#[forbid(deprecated_mode)];
 
 use libc::c_void;
 use ptr::addr_of;
@@ -60,7 +59,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  * via ports/chans.
  */
 pub unsafe fn interact(iotask: IoTask,
-                   +cb: fn~(*c_void)) {
+                   cb: fn~(*c_void)) {
     send_msg(iotask, Interaction(move cb));
 }
 
@@ -125,7 +124,7 @@ type IoTaskLoopData = {
 };
 
 fn send_msg(iotask: IoTask,
-            +msg: IoTaskMsg) unsafe {
+            msg: IoTaskMsg) unsafe {
     iotask.op_chan.send(move msg);
     ll::async_send(iotask.async_handle);
 }

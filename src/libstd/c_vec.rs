@@ -25,6 +25,7 @@
  * great care must be taken to ensure that a reference to the c_vec::t is
  * still held if needed.
  */
+#[forbid(deprecated_mode)];
 
 /**
  * The type representing a foreign chunk of memory
@@ -111,7 +112,7 @@ pub fn get<T: Copy>(t: CVec<T>, ofs: uint) -> T {
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-pub fn set<T: Copy>(t: CVec<T>, ofs: uint, +v: T) {
+pub fn set<T: Copy>(t: CVec<T>, ofs: uint, v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }

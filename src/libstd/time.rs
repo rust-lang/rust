@@ -1,4 +1,4 @@
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};

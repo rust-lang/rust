@@ -2,7 +2,7 @@
  * A simple map based on a vector for small integer keys. Space requirements
  * are O(highest integer key).
  */
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use core::option;
 use core::option::{Some, None};
@@ -103,7 +103,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     pure fn find(key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
 
-    pure fn each(it: fn(key: uint, +value: V) -> bool) {
+    pure fn each(it: fn(key: uint, value: V) -> bool) {
         self.each_ref(|k, v| it(*k, *v))
     }
     pure fn each_key(it: fn(key: uint) -> bool) {
@@ -131,7 +131,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
 }
 
 impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
-    pure fn index(+key: uint) -> V {
+    pure fn index(key: uint) -> V {
         unsafe {
             get(self, key)
         }

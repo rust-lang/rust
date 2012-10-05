@@ -46,7 +46,7 @@ type GlobalPtr = *libc::uintptr_t;
 pub unsafe fn chan_from_global_ptr<T: Send>(
     global: GlobalPtr,
     task_fn: fn() -> task::TaskBuilder,
-    +f: fn~(comm::Port<T>)
+    f: fn~(comm::Port<T>)
 ) -> comm::Chan<T> {
 
     enum Msg {

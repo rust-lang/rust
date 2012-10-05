@@ -488,7 +488,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     }
 }
 
-pub fn spawn_raw(opts: TaskOpts, +f: fn~()) {
+pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -533,7 +533,7 @@ pub fn spawn_raw(opts: TaskOpts, +f: fn~()) {
     fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
                           ancestors: AncestorList, is_main: bool,
                           notify_chan: Option<Chan<Notification>>,
-                          +f: fn~()) -> fn~() {
+                          f: fn~()) -> fn~() {
         let child_data = ~mut Some((move child_arc, move ancestors));
         return fn~(move notify_chan, move child_data, move f) {
             // Agh. Get move-mode items into the closure. FIXME (#2829)

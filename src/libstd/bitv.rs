@@ -1,4 +1,4 @@
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use vec::{to_mut, from_elem};
 
@@ -553,7 +553,7 @@ pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
 impl Bitv: ops::Index<uint,bool> {
-    pure fn index(+i: uint) -> bool {
+    pure fn index(i: uint) -> bool {
         self.get(i)
     }
 }
