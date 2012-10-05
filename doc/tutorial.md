@@ -1237,51 +1237,22 @@ pointers to vectors are also called 'slices'.
 enum Crayon {
     Almond, AntiqueBrass, Apricot,
     Aquamarine, Asparagus, AtomicTangerine,
-    BananaMania, Beaver, Bittersweet
+    BananaMania, Beaver, Bittersweet,
+    Black, BlizzardBlue, Blue
 }
 
 // A fixed-size stack vector
 let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
 
 // A borrowed pointer to stack allocated vector
-let stack_crayons: &[Crayon] = &[Almond, AntiqueBrass, Apricot];
+let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
 
 // A local heap (managed) vector of crayons
-let local_crayons: @[Crayon] = @[Aquamarine, Asparagus, AtomicTangerine];
+let local_crayons: @[Crayon] = @[BananaMania, Beaver, Bittersweet];
 
 // An exchange heap (owned) vector of crayons
-let exchange_crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+let exchange_crayons: ~[Crayon] = ~[Black, BlizzardBlue, Blue];
 ~~~
-
-Vector literals are enclosed in square brackets and dereferencing is
-also done with square brackets (zero-based):
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-# fn draw_scene(c: Crayon) { }
-
-let crayons: [Crayon * 3] = [BananaMania, Beaver, Bittersweet];
-match crayons[0] {
-    Bittersweet => draw_scene(crayons[0]),
-    _ => ()
-}
-~~~~
-
-By default, vectors are immutable—you can not replace their elements.
-The type written as `[mut T]` is a vector with mutable
-elements. Mutable vector literals are written `[mut]` (empty) or `[mut
-1, 2, 3]` (with elements).
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-
-let crayons: [mut Crayon * 3] = [mut BananaMania, Beaver, Bittersweet];
-crayons[0] = AtomicTangerine;
-~~~~
 
 The `+` operator means concatenation when applied to vector types.
 
@@ -1293,20 +1264,12 @@ The `+` operator means concatenation when applied to vector types.
 let my_crayons = ~[Almond, AntiqueBrass, Apricot];
 let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 
+// Add two vectors to create a new one
 let our_crayons = my_crayons + your_crayons;
-~~~~
 
-The `+=` operator also works as expected, provided the assignee
-lives in a mutable slot.
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-
-let mut my_crayons = ~[Almond, AntiqueBrass, Apricot];
-let your_crayons = ~[BananaMania, Beaver, Bittersweet];
-
+// += will append to a vector, provided it leves
+// in a mutable slot
+let mut my_crayons = move my_crayons;
 my_crayons += your_crayons;
 ~~~~
 
@@ -1315,31 +1278,79 @@ my_crayons += your_crayons;
 > not well supported yet, owned vectors are often the most
 > usable.
 
+Indexing into vectors is done with square brackets:
+
+~~~~
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+# fn draw_scene(c: Crayon) { }
+let crayons: [Crayon * 3] = [BananaMania, Beaver, Bittersweet];
+match crayons[0] {
+    Bittersweet => draw_scene(crayons[0]),
+    _ => ()
+}
+~~~~
+
+The elements of a vector _inherit the mutability of the vector_,
+and as such individual elements may not be reassigned when the
+vector lives in an immutable slot.
+
+~~~ {.xfail-test}
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+
+crayons[0] = Apricot; // ERROR: Can't assign to immutable vector
+~~~
+
+Moving it into a mutable slot makes the elements assignable.
+
+~~~
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+
+// Put the vector into a mutable slot
+let mut mutable_crayons = move crayons;
+
+// Now it's mutable to the bone
+mutable_crayons[0] = Apricot;
+~~~
+
+This is a simple example of Rust's _dual-mode data structures_, also
+referred to as _freezing and thawing_.
+
 Strings are implemented with vectors of `[u8]`, though they have a distinct
 type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
 Whereas plain vectors are stack-allocated fixed-length vectors,
-plain strings are region pointers to read-only memory.
+plain strings are region pointers to read-only memory. Strings
+are always immutable.
 
 ~~~
 // A plain string is a slice to read-only (static) memory
 let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
 
 // The same thing, but with the `&`
-let stack_crayons: &str = &"Almond, AntiqueBrass, Apricot";
+let stack_crayons: &str = &"Aquamarine, Asparagus, AtomicTangerine";
 
 // A local heap (managed) string
-let local_crayons: @str = @"Aquamarine, Asparagus, AtomicTangerine";
+let local_crayons: @str = @"BananMania, Beaver, Bittersweet";
 
 // An exchange heap (owned) string
-let exchange_crayons: ~str = ~"BananaMania, Beaver, Bittersweet";
+let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
 ~~~
 
 Both vectors and strings support a number of useful
-[methods](#implementation).  While we haven't covered methods yet,
-most vector functionality is provided by methods, so let's have a
-brief look at a few common ones.
+[methods](#functions-and-methods), defined in [`core::vec`]
+and [`core::str`]. Here are some examples.
+
+[`core::vec`]: core/vec.html
+[`core::str`]: core/str.html
 
 ~~~
 # use io::println;
