@@ -60,9 +60,10 @@ while ((line = lines[cur++]) != null) {
       var html = '<pre class="cm-s-default">', curstr = "", curstyle = null;
       function add(str, style) {
         if (style != curstyle) {
-          if (curstyle) html += '<span class="cm-' + curstyle + '">' + curstr
-            + "</span>";
-          else if (curstr) html += curstr;
+          if (curstyle) html +=
+            '<span class="cm-' + CodeMirror.htmlEscape(curstyle) + '">' +
+            CodeMirror.htmlEscape(curstr) + "</span>";
+          else if (curstr) html += CodeMirror.htmlEscape(curstr);
           curstr = str; curstyle = style;
         } else curstr += str;
       }
