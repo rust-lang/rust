@@ -529,8 +529,7 @@ impl check_loan_ctxt {
                 ast::by_move => {
                     self.check_move_out(*arg);
                 }
-                ast::by_mutbl_ref | ast::by_ref |
-                ast::by_copy | ast::by_val => {
+                ast::by_ref | ast::by_copy | ast::by_val => {
                 }
             }
         }
@@ -542,9 +541,9 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      visitor: visit::vt<check_loan_ctxt>) {
 
     debug!("purity on entry=%?", copy self.declared_purity);
-    do save_and_restore(self.in_ctor) {
-        do save_and_restore(self.declared_purity) {
-            do save_and_restore(self.fn_args) {
+    do save_and_restore(&mut(self.in_ctor)) {
+        do save_and_restore(&mut(self.declared_purity)) {
+            do save_and_restore(&mut(self.fn_args)) {
                 let is_stack_closure = self.is_stack_closure(id);
                 let fty = ty::node_id_to_type(self.tcx(), id);
                 self.declared_purity = ty::determine_inherited_purity(
@@ -667,7 +666,7 @@ fn check_loans_in_expr(expr: @ast::expr,
 fn check_loans_in_block(blk: ast::blk,
                         &&self: check_loan_ctxt,
                         vt: visit::vt<check_loan_ctxt>) {
-    do save_and_restore(self.declared_purity) {
+    do save_and_restore(&mut(self.declared_purity)) {
         self.check_for_conflicting_loans(blk.node.id);
 
         match blk.node.rules {

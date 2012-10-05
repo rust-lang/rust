@@ -49,12 +49,12 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     return {mut next_tag_id: 0u16, pad: 0u16, pad2: 0u32};
 }
 
-fn add_u16(&dest: ~[u8], val: u16) {
-    dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
+fn add_u16(dest: &mut ~[u8], val: u16) {
+    *dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
-fn add_substr(&dest: ~[u8], src: ~[u8]) {
+fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
     add_u16(dest, vec::len(src) as u16);
-    dest += src;
+    *dest += src;
 }
 
