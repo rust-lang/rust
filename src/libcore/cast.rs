@@ -19,7 +19,7 @@ pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
  * The forget function will take ownership of the provided value but neglect
  * to run any required cleanup or memory-management operations on it. This
  * can be used for various acts of magick, particularly when using
- * reinterpret_cast on managed pointer types.
+ * reinterpret_cast on pointer types.
  */
 #[inline(always)]
 pub unsafe fn forget<T>(thing: T) { rusti::forget(move thing); }
