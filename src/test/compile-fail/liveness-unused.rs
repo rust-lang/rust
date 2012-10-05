@@ -2,7 +2,7 @@ fn f1(x: int) {
     //~^ WARNING unused variable: `x`
 }
 
-fn f1b(&x: int) {
+fn f1b(x: &mut int) {
     //~^ WARNING unused variable: `x`
 }
 

@@ -18,8 +18,13 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[cfg(stage0)]
     fn move_val_init<T>(&dst: T, -src: T);
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn move_val_init<T>(dst: &mut T, -src: T);
 }
+
 
 /// Returns true if a vector contains no elements
 pub pure fn is_empty<T>(v: &[const T]) -> bool {
@@ -98,6 +103,7 @@ pub pure fn len<T>(v: &[const T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
+#[cfg(stage0)]
 pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
@@ -105,6 +111,22 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
             let mut i: uint = 0u;
             while i < n_elts {
                 rusti::move_val_init(*ptr::mut_offset(p, i), op(i));
+                i += 1u;
+            }
+        }
+        raw::set_len(&mut v, n_elts);
+        return move v;
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
+    unsafe {
+        let mut v = with_capacity(n_elts);
+        do as_mut_buf(v) |p, _len| {
+            let mut i: uint = 0u;
+            while i < n_elts {
+                rusti::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
                 i += 1u;
             }
         }
@@ -481,6 +503,7 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
     }
 }
 
+#[cfg(stage0)]
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
@@ -490,6 +513,18 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
     rusti::move_val_init(*p, move initval);
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+// This doesn't bother to make sure we have space.
+#[inline(always)] // really pretty please
+unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
+    let repr: **raw::VecRepr = ::cast::transmute(v);
+    let fill = (**repr).unboxed.fill;
+    (**repr).unboxed.fill += sys::size_of::<T>();
+    let p = addr_of(&((**repr).unboxed.data));
+    let p = ptr::offset(p, fill) as *mut T;
+    rusti::move_val_init(&mut(*p), move initval);
 }
 
 #[inline(never)]
@@ -1758,6 +1793,18 @@ pub mod raw {
         as_const_buf(v, |p, _len| *ptr::const_offset(p, i))
     }
 
+    #[cfg(stage0)]
+    #[inline(always)]
+    pub unsafe fn init_elem<T>(v: &[mut T], i: uint, val: T) {
+        let mut box = Some(move val);
+        do as_mut_buf(v) |p, _len| {
+            let mut box2 = None;
+            box2 <-> box;
+            rusti::move_val_init(*ptr::mut_offset(p, i),
+                                 option::unwrap(move box2));
+        }
+    }
+    #[cfg(stage1)]
     /**
      * Unchecked vector index assignment.  Does not drop the
      * old value and hence is only suitable when the vector
@@ -1769,7 +1816,7 @@ pub mod raw {
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
             box2 <-> box;
-            rusti::move_val_init(*ptr::mut_offset(p, i),
+            rusti::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                  option::unwrap(move box2));
         }
     }
