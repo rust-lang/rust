@@ -2896,12 +2896,11 @@ A task begins its lifecycle -- once it has been spawned -- in the *running*
 state. In this state it executes the statements of its entry function, and any
 functions called by the entry function.
 
-A task may transition from the *running* state to the *blocked* state any time
-it makes a blocking receive call on a port, or attempts a rate-limited
-blocking send on a channel. When the communication expression can be completed
--- when a message arrives at a sender, or a queue drains sufficiently to
-complete a rate-limited send -- then the blocked task will unblock and
-transition back to *running*.
+A task may transition from the *running* state to the *blocked*
+state any time it makes a blocking communication call. When the
+call can be completed -- when a message arrives at a sender, or a
+buffer opens to receive a message -- then the blocked task will
+unblock and transition back to *running*.
 
 A task may transition to the *failing* state at any time, due being
 killed by some external event or internally, from the evaluation of a
