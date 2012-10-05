@@ -90,6 +90,7 @@ export ty_estr, mk_estr, type_is_str;
 export ty_evec, mk_evec, type_is_vec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
+export serialize_vstore, deserialize_vstore;
 export ty_nil, mk_nil, type_is_nil;
 export ty_trait, mk_trait;
 export ty_param, mk_param, ty_params_to_tys;
@@ -217,6 +218,7 @@ type method = {ident: ast::ident,
 
 type mt = {ty: t, mutbl: ast::mutability};
 
+#[auto_serialize]
 enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -1624,7 +1626,10 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_evec(_, vstore_uniq) |
       ty_evec(_, vstore_box) => true,
 
-      ty_trait(*) => true,
+      ty_trait(_, _, vstore_box) |
+      ty_trait(_, _, vstore_uniq) => true,
+      ty_trait(_, _, vstore_fixed(_)) |
+      ty_trait(_, _, vstore_slice(_)) => false,
 
       ty_param(*) | ty_infer(*) => true,
 
@@ -2821,7 +2826,7 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
           }
           typeck::method_param({trait_id:trt_id,
                                 method_num:n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth) => {
+          typeck::method_trait(trt_id, n_mth, _) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -3362,7 +3367,15 @@ fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
 /*
   Could this return a list of (def_id, substs) pairs?
  */
-fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
+fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
+    fn vstoreify(cx: ctxt, ty: t, vstore: vstore) -> t {
+        match ty::get(ty).sty {
+            ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
+            ty::ty_trait(did, substs, _) => mk_trait(cx, did, substs, vstore),
+            _ => cx.sess.bug(~"impl_traits: not a trait")
+        }
+    }
+
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(id.node) {
@@ -3372,19 +3385,23 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
                     _)) => {
 
                do option::map_default(&opt_trait, ~[]) |trait_ref| {
-                       ~[node_id_to_type(cx, trait_ref.ref_id)]
+                       ~[vstoreify(cx,
+                                   node_id_to_type(cx, trait_ref.ref_id),
+                                   vstore)]
                    }
            }
            Some(ast_map::node_item(@{node: ast::item_class(sd,_),
                            _},_)) => {
                do vec::map(sd.traits) |trait_ref| {
-                    node_id_to_type(cx, trait_ref.ref_id)
+                    vstoreify(cx, node_id_to_type(cx, trait_ref.ref_id),
+                              vstore)
                 }
            }
            _ => ~[]
         }
     } else {
-        csearch::get_impl_traits(cx, id)
+        vec::map(csearch::get_impl_traits(cx, id),
+                 |x| vstoreify(cx, *x, vstore))
     }
 }
 

@@ -142,8 +142,8 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                 None => fail ~"trans_method_callee: missing param_substs"
             }
         }
-        typeck::method_trait(_, off) => {
-            trans_trait_callee(bcx, callee_id, off, self)
+        typeck::method_trait(_, off, vstore) => {
+            trans_trait_callee(bcx, callee_id, off, self, vstore)
         }
     }
 }
@@ -288,8 +288,8 @@ fn trans_monomorphized_callee(bcx: block,
               })
           }
       }
-      typeck::vtable_trait(*) => {
-          trans_trait_callee(bcx, callee_id, n_method, base)
+      typeck::vtable_trait(_, _) => {
+          trans_trait_callee(bcx, callee_id, n_method, base, ty::vstore_box)
       }
       typeck::vtable_param(*) => {
           fail ~"vtable_param left in monomorphized function's vtable substs";
@@ -390,7 +390,8 @@ fn combine_impl_and_methods_origins(bcx: block,
 fn trans_trait_callee(bcx: block,
                       callee_id: ast::node_id,
                       n_method: uint,
-                      self_expr: @ast::expr)
+                      self_expr: @ast::expr,
+                      vstore: ty::vstore)
     -> Callee
 {
     //!
@@ -398,8 +399,8 @@ fn trans_trait_callee(bcx: block,
     // Create a method callee where the method is coming from a trait
     // instance (e.g., @Trait type).  In this case, we must pull the
     // fn pointer out of the vtable that is packaged up with the
-    // @Trait instance.  @Traits are represented as a pair, so we first
-    // evaluate the self expression (expected a by-ref result) and then
+    // @/~/&Trait instance.  @/~/&Traits are represented as a pair, so we
+    // first evaluate the self expression (expected a by-ref result) and then
     // extract the self data and vtable out of the pair.
 
     let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
@@ -407,13 +408,14 @@ fn trans_trait_callee(bcx: block,
     let self_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr));
     let llpair = self_datum.to_ref_llval(bcx);
     let callee_ty = node_id_type(bcx, callee_id);
-    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llpair)
+    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llpair, vstore)
 }
 
 fn trans_trait_callee_from_llval(bcx: block,
                                  callee_ty: ty::t,
                                  n_method: uint,
-                                 llpair: ValueRef)
+                                 llpair: ValueRef,
+                                 vstore: ty::vstore)
     -> Callee
 {
     //!
@@ -431,9 +433,21 @@ fn trans_trait_callee_from_llval(bcx: block,
                                   GEPi(bcx, llpair, [0u, 0u]),
                                   T_ptr(T_ptr(T_vtable()))));
 
-    // Load the box from the @Trait pair and GEP over the box header:
+    // Load the box from the @Trait pair and GEP over the box header if
+    // necessary:
+    let llself;
     let llbox = Load(bcx, GEPi(bcx, llpair, [0u, 1u]));
-    let llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+    match vstore {
+        ty::vstore_box | ty::vstore_uniq => {
+            llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+        }
+        ty::vstore_slice(_) => {
+            llself = llbox;
+        }
+        ty::vstore_fixed(*) => {
+            bcx.tcx().sess.bug(~"vstore_fixed trait");
+        }
+    }
 
     // Load the function from the vtable and cast it to the expected type.
     let llcallee_ty = type_of::type_of_fn_from_ty(ccx, callee_ty);
@@ -503,7 +517,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
     // XXX: This should support multiple traits.
     let trt_id = driver::session::expect(
         tcx.sess,
-        ty::ty_to_def_id(ty::impl_traits(tcx, impl_id)[0]),
+        ty::ty_to_def_id(ty::impl_traits(tcx, impl_id, ty::vstore_box)[0]),
         || ~"make_impl_vtable: non-trait-type implemented");
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;

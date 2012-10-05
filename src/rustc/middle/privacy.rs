@@ -81,7 +81,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                 }
             }
             method_param({trait_id: trait_id, method_num: method_num, _}) |
-            method_trait(trait_id, method_num) => {
+            method_trait(trait_id, method_num, _) => {
                 if trait_id.crate == local_crate {
                     match tcx.items.find(trait_id.node) {
                         Some(node_item(item, _)) => {

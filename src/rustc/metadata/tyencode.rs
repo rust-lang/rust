@@ -16,6 +16,7 @@ export enc_ty;
 export enc_bounds;
 export enc_mode;
 export enc_arg;
+export enc_vstore;
 
 type ctxt = {
     diag: span_handler,
