@@ -86,7 +86,7 @@ enum method_origin {
     method_param(method_param),
 
     // method invoked on a trait instance
-    method_trait(ast::def_id, uint),
+    method_trait(ast::def_id, uint, ty::vstore),
 }
 
 // details for a method invoked with a receiver whose type is a type parameter

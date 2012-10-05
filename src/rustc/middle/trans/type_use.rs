@@ -247,7 +247,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
               typeck::method_param({param_num: param, _}) => {
                 cx.uses[param] |= use_tydesc;
               }
-              typeck::method_trait(_, _) => (),
+              typeck::method_trait(*) => (),
             }
         }
       }

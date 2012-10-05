@@ -221,11 +221,7 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
                 result::Err(_) => { return; /*typeck will fail anyhow*/ }
                 result::Ok(target_ty) => {
                     match ty::get(target_ty).sty {
-                        ty::ty_trait(_, substs, _) => {
-                            let trait_region = match substs.self_r {
-                                Some(r) => {r}
-                                None => {ty::re_static}
-                            };
+                        ty::ty_trait(_, _, vstore_slice(trait_region)) => {
                             let source_ty = rcx.fcx.expr_ty(source);
                             constrain_regions_in_type(rcx, trait_region,
                                                       expr.span, source_ty);

@@ -490,8 +490,8 @@ impl method_origin: tr {
           typeck::method_param(mp) => {
             typeck::method_param({trait_id:mp.trait_id.tr(xcx),.. mp})
           }
-          typeck::method_trait(did, m) => {
-            typeck::method_trait(did.tr(xcx), m)
+          typeck::method_trait(did, m, vstore) => {
+            typeck::method_trait(did.tr(xcx), m, vstore)
           }
         }
     }
@@ -631,6 +631,7 @@ impl @e::encode_ctxt: get_ty_str_ctxt {
 trait ebml_writer_helpers {
     fn emit_arg(ecx: @e::encode_ctxt, arg: ty::arg);
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t);
+    fn emit_vstore(ecx: @e::encode_ctxt, vstore: ty::vstore);
     fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]);
     fn emit_bounds(ecx: @e::encode_ctxt, bs: ty::param_bounds);
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty);
@@ -640,6 +641,12 @@ impl ebml::Writer: ebml_writer_helpers {
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t) {
         do self.emit_opaque {
             e::write_type(ecx, self, ty)
+        }
+    }
+
+    fn emit_vstore(ecx: @e::encode_ctxt, vstore: ty::vstore) {
+        do self.emit_opaque {
+            e::write_vstore(ecx, self, vstore)
         }
     }
 

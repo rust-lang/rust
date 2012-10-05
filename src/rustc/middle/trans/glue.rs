@@ -477,9 +477,12 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_fn(_) => {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _, _) => {
+      ty::ty_trait(_, _, ty::vstore_box) => {
         let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
+      }
+      ty::ty_trait(_, _, ty::vstore_uniq) => {
+        ccx.tcx.sess.unimpl(~"drop of unique trait");
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_drop_glue(bcx, ck, v0)

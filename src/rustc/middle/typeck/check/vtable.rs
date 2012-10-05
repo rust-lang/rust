@@ -156,8 +156,8 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
-    let (trait_id, trait_substs) = match ty::get(trait_ty).sty {
-        ty::ty_trait(did, substs, _) => (did, substs),
+    let (trait_id, trait_substs, trait_vstore) = match ty::get(trait_ty).sty {
+        ty::ty_trait(did, substs, vstore) => (did, substs, vstore),
         _ => tcx.sess.impossible_case(expr.span,
                                       "lookup_vtable_invariant: \
                                        don't know how to handle a non-trait")
@@ -270,7 +270,8 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                         // it's the same trait as trait_ty, we need to
                         // unify it with trait_ty in order to get all
                         // the ty vars sorted out.
-                        for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
+                        for vec::each(ty::impl_traits(tcx, im.did,
+                                                      trait_vstore)) |of_ty| {
                             match ty::get(*of_ty).sty {
                                 ty::ty_trait(id, _, _) => {
                                     // Not the trait we're looking for
@@ -378,7 +379,8 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                             // lists of types to unify pairwise.
 
                             connect_trait_tps(fcx, expr, substs_f.tps,
-                                              trait_tps, im.did);
+                                              trait_tps, im.did,
+                                              trait_vstore);
                             let subres = lookup_vtables(
                                 fcx, expr, im_bs, &substs_f,
                                 false, is_early);
@@ -436,11 +438,12 @@ fn fixup_ty(fcx: @fn_ctxt,
 }
 
 fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
-                     trait_tys: ~[ty::t], impl_did: ast::def_id) {
+                     trait_tys: ~[ty::t], impl_did: ast::def_id,
+                     vstore: ty::vstore) {
     let tcx = fcx.ccx.tcx;
 
     // XXX: This should work for multiple traits.
-    let ity = ty::impl_traits(tcx, impl_did)[0];
+    let ity = ty::impl_traits(tcx, impl_did, vstore)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
     debug!("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).sty, impl_did);
@@ -508,7 +511,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       ast::expr_cast(src, _) => {
         let target_ty = fcx.expr_ty(ex);
         match ty::get(target_ty).sty {
-          ty::ty_trait(*) => {
+          ty::ty_trait(_, _, vstore) => {
             // Look up vtables for the type we're casting to, passing in the
             // source and target type.
             //
@@ -520,26 +523,73 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
             match vtable_opt {
                 None => {
                     // Try the new-style boxed trait; "@int as @Trait".
+                    // Or the new-style region trait; "&int as &Trait".
                     let mut err = false;
                     let ty = structurally_resolved_type(fcx, ex.span, ty);
                     match ty::get(ty).sty {
-                        ty::ty_box(boxed_ty) => {
-                            let vtable_opt =
-                                lookup_vtable_invariant(fcx, ex, boxed_ty.ty,
-                                                        target_ty, true,
-                                                        is_early);
-                            match vtable_opt {
-                                Some(vtable) => {
-                                    /*
-                                    Map this expression to that vtable (that
-                                    is: "ex has vtable <vtable>")
-                                    */
-                                    if !is_early {
-                                        cx.vtable_map.insert(ex.id,
-                                                             @~[vtable]);
+                        ty::ty_box(mt) | ty::ty_rptr(_, mt) => {
+                            // Ensure that the trait vstore and the pointer
+                            // type match.
+                            match (ty::get(ty).sty, vstore) {
+                                (ty::ty_box(_), ty::vstore_box) |
+                                (ty::ty_rptr(*), ty::vstore_slice(*)) => {
+                                    let vtable_opt =
+                                        lookup_vtable_invariant(fcx,
+                                                                ex,
+                                                                mt.ty,
+                                                                target_ty,
+                                                                true,
+                                                                is_early);
+                                    match vtable_opt {
+                                        Some(vtable) => {
+                                            // Map this expression to that
+                                            // vtable (that is: "ex has vtable
+                                            // <vtable>")
+                                            if !is_early {
+                                                cx.vtable_map.insert(
+                                                    ex.id, @~[vtable]);
+                                            }
+                                        }
+                                        None => err = true
+                                    }
+
+                                    // Now, if this is &trait, we need to link
+                                    // the regions.
+                                    match (ty::get(ty).sty, vstore) {
+                                        (ty::ty_rptr(ra, _),
+                                         ty::vstore_slice(rb)) => {
+                                            infer::mk_subr(fcx.infcx(),
+                                                           false,
+                                                           ex.span,
+                                                           rb,
+                                                           ra);
+                                        }
+                                        _ => {}
                                     }
                                 }
-                                None => err = true
+                                (ty::ty_box(_), _) => {
+                                    fcx.ccx.tcx.sess.span_err(ex.span,
+                                                              ~"must cast \
+                                                                a boxed \
+                                                                pointer to \
+                                                                a boxed
+                                                                trait");
+                                    err = true;
+                                }
+                                (ty::ty_rptr(*), _) => {
+                                    fcx.ccx.tcx.sess.span_err(ex.span,
+                                                              ~"must cast \
+                                                                a borrowed \
+                                                                pointer to \
+                                                                a borrowed \
+                                                                trait");
+                                }
+                                _ => {
+                                    fcx.ccx.tcx.sess.impossible_case(
+                                        ex.span,
+                                        ~"impossible combination of type and \
+                                          trait vstore");
+                                }
                             }
                         }
                         _ => err = true
