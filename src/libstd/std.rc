@@ -20,7 +20,9 @@ not required in or otherwise suitable for the core library.
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
-#[warn(deprecated_mode)];
+// XXX this is set to allow because there are two methods in serialization
+// that can't be silenced otherwise. Most every module is set to forbid
+#[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
