@@ -1918,10 +1918,9 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
     }
     pure fn to_vec() -> ~[A] { iter::to_vec(&self) }
 
-    // FIXME--bug in resolve prevents this from working (#2611)
-    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
-    //     iter::flat_map_to_vec(self, op)
-    // }
+    pure fn flat_map_to_vec<B:Copy,IB:BaseIter<B>>(op: fn(A) -> IB) -> ~[B] {
+        iter::flat_map_to_vec(&self, op)
+    }
 
     pub pure fn find(p: fn(a: A) -> bool) -> Option<A> {
         iter::find(&self, p)
