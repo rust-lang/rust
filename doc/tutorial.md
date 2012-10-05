@@ -768,7 +768,7 @@ struct TimeBomb {
     explosivity: uint,
 
     drop {
-        for iter::repeat(explosivity) {
+        for iter::repeat(self.explosivity) {
             io::println(fmt!("blam!"));
         }
     }
