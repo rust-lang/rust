@@ -734,6 +734,7 @@ omitted from the type, such an assignment would result in a type error.
 
 Structs can be destructured in `match` patterns. The basic syntax is
 `Name {fieldname: pattern, ...}`:
+
 ~~~~
 # struct Point { x: float, y: float }
 # let mypoint = Point { x: 0.0, y: 0.0 };
@@ -747,6 +748,35 @@ In general, the field names of a struct do not have to appear in the same
 order they appear in the type. When you are not interested in all
 the fields of a struct, a struct pattern may end with `, _` (as in
 `Name {field1, _}`) to indicate that you're ignoring all other fields.
+Additionally, struct fields have a shorthand matching form that simply
+reuses the field name as the binding name.
+
+~~~
+# struct Point { x: float, y: float }
+# let mypoint = Point { x: 0.0, y: 0.0 };
+match mypoint {
+    Point { x, _ } => { io::println(x.to_str()) }
+}
+~~~
+
+Structs are the only type in Rust that may have user-defined destructors,
+using `drop` blocks, inside of which the struct's value may be referred
+to with the name `self`.
+
+~~~
+struct TimeBomb {
+    explosivity: uint,
+
+    drop {
+        for iter::repeat(explosivity) {
+            io::println(fmt!("blam!"));
+        }
+    }
+}
+~~~
+
+> ***Note***: This destructor syntax is temporary. Eventually destructors
+> will be defined for any type using [traits](#traits).
 
 ## Enums
 
