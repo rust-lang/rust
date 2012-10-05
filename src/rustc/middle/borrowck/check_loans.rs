@@ -17,10 +17,6 @@ enum check_loan_ctxt = @{
 
     reported: HashMap<ast::node_id, ()>,
 
-    // Keep track of whether we're inside a ctor, so as to
-    // allow mutating immutable fields in the same class if
-    // we are in a ctor, we track the self id
-    mut in_ctor: bool,
     mut declared_purity: ast::purity,
     mut fn_args: @~[ast::node_id]
 };
@@ -62,7 +58,6 @@ fn check_loans(bccx: borrowck_ctxt,
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_maps: req_maps,
                                  reported: HashMap(),
-                                 mut in_ctor: false,
                                  mut declared_purity: ast::impure_fn,
                                  mut fn_args: @~[]});
     let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
@@ -320,10 +315,7 @@ impl check_loan_ctxt {
         debug!("check_assignment(cmt=%s)",
                self.bccx.cmt_to_repr(cmt));
 
-        if self.in_ctor && self.is_self_field(cmt)
-            && at.checked_by_liveness() {
-            // assigning to self.foo in a ctor is always allowed.
-        } else if self.is_local_variable(cmt) && at.checked_by_liveness() {
+        if self.is_local_variable(cmt) && at.checked_by_liveness() {
             // liveness guarantees that immutable local variables
             // are only assigned once
         } else {
@@ -542,42 +534,28 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      visitor: visit::vt<check_loan_ctxt>) {
 
     debug!("purity on entry=%?", copy self.declared_purity);
-    do save_and_restore(&mut(self.in_ctor)) {
-        do save_and_restore(&mut(self.declared_purity)) {
-            do save_and_restore(&mut(self.fn_args)) {
-                let is_stack_closure = self.is_stack_closure(id);
-                let fty = ty::node_id_to_type(self.tcx(), id);
-                self.declared_purity = ty::determine_inherited_purity(
-                    copy self.declared_purity,
-                    ty::ty_fn_purity(fty),
-                    ty::ty_fn_proto(fty));
+    do save_and_restore(&mut(self.declared_purity)) {
+        do save_and_restore(&mut(self.fn_args)) {
+            let is_stack_closure = self.is_stack_closure(id);
+            let fty = ty::node_id_to_type(self.tcx(), id);
+            self.declared_purity = ty::determine_inherited_purity(
+                copy self.declared_purity,
+                ty::ty_fn_purity(fty),
+                ty::ty_fn_proto(fty));
 
-                // In principle, we could consider fk_anon(*) or
-                // fk_fn_block(*) to be in a ctor, I suppose, but the
-                // purpose of the in_ctor flag is to allow modifications
-                // of otherwise immutable fields and typestate wouldn't be
-                // able to "see" into those functions anyway, so it
-                // wouldn't be very helpful.
-                match fk {
-                  visit::fk_ctor(*) => {
-                    self.in_ctor = true;
-                    self.fn_args = @decl.inputs.map(|i| i.id );
-                  }
-                  visit::fk_anon(*) |
-                  visit::fk_fn_block(*) if is_stack_closure => {
-                    self.in_ctor = false;
+            match fk {
+                visit::fk_anon(*) |
+                visit::fk_fn_block(*) if is_stack_closure => {
                     // inherits the fn_args from enclosing ctxt
-                  }
-                  visit::fk_anon(*) | visit::fk_fn_block(*) |
-                  visit::fk_method(*) | visit::fk_item_fn(*) |
-                  visit::fk_dtor(*) => {
-                    self.in_ctor = false;
-                    self.fn_args = @decl.inputs.map(|i| i.id );
-                  }
                 }
-
-                visit::visit_fn(fk, decl, body, sp, id, self, visitor);
+                visit::fk_anon(*) | visit::fk_fn_block(*) |
+                visit::fk_method(*) | visit::fk_item_fn(*) |
+                visit::fk_dtor(*) => {
+                    self.fn_args = @decl.inputs.map(|i| i.id );
+                }
             }
+
+            visit::visit_fn(fk, decl, body, sp, id, self, visitor);
         }
     }
     debug!("purity on exit=%?", copy self.declared_purity);

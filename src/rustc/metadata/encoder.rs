@@ -635,12 +635,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml2::Serializer,
         /* Now, make an item for the class itself */
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-
-        match struct_def.ctor {
-            None => encode_family(ebml_w, 'S'),
-            Some(_) => encode_family(ebml_w, 'C')
-        }
-
+        encode_family(ebml_w, 'S');
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
@@ -699,21 +694,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml2::Serializer,
         let bkts = create_index(idx);
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
-
-        /* Encode the constructor */
-        for struct_def.ctor.each |ctor| {
-            debug!("encoding info for ctor %s %d",
-                   ecx.tcx.sess.str_of(item.ident), ctor.node.id);
-            index.push({
-                val: ctor.node.id,
-                pos: ebml_w.writer.tell()
-            });
-            encode_info_for_ctor(ecx, ebml_w, ctor.node.id, item.ident,
-                                 path, if tps.len() > 0u {
-                                     Some(ii_ctor(*ctor, item.ident, tps,
-                                                  local_def(item.id))) }
-                                 else { None }, tps);
-        }
       }
       item_impl(tps, opt_trait, _, methods) => {
         add_to_index();

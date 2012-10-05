@@ -262,13 +262,6 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_ctor(ctor, nm, tps, parent_id) => {
-        let ctor_body = fld.fold_block(ctor.node.body);
-        let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
-        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl,
-                              .. ctor.node},
-            .. ctor}, nm, tps, parent_id)
-      }
       ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
         ast::ii_dtor({node: {body: dtor_body,
@@ -301,18 +294,6 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       }
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
-      }
-      ast::ii_ctor(ctor, nm, tps, parent_id) => {
-        let ctor_body = fld.fold_block(ctor.node.body);
-        let ctor_attrs = fld.fold_attributes(ctor.node.attrs);
-        let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
-        let new_params = fold::fold_ty_params(tps, fld);
-        let ctor_id = fld.new_id(ctor.node.id);
-        let new_parent = xcx.tr_def_id(parent_id);
-        ast::ii_ctor({node: {body: ctor_body, attrs: ctor_attrs,
-                dec: ctor_decl, id: ctor_id,
-                              .. ctor.node},
-            .. ctor}, nm, new_params, new_parent)
       }
       ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
@@ -369,8 +350,8 @@ impl ast::def: tr {
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
-          ast::def_class(did, has_constructor) => {
-            ast::def_class(did.tr(xcx), has_constructor)
+          ast::def_class(did) => {
+            ast::def_class(did.tr(xcx))
           }
           ast::def_region(nid) => ast::def_region(xcx.tr_id(nid)),
           ast::def_typaram_binder(nid) => {

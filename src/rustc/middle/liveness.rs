@@ -35,12 +35,6 @@
  * Any use of the variable where the variable is dead afterwards is a
  * last use.
  *
- * # Extension to handle constructors
- *
- * Each field is assigned an index just as with local variables.  A use of
- * `self` is considered a use of all fields.  A use of `self.f` is just a use
- * of `f`.
- *
  * # Implementation details
  *
  * The actual implementation contains two (nested) walks over the AST.
@@ -96,8 +90,6 @@
  * - `no_ret_var`: a synthetic variable that is only 'read' from, the
  *   fallthrough node.  This allows us to detect functions where we fail
  *   to return explicitly.
- *
- * - `self_var`: a variable representing 'self'
  */
 
 use dvec::DVec;
@@ -230,7 +222,7 @@ impl LiveNode {
 
 fn invalid_node() -> LiveNode { LiveNode(uint::max_value) }
 
-enum RelevantDef { RelevantVar(node_id), RelevantSelf }
+enum RelevantDef { RelevantVar(node_id) }
 
 type CaptureInfo = {ln: LiveNode, is_move: bool, rv: RelevantDef};
 
@@ -250,15 +242,12 @@ struct LocalInfo {
 enum VarKind {
     Arg(node_id, ident, rmode),
     Local(LocalInfo),
-    Field(ident),
     Self,
     ImplicitRet
 }
 
 fn relevant_def(def: def) -> Option<RelevantDef> {
     match def {
-      def_self(_) => Some(RelevantSelf),
-
       def_binding(nid, _) |
       def_arg(nid, _) |
       def_local(nid, _) => Some(RelevantVar(nid)),
@@ -276,7 +265,6 @@ struct IrMaps {
     mut num_vars: uint,
     live_node_map: HashMap<node_id, LiveNode>,
     variable_map: HashMap<node_id, Variable>,
-    field_map: HashMap<ident, Variable>,
     capture_map: HashMap<node_id, @~[CaptureInfo]>,
     mut var_kinds: ~[VarKind],
     mut lnks: ~[LiveNodeKind],
@@ -293,7 +281,6 @@ fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
         live_node_map: HashMap(),
         variable_map: HashMap(),
         capture_map: HashMap(),
-        field_map: HashMap(),
         var_kinds: ~[],
         lnks: ~[]
     }
@@ -323,15 +310,12 @@ impl IrMaps {
         self.num_vars += 1u;
 
         match vk {
-          Local(LocalInfo {id:node_id, _}) |
-          Arg(node_id, _, _) => {
-            self.variable_map.insert(node_id, v);
-          }
-          Field(name) => {
-            self.field_map.insert(name, v);
-          }
-          Self | ImplicitRet => {
-          }
+            Local(LocalInfo {id:node_id, _}) |
+            Arg(node_id, _, _) => {
+                self.variable_map.insert(node_id, v);
+            }
+            Self | ImplicitRet => {
+            }
         }
 
         debug!("%s is %?", v.to_str(), vk);
@@ -351,11 +335,10 @@ impl IrMaps {
 
     fn variable_name(var: Variable) -> ~str {
         match copy self.var_kinds[*var] {
-          Local(LocalInfo {ident: nm, _}) |
-          Arg(_, nm, _) => self.tcx.sess.str_of(nm),
-          Field(nm) => ~"self." + self.tcx.sess.str_of(nm),
-          Self => ~"self",
-          ImplicitRet => ~"<implicit-ret>"
+            Local(LocalInfo {ident: nm, _}) |
+            Arg(_, nm, _) => self.tcx.sess.str_of(nm),
+            Self => ~"self",
+            ImplicitRet => ~"<implicit-ret>"
         }
     }
 
@@ -399,7 +382,7 @@ impl IrMaps {
             (*v).push(id);
           }
           Arg(_, _, by_ref) |
-          Arg(_, _, by_val) | Self | Field(_) | ImplicitRet |
+          Arg(_, _, by_val) | Self | ImplicitRet |
           Local(LocalInfo {kind: FromMatch(bind_by_implicit_ref), _}) => {
             debug!("--but it is not owned");
           }
@@ -428,13 +411,6 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     // and so forth:
     visit::visit_fn(fk, decl, body, sp, id, fn_maps, v);
 
-    match fk {
-      visit::fk_ctor(_, _, _, _, class_did) => {
-        add_class_fields(fn_maps, class_did);
-      }
-      _ => {}
-    }
-
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or fail
     // - implicit_ret_var is a pseudo-variable that represents
@@ -442,8 +418,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let specials = {
         exit_ln: (*fn_maps).add_live_node(ExitNode),
         fallthrough_ln: (*fn_maps).add_live_node(ExitNode),
-        no_ret_var: (*fn_maps).add_variable(ImplicitRet),
-        self_var: (*fn_maps).add_variable(Self)
+        no_ret_var: (*fn_maps).add_variable(ImplicitRet)
     };
 
     // compute liveness
@@ -460,16 +435,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     });
     check_vt.visit_block(body, lsets, check_vt);
     lsets.check_ret(id, sp, fk, entry_ln);
-    lsets.check_fields(sp, entry_ln);
     lsets.warn_about_unused_args(sp, decl, entry_ln);
-}
-
-fn add_class_fields(self: @IrMaps, did: def_id) {
-    for ty::lookup_class_fields(self.tcx, did).each |field_ty| {
-        assert field_ty.id.crate == local_crate;
-        let var = self.add_variable(Field(field_ty.ident));
-        self.field_map.insert(field_ty.ident, var);
-    }
 }
 
 fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
@@ -595,8 +561,7 @@ fn invalid_users() -> users {
 type Specials = {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
-    no_ret_var: Variable,
-    self_var: Variable
+    no_ret_var: Variable
 };
 
 const ACC_READ: uint = 1u;
@@ -649,7 +614,6 @@ impl Liveness {
 
     fn variable_from_rdef(rv: RelevantDef, span: span) -> Variable {
         match rv {
-          RelevantSelf => self.s.self_var,
           RelevantVar(nid) => self.variable(nid, span)
         }
     }
@@ -934,14 +898,6 @@ impl Liveness {
             }
         }
 
-        // as above, the "self" variable is a non-owned variable
-        self.acc(self.s.exit_ln, self.s.self_var, ACC_READ);
-
-        // in a ctor, there is an implicit use of self.f for all fields f:
-        for self.ir.field_map.each_value |var| {
-            self.acc(self.s.exit_ln, var, ACC_READ|ACC_USE);
-        }
-
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
         self.init_from_succ(self.s.fallthrough_ln, self.s.exit_ln);
@@ -1023,24 +979,11 @@ impl Liveness {
           // Interesting cases with control flow or which gen/kill
 
           expr_path(_) => {
-            self.access_path(expr, succ, ACC_READ | ACC_USE)
+              self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
-          expr_field(e, nm, _) => {
-            // If this is a reference to `self.f` inside of a ctor,
-            // then we treat it as a read of that variable.
-            // Otherwise, we ignore it and just propagate down to
-            // process `e`.
-            match self.as_self_field(e, nm) {
-              Some((ln, var)) => {
-                self.init_from_succ(ln, succ);
-                self.acc(ln, var, ACC_READ | ACC_USE);
-                ln
-              }
-              None => {
-                self.propagate_through_expr(e, succ)
-              }
-            }
+          expr_field(e, _, _) => {
+              self.propagate_through_expr(e, succ)
           }
 
           expr_fn(*) | expr_fn_block(*) => {
@@ -1269,8 +1212,8 @@ impl Liveness {
         // In general, the full flow graph structure for an
         // assignment/move/etc can be handled in one of two ways,
         // depending on whether what is being assigned is a "tracked
-        // value" or not. A tracked value is basically a local variable
-        // or argument, or a self-field (`self.f`) in a ctor.
+        // value" or not. A tracked value is basically a local
+        // variable or argument.
         //
         // The two kinds of graphs are:
         //
@@ -1293,12 +1236,11 @@ impl Liveness {
         //
         // # Tracked lvalues
         //
-        // A tracked lvalue is either a local variable/argument `x` or
-        // else it is a self-field `self.f` in a constructor.  In
+        // A tracked lvalue is a local variable/argument `x`.  In
         // these cases, the link_node where the write occurs is linked
-        // to node id of `x` or `self`, respectively.  The
-        // `write_lvalue()` routine generates the contents of this
-        // node.  There are no subcomponents to consider.
+        // to node id of `x`.  The `write_lvalue()` routine generates
+        // the contents of this node.  There are no subcomponents to
+        // consider.
         //
         // # Non-tracked lvalues
         //
@@ -1315,12 +1257,9 @@ impl Liveness {
         // just ignore such cases and treat them as reads.
 
         match expr.node {
-          expr_path(_) => succ,
-          expr_field(e, nm, _) => match self.as_self_field(e, nm) {
-            Some(_) => succ,
-            None => self.propagate_through_expr(e, succ)
-          },
-          _ => self.propagate_through_expr(expr, succ)
+            expr_path(_) => succ,
+            expr_field(e, _, _) => self.propagate_through_expr(e, succ),
+            _ => self.propagate_through_expr(expr, succ)
         }
     }
 
@@ -1330,14 +1269,6 @@ impl Liveness {
                     acc: uint) -> LiveNode {
         match expr.node {
           expr_path(_) => self.access_path(expr, succ, acc),
-          expr_field(e, nm, _) => match self.as_self_field(e, nm) {
-            Some((ln, var)) => {
-                self.init_from_succ(ln, succ);
-                self.acc(ln, var, acc);
-                ln
-            }
-            None => succ
-          },
 
           // We do not track other lvalues, so just propagate through
           // to their subcomponents.  Also, it may happen that
@@ -1350,26 +1281,6 @@ impl Liveness {
     fn access_path(expr: @expr, succ: LiveNode, acc: uint) -> LiveNode {
         let def = self.tcx.def_map.get(expr.id);
         match relevant_def(def) {
-          Some(RelevantSelf) => {
-            // Accessing `self` is like accessing every field of
-            // the current object. This allows something like
-            // `self = ...;` (it will be considered a write to
-            // every field, sensibly enough), though the borrowck
-            // pass will reject it later on.
-            //
-            // Also, note that, within a ctor at least, an
-            // expression like `self.f` is "shortcircuiting"
-            // before it reaches this point by the code for
-            // expr_field.
-            let ln = self.live_node(expr.id, expr.span);
-            if acc != 0u {
-                self.init_from_succ(ln, succ);
-                for self.ir.field_map.each_value |var| {
-                    self.acc(ln, var, acc);
-                }
-            }
-            ln
-          }
           Some(RelevantVar(nid)) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
@@ -1380,29 +1291,6 @@ impl Liveness {
             ln
           }
           None => succ
-        }
-    }
-
-    fn as_self_field(expr: @expr,
-                     fld: ident) -> Option<(LiveNode,Variable)> {
-        // If we checking a constructor, then we treat self.f as a
-        // variable.  we use the live_node id that will be assigned to
-        // the reference to self but the variable id for `f`.
-        match expr.node {
-          expr_path(_) => {
-            let def = self.tcx.def_map.get(expr.id);
-            match def {
-              def_self(_) => {
-                // Note: the field_map is empty unless we are in a ctor
-                return self.ir.field_map.find(fld).map(|var| {
-                    let ln = self.live_node(expr.id, expr.span);
-                    (ln, *var)
-                });
-              }
-              _ => return None
-            }
-          }
-          _ => return None
         }
     }
 
@@ -1613,24 +1501,7 @@ enum ReadKind {
 }
 
 impl @Liveness {
-    fn check_fields(sp: span, entry_ln: LiveNode) {
-        for self.ir.field_map.each |nm, var| {
-            match self.live_on_entry(entry_ln, var) {
-              None => { /* ok */ }
-              Some(ExitNode) => {
-                self.tcx.sess.span_err(
-                    sp, fmt!("field `self.%s` is never initialized",
-                             self.tcx.sess.str_of(nm)));
-              }
-              Some(lnk) => {
-                self.report_illegal_read(
-                    sp, lnk, var, PossiblyUninitializedField);
-              }
-            }
-        }
-    }
-
-    fn check_ret(id: node_id, sp: span, fk: visit::fn_kind,
+    fn check_ret(id: node_id, sp: span, _fk: visit::fn_kind,
                  entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
@@ -1644,15 +1515,8 @@ impl @Liveness {
                 self.tcx.sess.span_err(
                     sp, ~"some control paths may return");
             } else {
-                match fk {
-                  visit::fk_ctor(*) => {
-                    // ctors are written as though they are unit.
-                  }
-                  _ => {
-                    self.tcx.sess.span_err(
-                        sp, ~"not all control paths return a value");
-                  }
-                }
+                self.tcx.sess.span_err(
+                    sp, ~"not all control paths return a value");
             }
         }
     }
@@ -1737,7 +1601,6 @@ impl @Liveness {
                     let var = self.variable(nid, expr.span);
                     self.warn_about_dead_assign(expr.span, ln, var);
                   }
-                  Some(RelevantSelf) => {}
                   None => {}
                 }
               }
@@ -1794,13 +1657,6 @@ impl @Liveness {
                     move_span,
                     fmt!("illegal move from argument `%s`, which is not \
                           copy or move mode", self.tcx.sess.str_of(name)));
-                return;
-              }
-              Field(name) => {
-                self.tcx.sess.span_err(
-                    move_span,
-                    fmt!("illegal move from field `%s`",
-                         self.tcx.sess.str_of(name)));
                 return;
               }
               Self => {
