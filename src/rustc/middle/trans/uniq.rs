@@ -3,6 +3,7 @@ use lib::llvm::ValueRef;
 use common::*;
 use build::*;
 use base::*;
+use shape::llsize_of;
 use datum::immediate_rvalue;
 
 export make_free_glue, autoderef, duplicate;

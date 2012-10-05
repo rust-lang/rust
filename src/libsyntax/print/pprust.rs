@@ -1688,6 +1688,7 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl,
 
 fn mode_to_str(m: ast::mode) -> ~str {
     match m {
+      ast::expl(ast::by_mutbl_ref) => ~"&",
       ast::expl(ast::by_move) => ~"-",
       ast::expl(ast::by_ref) => ~"&&",
       ast::expl(ast::by_val) => ~"++",

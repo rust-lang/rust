@@ -7,18 +7,9 @@ use result::{Result, Ok, Err};
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports]
-    #[cfg(stage0)]
+    #[legacy_exports];
     fn get_time(&sec: i64, &nsec: i32);
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    fn get_time(sec: &mut i64, nsec: &mut i32);
-
-    #[cfg(stage0)]
     fn precise_time_ns(&ns: u64);
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    fn precise_time_ns(ns: &mut u64);
 
     fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
@@ -42,41 +33,22 @@ impl Timespec : Eq {
  * Returns the current time as a `timespec` containing the seconds and
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
-#[cfg(stage0)]
 pub fn get_time() -> Timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
     rustrt::get_time(sec, nsec);
     return {sec: sec, nsec: nsec};
 }
-#[cfg(stage1)]
-#[cfg(stage2)]
-pub fn get_time() -> Timespec {
-    let mut sec = 0i64;
-    let mut nsec = 0i32;
-    rustrt::get_time(&mut sec, &mut nsec);
-    return {sec: sec, nsec: nsec};
-}
-
 
 /**
  * Returns the current value of a high-resolution performance counter
  * in nanoseconds since an unspecified epoch.
  */
-#[cfg(stage0)]
 pub fn precise_time_ns() -> u64 {
     let mut ns = 0u64;
     rustrt::precise_time_ns(ns);
     ns
 }
-#[cfg(stage1)]
-#[cfg(stage2)]
-pub fn precise_time_ns() -> u64 {
-    let mut ns = 0u64;
-    rustrt::precise_time_ns(&mut ns);
-    ns
-}
-
 
 /**
  * Returns the current value of a high-resolution performance counter

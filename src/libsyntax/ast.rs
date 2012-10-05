@@ -574,7 +574,7 @@ impl<T:cmp::Eq> inferable<T> : cmp::Eq {
 
 // "resolved" mode: the real modes.
 #[auto_serialize]
-enum rmode { by_ref, by_val, by_move, by_copy }
+enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
 
 impl rmode : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {

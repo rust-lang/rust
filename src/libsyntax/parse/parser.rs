@@ -26,7 +26,7 @@ use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
              bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
-             by_move, by_ref, by_val, capture_clause,
+             by_move, by_mutbl_ref, by_ref, by_val, capture_clause,
              capture_item, cdir_dir_mod, cdir_src_mod, cdir_view_item,
              class_immutable, class_mutable,
              crate, crate_cfg, crate_directive, decl, decl_item, decl_local,
@@ -571,7 +571,7 @@ impl parser {
     fn parse_arg_mode() -> mode {
         if self.eat(token::BINOP(token::AND)) {
             self.warn(~"Obsolete syntax has no effect");
-            expl(by_val)
+            expl(by_mutbl_ref)
         } else if self.eat(token::BINOP(token::MINUS)) {
             expl(by_move)
         } else if self.eat(token::ANDAND) {
@@ -1276,8 +1276,7 @@ impl parser {
 
         return match self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET => {
-              // tjc: ??????
-            let ket = token::flip_delimiter(copy self.token);
+            let ket = token::flip_delimiter(self.token);
             tt_delim(vec::append(
                 ~[parse_tt_tok(self, true)],
                 vec::append(
@@ -1298,8 +1297,7 @@ impl parser {
         return match self.token {
           token::LBRACE | token::LPAREN | token::LBRACKET => {
             self.parse_matcher_subseq(name_idx, copy self.token,
-                                      // tjc: not sure why we need a copy
-                                      token::flip_delimiter(copy self.token))
+                                      token::flip_delimiter(self.token))
           }
           _ => self.fatal(~"expected open delimiter")
         }
