@@ -2306,30 +2306,25 @@ logging level:
 // Full version, logging a value.
 log(core::error, ~"file not found: " + filename);
 
-// Log-level abbreviated, since core::* is imported by default.
+// Log-level abbreviated, since core::* is used by default.
 log(error, ~"file not found: " + filename);
 
-// Formatting the message using a format-string and #fmt
+// Formatting the message using a format-string and fmt!
 log(error, fmt!("file not found: %s", filename));
 
-// Using the #error macro, that expands to the previous call.
+// Using the error! macro, that expands to the previous call.
 error!("file not found: %s", filename);
 ~~~~
 
-A `log` expression is *not evaluated* when logging at the specified
-logging-level, module or task is disabled at runtime. This makes inactive
-`log` expressions very cheap; they should be used extensively in Rust
-code, as diagnostic aids, as they add little overhead beyond a single
-integer-compare and branch at runtime.
+A `log` expression is *not evaluated* when logging at the specified logging-level, module or task is disabled at runtime.
+This makes inactive `log` expressions very cheap;
+they should be used extensively in Rust code, as diagnostic aids,
+as they add little overhead beyond a single integer-compare and branch at runtime.
 
-Logging is presently implemented as a language built-in feature, as it makes
-use of compiler-provided logic for allocating the associated per-module
-logging-control structures visible to the runtime, and lazily evaluating
-arguments. In the future, as more of the supporting compiler-provided logic is
-moved into libraries, logging is likely to move to a component of the core
-library. It is best to use the macro forms of logging (*#error*,
-*#debug*, etc.) to minimize disruption to code using the logging facility
-when it is changed.
+Logging is presently implemented as a language built-in feature,
+as it makes use of compiler-provided, per-module data tables and flags.
+In the future, logging will move into a library, and will no longer be a core expression type.
+It is therefore recommended to use the macro forms of logging (`error!`, `debug!`, etc.) to minimize disruption in code that uses logging.
 
 
 ### Assert expressions
