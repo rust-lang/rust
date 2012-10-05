@@ -106,4 +106,5 @@ Tomoki Aonuma <uasi@99cm.org>
 Tycho Sci <tychosci@gmail.com>
 Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
+Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
 Zack Corr <zackcorr95@gmail.com>
