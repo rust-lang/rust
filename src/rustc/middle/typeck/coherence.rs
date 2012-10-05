@@ -126,12 +126,16 @@ struct CoherenceInfo {
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
     extension_methods: HashMap<def_id,@DVec<@Impl>>,
+
+    // A mapping from a supertrait to its subtraits.
+    supertrait_to_subtraits: HashMap<def_id,@DVec<def_id>>
 }
 
 fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
         inherent_methods: HashMap(),
-        extension_methods: HashMap()
+        extension_methods: HashMap(),
+        supertrait_to_subtraits: HashMap()
     }
 }
 
@@ -161,7 +165,6 @@ struct CoherenceChecker {
 }
 
 impl CoherenceChecker {
-
     // Create a mapping containing a MethodInfo for every provided
     // method in every trait.
     fn build_provided_methods_map(crate: @crate) {
@@ -225,9 +228,9 @@ impl CoherenceChecker {
     }
 
     fn check_coherence(crate: @crate) {
-
-        // Check implementations. This populates the tables containing the
-        // inherent methods and extension methods.
+        // Check implementations and traits. This populates the tables
+        // containing the inherent methods and extension methods. It also
+        // builds up the trait inheritance table.
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
                 debug!("(checking coherence) item '%s'",
@@ -239,6 +242,9 @@ impl CoherenceChecker {
                     }
                     item_class(struct_def, _) => {
                         self.check_implementation(item, struct_def.traits);
+                    }
+                    item_trait(_, supertraits, _) => {
+                        self.register_inherited_trait(item, supertraits);
                     }
                     _ => {
                         // Nothing to do.
@@ -320,6 +326,27 @@ impl CoherenceChecker {
 
                 self.base_type_def_ids.insert(local_def(item.id),
                                               base_type_def_id);
+            }
+        }
+    }
+
+    fn register_inherited_trait(item: @item, supertraits: ~[@trait_ref]) {
+        // XXX: This is wrong. We need to support substitutions; e.g.
+        // trait Foo : Bar<int>.
+        let supertrait_to_subtraits =
+            self.crate_context.coherence_info.supertrait_to_subtraits;
+        let subtrait_id = local_def(item.id);
+        for supertraits.each |supertrait| {
+            let supertrait_id = self.trait_ref_to_trait_def_id(*supertrait);
+            match supertrait_to_subtraits.find(supertrait_id) {
+                None => {
+                    let new_vec = @dvec::DVec();
+                    new_vec.push(subtrait_id);
+                    supertrait_to_subtraits.insert(supertrait_id, new_vec);
+                }
+                Some(existing_vec) => {
+                    existing_vec.push(subtrait_id);
+                }
             }
         }
     }
