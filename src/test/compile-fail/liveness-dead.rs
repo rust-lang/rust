@@ -1,5 +1,5 @@
-fn f1(&x: int) {
-    x = 1; // no error
+fn f1(x: &mut int) {
+    *x = 1; // no error
 }
 
 fn f2() {

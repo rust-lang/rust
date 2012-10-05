@@ -31,9 +31,14 @@ use libc::size_t;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
+    #[cfg(stage0)]
     fn move_val_init<T>(&dst: T, -src: T);
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn move_val_init<T>(dst: &mut T, -src: T);
     fn needs_drop<T>() -> bool;
 }
+
 extern mod rustrt {
     #[rust_stack]
     fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
@@ -127,6 +132,8 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (reinterpret_cast(&(p & !1)), p & 1 == 1)
 }
 
+// tjc: Can get rid of the duplication post-snapshot
+#[cfg(stage0)]
 // The duplication between the POD and non-POD functions is annoying.
 impl &Arena {
     // Functions for the POD part of the arena
@@ -218,6 +225,114 @@ impl &Arena {
             *ty_ptr = reinterpret_cast(&tydesc);
             // Actually initialize it
             rusti::move_val_init(*ptr, op());
+            // Now that we are done, update the tydesc to indicate that
+            // the object is there.
+            *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
+
+            return reinterpret_cast(&ptr);
+        }
+    }
+
+    // The external interface
+    #[inline(always)]
+    fn alloc<T>(op: fn() -> T) -> &self/T {
+        if !rusti::needs_drop::<T>() {
+            self.alloc_pod(op)
+        } else { self.alloc_nonpod(op) }
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl &Arena {
+    // Functions for the POD part of the arena
+    fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
+        // Allocate a new chunk.
+        let chunk_size = at_vec::capacity(self.pod_head.data);
+        let new_min_chunk_size = uint::max(n_bytes, chunk_size);
+        self.chunks = @Cons(copy self.pod_head, self.chunks);
+        self.pod_head =
+            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
+
+        return self.alloc_pod_inner(n_bytes, align);
+    }
+
+    #[inline(always)]
+    fn alloc_pod_inner(n_bytes: uint, align: uint) -> *u8 {
+        let head = &mut self.pod_head;
+
+        let start = round_up_to(head.fill, align);
+        let end = start + n_bytes;
+        if end > at_vec::capacity(head.data) {
+            return self.alloc_pod_grow(n_bytes, align);
+        }
+        head.fill = end;
+
+        //debug!("idx = %u, size = %u, align = %u, fill = %u",
+        //       start, n_bytes, align, head.fill);
+
+        unsafe {
+            ptr::offset(vec::raw::to_ptr(head.data), start)
+        }
+    }
+
+    #[inline(always)]
+    fn alloc_pod<T>(op: fn() -> T) -> &self/T {
+        unsafe {
+            let tydesc = sys::get_type_desc::<T>();
+            let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
+            let ptr: *mut T = reinterpret_cast(&ptr);
+            rusti::move_val_init(&mut (*ptr), op());
+            return reinterpret_cast(&ptr);
+        }
+    }
+
+    // Functions for the non-POD part of the arena
+    fn alloc_nonpod_grow(n_bytes: uint, align: uint) -> (*u8, *u8) {
+        // Allocate a new chunk.
+        let chunk_size = at_vec::capacity(self.head.data);
+        let new_min_chunk_size = uint::max(n_bytes, chunk_size);
+        self.chunks = @Cons(copy self.head, self.chunks);
+        self.head =
+            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
+
+        return self.alloc_nonpod_inner(n_bytes, align);
+    }
+
+    #[inline(always)]
+    fn alloc_nonpod_inner(n_bytes: uint, align: uint) -> (*u8, *u8) {
+        let head = &mut self.head;
+
+        let tydesc_start = head.fill;
+        let after_tydesc = head.fill + sys::size_of::<*TypeDesc>();
+        let start = round_up_to(after_tydesc, align);
+        let end = start + n_bytes;
+        if end > at_vec::capacity(head.data) {
+            return self.alloc_nonpod_grow(n_bytes, align);
+        }
+        head.fill = round_up_to(end, sys::pref_align_of::<*TypeDesc>());
+
+        //debug!("idx = %u, size = %u, align = %u, fill = %u",
+        //       start, n_bytes, align, head.fill);
+
+        unsafe {
+            let buf = vec::raw::to_ptr(head.data);
+            return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
+        }
+    }
+
+    #[inline(always)]
+    fn alloc_nonpod<T>(op: fn() -> T) -> &self/T {
+        unsafe {
+            let tydesc = sys::get_type_desc::<T>();
+            let (ty_ptr, ptr) =
+                self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
+            let ty_ptr: *mut uint = reinterpret_cast(&ty_ptr);
+            let ptr: *mut T = reinterpret_cast(&ptr);
+            // Write in our tydesc along with a bit indicating that it
+            // has *not* been initialized yet.
+            *ty_ptr = reinterpret_cast(&tydesc);
+            // Actually initialize it
+            rusti::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
