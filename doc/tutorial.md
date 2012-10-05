@@ -487,16 +487,9 @@ const MY_VECTORY_PASSWORD: [int * 5] = [1, 2, 3, 4, 5];
 const MY_STRINGY_PASSWORD: &static/str = "12345";
 
 // Structs
-struct Password {
-    value: int
-}
-
+struct Password { value: int }
 const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
 ~~~
-
-> ***Note:*** Support for compile-time constants and constant
-> evaluation is essentially added 'as needed'. You may find that
-> things you expect to work do not.
 
 ## Operators
 
