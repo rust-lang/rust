@@ -1276,7 +1276,8 @@ impl parser {
 
         return match self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET => {
-            let ket = token::flip_delimiter(self.token);
+              // tjc: ??????
+            let ket = token::flip_delimiter(copy self.token);
             tt_delim(vec::append(
                 ~[parse_tt_tok(self, true)],
                 vec::append(
@@ -1297,7 +1298,8 @@ impl parser {
         return match self.token {
           token::LBRACE | token::LPAREN | token::LBRACKET => {
             self.parse_matcher_subseq(name_idx, copy self.token,
-                                      token::flip_delimiter(self.token))
+                                      // tjc: not sure why we need a copy
+                                      token::flip_delimiter(copy self.token))
           }
           _ => self.fatal(~"expected open delimiter")
         }
