@@ -19,7 +19,7 @@
  * This module's implementation will hopefully be, eventually, replaced
  * with per-platform, generated source files from rust-bindgen.
  */
-#[warn(deprecated_mode)];
+
 #[allow(non_camel_case_types)]; // C types
 
 use libc::size_t;
@@ -642,7 +642,7 @@ extern mod rustrt {
     fn rust_uv_addrinfo_as_sockaddr_in(input: *addrinfo) -> *sockaddr_in;
     fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6;
     fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
-    fn rust_uv_free_base_of_buf(+buf: uv_buf_t);
+    fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(
         connect_req: *uv_connect_t)
         -> *uv_stream_t;
@@ -661,8 +661,8 @@ extern mod rustrt {
     fn rust_uv_get_data_for_req(req: *libc::c_void) -> *libc::c_void;
     fn rust_uv_set_data_for_req(req: *libc::c_void,
                                 data: *libc::c_void);
-    fn rust_uv_get_base_from_buf(+buf: uv_buf_t) -> *u8;
-    fn rust_uv_get_len_from_buf(+buf: uv_buf_t) -> libc::size_t;
+    fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;
+    fn rust_uv_get_len_from_buf(++buf: uv_buf_t) -> libc::size_t;
 
     // sizeof testing helpers
     fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
@@ -1357,8 +1357,8 @@ pub mod test {
 
     fn impl_uv_tcp_server(server_ip: &str,
                           server_port: int,
-                          kill_server_msg: ~str,
-                          server_resp_msg: ~str,
+                          +kill_server_msg: ~str,
+                          +server_resp_msg: ~str,
                           server_chan: *comm::Chan<~str>,
                           continue_chan: *comm::Chan<bool>) unsafe {
         let test_loop = loop_new();
