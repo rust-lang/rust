@@ -9,6 +9,7 @@ Aleksander Balicki <balicki.aleksander@gmail.com>
 Alex Rønne Petersen <alex@lycus.org>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
+Andrew Paseltiner <apaseltiner@gmail.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
 Austin Seipp <mad.one@gmail.com>
