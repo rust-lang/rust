@@ -71,11 +71,11 @@ fn req_loans_in_fn(fk: visit::fn_kind,
     self.root_ub = body.node.id;
 
     match fk {
-      visit::fk_anon(*) | visit::fk_fn_block(*) => {}
-      visit::fk_item_fn(*) | visit::fk_method(*) |
-      visit::fk_ctor(*) | visit::fk_dtor(*) => {
-        self.item_ub = body.node.id;
-      }
+        visit::fk_anon(*) | visit::fk_fn_block(*) => {}
+        visit::fk_item_fn(*) | visit::fk_method(*) |
+        visit::fk_dtor(*) => {
+            self.item_ub = body.node.id;
+        }
     }
 
     visit::visit_fn(fk, decl, body, sp, id, self, v);

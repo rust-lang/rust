@@ -170,11 +170,6 @@ type crate_ctxt = {
      // is not emitted by LLVM's GC pass when no functions use GC.
      mut uses_gc: bool,
      dbg_cx: Option<debuginfo::debug_ctxt>,
-     // Mapping from class constructors to parent class --
-     // used in base::trans_closure
-     // parent_class must be a def_id because ctors can be
-     // inlined, so the parent may be in a different crate
-     class_ctors: HashMap<ast::node_id, ast::def_id>,
      mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.

@@ -109,9 +109,6 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
       }
-      ast_map::node_ctor(_, _, ctor, _, _) => {
-        handle_body(cx, ctor.node.body);
-      }
       ast_map::node_dtor(_, dtor, _, _) => {
         handle_body(cx, dtor.node.body);
       }
