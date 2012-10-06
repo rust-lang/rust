@@ -1284,6 +1284,73 @@ For a more in-depth explanation of borrowed pointers, read the
 
 [borrowtut]: tutorial-borrowed-ptr.html
 
+## Dereferencing pointers
+
+Rust uses the unary star operator (`*`) to access the contents of a
+box or pointer, similarly to C.
+
+~~~
+let managed = @10;
+let owned = ~20;
+let borrowed = &30;
+
+let sum = *managed + *owned + *borrowed;
+~~~
+
+Dereferenced mutable pointers may appear on the left hand side of
+assignments, in which case the value they point to is modified.
+
+~~~
+let managed = @mut 10;
+let owned = ~mut 20;
+
+let mut value = 30;
+let borrowed = &mut value;
+
+*managed = *owned + 10;
+*owned = *borrowed + 100;
+*borrowed = *managed + 1000;
+~~~
+
+Pointers have high operator precedence, but lower precedence than the
+dot operator used for field and method access. This can lead to some
+awkward code filled with parenthesis.
+
+~~~
+# struct Point { x: float, y: float }
+# enum Shape { Rectangle(Point, Point) }
+# impl Shape { fn area() -> int { 0 } }
+let start = @Point { x: 10f, y: 20f };
+let end = ~Point { x: (*start).x + 100f, y: (*start).y + 100f };
+let rect = &Rectangle(*start, *end);
+let area = (*rect).area();
+~~~
+
+To combat this ugliness the dot operator performs _automatic pointer
+dereferencing_ on the receiver (the value on the left hand side of the
+dot), so in most cases dereferencing the receiver is not necessary.
+
+~~~
+# struct Point { x: float, y: float }
+# enum Shape { Rectangle(Point, Point) }
+# impl Shape { fn area() -> int { 0 } }
+let start = @Point { x: 10f, y: 20f };
+let end = ~Point { x: start.x + 100f, y: start.y + 100f };
+let rect = &Rectangle(*start, *end);
+let area = rect.area();
+~~~
+
+Auto-dereferencing is performed through any number of pointers. If you
+felt inclined you could write something silly like
+
+~~~
+# struct Point { x: float, y: float }
+let point = &@~Point { x: 10f, y: 20f };
+io::println(fmt!("%f", point.x));
+~~~
+
+The indexing operator (`[]`) is also auto-dereferencing.
+
 # Vectors and strings
 
 Vectors are a contiguous section of memory containing zero or more
