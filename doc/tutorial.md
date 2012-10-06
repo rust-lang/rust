@@ -1558,7 +1558,7 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-(~[1, 2, 3]).map(|x| if *x > max { max = *x });
+[1, 2, 3].map(|x| if *x > max { max = *x });
 ~~~~
 
 Stack closures are very efficient because their environment is
