@@ -529,7 +529,7 @@ impl check_loan_ctxt {
                 ast::by_move => {
                     self.check_move_out(*arg);
                 }
-                ast::by_mutbl_ref | ast::by_ref |
+                ast::by_ref |
                 ast::by_copy | ast::by_val => {
                 }
             }

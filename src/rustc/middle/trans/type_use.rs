@@ -53,7 +53,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                     by_val | by_move | by_copy => {
                         type_needs(cx, use_repr, arg.ty);
                     }
-                    by_ref | by_mutbl_ref => {}
+                    by_ref => {}
                 }
             }
         }

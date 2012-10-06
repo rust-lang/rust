@@ -22,7 +22,8 @@ pub enum ObsoleteSyntax {
     ObsoleteClassMethod,
     ObsoleteClassTraits,
     ObsoletePrivSection,
-    ObsoleteModeInFnType
+    ObsoleteModeInFnType,
+    ObsoleteByMutRefMode
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -93,6 +94,10 @@ impl parser : ObsoleteReporter {
                 "mode without identifier in fn type",
                 "to use a (deprecated) mode in a fn type, you should \
                  give the argument an explicit name (like `&&v: int`)"
+            ),
+            ObsoleteByMutRefMode => (
+                "by-mutable-reference mode",
+                "Declare an argument of type &mut T instead"
             ),
         };
 

@@ -398,7 +398,7 @@ impl IrMaps {
 
             (*v).push(id);
           }
-          Arg(_, _, by_ref) | Arg(_, _, by_mutbl_ref) |
+          Arg(_, _, by_ref) |
           Arg(_, _, by_val) | Self | Field(_) | ImplicitRet |
           Local(LocalInfo {kind: FromMatch(bind_by_implicit_ref), _}) => {
             debug!("--but it is not owned");
@@ -919,7 +919,7 @@ impl Liveness {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each |arg| {
             match ty::resolved_mode(self.tcx, arg.mode) {
-              by_mutbl_ref | by_ref | by_val => {
+              by_ref | by_val => {
                 // These are "non-owned" modes, so register a read at
                 // the end.  This will prevent us from moving out of
                 // such variables but also prevent us from registering
@@ -1573,7 +1573,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
         for vec::each2(args, targs) |arg_expr, arg_ty| {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
-                by_val | by_copy | by_ref | by_mutbl_ref => {}
+                by_val | by_copy | by_ref => {}
                 by_move => {
                     self.check_move_from_expr(*arg_expr, vt);
                 }
@@ -1865,24 +1865,7 @@ impl @Liveness {
     fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: LiveNode) {
         for decl.inputs.each |arg| {
             let var = self.variable(arg.id, arg.ty.span);
-            match ty::resolved_mode(self.tcx, arg.mode) {
-              by_mutbl_ref => {
-                // for mutable reference arguments, something like
-                //    x = 1;
-                // is not worth warning about, as it has visible
-                // side effects outside the fn.
-                match self.assigned_on_entry(entry_ln, var) {
-                  Some(_) => { /*ok*/ }
-                  None => {
-                    // but if it is not written, it ought to be used
-                    self.warn_about_unused(sp, entry_ln, var);
-                  }
-                }
-              }
-              by_val | by_ref | by_move | by_copy => {
-                self.warn_about_unused(sp, entry_ln, var);
-              }
-            }
+            self.warn_about_unused(sp, entry_ln, var);
         }
     }
 

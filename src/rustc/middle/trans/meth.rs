@@ -154,7 +154,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         typeck::method_trait(_, off, vstore) => {
             trans_trait_callee(bcx, callee_id, off, self, vstore)
         }
-        typeck::method_self(_, off) => {
+        typeck::method_self(*) => {
             bcx.tcx().sess.span_bug(self.span, ~"self method call");
         }
     }

@@ -2784,14 +2784,12 @@ aside a copy of that value to refer to. If this is not semantically safe (for
 example, if the referred-to value contains mutable fields), it will reject the
 program. If the compiler deems copying the value expensive, it will warn.
 
-A function can be declared to take an argument by mutable reference. This
-allows the function to write to the slot that the reference refers to.
-
-An example function that accepts an value by mutable reference:
+A function with an argument of type `&mut T`, for some type `T`, can write to
+the slot that its argument refers to. An example of such a function is:
 
 ~~~~~~~~
-fn incr(&i: int) {
-    i = i + 1;
+fn incr(i: &mut int) {
+    *i = *i + 1;
 }
 ~~~~~~~~
 
