@@ -570,7 +570,8 @@ impl parser {
 
     fn parse_arg_mode() -> mode {
         if self.eat(token::BINOP(token::AND)) {
-            self.warn(~"Obsolete syntax has no effect");
+            self.span_fatal(copy self.last_span,
+                            ~"Obsolete syntax has no effect");
             expl(by_mutbl_ref)
         } else if self.eat(token::BINOP(token::MINUS)) {
             expl(by_move)
