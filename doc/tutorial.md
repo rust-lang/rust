@@ -162,12 +162,7 @@ and functions defined in it. If it has a `main` function, it can be
 compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file—all statements must
 live inside a function.  Rust programs can also be compiled as
-libraries, and included in other programs. The `extern mod std`
-directive that appears at the top of many examples imports the
-[standard library][std], described in more detail [later
-on](#modules-and-crates).
-
-[std]: http://doc.rust-lang.org/doc/std
+libraries, and included in other programs.
 
 ## Editing Rust code
 
@@ -1586,8 +1581,7 @@ This code creates a closure that adds a given string to its argument,
 returns it from a function, and then calls it:
 
 ~~~~
-extern mod std;
-
+# extern mod std;
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
     return fn@(s: ~str) -> ~str { s + suffix };
 }
