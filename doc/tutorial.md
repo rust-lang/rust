@@ -2044,13 +2044,11 @@ However, consider this function:
 # type Circle = int; type Rectangle = int;
 # impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
-
 trait Drawable { fn draw(); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
 }
-
 # let c: Circle = new_circle();
 # draw_all(~[c]);
 ~~~~
@@ -2062,7 +2060,7 @@ needed, a trait name can alternately be used as a type.
 
 ~~~~
 # trait Drawable { fn draw(); }
-fn draw_all(shapes: ~[@Drawable]) {
+fn draw_all(shapes: &[@Drawable]) {
     for shapes.each |shape| { shape.draw(); }
 }
 ~~~~
@@ -2077,7 +2075,7 @@ to cast a value to a trait type:
 # trait Drawable { fn draw(); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
-# fn draw_all(shapes: ~[Drawable]) {}
+# fn draw_all(shapes: &[@Drawable]) {}
 
 impl @Circle: Drawable { fn draw() { ... } }
 
@@ -2085,7 +2083,7 @@ impl @Rectangle: Drawable { fn draw() { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
-draw_all(~[c as @Drawable, r as @Drawable]);
+draw_all(&[c as @Drawable, r as @Drawable]);
 ~~~~
 
 Note that, like strings and vectors, trait types have dynamic size
@@ -2130,10 +2128,9 @@ explicitly import it, you must refer to it by its long name,
 `farm::chicken`.
 
 ~~~~
-#[legacy_exports]
 mod farm {
-    fn chicken() -> ~str { ~"cluck cluck" }
-    fn cow() -> ~str { ~"mooo" }
+    pub fn chicken() -> ~str { ~"cluck cluck" }
+    pub fn cow() -> ~str { ~"mooo" }
 }
 fn main() {
     io::println(farm::chicken());
