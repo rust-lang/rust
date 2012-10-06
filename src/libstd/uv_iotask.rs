@@ -4,11 +4,10 @@
  * The I/O task runs in its own single-threaded scheduler.  By using the
  * `interact` function you can execute code in a uv callback.
  */
-
-// tjc: forbid deprecated modes again after a snapshot
+#[forbid(deprecated_mode)];
 
 use libc::c_void;
-use ptr::p2::addr_of;
+use ptr::addr_of;
 use comm = core::comm;
 use comm::{Port, Chan, listen};
 use task::TaskBuilder;
@@ -60,7 +59,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  * via ports/chans.
  */
 pub unsafe fn interact(iotask: IoTask,
-                   +cb: fn~(*c_void)) {
+                   cb: fn~(*c_void)) {
     send_msg(iotask, Interaction(move cb));
 }
 
@@ -125,7 +124,7 @@ type IoTaskLoopData = {
 };
 
 fn send_msg(iotask: IoTask,
-            +msg: IoTaskMsg) unsafe {
+            msg: IoTaskMsg) unsafe {
     iotask.op_chan.send(move msg);
     ll::async_send(iotask.async_handle);
 }
@@ -184,7 +183,7 @@ mod test {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(&async_handle);
         let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(exit_po);
+        let exit_ch = core::comm::Chan(&exit_po);
         let ah_data = {
             iotask: iotask,
             exit_ch: exit_ch
@@ -202,7 +201,7 @@ mod test {
     // high_level_loop
     unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> IoTask {
         let iotask_port = comm::Port::<IoTask>();
-        let iotask_ch = comm::Chan(iotask_port);
+        let iotask_ch = comm::Chan(&iotask_port);
         do task::spawn_sched(task::ManualThreads(1u)) {
             run_loop(iotask_ch);
             exit_ch.send(());
@@ -223,7 +222,7 @@ mod test {
     #[test]
     fn test_uv_iotask_async() unsafe {
         let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(exit_po);
+        let exit_ch = core::comm::Chan(&exit_po);
         let iotask = spawn_test_loop(exit_ch);
 
         // using this handle to manage the lifetime of the high_level_loop,
@@ -233,7 +232,7 @@ mod test {
         // lives until, at least, all of the impl_uv_hl_async() runs have been
         // called, at least.
         let work_exit_po = core::comm::Port::<()>();
-        let work_exit_ch = core::comm::Chan(work_exit_po);
+        let work_exit_ch = core::comm::Chan(&work_exit_po);
         for iter::repeat(7u) {
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_iotask_async(iotask);

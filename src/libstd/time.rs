@@ -1,4 +1,4 @@
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
@@ -7,16 +7,17 @@ use result::{Result, Ok, Err};
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
-    fn get_time(&sec: i64, &nsec: i32);
-    fn precise_time_ns(&ns: u64);
+    #[legacy_exports]
+    fn get_time(sec: &mut i64, nsec: &mut i32);
+
+    fn precise_time_ns(ns: &mut u64);
 
     fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
     fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
     fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    fn rust_timegm(&&tm: Tm, &sec: i64);
-    fn rust_mktime(&&tm: Tm, &sec: i64);
+    fn rust_timegm(&&tm: Tm, sec: &mut i64);
+    fn rust_mktime(&&tm: Tm, sec: &mut i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
@@ -36,9 +37,10 @@ impl Timespec : Eq {
 pub fn get_time() -> Timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
-    rustrt::get_time(sec, nsec);
+    rustrt::get_time(&mut sec, &mut nsec);
     return {sec: sec, nsec: nsec};
 }
+
 
 /**
  * Returns the current value of a high-resolution performance counter
@@ -46,9 +48,10 @@ pub fn get_time() -> Timespec {
  */
 pub fn precise_time_ns() -> u64 {
     let mut ns = 0u64;
-    rustrt::precise_time_ns(ns);
+    rustrt::precise_time_ns(&mut ns);
     ns
 }
+
 
 /**
  * Returns the current value of a high-resolution performance counter
@@ -762,9 +765,9 @@ impl Tm {
     fn to_timespec() -> Timespec {
         let mut sec = 0i64;
         if self.tm_gmtoff == 0_i32 {
-            rustrt::rust_timegm(self, sec);
+            rustrt::rust_timegm(self, &mut sec);
         } else {
-            rustrt::rust_mktime(self, sec);
+            rustrt::rust_mktime(self, &mut sec);
         }
         { sec: sec, nsec: self.tm_nsec }
     }

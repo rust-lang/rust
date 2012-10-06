@@ -19,7 +19,6 @@ if not src_dir:
 run_pass = os.path.join(src_dir, "src", "test", "run-pass")
 run_pass = os.path.abspath(run_pass)
 stage2_tests = []
-take_args = {}
 
 for t in os.listdir(run_pass):
     if t.endswith(".rs") and not (
@@ -30,8 +29,6 @@ for t in os.listdir(run_pass):
                 "xfail-fast" in s or
                 "xfail-win32" in s):
             stage2_tests.append(t)
-            if "fn main(args:" in s or "fn main(++args:" in s:
-                take_args[t] = True
         f.close()
 
 stage2_tests.sort()
@@ -64,9 +61,6 @@ for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
     p = p.replace("\\", "\\\\")
     d.write("    out.write_str(~\"run-pass [stage2]: %s\\n\");\n" % p)
-    if t in take_args:
-        d.write("    t_%d::main(~[~\"arg0\"]);\n" % i)
-    else:
-        d.write("    t_%d::main();\n" % i)
+    d.write("    t_%d::main();\n" % i)
     i += 1
 d.write("}\n")

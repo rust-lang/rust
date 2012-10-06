@@ -159,7 +159,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(~[T_struct(tys)])
       }
       ty::ty_fn(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
-      ty::ty_trait(_, _, _) => T_opaque_trait(cx),
+      ty::ty_trait(_, _, vstore) => T_opaque_trait(cx, vstore),
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(elts) => {
         let mut tys = ~[];

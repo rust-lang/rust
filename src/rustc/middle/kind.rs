@@ -323,7 +323,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
             match ty::arg_mode(cx.tcx, *arg_t) {
               by_copy => maybe_copy(cx, args[i], None),
-              by_ref | by_val | by_mutbl_ref | by_move => ()
+              by_ref | by_val | by_move => ()
             }
             i += 1u;
         }
@@ -335,7 +335,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             Some(ref mme) => {
                 match ty::arg_mode(cx.tcx, mme.self_arg) {
                     by_copy => maybe_copy(cx, lhs, None),
-                    by_ref | by_val | by_mutbl_ref | by_move => ()
+                    by_ref | by_val | by_move => ()
                 }
             }
             _ => ()
@@ -465,14 +465,7 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
             cx.tcx.sess.span_err(sp, msg);
         }
       }
-      def_arg(_, mode) => {
-        match ty::resolved_mode(cx.tcx, mode) {
-          by_ref | by_val | by_move | by_copy => { /* ok */ }
-          by_mutbl_ref => {
-            cx.tcx.sess.span_err(sp, msg);
-          }
-        }
-      }
+      def_arg(*) => { /* ok */ }
       def_upvar(_, def1, _, _) => {
         check_imm_free_var(cx, *def1, sp);
       }

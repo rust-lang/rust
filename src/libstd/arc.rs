@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 /**
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.

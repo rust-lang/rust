@@ -1,4 +1,4 @@
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 /// A dynamic, mutable location.
 ///
 /// Similar to a mutable option type, but friendlier.

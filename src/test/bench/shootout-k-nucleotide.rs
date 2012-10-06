@@ -125,7 +125,8 @@ fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
 }
 
 // given a FASTA file on stdin, process sequence THREE
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
    let rdr = if os::getenv(~"RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but #include_bin chokes on it (#2598)
@@ -141,7 +142,7 @@ fn main(++args: ~[~str]) {
    // initialize each sequence sorter
    let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
    let from_child = vec::map (sizes, |_sz| comm::Port() );
-   let to_parent  = vec::mapi(sizes, |ii, _sz| comm::Chan(from_child[ii]) );
+   let to_parent  = vec::mapi(sizes, |ii, _sz| comm::Chan(&from_child[ii]) );
    let to_child   = vec::mapi(sizes, |ii, sz| {
        let ii = ii;
        let sz = *sz;

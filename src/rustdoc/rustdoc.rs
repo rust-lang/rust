@@ -3,7 +3,8 @@ use doc::Item;
 use pass::Pass;
 use config::Config;
 
-fn main(args: ~[~str]) {
+fn main() {
+    let args = os::args();
 
     if args.contains(&~"-h") || args.contains(&~"--help") {
         config::usage();

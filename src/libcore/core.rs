@@ -2,101 +2,76 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-use option::{Some, None};
-use Option = option::Option;
-use result::{Result, Ok, Err};
+pub use option::{Some, None};
+pub use Option = option::Option;
+pub use result::{Result, Ok, Err};
 
-use Path = path::Path;
-use GenericPath = path::GenericPath;
-use WindowsPath = path::WindowsPath;
-use PosixPath = path::PosixPath;
+pub use Path = path::Path;
+pub use GenericPath = path::GenericPath;
+pub use WindowsPath = path::WindowsPath;
+pub use PosixPath = path::PosixPath;
 
-use tuple::{TupleOps, ExtendedTupleOps};
-use str::{StrSlice, UniqueStr};
-use vec::{ConstVector, CopyableVector, ImmutableVector};
-use vec::{ImmutableEqVector, ImmutableCopyableVector};
-use vec::{MutableVector, MutableCopyableVector};
-use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-use iter::{CopyableOrderedIter, Times, TimesIx};
-use num::Num;
-use ptr::Ptr;
-use to_str::ToStr;
-
-export Path, WindowsPath, PosixPath, GenericPath;
-export Option, Some, None;
-export Result, Ok, Err;
-export extensions;
-// The following exports are the extension impls for numeric types
-export Num, Times, TimesIx;
-// The following exports are the common traits
-export StrSlice, UniqueStr;
-export ConstVector, CopyableVector, ImmutableVector;
-export ImmutableEqVector, ImmutableCopyableVector, IterTraitExtensions;
-export MutableVector, MutableCopyableVector;
-export BaseIter, CopyableIter, CopyableOrderedIter, ExtendedIter, EqIter;
-export TupleOps, ExtendedTupleOps;
-export Ptr;
-export ToStr;
+pub use tuple::{TupleOps, ExtendedTupleOps};
+pub use str::{StrSlice, UniqueStr};
+pub use vec::{ConstVector, CopyableVector, ImmutableVector};
+pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
+pub use vec::{MutableVector, MutableCopyableVector};
+pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+pub use iter::{CopyableOrderedIter, Times, TimesIx};
+pub use num::Num;
+pub use ptr::Ptr;
+pub use to_str::ToStr;
 
 // The following exports are the core operators and kinds
 // The compiler has special knowlege of these so we must not duplicate them
 // when compiling for testing
 #[cfg(notest)]
-use ops::{Const, Copy, Send, Owned};
+pub use ops::{Const, Copy, Send, Owned};
 #[cfg(notest)]
-use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
+pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(notest)]
-use ops::{Shl, Shr, Index};
-
-#[cfg(notest)]
-export Const, Copy, Send, Owned;
-#[cfg(notest)]
-export Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor;
-#[cfg(notest)]
-export Shl, Shr, Index;
+pub use ops::{Shl, Shr, Index};
 
 #[cfg(test)]
 extern mod coreops(name = "core", vers = "0.4");
 
 #[cfg(test)]
-use coreops::ops::{Const, Copy, Send, Owned};
+pub use coreops::ops::{Const, Copy, Send, Owned};
 #[cfg(test)]
-use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
+pub use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr};
 #[cfg(test)]
-use coreops::ops::{Shl, Shr, Index};
+pub use coreops::ops::{BitXor};
+#[cfg(test)]
+pub use coreops::ops::{Shl, Shr, Index};
 
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
 // warn-and-below.
 
-export error, warn, info, debug;
-
 /// The error log level
-const error : u32 = 0_u32;
+pub const error : u32 = 0_u32;
 /// The warning log level
-const warn : u32 = 1_u32;
+pub const warn : u32 = 1_u32;
 /// The info log level
-const info : u32 = 2_u32;
+pub const info : u32 = 2_u32;
 /// The debug log level
-const debug : u32 = 3_u32;
+pub const debug : u32 = 3_u32;
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
 mod core {
-    #[legacy_exports];
-    const error : u32 = 0_u32;
-    const warn : u32 = 1_u32;
-    const info : u32 = 2_u32;
-    const debug : u32 = 3_u32;
+    pub const error : u32 = 0_u32;
+    pub const warn : u32 = 1_u32;
+    pub const info : u32 = 2_u32;
+    pub const debug : u32 = 3_u32;
 }
 
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    #[legacy_exports];
     extern mod std(vers = "0.4");
-    use std::test;
+    pub use std::test;
 }

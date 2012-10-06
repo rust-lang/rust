@@ -7,7 +7,7 @@ use comm::recv;
 
 fn main() {
     let p = comm::Port();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
     let t = task::spawn(|| child(ch) );
     let y = recv(p);
     error!("received");

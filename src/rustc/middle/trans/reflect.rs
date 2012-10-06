@@ -70,10 +70,12 @@ impl reflector {
         }
         let bool_ty = ty::mk_bool(tcx);
         let scratch = scratch_datum(bcx, bool_ty, false);
+        // XXX: Should not be vstore_box!
         let bcx = callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx, mth_ty,
-                                                      mth_idx, v),
+                                                      mth_idx, v,
+                                                      ty::vstore_box),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
         let next_bcx = sub_block(bcx, ~"next");
@@ -208,7 +210,6 @@ impl reflector {
                   ast::expl(e) => match e {
                     ast::by_ref => 1u,
                     ast::by_val => 2u,
-                    ast::by_mutbl_ref => 3u,
                     ast::by_move => 4u,
                     ast::by_copy => 5u
                   }

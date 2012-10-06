@@ -1,15 +1,15 @@
-fn f(i: int, &called: bool) {
+fn f(i: int, called: &mut bool) {
     assert i == 10;
-    called = true;
+    *called = true;
 }
 
-fn g(f: extern fn(int, &v: bool), &called: bool) {
+fn g(f: extern fn(int, v: &mut bool), called: &mut bool) {
     f(10, called);
 }
 
 fn main() {
     let mut called = false;
     let h = f;
-    g(h, called);
+    g(h, &mut called);
     assert called == true;
 }

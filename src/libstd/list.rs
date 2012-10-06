@@ -1,5 +1,5 @@
 //! A standard linked list
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use core::option;
@@ -56,7 +56,7 @@ pub fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
 }
 
 /// Returns true if a list contains an element with the given value
-pub fn has<T: Copy Eq>(ls: @List<T>, +elt: T) -> bool {
+pub fn has<T: Copy Eq>(ls: @List<T>, elt: T) -> bool {
     for each(ls) |e| {
         if *e == elt { return true; }
     }
@@ -114,7 +114,7 @@ pub pure fn append<T: Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
 /*
 /// Push one element into the front of a list, returning a new list
 /// THIS VERSION DOESN'T ACTUALLY WORK
-pure fn push<T: Copy>(ll: &mut @list<T>, +vv: T) {
+pure fn push<T: Copy>(ll: &mut @list<T>, vv: T) {
     ll = &mut @cons(vv, *ll)
 }
 */

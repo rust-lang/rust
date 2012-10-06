@@ -1,3 +1,4 @@
+#[forbid(deprecated_mode)];
 use serialization2;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
@@ -31,7 +32,7 @@ struct TaggedDoc {
 }
 
 impl Doc: ops::Index<uint,Doc> {
-    pure fn index(+tag: uint) -> Doc {
+    pure fn index(tag: uint) -> Doc {
         unsafe {
             get_doc(self, tag)
         }

@@ -396,10 +396,10 @@ type req_maps = {
     pure_map: HashMap<ast::node_id, bckerr>
 };
 
-fn save_and_restore<T:Copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
-    let old_save_and_restore_t = save_and_restore_t;
+fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T, f: fn() -> U) -> U {
+    let old_save_and_restore_t = *save_and_restore_t;
     let u <- f();
-    save_and_restore_t = old_save_and_restore_t;
+    *save_and_restore_t = old_save_and_restore_t;
     move u
 }
 

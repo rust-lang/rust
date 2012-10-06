@@ -394,7 +394,6 @@ fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
 
 fn parse_mode(st: @pstate) -> ast::mode {
     let m = ast::expl(match next(st) {
-        '&' => ast::by_mutbl_ref,
         '-' => ast::by_move,
         '+' => ast::by_copy,
         '=' => ast::by_ref,

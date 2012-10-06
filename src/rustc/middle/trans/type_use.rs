@@ -53,7 +53,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                     by_val | by_move | by_copy => {
                         type_needs(cx, use_repr, arg.ty);
                     }
-                    by_ref | by_mutbl_ref => {}
+                    by_ref => {}
                 }
             }
         }
@@ -247,7 +247,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
               typeck::method_param({param_num: param, _}) => {
                 cx.uses[param] |= use_tydesc;
               }
-              typeck::method_trait(_, _) => (),
+              typeck::method_trait(*) | typeck::method_self(*) => (),
             }
         }
       }

@@ -56,7 +56,8 @@ fn fannkuch(n: int) -> int {
     return flips;
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"10"]
     } else if args.len() <= 1u {

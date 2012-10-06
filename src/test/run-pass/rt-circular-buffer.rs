@@ -18,7 +18,7 @@ type record = {val1: u32, val2: u32, val3: u32};
 // assertions.
 fn test_init() {
     let myport = Port();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
     send(mychan, val);
 }
@@ -28,7 +28,7 @@ fn test_init() {
 // Don't trigger any assertions.
 fn test_grow() {
     let myport = Port();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     for uint::range(0u, 100u) |i| {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         comm::send(mychan, val);
@@ -39,14 +39,14 @@ fn test_grow() {
 // Don't allow the buffer to shrink below it's original size
 fn test_shrink1() {
     let myport = Port();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     send(mychan, 0i8);
     let x = recv(myport);
 }
 
 fn test_shrink2() {
     let myport = Port();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     for uint::range(0u, 100u) |_i| {
         let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
         send(mychan, val);
@@ -58,7 +58,7 @@ fn test_shrink2() {
 // Test rotating the buffer when the unit size is not a power of two
 fn test_rotate() {
     let myport = Port();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     for uint::range(0u, 100u) |i| {
         let val = {val1: i as u32, val2: i as u32, val3: i as u32};
         send(mychan, val);
@@ -74,7 +74,7 @@ fn test_rotate() {
 // the unit size is not a power of two
 fn test_rotate_grow() {
     let myport = Port::<record>();
-    let mychan = Chan(myport);
+    let mychan = Chan(&myport);
     for uint::range(0u, 10u) |j| {
         for uint::range(0u, 10u) |i| {
             let val: record =

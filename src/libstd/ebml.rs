@@ -1,3 +1,4 @@
+#[forbid(deprecated_mode)];
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
@@ -17,7 +18,7 @@ pub type Doc = {data: @~[u8], start: uint, end: uint};
 type TaggedDoc = {tag: uint, doc: Doc};
 
 impl Doc: ops::Index<uint,Doc> {
-    pure fn index(+tag: uint) -> Doc {
+    pure fn index(tag: uint) -> Doc {
         unsafe {
             get_doc(self, tag)
         }
@@ -563,11 +564,11 @@ impl EbmlDeserializer: serialization::Deserializer {
 
 #[test]
 fn test_option_int() {
-    fn serialize_1<S: serialization::Serializer>(&&s: S, v: int) {
+    fn serialize_1<S: serialization::Serializer>(s: &S, v: int) {
         s.emit_i64(v as i64);
     }
 
-    fn serialize_0<S: serialization::Serializer>(&&s: S, v: Option<int>) {
+    fn serialize_0<S: serialization::Serializer>(s: &S, v: Option<int>) {
         do s.emit_enum(~"core::option::t") {
             match v {
               None => s.emit_enum_variant(
@@ -581,11 +582,11 @@ fn test_option_int() {
         }
     }
 
-    fn deserialize_1<S: serialization::Deserializer>(&&s: S) -> int {
+    fn deserialize_1<S: serialization::Deserializer>(s: &S) -> int {
         s.read_i64() as int
     }
 
-    fn deserialize_0<S: serialization::Deserializer>(&&s: S) -> Option<int> {
+    fn deserialize_0<S: serialization::Deserializer>(s: &S) -> Option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
                 match i {
@@ -608,11 +609,11 @@ fn test_option_int() {
         debug!("v == %?", v);
         let bytes = do io::with_bytes_writer |wr| {
             let ebml_w = ebml::Writer(wr);
-            serialize_0(ebml_w, v);
+            serialize_0(&ebml_w, v);
         };
         let ebml_doc = ebml::Doc(@bytes);
         let deser = ebml_deserializer(ebml_doc);
-        let v1 = deserialize_0(deser);
+        let v1 = deserialize_0(&deser);
         debug!("v1 == %?", v1);
         assert v == v1;
     }

@@ -4,6 +4,9 @@ Runtime type reflection
 
 */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;
 

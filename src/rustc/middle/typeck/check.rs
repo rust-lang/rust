@@ -2601,7 +2601,9 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"addr_of" => (1u, ~[arg(ast::by_ref, param(ccx, 0u))],
                       ty::mk_imm_ptr(tcx, param(ccx, 0u))),
       ~"move_val" | ~"move_val_init" => {
-        (1u, ~[arg(ast::by_mutbl_ref, param(ccx, 0u)),
+          (1u, ~[arg(ast::by_copy,
+                     ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
+                                     param(ccx, 0u))),
                arg(ast::by_move, param(ccx, 0u))],
          ty::mk_nil(tcx))
       }

@@ -415,34 +415,12 @@ fn mk_test_wrapper(cx: test_ctxt,
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
-    let str_pt = path_node(~[cx.sess.ident_of(~"str")]);
-    let str_ty_inner = @{id: cx.sess.next_node_id(),
-                         node: ast::ty_path(str_pt, cx.sess.next_node_id()),
-                         span: dummy_sp()};
-    let str_ty = @{id: cx.sess.next_node_id(),
-                   node: ast::ty_uniq({ty: str_ty_inner, mutbl: ast::m_imm}),
-                   span: dummy_sp()};
-    let args_mt = {ty: str_ty, mutbl: ast::m_imm};
-    let args_ty_inner = @{id: cx.sess.next_node_id(),
-                          node: ast::ty_vec(args_mt),
-                          span: dummy_sp()};
-    let args_ty = {id: cx.sess.next_node_id(),
-                   node: ast::ty_uniq({ty: args_ty_inner, mutbl: ast::m_imm}),
-                   span: dummy_sp()};
-
-
-    let args_arg: ast::arg =
-        {mode: ast::expl(ast::by_val),
-         ty: @args_ty,
-         ident: cx.sess.ident_of(~"args"),
-         id: cx.sess.next_node_id()};
-
     let ret_ty = {id: cx.sess.next_node_id(),
                   node: ast::ty_nil,
                   span: dummy_sp()};
 
     let decl: ast::fn_decl =
-        {inputs: ~[args_arg],
+        {inputs: ~[],
          output: @ret_ty,
          cf: ast::return_val};
 
@@ -465,15 +443,23 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
 }
 
 fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
-
-    // Get the args passed to main so we can pass the to test_main
-    let args_path = path_node(~[cx.sess.ident_of(~"args")]);
+    // Call os::args to generate the vector of test_descs
+    let args_path = path_node(~[
+        cx.sess.ident_of(~"os"),
+        cx.sess.ident_of(~"args")
+    ]);
 
     let args_path_expr_: ast::expr_ = ast::expr_path(args_path);
 
     let args_path_expr: ast::expr =
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
          node: args_path_expr_, span: dummy_sp()};
+
+    let args_call_expr_ = ast::expr_call(@args_path_expr, ~[], false);
+
+    let args_call_expr: ast::expr =
+        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
+         node: args_call_expr_, span: dummy_sp()};
 
     // Call __test::test to generate the vector of test_descs
     let test_path = path_node(~[cx.sess.ident_of(~"tests")]);
@@ -503,7 +489,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
 
     let test_main_call_expr_: ast::expr_ =
         ast::expr_call(@test_main_path_expr,
-                       ~[@args_path_expr, @test_call_expr], false);
+                       ~[@args_call_expr, @test_call_expr], false);
 
     let test_main_call_expr: ast::expr =
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),

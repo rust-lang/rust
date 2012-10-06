@@ -20,7 +20,7 @@ fn child(c: Chan<int>) {
 
 fn main() {
     let p = comm::Port();
-    let ch = Chan(p);
+    let ch = Chan(&p);
 
     task::spawn(|| child(ch) );
 

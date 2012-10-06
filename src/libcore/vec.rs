@@ -1,7 +1,7 @@
 //! Vectors
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
 use cmp::{Eq, Ord};
@@ -18,8 +18,9 @@ extern mod rustrt {
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    fn move_val_init<T>(&dst: T, -src: T);
+    fn move_val_init<T>(dst: &mut T, -src: T);
 }
+
 
 /// Returns true if a vector contains no elements
 pub pure fn is_empty<T>(v: &[const T]) -> bool {
@@ -104,7 +105,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
         do as_mut_buf(v) |p, _len| {
             let mut i: uint = 0u;
             while i < n_elts {
-                rusti::move_val_init(*ptr::mut_offset(p, i), op(i));
+                rusti::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
                 i += 1u;
             }
         }
@@ -489,7 +490,7 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     (**repr).unboxed.fill += sys::size_of::<T>();
     let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
-    rusti::move_val_init(*p, move initval);
+    rusti::move_val_init(&mut(*p), move initval);
 }
 
 #[inline(never)]
@@ -1769,7 +1770,7 @@ pub mod raw {
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
             box2 <-> box;
-            rusti::move_val_init(*ptr::mut_offset(p, i),
+            rusti::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                  option::unwrap(move box2));
         }
     }
@@ -1918,10 +1919,9 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
     }
     pure fn to_vec() -> ~[A] { iter::to_vec(&self) }
 
-    // FIXME--bug in resolve prevents this from working (#2611)
-    // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
-    //     iter::flat_map_to_vec(self, op)
-    // }
+    pure fn flat_map_to_vec<B:Copy,IB:BaseIter<B>>(op: fn(A) -> IB) -> ~[B] {
+        iter::flat_map_to_vec(&self, op)
+    }
 
     pub pure fn find(p: fn(a: A) -> bool) -> Option<A> {
         iter::find(&self, p)

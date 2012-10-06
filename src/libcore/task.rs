@@ -1,5 +1,6 @@
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+// tjc: Deprecated modes allowed because of function arg issue
+// in task::spawn. Re-forbid after snapshot.
 #[forbid(deprecated_pattern)];
 
 /*!
@@ -219,7 +220,7 @@ pub type TaskOpts = {
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
 pub enum TaskBuilder = {
     opts: TaskOpts,
-    gen_body: fn@(+v: fn~()) -> fn~(),
+    gen_body: fn@(v: fn~()) -> fn~(),
     can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
 };
@@ -232,7 +233,7 @@ pub enum TaskBuilder = {
 pub fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
-        gen_body: |+body| move body, // Identity function
+        gen_body: |body| move body, // Identity function
         can_not_copy: None,
         mut consumed: false,
     })
@@ -409,7 +410,7 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(wrapper: fn@(+v: fn~()) -> fn~()) -> TaskBuilder {
+    fn add_wrapper(wrapper: fn@(v: fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
         let notify_chan = if self.opts.notify_chan.is_none() {
             None
@@ -441,7 +442,7 @@ impl TaskBuilder {
      * When spawning into a new scheduler, the number of threads requested
      * must be greater than zero.
      */
-    fn spawn(+f: fn~()) {
+    fn spawn(f: fn~()) {
         let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
@@ -459,7 +460,7 @@ impl TaskBuilder {
         spawn::spawn_raw(move opts, x.gen_body(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Send>(arg: A, +f: fn~(+v: A)) {
+    fn spawn_with<A: Send>(arg: A, f: fn~(v: A)) {
         let arg = ~mut Some(move arg);
         do self.spawn |move arg, move f| {
             f(option::swap_unwrap(arg))
@@ -477,12 +478,12 @@ impl TaskBuilder {
      * otherwise be required to establish communication from the parent
      * to the child.
      */
-    fn spawn_listener<A: Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+    fn spawn_listener<A: Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
         let setup_po = comm::Port();
-        let setup_ch = comm::Chan(setup_po);
+        let setup_ch = comm::Chan(&setup_po);
         do self.spawn |move f| {
             let po = comm::Port();
-            let ch = comm::Chan(po);
+            let ch = comm::Chan(&po);
             comm::send(setup_ch, ch);
             f(move po);
         }
@@ -493,10 +494,10 @@ impl TaskBuilder {
      * Runs a new task, setting up communication in both directions
      */
     fn spawn_conversation<A: Send, B: Send>
-        (+f: fn~(comm::Port<A>, comm::Chan<B>))
+        (f: fn~(comm::Port<A>, comm::Chan<B>))
         -> (comm::Port<B>, comm::Chan<A>) {
         let from_child = comm::Port();
-        let to_parent = comm::Chan(from_child);
+        let to_parent = comm::Chan(&from_child);
         let to_child = do self.spawn_listener |move f, from_parent| {
             f(from_parent, to_parent)
         };
@@ -516,9 +517,9 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: Send>(+f: fn~() -> T) -> Result<T,()> {
+    fn try<T: Send>(f: fn~() -> T) -> Result<T,()> {
         let po = comm::Port();
-        let ch = comm::Chan(po);
+        let ch = comm::Chan(&po);
         let mut result = None;
 
         let fr_task_builder = self.future_result(|+r| {
@@ -555,7 +556,7 @@ pub fn default_task_opts() -> TaskOpts {
 
 /* Spawn convenience functions */
 
-pub fn spawn(+f: fn~()) {
+pub fn spawn(f: fn~()) {
     /*!
      * Creates and executes a new child task
      *
@@ -568,7 +569,7 @@ pub fn spawn(+f: fn~()) {
     task().spawn(move f)
 }
 
-pub fn spawn_unlinked(+f: fn~()) {
+pub fn spawn_unlinked(f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -577,7 +578,7 @@ pub fn spawn_unlinked(+f: fn~()) {
     task().unlinked().spawn(move f)
 }
 
-pub fn spawn_supervised(+f: fn~()) {
+pub fn spawn_supervised(f: fn~()) {
     /*!
      * Creates a child task unlinked from the current one. If either this
      * task or the child task fails, the other will not be killed.
@@ -586,7 +587,7 @@ pub fn spawn_supervised(+f: fn~()) {
     task().supervised().spawn(move f)
 }
 
-pub fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
+pub fn spawn_with<A:Send>(arg: A, f: fn~(v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -600,7 +601,7 @@ pub fn spawn_with<A:Send>(+arg: A, +f: fn~(+v: A)) {
     task().spawn_with(move arg, move f)
 }
 
-pub fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+pub fn spawn_listener<A:Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
@@ -611,7 +612,7 @@ pub fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
 }
 
 pub fn spawn_conversation<A: Send, B: Send>
-    (+f: fn~(comm::Port<A>, comm::Chan<B>))
+    (f: fn~(comm::Port<A>, comm::Chan<B>))
     -> (comm::Port<B>, comm::Chan<A>) {
     /*!
      * Runs a new task, setting up communication in both directions
@@ -622,7 +623,7 @@ pub fn spawn_conversation<A: Send, B: Send>
     task().spawn_conversation(move f)
 }
 
-pub fn spawn_sched(mode: SchedMode, +f: fn~()) {
+pub fn spawn_sched(mode: SchedMode, f: fn~()) {
     /*!
      * Creates a new scheduler and executes a task on it
      *
@@ -639,7 +640,7 @@ pub fn spawn_sched(mode: SchedMode, +f: fn~()) {
     task().sched_mode(mode).spawn(move f)
 }
 
-pub fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
+pub fn try<T:Send>(f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -772,7 +773,7 @@ fn test_cant_dup_task_builder() {
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     do spawn_unlinked {
         do spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
@@ -802,7 +803,7 @@ fn test_spawn_unlinked_sup_fail_down() {
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     let po = comm::Port::<()>();
-    let _ch = comm::Chan(po);
+    let _ch = comm::Chan(&po);
     // Unidirectional "parenting" shouldn't override bidirectional linked.
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
@@ -845,7 +846,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     let po = comm::Port::<()>();
-    let _ch = comm::Chan(po);
+    let _ch = comm::Chan(&po);
     // Default options are to spawn linked & unsupervised.
     do spawn { fail; }
     comm::recv(po); // We should get punted awake
@@ -917,7 +918,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
 #[test]
 fn test_run_basic() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     do task().spawn {
         comm::send(ch, ());
     }
@@ -927,7 +928,7 @@ fn test_run_basic() {
 #[test]
 fn test_add_wrapper() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     let b0 = task();
     let b1 = do b0.add_wrapper |body| {
         fn~() {
@@ -961,7 +962,7 @@ fn test_back_to_the_future_result() {
 #[test]
 fn test_spawn_listiner_bidi() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     let ch = do spawn_listener |po| {
         // Now the child has a port called 'po' to read from and
         // an environment-captured channel called 'ch'.
@@ -1017,7 +1018,7 @@ fn test_spawn_sched_no_threads() {
 #[test]
 fn test_spawn_sched() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
 
     fn f(i: int, ch: comm::Chan<()>) {
         let parent_sched_id = rt::rust_get_sched_id();
@@ -1041,7 +1042,7 @@ fn test_spawn_sched() {
 #[test]
 fn test_spawn_sched_childs_on_same_sched() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
 
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = rt::rust_get_sched_id();
@@ -1075,9 +1076,9 @@ fn test_spawn_sched_blocking() {
     for iter::repeat(20u) {
 
         let start_po = comm::Port();
-        let start_ch = comm::Chan(start_po);
+        let start_ch = comm::Chan(&start_po);
         let fin_po = comm::Port();
-        let fin_ch = comm::Chan(fin_po);
+        let fin_ch = comm::Chan(&fin_po);
 
         let lock = testrt::rust_dbg_lock_create();
 
@@ -1105,12 +1106,12 @@ fn test_spawn_sched_blocking() {
         }
 
         let setup_po = comm::Port();
-        let setup_ch = comm::Chan(setup_po);
+        let setup_ch = comm::Chan(&setup_po);
         let parent_po = comm::Port();
-        let parent_ch = comm::Chan(parent_po);
+        let parent_ch = comm::Chan(&parent_po);
         do spawn {
             let child_po = comm::Port();
-            comm::send(setup_ch, comm::Chan(child_po));
+            comm::send(setup_ch, comm::Chan(&child_po));
             pingpong(child_po, parent_ch);
         };
 
@@ -1126,15 +1127,15 @@ fn test_spawn_sched_blocking() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: fn(+v: fn~())) {
+fn avoid_copying_the_body(spawnfn: fn(v: fn~())) {
     let p = comm::Port::<uint>();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
 
     let x = ~1;
-    let x_in_parent = ptr::p2::addr_of(&(*x)) as uint;
+    let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
     do spawnfn {
-        let x_in_child = ptr::p2::addr_of(&(*x)) as uint;
+        let x_in_child = ptr::addr_of(&(*x)) as uint;
         comm::send(ch, x_in_child);
     }
 
@@ -1149,7 +1150,7 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener() {
-    do avoid_copying_the_body |+f| {
+    do avoid_copying_the_body |f| {
         spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });
@@ -1167,7 +1168,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_spawn_listener_1() {
-    do avoid_copying_the_body |+f| {
+    do avoid_copying_the_body |f| {
         task().spawn_listener(fn~(move f, _po: comm::Port<int>) {
             f();
         });
@@ -1195,7 +1196,7 @@ fn test_avoid_copying_the_body_unlinked() {
 #[test]
 fn test_platform_thread() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     do task().sched_mode(PlatformThread).spawn {
         comm::send(ch, ());
     }

@@ -1,4 +1,4 @@
-// tjc: forbid deprecated modes again after snap
+#[forbid(deprecated_mode)];
 //! Unsafe debugging functions for inspecting values.
 
 use cast::reinterpret_cast;

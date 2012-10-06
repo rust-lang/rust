@@ -10,8 +10,8 @@ type ctx =
 fn eval_crate_directives(cx: ctx,
                          cdirs: ~[@ast::crate_directive],
                          prefix: &Path,
-                         &view_items: ~[@ast::view_item],
-                         &items: ~[@ast::item]) {
+                         view_items: &mut~[@ast::view_item],
+                         items: &mut~[@ast::item]) {
     for cdirs.each |sub_cdir| {
         eval_crate_directive(cx, *sub_cdir, prefix, view_items, items);
     }
@@ -24,7 +24,7 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
         = parse_companion_mod(cx, prefix, suffix);
     let mut view_items: ~[@ast::view_item] = ~[];
     let mut items: ~[@ast::item] = ~[];
-    eval_crate_directives(cx, cdirs, prefix, view_items, items);
+    eval_crate_directives(cx, cdirs, prefix, &mut view_items, &mut items);
     return ({view_items: vec::append(view_items, cview_items),
           items: vec::append(items, citems)},
          cattrs);
@@ -82,8 +82,8 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
 }
 
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
-                        &view_items: ~[@ast::view_item],
-                        &items: ~[@ast::item]) {
+                        view_items: &mut ~[@ast::view_item],
+                        items: &mut ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(vis, id, attrs) => {
         let file_path = Path(cdir_path_opt(

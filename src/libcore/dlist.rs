@@ -9,7 +9,7 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 */
 
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 type DListLink<T> = Option<DListNode<T>>;

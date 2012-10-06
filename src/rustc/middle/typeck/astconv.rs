@@ -189,16 +189,19 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
                                                        type_def_id, path);
                 match ty::get(result.ty).sty {
                     ty::ty_trait(trait_def_id, substs, _) => {
-                        if vst != ty::vstore_box {
-                            tcx.sess.span_unimpl(path.span,
-                                                 ~"`~trait` and `&trait` are \
-                                                   unimplemented; use \
-                                                   `@trait` instead for now");
+                        match vst {
+                            ty::vstore_box | ty::vstore_slice(*) => {}
+                            _ => {
+                                tcx.sess.span_unimpl(path.span,
+                                                     ~"`~trait` is \
+                                                       unimplemented; use \
+                                                       `@trait` instead for \
+                                                       now");
+                            }
                         }
                         return ty::mk_trait(tcx, trait_def_id, substs, vst);
                     }
-                    _ =>
-                        {}
+                    _ => {}
                 }
               }
               _ => ()

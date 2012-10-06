@@ -34,6 +34,7 @@ export metadata_encoding_version;
 export def_to_str;
 export encode_ctxt;
 export write_type;
+export write_vstore;
 export encode_def_id;
 
 type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
@@ -116,7 +117,7 @@ fn encode_mutability(ebml_w: ebml::Writer, mt: class_mutability) {
 type entry<T> = {val: T, pos: uint};
 
 fn add_to_index(ecx: @encode_ctxt, ebml_w: ebml::Writer, path: &[ident],
-                &index: ~[entry<~str>], name: ident) {
+                index: &mut ~[entry<~str>], name: ident) {
     let mut full_path = ~[];
     full_path.push_all(path);
     full_path.push(name);
@@ -178,6 +179,16 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::Writer, typ: ty::t) {
           reachable: |a| reachable(ecx, a),
           abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
+}
+
+fn write_vstore(ecx: @encode_ctxt, ebml_w: ebml::Writer, vstore: ty::vstore) {
+    let ty_str_ctxt =
+        @{diag: ecx.diag,
+          ds: def_to_str,
+          tcx: ecx.tcx,
+          reachable: |a| reachable(ecx, a),
+          abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
+    tyencode::enc_vstore(ebml_w.writer, ty_str_ctxt, vstore);
 }
 
 fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::Writer, typ: ty::t) {

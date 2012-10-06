@@ -9,9 +9,11 @@ Aleksander Balicki <balicki.aleksander@gmail.com>
 Alex Rønne Petersen <alex@lycus.org>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
+Andrew Paseltiner <apaseltiner@gmail.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
 Austin Seipp <mad.one@gmail.com>
+auREAX <mark@xn--hwg34fba.ws>
 Ben Blum <bblum@andrew.cmu.edu>
 Ben Striegel <ben.striegel@gmail.com>
 Benjamin Herr <ben@0x539.de>
@@ -41,6 +43,7 @@ Evan McClanahan <evan@evanmcc.com>
 Francisco Souza <f@souza.cc>
 Gareth Daniel Smith <garethdanielsmith@gmail.com>
 Glenn Willen <gwillen@nerdnet.org>
+Gonçalo Cabrita <_@gmcabrita.com>
 Graham Fawcett <fawcett@uwindsor.ca>
 Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
@@ -103,4 +106,5 @@ Tomoki Aonuma <uasi@99cm.org>
 Tycho Sci <tychosci@gmail.com>
 Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
+Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
 Zack Corr <zackcorr95@gmail.com>
