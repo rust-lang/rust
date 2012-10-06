@@ -604,7 +604,7 @@ impl<T: Ord> &MergeState<T> {
             }
             array[dest+len2] <-> self.tmp[c1];
         } else if len1 == 0 {
-            fail fmt!("Method merge_lo violates its contract! %?", len1);
+            fail ~"Comparison violates its contract!";
         } else {
             assert len2 == 0;
             assert len1 > 1;
@@ -747,7 +747,7 @@ impl<T: Ord> &MergeState<T> {
             }
             array[dest] <-> self.tmp[c2];
         } else if len2 == 0 {
-            fail fmt!("Method merge_hi violates its contract! %?", len2);
+            fail ~"Coparison violates its contract!";
         } else {
             assert len1 == 0;
             assert len2 != 0;
