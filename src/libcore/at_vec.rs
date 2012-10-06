@@ -21,10 +21,6 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    #[cfg(stage0)]
-    fn move_val_init<T>(&dst: T, -src: T);
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn move_val_init<T>(dst: &mut T, -src: T);
 }
 
@@ -181,20 +177,6 @@ pub mod raw {
         }
     }
 
-    // This doesn't bother to make sure we have space.
-    #[cfg(stage0)]
-    #[inline(always)] // really pretty please
-    pub unsafe fn push_fast<T>(v: &mut @[const T], initval: T) {
-        let repr: **VecRepr = ::cast::reinterpret_cast(&v);
-        let fill = (**repr).unboxed.fill;
-        (**repr).unboxed.fill += sys::size_of::<T>();
-        let p = addr_of(&((**repr).unboxed.data));
-        let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(*p, move initval);
-    }
-    // This doesn't bother to make sure we have space.
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     #[inline(always)] // really pretty please
     pub unsafe fn push_fast<T>(v: &mut @[const T], initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
