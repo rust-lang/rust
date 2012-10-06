@@ -8,8 +8,8 @@ use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
 use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
 use ty::ty_class;
-use typeck::{method_map, method_origin, method_param, method_static};
-use typeck::{method_trait};
+use typeck::{method_map, method_origin, method_param, method_self};
+use typeck::{method_static, method_trait};
 
 use core::util::ignore;
 use dvec::DVec;
@@ -81,7 +81,8 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                 }
             }
             method_param({trait_id: trait_id, method_num: method_num, _}) |
-            method_trait(trait_id, method_num, _) => {
+            method_trait(trait_id, method_num, _) |
+            method_self(trait_id, method_num) => {
                 if trait_id.crate == local_crate {
                     match tcx.items.find(trait_id.node) {
                         Some(node_item(item, _)) => {

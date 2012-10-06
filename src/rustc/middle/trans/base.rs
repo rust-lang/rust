@@ -1847,7 +1847,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, trait_refs, _, ms) => {
+      ast::item_impl(tps, trait_refs, self_ast_ty, ms) => {
         meth::trans_impl(ccx, *path, item.ident, ms, tps, None);
 
         // Translate any methods that have provided implementations.
@@ -1860,13 +1860,22 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                 loop;
             }
 
+            // Get the self type.
+            let self_ty;
+            match ccx.tcx.ast_ty_to_ty_cache.get(self_ast_ty) {
+                ty::atttce_resolved(self_type) => self_ty = self_type,
+                ty::atttce_unresolved => {
+                    ccx.tcx.sess.impossible_case(item.span,
+                                                 ~"didn't cache self ast ty");
+                }
+            }
+
             match ccx.tcx.items.get(trait_id.node) {
                 ast_map::node_item(trait_item, _) => {
                     match trait_item.node {
                         ast::item_trait(tps, _, trait_methods) => {
-                            // XXX: ty_self is wrong here. Get the real type.
                             trans_trait(ccx, tps, trait_methods, path,
-                                        item.ident, ty::mk_self(ccx.tcx));
+                                        item.ident, self_ty);
                         }
                         _ => {
                             ccx.tcx.sess.impossible_case(item.span,
