@@ -1,4 +1,6 @@
 //! High-level interface to libuv's TCP functionality
+// XXX Need FFI fixes
+#[allow(deprecated_mode)];
 
 use ip = net_ip;
 use uv::iotask;
@@ -121,8 +123,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
     let result_po = core::comm::Port::<ConnAttempt>();
     let closed_signal_po = core::comm::Port::<()>();
     let conn_data = {
-        result_ch: core::comm::Chan(result_po),
-        closed_signal_ch: core::comm::Chan(closed_signal_po)
+        result_ch: core::comm::Chan(&result_po),
+        closed_signal_ch: core::comm::Chan(&closed_signal_po)
     };
     let conn_data_ptr = ptr::addr_of(&conn_data);
     let reader_po = core::comm::Port::<result::Result<~[u8], TcpErrData>>();
@@ -130,7 +132,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
     *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
     let socket_data = @{
         reader_po: reader_po,
-        reader_ch: core::comm::Chan(reader_po),
+        reader_ch: core::comm::Chan(&reader_po),
         stream_handle_ptr: stream_handle_ptr,
         connect_req: uv::ll::connect_t(),
         write_req: uv::ll::write_t(),
@@ -324,7 +326,7 @@ pub fn read_start(sock: &TcpSocket)
  * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
  */
 pub fn read_stop(sock: &TcpSocket,
-             +read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
+             read_port: comm::Port<result::Result<~[u8], TcpErrData>>) ->
     result::Result<(), TcpErrData> unsafe {
     log(debug, fmt!("taking the read_port out of commission %?", read_port));
     let socket_data = ptr::addr_of(&(*sock.socket_data));
@@ -471,7 +473,7 @@ pub fn accept(new_conn: TcpNewConnection)
         *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
         let client_socket_data = @{
             reader_po: reader_po,
-            reader_ch: core::comm::Chan(reader_po),
+            reader_ch: core::comm::Chan(&reader_po),
             stream_handle_ptr : stream_handle_ptr,
             connect_req : uv::ll::connect_t(),
             write_req : uv::ll::write_t(),
@@ -482,7 +484,7 @@ pub fn accept(new_conn: TcpNewConnection)
             (*client_socket_data_ptr).stream_handle_ptr;
 
         let result_po = core::comm::Port::<Option<TcpErrData>>();
-        let result_ch = core::comm::Chan(result_po);
+        let result_ch = core::comm::Chan(&result_po);
 
         // UNSAFE LIBUV INTERACTION BEGIN
         // .. normally this happens within the context of
@@ -558,8 +560,8 @@ pub fn accept(new_conn: TcpNewConnection)
  */
 pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
-          +new_connect_cb: fn~(TcpNewConnection,
+          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
     do listen_common(move host_ip, port, backlog, iotask, on_establish_cb)
@@ -575,17 +577,17 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
 
 fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
           iotask: IoTask,
-          +on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
-          +on_connect_cb: fn~(*uv::ll::uv_tcp_t))
+          on_establish_cb: fn~(comm::Chan<Option<TcpErrData>>),
+          on_connect_cb: fn~(*uv::ll::uv_tcp_t))
     -> result::Result<(), TcpListenErrData> unsafe {
     let stream_closed_po = core::comm::Port::<()>();
     let kill_po = core::comm::Port::<Option<TcpErrData>>();
-    let kill_ch = core::comm::Chan(kill_po);
+    let kill_ch = core::comm::Chan(&kill_po);
     let server_stream = uv::ll::tcp_t();
     let server_stream_ptr = ptr::addr_of(&server_stream);
     let server_data = {
         server_stream_ptr: server_stream_ptr,
-        stream_closed_ch: core::comm::Chan(stream_closed_po),
+        stream_closed_ch: core::comm::Chan(&stream_closed_po),
         kill_ch: kill_ch,
         on_connect_cb: move on_connect_cb,
         iotask: iotask,
@@ -749,7 +751,7 @@ impl TcpSocket {
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
-    fn read(buf: &[mut u8], +len: uint) -> uint {
+    fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
             let read_result = read(&self.data.sock, 0u);
@@ -785,13 +787,13 @@ impl TcpSocketBuf: io::Reader {
         let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
-    fn unread_byte(+amt: int) {
+    fn unread_byte(amt: int) {
         self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
         false // noop
     }
-    fn seek(+dist: int, +seek: io::SeekStyle) {
+    fn seek(dist: int, seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
@@ -813,7 +815,7 @@ impl TcpSocketBuf: io::Writer {
                              err_data.err_name, err_data.err_msg));
         }
     }
-    fn seek(+dist: int, +seek: io::SeekStyle) {
+    fn seek(dist: int, seek: io::SeekStyle) {
       log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
@@ -832,7 +834,7 @@ impl TcpSocketBuf: io::Writer {
 
 fn tear_down_socket_data(socket_data: @TcpSocketData) unsafe {
     let closed_po = core::comm::Port::<()>();
-    let closed_ch = core::comm::Chan(closed_po);
+    let closed_ch = core::comm::Chan(&closed_po);
     let close_data = {
         closed_ch: closed_ch
     };
@@ -895,7 +897,7 @@ fn read_stop_common_impl(socket_data: *TcpSocketData) ->
     result::Result<(), TcpErrData> unsafe {
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let stop_po = core::comm::Port::<Option<TcpErrData>>();
-    let stop_ch = core::comm::Chan(stop_po);
+    let stop_ch = core::comm::Chan(&stop_po);
     do iotask::interact((*socket_data).iotask) |loop_ptr| unsafe {
         log(debug, ~"in interact cb for tcp::read_stop");
         match uv::ll::read_stop(stream_handle_ptr as *uv::ll::uv_stream_t) {
@@ -922,7 +924,7 @@ fn read_start_common_impl(socket_data: *TcpSocketData)
         result::Result<~[u8], TcpErrData>>, TcpErrData> unsafe {
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let start_po = core::comm::Port::<Option<uv::ll::uv_err_data>>();
-    let start_ch = core::comm::Chan(start_po);
+    let start_ch = core::comm::Chan(&start_po);
     log(debug, ~"in tcp::read_start before interact loop");
     do iotask::interact((*socket_data).iotask) |loop_ptr| unsafe {
         log(debug, fmt!("in tcp::read_start interact cb %?", loop_ptr));
@@ -961,7 +963,7 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
     let write_buf_vec_ptr = ptr::addr_of(&write_buf_vec);
     let result_po = core::comm::Port::<TcpWriteResult>();
     let write_data = {
-        result_ch: core::comm::Chan(result_po)
+        result_ch: core::comm::Chan(&result_po)
     };
     let write_data_ptr = ptr::addr_of(&write_data);
     do iotask::interact((*socket_data_ptr).iotask) |loop_ptr| unsafe {
@@ -1277,10 +1279,10 @@ mod test {
         let expected_resp = ~"pong";
 
         let server_result_po = core::comm::Port::<~str>();
-        let server_result_ch = core::comm::Chan(server_result_po);
+        let server_result_ch = core::comm::Chan(&server_result_po);
 
         let cont_po = core::comm::Port::<()>();
-        let cont_ch = core::comm::Chan(cont_po);
+        let cont_ch = core::comm::Chan(&cont_po);
         // server
         do task::spawn_sched(task::ManualThreads(1u)) {
             let actual_req = do comm::listen |server_ch| {
@@ -1343,10 +1345,10 @@ mod test {
         let expected_resp = ~"pong";
 
         let server_result_po = core::comm::Port::<~str>();
-        let server_result_ch = core::comm::Chan(server_result_po);
+        let server_result_ch = core::comm::Chan(&server_result_po);
 
         let cont_po = core::comm::Port::<()>();
-        let cont_ch = core::comm::Chan(cont_po);
+        let cont_ch = core::comm::Chan(&cont_po);
         // server
         do task::spawn_sched(task::ManualThreads(1u)) {
             let actual_req = do comm::listen |server_ch| {
@@ -1474,7 +1476,7 @@ mod test {
         str::from_bytes(new_bytes)
     }
 
-    fn run_tcp_test_server(server_ip: &str, server_port: uint, +resp: ~str,
+    fn run_tcp_test_server(server_ip: &str, server_port: uint, resp: ~str,
                           server_ch: comm::Chan<~str>,
                           cont_ch: comm::Chan<()>,
                           iotask: IoTask) -> ~str {

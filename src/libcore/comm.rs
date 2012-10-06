@@ -32,8 +32,8 @@ will once again be the preferred module for intertask communication.
 
 */
 
-// NB: transitionary, de-mode-ing
-// tjc: re-forbid deprecated modes after snapshot
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use either::Either;
@@ -74,7 +74,7 @@ pub fn Port<T: Send>() -> Port<T> {
 
 impl<T: Send> Port<T> {
 
-    fn chan() -> Chan<T> { Chan(self) }
+    fn chan() -> Chan<T> { Chan(&self) }
     fn send(v: T) { self.chan().send(move v) }
     fn recv() -> T { recv(self) }
     fn peek() -> bool { peek(self) }
@@ -166,7 +166,7 @@ fn as_raw_port<T: Send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
  * Constructs a channel. The channel is bound to the port used to
  * construct it.
  */
-pub fn Chan<T: Send>(&&p: Port<T>) -> Chan<T> {
+pub fn Chan<T: Send>(p: &Port<T>) -> Chan<T> {
     Chan_(rustrt::get_port_id((**p).po))
 }
 
@@ -304,19 +304,19 @@ extern mod rusti {
 
 
 #[test]
-fn create_port_and_chan() { let p = Port::<int>(); Chan(p); }
+fn create_port_and_chan() { let p = Port::<int>(); Chan(&p); }
 
 #[test]
 fn send_int() {
     let p = Port::<int>();
-    let c = Chan(p);
+    let c = Chan(&p);
     send(c, 22);
 }
 
 #[test]
 fn send_recv_fn() {
     let p = Port::<int>();
-    let c = Chan::<int>(p);
+    let c = Chan::<int>(&p);
     send(c, 42);
     assert (recv(p) == 42);
 }
@@ -324,7 +324,7 @@ fn send_recv_fn() {
 #[test]
 fn send_recv_fn_infer() {
     let p = Port();
-    let c = Chan(p);
+    let c = Chan(&p);
     send(c, 42);
     assert (recv(p) == 42);
 }
@@ -332,23 +332,23 @@ fn send_recv_fn_infer() {
 #[test]
 fn chan_chan_infer() {
     let p = Port(), p2 = Port::<int>();
-    let c = Chan(p);
-    send(c, Chan(p2));
+    let c = Chan(&p);
+    send(c, Chan(&p2));
     recv(p);
 }
 
 #[test]
 fn chan_chan() {
     let p = Port::<Chan<int>>(), p2 = Port::<int>();
-    let c = Chan(p);
-    send(c, Chan(p2));
+    let c = Chan(&p);
+    send(c, Chan(&p2));
     recv(p);
 }
 
 #[test]
 fn test_peek() {
     let po = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     assert !peek(po);
     send(ch, ());
     assert peek(po);
@@ -360,8 +360,8 @@ fn test_peek() {
 fn test_select2_available() {
     let po_a = Port();
     let po_b = Port();
-    let ch_a = Chan(po_a);
-    let ch_b = Chan(po_b);
+    let ch_a = Chan(&po_a);
+    let ch_b = Chan(&po_b);
 
     send(ch_a, ~"a");
 
@@ -376,8 +376,8 @@ fn test_select2_available() {
 fn test_select2_rendezvous() {
     let po_a = Port();
     let po_b = Port();
-    let ch_a = Chan(po_a);
-    let ch_b = Chan(po_b);
+    let ch_a = Chan(&po_a);
+    let ch_b = Chan(&po_b);
 
     for iter::repeat(10) {
         do task::spawn {
@@ -400,8 +400,8 @@ fn test_select2_rendezvous() {
 fn test_select2_stress() {
     let po_a = Port();
     let po_b = Port();
-    let ch_a = Chan(po_a);
-    let ch_b = Chan(po_b);
+    let ch_a = Chan(&po_a);
+    let ch_b = Chan(&po_b);
 
     let msgs = 100;
     let times = 4u;
@@ -436,7 +436,7 @@ fn test_select2_stress() {
 #[test]
 fn test_recv_chan() {
     let po = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     send(ch, ~"flower");
     assert recv_chan(ch) == ~"flower";
 }
@@ -445,7 +445,7 @@ fn test_recv_chan() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_recv_chan_dead() {
-    let ch = Chan(Port());
+    let ch = Chan(&Port());
     send(ch, ~"flower");
     recv_chan(ch);
 }
@@ -454,7 +454,7 @@ fn test_recv_chan_dead() {
 #[ignore(cfg(windows))]
 fn test_recv_chan_wrong_task() {
     let po = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     send(ch, ~"flower");
     assert result::is_err(&task::try(||
         recv_chan(ch)

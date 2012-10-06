@@ -1,7 +1,7 @@
 //! Managed vectors
 
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
@@ -21,7 +21,7 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn move_val_init<T>(&dst: T, -src: T);
+    fn move_val_init<T>(dst: &mut T, -src: T);
 }
 
 /// Returns the number of elements the vector can hold without reallocating
@@ -176,7 +176,7 @@ pub mod raw {
             push_slow(v, move initval);
         }
     }
-    // This doesn't bother to make sure we have space.
+
     #[inline(always)] // really pretty please
     pub unsafe fn push_fast<T>(v: &mut @[const T], initval: T) {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
@@ -184,7 +184,7 @@ pub mod raw {
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = addr_of(&((**repr).unboxed.data));
         let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(*p, move initval);
+        rusti::move_val_init(&mut(*p), move initval);
     }
 
     pub unsafe fn push_slow<T>(v: &mut @[const T], initval: T) {

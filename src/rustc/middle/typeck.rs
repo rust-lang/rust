@@ -73,7 +73,7 @@ export deserialize_method_map_entry;
 export vtable_map;
 export vtable_res;
 export vtable_origin;
-export method_static, method_param, method_trait;
+export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 
@@ -86,7 +86,10 @@ enum method_origin {
     method_param(method_param),
 
     // method invoked on a trait instance
-    method_trait(ast::def_id, uint),
+    method_trait(ast::def_id, uint, ty::vstore),
+
+    // method invoked on "self" inside a default method
+    method_self(ast::def_id, uint),
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
@@ -301,14 +304,12 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
             }
             let mut ok = ty::type_is_nil(fn_ty.sig.output);
             let num_args = vec::len(fn_ty.sig.inputs);
-            ok &= num_args == 0u || num_args == 1u &&
-                arg_is_argv_ty(tcx, fn_ty.sig.inputs[0]);
+            ok &= num_args == 0u;
             if !ok {
                 tcx.sess.span_err(
                     main_span,
                     fmt!("Wrong type in main function: found `%s`, \
-                          expected `extern fn(++v: ~[~str]) -> ()` \
-                          or `extern fn() -> ()`",
+                          expected `fn() -> ()`",
                          ty_to_str(tcx, main_t)));
             }
         }

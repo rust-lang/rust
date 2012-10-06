@@ -152,9 +152,9 @@ example, by changing `io::println` to some nonexistent function), and
 then compile it, you'll see an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: io::print_it
-hello.rs:2     io::print_it("hello? yes, this is rust");
-               ^~~~~~~~~~~~
+hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
+hello.rs:2     io::print_with_unicorns("hello? yes, this is rust");
+               ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
 In its simplest form, a Rust program is a `.rs` file with some types
@@ -162,12 +162,7 @@ and functions defined in it. If it has a `main` function, it can be
 compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file—all statements must
 live inside a function.  Rust programs can also be compiled as
-libraries, and included in other programs. The `extern mod std`
-directive that appears at the top of many examples imports the
-[standard library][std], described in more detail [later
-on](#modules-and-crates).
-
-[std]: http://doc.rust-lang.org/doc/std
+libraries, and included in other programs.
 
 ## Editing Rust code
 
@@ -178,9 +173,11 @@ included in that directory. In particular, if you are running emacs
 24, then using emacs's internal package manager to install `rust-mode`
 is the easiest way to keep it up to date. There is also a package for
 Sublime Text 2, available both [standalone][sublime] and through
-[Sublime Package Control][sublime-pkg].
+[Sublime Package Control][sublime-pkg], and support for Kate
+under `src/etc/kate`.
 
-Other editors are not provided for yet. If you end up writing a Rust
+There is ctags support via `src/etc/ctags.rust`, but many other
+tools and editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
 [sublime]: http://github.com/dbp/sublime-rust
@@ -191,7 +188,7 @@ mode for your favorite editor, let us know so that we can link to it.
 Assuming you've programmed in any C-family language (C++, Java,
 JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
 in blocks delineated by curly braces; there are control structures
-for branching and looping, like the familiar `if` and `when`; function
+for branching and looping, like the familiar `if` and `while`; function
 calls are written `myfunc(arg1, arg2)`; operators are written the same
 and mostly have the same precedence as in C; comments are again like C.
 
@@ -227,18 +224,24 @@ while count < 10 {
 }
 ~~~~
 
-Although Rust can almost always infer the types of local variables, it
-can help readability to specify a variable's type by following it with
-a colon, then the type name. 
+Although Rust can almost always infer the types of local variables, you
+can specify a variable's type by following it with a colon, then the type
+name. 
 
 ~~~~
-let my_favorite_value: float = 57.8;
-let my_favorite_value: int = my_favorite_value as int;
+let monster_size: float = 57.8;
+let imaginary_size = monster_size * 10.0;
+let monster_size: int = 50;
 ~~~~
 
 Local variables may shadow earlier declarations, as in the previous
-example in which `my_favorite_value` is first declared as a `float`
-then a second `my_favorite_value` is declared as an int.
+example in which `monster_size` is first declared as a `float`
+then a second `monster_size` is declared as an int. If you were to actually
+compile this example though, the compiler will see that the second
+`monster_size` is unused, assume that you have made a mistake, and issue
+a warning. For occasions where unused variables are intentional, their
+name may be prefixed with an underscore to silence the warning, like
+`let _monster_size = 50;`.
 
 Rust identifiers follow the same rules as C; they start with an alphabetic
 character or an underscore, and after that may contain any sequence of
@@ -248,14 +251,14 @@ underscores where they help readability, while writing types in camel case.
 
 ~~~
 let my_variable = 100;
-type MyType = int; // built-in types though are _not_ camel case
+type MyType = int;     // some built-in types are _not_ camel case
 ~~~
 
 ## Expression syntax
 
 Though it isn't apparent in all code, there is a fundamental
-difference between Rust's syntax and its predecessors in this family
-of languages. Many constructs that are statements in C are expressions
+difference between Rust's syntax and predecessors like C.
+Many constructs that are statements in C are expressions
 in Rust, allowing code to be more concise. For example, you might
 write a piece of code like this:
 
@@ -275,24 +278,25 @@ But, in Rust, you don't have to repeat the name `price`:
 
 ~~~~
 # let item = "salad";
-let price = if item == "salad" {
-    3.50
-} else if item == "muffin" {
-    2.25
-} else {
-    2.00
-};
+let price =
+    if item == "salad" {
+        3.50
+    } else if item == "muffin" {
+        2.25
+    } else {
+        2.00
+    };
 ~~~~
 
 Both pieces of code are exactly equivalent—they assign a value to
-`price` depending on the condition that holds. Note that the
-semicolons are omitted from the blocks in the second snippet. This is
+`price` depending on the condition that holds. Note that there
+are not semicolons in the blocks of the second snippet. This is
 important; the lack of a semicolon after the last statement in a
 braced block gives the whole block the value of that last expression.
 
 Put another way, the semicolon in Rust *ignores the value of an expression*.
 Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
-would simply assign nil (void) to `price`. But without the semicolon, each
+would simply assign `()` (nil or void) to `price`. But without the semicolon, each
 branch has a different value, and `price` gets the value of the branch that
 was taken.
 
@@ -320,7 +324,6 @@ something—in which case you'll have embedded it in a bigger statement.
 # fn foo() -> bool { true }
 # fn bar() -> bool { true }
 # fn baz() -> bool { true }
-
 // `let` is not an expression, so it is semi-colon terminated;
 let x = foo();
 
@@ -346,12 +349,11 @@ if x {
 let y = if x { foo() } else { bar() };
 ~~~
 
-This may sound a bit intricate, but it is super-useful, and it will
-grow on you (hopefully).
+This may sound intricate, but it is super-useful and will grow on you.
 
 ## Types
 
-The basic types include the usual boolean, integral, and floating point types.
+The basic types include the usual boolean, integral, and floating-point types.
 
 ------------------------- -----------------------------------------------
 `()`                      Nil, the type that has only a single value
@@ -360,17 +362,18 @@ The basic types include the usual boolean, integral, and floating point types.
 `i8`, `i16`, `i32`, `i64` Signed integers with a specific size (in bits)
 `u8`, `u16`, `u32`, `u64` Unsigned integers with a specific size
 `float`                   The largest floating-point type efficiently supported on the target machine
-`f32`, `f64`              Floating-point types with a specific size.
-`char`                    A Unicode character (32 bits).
+`f32`, `f64`              Floating-point types with a specific size
+`char`                    A Unicode character (32 bits)
 ------------------------- -----------------------------------------------
 
 These can be combined in composite types, which will be described in
-more detail later on (the `T`s here stand for any other type):
+more detail later on (the `T`s here stand for any other type,
+while N should be a literal number):
 
 ------------------------- -----------------------------------------------
 `[T * N]`                 Vector (like an array in other languages) with N elements
 `[mut T * N]`             Mutable vector with N elements
-`(T1, T2)`                Tuple type. Any arity above 1 is supported
+`(T1, T2)`                Tuple type; any arity above 1 is supported
 `&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
 ------------------------- -----------------------------------------------
 
@@ -392,7 +395,7 @@ the type `fn() -> bool` or the function declaration `fn foo() -> bool
 optionally write `-> ()`, but usually the return annotation is simply
 left off, as in `fn main() { ... }`.
 
-Types can be given names with `type` declarations:
+Types can be given names or aliases with `type` declarations:
 
 ~~~~
 type MonsterSize = uint;
@@ -401,9 +404,25 @@ type MonsterSize = uint;
 This will provide a synonym, `MonsterSize`, for unsigned integers. It will not
 actually create a new, incompatible type—`MonsterSize` and `uint` can be used
 interchangeably, and using one where the other is expected is not a type
-error. Read about [single-variant enums](#single_variant_enum)
-further on if you need to create a type name that's not just a
-synonym.
+error.
+
+To create data types which are not synonyms, `struct` and `enum`
+can be used. They're described in more detail below, but they look like this:
+
+~~~~
+enum HidingPlaces {
+   Closet(uint),
+   UnderTheBed(uint)
+}
+
+struct HeroicBabysitter {
+   bedtime_stories: uint,
+   sharpened_stakes: uint
+}
+
+struct BabysitterSize(uint);  // a single-variant struct
+enum MonsterSize = uint;      // a single-variant enum
+~~~~
 
 ## Literals
 
@@ -435,9 +454,37 @@ The nil literal is written just like the type: `()`. The keywords
 
 Character literals are written between single quotes, as in `'x'`. Just as in
 C, Rust understands a number of character escapes, using the backslash
-character, `\n`, `\r`, and `\t` being the most common. String literals,
+character, such as `\n`, `\r`, and `\t`. String literals,
 written between double quotes, allow the same escape sequences. Rust strings
 may contain newlines.
+
+## Constants
+
+Compile-time constants are declared with `const`. All scalar types,
+like integers and floats, may be declared `const`, as well as fixed
+length vectors, static strings (more on this later), and structs.
+Constants may be declared in any scope and may refer to other
+constants. Constant declarations are not type inferred, so must always
+have a type annotation.  By convention they are written in all capital
+letters.
+
+~~~
+// Scalars can be constants
+const MY_PASSWORD: int = 12345;
+
+// Scalar constants can be combined with other constants
+const MY_DOGGIES_PASSWORD: int = MY_PASSWORD + 1;
+
+// Fixed-length vectors
+const MY_VECTORY_PASSWORD: [int * 5] = [1, 2, 3, 4, 5];
+
+// Static strings
+const MY_STRINGY_PASSWORD: &static/str = "12345";
+
+// Structs
+struct Password { value: int }
+const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
+~~~
 
 ## Operators
 
@@ -466,8 +513,8 @@ assert y == 4u;
 
 The main difference with C is that `++` and `--` are missing, and that
 the logical bitwise operators have higher precedence — in C, `x & 2 > 0`
-comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
-more likely to be what you expect (unless you are a C veteran).
+means `x & (2 > 0)`, but in Rust, it means `(x & 2) > 0`, which is
+more likely what a novice expects.
 
 ## Syntax extensions
 
@@ -556,18 +603,14 @@ underscore (`_`) is a wildcard pattern that matches everything.
 
 The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
-convenient to use a block expression for a case, in which case the
+convenient to use a block expression for each case, in which case the
 commas are optional.
 
 ~~~
 # let my_number = 1;
 match my_number {
-  0 => {
-    io::println("zero")
-  }
-  _ => {
-    io::println("something else")
-  }
+  0 => { io::println("zero") }
+  _ => { io::println("something else") }
 }
 ~~~
 
@@ -686,12 +729,13 @@ omitted from the type, such an assignment would result in a type error.
 
 Structs can be destructured in `match` patterns. The basic syntax is
 `Name {fieldname: pattern, ...}`:
+
 ~~~~
 # struct Point { x: float, y: float }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x: 0.0, y: y } => { io::println(y.to_str());                    }
-    Point { x: x, y: y }   => { io::println(x.to_str() + " " + y.to_str()); }
+    Point { x: 0.0, y: yy } => { io::println(yy.to_str());                     }
+    Point { x: xx,  y: yy } => { io::println(xx.to_str() + " " + yy.to_str()); }
 }
 ~~~~
 
@@ -699,6 +743,35 @@ In general, the field names of a struct do not have to appear in the same
 order they appear in the type. When you are not interested in all
 the fields of a struct, a struct pattern may end with `, _` (as in
 `Name {field1, _}`) to indicate that you're ignoring all other fields.
+Additionally, struct fields have a shorthand matching form that simply
+reuses the field name as the binding name.
+
+~~~
+# struct Point { x: float, y: float }
+# let mypoint = Point { x: 0.0, y: 0.0 };
+match mypoint {
+    Point { x, _ } => { io::println(x.to_str()) }
+}
+~~~
+
+Structs are the only type in Rust that may have user-defined destructors,
+using `drop` blocks, inside of which the struct's value may be referred
+to with the name `self`.
+
+~~~
+struct TimeBomb {
+    explosivity: uint,
+
+    drop {
+        for iter::repeat(self.explosivity) {
+            io::println(fmt!("blam!"));
+        }
+    }
+}
+~~~
+
+> ***Note***: This destructor syntax is temporary. Eventually destructors
+> will be defined for any type using [traits](#traits).
 
 ## Enums
 
@@ -781,7 +854,7 @@ dereference (`*`) unary operator:
 
 ~~~~
 # enum GizmoId = int;
-let my_gizmo_id = GizmoId(10);
+let my_gizmo_id: GizmoId = GizmoId(10);
 let id_int: int = *my_gizmo_id;
 ~~~~
 
@@ -842,12 +915,8 @@ back to [later](#modules-and-crates)). They are introduced with the
 the return type follows the arrow.
 
 ~~~~
-fn repeat(string: &str, count: int) -> ~str {
-    let mut result = ~"";
-    for count.times {
-        result += string;
-    }
-    return result;
+fn line(a: int, b: int, x: int) -> int {
+    return a * x + b;
 }
 ~~~~
 
@@ -857,21 +926,8 @@ also return a value by having its top level block produce an
 expression.
 
 ~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus {
-        return ~"tube sock";
-    } else {
-        return ~"violin";
-    }
-}
-~~~~
-
-~~~~
-# const copernicus: int = 0;
-fn int_to_str(i: int) -> ~str {
-    if i == copernicus { ~"tube sock" }
-    else { ~"violin" }
+fn line(a: int, b: int, x: int) -> int {
+    a * x + b
 }
 ~~~~
 
@@ -883,6 +939,16 @@ the definition. The following two functions are equivalent.
 fn do_nothing_the_hard_way() -> () { return (); }
 
 fn do_nothing_the_easy_way() { }
+~~~~
+
+Ending the function with a semicolon like so is equivalent to returning `()`.
+
+~~~~
+fn line(a: int, b: int, x: int) -> int { a * x + b  }
+fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
+
+assert 8  == line(5, 3, 1);
+assert () == oops(5, 3, 1);
 ~~~~
 
 Methods are like functions, except that they are defined for a specific
@@ -984,7 +1050,7 @@ easy for programmers to reason about. Heap isolation has the
 additional benefit that garbage collection must only be done
 per-heap. Rust never "stops the world" to reclaim memory.
 
-Complete isolation of heaps between tasks implies that any data
+Complete isolation of heaps between tasks would, however, mean that any data
 transferred between tasks must be copied. While this is a fine and
 useful way to implement communication between tasks, it is also very
 inefficient for large data structures.  Because of this, Rust also
@@ -1096,6 +1162,9 @@ If you really want to copy a unique box you must say so explicitly.
 ~~~~
 let x = ~10;
 let y = copy x;
+
+let z = *x + *y;
+assert z == 20;
 ~~~~
 
 This is where the 'move' operator comes in. It is similar to
@@ -1104,9 +1173,11 @@ from `x` to `y`, without violating the constraint that it only has a
 single owner (if you used assignment instead of the move operator, the
 box would, in principle, be copied).
 
-~~~~
+~~~~ {.xfail-test}
 let x = ~10;
 let y = move x;
+
+let z = *x + *y; // would cause an error: use of moved variable: `x`
 ~~~~
 
 Owned boxes, when they do not contain any managed boxes, can be sent
@@ -1208,6 +1279,73 @@ For a more in-depth explanation of borrowed pointers, read the
 
 [borrowtut]: tutorial-borrowed-ptr.html
 
+## Dereferencing pointers
+
+Rust uses the unary star operator (`*`) to access the contents of a
+box or pointer, similarly to C.
+
+~~~
+let managed = @10;
+let owned = ~20;
+let borrowed = &30;
+
+let sum = *managed + *owned + *borrowed;
+~~~
+
+Dereferenced mutable pointers may appear on the left hand side of
+assignments, in which case the value they point to is modified.
+
+~~~
+let managed = @mut 10;
+let owned = ~mut 20;
+
+let mut value = 30;
+let borrowed = &mut value;
+
+*managed = *owned + 10;
+*owned = *borrowed + 100;
+*borrowed = *managed + 1000;
+~~~
+
+Pointers have high operator precedence, but lower precedence than the
+dot operator used for field and method access. This can lead to some
+awkward code filled with parenthesis.
+
+~~~
+# struct Point { x: float, y: float }
+# enum Shape { Rectangle(Point, Point) }
+# impl Shape { fn area() -> int { 0 } }
+let start = @Point { x: 10f, y: 20f };
+let end = ~Point { x: (*start).x + 100f, y: (*start).y + 100f };
+let rect = &Rectangle(*start, *end);
+let area = (*rect).area();
+~~~
+
+To combat this ugliness the dot operator performs _automatic pointer
+dereferencing_ on the receiver (the value on the left hand side of the
+dot), so in most cases dereferencing the receiver is not necessary.
+
+~~~
+# struct Point { x: float, y: float }
+# enum Shape { Rectangle(Point, Point) }
+# impl Shape { fn area() -> int { 0 } }
+let start = @Point { x: 10f, y: 20f };
+let end = ~Point { x: start.x + 100f, y: start.y + 100f };
+let rect = &Rectangle(*start, *end);
+let area = rect.area();
+~~~
+
+Auto-dereferencing is performed through any number of pointers. If you
+felt inclined you could write something silly like
+
+~~~
+# struct Point { x: float, y: float }
+let point = &@~Point { x: 10f, y: 20f };
+io::println(fmt!("%f", point.x));
+~~~
+
+The indexing operator (`[]`) is also auto-dereferencing.
+
 # Vectors and strings
 
 Vectors are a contiguous section of memory containing zero or more
@@ -1219,51 +1357,22 @@ pointers to vectors are also called 'slices'.
 enum Crayon {
     Almond, AntiqueBrass, Apricot,
     Aquamarine, Asparagus, AtomicTangerine,
-    BananaMania, Beaver, Bittersweet
+    BananaMania, Beaver, Bittersweet,
+    Black, BlizzardBlue, Blue
 }
 
 // A fixed-size stack vector
 let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
 
 // A borrowed pointer to stack allocated vector
-let stack_crayons: &[Crayon] = &[Almond, AntiqueBrass, Apricot];
+let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
 
 // A local heap (managed) vector of crayons
-let local_crayons: @[Crayon] = @[Aquamarine, Asparagus, AtomicTangerine];
+let local_crayons: @[Crayon] = @[BananaMania, Beaver, Bittersweet];
 
 // An exchange heap (owned) vector of crayons
-let exchange_crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+let exchange_crayons: ~[Crayon] = ~[Black, BlizzardBlue, Blue];
 ~~~
-
-Vector literals are enclosed in square brackets and dereferencing is
-also done with square brackets (zero-based):
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-# fn draw_scene(c: Crayon) { }
-
-let crayons = [BananaMania, Beaver, Bittersweet];
-match crayons[0] {
-    Bittersweet => draw_scene(crayons[0]),
-    _ => ()
-}
-~~~~
-
-By default, vectors are immutable—you can not replace their elements.
-The type written as `[mut T]` is a vector with mutable
-elements. Mutable vector literals are written `[mut]` (empty) or `[mut
-1, 2, 3]` (with elements).
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-
-let crayons = [mut BananaMania, Beaver, Bittersweet];
-crayons[0] = AtomicTangerine;
-~~~~
 
 The `+` operator means concatenation when applied to vector types.
 
@@ -1275,20 +1384,12 @@ The `+` operator means concatenation when applied to vector types.
 let my_crayons = ~[Almond, AntiqueBrass, Apricot];
 let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 
+// Add two vectors to create a new one
 let our_crayons = my_crayons + your_crayons;
-~~~~
 
-The `+=` operator also works as expected, provided the assignee
-lives in a mutable slot.
-
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-
-let mut my_crayons = ~[Almond, AntiqueBrass, Apricot];
-let your_crayons = ~[BananaMania, Beaver, Bittersweet];
-
+// += will append to a vector, provided it leves
+// in a mutable slot
+let mut my_crayons = move my_crayons;
 my_crayons += your_crayons;
 ~~~~
 
@@ -1297,30 +1398,79 @@ my_crayons += your_crayons;
 > not well supported yet, owned vectors are often the most
 > usable.
 
-Strings are simply vectors of `[u8]`, though they have a distinct
-type. They support most of the same allocation aptions as
+Indexing into vectors is done with square brackets:
+
+~~~~
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+# fn draw_scene(c: Crayon) { }
+let crayons: [Crayon * 3] = [BananaMania, Beaver, Bittersweet];
+match crayons[0] {
+    Bittersweet => draw_scene(crayons[0]),
+    _ => ()
+}
+~~~~
+
+The elements of a vector _inherit the mutability of the vector_,
+and as such individual elements may not be reassigned when the
+vector lives in an immutable slot.
+
+~~~ {.xfail-test}
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+
+crayons[0] = Apricot; // ERROR: Can't assign to immutable vector
+~~~
+
+Moving it into a mutable slot makes the elements assignable.
+
+~~~
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
+
+// Put the vector into a mutable slot
+let mut mutable_crayons = move crayons;
+
+// Now it's mutable to the bone
+mutable_crayons[0] = Apricot;
+~~~
+
+This is a simple example of Rust's _dual-mode data structures_, also
+referred to as _freezing and thawing_.
+
+Strings are implemented with vectors of `u8`, though they have a distinct
+type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
-Where
+Whereas plain vectors are stack-allocated fixed-length vectors,
+plain strings are region pointers to read-only memory. Strings
+are always immutable.
 
 ~~~
 // A plain string is a slice to read-only (static) memory
 let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
 
-// The same thing, but without
-let stack_crayons: &str = &"Almond, AntiqueBrass, Apricot";
+// The same thing, but with the `&`
+let stack_crayons: &str = &"Aquamarine, Asparagus, AtomicTangerine";
 
 // A local heap (managed) string
-let local_crayons: @str = @"Aquamarine, Asparagus, AtomicTangerine";
+let local_crayons: @str = @"BananMania, Beaver, Bittersweet";
 
 // An exchange heap (owned) string
-let exchange_crayons: ~str = ~"BananaMania, Beaver, Bittersweet";
+let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
 ~~~
 
 Both vectors and strings support a number of useful
-[methods](#implementation).  While we haven't covered methods yet,
-most vector functionality is provided by methods, so let's have a
-brief look at a few common ones.
+[methods](#functions-and-methods), defined in [`core::vec`]
+and [`core::str`]. Here are some examples.
+
+[`core::vec`]: core/vec.html
+[`core::str`]: core/str.html
 
 ~~~
 # use io::println;
@@ -1403,7 +1553,7 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-(~[1, 2, 3]).map(|x| if *x > max { max = *x });
+[1, 2, 3].map(|x| if *x > max { max = *x });
 ~~~~
 
 Stack closures are very efficient because their environment is
@@ -1431,8 +1581,7 @@ This code creates a closure that adds a given string to its argument,
 returns it from a function, and then calls it:
 
 ~~~~
-extern mod std;
-
+# extern mod std;
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
     return fn@(s: ~str) -> ~str { s + suffix };
 }
@@ -1479,7 +1628,7 @@ fn call_twice(f: fn()) { f(); f(); }
 call_twice(|| { ~"I am an inferred stack closure"; } );
 call_twice(fn&() { ~"I am also a stack closure"; } );
 call_twice(fn@() { ~"I am a managed closure"; });
-call_twice(fn~() { ~"I am a owned closure"; });
+call_twice(fn~() { ~"I am an owned closure"; });
 fn bare_function() { ~"I am a plain function"; }
 call_twice(bare_function);
 ~~~~
@@ -1490,9 +1639,12 @@ call_twice(bare_function);
 
 ## Do syntax
 
-Closures in Rust are frequently used in combination with higher-order
-functions to simulate control structures like `if` and
-`loop`. Consider this function that iterates over a vector of
+The `do` expression is syntactic sugar for use with functions which
+take a closure as a final argument, because closures in Rust
+are so frequently used in combination with higher-order
+functions.
+
+Consider this function which iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
@@ -1537,8 +1689,7 @@ do each(&[1, 2, 3]) |n| {
 The call is prefixed with the keyword `do` and, instead of writing the
 final closure inside the argument list it is moved outside of the
 parenthesis where it looks visually more like a typical block of
-code. The `do` expression is purely syntactic sugar for a call that
-takes a final closure argument.
+code.
 
 `do` is often used for task spawning.
 
@@ -1631,6 +1782,10 @@ fn contains(v: &[int], elt: int) -> bool {
 ~~~~
 
 `for` syntax only works with stack closures.
+
+> ***Note:*** This is, essentially, a special loop protocol:
+> the keywords `break`, `loop`, and `return` work, in varying degree,
+> with `while`, `loop`, `do`, and `for` constructs.
 
 # Generics
 
@@ -2036,6 +2191,9 @@ The compiler will now look for `poultry/chicken.rs` and
 and `poultry::turkey`. You can also provide a `poultry.rs` to add
 content to the `poultry` module itself.
 
+The compiler then builds the crate as a platform-specific shared library or
+executable which can be distributed.
+
 ## Using other crates
 
 Having compiled a crate that contains the `#[crate_type = "lib"]`
@@ -2082,7 +2240,7 @@ Rust program.
 
 This library is documented [here][core].
 
-[core]: http://doc.rust-lang.org/doc/core
+[core]: core/index.html
 
 ## A minimal example
 
@@ -2090,22 +2248,22 @@ Now for something that you can actually compile yourself. We have
 these two files:
 
 ~~~~
-// mylib.rs
-#[link(name = "mylib", vers = "1.0")];
-fn world() -> ~str { ~"world" }
+// world.rs
+#[link(name = "world", vers = "1.0")];
+fn explore() -> ~str { ~"world" }
 ~~~~
 
 ~~~~ {.ignore}
 // main.rs
-extern mod mylib;
-fn main() { io::println(~"hello " + mylib::world()); }
+extern mod world;
+fn main() { io::println(~"hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
 
 ~~~~ {.notrust}
-> rustc --lib mylib.rs
-> rustc main.rs -L .
+> rustc --lib world.rs  # compiles libworld-94839cbfe144198-1.0.so
+> rustc main.rs -L .    # compiles main
 > ./main
 "hello world"
 ~~~~
@@ -2125,12 +2283,14 @@ fn main() {
 }
 ~~~~
 
+
 It is also possible to import just the name of a module (`use
 std::list;`, then use `list::find`), to import all identifiers exported
 by a given module (`use io::*`), or to import a specific set
 of identifiers (`use math::{min, max, pi}`).
 
-You can rename an identifier when importing using the `=` operator:
+Rust uses different namespaces for modules, types, and values.  You
+can also rename an identifier when importing using the `=` operator:
 
 ~~~~
 use prnt = io::println;
@@ -2154,27 +2314,6 @@ This defines a rock-solid encryption algorithm. Code outside of the
 module can refer to the `enc::encrypt` and `enc::decrypt` identifiers
 just fine, but it does not have access to `enc::super_secret_number`.
 
-## Namespaces
-
-Rust uses three different namespaces: one for modules, one for types,
-and one for values. This means that this code is valid:
-
-~~~~
-#[legacy_exports]
-mod buffalo {
-    type buffalo = int;
-    fn buffalo<buffalo>(+buffalo: buffalo) -> buffalo { buffalo }
-}
-fn main() {
-    let buffalo: buffalo::buffalo = 1;
-    buffalo::buffalo::<buffalo::buffalo>(buffalo::buffalo(buffalo));
-}
-~~~~
-
-You don't want to write things like that, but it *is* very practical
-to not have to worry about name clashes between types, values, and
-modules.
-
 ## Resolution
 
 The resolution process in Rust simply goes up the chain of contexts,
@@ -2190,7 +2329,7 @@ Identifiers can shadow each other. In this program, `x` is of type
 type MyType = ~str;
 fn main() {
     type MyType = int;
-    let x: MyType;
+    let x: MyType = 17;
 }
 ~~~~
 
@@ -2198,13 +2337,17 @@ An `use` directive will only import into the namespaces for which
 identifiers are actually found. Consider this example:
 
 ~~~~
-mod foo { fn bar() {} }
-fn baz() {
-    let bar = 10u;
+mod foo {
+   fn bar() {}
+}
+
+fn main() {
+    let bar = 10;
 
     {
         use foo::bar;
         let quux = bar;
+        assert quux == 10;
     }
 }
 ~~~~

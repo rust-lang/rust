@@ -126,7 +126,8 @@ fn write_grid(f: io::Writer, g: grid_t) {
      }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#571)

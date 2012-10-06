@@ -14,7 +14,8 @@ extern mod libc {
     fn sqrt(n: float) -> float;
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"4000000"]
     } else if args.len() <= 1u {

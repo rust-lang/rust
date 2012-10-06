@@ -1,10 +1,7 @@
-//error-pattern: mismatched types
+//error-pattern: by-mutable-reference mode
 
 fn bad(&a: int) {
 }
-
-// unnamed argument &int is now parsed x: &int
-// it's not parsed &x: int anymore
 
 fn called(f: fn(&int)) {
 }

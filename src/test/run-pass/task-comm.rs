@@ -32,7 +32,7 @@ fn test00() {
     debug!("Creating tasks");
 
     let po = Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
 
     let mut i: int = 0;
 
@@ -69,7 +69,7 @@ fn test01() {
 
 fn test02() {
     let p = Port();
-    let c = Chan(p);
+    let c = Chan(&p);
     debug!("Writing to a local task channel.");
     send(c, 42);
     debug!("Reading from a local task port.");
@@ -101,7 +101,7 @@ fn test05_start(ch: Chan<int>) {
 
 fn test05() {
     let po = comm::Port();
-    let ch = Chan(po);
+    let ch = Chan(&po);
     task::spawn(|| test05_start(ch) );
     let mut value: int;
     value = recv(po);

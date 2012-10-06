@@ -6,10 +6,10 @@ fn a() {
     fn doit() {
         fn b(c: Chan<Chan<int>>) {
             let p = Port();
-            send(c, Chan(p));
+            send(c, Chan(&p));
         }
         let p = Port();
-        let ch = Chan(p);
+        let ch = Chan(&p);
         spawn(|| b(ch) );
         recv(p);
     }

@@ -1,15 +1,37 @@
 /*!
- * Operations on the ubiquitous `option` type.
- *
- * Type `option` represents an optional value.
- *
- * Every `Option<T>` value can either be `Some(T)` or `none`. Where in other
- * languages you might use a nullable type, in Rust you would use an option
- * type.
- */
 
-// NB: transitionary, de-mode-ing.
-#[warn(deprecated_mode)];
+Operations on the ubiquitous `Option` type.
+
+Type `Option` represents an optional value.
+
+Every `Option<T>` value can either be `Some(T)` or `None`. Where in other
+languages you might use a nullable type, in Rust you would use an option
+type.
+
+Options are most commonly used with pattern matching to query the presence
+of a value and take action, always accounting for the `None` case.
+
+# Example
+
+~~~
+let msg = Some(~"howdy");
+
+// Take a reference to the contained string
+match msg {
+    Some(ref m) => io::println(m),
+    None => ()
+}
+
+// Remove the contained string, destroying the Option
+let unwrapped_msg = match move msg {
+    Some(move m) => m,
+    None => ~"default message"
+};
+~~~
+
+*/
+
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
@@ -22,12 +44,19 @@ pub enum Option<T> {
 
 pub pure fn get<T: Copy>(opt: &Option<T>) -> T {
     /*!
-     * Gets the value out of an option
-     *
-     * # Failure
-     *
-     * Fails if the value equals `none`
-     */
+    Gets the value out of an option
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+    */
 
     match *opt {
       Some(copy x) => return x,
@@ -37,11 +66,18 @@ pub pure fn get<T: Copy>(opt: &Option<T>) -> T {
 
 pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     /*!
-     * Gets an immutable reference to the value inside an option.
-     *
-     * # Failure
-     *
-     * Fails if the value equals `none`
+    Gets an immutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
      */
     match *opt {
         Some(ref x) => x,
@@ -154,10 +190,20 @@ pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
 #[inline(always)]
 pub pure fn unwrap<T>(opt: Option<T>) -> T {
     /*!
-     * Moves a value out of an option type and returns it.
-     *
-     * Useful primarily for getting strings, vectors and unique pointers out
-     * of option types without copying them.
+    Moves a value out of an option type and returns it.
+
+    Useful primarily for getting strings, vectors and unique pointers out
+    of option types without copying them.
+
+    # Failure
+
+    Fails if the value equals `None`.
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged.
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
      */
     match move opt {
         Some(move x) => move x,
@@ -165,9 +211,16 @@ pub pure fn unwrap<T>(opt: Option<T>) -> T {
     }
 }
 
-/// The ubiquitous option dance.
 #[inline(always)]
 pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
+    /*!
+    The option dance. Moves a value out of an option type and returns it,
+    replacing the original with `None`.
+
+    # Failure
+
+    Fails if the value equals `None`.
+     */
     if opt.is_none() { fail ~"option::swap_unwrap none" }
     unwrap(util::replace(opt, None))
 }
@@ -201,18 +254,38 @@ impl<T> &Option<T> {
     pure fn iter(f: fn(x: &T)) { iter(self, f) }
     /// Maps a `some` value from one type to another by reference
     pure fn map<U>(f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
-    /// Gets an immutable reference to the value inside a `some`.
+    /**
+    Gets an immutable reference to the value inside an option.
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+     */
     pure fn get_ref() -> &self/T { get_ref(self) }
 }
 
 impl<T: Copy> Option<T> {
     /**
-     * Gets the value out of an option
-     *
-     * # Failure
-     *
-     * Fails if the value equals `none`
-     */
+    Gets the value out of an option
+
+    # Failure
+
+    Fails if the value equals `None`
+
+    # Safety note
+
+    In general, because this function may fail, its use is discouraged
+    (calling `get` on `None` is akin to dereferencing a null pointer).
+    Instead, prefer to use pattern matching and handle the `None`
+    case explicitly.
+    */
     pure fn get() -> T { get(&self) }
     pure fn get_default(def: T) -> T { get_default(&self, def) }
     /**
@@ -252,10 +325,10 @@ impl<T: Eq> Option<T> : Eq {
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;
-    let addr_x = ptr::p2::addr_of(&(*x));
+    let addr_x = ptr::addr_of(&(*x));
     let opt = Some(x);
     let y = unwrap(opt);
-    let addr_y = ptr::p2::addr_of(&(*y));
+    let addr_y = ptr::addr_of(&(*y));
     assert addr_x == addr_y;
 }
 

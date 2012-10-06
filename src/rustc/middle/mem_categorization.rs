@@ -523,9 +523,6 @@ impl &mem_categorization_ctxt {
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
             let {m,lp} = match ty::resolved_mode(self.tcx, mode) {
-              ast::by_mutbl_ref => {
-                {m: m_mutbl, lp: None}
-              }
               ast::by_move | ast::by_copy => {
                 {m: m_imm, lp: Some(@lp_arg(vid))}
               }

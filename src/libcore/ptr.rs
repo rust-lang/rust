@@ -1,5 +1,8 @@
 //! Unsafe pointer utility functions
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use cmp::{Eq, Ord};
 use libc::{c_void, size_t};
 
@@ -27,12 +30,6 @@ extern mod rusti {
 /// Get an unsafe pointer to a value
 #[inline(always)]
 pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
-
-pub mod p2 {
-    /// Get an unsafe pointer to a value
-    #[inline(always)]
-    pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
-}
 
 /// Get an unsafe mut pointer to a value
 #[inline(always)]

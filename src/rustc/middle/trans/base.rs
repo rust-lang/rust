@@ -21,7 +21,7 @@ use session::session;
 use syntax::attr;
 use back::{link, abi, upcall};
 use syntax::{ast, ast_util, codemap, ast_map};
-use ast_util::{local_def, path_to_ident};
+use ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::visit;
 use syntax::codemap::span;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
@@ -1503,7 +1503,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
         // the event it's not truly needed.
         let llarg;
         match ty::resolved_mode(tcx, arg_ty.mode) {
-            ast::by_ref | ast::by_mutbl_ref => {
+            ast::by_ref => {
                 llarg = raw_llarg;
             }
             ast::by_move | ast::by_copy => {
@@ -1847,8 +1847,48 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms) => {
-        meth::trans_impl(ccx, *path, item.ident, ms, tps);
+      ast::item_impl(tps, trait_refs, self_ast_ty, ms) => {
+        meth::trans_impl(ccx, *path, item.ident, ms, tps, None);
+
+        // Translate any methods that have provided implementations.
+        for trait_refs.each |trait_ref_ptr| {
+            let trait_def = ccx.tcx.def_map.get(trait_ref_ptr.ref_id);
+
+            // XXX: Cross-crate default methods.
+            let trait_id = def_id_of_def(trait_def);
+            if trait_id.crate != ast::local_crate {
+                loop;
+            }
+
+            // Get the self type.
+            let self_ty;
+            match ccx.tcx.ast_ty_to_ty_cache.get(self_ast_ty) {
+                ty::atttce_resolved(self_type) => self_ty = self_type,
+                ty::atttce_unresolved => {
+                    ccx.tcx.sess.impossible_case(item.span,
+                                                 ~"didn't cache self ast ty");
+                }
+            }
+
+            match ccx.tcx.items.get(trait_id.node) {
+                ast_map::node_item(trait_item, _) => {
+                    match trait_item.node {
+                        ast::item_trait(tps, _, trait_methods) => {
+                            trans_trait(ccx, tps, trait_methods, path,
+                                        item.ident, self_ty);
+                        }
+                        _ => {
+                            ccx.tcx.sess.impossible_case(item.span,
+                                                         ~"trait item not a \
+                                                           trait");
+                        }
+                    }
+                }
+                _ => {
+                    ccx.tcx.sess.impossible_case(item.span, ~"no trait item");
+                }
+            }
+        }
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -1872,9 +1912,6 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       }
       ast::item_class(struct_def, tps) => {
         trans_struct_def(ccx, struct_def, tps, path, item.ident, item.id);
-      }
-      ast::item_trait(tps, _, trait_methods) => {
-        trans_trait(ccx, tps, trait_methods, path, item.ident);
       }
       _ => {/* fall through */ }
     }
@@ -1900,15 +1937,16 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // If there are ty params, the ctor will get monomorphized
 
     // Translate methods
-    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps);
+    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None);
 }
 
 fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
                trait_methods: ~[ast::trait_method],
-               path: @ast_map::path, ident: ast::ident) {
+               path: @ast_map::path, ident: ast::ident,
+               self_ty: ty::t) {
     // Translate any methods that have provided implementations
     let (_, provided_methods) = ast_util::split_trait_methods(trait_methods);
-    meth::trans_impl(ccx, *path, ident, provided_methods, tps);
+    meth::trans_impl(ccx, *path, ident, provided_methods, tps, Some(self_ty));
 }
 
 // Translate a module. Doing this amounts to translating the items in the
@@ -1953,32 +1991,23 @@ fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
     let is_main = is_main_name(path) && !ccx.sess.building_library;
-    if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
+    if is_main { create_main_wrapper(ccx, sp, llfn); }
     llfn
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
-                       main_node_type: ty::t) {
+fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
 
     if ccx.main_fn != None::<ValueRef> {
         ccx.sess.span_fatal(sp, ~"multiple 'main' functions");
     }
 
-    let main_takes_argv =
-        // invariant!
-        match ty::get(main_node_type).sty {
-          ty::ty_fn(ref fn_ty) => fn_ty.sig.inputs.len() != 0u,
-          _ => ccx.sess.span_fatal(sp, ~"main has a non-function type")
-        };
-
-    let llfn = create_main(ccx, main_llfn, main_takes_argv);
+    let llfn = create_main(ccx, main_llfn);
     ccx.main_fn = Some(llfn);
     create_entry_fn(ccx, llfn);
 
-    fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef,
-                   takes_argv: bool) -> ValueRef {
+    fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
         let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
@@ -1998,9 +2027,6 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = ~[lloutputarg, llenvarg];
-        if takes_argv {
-            args.push(llvm::LLVMGetParam(llfdecl, 2 as c_uint));
-        }
         Call(bcx, main_llfn, args);
 
         build_return(bcx);

@@ -31,9 +31,10 @@ use libc::size_t;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    fn move_val_init<T>(&dst: T, -src: T);
+    fn move_val_init<T>(dst: &mut T, -src: T);
     fn needs_drop<T>() -> bool;
 }
+
 extern mod rustrt {
     #[rust_stack]
     fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
@@ -127,7 +128,6 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (reinterpret_cast(&(p & !1)), p & 1 == 1)
 }
 
-// The duplication between the POD and non-POD functions is annoying.
 impl &Arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
@@ -166,7 +166,7 @@ impl &Arena {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
             let ptr: *mut T = reinterpret_cast(&ptr);
-            rusti::move_val_init(*ptr, op());
+            rusti::move_val_init(&mut (*ptr), op());
             return reinterpret_cast(&ptr);
         }
     }
@@ -217,7 +217,7 @@ impl &Arena {
             // has *not* been initialized yet.
             *ty_ptr = reinterpret_cast(&tydesc);
             // Actually initialize it
-            rusti::move_val_init(*ptr, op());
+            rusti::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);

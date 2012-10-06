@@ -47,7 +47,7 @@ mod map_reduce {
               None => {
                 let p = Port();
                 error!("sending find_reducer");
-                send(ctrl, find_reducer(str::to_bytes(key), Chan(p)));
+                send(ctrl, find_reducer(str::to_bytes(key), Chan(&p)));
                 error!("receiving");
                 c = recv(p);
                 log(error, c);
@@ -70,7 +70,7 @@ mod map_reduce {
 
         reducers = map::HashMap();
 
-        start_mappers(Chan(ctrl), inputs);
+        start_mappers(Chan(&ctrl), inputs);
 
         let mut num_mappers = vec::len(inputs) as int;
 

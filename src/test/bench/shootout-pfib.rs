@@ -81,7 +81,8 @@ fn stress(num_tasks: int) {
     for results.each |r| { future::get(r); }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"20"]
     } else if args.len() <= 1u {

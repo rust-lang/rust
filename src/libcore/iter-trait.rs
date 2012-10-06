@@ -2,7 +2,8 @@
 // workaround our lack of traits and lack of macros.  See core.{rc,rs} for
 // how this file is used.
 
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
 use inst::{IMPL_T, EACH, SIZE_HINT};

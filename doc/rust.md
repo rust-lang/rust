@@ -773,8 +773,8 @@ A view item manages the namespace of a module; it does not define new items
 but simply changes the visibility of other items. There are several kinds of
 view item:
 
- * [extern mod declarations](#extern-mod-declarations)
- * [use declarations](#use-declarations)
+ * [`extern mod` declarations](#extern-mod-declarations)
+ * [`use` declarations](#use-declarations)
 
 ##### Extern mod declarations
 
@@ -784,7 +784,7 @@ link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
 
-An _extern mod declaration_ specifies a dependency on an external crate.
+An _`extern mod` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
@@ -960,24 +960,12 @@ pure fn pure_length<T>(ls: List<T>) -> uint { ... }
 pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
-*TODO:* should actually define referential transparency.
-
-The effect checking rules previously enumerated are a restricted set
-of typechecking rules meant to approximate the universe of observably
-referentially transparent Rust procedures conservatively. Sometimes,
-these rules are *too* restrictive. Rust allows programmers to violate
-these rules by writing pure functions that the compiler cannot prove
-to be referentially transparent, using "unsafe blocks". When writing
-code that uses unsafe blocks, programmers should always be aware that
-they have an obligation to show that the code *behaves* referentially
-transparently at all times, even if the compiler cannot *prove*
-automatically that the code is referentially transparent. In the
-presence of unsafe blocks, the compiler provides no static guarantee
-that the code will behave as expected at runtime. Rather, the
-programmer has an independent obligation to verify the semantics of
-the pure functions they write.
-
-*TODO:* last two sentences are vague.
+These purity-checking rules approximate the concept of referential transparency:
+that a call-expression could be rewritten with the literal-expression of its return value, without changing the meaning of the program.
+Since they are an approximation, sometimes these rules are *too* restrictive.
+Rust allows programmers to violate these rules using [`unsafe` blocks](#unsafe-blocks).
+As with any `unsafe` block, those that violate static purity carry transfer the burden of safety-proof from the compiler to the programmer.
+Programmers should exercise caution when breaking such rules.
 
 An example of a pure function that uses an unsafe block:
 
@@ -1045,6 +1033,28 @@ Similarly, [trait](#traits) bounds can be specified for type
 parameters to allow methods with that trait to be called on values
 of that type.
 
+#### Unsafe functions
+
+Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
+
+Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
+Specifically, the following operations are considered unsafe:
+
+  - Dereferencing a [raw pointer](#pointer-types)
+  - Casting a [raw pointer](#pointer-types) to a safe pointer type
+  - Breaking the [purity-checking rules](#pure-functions)
+  - Calling an unsafe function
+
+##### Unsafe blocks
+
+A block of code can also be prefixed with the `unsafe` keyword,
+to permit a sequence of unsafe operations in an otherwise-safe function.
+This facility exists because the static semantics of a Rust are a necessary approximation of the dynamic semantics.
+When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe,
+they can encapsulate that sequence (taken as a whole) within an `unsafe` block.
+The compiler will consider uses of such code "safe", to the surrounding context.
+
+
 #### Extern functions
 
 Extern functions are part of Rust's foreign function interface, providing
@@ -1059,7 +1069,7 @@ extern fn new_vec() -> ~[int] { ~[] }
 ~~~
 
 Extern functions may not be called from Rust code, but their value
-may be taken as an unsafe `u8` pointer.
+may be taken as a raw `u8` pointer.
 
 ~~~
 # extern fn new_vec() -> ~[int] { ~[] }
@@ -1468,6 +1478,25 @@ structure of expressions. Blocks themselves are expressions, so the nesting
 sequence of block, statement, expression, and block can repeatedly nest to an
 arbitrary depth.
 
+#### Lvalues, rvalues and temporaries
+
+Expressions are divided into two main categories: _lvalues_ and _rvalues_.
+Likewise within each expression, sub-expressions may occur in _lvalue context_ or _rvalue context_.
+The evaluation of an expression depends both on its own category and the context it occurs within.
+
+Path, field and index expressions are lvalues.
+All other expressions are rvalues.
+
+The left operand of an assignment expression and the operand of the borrow operator are lvalue contexts.
+All other expression contexts are rvalue contexts.
+
+When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
+when evaluated in an _rvalue context_, it denotes the value held _in_ that memory location.
+
+When an rvalue is used in lvalue context, a temporary un-named lvalue is created and used instead.
+A temporary's lifetime equals the largest lifetime of any borrowed pointer that points to it.
+
+
 ### Literal expressions
 
 A _literal expression_ consists of one of the [literal](#literals)
@@ -1708,9 +1737,9 @@ A type cast expression is denoted with the binary operator `as`.
 Executing an `as` expression casts the value on the left-hand side to the type
 on the right-hand side.
 
-A numeric value can be cast to any numeric type.  An unsafe pointer value can
-be cast to or from any integral type or unsafe pointer type.  Any other cast
-is unsupported and will fail to compile.
+A numeric value can be cast to any numeric type.
+A raw pointer value can be cast to or from any integral type or raw pointer type.
+Any other cast is unsupported and will fail to compile.
 
 An example of an `as` expression:
 
@@ -2277,30 +2306,25 @@ logging level:
 // Full version, logging a value.
 log(core::error, ~"file not found: " + filename);
 
-// Log-level abbreviated, since core::* is imported by default.
+// Log-level abbreviated, since core::* is used by default.
 log(error, ~"file not found: " + filename);
 
-// Formatting the message using a format-string and #fmt
+// Formatting the message using a format-string and fmt!
 log(error, fmt!("file not found: %s", filename));
 
-// Using the #error macro, that expands to the previous call.
+// Using the error! macro, that expands to the previous call.
 error!("file not found: %s", filename);
 ~~~~
 
-A `log` expression is *not evaluated* when logging at the specified
-logging-level, module or task is disabled at runtime. This makes inactive
-`log` expressions very cheap; they should be used extensively in Rust
-code, as diagnostic aids, as they add little overhead beyond a single
-integer-compare and branch at runtime.
+A `log` expression is *not evaluated* when logging at the specified logging-level, module or task is disabled at runtime.
+This makes inactive `log` expressions very cheap;
+they should be used extensively in Rust code, as diagnostic aids,
+as they add little overhead beyond a single integer-compare and branch at runtime.
 
-Logging is presently implemented as a language built-in feature, as it makes
-use of compiler-provided logic for allocating the associated per-module
-logging-control structures visible to the runtime, and lazily evaluating
-arguments. In the future, as more of the supporting compiler-provided logic is
-moved into libraries, logging is likely to move to a component of the core
-library. It is best to use the macro forms of logging (*#error*,
-*#debug*, etc.) to minimize disruption to code using the logging facility
-when it is changed.
+Logging is presently implemented as a language built-in feature,
+as it makes use of compiler-provided, per-module data tables and flags.
+In the future, logging will move into a library, and will no longer be a core expression type.
+It is therefore recommended to use the macro forms of logging (`error!`, `debug!`, etc.) to minimize disruption in code that uses logging.
 
 
 ### Assert expressions
@@ -2481,27 +2505,53 @@ tuple of arguments.
 Enumerated types cannot be denoted *structurally* as types, but must be
 denoted by named reference to an [*enumeration* item](#enumerations).
 
-### Box types
+### Pointer types
 
-Box types are represented as pointers. There are three flavours of
-pointers:
+All pointers in Rust are explicit first-class values.
+They can be copied, stored into data structures, and returned from functions.
+There are four varieties of pointer in Rust:
 
-Shared boxes (`@`)
-  : These are reference-counted boxes. Their type is written
-    `@content`, for example `@int` means a shared box containing an
-    integer. Copying a value of such a type means copying the pointer
-    and increasing the reference count.
+Managed pointers (`@`)
+  : These point to managed heap allocations (or "boxes") in the task-local, managed heap.
+    Managed pointers are written `@content`,
+    for example `@int` means a managed pointer to a managed box containing an integer.
+    Copying a managed pointer is a "shallow" operation:
+    it involves only copying the pointer itself
+    (as well as any reference-count or GC-barriers required by the managed heap).
+    Dropping a managed pointer does not necessarily release the box it points to;
+    the lifecycles of managed boxes are subject to an unspecified garbage collection algorithm.
 
-Unique boxes (`~`)
-  : Unique boxes have only a single owner, and are freed when their
-    owner releases them. They are written `~content`. Copying a
-    unique box involves copying the contents into a new box.
+Owning pointers (`~`)
+  : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
+    Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
+    Owning pointers are written `~content`,
+    for example `~int` means an owning pointer to an owned box containing an integer.
+    Copying an owned box is a "deep" operation:
+    it involves allocating a new owned box and copying the contents of the old box into the new box.
+    Releasing an owning pointer immediately releases its corresponding owned box.
 
-Unsafe pointers (`*`)
-  : Unsafe pointers are pointers without safety guarantees or
-    language-enforced semantics. Their type is written `*content`.
-    They can be copied and dropped freely. Dereferencing an unsafe
-    pointer is part of the unsafe sub-dialect of Rust.
+Borrowed pointers (`&`)
+  : These point to memory _owned by some other value_.
+    Borrowed pointers arise by (automatic) conversion from owning pointers, managed pointers,
+    or by applying the borrowing operator `&` to some other value,
+    including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
+    Borrowed pointers are written `&content`, or in some cases `&f/content` for some lifetime-variable `f`,
+    for example `&int` means a borrowed pointer to an integer.
+    Copying a borrowed pointer is a "shallow" operation:
+    it involves only copying the pointer itself.
+    Releasing a borrowed pointer typically has no effect on the value it points to,
+    with the exception of temporary values,
+    which are released when the last borrowed pointer to them is released.
+
+Raw pointers (`*`)
+  : Raw pointers are pointers without safety or liveness guarantees.
+    Raw pointers are written `*content`,
+    for example `*int` means a raw pointer to an integer.
+    Copying or dropping a raw pointer is has no effect on the lifecycle of any other value.
+    Dereferencing a raw pointer or converting it to any other pointer type is an [`unsafe` operation](#unsafe-functions).
+    Raw pointers are generally discouraged in Rust code;
+    they exist to support interoperability with foreign code,
+    and writing performance-critical or low-level functions.
 
 ### Function types
 
@@ -2678,20 +2728,17 @@ the box values pointing to it. Since box values may themselves be passed in
 and out of frames, or stored in the heap, heap allocations may outlive the
 frame they are allocated within.
 
-
 ### Memory ownership
 
 A task owns all memory it can *safely* reach through local variables,
-shared or unique boxes, and/or references. Sharing memory between tasks can
-only be accomplished using *unsafe* constructs, such as raw pointer
-operations or calling C code.
+as well as managed, owning and borrowed pointers.
 
-When a task sends a value that has the `send` trait over a channel, it
-loses ownership of the value sent and can no longer refer to it. This is
-statically guaranteed by the combined use of "move semantics" and the
-compiler-checked _meaning_ of the `send` trait: it is only instantiated
-for (transitively) unique kinds of data constructor and pointers, never shared
-pointers.
+When a task sends a value that has the `Send` trait to another task,
+it loses ownership of the value sent and can no longer refer to it.
+This is statically guaranteed by the combined use of "move semantics",
+and the compiler-checked _meaning_ of the `Send` trait:
+it is only instantiated for (transitively) sendable kinds of data constructor and pointers,
+never including managed or borrowed pointers.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both shared and owned) are dropped.
@@ -2737,14 +2784,12 @@ aside a copy of that value to refer to. If this is not semantically safe (for
 example, if the referred-to value contains mutable fields), it will reject the
 program. If the compiler deems copying the value expensive, it will warn.
 
-A function can be declared to take an argument by mutable reference. This
-allows the function to write to the slot that the reference refers to.
-
-An example function that accepts an value by mutable reference:
+A function with an argument of type `&mut T`, for some type `T`, can write to
+the slot that its argument refers to. An example of such a function is:
 
 ~~~~~~~~
-fn incr(&i: int) {
-    i = i + 1;
+fn incr(i: &mut int) {
+    *i = *i + 1;
 }
 ~~~~~~~~
 
@@ -2832,54 +2877,21 @@ exploiting.]
 
 ### Communication between tasks
 
-With the exception of *unsafe* blocks, Rust tasks are isolated from
-interfering with one another's memory directly. Instead of manipulating shared
-storage, Rust tasks communicate with one another using a typed, asynchronous,
-simplex message-passing system.
+Rust tasks are isolated and generally unable to interfere with one another's memory directly,
+except through [`unsafe` code](#unsafe-functions).
+All contact between tasks is mediated by safe forms of ownership transfer,
+and data races on memory are prohibited by the type system.
 
-A _port_ is a communication endpoint that can *receive* messages. Ports
-receive messages from channels.
+Inter-task communication and co-ordination facilities are provided in the standard library.
+These include:
+  - synchronous and asynchronous communication channels with various communication topologies
+  - read-only and read-write shared variables with various safe mutual exclusion patterns
+  - simple locks and semaphores
 
-A _channel_ is a communication endpoint that can *send* messages. Channels
-send messages to ports.
-
-Each port is implicitly boxed and mutable; as such a port has a unique
-per-task identity and cannot be replicated or transmitted. If a port value is
-copied, both copies refer to the *same* port. New ports can be
-constructed dynamically and stored in data structures.
-
-Each channel is bound to a port when the channel is constructed, so the
-destination port for a channel must exist before the channel itself. A channel
-cannot be rebound to a different port from the one it was constructed with.
-
-Channels are weak: a channel does not keep the port it is bound to
-alive. Ports are owned by their allocating task and cannot be sent over
-channels; if a task dies its ports die with it, and all channels bound to
-those ports no longer function. Messages sent to a channel connected to a dead
-port will be dropped.
-
-Channels are immutable types with meaning known to the runtime; channels can
-be sent over channels.
-
-Many channels can be bound to the same port, but each channel is bound to a
-single port. In other words, channels and ports exist in an N:1 relationship,
-N channels to 1 port. ^[It may help to remember nautical terminology
-when differentiating channels from ports.  Many different waterways --
-channels -- may lead to the same port.]
-
-Each port and channel can carry only one type of message. The message type is
-encoded as a parameter of the channel or port type. The message type of a
-channel is equal to the message type of the port it is bound to. The types of
-messages must satisfy the `send` built-in trait.
-
-Messages are generally sent asynchronously, with optional
-rate-limiting on the transmit side.  Each port contains a message
-queue and sending a message over a channel merely means inserting it
-into the associated port's queue; message receipt is the
-responsibility of the receiving task.
-
-Messages are sent on channels and received on ports using standard library
-functions.
+When such facilities carry values, the values are restricted to the [`Send` type-kind](#type-kinds).
+Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
+Thus access to an entire data structure can be mediated through its owning "root" value;
+no further locking or copying is required to avoid data races within the substructure of such a value.
 
 
 ### Task lifecycle
@@ -2896,12 +2908,11 @@ A task begins its lifecycle -- once it has been spawned -- in the *running*
 state. In this state it executes the statements of its entry function, and any
 functions called by the entry function.
 
-A task may transition from the *running* state to the *blocked* state any time
-it makes a blocking receive call on a port, or attempts a rate-limited
-blocking send on a channel. When the communication expression can be completed
--- when a message arrives at a sender, or a queue drains sufficiently to
-complete a rate-limited send -- then the blocked task will unblock and
-transition back to *running*.
+A task may transition from the *running* state to the *blocked*
+state any time it makes a blocking communication call. When the
+call can be completed -- when a message arrives at a sender, or a
+buffer opens to receive a message -- then the blocked task will
+unblock and transition back to *running*.
 
 A task may transition to the *failing* state at any time, due being
 killed by some external event or internally, from the evaluation of a
@@ -2952,7 +2963,7 @@ An example of a `spawn` call:
 
 ~~~~
 let po = comm::Port();
-let ch = comm::Chan(po);
+let ch = comm::Chan(&po);
 
 do task::spawn {
     // let task run, do other things
@@ -2974,7 +2985,7 @@ An example of a send:
 
 ~~~~
 let po = comm::Port();
-let ch = comm::Chan(po);
+let ch = comm::Chan(&po);
 comm::send(ch, ~"hello, world");
 ~~~~
 
@@ -2990,7 +3001,7 @@ An example of a *receive*:
 
 ~~~~~~~~
 # let po = comm::Port();
-# let ch = comm::Chan(po);
+# let ch = comm::Chan(&po);
 # comm::send(ch, ~"");
 let s = comm::recv(po);
 ~~~~~~~~

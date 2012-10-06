@@ -4,6 +4,9 @@ More runtime type reflection
 
 */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use dvec::DVec;
 use io::{Writer, WriterUtil};
 use libc::c_void;

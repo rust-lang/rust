@@ -67,11 +67,6 @@ command_line_args : public kernel_owned<command_line_args>
     }
 };
 
-// A global that indicates whether Rust typestate claim statements should be
-// executed Generated code will read this variable directly (I think).
-// FIXME (#2670): This belongs somewhere else
-int check_claims = 0;
-
 void* global_crate_map = NULL;
 
 /**
@@ -93,9 +88,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     update_gc_metadata(crate_map);
 
     update_log_settings(crate_map, env->logspec);
-
-    // Maybe turn on typestate claim checking
-    check_claims = env->check_claims;
 
     rust_kernel *kernel = new rust_kernel(env);
 

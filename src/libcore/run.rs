@@ -1,5 +1,5 @@
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+#[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
@@ -296,7 +296,7 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     // or the other. FIXME (#2625): Surely there's a much more
     // clever way to do this.
     let p = comm::Port();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, move errput));

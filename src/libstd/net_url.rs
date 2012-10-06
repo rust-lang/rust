@@ -1,5 +1,5 @@
 //! Types/fns concerning URLs (see RFC 3986)
-// tjc: forbid deprecated modes again after a snapshot
+#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use map::HashMap;
@@ -27,15 +27,15 @@ type UserInfo = {
 
 pub type Query = ~[(~str, ~str)];
 
-pub fn Url(scheme: ~str, +user: Option<UserInfo>, +host: ~str,
-       +port: Option<~str>, +path: ~str, +query: Query,
-       +fragment: Option<~str>) -> Url {
+pub fn Url(scheme: ~str, user: Option<UserInfo>, host: ~str,
+       port: Option<~str>, path: ~str, query: Query,
+       fragment: Option<~str>) -> Url {
     Url { scheme: move scheme, user: move user, host: move host,
          port: move port, path: move path, query: move query,
          fragment: move fragment }
 }
 
-fn UserInfo(user: ~str, +pass: Option<~str>) -> UserInfo {
+fn UserInfo(user: ~str, pass: Option<~str>) -> UserInfo {
     {user: move user, pass: move pass}
 }
 
@@ -726,7 +726,7 @@ impl Url : Eq {
 }
 
 impl Url: IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         unsafe { self.to_str() }.iter_bytes(lsb0, f)
     }
 }

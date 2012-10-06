@@ -7,7 +7,7 @@ fn start(+token: int) {
     use iter::*;
 
     let p = comm::Port();
-    let mut ch = comm::Chan(p);
+    let mut ch = comm::Chan(&p);
     for int::range(2, n_threads + 1) |i| {
         let id = n_threads + 2 - i;
         let to_child = do task::spawn_listener::<int> |p, copy ch| {
@@ -37,7 +37,8 @@ fn roundtrip(id: int, p: comm::Port<int>, ch: comm::Chan<int>) {
     }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"2000000"]
     } else if args.len() <= 1u {

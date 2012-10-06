@@ -103,7 +103,7 @@ impl devnull: io::Writer {
 fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
 {
     let p: comm::Port<line> = comm::Port();
-    let ch = comm::Chan(p);
+    let ch = comm::Chan(&p);
     comm::send(writech, ch);
     let cout: io::Writer = match path {
         ~"" => {
@@ -151,7 +151,8 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
     }
 }
 
-fn main(++args: ~[~str]) {
+fn main() {
+    let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"4000", ~"10"]
     } else {
@@ -168,7 +169,7 @@ fn main(++args: ~[~str]) {
     else { uint::from_str(args[1]).get() };
 
     let writep = comm::Port();
-    let writech = comm::Chan(writep);
+    let writech = comm::Chan(&writep);
     do task::spawn {
         writer(path, writech, size);
     };

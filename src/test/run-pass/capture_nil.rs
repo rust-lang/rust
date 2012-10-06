@@ -17,7 +17,7 @@ use comm::*;
 
 fn foo(&&x: ()) -> Port<()> {
     let p = Port();
-    let c = Chan(p);
+    let c = Chan(&p);
     do task::spawn() |copy c, copy x| {
         c.send(x);
     }

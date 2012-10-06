@@ -16,6 +16,7 @@ export enc_ty;
 export enc_bounds;
 export enc_mode;
 export enc_arg;
+export enc_vstore;
 
 type ctxt = {
     diag: span_handler,
@@ -332,7 +333,6 @@ fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
 
 fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
-      by_mutbl_ref => w.write_char('&'),
       by_move => w.write_char('-'),
       by_copy => w.write_char('+'),
       by_ref => w.write_char('='),

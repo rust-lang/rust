@@ -1,5 +1,8 @@
 // Core operators and kinds.
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 #[lang="const"]
 pub trait Const {
     // Empty.

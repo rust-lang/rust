@@ -93,7 +93,7 @@ fn exec<T:Send>(
     +f: fn~(ctxt: Ctxt) -> T
 ) -> T {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
         comm::send(ch, f(ctxt))
     });

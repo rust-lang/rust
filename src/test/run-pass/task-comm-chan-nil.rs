@@ -7,7 +7,7 @@ extern mod std;
 // or not this is desirable I don't know, but here's a regression test.
 fn main() {
     let po = comm::Port();
-    let ch = comm::Chan(po);
+    let ch = comm::Chan(&po);
     comm::send(ch, ());
     let n: () = comm::recv(po);
     assert (n == ());

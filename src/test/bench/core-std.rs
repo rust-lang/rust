@@ -8,7 +8,8 @@ use std::map::{Map, HashMap};
 
 use io::{Reader, ReaderUtil};
 
-fn main(++argv: ~[~str]) {
+fn main() {
+    let argv = os::args();
     #macro[
         [#bench[id],
          maybe_run_test(argv, #stringify(id), id)

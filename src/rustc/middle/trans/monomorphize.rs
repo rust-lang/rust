@@ -156,9 +156,10 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         d
       }
       ast_map::node_method(mth, _, _) => {
+        // XXX: What should the self type be here?
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
-        meth::trans_method(ccx, pt, mth, psubsts, d);
+        meth::trans_method(ccx, pt, mth, psubsts, None, d);
         d
       }
       ast_map::node_ctor(_, tps, ctor, parent_id, _) => {

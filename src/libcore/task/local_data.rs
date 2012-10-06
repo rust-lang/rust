@@ -78,7 +78,7 @@ pub unsafe fn local_data_modify<T: Owned>(
 }
 
 #[test]
-pub fn test_tls_multitask() unsafe {
+fn test_tls_multitask() unsafe {
     fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"parent data");
     do task::spawn unsafe {
@@ -94,7 +94,7 @@ pub fn test_tls_multitask() unsafe {
 }
 
 #[test]
-pub fn test_tls_overwrite() unsafe {
+fn test_tls_overwrite() unsafe {
     fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"first data");
     local_data_set(my_key, @~"next data"); // Shouldn't leak.
@@ -102,7 +102,7 @@ pub fn test_tls_overwrite() unsafe {
 }
 
 #[test]
-pub fn test_tls_pop() unsafe {
+fn test_tls_pop() unsafe {
     fn my_key(_x: @~str) { }
     local_data_set(my_key, @~"weasel");
     assert *(local_data_pop(my_key).get()) == ~"weasel";
@@ -111,7 +111,7 @@ pub fn test_tls_pop() unsafe {
 }
 
 #[test]
-pub fn test_tls_modify() unsafe {
+fn test_tls_modify() unsafe {
     fn my_key(_x: @~str) { }
     local_data_modify(my_key, |data| {
         match data {
@@ -130,7 +130,7 @@ pub fn test_tls_modify() unsafe {
 }
 
 #[test]
-pub fn test_tls_crust_automorestack_memorial_bug() unsafe {
+fn test_tls_crust_automorestack_memorial_bug() unsafe {
     // This might result in a stack-canary clobber if the runtime fails to set
     // sp_limit to 0 when calling the cleanup extern - it might automatically
     // jump over to the rust stack, which causes next_c_sp to get recorded as
@@ -143,7 +143,7 @@ pub fn test_tls_crust_automorestack_memorial_bug() unsafe {
 }
 
 #[test]
-pub fn test_tls_multiple_types() unsafe {
+fn test_tls_multiple_types() unsafe {
     fn str_key(_x: @~str) { }
     fn box_key(_x: @@()) { }
     fn int_key(_x: @int) { }
@@ -155,7 +155,7 @@ pub fn test_tls_multiple_types() unsafe {
 }
 
 #[test]
-pub fn test_tls_overwrite_multiple_types() {
+fn test_tls_overwrite_multiple_types() {
     fn str_key(_x: @~str) { }
     fn box_key(_x: @@()) { }
     fn int_key(_x: @int) { }
@@ -171,7 +171,7 @@ pub fn test_tls_overwrite_multiple_types() {
 #[test]
 #[should_fail]
 #[ignore(cfg(windows))]
-pub fn test_tls_cleanup_on_failure() unsafe {
+fn test_tls_cleanup_on_failure() unsafe {
     fn str_key(_x: @~str) { }
     fn box_key(_x: @@()) { }
     fn int_key(_x: @int) { }

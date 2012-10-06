@@ -73,7 +73,8 @@ bounded and unbounded protocols allows for less code duplication.
 */
 
 // NB: transitionary, de-mode-ing.
-// tjc: re-forbid deprecated modes after snapshot
+// tjc: allowing deprecated modes due to function issue,
+// re-forbid after snapshot
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
@@ -859,7 +860,7 @@ endpoint is passed to the new task.
 pub fn spawn_service<T: Send, Tb: Send>(
     init: extern fn() -> (SendPacketBuffered<T, Tb>,
                           RecvPacketBuffered<T, Tb>),
-    +service: fn~(v: RecvPacketBuffered<T, Tb>))
+    service: fn~(v: RecvPacketBuffered<T, Tb>))
     -> SendPacketBuffered<T, Tb>
 {
     let (client, server) = init();
@@ -883,7 +884,7 @@ receive state.
 pub fn spawn_service_recv<T: Send, Tb: Send>(
     init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                           SendPacketBuffered<T, Tb>),
-    +service: fn~(v: SendPacketBuffered<T, Tb>))
+    service: fn~(v: SendPacketBuffered<T, Tb>))
     -> RecvPacketBuffered<T, Tb>
 {
     let (client, server) = init();

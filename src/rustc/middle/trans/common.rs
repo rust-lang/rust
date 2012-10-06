@@ -963,8 +963,13 @@ fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-fn T_opaque_trait(cx: @crate_ctxt) -> TypeRef {
-    T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
+fn T_opaque_trait(cx: @crate_ctxt, vstore: ty::vstore) -> TypeRef {
+    match vstore {
+        ty::vstore_box =>
+            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)]),
+        _ =>
+            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())])
+    }
 }
 
 fn T_opaque_port_ptr() -> TypeRef { return T_ptr(T_i8()); }

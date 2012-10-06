@@ -4181,9 +4181,9 @@ impl Resolver {
         }
 
         return self.resolve_identifier(path.idents.last(),
-                                    namespace,
-                                    check_ribs,
-                                    path.span);
+                                       namespace,
+                                       check_ribs,
+                                       path.span);
     }
 
     fn resolve_identifier(identifier: ident,

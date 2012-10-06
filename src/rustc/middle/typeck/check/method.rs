@@ -221,9 +221,9 @@ impl LookupContext {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(p);
                 }
-                ty_trait(did, ref substs, _) => {
+                ty_trait(did, ref substs, vstore) => {
                     self.push_inherent_candidates_from_trait(
-                        self_ty, did, substs);
+                        self_ty, did, substs, vstore);
                     self.push_inherent_impl_candidates_for_type(did);
                 }
                 ty_self => {
@@ -232,7 +232,7 @@ impl LookupContext {
                     let self_did = self.fcx.self_impl_def_id.expect(
                         ~"unexpected `none` for self_impl_def_id");
                     let substs = {self_r: None, self_ty: None, tps: ~[]};
-                    self.push_inherent_candidates_from_trait(
+                    self.push_inherent_candidates_from_self(
                         self_ty, self_did, &substs);
                 }
                 ty_enum(did, _) | ty_class(did, _) => {
@@ -347,7 +347,8 @@ impl LookupContext {
     fn push_inherent_candidates_from_trait(&self,
                                            self_ty: ty::t,
                                            did: def_id,
-                                           substs: &ty::substs)
+                                           substs: &ty::substs,
+                                           vstore: ty::vstore)
     {
         debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
                self.did_to_str(did),
@@ -391,7 +392,34 @@ impl LookupContext {
             rcvr_substs: move rcvr_substs,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
-            origin: method_trait(did, index)
+            origin: method_trait(did, index, vstore)
+        });
+    }
+
+    fn push_inherent_candidates_from_self(&self,
+                                          self_ty: ty::t,
+                                          did: def_id,
+                                          substs: &ty::substs) {
+        let tcx = self.tcx();
+        let methods = ty::trait_methods(tcx, did);  // XXX: Inherited methods.
+        let index;
+        match vec::position(*methods, |m| m.ident == self.m_name) {
+            Some(i) => index = i,
+            None => return
+        }
+        let method = &methods[index];
+
+        let rcvr_substs = { self_ty: Some(self_ty), ..*substs };
+        let (rcvr_ty, rcvr_substs) =
+            self.create_rcvr_ty_and_substs_for_method(
+                method.self_ty, self_ty, move rcvr_substs);
+
+        self.inherent_candidates.push(Candidate {
+            rcvr_ty: rcvr_ty,
+            rcvr_substs: move rcvr_substs,
+            num_method_tps: method.tps.len(),
+            self_mode: get_mode_from_self_type(method.self_ty),
+            origin: method_self(did, index)
         });
     }
 
@@ -735,7 +763,7 @@ impl LookupContext {
          * vtable and hence cannot be monomorphized. */
 
         match candidate.origin {
-            method_static(*) | method_param(*) => {
+            method_static(*) | method_param(*) | method_self(*) => {
                 return; // not a call to a trait instance
             }
             method_trait(*) => {}
@@ -770,7 +798,7 @@ impl LookupContext {
             method_param(ref mp) => {
                 type_of_trait_method(self.tcx(), mp.trait_id, mp.method_num)
             }
-            method_trait(did, idx) => {
+            method_trait(did, idx, _) | method_self(did, idx) => {
                 type_of_trait_method(self.tcx(), did, idx)
             }
         };
@@ -791,7 +819,7 @@ impl LookupContext {
             method_param(mp) => {
                 self.report_param_candidate(idx, mp.trait_id)
             }
-            method_trait(trait_did, _) => {
+            method_trait(trait_did, _, _) | method_self(trait_did, _) => {
                 self.report_param_candidate(idx, trait_did)
             }
         }
