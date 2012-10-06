@@ -1448,7 +1448,7 @@ mutable_crayons[0] = Apricot;
 This is a simple example of Rust's _dual-mode data structures_, also
 referred to as _freezing and thawing_.
 
-Strings are implemented with vectors of `[u8]`, though they have a distinct
+Strings are implemented with vectors of `u8`, though they have a distinct
 type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil, e.g.
 `"foo"` is treated differently than a comparable vector (`[foo]`).
