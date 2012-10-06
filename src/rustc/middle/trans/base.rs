@@ -21,7 +21,7 @@ use session::session;
 use syntax::attr;
 use back::{link, abi, upcall};
 use syntax::{ast, ast_util, codemap, ast_map};
-use ast_util::{local_def, path_to_ident};
+use ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::visit;
 use syntax::codemap::span;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
@@ -1847,8 +1847,33 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms) => {
+      ast::item_impl(tps, trait_refs, _, ms) => {
         meth::trans_impl(ccx, *path, item.ident, ms, tps);
+
+        // Translate any methods that have provided implementations.
+        for trait_refs.each |trait_ref_ptr| {
+            let trait_def = ccx.tcx.def_map.get(trait_ref_ptr.ref_id);
+
+            // XXX: Cross-crate default methods.
+            match ccx.tcx.items.get(def_id_of_def(trait_def).node) {
+                ast_map::node_item(trait_item, _) => {
+                    match trait_item.node {
+                        ast::item_trait(tps, _, trait_methods) => {
+                            trans_trait(ccx, tps, trait_methods, path,
+                                        item.ident);
+                        }
+                        _ => {
+                            ccx.tcx.sess.impossible_case(item.span,
+                                                         ~"trait item not a \
+                                                           trait");
+                        }
+                    }
+                }
+                _ => {
+                    ccx.tcx.sess.impossible_case(item.span, ~"no trait item");
+                }
+            }
+        }
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -1872,9 +1897,6 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       }
       ast::item_class(struct_def, tps) => {
         trans_struct_def(ccx, struct_def, tps, path, item.ident, item.id);
-      }
-      ast::item_trait(tps, _, trait_methods) => {
-        trans_trait(ccx, tps, trait_methods, path, item.ident);
       }
       _ => {/* fall through */ }
     }
