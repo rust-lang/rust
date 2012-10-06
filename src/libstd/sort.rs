@@ -1043,6 +1043,27 @@ mod test_tim_sort {
         tim_sort(arr);
         fail ~"Guarantee the fail";
     }
+
+    struct DVal { val: ~uint }
+    impl DVal: Ord {
+        pure fn lt(other: &DVal) -> bool { true }
+        pure fn le(other: &DVal) -> bool { true }
+        pure fn gt(other: &DVal) -> bool { true }
+        pure fn ge(other: &DVal) -> bool { true }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_bad_Ord_impl() {
+        let rng = rand::Rng();
+        let mut arr = do vec::from_fn(500) |_i| {
+            let randVal = rng.gen_uint();
+            DVal { val: ~randVal }
+        };
+
+        tim_sort(arr);
+        fail ~"Guarantee the fail";
+    }
 }
 
 /*fn f<T: Ord>(array: &[mut T]) { array[0] <-> array[0] }
