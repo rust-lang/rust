@@ -1869,11 +1869,6 @@ pub pure fn escape_unicode(s: &str) -> ~str {
     move out
 }
 
-extern mod rustrt {
-    #[rust_stack]
-    pure fn upcall_str_new_shared(cstr: *libc::c_char, len: size_t) -> @str;
-}
-
 /// Unsafe operations
 pub mod raw {
 
@@ -2221,10 +2216,10 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn to_managed() -> @str {
-        do str::as_buf(self) |p, _len| {
-            rustrt::upcall_str_new_shared(p as *libc::c_char,
-                                          self.len() as size_t)
-        }
+        let v = at_vec::from_fn(self.len() + 1, |i| {
+            if i == self.len() { 0 } else { self[i] }
+        });
+        unsafe { ::cast::transmute(v) }
     }
 
     #[inline]
