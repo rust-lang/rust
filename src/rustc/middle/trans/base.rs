@@ -1503,7 +1503,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
         // the event it's not truly needed.
         let llarg;
         match ty::resolved_mode(tcx, arg_ty.mode) {
-            ast::by_ref | ast::by_mutbl_ref => {
+            ast::by_ref => {
                 llarg = raw_llarg;
             }
             ast::by_move | ast::by_copy => {

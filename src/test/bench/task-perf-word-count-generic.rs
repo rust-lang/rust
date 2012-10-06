@@ -144,7 +144,7 @@ mod map_reduce {
     fn start_mappers<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send,
                      V: Copy Send>(
         map: &mapper<K1, K2, V>,
-        &ctrls: ~[ctrl_proto::server::open<K2, V>],
+        ctrls: &mut ~[ctrl_proto::server::open<K2, V>],
         inputs: &~[K1])
         -> ~[joinable_task]
     {
@@ -213,9 +213,9 @@ mod map_reduce {
         let mut is_done = false;
 
         fn get<V: Copy Send>(p: Port<reduce_proto<V>>,
-                             &ref_count: int, &is_done: bool)
+                             ref_count: &mut int, is_done: &mut bool)
            -> Option<V> {
-            while !is_done || ref_count > 0 {
+            while !*is_done || *ref_count > 0 {
                 match recv(p) {
                   emit_val(v) => {
                     // error!("received %d", v);
@@ -223,16 +223,16 @@ mod map_reduce {
                   }
                   done => {
                     // error!("all done");
-                    is_done = true;
+                    *is_done = true;
                   }
-                  addref => { ref_count += 1; }
-                  release => { ref_count -= 1; }
+                  addref => { *ref_count += 1; }
+                  release => { *ref_count -= 1; }
                 }
             }
             return None;
         }
 
-        (*reduce)(&key, || get(p, ref_count, is_done) );
+        (*reduce)(&key, || get(p, &mut ref_count, &mut is_done) );
     }
 
     fn map_reduce<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
@@ -246,7 +246,7 @@ mod map_reduce {
         // to do the rest.
 
         let reducers = map::HashMap();
-        let mut tasks = start_mappers(&map, ctrl, &inputs);
+        let mut tasks = start_mappers(&map, &mut ctrl, &inputs);
         let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
