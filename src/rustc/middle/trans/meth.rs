@@ -27,7 +27,8 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
-              methods: ~[@ast::method], tps: ~[ast::ty_param]) {
+              methods: ~[@ast::method], tps: ~[ast::ty_param],
+              self_ty: Option<ty::t>) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
@@ -35,7 +36,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path, path_name(method.ident));
-            trans_method(ccx, path, *method, None, llfn);
+            trans_method(ccx, path, *method, None, self_ty, llfn);
         }
     }
 }
@@ -49,12 +50,16 @@ Translates a (possibly monomorphized) method body.
 - `method`: the AST node for the method
 - `param_substs`: if this is a generic method, the current values for
   type parameters and so forth, else none
+- `base_self_ty`: optionally, the explicit self type for this method. This
+  will be none if this is not a default method and must always be present
+  if this is a default method.
 - `llfn`: the LLVM ValueRef for the method
 */
 fn trans_method(ccx: @crate_ctxt,
                 path: path,
                 method: &ast::method,
                 param_substs: Option<param_substs>,
+                base_self_ty: Option<ty::t>,
                 llfn: ValueRef) {
 
     // figure out how self is being passed
@@ -65,7 +70,11 @@ fn trans_method(ccx: @crate_ctxt,
       _ => {
         // determine the (monomorphized) type that `self` maps to for
         // this method
-        let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
+        let self_ty;
+        match base_self_ty {
+            None => self_ty = ty::node_id_to_type(ccx.tcx, method.self_id),
+            Some(provided_self_ty) => self_ty = provided_self_ty
+        }
         let self_ty = match param_substs {
           None => self_ty,
           Some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)

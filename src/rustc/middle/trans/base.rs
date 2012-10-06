@@ -1848,19 +1848,25 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         }
       }
       ast::item_impl(tps, trait_refs, _, ms) => {
-        meth::trans_impl(ccx, *path, item.ident, ms, tps);
+        meth::trans_impl(ccx, *path, item.ident, ms, tps, None);
 
         // Translate any methods that have provided implementations.
         for trait_refs.each |trait_ref_ptr| {
             let trait_def = ccx.tcx.def_map.get(trait_ref_ptr.ref_id);
 
             // XXX: Cross-crate default methods.
-            match ccx.tcx.items.get(def_id_of_def(trait_def).node) {
+            let trait_id = def_id_of_def(trait_def);
+            if trait_id.crate != ast::local_crate {
+                loop;
+            }
+
+            match ccx.tcx.items.get(trait_id.node) {
                 ast_map::node_item(trait_item, _) => {
                     match trait_item.node {
                         ast::item_trait(tps, _, trait_methods) => {
+                            // XXX: ty_self is wrong here. Get the real type.
                             trans_trait(ccx, tps, trait_methods, path,
-                                        item.ident);
+                                        item.ident, ty::mk_self(ccx.tcx));
                         }
                         _ => {
                             ccx.tcx.sess.impossible_case(item.span,
@@ -1922,15 +1928,16 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // If there are ty params, the ctor will get monomorphized
 
     // Translate methods
-    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps);
+    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None);
 }
 
 fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
                trait_methods: ~[ast::trait_method],
-               path: @ast_map::path, ident: ast::ident) {
+               path: @ast_map::path, ident: ast::ident,
+               self_ty: ty::t) {
     // Translate any methods that have provided implementations
     let (_, provided_methods) = ast_util::split_trait_methods(trait_methods);
-    meth::trans_impl(ccx, *path, ident, provided_methods, tps);
+    meth::trans_impl(ccx, *path, ident, provided_methods, tps, Some(self_ty));
 }
 
 // Translate a module. Doing this amounts to translating the items in the
