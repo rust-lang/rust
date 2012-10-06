@@ -879,10 +879,10 @@ parentheses.
 # enum Direction { North, East, South, West }
 fn point_from_direction(dir: Direction) -> Point {
     match dir {
-        North => {x:  0f, y:  1f},
-        East  => {x:  1f, y:  0f},
-        South => {x:  0f, y: -1f},
-        West  => {x: -1f, y:  0f}
+        North => Point {x:  0f, y:  1f},
+        East  => Point {x:  1f, y:  0f},
+        South => Point {x:  0f, y: -1f},
+        West  => Point {x: -1f, y:  0f}
     }
 }
 ~~~~
