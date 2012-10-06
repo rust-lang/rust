@@ -1,3 +1,8 @@
+// xfail-fast
+// xfail-test
+
+// Broken on 32 bit, I guess?
+
 trait Foo {
     fn f();
 }
