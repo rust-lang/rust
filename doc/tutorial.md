@@ -1,4 +1,4 @@
-% Rust Language Tutorial
+% The Rust Language Tutorial
 
 # Introduction
 
