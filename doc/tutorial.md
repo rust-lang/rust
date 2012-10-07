@@ -1618,10 +1618,8 @@ call_twice(bare_function);
 
 ## Do syntax
 
-The `do` expression is syntactic sugar for use with functions which
-take a closure as a final argument, because closures in Rust
-are so frequently used in combination with higher-order
-functions.
+The `do` expression provides a way to treat higher-order functions
+(functions that take closures as arguments) as control structures.
 
 Consider this function which iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
@@ -1636,20 +1634,22 @@ fn each(v: &[int], op: fn(v: &int)) {
 }
 ~~~~
 
-The reason we pass in a *pointer* to an integer rather than the
-integer itself is that this is how the actual `each()` function for
-vectors works.  Using a pointer means that the function can be used
-for vectors of any type, even large structs that would be impractical
-to copy out of the vector on each iteration.  As a caller, if we use a
-closure to provide the final operator argument, we can write it in a
-way that has a pleasant, block-like structure.
+As an aside, the reason we pass in a *pointer* to an integer rather
+than the integer itself is that this is how the actual `each()`
+function for vectors works. `vec::each` though is a
+[generic](#generics) function, so must be efficient to use for all
+types. Passing the elements by pointer avoids copying potentially
+large objects.
+
+As a caller, if we use a closure to provide the final operator
+argument, we can write it in a way that has a pleasant, block-like
+structure.
 
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
-# fn do_some_work(i: int) { }
+# fn do_some_work(i: &int) { }
 each(&[1, 2, 3], |n| {
-    debug!("%i", *n);
-    do_some_work(*n);
+    do_some_work(n);
 });
 ~~~~
 
@@ -1658,10 +1658,9 @@ call that can be written more like a built-in control structure:
 
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
-# fn do_some_work(i: int) { }
+# fn do_some_work(i: &int) { }
 do each(&[1, 2, 3]) |n| {
-    debug!("%i", *n);
-    do_some_work(*n);
+    do_some_work(n);
 }
 ~~~~
 
@@ -1670,7 +1669,9 @@ final closure inside the argument list it is moved outside of the
 parenthesis where it looks visually more like a typical block of
 code.
 
-`do` is often used for task spawning.
+`do` is often used to create tasks with the `task::spawn` function.
+`spawn` has the signature `spawn(fn: fn~())`. In other words, it
+is a function that takes an owned closure that takes no arguments.
 
 ~~~~
 use task::spawn;
@@ -1680,9 +1681,9 @@ do spawn() || {
 }
 ~~~~
 
-That's nice, but look at all those bars and parentheses - that's two empty
-argument lists back to back. Wouldn't it be great if they weren't
-there?
+Look at all those bars and parentheses - that's two empty argument
+lists back to back. Since that is so unsightly, empty argument lists
+may be omitted from `do` expressions.
 
 ~~~~
 # use task::spawn;
@@ -1690,8 +1691,6 @@ do spawn {
    debug!("Kablam!");
 }
 ~~~~
-
-Empty argument lists can be omitted from `do` expressions.
 
 ## For loops
 
