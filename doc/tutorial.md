@@ -128,19 +128,7 @@ fn main() {
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce an executable called `hello` (or `hello.exe` on
-Windows) which, upon running, will likely do exactly what you expect
-(unless you are on Windows, in which case what it does is subject
-to local weather conditions).
-
-> ***Note:*** That may or may not be hyperbole, but there are some
-> 'gotchas' to be aware of on Windows. First, the MinGW environment
-> must be set up perfectly. Please read [the
-> wiki][wiki-started]. Second, `rustc` may need to be [referred to as
-> `rustc.exe`][bug-3319]. It's a bummer, I know, and I am so very
-> sorry.
-
-[bug-3319]: https://github.com/mozilla/rust/issues/3319
-[wiki-started]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+Windows) which, upon running, will likely do exactly what you expect.
 
 The Rust compiler tries to provide useful information when it runs
 into an error. If you modify the program to make it invalid (for
@@ -159,6 +147,15 @@ compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file—all statements must
 live inside a function.  Rust programs can also be compiled as
 libraries, and included in other programs.
+
+> ***Note:*** There are some 'gotchas' to be aware of on
+> Windows. First, the MinGW environment must be set up
+> perfectly. Please read [the wiki][wiki-started]. Second, `rustc` may
+> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, I
+> know.
+
+[bug-3319]: https://github.com/mozilla/rust/issues/3319
+[wiki-started]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 
 ## Editing Rust code
 
