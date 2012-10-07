@@ -1335,13 +1335,12 @@ stored on the stack, the local heap, or the exchange heap. Borrowed
 pointers to vectors are also called 'slices'.
 
 ~~~
-enum Crayon {
-    Almond, AntiqueBrass, Apricot,
-    Aquamarine, Asparagus, AtomicTangerine,
-    BananaMania, Beaver, Bittersweet,
-    Black, BlizzardBlue, Blue
-}
-
+# enum Crayon {
+#     Almond, AntiqueBrass, Apricot,
+#     Aquamarine, Asparagus, AtomicTangerine,
+#     BananaMania, Beaver, Bittersweet,
+#     Black, BlizzardBlue, Blue
+# }
 // A fixed-size stack vector
 let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
 
@@ -1368,8 +1367,7 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 // Add two vectors to create a new one
 let our_crayons = my_crayons + your_crayons;
 
-// += will append to a vector, provided it leves
-// in a mutable slot
+// += will append to a vector, provided it lives in a mutable slot
 let mut my_crayons = move my_crayons;
 my_crayons += your_crayons;
 ~~~~
