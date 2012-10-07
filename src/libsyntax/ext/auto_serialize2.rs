@@ -215,6 +215,86 @@ fn expand_auto_deserialize(
 }
 
 priv impl ext_ctxt {
+    fn expr(span: span, node: ast::expr_) -> @ast::expr {
+        @{id: self.next_id(), callee_id: self.next_id(),
+          node: node, span: span}
+    }
+
+    fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
+        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
+    }
+
+    fn path_tps(span: span, strs: ~[ast::ident],
+                tps: ~[@ast::ty]) -> @ast::path {
+        @{span: span, global: false, idents: strs, rp: None, types: tps}
+    }
+
+    fn ty_path(span: span, strs: ~[ast::ident],
+               tps: ~[@ast::ty]) -> @ast::ty {
+        @{id: self.next_id(),
+          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
+          span: span}
+    }
+
+    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
+        let path = @{span: span, global: false, idents: ~[nm],
+                     rp: None, types: ~[]};
+        @{id: self.next_id(),
+          node: ast::pat_ident(ast::bind_by_implicit_ref,
+                               path,
+                               None),
+          span: span}
+    }
+
+    fn stmt(expr: @ast::expr) -> @ast::stmt {
+        @{node: ast::stmt_semi(expr, self.next_id()),
+          span: expr.span}
+    }
+
+    fn lit_str(span: span, s: @~str) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_vstore(
+                self.expr(
+                    span,
+                    ast::expr_lit(
+                        @{node: ast::lit_str(s),
+                          span: span})),
+                ast::expr_vstore_uniq))
+    }
+
+    fn lit_uint(span: span, i: uint) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_lit(
+                @{node: ast::lit_uint(i as u64, ast::ty_u),
+                  span: span}))
+    }
+
+    fn lambda(blk: ast::blk) -> @ast::expr {
+        let ext_cx = self;
+        let blk_e = self.expr(blk.span, ast::expr_block(blk));
+        #ast{ || $(blk_e) }
+    }
+
+    fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
+        {node: {view_items: ~[],
+                stmts: stmts,
+                expr: None,
+                id: self.next_id(),
+                rules: ast::default_blk},
+         span: span}
+    }
+
+    fn expr_blk(expr: @ast::expr) -> ast::blk {
+        {node: {view_items: ~[],
+                stmts: ~[],
+                expr: Some(expr),
+                id: self.next_id(),
+                rules: ast::default_blk},
+         span: expr.span}
+    }
+
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
     }
