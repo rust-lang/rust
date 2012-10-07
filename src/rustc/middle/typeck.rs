@@ -56,7 +56,6 @@ use middle::ty::{vstore_uniq};
 use std::smallintmap;
 use std::map;
 use std::map::HashMap;
-use std::serialization::{serialize_uint, deserialize_uint};
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
                   bound_region_to_str, vstore_to_str, expr_repr};
@@ -67,9 +66,8 @@ use list::{List, Nil, Cons};
 export check_crate;
 export infer;
 export method_map;
-export method_origin, serialize_method_origin, deserialize_method_origin;
-export method_map_entry, serialize_method_map_entry;
-export deserialize_method_map_entry;
+export method_origin;
+export method_map_entry;
 export vtable_map;
 export vtable_res;
 export vtable_origin;
@@ -77,7 +75,8 @@ export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 
-#[auto_serialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
@@ -94,7 +93,8 @@ enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[auto_serialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 type method_param = {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
