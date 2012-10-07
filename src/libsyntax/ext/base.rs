@@ -54,7 +54,7 @@ enum syntax_extension {
     // macro_defining() is obsolete, remove when #old_macros go away.
     macro_defining(macro_definer),
 
-    // #[auto_serialize] and such. will probably survive death of #old_macros
+    // #[auto_serialize2] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
     // Token-tree expanders

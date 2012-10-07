@@ -5,19 +5,19 @@ use syntax::print::pprust::path_to_str;
 use std::map::*;
 use option::*;
 use syntax::{ast, ast_util, visit};
-use syntax::ast::{serialize_span, deserialize_span};
 use syntax::codemap::span;
 
 export annotate_freevars;
 export freevar_map;
 export freevar_info;
-export freevar_entry, serialize_freevar_entry, deserialize_freevar_entry;
+export freevar_entry;
 export get_freevars;
 export has_freevars;
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
-#[auto_serialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 type freevar_entry = {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
