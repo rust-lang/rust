@@ -75,6 +75,8 @@ export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum method_origin {
@@ -93,6 +95,8 @@ enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 type method_param = {

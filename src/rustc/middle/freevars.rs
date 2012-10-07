@@ -16,6 +16,8 @@ export has_freevars;
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 type freevar_entry = {
