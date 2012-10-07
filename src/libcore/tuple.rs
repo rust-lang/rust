@@ -6,13 +6,13 @@
 
 use cmp::{Eq, Ord};
 
-pub trait TupleOps<T,U> {
+pub trait CopyableTuple<T, U> {
     pure fn first() -> T;
     pure fn second() -> U;
     pure fn swap() -> (U, T);
 }
 
-impl<T: Copy, U: Copy> (T, U): TupleOps<T,U> {
+impl<T: Copy, U: Copy> (T, U): CopyableTuple<T, U> {
 
     /// Return the first element of self
     pure fn first() -> T {
@@ -32,6 +32,24 @@ impl<T: Copy, U: Copy> (T, U): TupleOps<T,U> {
         return (u, t);
     }
 
+}
+
+pub trait ImmutableTuple<T, U> {
+    pure fn first_ref(&self) -> &self/T;
+    pure fn second_ref(&self) -> &self/U;
+}
+
+impl<T, U> (T, U): ImmutableTuple<T, U> {
+    pure fn first_ref(&self) -> &self/T {
+        match *self {
+            (ref t, _) => t,
+        }
+    }
+    pure fn second_ref(&self) -> &self/U {
+        match *self {
+            (_, ref u) => u,
+        }
+    }
 }
 
 pub trait ExtendedTupleOps<A,B> {
@@ -143,6 +161,13 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
     pure fn le(other: &(A, B, C)) -> bool { !(*other).lt(&self) }
     pure fn ge(other: &(A, B, C)) -> bool { !self.lt(other) }
     pure fn gt(other: &(A, B, C)) -> bool { (*other).lt(&self)  }
+}
+
+#[test]
+fn test_tuple_ref() {
+    let (~"foo", ~"bar");
+    assert x.first_ref() == &~"foo";
+    assert x.second_ref() == &~"bar";
 }
 
 #[test]
