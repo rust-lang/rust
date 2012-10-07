@@ -686,19 +686,7 @@ For more involved iteration, such as going over the elements of a
 collection, Rust uses higher-order functions. We'll come back to those
 in a moment.
 
-# Basic datatypes
-
-The core datatypes of Rust are structs, enums (tagged unions, algebraic data
-types), and tuples. They are immutable by default.
-
-~~~~
-struct Point { x: float, y: float }
-
-enum Shape {
-    Circle(Point, float),
-    Rectangle(Point, Point)
-}
-~~~~
+# Data structures
 
 ## Structs
 
