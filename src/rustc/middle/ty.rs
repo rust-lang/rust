@@ -211,6 +211,8 @@ type method = {ident: ast::ident,
 
 type mt = {ty: t, mutbl: ast::mutability};
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum vstore {
@@ -271,6 +273,8 @@ enum ast_ty_to_ty_cache_entry {
 
 type opt_region_variance = Option<region_variance>;
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
@@ -289,6 +293,8 @@ impl region_variance : cmp::Eq {
     pure fn ne(other: &region_variance) -> bool { !self.eq(other) }
 }
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 type AutoAdjustment = {
@@ -296,6 +302,8 @@ type AutoAdjustment = {
     autoref: Option<AutoRef>
 };
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 type AutoRef = {
@@ -304,6 +312,8 @@ type AutoRef = {
     mutbl: ast::mutability
 };
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum AutoRefKind {
@@ -509,6 +519,8 @@ impl param_ty : to_bytes::IterBytes {
 
 
 /// Representation of regions:
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum region {
@@ -538,6 +550,8 @@ enum region {
     re_var(RegionVid)
 }
 
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum bound_region {
@@ -669,6 +683,8 @@ enum param_bound {
 enum TyVid = uint;
 enum IntVid = uint;
 enum FnVid = uint;
+#[auto_serialize]
+#[auto_deserialize]
 #[auto_serialize2]
 #[auto_deserialize2]
 enum RegionVid = uint;
