@@ -15,21 +15,17 @@ As a multi-paradigm language, Rust supports writing code in
 procedural, functional and object-oriented styles. Some of its
 pleasant high-level features include:
 
-* **Pattern matching and algebraic data types (enums).** As
-  popularized by functional languages, pattern matching on ADTs
-  provides a compact and expressive way to encode program logic.
-* **Type inference.** Type annotations on local variable
-  declarations are optional.
-* **Task-based concurrency.** Rust uses lightweight tasks that do
-  not share memory.
-* **Higher-order functions.** Rust's efficient and flexible closures
-  are heavily relied on to provide iteration and other control
-  structures
-* **Parametric polymorphism (generics).** Functions and types can be
-  parameterized over type variables with optional trait-based type
-  constraints.
-* **Trait polymorphism.** Rust's type system features a unique
-  combination of type classes and object-oriented interfaces.
+* **Type inference.** Type annotations on local variable declarations
+  are optional.
+* **Safe task-based concurrency.** Rust's lightweight tasks do not share
+  memory and communicate through messages.
+* **Higher-order functions.** Efficient and flexible closures provide
+  iteration and other control structures
+* **Pattern matching and algebraic data types.** Pattern matching on
+  Rust's enums is a compact and expressive way to encode program
+  logic.
+* **Polymorphism.** Rust has type-parameric functions and
+  types, type classes and OO-style interfaces.
 
 ## Scope
 
