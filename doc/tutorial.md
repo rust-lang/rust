@@ -859,12 +859,12 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
-# type Point = {x: float, y: float};
+# struct Point {x: float, y: float}
 # enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn area(sh: Shape) -> float {
     match sh {
         Circle(_, size) => float::consts::pi * size * size,
-        Rectangle({x, y}, {x: x2, y: y2}) => (x2 - x) * (y2 - y)
+        Rectangle(Point {x, y}, Point {x: x2, y: y2}) => (x2 - x) * (y2 - y)
     }
 }
 ~~~~
@@ -875,7 +875,7 @@ their introductory form, nullary enum patterns are written without
 parentheses.
 
 ~~~~
-# type Point = {x: float, y: float};
+# struct Point {x: float, y: float}
 # enum Direction { North, East, South, West }
 fn point_from_direction(dir: Direction) -> Point {
     match dir {
