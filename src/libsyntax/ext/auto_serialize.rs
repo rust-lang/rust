@@ -122,34 +122,7 @@ fn expand(cx: ext_ctxt,
     }
 }
 
-trait ext_ctxt_helpers {
-    fn helper_path(base_path: @ast::path, helper_name: ~str) -> @ast::path;
-    fn path(span: span, strs: ~[ast::ident]) -> @ast::path;
-    fn path_tps(span: span, strs: ~[ast::ident],
-                tps: ~[@ast::ty]) -> @ast::path;
-    fn ty_path(span: span, strs: ~[ast::ident], tps: ~[@ast::ty]) -> @ast::ty;
-    fn ty_fn(span: span,
-             -input_tys: ~[@ast::ty],
-             -output: @ast::ty) -> @ast::ty;
-    fn ty_nil(span: span) -> @ast::ty;
-    fn expr(span: span, node: ast::expr_) -> @ast::expr;
-    fn var_ref(span: span, name: ast::ident) -> @ast::expr;
-    fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk;
-    fn expr_blk(expr: @ast::expr) -> ast::blk;
-    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat;
-    fn stmt(expr: @ast::expr) -> @ast::stmt;
-    fn alt_stmt(arms: ~[ast::arm], span: span, -v: @ast::expr) -> @ast::stmt;
-    fn lit_str(span: span, s: @~str) -> @ast::expr;
-    fn lit_uint(span: span, i: uint) -> @ast::expr;
-    fn lambda(blk: ast::blk) -> @ast::expr;
-    fn clone_folder() -> fold::ast_fold;
-    fn clone(v: @ast::expr) -> @ast::expr;
-    fn clone_ty(v: @ast::ty) -> @ast::ty;
-    fn clone_ty_param(v: ast::ty_param) -> ast::ty_param;
-    fn at(span: span, expr: @ast::expr) -> @ast::expr;
-}
-
-impl ext_ctxt: ext_ctxt_helpers {
+priv impl ext_ctxt {
     fn helper_path(base_path: @ast::path,
                    helper_name: ~str) -> @ast::path {
         let head = vec::init(base_path.idents);
@@ -160,22 +133,6 @@ impl ext_ctxt: ext_ctxt_helpers {
                                 intern(@(helper_name + ~"_" +
                                          *self.parse_sess().interner.get(
                                              tail)))]))
-    }
-
-    fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
-    }
-
-    fn path_tps(span: span, strs: ~[ast::ident],
-                tps: ~[@ast::ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: tps}
-    }
-
-    fn ty_path(span: span, strs: ~[ast::ident],
-               tps: ~[@ast::ty]) -> @ast::ty {
-        @{id: self.next_id(),
-          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
-          span: span}
     }
 
     fn ty_fn(span: span,
@@ -202,46 +159,8 @@ impl ext_ctxt: ext_ctxt_helpers {
         @{id: self.next_id(), node: ast::ty_nil, span: span}
     }
 
-    fn expr(span: span, node: ast::expr_) -> @ast::expr {
-        @{id: self.next_id(), callee_id: self.next_id(),
-          node: node, span: span}
-    }
-
     fn var_ref(span: span, name: ast::ident) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, ~[name])))
-    }
-
-    fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: stmts,
-                expr: None,
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: span}
-    }
-
-    fn expr_blk(expr: @ast::expr) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: ~[],
-                expr: Some(expr),
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: expr.span}
-    }
-
-    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
-        let path = @{span: span, global: false, idents: ~[nm],
-                     rp: None, types: ~[]};
-        @{id: self.next_id(),
-          node: ast::pat_ident(ast::bind_by_implicit_ref,
-                               path,
-                               None),
-          span: span}
-    }
-
-    fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @{node: ast::stmt_semi(expr, self.next_id()),
-          span: expr.span}
     }
 
     fn alt_stmt(arms: ~[ast::arm],
@@ -250,32 +169,6 @@ impl ext_ctxt: ext_ctxt_helpers {
             self.expr(
                 span,
                 ast::expr_match(v, arms)))
-    }
-
-    fn lit_str(span: span, s: @~str) -> @ast::expr {
-        self.expr(
-            span,
-            ast::expr_vstore(
-                self.expr(
-                    span,
-                    ast::expr_lit(
-                        @{node: ast::lit_str(s),
-                          span: span})),
-                ast::expr_vstore_uniq))
-    }
-
-    fn lit_uint(span: span, i: uint) -> @ast::expr {
-        self.expr(
-            span,
-            ast::expr_lit(
-                @{node: ast::lit_uint(i as u64, ast::ty_u),
-                  span: span}))
-    }
-
-    fn lambda(blk: ast::blk) -> @ast::expr {
-        let ext_cx = self;
-        let blk_e = self.expr(blk.span, ast::expr_block(blk));
-        #ast{ || $(blk_e) }
     }
 
     fn clone_folder() -> fold::ast_fold {
