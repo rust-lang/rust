@@ -408,8 +408,6 @@ fn dtor_dec() -> fn_decl {
 
 #[auto_serialize]
 #[auto_deserialize]
-#[auto_serialize2]
-#[auto_deserialize2]
 type id_range = {min: node_id, max: node_id};
 
 fn empty(range: id_range) -> bool {
