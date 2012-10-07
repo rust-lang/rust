@@ -179,7 +179,7 @@ mode for your favorite editor, let us know so that we can link to it.
 [sublime]: http://github.com/dbp/sublime-rust
 [sublime-pkg]: http://wbond.net/sublime_packages/package_control
 
-# Syntax Basics
+# Syntax basics
 
 Assuming you've programmed in any C-family language (C++, Java,
 JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
