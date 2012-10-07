@@ -11,7 +11,7 @@ pub use GenericPath = path::GenericPath;
 pub use WindowsPath = path::WindowsPath;
 pub use PosixPath = path::PosixPath;
 
-pub use tuple::{TupleOps, ExtendedTupleOps};
+pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use str::{StrSlice, UniqueStr};
 pub use vec::{ConstVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
