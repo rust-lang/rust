@@ -16,9 +16,9 @@ fn monomorphic_fn(ccx: @crate_ctxt,
                   fn_id: ast::def_id,
                   real_substs: ~[ty::t],
                   vtables: Option<typeck::vtable_res>,
-                  ref_id: Option<ast::node_id>)
-    -> {val: ValueRef, must_cast: bool}
-{
+                  impl_did_opt: Option<ast::def_id>,
+                  ref_id: Option<ast::node_id>) ->
+                  {val: ValueRef, must_cast: bool} {
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {
@@ -31,7 +31,8 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     for real_substs.each() |s| { assert !ty::type_has_params(*s); }
     for substs.each() |s| { assert !ty::type_has_params(*s); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
-    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, Some(param_uses));
+    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
+                               Some(param_uses));
     if vec::any(hash_id.params,
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
@@ -73,8 +74,11 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       }
       ast_map::node_dtor(_, dtor, _, pt) =>
           (pt, special_idents::dtor, dtor.span),
-      ast_map::node_trait_method(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a trait method")
+      ast_map::node_trait_method(@ast::provided(m), _, pt) => {
+        (pt, m.ident, m.span)
+      }
+      ast_map::node_trait_method(@ast::required(_), _, _) => {
+        ccx.tcx.sess.bug(~"Can't monomorphize a required trait method")
       }
       ast_map::node_expr(*) => {
         ccx.tcx.sess.bug(~"Can't monomorphize an expr")
@@ -93,7 +97,18 @@ fn monomorphic_fn(ccx: @crate_ctxt,
           ccx.tcx.sess.bug(~"Can't monomorphize a local")
       }
     };
-    let mono_ty = ty::subst_tps(ccx.tcx, substs, llitem_ty);
+
+    // Look up the impl type if we're translating a default method.
+    // XXX: Generics.
+    let impl_ty_opt;
+    match impl_did_opt {
+        None => impl_ty_opt = None,
+        Some(impl_did) => {
+            impl_ty_opt = Some(ty::lookup_item_type(ccx.tcx, impl_did).ty);
+        }
+    }
+
+    let mono_ty = ty::subst_tps(ccx.tcx, substs, impl_ty_opt, llitem_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     ccx.stats.n_monos += 1;
@@ -118,12 +133,18 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         lldecl
     };
 
-    let psubsts = Some({tys: substs, vtables: vtables, bounds: tpt.bounds});
+    let psubsts = Some({
+        tys: substs,
+        vtables: vtables,
+        bounds: tpt.bounds,
+        self_ty: impl_ty_opt
+    });
+
     let lldecl = match map_node {
       ast_map::node_item(i@@{node: ast::item_fn(decl, _, _, body), _}, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(i.attrs, d);
-        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node);
+        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node, None);
         d
       }
       ast_map::node_item(*) => {
@@ -154,11 +175,19 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         }
         d
       }
-      ast_map::node_method(mth, _, _) => {
+      ast_map::node_method(mth, supplied_impl_did, _) => {
         // XXX: What should the self type be here?
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
-        meth::trans_method(ccx, pt, mth, psubsts, None, d);
+
+        // Override the impl def ID if necessary.
+        let impl_did;
+        match impl_did_opt {
+            None => impl_did = supplied_impl_did,
+            Some(override_impl_did) => impl_did = override_impl_did
+        }
+
+        meth::trans_method(ccx, pt, mth, psubsts, None, d, impl_did);
         d
       }
       ast_map::node_dtor(_, dtor, _, pt) => {
@@ -171,6 +200,15 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         trans_class_dtor(ccx, *pt, dtor.node.body,
           dtor.node.id, psubsts, Some(hash_id), parent_id)
       }
+      ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
+        let d = mk_lldecl();
+        set_inline_hint_if_appr(mth.attrs, d);
+        io::println(fmt!("monomorphic_fn impl_did_opt is %?", impl_did_opt));
+        meth::trans_method(ccx, *pt, mth, psubsts, None, d,
+                           impl_did_opt.get());
+        d
+      }
+
       // Ugh -- but this ensures any new variants won't be forgotten
       ast_map::node_expr(*) |
       ast_map::node_stmt(*) |
@@ -226,6 +264,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
 
 fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                 vtables: Option<typeck::vtable_res>,
+                impl_did_opt: Option<ast::def_id>,
                 param_uses: Option<~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
@@ -295,5 +334,5 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
           })
       }
     };
-    @{def: item, params: param_ids}
+    @{def: item, params: param_ids, impl_did_opt: impl_did_opt}
 }

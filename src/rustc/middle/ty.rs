@@ -19,6 +19,7 @@ use syntax::ast::*;
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 
+export ProvidedMethodSource;
 export TyVid, IntVid, FnVid, RegionVid, vid;
 export br_hashmap;
 export is_instantiable;
@@ -207,7 +208,8 @@ type method = {ident: ast::ident,
                tps: @~[param_bounds],
                fty: FnTy,
                self_ty: ast::self_ty_,
-               vis: ast::visibility};
+               vis: ast::visibility,
+               def_id: ast::def_id};
 
 type mt = {ty: t, mutbl: ast::mutability};
 
@@ -314,6 +316,11 @@ enum AutoRefKind {
     AutoPtr
 }
 
+struct ProvidedMethodSource {
+    method_id: ast::def_id,
+    impl_id: ast::def_id
+}
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -356,7 +363,8 @@ type ctxt =
       adjustments: HashMap<ast::node_id, @AutoAdjustment>,
       normalized_cache: HashMap<t, t>,
       lang_items: middle::lang_items::LanguageItems,
-      legacy_boxed_traits: HashMap<node_id, ()>};
+      legacy_boxed_traits: HashMap<node_id, ()>,
+      provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>};
 
 enum tbox_flag {
     has_params = 1,
@@ -879,7 +887,8 @@ fn mk_ctxt(s: session::session,
       adjustments: HashMap(),
       normalized_cache: new_ty_hash(),
       lang_items: move lang_items,
-      legacy_boxed_traits: HashMap()}
+      legacy_boxed_traits: HashMap(),
+      provided_method_sources: HashMap()}
 }
 
 
@@ -1392,13 +1401,23 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 }
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
-fn subst_tps(cx: ctxt, tps: &[t], typ: t) -> t {
-    if tps.len() == 0u { return typ; }
+fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
+    if tps.len() == 0u && self_ty_opt.is_none() { return typ; }
     let tb = ty::get(typ);
-    if !tbox_has_flag(tb, has_params) { return typ; }
+    if self_ty_opt.is_none() && !tbox_has_flag(tb, has_params) { return typ; }
     match tb.sty {
-      ty_param(p) => tps[p.idx],
-      ref sty => fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, t))
+        ty_param(p) => tps[p.idx],
+        ty_self => {
+            match self_ty_opt {
+                None => cx.sess.bug(~"ty_self unexpected here"),
+                Some(self_ty) => {
+                    subst_tps(cx, tps, self_ty_opt, self_ty)
+                }
+            }
+        }
+        ref sty => {
+            fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, self_ty_opt, t))
+        }
     }
 }
 
@@ -3328,20 +3347,18 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
     cx.trait_method_cache.insert(ast_util::local_def(id), ms);
 }
 
-fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@ast::method] {
+fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(id.node) {
             Some(ast_map::node_item(@{node: item_trait(_, _, ms),_}, _)) =>
                 match ast_util::split_trait_methods(ms) {
-                   (_, p) => p
+                   (_, p) => p.map(|method| method.ident)
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
                                   id))
         }
-    }
-    else {
-        // FIXME #2794: default methods for traits don't work cross-crate
-        ~[]
+    } else {
+        csearch::get_provided_trait_methods(cx, id).map(|info| info.ty.ident)
     }
 }
 
@@ -3599,10 +3616,12 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     match cx.tcache.find(did) {
-      Some(tpt) => return tpt,
-      None => {
+      Some(tpt) => {
         // The item is in this crate. The caller should have added it to the
         // type cache already
+        return tpt;
+      }
+      None => {
         assert did.crate != ast::local_crate;
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);

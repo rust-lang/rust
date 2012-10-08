@@ -19,6 +19,7 @@ use syntax::diagnostic::span_handler;
 use common::*;
 use syntax::parse::token::ident_interner;
 use hash::{Hash, HashUtil};
+use csearch::ProvidedTraitMethodInfo;
 
 export class_dtor;
 export get_class_fields;
@@ -40,6 +41,7 @@ export get_crate_hash;
 export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_provided_trait_methods;
 export get_method_names_if_trait;
 export get_item_attrs;
 export get_crate_module_paths;
@@ -162,6 +164,13 @@ fn item_family(item: ebml::Doc) -> Family {
       'N' => InheritedField,
        c => fail (fmt!("unexpected family char: %c", c))
     }
+}
+
+fn item_method_sort(item: ebml::Doc) -> char {
+    for ebml::tagged_docs(item, tag_item_trait_method_sort) |doc| {
+        return str::from_bytes(ebml::doc_data(doc))[0] as char;
+    }
+    return 'r';
 }
 
 fn item_symbol(item: ebml::Doc) -> ~str {
@@ -701,6 +710,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
+        let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
           ty::ty_fn(f) => f,
           _ => {
@@ -708,12 +718,50 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                 ~"get_trait_methods: id has non-function type");
         } };
         let self_ty = get_self_ty(mth);
-        result.push({ident: name, tps: bounds, fty: fty,
-                           self_ty: self_ty,
-                           vis: ast::public});
+        result.push({ident: name, tps: bounds, fty: fty, self_ty: self_ty,
+                     vis: ast::public, def_id: def_id});
     }
     debug!("get_trait_methods: }");
     @result
+}
+
+fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
+                              id: ast::node_id, tcx: ty::ctxt) ->
+        ~[ProvidedTraitMethodInfo] {
+    let data = cdata.data;
+    let item = lookup_item(id, data);
+    let mut result = ~[];
+
+    for ebml::tagged_docs(item, tag_item_trait_method) |mth| {
+        if item_method_sort(mth) != 'p' { loop; }
+
+        let did = item_def_id(mth, cdata);
+
+        let bounds = item_ty_param_bounds(mth, tcx, cdata);
+        let name = item_name(intr, mth);
+        let ty = doc_type(mth, tcx, cdata);
+
+        let fty;
+        match ty::get(ty).sty {
+            ty::ty_fn(f) => fty = f,
+            _ => {
+                tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
+                                         has non-function type");
+            }
+        }
+
+        let self_ty = get_self_ty(mth);
+        let ty_method = {ident: name, tps: bounds, fty: fty, self_ty: self_ty,
+                         vis: ast::public, def_id: did};
+        let provided_trait_method_info = ProvidedTraitMethodInfo {
+            ty: ty_method,
+            def_id: did
+        };
+
+        vec::push(&mut result, move provided_trait_method_info);
+    }
+
+    return move result;
 }
 
 // If the item in question is a trait, returns its set of methods and

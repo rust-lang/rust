@@ -5,9 +5,12 @@ use syntax::ast_map::{path, path_mod, path_name};
 use base::{trans_item, get_item_val, self_arg, trans_fn,
               impl_self, get_insn_ctxt};
 
-fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
-    -> ast::def_id
-{
+// `translate` will be true if this function is allowed to translate the
+// item and false otherwise. Currently, this parameter is set to false when
+// translating default methods.
+fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
+                            translate: bool)
+    -> ast::def_id {
     let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
     match ccx.external.find(fn_id) {
       Some(Some(node_id)) => {
@@ -31,7 +34,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
-            trans_item(ccx, *item);
+            if translate { trans_item(ccx, *item); }
             local_def(item.id)
           }
           csearch::found(ast::ii_foreign(item)) => {
@@ -53,7 +56,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
               _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
                     non-enum parent")
             }
-            trans_item(ccx, *item);
+            if translate { trans_item(ccx, *item); }
             local_def(my_id)
           }
           csearch::found_parent(_, _) => {
@@ -65,13 +68,14 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             ccx.external.insert(fn_id, Some(mth.id));
             let {bounds: impl_bnds, region_param: _, ty: impl_ty} =
                 ty::lookup_item_type(ccx.tcx, impl_did);
-            if (*impl_bnds).len() + mth.tps.len() == 0u {
+            if translate && (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),
                     ~[path_name(mth.ident)]);
                 trans_fn(ccx, path, mth.decl, mth.body,
-                         llfn, impl_self(impl_ty), None, mth.id);
+                         llfn, impl_self(impl_ty), None, mth.id,
+                         Some(impl_did));
             }
             local_def(mth.id)
           }
@@ -83,3 +87,4 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
       }
     }
 }
+

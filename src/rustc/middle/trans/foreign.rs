@@ -794,7 +794,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
 {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
-    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
+    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, None,
                                Some(substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match ccx.sess.str_of(item.ident) {
@@ -1025,7 +1025,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             )));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
-        trans_fn(ccx, path, decl, body, llfndecl, no_self, None, id);
+        trans_fn(ccx, path, decl, body, llfndecl, no_self, None, id, None);
         return llfndecl;
     }
 

@@ -4680,6 +4680,9 @@ impl Resolver {
     }
 
     fn search_for_traits_containing_method(name: ident) -> @DVec<def_id> {
+        debug!("(searching for traits containing method) looking for '%s'",
+               self.session.str_of(name));
+
         let found_traits = @DVec();
         let mut search_module = self.current_module;
         loop {
@@ -4687,8 +4690,8 @@ impl Resolver {
             match copy self.current_trait_refs {
                 Some(trait_def_ids) => {
                     for trait_def_ids.each |trait_def_id| {
-                        self.add_trait_info_if_containing_method
-                            (found_traits, *trait_def_id, name);
+                        self.add_trait_info_if_containing_method(
+                            found_traits, *trait_def_id, name);
                     }
                 }
                 None => {
@@ -4702,8 +4705,8 @@ impl Resolver {
                     Some(def) => {
                         match def.def {
                             def_ty(trait_def_id) => {
-                                self.add_trait_info_if_containing_method
-                                    (found_traits, trait_def_id, name);
+                                self.add_trait_info_if_containing_method(
+                                    found_traits, trait_def_id, name);
                             }
                             _ => {
                                 // Continue.
@@ -4730,8 +4733,8 @@ impl Resolver {
                                 match def.def {
                                     def_ty(trait_def_id) => {
                                         self.
-                                        add_trait_info_if_containing_method
-                                        (found_traits, trait_def_id, name);
+                                        add_trait_info_if_containing_method(
+                                        found_traits, trait_def_id, name);
                                     }
                                     _ => {
                                         // Continue.
@@ -4765,6 +4768,12 @@ impl Resolver {
     fn add_trait_info_if_containing_method(found_traits: @DVec<def_id>,
                                            trait_def_id: def_id,
                                            name: ident) {
+
+        debug!("(adding trait info if containing method) trying trait %d:%d \
+                for method '%s'",
+               trait_def_id.crate,
+               trait_def_id.node,
+               self.session.str_of(name));
 
         match self.trait_info.find(trait_def_id) {
             Some(trait_info) if trait_info.contains_key(name) => {

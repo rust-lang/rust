@@ -181,9 +181,12 @@ struct ValSelfData {
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
+// Here `self_ty` is the real type of the self parameter to this method. It
+// will only be set in the case of default methods.
 type param_substs = {tys: ~[ty::t],
                      vtables: Option<typeck::vtable_res>,
-                     bounds: @~[ty::param_bounds]};
+                     bounds: @~[ty::param_bounds],
+                     self_ty: Option<ty::t>};
 
 fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
     fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
@@ -220,6 +223,10 @@ type fn_ctxt = @{
     mut llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
+    //
+    // NB: This is the type of the self *variable*, not the self *type*. The
+    // self type is set only for default methods, while the self variable is
+    // set for all methods.
     mut llself: Option<ValSelfData>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
@@ -239,6 +246,9 @@ type fn_ctxt = @{
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
     id: ast::node_id,
+
+    // The def_id of the impl we're inside, or None if we aren't inside one.
+    impl_id: Option<ast::def_id>,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
@@ -1110,7 +1120,11 @@ enum mono_param_id {
               datum::DatumMode),
 }
 
-type mono_id_ = {def: ast::def_id, params: ~[mono_param_id]};
+type mono_id_ = {
+    def: ast::def_id,
+    params: ~[mono_param_id],
+    impl_did_opt: Option<ast::def_id>
+};
 
 type mono_id = @mono_id_;
 
@@ -1193,7 +1207,9 @@ fn path_str(sess: session::session, p: path) -> ~str {
 
 fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
-        Some(substs) => ty::subst_tps(bcx.tcx(), substs.tys, t),
+        Some(substs) => {
+            ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
+        }
         _ => { assert !ty::type_has_params(t); t }
     }
 }
@@ -1213,7 +1229,9 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     match bcx.fcx.param_substs {
       Some(substs) => {
-        vec::map(params, |t| ty::subst_tps(tcx, substs.tys, *t))
+        do vec::map(params) |t| {
+            ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+        }
       }
       _ => params
     }
@@ -1241,7 +1259,9 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
         typeck::vtable_static(trait_id, tys, sub) => {
             let tys = match fcx.param_substs {
                 Some(substs) => {
-                    vec::map(tys, |t| ty::subst_tps(tcx, substs.tys, *t))
+                    do vec::map(tys) |t| {
+                        ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+                    }
                 }
                 _ => tys
             };

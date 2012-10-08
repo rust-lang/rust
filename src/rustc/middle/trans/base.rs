@@ -206,7 +206,7 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     assert ix < variant.args.len();
 
     let arg_lltys = vec::map(variant.args, |aty| {
-        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, *aty))
+        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, None, *aty))
     });
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
@@ -385,16 +385,16 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if (substs.is_not_empty()) {
         let did = if did.crate != ast::local_crate {
-            inline::maybe_instantiate_inline(ccx, did)
+            inline::maybe_instantiate_inline(ccx, did, true)
         } else { did };
         assert did.crate == ast::local_crate;
-        monomorphize::monomorphic_fn(ccx, did, substs, None, None).val
+        monomorphize::monomorphic_fn(ccx, did, substs, None, None, None).val
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx;
         let name = csearch::get_symbol(ccx.sess.cstore, did);
-        let class_ty = ty::subst_tps(tcx, substs,
+        let class_ty = ty::subst_tps(tcx, substs, None,
                           ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
         get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
@@ -529,7 +529,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let v_id = variant.id;
             for vec::each(fn_ty.sig.inputs) |a| {
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
-                let ty_subst = ty::subst_tps(ccx.tcx, tps, a.ty);
+                // XXX: Is "None" right here?
+                let ty_subst = ty::subst_tps(ccx.tcx, tps, None, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
                 j += 1u;
             }
@@ -1392,8 +1393,11 @@ fn mk_standard_basic_blocks(llfn: ValueRef) ->
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
-                    llfndecl: ValueRef, id: ast::node_id,
+fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
+                    path: path,
+                    llfndecl: ValueRef,
+                    id: ast::node_id,
+                    impl_id: Option<ast::def_id>,
                     param_substs: Option<param_substs>,
                     sp: Option<span>) -> fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
@@ -1410,6 +1414,7 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           lllocals: HashMap(),
           llupvars: HashMap(),
           id: id,
+          impl_id: impl_id,
           param_substs: param_substs,
           span: sp,
           path: path,
@@ -1418,7 +1423,7 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
 
 fn new_fn_ctxt(ccx: @crate_ctxt, path: path, llfndecl: ValueRef,
                sp: Option<span>) -> fn_ctxt {
-    return new_fn_ctxt_w_id(ccx, path, llfndecl, -1, None, sp);
+    return new_fn_ctxt_w_id(ccx, path, llfndecl, -1, None, None, sp);
 }
 
 // NB: must keep 4 fns in sync:
@@ -1561,6 +1566,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  ty_self: self_arg,
                  param_substs: Option<param_substs>,
                  id: ast::node_id,
+                 impl_id: Option<ast::def_id>,
                  maybe_load_env: fn(fn_ctxt),
                  finish: fn(block)) {
     ccx.stats.n_closures += 1;
@@ -1568,7 +1574,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     set_uwtable(llfndecl);
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, param_substs,
+    let fcx = new_fn_ctxt_w_id(ccx, path, llfndecl, id, impl_id, param_substs,
                                   Some(body.span));
     let raw_llargs = create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
 
@@ -1620,14 +1626,15 @@ fn trans_fn(ccx: @crate_ctxt,
             llfndecl: ValueRef,
             ty_self: self_arg,
             param_substs: Option<param_substs>,
-            id: ast::node_id) {
+            id: ast::node_id,
+            impl_id: Option<ast::def_id>) {
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { {sec: 0i64, nsec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
-                  param_substs, id,
+                  param_substs, id, impl_id,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo {
                           debuginfo::create_function(fcx);
@@ -1654,7 +1661,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
          ty: varg.ty,
          ident: special_idents::arg,
          id: varg.id});
-    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id,
+    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
                                param_substs, None);
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
     let ty_param_substs = match param_substs {
@@ -1704,7 +1711,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
   /* Substitute in the class type if necessary */
     do option::iter(&psubsts) |ss| {
-    class_ty = ty::subst_tps(tcx, ss.tys, class_ty);
+    class_ty = ty::subst_tps(tcx, ss.tys, ss.self_ty, class_ty);
   }
 
   /* The dtor takes a (null) output pointer, and a self argument,
@@ -1724,7 +1731,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   }
   /* Translate the dtor body */
   trans_fn(ccx, path, ast_util::dtor_dec(),
-           body, lldecl, impl_self(class_ty), psubsts, dtor_id);
+           body, lldecl, impl_self(class_ty), psubsts, dtor_id, None);
   lldecl
 }
 
@@ -1777,7 +1784,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(*path, ~[path_name(item.ident)]),
-                     decl, body, llfndecl, no_self, None, item.id);
+                     decl, body, llfndecl, no_self, None, item.id, None);
         } else {
             for vec::each(body.node.stmts) |stmt| {
                 match stmt.node {
@@ -1789,48 +1796,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, trait_refs, self_ast_ty, ms) => {
-        meth::trans_impl(ccx, *path, item.ident, ms, tps, None);
-
-        // Translate any methods that have provided implementations.
-        for trait_refs.each |trait_ref_ptr| {
-            let trait_def = ccx.tcx.def_map.get(trait_ref_ptr.ref_id);
-
-            // XXX: Cross-crate default methods.
-            let trait_id = def_id_of_def(trait_def);
-            if trait_id.crate != ast::local_crate {
-                loop;
-            }
-
-            // Get the self type.
-            let self_ty;
-            match ccx.tcx.ast_ty_to_ty_cache.get(self_ast_ty) {
-                ty::atttce_resolved(self_type) => self_ty = self_type,
-                ty::atttce_unresolved => {
-                    ccx.tcx.sess.impossible_case(item.span,
-                                                 ~"didn't cache self ast ty");
-                }
-            }
-
-            match ccx.tcx.items.get(trait_id.node) {
-                ast_map::node_item(trait_item, _) => {
-                    match trait_item.node {
-                        ast::item_trait(tps, _, trait_methods) => {
-                            trans_trait(ccx, tps, trait_methods, path,
-                                        item.ident, self_ty);
-                        }
-                        _ => {
-                            ccx.tcx.sess.impossible_case(item.span,
-                                                         ~"trait item not a \
-                                                           trait");
-                        }
-                    }
-                }
-                _ => {
-                    ccx.tcx.sess.impossible_case(item.span, ~"no trait item");
-                }
-            }
-        }
+      ast::item_impl(tps, _, _, ms) => {
+        meth::trans_impl(ccx, *path, item.ident, ms, tps, None, item.id);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -1871,16 +1838,7 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // If there are ty params, the ctor will get monomorphized
 
     // Translate methods
-    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None);
-}
-
-fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
-               trait_methods: ~[ast::trait_method],
-               path: @ast_map::path, ident: ast::ident,
-               self_ty: ty::t) {
-    // Translate any methods that have provided implementations
-    let (_, provided_methods) = ast_util::split_trait_methods(trait_methods);
-    meth::trans_impl(ccx, *path, ident, provided_methods, tps, Some(self_ty));
+    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None, id);
 }
 
 // Translate a module. Doing this amounts to translating the items in the
@@ -2035,7 +1993,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
        // this to item_symbols
        match substs {
          Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, t);
+           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
            mangle_exported_name(
                ccx,
                vec::append(path,
