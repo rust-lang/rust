@@ -2195,6 +2195,16 @@ impl &str: StrSlice {
     #[inline]
     fn escape_unicode() -> ~str { escape_unicode(self) }
 
+    /// Returns a string with leading and trailing whitespace removed
+    #[inline]
+    fn trim() -> ~str { trim(self) }
+    /// Returns a string with leading whitespace removed
+    #[inline]
+    fn trim_left() -> ~str { trim_left(self) }
+    /// Returns a string with trailing whitespace removed
+    #[inline]
+    fn trim_right() -> ~str { trim_right(self) }
+
     #[inline]
     pure fn to_unique() -> ~str { self.slice(0, self.len()) }
 
