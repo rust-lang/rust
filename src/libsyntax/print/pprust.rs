@@ -653,18 +653,6 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
     }
     bopen(s);
     hardbreak_if_not_bol(s);
-    do struct_def.ctor.iter |ctor| {
-      maybe_print_comment(s, ctor.span.lo);
-      print_outer_attributes(s, ctor.node.attrs);
-      // Doesn't call head because there shouldn't be a space after new.
-      cbox(s, indent_unit);
-      ibox(s, 4);
-      word(s.s, ~"new(");
-      print_fn_args(s, ctor.node.dec, ~[], None);
-      word(s.s, ~")");
-      space(s.s);
-      print_block(s, ctor.node.body);
-    }
     do struct_def.dtor.iter |dtor| {
       hardbreak_if_not_bol(s);
       maybe_print_comment(s, dtor.span.lo);

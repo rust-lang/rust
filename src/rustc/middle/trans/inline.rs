@@ -34,10 +34,6 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             trans_item(ccx, *item);
             local_def(item.id)
           }
-          csearch::found(ast::ii_ctor(ctor, _, _, _)) => {
-            ccx.external.insert(fn_id, Some(ctor.node.id));
-            local_def(ctor.node.id)
-          }
           csearch::found(ast::ii_foreign(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             local_def(item.id)

@@ -451,18 +451,6 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let tcx = ccx.tcx;
     let self_ty = ty::node_id_to_type(tcx, id);
 
-    do option::iter(&struct_def.ctor) |ctor| {
-        let class_t = {self_ty: self_ty,
-                       self_id: ctor.node.self_id,
-                       def_id: local_def(id),
-                       explicit_self: {node: ast::sty_by_ref,
-                                       span: ast_util::dummy_sp()}};
-        // typecheck the ctor
-        check_bare_fn(ccx, ctor.node.dec,
-                      ctor.node.body, ctor.node.id,
-                      Some(class_t));
-    }
-
     do option::iter(&struct_def.dtor) |dtor| {
         let class_t = {self_ty: self_ty,
                        self_id: dtor.node.self_id,
@@ -1925,7 +1913,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Resolve the path.
         let class_id;
         match tcx.def_map.find(id) {
-            Some(ast::def_class(type_def_id, _)) => {
+            Some(ast::def_class(type_def_id)) => {
                 class_id = type_def_id;
             }
             _ => {
@@ -2411,7 +2399,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
       ast::def_const(id) | ast::def_variant(_, id) |
-      ast::def_class(id, _) => {
+      ast::def_class(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_upvar(_, inner, _, _) => {

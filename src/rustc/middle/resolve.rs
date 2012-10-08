@@ -757,7 +757,7 @@ struct Resolver {
     unused_import_lint_level: level,
 
     trait_info: HashMap<def_id,@HashMap<ident,()>>,
-    structs: HashMap<def_id,bool>,
+    structs: HashMap<def_id,()>,
 
     // The number of imports that are currently unresolved.
     mut unresolved_imports: uint,
@@ -1069,36 +1069,15 @@ impl Resolver {
             }
 
             // These items live in both the type and value namespaces.
-            item_class(struct_definition, _) => {
-                let new_parent =
-                    match struct_definition.ctor {
-                    None => {
-                        let (name_bindings, new_parent) =
-                            self.add_child(ident, parent, ~[TypeNS], sp);
+            item_class(*) => {
+                let (name_bindings, new_parent) =
+                    self.add_child(ident, parent, ~[TypeNS], sp);
 
-                        (*name_bindings).define_type
-                            (privacy, def_ty(local_def(item.id)), sp);
-                        new_parent
-                    }
-                    Some(ctor) => {
-                        let (name_bindings, new_parent) =
-                            self.add_child(ident, parent, ~[ValueNS, TypeNS],
-                                           sp);
-
-                        (*name_bindings).define_type
-                            (privacy, def_ty(local_def(item.id)), sp);
-
-                        let purity = impure_fn;
-                        let ctor_def = def_fn(local_def(ctor.node.id),
-                                              purity);
-                        (*name_bindings).define_value(privacy, ctor_def, sp);
-                        new_parent
-                    }
-                };
+                (*name_bindings).define_type
+                    (privacy, def_ty(local_def(item.id)), sp);
 
                 // Record the def ID of this struct.
-                self.structs.insert(local_def(item.id),
-                                    struct_definition.ctor.is_some());
+                self.structs.insert(local_def(item.id), ());
 
                 visit_item(item, new_parent, visitor);
             }
@@ -1184,7 +1163,7 @@ impl Resolver {
                                      def_variant(item_id,
                                                  local_def(variant.node.id)),
                                      variant.span);
-                self.structs.insert(local_def(variant.node.id), false);
+                self.structs.insert(local_def(variant.node.id), ());
             }
             enum_variant_kind(enum_definition) => {
                 (*child).define_type(privacy,
@@ -1521,18 +1500,12 @@ impl Resolver {
 
             child_name_bindings.define_type(Public, def, dummy_sp());
           }
-          def_class(def_id, has_constructor) => {
+          def_class(def_id) => {
             debug!("(building reduced graph for external \
-                    crate) building type %s (value? %d)",
-                   final_ident,
-                   if has_constructor { 1 } else { 0 });
+                    crate) building type %s",
+                   final_ident);
             child_name_bindings.define_type(Public, def, dummy_sp());
-
-            if has_constructor {
-                child_name_bindings.define_value(Public, def, dummy_sp());
-            }
-
-            self.structs.insert(def_id, has_constructor);
+            self.structs.insert(def_id, ());
           }
           def_self(*) | def_arg(*) | def_local(*) |
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
@@ -3307,7 +3280,6 @@ impl Resolver {
                                    struct_def.traits,
                                    struct_def.fields,
                                    struct_def.methods,
-                                   struct_def.ctor,
                                    struct_def.dtor,
                                    visitor);
             }
@@ -3549,7 +3521,6 @@ impl Resolver {
                      traits: ~[@trait_ref],
                      fields: ~[@struct_field],
                      methods: ~[@method],
-                     optional_constructor: Option<class_ctor>,
                      optional_destructor: Option<class_dtor>,
                      visitor: ResolveVisitor) {
 
@@ -3599,23 +3570,6 @@ impl Resolver {
             // Resolve fields.
             for fields.each |field| {
                 self.resolve_type(field.node.ty, visitor);
-            }
-
-            // Resolve the constructor, if applicable.
-            match optional_constructor {
-                None => {
-                    // Nothing to do.
-                }
-                Some(constructor) => {
-                    self.resolve_function(NormalRibKind,
-                                          Some(@constructor.node.dec),
-                                          NoTypeParameters,
-                                          constructor.node.body,
-                                          HasSelfBinding(constructor.node.
-                                                         self_id),
-                                          NoCaptureClause,
-                                          visitor);
-                }
             }
 
             // Resolve the destructor, if applicable.
@@ -4090,9 +4044,7 @@ impl Resolver {
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
                                 if self.structs.contains_key(class_id) => {
-                            let has_constructor = self.structs.get(class_id);
-                            let class_def = def_class(class_id,
-                                                      has_constructor);
+                            let class_def = def_class(class_id);
                             self.record_def(pattern.id, class_def);
                         }
                         Some(definition @ def_variant(_, variant_id))
@@ -4560,10 +4512,9 @@ impl Resolver {
                 //    let bar = Bar { ... } // no type parameters
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
-                    Some(def_ty(class_id)) | Some(def_class(class_id, _))
+                    Some(def_ty(class_id)) | Some(def_class(class_id))
                             if self.structs.contains_key(class_id) => {
-                        let has_constructor = self.structs.get(class_id);
-                        let class_def = def_class(class_id, has_constructor);
+                        let class_def = def_class(class_id);
                         self.record_def(expr.id, class_def);
                     }
                     Some(definition @ def_variant(_, class_id))
