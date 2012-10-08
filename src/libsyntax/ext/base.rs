@@ -54,7 +54,7 @@ enum syntax_extension {
     // macro_defining() is obsolete, remove when #old_macros go away.
     macro_defining(macro_definer),
 
-    // #[auto_serialize] and such. will probably survive death of #old_macros
+    // #[auto_serialize2] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
     // Token-tree expanders
@@ -64,6 +64,65 @@ enum syntax_extension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
+#[cfg(stage0)]
+fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
+    fn builtin(f: syntax_expander_) -> syntax_extension
+        {normal({expander: f, span: None})}
+    fn builtin_expr_tt(f: syntax_expander_tt_) -> syntax_extension {
+        expr_tt({expander: f, span: None})
+    }
+    fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
+        item_tt({expander: f, span: None})
+    }
+    let syntax_expanders = HashMap();
+    syntax_expanders.insert(~"macro",
+                            macro_defining(ext::simplext::add_new_extension));
+    syntax_expanders.insert(~"macro_rules",
+                            builtin_item_tt(
+                                ext::tt::macro_rules::add_new_extension));
+    syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert(
+        ~"auto_serialize2",
+        item_decorator(ext::auto_serialize2::expand_auto_serialize));
+    syntax_expanders.insert(
+        ~"auto_deserialize2",
+        item_decorator(ext::auto_serialize2::expand_auto_deserialize));
+    syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
+    syntax_expanders.insert(~"concat_idents",
+                            builtin(ext::concat_idents::expand_syntax_ext));
+    syntax_expanders.insert(~"ident_to_str",
+                            builtin(ext::ident_to_str::expand_syntax_ext));
+    syntax_expanders.insert(~"log_syntax",
+                            builtin_expr_tt(
+                                ext::log_syntax::expand_syntax_ext));
+    syntax_expanders.insert(~"ast",
+                            builtin(ext::qquote::expand_ast));
+    syntax_expanders.insert(~"line",
+                            builtin(ext::source_util::expand_line));
+    syntax_expanders.insert(~"col",
+                            builtin(ext::source_util::expand_col));
+    syntax_expanders.insert(~"file",
+                            builtin(ext::source_util::expand_file));
+    syntax_expanders.insert(~"stringify",
+                            builtin(ext::source_util::expand_stringify));
+    syntax_expanders.insert(~"include",
+                            builtin(ext::source_util::expand_include));
+    syntax_expanders.insert(~"include_str",
+                            builtin(ext::source_util::expand_include_str));
+    syntax_expanders.insert(~"include_bin",
+                            builtin(ext::source_util::expand_include_bin));
+    syntax_expanders.insert(~"module_path",
+                            builtin(ext::source_util::expand_mod));
+    syntax_expanders.insert(~"proto",
+                            builtin_item_tt(ext::pipes::expand_proto));
+    syntax_expanders.insert(
+        ~"trace_macros",
+        builtin_expr_tt(ext::trace_macros::expand_trace_macros));
+    return syntax_expanders;
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
 fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: None})}

@@ -77,6 +77,8 @@ export provided_methods_map;
 
 #[auto_serialize]
 #[auto_deserialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
@@ -95,6 +97,8 @@ enum method_origin {
 // with a bounded trait.
 #[auto_serialize]
 #[auto_deserialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 type method_param = {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,

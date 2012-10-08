@@ -130,6 +130,9 @@ mod ext {
     mod log_syntax;
     #[legacy_exports]
     mod auto_serialize;
+    #[cfg(stage0)]
+    #[legacy_exports]
+    mod auto_serialize2;
     #[legacy_exports]
     mod source_util;
 
