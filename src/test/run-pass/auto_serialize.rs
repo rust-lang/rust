@@ -4,10 +4,10 @@ extern mod std;
 // the common code.
 
 use cmp::Eq;
-use std::ebml2;
+use std::ebml;
 use io::Writer;
-use std::serialization2::{Serializable, Deserializable, deserialize};
-use std::prettyprint2;
+use std::serialization::{Serializable, Deserializable, deserialize};
+use std::prettyprint;
 
 fn test_ser_and_deser<A:Eq Serializable Deserializable>(
     a1: &A,
@@ -15,23 +15,23 @@ fn test_ser_and_deser<A:Eq Serializable Deserializable>(
 ) {
     // check the pretty printer:
     let s = do io::with_str_writer |w| {
-        a1.serialize(&prettyprint2::Serializer(w))
+        a1.serialize(&prettyprint::Serializer(w))
     };
     debug!("s == %?", s);
     assert s == expected;
 
     // check the EBML serializer:
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = &ebml2::Serializer(wr);
+        let ebml_w = &ebml::Serializer(wr);
         a1.serialize(ebml_w)
     };
-    let d = ebml2::Doc(@bytes);
-    let a2: A = deserialize(&ebml2::Deserializer(d));
+    let d = ebml::Doc(@bytes);
+    let a2: A = deserialize(&ebml::Deserializer(d));
     assert *a1 == a2;
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum Expr {
     Val(uint),
     Plus(@Expr, @Expr),
@@ -105,8 +105,8 @@ impl CLike : cmp::Eq {
     pure fn ne(other: &CLike) -> bool { !self.eq(other) }
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 type Spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
@@ -116,27 +116,27 @@ impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
     pure fn ne(other: &Spanned<T>) -> bool { !self.eq(other) }
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 type SomeRec = {v: ~[uint]};
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum AnEnum = SomeRec;
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 struct Point {x: uint, y: uint}
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum Quark<T> {
     Top(T),
     Bottom(T)
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum CLike { A, B, C }
 
 fn main() {

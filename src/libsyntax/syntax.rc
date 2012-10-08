@@ -128,11 +128,8 @@ mod ext {
     mod ident_to_str;
     #[legacy_exports]
     mod log_syntax;
-    #[cfg(stage0)]
     #[legacy_exports]
     mod auto_serialize;
-    #[legacy_exports]
-    mod auto_serialize2;
     #[legacy_exports]
     mod source_util;
 

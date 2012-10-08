@@ -75,8 +75,8 @@ export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
@@ -93,8 +93,8 @@ enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 type method_param = {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
