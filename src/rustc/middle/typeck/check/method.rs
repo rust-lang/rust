@@ -69,7 +69,7 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
-use coherence::get_base_type_def_id;
+use coherence::{ProvidedMethodInfo, get_base_type_def_id};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::*;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box,
@@ -146,7 +146,7 @@ impl LookupContext {
 
         // Prepare the list of candidates
         self.push_inherent_candidates(self_ty);
-        self.push_extension_candidates();
+        self.push_extension_candidates(self_ty);
 
         let enum_dids = DVec();
         let mut self_ty = self_ty;
@@ -251,7 +251,7 @@ impl LookupContext {
         }
     }
 
-    fn push_extension_candidates(&self) {
+    fn push_extension_candidates(&self, self_ty: ty::t) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
@@ -259,6 +259,8 @@ impl LookupContext {
         for opt_applicable_traits.each |applicable_traits| {
             for applicable_traits.each |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
+
+                // Look for explicit implementations.
                 let opt_impl_infos =
                     coherence_info.extension_methods.find(*trait_did);
                 for opt_impl_infos.each |impl_infos| {
@@ -267,12 +269,21 @@ impl LookupContext {
                             &self.extension_candidates, *impl_info);
                     }
                 }
+
+                // Look for default methods.
+                match coherence_info.provided_methods.find(*trait_did) {
+                    Some(methods) => {
+                        self.push_candidates_from_provided_methods(
+                            &self.extension_candidates, self_ty, *trait_did,
+                            methods);
+                    }
+                    None => {}
+                }
             }
         }
     }
 
-    fn push_inherent_candidates_from_param(&self, param_ty: param_ty)
-    {
+    fn push_inherent_candidates_from_param(&self, param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty=%?)",
                param_ty);
         let _indenter = indenter();
@@ -348,8 +359,7 @@ impl LookupContext {
                                            self_ty: ty::t,
                                            did: def_id,
                                            substs: &ty::substs,
-                                           vstore: ty::vstore)
-    {
+                                           vstore: ty::vstore) {
         debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
@@ -423,8 +433,7 @@ impl LookupContext {
         });
     }
 
-    fn push_inherent_impl_candidates_for_type(did: def_id)
-    {
+    fn push_inherent_impl_candidates_for_type(did: def_id) {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(did);
         for opt_impl_infos.each |impl_infos| {
@@ -436,8 +445,7 @@ impl LookupContext {
     }
 
     fn push_candidates_from_impl(&self, candidates: &DVec<Candidate>,
-                                 impl_info: &resolve::Impl)
-    {
+                                 impl_info: &resolve::Impl) {
         if !self.impl_dups.insert(impl_info.did, ()) {
             return; // already visited
         }
@@ -471,12 +479,47 @@ impl LookupContext {
         });
     }
 
+    fn push_candidates_from_provided_methods(
+            &self,
+            candidates: &DVec<Candidate>,
+            self_ty: ty::t,
+            trait_def_id: def_id,
+            methods: @DVec<@ProvidedMethodInfo>) {
+        debug!("(pushing candidates from provided methods) considering trait \
+                id %d:%d",
+               trait_def_id.crate,
+               trait_def_id.node);
+
+        for methods.each |provided_method_info| {
+            if provided_method_info.method_info.ident != self.m_name { loop; }
+
+            debug!("(pushing candidates from provided methods) adding \
+                    candidate");
+
+            // XXX: Needs to support generics.
+            let dummy_substs = { self_r: None, self_ty: None, tps: ~[] };
+            let (impl_ty, impl_substs) =
+                self.create_rcvr_ty_and_substs_for_method(
+                    provided_method_info.method_info.self_type,
+                    self_ty,
+                    dummy_substs);
+
+            candidates.push(Candidate {
+                rcvr_ty: impl_ty,
+                rcvr_substs: move impl_substs,
+                num_method_tps: provided_method_info.method_info.n_tps,
+                self_mode: get_mode_from_self_type(
+                    provided_method_info.method_info.self_type),
+                origin: method_static(provided_method_info.method_info.did)
+            });
+        }
+    }
+
     fn create_rcvr_ty_and_substs_for_method(&self,
                                             self_decl: ast::self_ty_,
                                             self_ty: ty::t,
                                             +self_substs: ty::substs)
-        -> (ty::t, ty::substs)
-    {
+        -> (ty::t, ty::substs) {
         // If the self type includes a region (like &self), we need to
         // ensure that the receiver substitutions have a self region.
         // If the receiver type does not itself contain borrowed
@@ -693,8 +736,7 @@ impl LookupContext {
     fn confirm_candidate(&self,
                          self_ty: ty::t,
                          candidate: &Candidate)
-        -> method_map_entry
-    {
+        -> method_map_entry {
         let tcx = self.tcx();
         let fty = self.fn_ty_from_origin(&candidate.origin);
 

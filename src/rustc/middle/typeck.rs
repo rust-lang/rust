@@ -62,6 +62,7 @@ use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
 use util::common::{indent, indenter};
 use std::list;
 use list::{List, Nil, Cons};
+use dvec::DVec;
 
 export check_crate;
 export infer;
@@ -174,12 +175,6 @@ impl vtable_origin {
 
 type vtable_map = HashMap<ast::node_id, vtable_res>;
 
-// Stores information about provided methods, aka "default methods" in traits.
-// Maps from a trait's def_id to a MethodInfo about
-// that method in that trait.
-type provided_methods_map = HashMap<ast::node_id,
-                                    ~[@resolve::MethodInfo]>;
-
 type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
 
 type crate_ctxt_ = {// A mapping from method call sites to traits that have
@@ -188,7 +183,6 @@ type crate_ctxt_ = {// A mapping from method call sites to traits that have
                     method_map: method_map,
                     vtable_map: vtable_map,
                     coherence_info: @coherence::CoherenceInfo,
-                    provided_methods_map: provided_methods_map,
                     tcx: ty::ctxt};
 
 enum crate_ctxt {
@@ -340,7 +334,6 @@ fn check_crate(tcx: ty::ctxt,
                             method_map: std::map::HashMap(),
                             vtable_map: std::map::HashMap(),
                             coherence_info: @coherence::CoherenceInfo(),
-                            provided_methods_map: std::map::HashMap(),
                             tcx: tcx});
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);

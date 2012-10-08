@@ -184,21 +184,31 @@ fn trans_fn_ref_with_vtables(
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
 
+    // Modify the def_id if this is a default method; we want to be
+    // monomorphizing the trait's code.
+    let (def_id, opt_impl_did) =
+            match tcx.provided_method_sources.find(def_id) {
+        None => (def_id, None),
+        Some(source) => (source.method_id, Some(source.impl_id))
+    };
+
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
     let def_id = {
         if def_id.crate != ast::local_crate {
-            inline::maybe_instantiate_inline(ccx, def_id)
+            let may_translate = opt_impl_did.is_none();
+            inline::maybe_instantiate_inline(ccx, def_id, may_translate)
         } else {
             def_id
         }
     };
 
-    // We must monomorphise if the fn has type parameters or is a rust
-    // intrinsic.  In particular, if we see an intrinsic that is
-    // inlined from a different crate, we want to reemit the intrinsic
-    // instead of trying to call it in the other crate.
-    let must_monomorphise = type_params.len() > 0 || {
+    // We must monomorphise if the fn has type parameters, is a rust
+    // intrinsic, or is a default method.  In particular, if we see an
+    // intrinsic that is inlined from a different crate, we want to reemit the
+    // intrinsic instead of trying to call it in the other crate.
+    let must_monomorphise = type_params.len() > 0 ||
+        opt_impl_did.is_some() || {
         if def_id.crate == ast::local_crate {
             let map_node = session::expect(
                 ccx.sess,
@@ -222,7 +232,7 @@ fn trans_fn_ref_with_vtables(
 
         let mut {val, must_cast} =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
-                                         vtables, Some(ref_id));
+                                         vtables, opt_impl_did, Some(ref_id));
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)
@@ -317,7 +327,9 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
             match callee.data {
                 Fn(fn_data) => {
                     let substituted = ty::subst_tps(callee.bcx.tcx(),
-                                                    type_params, fty);
+                                                    type_params,
+                                                    None,
+                                                    fty);
                     let mut llfnty = type_of::type_of(callee.bcx.ccx(),
                                                       substituted);
                     llfnty = T_ptr(struct_elt(llfnty, 0));

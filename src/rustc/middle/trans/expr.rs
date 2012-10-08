@@ -793,7 +793,9 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 
             // This cast should not be necessary. We should cast self *once*,
             // but right now this conflicts with default methods.
-            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), self_info.t));
+            let real_self_ty = monomorphize_type(bcx, self_info.t);
+            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), real_self_ty));
+
             let casted_val = PointerCast(bcx, self_info.v, llselfty);
             Datum {
                 val: casted_val,

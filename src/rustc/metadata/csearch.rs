@@ -23,6 +23,7 @@ export get_region_param;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_provided_trait_methods;
 export get_method_names_if_trait;
 export get_item_attrs;
 export each_path;
@@ -31,6 +32,12 @@ export get_impl_traits;
 export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
+export ProvidedTraitMethodInfo;
+
+struct ProvidedTraitMethodInfo {
+    ty: ty::method,
+    def_id: ast::def_id
+}
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
@@ -97,6 +104,13 @@ fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_trait_methods(cstore.intr, cdata, def.node, tcx)
+}
+
+fn get_provided_trait_methods(tcx: ty::ctxt, def: ast::def_id) ->
+        ~[ProvidedTraitMethodInfo] {
+    let cstore = tcx.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
 fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)

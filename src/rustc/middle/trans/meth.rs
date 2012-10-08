@@ -28,7 +28,7 @@ see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param],
-              self_ty: Option<ty::t>) {
+              self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
@@ -36,7 +36,22 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path, path_name(method.ident));
-            trans_method(ccx, path, *method, None, self_ty, llfn);
+
+            let param_substs_opt;
+            match self_ty {
+                None => param_substs_opt = None,
+                Some(self_ty) => {
+                    param_substs_opt = Some({
+                        tys: ~[],
+                        vtables: None,
+                        bounds: @~[],
+                        self_ty: Some(self_ty)
+                    });
+                }
+            }
+
+            trans_method(ccx, path, *method, param_substs_opt, self_ty, llfn,
+                         ast_util::local_def(id));
         }
     }
 }
@@ -54,13 +69,15 @@ Translates a (possibly monomorphized) method body.
   will be none if this is not a default method and must always be present
   if this is a default method.
 - `llfn`: the LLVM ValueRef for the method
+- `impl_id`: the node ID of the impl this method is inside
 */
 fn trans_method(ccx: @crate_ctxt,
                 path: path,
                 method: &ast::method,
                 param_substs: Option<param_substs>,
                 base_self_ty: Option<ty::t>,
-                llfn: ValueRef) {
+                llfn: ValueRef,
+                impl_id: ast::def_id) {
 
     // figure out how self is being passed
     let self_arg = match method.self_ty.node {
@@ -76,8 +93,10 @@ fn trans_method(ccx: @crate_ctxt,
             Some(provided_self_ty) => self_ty = provided_self_ty
         }
         let self_ty = match param_substs {
-          None => self_ty,
-          Some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
+            None => self_ty,
+            Some({tys: ref tys, _}) => {
+                ty::subst_tps(ccx.tcx, *tys, None, self_ty)
+            }
         };
         match method.self_ty.node {
           ast::sty_value => {
@@ -98,15 +117,20 @@ fn trans_method(ccx: @crate_ctxt,
              llfn,
              self_arg,
              param_substs,
-             method.id);
+             method.id,
+             Some(impl_id));
 }
 
-fn trans_self_arg(bcx: block, base: @ast::expr,
+fn trans_self_arg(bcx: block,
+                  base: @ast::expr,
                   mentry: typeck::method_map_entry) -> Result {
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let mut temp_cleanups = ~[];
+
+    // Compute the mode and type of self.
     let self_arg = {mode: mentry.self_arg.mode,
                     ty: monomorphize_type(bcx, mentry.self_arg.ty)};
+
     let result = trans_arg_expr(bcx, self_arg, base,
                                 &mut temp_cleanups, None, DontAutorefArg);
 
@@ -120,11 +144,31 @@ fn trans_self_arg(bcx: block, base: @ast::expr,
 }
 
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
-                       self: @ast::expr, mentry: typeck::method_map_entry)
-    -> Callee
-{
+                       self: @ast::expr, mentry: typeck::method_map_entry) ->
+                       Callee {
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
-    match mentry.origin {
+
+    // Replace method_self with method_static here.
+    let mut origin = mentry.origin;
+    match origin {
+        typeck::method_self(copy trait_id, copy method_index) => {
+            // Get the ID of the impl we're inside.
+            let impl_def_id = bcx.fcx.impl_id.get();
+
+            io::println(fmt!("impl_def_id is %?", impl_def_id));
+
+            // Get the ID of the method we're calling.
+            let method_name =
+                ty::trait_methods(bcx.tcx(), trait_id)[method_index].ident;
+            let method_id = method_with_name(bcx.ccx(), impl_def_id,
+                                             method_name);
+            origin = typeck::method_static(method_id);
+        }
+        typeck::method_static(*) | typeck::method_param(*) |
+        typeck::method_trait(*) => {}
+    }
+
+    match origin {
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
             let Result {bcx, val} = trans_self_arg(bcx, self, mentry);
@@ -155,7 +199,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
             trans_trait_callee(bcx, callee_id, off, self, vstore)
         }
         typeck::method_self(*) => {
-            bcx.tcx().sess.span_bug(self.span, ~"self method call");
+            fail ~"method_self should have been handled above"
         }
     }
 }
@@ -519,13 +563,21 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
     match origin {
         typeck::vtable_static(impl_id, substs, sub_vtables) => {
             monomorphize::make_mono_id(
-                ccx, impl_id, substs,
-                if (*sub_vtables).len() == 0u { None }
-                else { Some(sub_vtables) }, None)
+                ccx,
+                impl_id,
+                substs,
+                if (*sub_vtables).len() == 0u {
+                    None
+                } else {
+                    Some(sub_vtables)
+                },
+                None,
+                None)
         }
         typeck::vtable_trait(trait_id, substs) => {
             @{def: trait_id,
-              params: vec::map(substs, |t| mono_precise(*t, None))}
+              params: vec::map(substs, |t| mono_precise(*t, None)),
+              impl_did_opt: None}
         }
         // can't this be checked at the callee?
         _ => fail ~"vtable_id"
@@ -571,7 +623,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::trait_methods(tcx, trt_id), |im| {
-        let fty = ty::subst_tps(tcx, substs, ty::mk_fn(tcx, im.fty));
+        let fty = ty::subst_tps(tcx, substs, None, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             C_null(T_ptr(T_nil()))
         } else {
@@ -580,10 +632,11 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                 // If the method is in another crate, need to make an inlined
                 // copy first
                 if m_id.crate != ast::local_crate {
-                    m_id = inline::maybe_instantiate_inline(ccx, m_id);
+                    // XXX: Set impl ID here?
+                    m_id = inline::maybe_instantiate_inline(ccx, m_id, true);
                 }
                 monomorphize::monomorphic_fn(ccx, m_id, substs,
-                                             Some(vtables), None).val
+                                             Some(vtables), None, None).val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)
             } else {
