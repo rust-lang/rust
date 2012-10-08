@@ -2,8 +2,8 @@ use util::interner;
 use util::interner::interner;
 use std::map::HashMap;
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum binop {
     PLUS,
     MINUS,
@@ -17,8 +17,8 @@ enum binop {
     SHR,
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 enum token {
     /* Expression-operator symbols. */
     EQ,
@@ -75,8 +75,8 @@ enum token {
     EOF,
 }
 
-#[auto_serialize2]
-#[auto_deserialize2]
+#[auto_serialize]
+#[auto_deserialize]
 /// For interpolation during macro expansion.
 enum nonterminal {
     nt_item(@ast::item),
