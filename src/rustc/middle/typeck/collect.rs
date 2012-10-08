@@ -497,6 +497,30 @@ fn convert_struct(ccx: @crate_ctxt,
                   tpt: ty::ty_param_bounds_and_ty,
                   id: ast::node_id) {
     let tcx = ccx.tcx;
+    do option::iter(&struct_def.ctor) |ctor| {
+        // Write the ctor type
+        let t_args = ctor.node.dec.inputs.map(
+            |a| ty_of_arg(ccx, type_rscope(rp), *a, None) );
+        let t_res = ty::mk_class(
+            tcx, local_def(id),
+            {self_r: rscope::bound_self_region(rp),
+             self_ty: None,
+             tps: ty::ty_params_to_tys(tcx, tps)});
+        let proto = ty::proto_vstore(ty::vstore_slice(ty::re_static));
+        let t_ctor = ty::mk_fn(tcx, FnTyBase {
+            meta: FnMeta {purity: ast::impure_fn,
+                          proto: proto,
+                          bounds: @~[],
+                          ret_style: ast::return_val},
+            sig: FnSig {inputs: t_args,
+                        output: t_res}
+        });
+        write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
+        tcx.tcache.insert(local_def(ctor.node.id),
+                          {bounds: tpt.bounds,
+                           region_param: rp,
+                           ty: t_ctor});
+    }
 
     do option::iter(&struct_def.dtor) |dtor| {
         // Write the dtor type

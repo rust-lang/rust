@@ -3318,7 +3318,7 @@ fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     match def {
-      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_)
+      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_, _)
         => true,
       _ => false
     }
@@ -3492,6 +3492,9 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                             ast_map::path_name(variant.node.name))
           }
 
+          ast_map::node_ctor(nm, _, _, _, path) => {
+            vec::append_one(*path, ast_map::path_name(nm))
+          }
           ast_map::node_dtor(_, _, _, path) => {
             vec::append_one(*path, ast_map::path_name(
                 syntax::parse::token::special_idents::literally_dtor))

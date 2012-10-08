@@ -1596,14 +1596,18 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.node.expr.is_none() || ty::type_is_bot(block_ty) ||
-        ty::type_is_nil(block_ty)
-    {
+
+    if !ccx.class_ctors.contains_key(id) // hack --
+       /* avoids the need for special cases to assign a type to
+          the constructor body (since it has no explicit return) */
+      &&
+      (body.node.expr.is_none() ||
+       ty::type_is_bot(block_ty) ||
+       ty::type_is_nil(block_ty))  {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         bcx = controlflow::trans_block(bcx, body, expr::SaveIn(fcx.llretptr));
     }
-
     finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
 
@@ -1691,6 +1695,60 @@ fn trans_enum_variant(ccx: @crate_ctxt,
         memmove_ty(bcx, lldestptr, llarg, arg_ty);
     }
     build_return(bcx);
+    finish_fn(fcx, lltop);
+}
+
+fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
+                    body: ast::blk, llctor_decl: ValueRef,
+                    psubsts: param_substs, ctor_id: ast::node_id,
+                    parent_id: ast::def_id, sp: span) {
+    // Add ctor to the ctor map
+    ccx.class_ctors.insert(ctor_id, parent_id);
+
+    // Translate the ctor
+
+    // Set up the type for the result of the ctor
+    // kludgy -- this wouldn't be necessary if the typechecker
+    // special-cased constructors, then we could just look up
+    // the ctor's return type.
+    let rslt_ty =  ty::mk_class(ccx.tcx, parent_id,
+                                dummy_substs(psubsts.tys));
+
+    // Make the fn context
+    let fcx = new_fn_ctxt_w_id(ccx, path, llctor_decl, ctor_id,
+                               Some(psubsts), Some(sp));
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, decl.inputs);
+    let mut bcx_top = top_scope_block(fcx, body.info());
+    let lltop = bcx_top.llbb;
+    let arg_tys = ty::ty_fn_args(node_id_type(bcx_top, ctor_id));
+    bcx_top = copy_args_to_allocas(fcx, bcx_top, decl.inputs,
+                                   raw_llargs, arg_tys);
+
+    // Create a temporary for `self` that we will return at the end
+    let selfdatum = datum::scratch_datum(bcx_top, rslt_ty, true);
+
+    // Initialize dtor flag (if any) to 1
+    if ty::ty_dtor(bcx_top.tcx(), parent_id).is_some() {
+        let flag = GEPi(bcx_top, selfdatum.val, [0, 1]);
+        Store(bcx_top, C_u8(1), flag);
+    }
+
+    // initialize fields to zero
+    let mut bcx = bcx_top;
+
+    // note we don't want to take *or* drop self.
+    fcx.llself = Some(ValSelfData {v: selfdatum.val,
+                                   t: rslt_ty,
+                                   is_owned: false});
+
+    // Translate the body of the ctor
+    bcx = controlflow::trans_block(bcx, body, expr::Ignore);
+
+    // Generate the return expression
+    bcx = selfdatum.move_to(bcx, datum::INIT, fcx.llretptr);
+
+    cleanup_and_leave(bcx, None, Some(fcx.llreturn));
+    Unreachable(bcx);
     finish_fn(fcx, lltop);
 }
 
@@ -1863,6 +1921,14 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                     tps: ~[ast::ty_param], path: @ast_map::path,
                     ident: ast::ident, id: ast::node_id) {
     if tps.len() == 0u {
+      let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
+                     vtables: None,
+                     bounds: @~[]};
+      do option::iter(&struct_def.ctor) |ctor| {
+        trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
+                         get_item_val(ccx, ctor.node.id), psubsts,
+                         ctor.node.id, local_def(id), ctor.span);
+      }
       do option::iter(&struct_def.dtor) |dtor| {
          trans_class_dtor(ccx, *path, dtor.node.body,
            dtor.node.id, None, None, local_def(id));
@@ -2117,6 +2183,10 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     g
                 }
             }
+          }
+          ast_map::node_ctor(nm, _, ctor, _, pt) => {
+            let my_path = vec::append(*pt, ~[path_name(nm)]);
+            register_fn(ccx, ctor.span, my_path, ctor.node.id)
           }
           ast_map::node_dtor(_, dt, parent_id, pt) => {
             /*
@@ -2642,6 +2712,7 @@ fn trans_crate(sess: session::session,
           crate_map: crate_map,
           mut uses_gc: false,
           dbg_cx: dbg_cx,
+          class_ctors: HashMap(),
           mut do_not_commit_warning_issued: false};
 
 

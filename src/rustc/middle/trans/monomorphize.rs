@@ -5,7 +5,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use base::{trans_item, get_item_val, no_self, self_arg, trans_fn,
               impl_self, decl_internal_cdecl_fn,
               set_inline_hint_if_appr, set_inline_hint,
-              trans_enum_variant, trans_class_dtor,
+              trans_enum_variant, trans_class_ctor, trans_class_dtor,
               get_insn_ctxt};
 use syntax::parse::token::special_idents;
 use type_of::type_of_fn_from_ty;
@@ -71,6 +71,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         return {val: get_item_val(ccx, fn_id.node),
                 must_cast: true};
       }
+      ast_map::node_ctor(nm, _, ct, _, pt) => (pt, nm, ct.span),
       ast_map::node_dtor(_, dtor, _, pt) =>
           (pt, special_idents::dtor, dtor.span),
       ast_map::node_trait_method(*) => {
@@ -159,6 +160,16 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
         meth::trans_method(ccx, pt, mth, psubsts, None, d);
+        d
+      }
+      ast_map::node_ctor(_, tps, ctor, parent_id, _) => {
+        // ctors don't have attrs, at least not right now
+        let d = mk_lldecl();
+        let tp_tys = ty::ty_params_to_tys(ccx.tcx, tps);
+        trans_class_ctor(ccx, pt, ctor.node.dec, ctor.node.body, d,
+               option::get_default(&psubsts,
+                        {tys:tp_tys, vtables: None, bounds: @~[]}),
+                         fn_id.node, parent_id, ctor.span);
         d
       }
       ast_map::node_dtor(_, dtor, _, pt) => {
