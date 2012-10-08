@@ -36,6 +36,8 @@ explore some typical patterns in concurrent Rust code, and finally
 discuss some of the more exotic synchronization types in the standard
 library.
 
+> ***Warning:*** This tutorial is incomplete
+
 ## A note about the libraries
 
 While Rust's type system provides the building blocks needed for safe
@@ -295,8 +297,6 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
 
-# TODO
-
 # Handling task failure
 
 Rust has a built-in mechanism for raising exceptions, written `fail`
@@ -450,13 +450,6 @@ fail;
 // It will take MAX(time1,time2) for the program to finish.
 # };
 ~~~
-
-
-# Unfinished notes
-
-## Actor patterns
-
-## Linearity, option dancing, owned closures
 
 ## Creating a task with a bi-directional communication path
 
