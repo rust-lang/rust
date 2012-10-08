@@ -165,7 +165,7 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
 
 #[test]
 fn test_tuple_ref() {
-    let (~"foo", ~"bar");
+    let x = (~"foo", ~"bar");
     assert x.first_ref() == &~"foo";
     assert x.second_ref() == &~"bar";
 }
