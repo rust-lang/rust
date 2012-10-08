@@ -18,6 +18,8 @@ export has_freevars;
 // (The def_upvar will already have been stripped).
 #[auto_serialize]
 #[auto_deserialize]
+#[auto_serialize2]
+#[auto_deserialize2]
 type freevar_entry = {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
