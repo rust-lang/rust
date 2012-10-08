@@ -17,6 +17,8 @@ enum fn_kind {
     fk_method(ident, ~[ty_param], @method),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
+    fk_ctor(ident, ~[attribute], ~[ty_param], node_id /* self id */,
+            def_id /* parent class id */), // class constructor
     fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
@@ -24,9 +26,8 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     match fk {
-      fk_item_fn(name, _, _) | fk_method(name, _, _) => {
-          /* FIXME (#2543) */ copy name
-      }
+      fk_item_fn(name, _, _) | fk_method(name, _, _)
+          | fk_ctor(name, _, _, _, _) =>  /* FIXME (#2543) */ copy name,
       fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
       fk_dtor(*)                  => parse::token::special_idents::dtor
     }
@@ -34,11 +35,11 @@ fn name_of_fn(fk: fn_kind) -> ident {
 
 fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     match fk {
-        fk_item_fn(_, tps, _) | fk_method(_, tps, _) |
-        fk_dtor(tps, _, _, _) => {
-            /* FIXME (#2543) */ copy tps
-        }
-        fk_anon(*) | fk_fn_block(*) => ~[]
+      fk_item_fn(_, tps, _) | fk_method(_, tps, _)
+          | fk_ctor(_, _, tps, _, _) | fk_dtor(tps, _, _, _) => {
+          /* FIXME (#2543) */ copy tps
+      }
+      fk_anon(*) | fk_fn_block(*) => ~[]
     }
 }
 
@@ -290,6 +291,17 @@ fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
                m.decl, m.body, m.span, m.id, e, v);
 }
 
+// Similar logic to the comment on visit_method_helper - Tim
+fn visit_class_ctor_helper<E>(ctor: class_ctor, nm: ident, tps: ~[ty_param],
+                              parent_id: def_id, e: E, v: vt<E>) {
+    v.visit_fn(fk_ctor(/* FIXME (#2543) */ copy nm,
+                       ctor.node.attrs,
+                       /* FIXME (#2543) */ copy tps,
+                       ctor.node.self_id, parent_id),
+        ctor.node.dec, ctor.node.body, ctor.span, ctor.node.id, e, v)
+
+}
+
 fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: ~[ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
     v.visit_fn(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
@@ -318,7 +330,7 @@ fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     }
 }
 
-fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
+fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
                        id: node_id, e: E, v: vt<E>) {
     for sd.fields.each |f| {
         v.visit_struct_field(*f, e, v);
@@ -329,6 +341,9 @@ fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
     for sd.traits.each |p| {
         visit_path(p.path, e, v);
     }
+    do option::iter(&sd.ctor) |ctor| {
+      visit_class_ctor_helper(*ctor, nm, tps, ast_util::local_def(id), e, v);
+    };
     do option::iter(&sd.dtor) |dtor| {
       visit_class_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
     };

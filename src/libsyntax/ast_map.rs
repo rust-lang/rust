@@ -71,6 +71,9 @@ enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
+    // Constructor for a class
+    // def_id is parent id
+    node_ctor(ident, ~[ty_param], @class_ctor, def_id, @path),
     // Destructor for a class
     node_dtor(~[ty_param], @class_dtor, def_id, @path),
     node_block(blk),
@@ -129,7 +132,7 @@ fn map_decoded_item(diag: span_handler,
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
     match ii {
-      ii_item(*) | ii_dtor(*) => { /* fallthrough */ }
+      ii_item(*) | ii_ctor(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
                                              @path));
@@ -152,6 +155,18 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     match fk {
+      visit::fk_ctor(nm, attrs, tps, self_id, parent_id) => {
+          let ct = @{node: {id: id,
+                            attrs: attrs,
+                            self_id: self_id,
+                            dec: /* FIXME (#2543) */ copy decl,
+                            body: /* FIXME (#2543) */ copy body},
+                    span: sp};
+          cx.map.insert(id, node_ctor(/* FIXME (#2543) */ copy nm,
+                                      /* FIXME (#2543) */ copy tps,
+                                      ct, parent_id,
+                                      @/* FIXME (#2543) */ copy cx.path));
+      }
       visit::fk_dtor(tps, attrs, self_id, parent_id) => {
           let dt = @{node: {id: id, attrs: attrs, self_id: self_id,
                      body: /* FIXME (#2543) */ copy body}, span: sp};
@@ -366,6 +381,9 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
       Some(node_local(_)) => { // add more info here
         fmt!("local (id=%?)", id)
+      }
+      Some(node_ctor(*)) => { // add more info here
+        fmt!("node_ctor (id=%?)", id)
       }
       Some(node_dtor(*)) => { // add more info here
         fmt!("node_dtor (id=%?)", id)

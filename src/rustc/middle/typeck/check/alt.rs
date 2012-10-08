@@ -325,7 +325,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         // Check to ensure that the struct is the one specified.
         match tcx.def_map.get(pat.id) {
-            ast::def_class(supplied_def_id)
+            ast::def_class(supplied_def_id, _)
                     if supplied_def_id == class_id => {
                 // OK.
             }

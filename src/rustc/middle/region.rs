@@ -305,16 +305,16 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
               visitor: visit::vt<ctxt>) {
 
     let fn_cx = match fk {
-        visit::fk_item_fn(*) | visit::fk_method(*) |
-        visit::fk_dtor(*) => {
-            // Top-level functions are a root scope.
-            ctxt {parent: Some(id),.. cx}
-        }
+      visit::fk_item_fn(*) | visit::fk_method(*) |
+      visit::fk_ctor(*) | visit::fk_dtor(*) => {
+        // Top-level functions are a root scope.
+        ctxt {parent: Some(id),.. cx}
+      }
 
-        visit::fk_anon(*) | visit::fk_fn_block(*) => {
-            // Closures continue with the inherited scope.
-            cx
-        }
+      visit::fk_anon(*) | visit::fk_fn_block(*) => {
+        // Closures continue with the inherited scope.
+        cx
+      }
     };
 
     debug!("visiting fn with body %d. cx.parent: %? \
@@ -641,7 +641,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     match ty.node {
       ast::ty_path(path, id) => {
         match cx.def_map.get(id) {
-          ast::def_ty(did) | ast::def_class(did) => {
+          ast::def_ty(did) | ast::def_class(did, _) => {
             if did.crate == ast::local_crate {
                 if cx.opt_region_is_relevant(path.rp) {
                     cx.add_dep(did.node);

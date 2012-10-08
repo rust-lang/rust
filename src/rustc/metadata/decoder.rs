@@ -123,6 +123,7 @@ enum Family {
     Variant,               // v
     Impl,                  // i
     Trait,                 // I
+    Class,                 // C
     Struct,                // S
     PublicField,           // g
     PrivateField,          // j
@@ -155,6 +156,7 @@ fn item_family(item: ebml2::Doc) -> Family {
       'v' => Variant,
       'i' => Impl,
       'I' => Trait,
+      'C' => Class,
       'S' => Struct,
       'g' => PublicField,
       'j' => PrivateField,
@@ -298,7 +300,8 @@ fn item_to_def_like(item: ebml2::Doc, did: ast::def_id, cnum: ast::crate_num)
     let fam = item_family(item);
     match fam {
       Const     => dl_def(ast::def_const(did)),
-      Struct    => dl_def(ast::def_class(did)),
+      Class     => dl_def(ast::def_class(did, true)),
+      Struct    => dl_def(ast::def_class(did, false)),
       UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
       Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
       PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
@@ -819,6 +822,7 @@ fn item_family_to_str(fam: Family) -> ~str {
       Variant => ~"variant",
       Impl => ~"impl",
       Trait => ~"trait",
+      Class => ~"class",
       Struct => ~"struct",
       PublicField => ~"public field",
       PrivateField => ~"private field",

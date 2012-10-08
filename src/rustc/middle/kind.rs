@@ -181,9 +181,9 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
         // variables.  This list is used below to avoid checking and reporting
         // on a given variable twice.
         let cap_clause = match fk {
-            visit::fk_anon(_, cc) | visit::fk_fn_block(cc) => cc,
-            visit::fk_item_fn(*) | visit::fk_method(*) |
-            visit::fk_dtor(*) => @~[]
+          visit::fk_anon(_, cc) | visit::fk_fn_block(cc) => cc,
+          visit::fk_item_fn(*) | visit::fk_method(*) |
+          visit::fk_ctor(*) | visit::fk_dtor(*) => @~[]
         };
         let captured_vars = do (*cap_clause).map |cap_item| {
             let cap_def = cx.tcx.def_map.get(cap_item.id);

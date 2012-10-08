@@ -115,7 +115,8 @@ enum class_member {
   So that we can distinguish a class ctor or dtor
   from other class members
  */
-enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
+enum class_contents { ctor_decl(fn_decl, ~[attribute], blk, codemap::span),
+                      dtor_decl(blk, ~[attribute], codemap::span),
                       members(~[@class_member]) }
 
 type arg_or_capture_item = Either<arg, capture_item>;
@@ -2682,13 +2683,30 @@ impl parser {
 
         let mut fields: ~[@struct_field];
         let mut methods: ~[@method] = ~[];
+        let mut the_ctor: Option<(fn_decl, ~[attribute], blk, codemap::span)>
+            = None;
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
+        let ctor_id = self.get_id();
 
         if self.eat(token::LBRACE) {
             // It's a record-like struct.
             fields = ~[];
             while self.token != token::RBRACE {
                 match self.parse_class_item() {
+                  ctor_decl(a_fn_decl, attrs, blk, s) => {
+                      match the_ctor {
+                        Some((_, _, _, s_first)) => {
+                          self.span_note(s, #fmt("Duplicate constructor \
+                                     declaration for class %s",
+                                     *self.interner.get(class_name)));
+                           self.span_fatal(copy s_first, ~"First constructor \
+                                                          declared here");
+                        }
+                        None    => {
+                          the_ctor = Some((a_fn_decl, attrs, blk, s));
+                        }
+                      }
+                  }
                   dtor_decl(blk, attrs, s) => {
                       match the_dtor {
                         Some((_, _, s_first)) => {
@@ -2746,14 +2764,36 @@ impl parser {
                     self_id: self.get_id(),
                     body: d_body},
              span: d_s}};
-        (class_name,
-         item_class(@{
-             traits: traits,
-             fields: move fields,
-             methods: move methods,
-             dtor: actual_dtor
-         }, ty_params),
-         None)
+        match the_ctor {
+          Some((ct_d, ct_attrs, ct_b, ct_s)) => {
+            (class_name,
+             item_class(@{
+                traits: traits,
+                fields: move fields,
+                methods: move methods,
+                ctor: Some({
+                 node: {id: ctor_id,
+                        attrs: ct_attrs,
+                        self_id: self.get_id(),
+                        dec: ct_d,
+                        body: ct_b},
+                 span: ct_s}),
+                dtor: actual_dtor
+             }, ty_params),
+             None)
+          }
+          None => {
+            (class_name,
+             item_class(@{
+                    traits: traits,
+                    fields: move fields,
+                    methods: move methods,
+                    ctor: None,
+                    dtor: actual_dtor
+             }, ty_params),
+             None)
+          }
+        }
     }
 
     fn token_is_pound_or_doc_comment(++tok: token::token) -> bool {
@@ -3057,6 +3097,12 @@ impl parser {
         let mut methods: ~[@method] = ~[];
         while self.token != token::RBRACE {
             match self.parse_class_item() {
+                ctor_decl(*) => {
+                    self.span_fatal(copy self.span,
+                                    ~"deprecated explicit \
+                                      constructors are not allowed \
+                                      here");
+                }
                 dtor_decl(blk, attrs, s) => {
                     match the_dtor {
                         Some((_, _, s_first)) => {
@@ -3097,6 +3143,7 @@ impl parser {
             traits: ~[],
             fields: move fields,
             methods: move methods,
+            ctor: None,
             dtor: actual_dtor
         };
     }

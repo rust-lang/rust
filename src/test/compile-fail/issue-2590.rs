@@ -10,7 +10,7 @@ trait parse {
 
 impl parser: parse {
     fn parse() -> ~[int] {
-        dvec::unwrap(move self.tokens) //~ ERROR moving out of immutable field
+        dvec::unwrap(move self.tokens) //~ ERROR illegal move from self
     }
 }
 

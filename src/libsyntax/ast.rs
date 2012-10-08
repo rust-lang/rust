@@ -135,7 +135,7 @@ enum def {
               @def,     // closed over def
               node_id,  // expr node that creates the closure
               node_id), // id for the block/body of the closure expr
-    def_class(def_id),
+    def_class(def_id, bool /* has constructor */),
     def_typaram_binder(node_id), /* class, impl or trait that has ty params */
     def_region(node_id),
     def_label(node_id)
@@ -235,9 +235,9 @@ impl def : cmp::Eq {
                     _ => false
                 }
             }
-            def_class(e0a) => {
+            def_class(e0a, e1a) => {
                 match (*other) {
-                    def_class(e0b) => e0a == e0b,
+                    def_class(e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }
@@ -1462,6 +1462,8 @@ type struct_def = {
     fields: ~[@struct_field], /* fields */
     methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
+    /* ctor is optional, and will soon go away */
+    ctor: Option<class_ctor>,
     /* dtor is optional */
     dtor: Option<class_dtor>
 };
@@ -1561,6 +1563,7 @@ enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
+    ii_ctor(class_ctor, ident, ~[ty_param], def_id /* parent id */),
     ii_dtor(class_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
