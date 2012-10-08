@@ -433,6 +433,7 @@ fn print_foreign_item(s: ps, item: @ast::foreign_item) {
         print_type(s, t);
         word(s.s, ~";");
         end(s); // end the head-ibox
+        end(s); // end the outer cbox
       }
     }
 }
