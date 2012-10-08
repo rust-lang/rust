@@ -63,7 +63,7 @@ pub fn Serializer(wr: io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 
-pub impl Serializer: serialization2::Serializer {
+pub impl Serializer: serialization::Serializer {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -167,7 +167,7 @@ pub fn PrettySerializer(wr: io::Writer) -> PrettySerializer {
     PrettySerializer { wr: wr, indent: 0 }
 }
 
-pub impl PrettySerializer: serialization2::Serializer {
+pub impl PrettySerializer: serialization::Serializer {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -273,8 +273,8 @@ pub impl PrettySerializer: serialization2::Serializer {
     }
 }
 
-pub impl Json: serialization2::Serializable {
-    fn serialize<S: serialization2::Serializer>(&self, s: &S) {
+pub impl Json: serialization::Serializable {
+    fn serialize<S: serialization::Serializer>(&self, s: &S) {
         match *self {
             Number(v) => v.serialize(s),
             String(ref v) => v.serialize(s),
@@ -721,7 +721,7 @@ priv impl Deserializer {
     }
 }
 
-pub impl Deserializer: serialization2::Deserializer {
+pub impl Deserializer: serialization::Deserializer {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {
