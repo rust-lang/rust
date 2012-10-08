@@ -2086,6 +2086,9 @@ pub trait StrSlice {
     pure fn to_upper() -> ~str;
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
+    fn trim() -> ~str;
+    fn trim_left() -> ~str;
+    fn trim_right() -> ~str;
     pure fn to_unique() -> ~str;
     pure fn char_at(i: uint) -> char;
 }
