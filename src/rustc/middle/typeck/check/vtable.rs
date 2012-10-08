@@ -444,7 +444,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
 
     // XXX: This should work for multiple traits.
     let ity = ty::impl_traits(tcx, impl_did, vstore)[0];
-    let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
+    let trait_ty = ty::subst_tps(tcx, impl_tys, None, ity);
     debug!("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).sty, impl_did);
     match ty::get(trait_ty).sty {

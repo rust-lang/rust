@@ -373,7 +373,7 @@ fn trans_expr_fn(bcx: block,
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
-                      bcx.fcx.param_substs, id, |fcx| {
+                      bcx.fcx.param_substs, id, None, |fcx| {
             load_environment(fcx, cdata_ty, cap_vars,
                              ret_handle.is_some(), ck);
                       }, |bcx| {
@@ -396,7 +396,7 @@ fn trans_expr_fn(bcx: block,
         }
         ty::proto_bare => {
             trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
-                          id, |_fcx| { }, |_bcx| { });
+                          id, None, |_fcx| { }, |_bcx| { });
             rslt(bcx, C_null(T_opaque_box_ptr(ccx)))
         }
         ty::proto_vstore(ty::vstore_fixed(_)) => {
