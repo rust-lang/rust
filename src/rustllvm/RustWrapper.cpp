@@ -493,5 +493,7 @@ extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
 }
 
 extern "C" void LLVMSetDebug(int Enabled) {
+#ifndef NDEBUG
   DebugFlag = Enabled;
+#endif
 }
