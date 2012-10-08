@@ -68,8 +68,7 @@ def parse_line(n, line):
 
   match = re.match(r"([ST]) (\d{4}-\d{2}-\d{2}) ([a-fA-F\d]+)\s*$", line);
   if (not match):
-    raise Exception("%s:%d:%s:E syntax error: line = %s"
-                       % (snapshotfile, n, hash, line))
+    raise Exception("%s:%d:E syntax error: " % (snapshotfile, n))
   return {"type": "snapshot",
           "date": match.group(2),
           "rev": match.group(3)}
