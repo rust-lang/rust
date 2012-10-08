@@ -271,23 +271,6 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
 
 fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                 -> @ast::struct_def {
-    let resulting_optional_constructor;
-    match struct_def.ctor {
-        None => {
-            resulting_optional_constructor = None;
-        }
-        Some(constructor) => {
-            resulting_optional_constructor = Some({
-                node: {
-                    body: fld.fold_block(constructor.node.body),
-                    dec: fold_fn_decl(constructor.node.dec, fld),
-                    id: fld.new_id(constructor.node.id),
-                    .. constructor.node
-                },
-                .. constructor
-            });
-        }
-    }
     let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
@@ -298,7 +281,6 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
         traits: vec::map(struct_def.traits, |p| fold_trait_ref(*p, fld)),
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         methods: vec::map(struct_def.methods, |m| fld.fold_method(*m)),
-        ctor: resulting_optional_constructor,
         dtor: dtor
     };
 }
@@ -585,7 +567,6 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                                  |f| fld.fold_struct_field(*f)),
                 methods: vec::map(struct_def.methods,
                                   |m| fld.fold_method(*m)),
-                ctor: None,
                 dtor: dtor
             })
         }
