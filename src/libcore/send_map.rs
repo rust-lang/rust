@@ -17,6 +17,9 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
     fn insert(&mut self, k: K, +v: V) -> bool;
     fn remove(&mut self, k: &K) -> bool;
+    fn pop(&mut self, k: &K) -> Option<V>;
+    fn swap(&mut self, k: K, +v: V) -> Option<V>;
+    fn consume(&mut self, f: fn(K, V));
     fn clear(&mut self);
     pure fn len(&const self) -> uint;
     pure fn is_empty(&const self) -> bool;
@@ -198,6 +201,52 @@ pub mod linear {
             }
         }
 
+        fn pop_internal(&mut self, hash: uint, k: &K) -> Option<V> {
+            // Removing from an open-addressed hashtable
+            // is, well, painful.  The problem is that
+            // the entry may lie on the probe path for other
+            // entries, so removing it would make you think that
+            // those probe paths are empty.
+            //
+            // To address this we basically have to keep walking,
+            // re-inserting entries we find until we reach an empty
+            // bucket.  We know we will eventually reach one because
+            // we insert one ourselves at the beginning (the removed
+            // entry).
+            //
+            // I found this explanation elucidating:
+            // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
+            let mut idx = match self.bucket_for_key_with_hash(self.buckets,
+                                                              hash, k) {
+                TableFull | FoundHole(_) => return None,
+                FoundEntry(idx) => idx
+            };
+
+            let len_buckets = self.buckets.len();
+            let mut bucket = None;
+            self.buckets[idx] <-> bucket;
+
+            let value = match move bucket {
+                None => None,
+                Some(move bucket) => {
+                    let Bucket { value: move value, _ } = move bucket;
+                    Some(value)
+                },
+            };
+
+            idx = self.next_bucket(idx, len_buckets);
+            while self.buckets[idx].is_some() {
+                let mut bucket = None;
+                bucket <-> self.buckets[idx];
+                self.insert_opt_bucket(move bucket);
+                idx = self.next_bucket(idx, len_buckets);
+            }
+            self.size -= 1;
+
+            value
+
+        }
+
         fn search(&self,
                   hash: uint,
                   op: fn(x: &Option<Bucket<K,V>>) -> bool) {
@@ -222,37 +271,55 @@ pub mod linear {
         }
 
         fn remove(&mut self, k: &K) -> bool {
-            // Removing from an open-addressed hashtable
-            // is, well, painful.  The problem is that
-            // the entry may lie on the probe path for other
-            // entries, so removing it would make you think that
-            // those probe paths are empty.
-            //
-            // To address this we basically have to keep walking,
-            // re-inserting entries we find until we reach an empty
-            // bucket.  We know we will eventually reach one because
-            // we insert one ourselves at the beginning (the removed
-            // entry).
-            //
-            // I found this explanation elucidating:
-            // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
-
-            let mut idx = match self.bucket_for_key(self.buckets, k) {
-                TableFull | FoundHole(_) => return false,
-                FoundEntry(idx) => idx
-            };
-
-            let len_buckets = self.buckets.len();
-            self.buckets[idx] = None;
-            idx = self.next_bucket(idx, len_buckets);
-            while self.buckets[idx].is_some() {
-                let mut bucket = None;
-                bucket <-> self.buckets[idx];
-                self.insert_opt_bucket(move bucket);
-                idx = self.next_bucket(idx, len_buckets);
+            match self.pop(k) {
+                Some(_) => true,
+                None => false,
             }
-            self.size -= 1;
-            return true;
+        }
+
+        fn pop(&mut self, k: &K) -> Option<V> {
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            self.pop_internal(hash, k)
+        }
+
+        fn swap(&mut self, k: K, v: V) -> Option<V> {
+            // this could be faster.
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            let old_value = self.pop_internal(hash, &k);
+
+            if self.size >= self.resize_at {
+                // n.b.: We could also do this after searching, so
+                // that we do not resize if this call to insert is
+                // simply going to update a key in place.  My sense
+                // though is that it's worse to have to search through
+                // buckets to find the right spot twice than to just
+                // resize in this corner case.
+                self.expand();
+            }
+
+            self.insert_internal(hash, k, v);
+
+            old_value
+        }
+
+        fn consume(&mut self, f: fn(K, V)) {
+            let mut buckets = ~[];
+            self.buckets <-> buckets;
+            self.size = 0;
+
+            do vec::consume(buckets) |_i, bucket| {
+                match move bucket {
+                    None => { },
+                    Some(move bucket) => {
+                        let Bucket {
+                            key: move key,
+                            value: move value,
+                            _
+                        } = move bucket;
+                        f(key, value)
+                    }
+                }
+            }
         }
 
         fn clear(&mut self) {
@@ -350,7 +417,6 @@ pub mod linear {
             }
             option::unwrap(move value)
         }
-
     }
 }
 
@@ -405,6 +471,37 @@ pub mod test {
         assert !m.is_empty();
         assert m.remove(&1);
         assert m.is_empty();
+    }
+
+    #[test]
+    pub fn pops() {
+        let mut m = ~LinearMap();
+        m.insert(1, 2);
+        assert m.pop(&1) == Some(2);
+        assert m.pop(&1) == None;
+    }
+
+    #[test]
+    pub fn swaps() {
+        let mut m = ~LinearMap();
+        assert m.swap(1, 2) == None;
+        assert m.swap(1, 3) == Some(2);
+        assert m.swap(1, 4) == Some(3);
+    }
+
+    #[test]
+    pub fn consumes() {
+        let mut m = ~LinearMap();
+        assert m.insert(1, 2);
+        assert m.insert(2, 3);
+        let mut m2 = ~LinearMap();
+        do m.consume |k, v| {
+            m2.insert(k, v);
+        }
+        assert m.len() == 0;
+        assert m2.len() == 2;
+        assert m2.find(&1) == Some(2);
+        assert m2.find(&2) == Some(3);
     }
 
     #[test]
