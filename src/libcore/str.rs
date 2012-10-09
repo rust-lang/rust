@@ -1473,6 +1473,11 @@ pub pure fn from_utf16(v: &[u16]) -> ~str {
     move buf
 }
 
+pub pure fn with_capacity(capacity: uint) -> ~str {
+    let mut buf = ~"";
+    unsafe { reserve(&mut buf, capacity); }
+    move buf
+}
 
 /**
  * As char_len but for a slice of a string
