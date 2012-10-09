@@ -399,9 +399,21 @@ fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
       ast::ty_fixed_length(t, v) => {
-        print_type(s, t);
-        word(s.s, ~"/");
+        word(s.s, ~"[");
+        match t.node {
+          ast::ty_vec(mt) => {
+            match mt.mutbl {
+              ast::m_mutbl => word_space(s, ~"mut"),
+              ast::m_const => word_space(s, ~"const"),
+              ast::m_imm => ()
+            }
+            print_type(s, mt.ty);
+          }
+          _ => fail ~"ty_fixed_length can only contain ty_vec as type"
+        }
+        word(s.s, ~" * ");
         print_vstore(s, ast::vstore_fixed(v));
+        word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
           fail ~"print_type doesn't know how to print a ty_mac";
