@@ -44,12 +44,7 @@ macro_rules! early_return(
         }
     );
 );
-~~~~
-
-Now, we can replace each `match` with an invocation of the `early_return`
-macro:
-
-~~~~
+// ...
 early_return!(input_1 special_a);
 // ...
 early_return!(input_2 special_b);
