@@ -4,8 +4,6 @@ use std::map::HashMap;
 
 #[auto_serialize]
 #[auto_deserialize]
-#[auto_serialize2]
-#[auto_deserialize2]
 enum binop {
     PLUS,
     MINUS,
@@ -21,8 +19,6 @@ enum binop {
 
 #[auto_serialize]
 #[auto_deserialize]
-#[auto_serialize2]
-#[auto_deserialize2]
 enum token {
     /* Expression-operator symbols. */
     EQ,
@@ -81,8 +77,6 @@ enum token {
 
 #[auto_serialize]
 #[auto_deserialize]
-#[auto_serialize2]
-#[auto_deserialize2]
 /// For interpolation during macro expansion.
 enum nonterminal {
     nt_item(@ast::item),

@@ -124,7 +124,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 }
 
 // This is a secondary mechanism for invoking syntax extensions on items:
-// "decorator" attributes, such as #[auto_serialize2]. These are invoked by an
+// "decorator" attributes, such as #[auto_serialize]. These are invoked by an
 // attribute prefixing an item, and are interpreted by feeding the item
 // through the named attribute _as a syntax extension_ and splicing in the
 // resulting item vec into place in favour of the decorator. Note that
