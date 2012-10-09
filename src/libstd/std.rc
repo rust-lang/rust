@@ -69,7 +69,6 @@ pub mod treemap;
 // And ... other stuff
 
 pub mod ebml;
-pub mod ebml2;
 pub mod dbg;
 pub mod getopts;
 pub mod json;
@@ -79,7 +78,6 @@ pub mod tempfile;
 pub mod term;
 pub mod time;
 pub mod prettyprint;
-pub mod prettyprint2;
 pub mod arena;
 pub mod par;
 pub mod cmp;
@@ -93,7 +91,6 @@ mod unicode;
 
 pub mod test;
 pub mod serialization;
-pub mod serialization2;
 
 // Local Variables:
 // mode: rust;
