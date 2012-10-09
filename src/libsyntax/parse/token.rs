@@ -343,28 +343,33 @@ macro_rules! interner_key (
 )
 
 fn mk_ident_interner() -> @ident_interner {
-    /* the indices here must correspond to the numbers in special_idents */
-    let init_vec = ~[@~"_", @~"anon", @~"drop", @~"", @~"unary", @~"!",
-                     @~"[]", @~"unary-", @~"__extensions__", @~"self",
-                     @~"item", @~"block", @~"stmt", @~"pat", @~"expr",
-                     @~"ty", @~"ident", @~"path", @~"tt", @~"matchers",
-                     @~"str", @~"TyVisitor", @~"arg", @~"descrim",
-                     @~"__rust_abi", @~"__rust_stack_shim", @~"TyDesc",
-                     @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
-                     @~"intrinsic", @~"__foreign_mod__"];
-
-    let rv = @ident_interner {
-        interner: interner::mk_prefill::<@~str>(init_vec)
-    };
-
-    /* having multiple interners will just confuse the serializer */
     unsafe {
-        assert task::local_data::local_data_get(interner_key!()).is_none()
-    };
-    unsafe {
-        task::local_data::local_data_set(interner_key!(), @rv)
-    };
-    rv
+        match task::local_data::local_data_get(interner_key!()) {
+            Some(interner) => *interner,
+            None => {
+                // the indices here must correspond to the numbers in
+                // special_idents.
+                let init_vec = ~[
+                    @~"_", @~"anon", @~"drop", @~"", @~"unary", @~"!",
+                    @~"[]", @~"unary-", @~"__extensions__", @~"self",
+                    @~"item", @~"block", @~"stmt", @~"pat", @~"expr",
+                    @~"ty", @~"ident", @~"path", @~"tt", @~"matchers",
+                    @~"str", @~"TyVisitor", @~"arg", @~"descrim",
+                    @~"__rust_abi", @~"__rust_stack_shim", @~"TyDesc",
+                    @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
+                    @~"intrinsic", @~"__foreign_mod__"
+                ];
+
+                let rv = @ident_interner {
+                    interner: interner::mk_prefill(init_vec)
+                };
+
+                task::local_data::local_data_set(interner_key!(), @rv);
+
+                rv
+            }
+        }
+    }
 }
 
 /* for when we don't care about the contents; doesn't interact with TLD or
