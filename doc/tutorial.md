@@ -965,7 +965,7 @@ s.draw();
 ~~~
 
 This defines an _implementation_ for `Shape` containing a single
-method, `draw`. In most most respects the `draw` method is defined
+method, `draw`. In most respects the `draw` method is defined
 like any other function, with the exception of the name `self`. `self`
 is a special value that is automatically defined in each method,
 referring to the value being operated on. If we wanted we could add
