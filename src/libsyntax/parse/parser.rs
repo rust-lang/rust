@@ -124,12 +124,13 @@ type item_info = (ident, item_, Option<~[attribute]>);
 enum item_or_view_item {
     iovi_none,
     iovi_item(@item),
+    iovi_foreign_item(@foreign_item),
     iovi_view_item(@view_item)
 }
 
 enum view_item_parse_mode {
     VIEW_ITEMS_AND_ITEMS_ALLOWED,
-    VIEW_ITEMS_ALLOWED,
+    VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
     IMPORTS_AND_ITEMS_ALLOWED
 }
 
@@ -2184,7 +2185,7 @@ impl Parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            match self.parse_item_or_view_item(item_attrs, true) {
+            match self.parse_item_or_view_item(item_attrs, true, false) {
               iovi_item(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2193,6 +2194,9 @@ impl Parser {
               iovi_view_item(vi) => {
                 self.span_fatal(vi.span, ~"view items must be declared at \
                                            the top of the block");
+              }
+              iovi_foreign_item(_) => {
+                  self.fatal(~"foreign items are not allowed here");
               }
               iovi_none() => { /* fallthrough */ }
             }
@@ -2259,7 +2263,7 @@ impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
-        let {attrs_remaining, view_items, items: items} =
+        let {attrs_remaining, view_items, items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             IMPORTS_AND_ITEMS_ALLOWED);
 
@@ -2844,7 +2848,7 @@ impl Parser {
     fn parse_mod_items(term: token::Token,
                        +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items, items: starting_items} =
+        let {attrs_remaining, view_items, items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             VIEW_ITEMS_AND_ITEMS_ALLOWED);
         let mut items: ~[@item] = move starting_items;
@@ -2858,7 +2862,7 @@ impl Parser {
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
                    attrs);
-            match self.parse_item_or_view_item(attrs, true) {
+            match self.parse_item_or_view_item(attrs, true, false) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
                 self.span_fatal(view_item.span, ~"view items must be \
@@ -2958,11 +2962,11 @@ impl Parser {
                                +first_item_attrs: ~[attribute]) ->
         foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items, items: _} =
+        let {attrs_remaining, view_items, items: _, foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            VIEW_ITEMS_ALLOWED);
+                                        VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED);
 
-        let mut items: ~[@foreign_item] = ~[];
+        let mut items: ~[@foreign_item] = move foreign_items;
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
             let attrs = vec::append(initial_attrs,
@@ -2971,7 +2975,7 @@ impl Parser {
             items.push(self.parse_foreign_item(attrs));
         }
         return {sort: sort, view_items: view_items,
-             items: items};
+            items: items};
     }
 
     fn parse_item_foreign_mod(lo: uint,
@@ -3229,8 +3233,11 @@ impl Parser {
         }
     }
 
-    fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool)
+    fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool,
+                               foreign_items_allowed: bool)
                             -> item_or_view_item {
+        assert items_allowed != foreign_items_allowed;
+
         maybe_whole!(iovi self,nt_item);
         let lo = self.span.lo;
 
@@ -3248,6 +3255,9 @@ impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
+        } else if foreign_items_allowed && self.is_keyword(~"const") {
+            let item = self.parse_item_foreign_const(visibility, attrs);
+            return iovi_foreign_item(item);
         } else if items_allowed &&
             self.is_keyword(~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
@@ -3262,6 +3272,10 @@ impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
+        } else if foreign_items_allowed &&
+            (self.is_keyword(~"fn") || self.is_keyword(~"pure")) {
+                let item = self.parse_item_foreign_fn(visibility, attrs);
+                return iovi_foreign_item(item);
         } else if items_allowed && self.is_keyword(~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
             self.bump();
@@ -3348,16 +3362,24 @@ impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));
         } else {
+            if visibility != inherited {
+                let mut s = ~"unmatched visibility `";
+                s += if visibility == public { ~"pub" } else { ~"priv" };
+                s += ~"`";
+                self.span_fatal(copy self.last_span, s);
+            }
             return iovi_none;
         };
     }
 
     fn parse_item(+attrs: ~[attribute]) -> Option<@ast::item> {
-        match self.parse_item_or_view_item(attrs, true) {
+        match self.parse_item_or_view_item(attrs, true, false) {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
                 self.fatal(~"view items are not allowed here"),
+            iovi_foreign_item(_) =>
+                self.fatal(~"foreign items are not allowed here"),
             iovi_item(item) =>
                 Some(item)
         }
@@ -3492,28 +3514,35 @@ impl Parser {
                                   mode: view_item_parse_mode)
                                -> {attrs_remaining: ~[attribute],
                                    view_items: ~[@view_item],
-                                   items: ~[@item]} {
+                                   items: ~[@item],
+                                   foreign_items: ~[@foreign_item]} {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
 
-        let items_allowed;
-        match mode {
-            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED =>
-                items_allowed = true,
-            VIEW_ITEMS_ALLOWED =>
-                items_allowed = false
-        }
+        let items_allowed = match mode {
+            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+        };
 
-        let (view_items, items) = (DVec(), DVec());
+        let restricted_to_imports = match mode {
+            IMPORTS_AND_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_ITEMS_ALLOWED |
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+        };
+
+        let foreign_items_allowed = match mode {
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
+        };
+
+        let (view_items, items, foreign_items) = (DVec(), DVec(), DVec());
         loop {
-            match self.parse_item_or_view_item(attrs, items_allowed) {
+            match self.parse_item_or_view_item(attrs, items_allowed,
+                                               foreign_items_allowed) {
                 iovi_none =>
                     break,
                 iovi_view_item(view_item) => {
-                    match mode {
-                        VIEW_ITEMS_AND_ITEMS_ALLOWED |
-                        VIEW_ITEMS_ALLOWED => {}
-                        IMPORTS_AND_ITEMS_ALLOWED =>
+                    if restricted_to_imports {
                             match view_item.node {
                                 view_item_import(_) => {}
                                 view_item_export(_) | view_item_use(*) =>
@@ -3528,13 +3557,18 @@ impl Parser {
                     assert items_allowed;
                     items.push(item)
                 }
+                iovi_foreign_item(foreign_item) => {
+                    assert foreign_items_allowed;
+                    foreign_items.push(foreign_item);
+                }
             }
             attrs = self.parse_outer_attributes();
         }
 
         {attrs_remaining: attrs,
          view_items: dvec::unwrap(move view_items),
-         items: dvec::unwrap(move items)}
+         items: dvec::unwrap(move items),
+         foreign_items: dvec::unwrap(move foreign_items)}
     }
 
     // Parses a source module as a crate

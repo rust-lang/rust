@@ -1952,7 +1952,7 @@ pub mod raw {
     }
 
     /// Converts a vector of bytes to a string.
-    pub pub unsafe fn from_bytes(v: &[const u8]) -> ~str {
+    pub unsafe fn from_bytes(v: &[const u8]) -> ~str {
         do vec::as_const_buf(v) |buf, len| {
             from_buf_len(buf, len)
         }
