@@ -2,38 +2,37 @@
 
 # Introduction
 
-The Rust language is designed from the ground up to support pervasive
+The designers of Rust designed the language from the ground up to support pervasive
 and safe concurrency through lightweight, memory-isolated tasks and
 message passing.
 
-Rust tasks are not the same as traditional threads - they are what are
-often referred to as _green threads_, cooperatively scheduled by the
-Rust runtime onto a small number of operating system threads.  Being
-significantly cheaper to create than traditional threads, Rust can
-create hundreds of thousands of concurrent tasks on a typical 32-bit
-system.
+Rust tasks are not the same as traditional threads: rather, they are more like
+_green threads_. The Rust runtime system schedules tasks cooperatively onto a
+small number of operating system threads. Because tasks are significantly
+cheaper to create than traditional threads, Rust can create hundreds of
+thousands of concurrent tasks on a typical 32-bit system.
 
-Tasks provide failure isolation and recovery. When an exception occurs
-in rust code (either by calling `fail` explicitly or by otherwise performing
-an invalid operation) the entire task is destroyed - there is no way
-to `catch` an exception as in other languages. Instead tasks may monitor
-each other to detect when failure has occurred.
+Tasks provide failure isolation and recovery. When an exception occurs in Rust
+code (as a result of an explicit call to `fail`, an assertion failure, or
+another invalid operation), the runtime system destroys the entire
+task. Unlike in languages such as Java and C++, there is no way to `catch` an
+exception. Instead, tasks may monitor each other for failure.
 
-Rust tasks have dynamically sized stacks. When a task is first created
-it starts off with a small amount of stack (currently in the low
-thousands of bytes, depending on platform) and more stack is acquired as
-needed. A Rust task will never run off the end of the stack as is
-possible in many other languages, but they do have a stack budget, and
-if a Rust task exceeds its stack budget then it will fail safely.
+Rust tasks have dynamically sized stacks. A task begins its life with a small
+amount of stack space (currently in the low thousands of bytes, depending on
+platform), and acquires more stack as needed. Unlike in languages such as C, a
+Rust task cannot run off the end of the stack. However, tasks do have a stack
+budget. If a Rust task exceeds its stack budget, then it will fail safely:
+with a checked exception.
 
-Tasks make use of Rust's type system to provide strong memory safety
-guarantees, disallowing shared mutable state. Communication between
-tasks is facilitated by the transfer of _owned_ data through the
-global _exchange heap_.
+Tasks use Rust's type system to provide strong memory safety guarantees. In
+particular, the type system guarantees that tasks cannot share mutable state
+with each other. Tasks communicate with each other by transferring _owned_
+data through the global _exchange heap_.
 
-This tutorial will explain the basics of tasks and communication in Rust,
-explore some typical patterns in concurrent Rust code, and finally
-discuss some of the more exotic synchronization types in the standard
+This tutorial explains the basics of tasks and communication in Rust,
+explores some typical patterns in concurrent Rust code, and finally
+discusses some of the more unusual synchronization types in the standard
 library.
 
 > ***Warning:*** This tutorial is incomplete
@@ -45,23 +44,23 @@ and efficient tasks, all of the task functionality itself is implemented
 in the core and standard libraries, which are still under development
 and do not always present a consistent interface.
 
-In particular, there are currently two independent modules that provide
-a message passing interface to Rust code: `core::comm` and `core::pipes`.
-`core::comm` is an older, less efficient system that is being phased out
-in favor of `pipes`. At some point the existing `core::comm` API will
-be removed and the user-facing portions of `core::pipes` will be moved
-to `core::comm`. In this tutorial we will discuss `pipes` and ignore
-the `comm` API.
+In particular, there are currently two independent modules that provide a
+message passing interface to Rust code: `core::comm` and `core::pipes`.
+`core::comm` is an older, less efficient system that is being phased out in
+favor of `pipes`. At some point, we will remove the existing `core::comm` API
+and move the user-facing portions of `core::pipes` to `core::comm`. In this
+tutorial, we discuss `pipes` and ignore the `comm` API.
 
 For your reference, these are the standard modules involved in Rust
-concurrency at the moment.
+concurrency at this writing.
 
 * [`core::task`] - All code relating to tasks and task scheduling
 * [`core::comm`] - The deprecated message passing API
 * [`core::pipes`] - The new message passing infrastructure and API
 * [`std::comm`] - Higher level messaging types based on `core::pipes`
 * [`std::sync`] - More exotic synchronization tools, including locks
-* [`std::arc`] - The ARC type, for safely sharing immutable data
+* [`std::arc`] - The ARC (atomic reference counted) type, for safely sharing
+  immutable data
 * [`std::par`] - Some basic tools for implementing parallel algorithms
 
 [`core::task`]: core/task.html
@@ -74,11 +73,11 @@ concurrency at the moment.
 
 # Basics
 
-The programming interface for creating and managing tasks is contained
-in the `task` module of the `core` library, making it available to all
-Rust code by default. At it's simplest, creating a task is a matter of
-calling the `spawn` function, passing a closure to run in the new
-task.
+The programming interface for creating and managing tasks lives
+in the `task` module of the `core` library, and is thus available to all
+Rust code by default. At its simplest, creating a task is a matter of
+calling the `spawn` function with a closure argument. `spawn` executes the
+closure in the new task.
 
 ~~~~
 # use io::println;
@@ -97,17 +96,17 @@ do spawn {
 }
 ~~~~
 
-In Rust, there is nothing special about creating tasks - the language
-itself doesn't know what a 'task' is. Instead, Rust provides in the
-type system all the tools necessary to implement safe concurrency,
-_owned types_ in particular, and leaves the dirty work up to the
-core library.
+In Rust, there is nothing special about creating tasks: a task is not a
+concept that appears in the language semantics. Instead, Rust's type system
+provides all the tools necessary to implement safe concurrency: particularly,
+_owned types_. The language leaves the implementation details to the core
+library.
 
 The `spawn` function has a very simple type signature: `fn spawn(f:
 ~fn())`. Because it accepts only owned closures, and owned closures
-contained only owned data, `spawn` can safely move the entire closure
+contain only owned data, `spawn` can safely move the entire closure
 and all its associated state into an entirely different task for
-execution. Like any closure, the function passed to spawn may capture
+execution. Like any closure, the function passed to `spawn` may capture
 an environment that it carries across tasks.
 
 ~~~
@@ -123,8 +122,8 @@ do spawn {
 }
 ~~~
 
-By default tasks will be multiplexed across the available cores, running
-in parallel, thus on a multicore machine, running the following code
+By default, the scheduler multiplexes tasks across the available cores, running
+in parallel. Thus, on a multicore machine, running the following code
 should interleave the output in vaguely random order.
 
 ~~~
@@ -145,17 +144,16 @@ communicate with it. Recall that Rust does not have shared mutable
 state, so one task may not manipulate variables owned by another task.
 Instead we use *pipes*.
 
-Pipes are simply a pair of endpoints, with one for sending messages
-and another for receiving messages. Pipes are low-level communication
-building-blocks and so come in a variety of forms, appropriate for
-different use cases, but there are just a few varieties that are most
-commonly used, which we will cover presently.
+A pipe is simply a pair of endpoints: one for sending messages and another for
+receiving messages. Pipes are low-level communication building-blocks and so
+come in a variety of forms, each one appropriate for a different use case. In
+what follows, we cover the most commonly used varieties.
 
 The simplest way to create a pipe is to use the `pipes::stream`
-function to create a `(Chan, Port)` pair. In Rust parlance a 'channel'
-is a sending endpoint of a pipe, and a 'port' is the receiving
-endpoint. Consider the following example of performing two calculations
-concurrently.
+function to create a `(Chan, Port)` pair. In Rust parlance, a *channel*
+is a sending endpoint of a pipe, and a *port* is the receiving
+endpoint. Consider the following example of calculating two results
+concurrently:
 
 ~~~~
 use task::spawn;
@@ -174,17 +172,17 @@ let result = port.recv();
 # fn some_other_expensive_computation() {}
 ~~~~
 
-Let's examine this example in detail. The `let` statement first creates a
-stream for sending and receiving integers (recall that `let` can be
-used for destructuring patterns, in this case separating a tuple into
-its component parts).
+Let's examine this example in detail. First, the `let` statement creates a
+stream for sending and receiving integers (the left-hand side of the `let`,
+`(chan, port)`, is an example of a *destructuring let*: the pattern separates
+a tuple into its component parts).
 
 ~~~~
 # use pipes::{stream, Chan, Port};
 let (chan, port): (Chan<int>, Port<int>) = stream();
 ~~~~
 
-The channel will be used by the child task to send data to the parent task,
+The child task will use the channel to send data to the parent task,
 which will wait to receive the data on the port. The next statement
 spawns the child task.
 
@@ -200,14 +198,14 @@ do spawn {
 }
 ~~~~
 
-Notice that `chan` was transferred to the child task implicitly by
-capturing it in the task closure. Both `Chan` and `Port` are sendable
-types and may be captured into tasks or otherwise transferred between
-them. In the example, the child task performs an expensive computation
-then sends the result over the captured channel.
+Notice that the creation of the task closure transfers `chan` to the child
+task implicitly: the closure captures `chan` in its environment. Both `Chan`
+and `Port` are sendable types and may be captured into tasks or otherwise
+transferred between them. In the example, the child task runs an expensive
+computation, then sends the result over the captured channel.
 
-Finally, the parent continues by performing some other expensive
-computation and then waiting for the child's result to arrive on the
+Finally, the parent continues with some other expensive
+computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
@@ -219,12 +217,11 @@ some_other_expensive_computation();
 let result = port.recv();
 ~~~~
 
-The `Port` and `Chan` pair created by `stream` enable efficient
-communication between a single sender and a single receiver, but
-multiple senders cannot use a single `Chan`, nor can multiple
-receivers use a single `Port`.  What if our example needed to perform
-multiple computations across a number of tasks? The following cannot
-be written:
+The `Port` and `Chan` pair created by `stream` enables efficient communication
+between a single sender and a single receiver, but multiple senders cannot use
+a single `Chan`, and multiple receivers cannot use a single `Port`.  What if our
+example needed to computer multiple results across a number of tasks? The
+following program is ill-typed:
 
 ~~~ {.xfail-test}
 # use task::{spawn};
@@ -265,18 +262,18 @@ let result = port.recv() + port.recv() + port.recv();
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
 
-Here we transfer ownership of the channel into a new `SharedChan`
-value.  Like `Chan`, `SharedChan` is a non-copyable, owned type
-(sometimes also referred to as an 'affine' or 'linear' type). Unlike
-`Chan` though, `SharedChan` may be duplicated with the `clone()`
-method.  A cloned `SharedChan` produces a new handle to the same
-channel, allowing multiple tasks to send data to a single port.
-Between `spawn`, `stream` and `SharedChan` we have enough tools
-to implement many useful concurrency patterns.
+Here we transfer ownership of the channel into a new `SharedChan` value.  Like
+`Chan`, `SharedChan` is a non-copyable, owned type (sometimes also referred to
+as an *affine* or *linear* type). Unlike with `Chan`, though, the programmer
+may duplicate a `SharedChan`, with the `clone()` method.  A cloned
+`SharedChan` produces a new handle to the same channel, allowing multiple
+tasks to send data to a single port.  Between `spawn`, `stream` and
+`SharedChan`, we have enough tools to implement many useful concurrency
+patterns.
 
 Note that the above `SharedChan` example is somewhat contrived since
 you could also simply use three `stream` pairs, but it serves to
-illustrate the point. For reference, written with multiple streams it
+illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
 
 ~~~
@@ -299,15 +296,17 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 
 # Handling task failure
 
-Rust has a built-in mechanism for raising exceptions, written `fail`
-(or `fail ~"reason"`, or sometimes `assert expr`), and it causes the
-task to unwind its stack, running destructors and freeing memory along
-the way, and then exit itself. Unlike C++, exceptions in Rust are
-unrecoverable within a single task - once a task fails there is no way
-to "catch" the exception.
+Rust has a built-in mechanism for raising exceptions. The `fail` construct
+(which can also be written with an error string as an argument: `fail
+~reason`) and the `assert` construct (which effectively calls `fail` if a
+boolean expression is false) are both ways to raise exceptions. When a task
+raises an exception the task unwinds its stack---running destructors and
+freeing memory along the way---and then exits. Unlike exceptions in C++,
+exceptions in Rust are unrecoverable within a single task: once a task fails,
+there is no way to "catch" the exception.
 
-All tasks are, by default, _linked_ to each other, meaning their fate
-is intertwined, and if one fails so do all of them.
+All tasks are, by default, _linked_ to each other. That means that the fates
+of all tasks are intertwined: if one fails, so do all the others.
 
 ~~~
 # use task::spawn;
@@ -321,11 +320,15 @@ do_some_work();
 # };
 ~~~
 
-While it isn't possible for a task to recover from failure,
-tasks may be notified when _other_ tasks fail. The simplest way
-of handling task failure is with the `try` function, which is
-similar to spawn, but immediately blocks waiting for the child
-task to finish.
+While it isn't possible for a task to recover from failure, tasks may notify
+each other of failure. The simplest way of handling task failure is with the
+`try` function, which is similar to `spawn`, but immediately blocks waiting
+for the child task to finish. `try` returns a value of type `Result<int,
+()>`. `Result` is an `enum` type with two variants: `Ok` and `Err`. In this
+case, because the type arguments to `Result` are `int` and `()`, callers can
+pattern-match on a result to check whether it's an `Ok` result with an `int`
+field (representing a successful result) or an `Err` result (representing
+termination with an error).
 
 ~~~
 # fn some_condition() -> bool { false }
@@ -349,8 +352,8 @@ an `Error` result.
 [`Result`]: core/result.html
 
 > ***Note:*** A failed task does not currently produce a useful error
-> value (all error results from `try` are equal to `Err(())`). In the
-> future it may be possible for tasks to intercept the value passed to
+> value (`try` always returns `Err(())`). In the
+> future, it may be possible for tasks to intercept the value passed to
 > `fail`.
 
 TODO: Need discussion of `future_result` in order to make failure
@@ -362,11 +365,11 @@ it trips, indicates an unrecoverable logic error); in other cases you
 might want to contain the failure at a certain boundary (perhaps a
 small piece of input from the outside world, which you happen to be
 processing in parallel, is malformed and its processing task can't
-proceed). Hence the need for different _linked failure modes_.
+proceed). Hence, you will need different _linked failure modes_.
 
 ## Failure modes
 
-By default, task failure is _bidirectionally linked_, which means if
+By default, task failure is _bidirectionally linked_, which means that if
 either task dies, it kills the other one.
 
 ~~~
@@ -382,8 +385,8 @@ sleep_forever();  // Will get woken up by force, then fail
 # };
 ~~~
 
-If you want parent tasks to kill their children, but not for a child
-task's failure to kill the parent, you can call
+If you want parent tasks to be able to kill their children, but do not want a
+parent to die automatically if one of its child task dies, you can call
 `task::spawn_supervised` for _unidirectionally linked_ failure. The
 function `task::try`, which we saw previously, uses `spawn_supervised`
 internally, with additional logic to wait for the child task to finish
@@ -411,7 +414,7 @@ do try {  // Unidirectionally linked
 
 Supervised failure is useful in any situation where one task manages
 multiple fallible child tasks, and the parent task can recover
-if any child files. On the other hand, if the _parent_ (supervisor) fails
+if any child fails. On the other hand, if the _parent_ (supervisor) fails,
 then there is nothing the children can do to recover, so they should
 also fail.
 
@@ -456,11 +459,11 @@ fail;
 A very common thing to do is to spawn a child task where the parent
 and child both need to exchange messages with each other. The
 function `std::comm::DuplexStream()` supports this pattern.  We'll
-look briefly at how it is used.
+look briefly at how to use it.
 
 To see how `spawn_conversation()` works, we will create a child task
-that receives `uint` messages, converts them to a string, and sends
-the string in response.  The child terminates when `0` is received.
+that repeatedly receives a `uint` message, converts it to a string, and sends
+the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
 ~~~~
@@ -470,8 +473,8 @@ fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(uint::to_str(value, 10u));
-        if value == 0u { break; }
+        channel.send(uint::to_str(value, 10));
+        if value == 0 { break; }
     }
 }
 ~~~~
@@ -481,7 +484,7 @@ receiving. The `stringifier` function takes a `DuplexStream` that can
 send strings (the first type parameter) and receive `uint` messages
 (the second type parameter). The body itself simply loops, reading
 from the channel and then sending its response back.  The actual
-response itself is simply the strified version of the received value,
+response itself is simply the stringified version of the received value,
 `uint::to_str(value)`.
 
 Here is the code for the parent task:
@@ -506,11 +509,11 @@ do spawn || {
     stringifier(&to_child);
 };
 
-from_child.send(22u);
+from_child.send(22);
 assert from_child.recv() == ~"22";
 
-from_child.send(23u);
-from_child.send(0u);
+from_child.send(23);
+from_child.send(0);
 
 assert from_child.recv() == ~"23";
 assert from_child.recv() == ~"0";
@@ -518,6 +521,8 @@ assert from_child.recv() == ~"0";
 # }
 ~~~~
 
-The parent task first calls `DuplexStream` to create a pair of bidirectional endpoints. It then uses `task::spawn` to create the child task, which captures one end of the communication channel.  As a result, both parent
-and child can send and receive data to and from the other.
+The parent task first calls `DuplexStream` to create a pair of bidirectional
+endpoints. It then uses `task::spawn` to create the child task, which captures
+one end of the communication channel.  As a result, both parent and child can
+send and receive data to and from the other.
 
