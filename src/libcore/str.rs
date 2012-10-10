@@ -1361,7 +1361,7 @@ pub pure fn is_whitespace(s: &str) -> bool {
  *
  * Alphanumeric characters are determined by `char::is_alphanumeric`
  */
-fn is_alphanumeric(s: &str) -> bool {
+pure fn is_alphanumeric(s: &str) -> bool {
     return all(s, char::is_alphanumeric);
 }
 
@@ -2030,22 +2030,22 @@ pub mod raw {
 }
 
 pub trait UniqueStr {
-    fn trim() -> self;
-    fn trim_left() -> self;
-    fn trim_right() -> self;
+    pure fn trim() -> self;
+    pure fn trim_left() -> self;
+    pure fn trim_right() -> self;
 }
 
 /// Extension methods for strings
 impl ~str: UniqueStr {
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
-    fn trim() -> ~str { trim(self) }
+    pure fn trim() -> ~str { trim(self) }
     /// Returns a string with leading whitespace removed
     #[inline]
-    fn trim_left() -> ~str { trim_left(self) }
+    pure fn trim_left() -> ~str { trim_left(self) }
     /// Returns a string with trailing whitespace removed
     #[inline]
-    fn trim_right() -> ~str { trim_right(self) }
+    pure fn trim_right() -> ~str { trim_right(self) }
 }
 
 #[cfg(notest)]
@@ -2062,33 +2062,33 @@ pub mod traits {
 pub mod traits {}
 
 pub trait StrSlice {
-    fn all(it: fn(char) -> bool) -> bool;
-    fn any(it: fn(char) -> bool) -> bool;
-    fn contains(needle: &a/str) -> bool;
-    fn contains_char(needle: char) -> bool;
-    fn each(it: fn(u8) -> bool);
-    fn eachi(it: fn(uint, u8) -> bool);
-    fn each_char(it: fn(char) -> bool);
-    fn each_chari(it: fn(uint, char) -> bool);
-    fn ends_with(needle: &str) -> bool;
-    fn is_empty() -> bool;
-    fn is_not_empty() -> bool;
-    fn is_whitespace() -> bool;
-    fn is_alphanumeric() -> bool;
+    pure fn all(it: fn(char) -> bool) -> bool;
+    pure fn any(it: fn(char) -> bool) -> bool;
+    pure fn contains(needle: &a/str) -> bool;
+    pure fn contains_char(needle: char) -> bool;
+    pure fn each(it: fn(u8) -> bool);
+    pure fn eachi(it: fn(uint, u8) -> bool);
+    pure fn each_char(it: fn(char) -> bool);
+    pure fn each_chari(it: fn(uint, char) -> bool);
+    pure fn ends_with(needle: &str) -> bool;
+    pure fn is_empty() -> bool;
+    pure fn is_not_empty() -> bool;
+    pure fn is_whitespace() -> bool;
+    pure fn is_alphanumeric() -> bool;
     pure fn len() -> uint;
     pure fn slice(begin: uint, end: uint) -> ~str;
-    fn split(sepfn: fn(char) -> bool) -> ~[~str];
-    fn split_char(sep: char) -> ~[~str];
-    fn split_str(sep: &a/str) -> ~[~str];
-    fn starts_with(needle: &a/str) -> bool;
-    fn substr(begin: uint, n: uint) -> ~str;
+    pure fn split(sepfn: fn(char) -> bool) -> ~[~str];
+    pure fn split_char(sep: char) -> ~[~str];
+    pure fn split_str(sep: &a/str) -> ~[~str];
+    pure fn starts_with(needle: &a/str) -> bool;
+    pure fn substr(begin: uint, n: uint) -> ~str;
     pure fn to_lower() -> ~str;
     pure fn to_upper() -> ~str;
-    fn escape_default() -> ~str;
-    fn escape_unicode() -> ~str;
-    fn trim() -> ~str;
-    fn trim_left() -> ~str;
-    fn trim_right() -> ~str;
+    pure fn escape_default() -> ~str;
+    pure fn escape_unicode() -> ~str;
+    pure fn trim() -> ~str;
+    pure fn trim_left() -> ~str;
+    pure fn trim_right() -> ~str;
     pure fn to_unique() -> ~str;
     pure fn char_at(i: uint) -> char;
 }
@@ -2100,54 +2100,56 @@ impl &str: StrSlice {
      * contains no characters
      */
     #[inline]
-    fn all(it: fn(char) -> bool) -> bool { all(self, it) }
+    pure fn all(it: fn(char) -> bool) -> bool { all(self, it) }
     /**
      * Return true if a predicate matches any character (and false if it
      * matches none or there are no characters)
      */
     #[inline]
-    fn any(it: fn(char) -> bool) -> bool { any(self, it) }
+    pure fn any(it: fn(char) -> bool) -> bool { any(self, it) }
     /// Returns true if one string contains another
     #[inline]
-    fn contains(needle: &a/str) -> bool { contains(self, needle) }
+    pure fn contains(needle: &a/str) -> bool { contains(self, needle) }
     /// Returns true if a string contains a char
     #[inline]
-    fn contains_char(needle: char) -> bool { contains_char(self, needle) }
+    pure fn contains_char(needle: char) -> bool {
+        contains_char(self, needle)
+    }
     /// Iterate over the bytes in a string
     #[inline]
-    fn each(it: fn(u8) -> bool) { each(self, it) }
+    pure fn each(it: fn(u8) -> bool) { each(self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    fn eachi(it: fn(uint, u8) -> bool) { eachi(self, it) }
+    pure fn eachi(it: fn(uint, u8) -> bool) { eachi(self, it) }
     /// Iterate over the chars in a string
     #[inline]
-    fn each_char(it: fn(char) -> bool) { each_char(self, it) }
+    pure fn each_char(it: fn(char) -> bool) { each_char(self, it) }
     /// Iterate over the chars in a string, with indices
     #[inline]
-    fn each_chari(it: fn(uint, char) -> bool) { each_chari(self, it) }
+    pure fn each_chari(it: fn(uint, char) -> bool) { each_chari(self, it) }
     /// Returns true if one string ends with another
     #[inline]
-    fn ends_with(needle: &str) -> bool { ends_with(self, needle) }
+    pure fn ends_with(needle: &str) -> bool { ends_with(self, needle) }
     /// Returns true if the string has length 0
     #[inline]
-    fn is_empty() -> bool { is_empty(self) }
+    pure fn is_empty() -> bool { is_empty(self) }
     /// Returns true if the string has length greater than 0
     #[inline]
-    fn is_not_empty() -> bool { is_not_empty(self) }
+    pure fn is_not_empty() -> bool { is_not_empty(self) }
     /**
      * Returns true if the string contains only whitespace
      *
      * Whitespace characters are determined by `char::is_whitespace`
      */
     #[inline]
-    fn is_whitespace() -> bool { is_whitespace(self) }
+    pure fn is_whitespace() -> bool { is_whitespace(self) }
     /**
      * Returns true if the string contains only alphanumerics
      *
      * Alphanumeric characters are determined by `char::is_alphanumeric`
      */
     #[inline]
-    fn is_alphanumeric() -> bool { is_alphanumeric(self) }
+    pure fn is_alphanumeric() -> bool { is_alphanumeric(self) }
     #[inline]
     /// Returns the size in bytes not counting the null terminator
     pure fn len() -> uint { len(self) }
@@ -2162,21 +2164,21 @@ impl &str: StrSlice {
     pure fn slice(begin: uint, end: uint) -> ~str { slice(self, begin, end) }
     /// Splits a string into substrings using a character function
     #[inline]
-    fn split(sepfn: fn(char) -> bool) -> ~[~str] { split(self, sepfn) }
+    pure fn split(sepfn: fn(char) -> bool) -> ~[~str] { split(self, sepfn) }
     /**
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    fn split_char(sep: char) -> ~[~str] { split_char(self, sep) }
+    pure fn split_char(sep: char) -> ~[~str] { split_char(self, sep) }
     /**
      * Splits a string into a vector of the substrings separated by a given
      * string
      */
     #[inline]
-    fn split_str(sep: &a/str) -> ~[~str] { split_str(self, sep) }
+    pure fn split_str(sep: &a/str) -> ~[~str] { split_str(self, sep) }
     /// Returns true if one string starts with another
     #[inline]
-    fn starts_with(needle: &a/str) -> bool { starts_with(self, needle) }
+    pure fn starts_with(needle: &a/str) -> bool { starts_with(self, needle) }
     /**
      * Take a substring of another.
      *
@@ -2184,7 +2186,7 @@ impl &str: StrSlice {
      * `begin`.
      */
     #[inline]
-    fn substr(begin: uint, n: uint) -> ~str { substr(self, begin, n) }
+    pure fn substr(begin: uint, n: uint) -> ~str { substr(self, begin, n) }
     /// Convert a string to lowercase
     #[inline]
     pure fn to_lower() -> ~str { to_lower(self) }
@@ -2193,20 +2195,20 @@ impl &str: StrSlice {
     pure fn to_upper() -> ~str { to_upper(self) }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
-    fn escape_default() -> ~str { escape_default(self) }
+    pure fn escape_default() -> ~str { escape_default(self) }
     /// Escape each char in `s` with char::escape_unicode.
     #[inline]
-    fn escape_unicode() -> ~str { escape_unicode(self) }
+    pure fn escape_unicode() -> ~str { escape_unicode(self) }
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
-    fn trim() -> ~str { trim(self) }
+    pure fn trim() -> ~str { trim(self) }
     /// Returns a string with leading whitespace removed
     #[inline]
-    fn trim_left() -> ~str { trim_left(self) }
+    pure fn trim_left() -> ~str { trim_left(self) }
     /// Returns a string with trailing whitespace removed
     #[inline]
-    fn trim_right() -> ~str { trim_right(self) }
+    pure fn trim_right() -> ~str { trim_right(self) }
 
     #[inline]
     pure fn to_unique() -> ~str { self.slice(0, self.len()) }
