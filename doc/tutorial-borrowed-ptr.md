@@ -447,11 +447,11 @@ the block restricts the scope of `y`, making the move legal.
 
 # Borrowing and enums
 
-The previous example showed that borrowing unique boxes found in
-aliasable, mutable memory is not permitted, so as to prevent pointers
-into freed memory. There is one other case where the compiler must be
-very careful to ensure that pointers remain valid: pointers into the
-interior of an enum.
+The previous example showed that the type system forbids any borrowing
+of unique boxes found in aliasable, mutable memory. This restriction
+prevents pointers from pointing into freed memory. There is one other
+case where the compiler must be very careful to ensure that pointers
+remain valid: pointers into the interior of an `enum`.
 
 As an example, let’s look at the following `shape` type that can
 represent both rectangles and circles:
@@ -465,9 +465,9 @@ enum Shape {
 }
 ~~~
 
-Now I might write a function to compute the area of a shape. This
-function takes a borrowed pointer to a shape to avoid the need of
-copying them.
+Now we might write a function to compute the area of a shape. This
+function takes a borrowed pointer to a shape, to avoid the need for
+copying.
 
 ~~~
 # struct Point {x: float, y: float}; // as before
@@ -485,21 +485,21 @@ fn compute_area(shape: &Shape) -> float {
 }
 ~~~
 
-The first case matches against circles. Here the radius is extracted
-from the shape variant and used to compute the area of the circle
-(Like any up-to-date engineer, we use the [tau circle constant][tau]
-and not that dreadfully outdated notion of pi).
+The first case matches against circles. Here, the pattern extracts the
+radius from the shape variant and the action uses it to compute the
+area of the circle. (Like any up-to-date engineer, we use the [tau
+circle constant][tau] and not that dreadfully outdated notion of pi).
 
 [tau]: http://www.math.utah.edu/~palais/pi.html
 
 The second match is more interesting. Here we match against a
-rectangle and extract its size: but rather than copy the `size` struct,
-we use a by-reference binding to create a pointer to it. In other
-words, a pattern binding like `ref size` in fact creates a pointer of
-type `&size` into the _interior of the enum_.
+rectangle and extract its size: but rather than copy the `size`
+struct, we use a by-reference binding to create a pointer to it. In
+other words, a pattern binding like `ref size` binds the name `size`
+to a pointer of type `&size` into the _interior of the enum_.
 
-To make this more clear, let’s look at a diagram of how things are
-laid out in memory in the case where `shape` points at a rectangle:
+To make this more clear, let's look at a diagram of memory layout in
+the case where `shape` points at a rectangle:
 
 ~~~ {.notrust}
 Stack             Memory
@@ -523,8 +523,8 @@ the shape.
 Perhaps you can see where the danger lies: if the shape were somehow
 to be reassigned, perhaps to a circle, then although the memory used
 to store that shape value would still be valid, _it would have a
-different type_! This is shown in the following diagram, depicting what
-the state of memory would be if shape were overwritten with a circle:
+different type_! The following diagram shows what memory would look
+like if code overwrote `shape` with a circle:
 
 ~~~ {.notrust}
 Stack             Memory
@@ -538,20 +538,23 @@ Stack             Memory
                   +---------------+
 ~~~
 
-As you can see, the `size` pointer would not be pointing at a `float` and
-not a struct. This is not good.
+As you can see, the `size` pointer would be pointing at a `float`
+instead of a struct. This is not good: dereferencing the second field
+of a `float` as if it were a struct with two fields would be a memory
+safety violation.
 
 So, in fact, for every `ref` binding, the compiler will impose the
 same rules as the ones we saw for borrowing the interior of a unique
-box: it must be able to guarantee that the enum will not be
-overwritten for the duration of the borrow.  In fact, the example I
-gave earlier would be considered safe. This is because the shape
-pointer has type `&Shape`, which means “borrowed pointer to immutable
-memory containing a shape”. If however the type of that pointer were
-`&const Shape` or `&mut Shape`, then the ref binding would not be
-permitted. Just as with unique boxes, the compiler will permit ref
-bindings into data owned by the stack frame even if it is mutable, but
-otherwise it requires that the data reside in immutable memory.
+box: it must be able to guarantee that the `enum` will not be
+overwritten for the duration of the borrow.  In fact, the compiler
+would accept the example we gave earlier. The example is safe because
+the shape pointer has type `&Shape`, which means "borrowed pointer to
+immutable memory containing a `shape`". If, however, the type of that
+pointer were `&const Shape` or `&mut Shape`, then the ref binding
+would be ill-typed. Just as with unique boxes, the compiler will
+permit `ref` bindings into data owned by the stack frame even if the
+data are mutable, but otherwise it requires that the data reside in
+immutable memory.
 
 > ***Note:*** Right now, pattern bindings not explicitly annotated
 > with `ref` or `copy` use a special mode of "implicit by reference".
@@ -560,11 +563,11 @@ otherwise it requires that the data reside in immutable memory.
 
 # Returning borrowed pointers
 
-So far, all of the examples we’ve looked at use borrowed pointers in a
-“downward” direction. That is, the borrowed pointer is created and
-then used during the method or code block which created it. It is also
-possible to return borrowed pointers to the caller, but as we'll see
-this requires some explicit annotation.
+So far, all of the examples we've looked at use borrowed pointers in a
+“downward” direction. That is, a method or code block creates a
+borrowed pointer, then uses it within the same scope. It is also
+possible to return borrowed pointers as the result of a function, but
+as we'll see, doing so requires some explicit annotation.
 
 For example, we could write a subroutine like this:
 
@@ -573,23 +576,25 @@ struct Point {x: float, y: float}
 fn get_x(p: &r/Point) -> &r/float { &p.x }
 ~~~
 
-Here, the function `get_x()` returns a pointer into the structure it was
-given. The type of the parameter (`&r/Point`) and return type (`&r/float`) both
-make use of a new syntactic form that we have not seen so far.  Here the identifier `r`
-serves as an explicit name for the lifetime of the pointer.  So in effect
-this function is declaring that it takes in a pointer with lifetime `r` and returns
-a pointer with that same lifetime.
+Here, the function `get_x()` returns a pointer into the structure it
+was given. The type of the parameter (`&r/Point`) and return type
+(`&r/float`) both use a new syntactic form that we have not seen so
+far.  Here the identifier `r` names the lifetime of the pointer
+explicitly. So in effect, this function declares that it takes a
+pointer with lifetime `r` and returns a pointer with that same
+lifetime.
 
 In general, it is only possible to return borrowed pointers if they
-are derived from a borrowed pointer which was given as input to the
-procedure.  In that case, they will always have the same lifetime as
-one of the parameters; named lifetimes are used to indicate which
-parameter that is.
+are derived from a parameter to the procedure. In that case, the
+pointer result will always have the same lifetime as one of the
+parameters; named lifetimes indicate which parameter that
+is.
 
-In the examples before, function parameter types did not include a
-lifetime name.  In this case, the compiler simply creates a new,
-anonymous name, meaning that the parameter is assumed to have a
-distinct lifetime from all other parameters.
+In the previous examples, function parameter types did not include a
+lifetime name. In those examples, the compiler simply creates a fresh
+name for the lifetime automatically: that is, the lifetime name is
+guaranteed to refer to a distinct lifetime from the lifetimes of all
+other parameters.
 
 Named lifetimes that appear in function signatures are conceptually
 the same as the other lifetimes we've seen before, but they are a bit
@@ -599,13 +604,13 @@ lifetime `r` is actually a kind of *lifetime parameter*: it is defined
 by the caller to `get_x()`, just as the value for the parameter `p` is
 defined by that caller.
 
-In any case, whatever the lifetime `r` is, the pointer produced by
-`&p.x` always has the same lifetime as `p` itself, as a pointer to a
+In any case, whatever the lifetime of `r` is, the pointer produced by
+`&p.x` always has the same lifetime as `p` itself: a pointer to a
 field of a struct is valid as long as the struct is valid. Therefore,
-the compiler is satisfied with the function `get_x()`.
+the compiler accepts the function `get_x()`.
 
-To drill in this point, let’s look at a variation on the example, this
-time one which does not compile:
+To emphasize this point, let’s look at a variation on the example, this
+time one that does not compile:
 
 ~~~ {.xfail-test}
 struct Point {x: float, y: float}
@@ -617,22 +622,21 @@ fn get_x_sh(p: @Point) -> &float {
 Here, the function `get_x_sh()` takes a managed box as input and
 returns a borrowed pointer. As before, the lifetime of the borrowed
 pointer that will be returned is a parameter (specified by the
-caller). That means that effectively `get_x_sh()` is promising to
-return a borrowed pointer that is valid for as long as the caller
-would like: this is subtly different from the first example, which
-promised to return a pointer that was valid for as long as the pointer
-it was given.
+caller). That means that `get_x_sh()` promises to return a borrowed
+pointer that is valid for as long as the caller would like: this is
+subtly different from the first example, which promised to return a
+pointer that was valid for as long as its pointer argument was valid.
 
 Within `get_x_sh()`, we see the expression `&p.x` which takes the
-address of a field of a managed box. This implies that the compiler
-must guarantee that, so long as the resulting pointer is valid, the
-managed box will not be reclaimed by the garbage collector. But recall
-that `get_x_sh()` also promised to return a pointer that was valid for
-as long as the caller wanted it to be. Clearly, `get_x_sh()` is not in
-a position to make both of these guarantees; in fact, it cannot
-guarantee that the pointer will remain valid at all once it returns,
-as the parameter `p` may or may not be live in the caller. Therefore,
-the compiler will report an error here.
+address of a field of a managed box. The presence of this expression
+implies that the compiler must guarantee that, so long as the
+resulting pointer is valid, the managed box will not be reclaimed by
+the garbage collector. But recall that `get_x_sh()` also promised to
+return a pointer that was valid for as long as the caller wanted it to
+be. Clearly, `get_x_sh()` is not in a position to make both of these
+guarantees; in fact, it cannot guarantee that the pointer will remain
+valid at all once it returns, as the parameter `p` may or may not be
+live in the caller. Therefore, the compiler will report an error here.
 
 In general, if you borrow a managed (or unique) box to create a
 borrowed pointer, the pointer will only be valid within the function
