@@ -647,9 +647,9 @@ points at a static constant).
 
 # Named lifetimes
 
-Let's look at named lifetimes in more detail.  In effect, the use of
-named lifetimes allows you to group parameters by lifetime.  For
-example, consider this function:
+Let's look at named lifetimes in more detail. Named lifetimes allow
+for grouping of parameters by lifetime. For example, consider this
+function:
 
 ~~~
 # struct Point {x: float, y: float}; // as before
@@ -722,10 +722,10 @@ fn select<T>(shape: &tmp/Shape, threshold: float,
 }
 ~~~
 
-Here you can see the lifetime of shape is now being called `tmp`. The
-parameters `a`, `b`, and the return value are all given the lifetime
-`r`.  However, since the lifetime `tmp` is not returned, it would be shorter
-to just omit the named lifetime for `shape` altogether:
+Here you can see that `shape`'s lifetime is now named `tmp`. The
+parameters `a`, `b`, and the return value all have the lifetime `r`.
+However, since the lifetime `tmp` is not returned, it would be more
+concise to just omit the named lifetime for `shape` altogether:
 
 ~~~
 # struct Point {x: float, y: float}; // as before
@@ -746,17 +746,22 @@ This is equivalent to the previous definition.
 # Purity
 
 As mentioned before, the Rust compiler offers a kind of escape hatch
-that permits borrowing of any data, but only if the actions that occur
+that permits borrowing of any data, as long as the actions that occur
 during the lifetime of the borrow are pure. Pure actions are those
-which only modify data owned by the current stack frame. The compiler
+that only modify data owned by the current stack frame. The compiler
 can therefore permit arbitrary pointers into the heap, secure in the
 knowledge that no pure action will ever cause them to become
 invalidated (the compiler must still track data on the stack which is
-borrowed and enforce those rules normally, of course).
+borrowed and enforce those rules normally, of course). A pure function
+in Rust is referentially transparent: it returns the same results
+given the same (observably equivalent) inputs. That is because while
+pure functions are allowed to modify data, they may only modify
+*stack-local* data, which cannot be observed outside the scope of the
+function itself. (Using an `unsafe` block invalidates this guarantee.)
 
-Let’s revisit a previous example and show how purity can affect the
-compiler’s result. Here is `example5a()`, which borrows the interior of
-a unique box found in an aliasable, mutable location, only now we’ve
+Let’s revisit a previous example and show how purity can affect
+typechecking. Here is `example5a()`, which borrows the interior of a
+unique box found in an aliasable, mutable location, only now we’ve
 replaced the `...` with some specific code:
 
 ~~~
@@ -768,8 +773,8 @@ fn example5a(x: @S ...) -> int {
 }
 ~~~
 
-The new code simply returns an incremented version of `y`. This clearly
-doesn’t do mutate anything in the heap, so the compiler is satisfied.
+The new code simply returns an incremented version of `y`. This code
+clearly doesn't mutate the heap, so the compiler is satisfied.
 
 But suppose we wanted to pull the increment code into a helper, like
 this:
@@ -791,8 +796,8 @@ fn example5a(x: @S ...) -> int {
 ~~~
 
 But now the compiler will report an error again. The reason is that it
-only considers one function at a time (like most type checkers), and
-so it does not know that `add_one()` only takes pure actions. We can
+only considers one function at a time (like most typecheckers), and
+so it does not know that `add_one()` consists of pure code. We can
 help the compiler by labeling `add_one()` as pure:
 
 ~~~
@@ -803,7 +808,7 @@ With this change, the modified version of `example5a()` will again compile.
 
 # Conclusion
 
-So there you have it. A (relatively) brief tour of borrowed pointer
-system. For more details, I refer to the (yet to be written) reference
+So there you have it: a (relatively) brief tour of the borrowed pointer
+system. For more details, we refer to the (yet to be written) reference
 document on borrowed pointers, which will explain the full notation
 and give more examples.
