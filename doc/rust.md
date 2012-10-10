@@ -41,9 +41,6 @@ If you have suggestions to make, please try to focus them on *reductions* to
 the language: possible features that can be combined or omitted. We aim to
 keep the size and complexity of the language under control.
 
-> **Note:** This manual is very out of date. The best source of Rust
-> documentation is currently the tutorial.
-
 > **Note:** The grammar for Rust given in this document is rough and
 > very incomplete; only a modest number of sections have accompanying grammar
 > rules. Formalizing the grammar accepted by the Rust parser is ongoing work,
@@ -1370,10 +1367,8 @@ mod bar {
 fn add(x: int, y: int) { x + y }
 ~~~~~~~~
 
-In future versions of Rust, user-provided extensions to the compiler will be
-able to interpret attributes. When this facility is provided, the compiler
-will distinguish will be made between language-reserved and user-available
-attributes.
+> **Note:** In future versions of Rust, user-provided extensions to the compiler will be able to interpret attributes.
+> When this facility is provided, the compiler will distinguish between language-reserved and user-available attributes.
 
 At present, only the Rust compiler interprets attributes, so all attribute
 names are effectively reserved. Some significant attributes include:
@@ -2938,8 +2933,8 @@ An example of a *receive*:
 let s = comm::recv(po);
 ~~~~~~~~
 
-Note: this communication system will be replaced by a higher-performance system called "pipes",
-in future versions of Rust.
+> **Note:** this communication system will be replaced by a higher-performance system called "pipes",
+> in future versions of Rust.
 
 
 # Runtime services, linkage and debugging
@@ -2951,7 +2946,7 @@ run-time. It is smaller and simpler than many modern language runtimes. It is
 tightly integrated into the language's execution model of memory, tasks,
 communication and logging.
 
-Note: The runtime library will merge with the `core` library in future versions of Rust.
+> **Note:** The runtime library will merge with the `core` library in future versions of Rust.
 
 ### Memory allocation
 
