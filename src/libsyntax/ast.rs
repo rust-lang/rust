@@ -462,7 +462,7 @@ impl proto : cmp::Eq {
 #[auto_deserialize]
 enum vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
-    vstore_fixed(Option<uint>),   // [1,2,3,4]/_ or 4
+    vstore_fixed(Option<uint>),   // [1,2,3,4]
     vstore_uniq,                  // ~[1,2,3,4]
     vstore_box,                   // @[1,2,3,4]
     vstore_slice(@region)         // &[1,2,3,4](foo)?
@@ -472,7 +472,8 @@ enum vstore {
 #[auto_deserialize]
 enum expr_vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
-    expr_vstore_fixed(Option<uint>),   // [1,2,3,4]/_ or 4
+    expr_vstore_fixed(Option<uint>),   // [1,2,3,4]
+>>>>>>> Remove old fixed-length vector syntax
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
     expr_vstore_slice                  // &[1,2,3,4]

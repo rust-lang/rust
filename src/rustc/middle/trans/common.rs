@@ -1310,13 +1310,13 @@ fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
      tps: tps}
 }
 
-fn struct_field(index: uint) -> [uint]/3 {
+fn struct_field(index: uint) -> [uint * 3] {
     //! The GEPi sequence to access a field of a record/struct.
 
     [0, 0, index]
 }
 
-fn struct_dtor() -> [uint]/2 {
+fn struct_dtor() -> [uint * 2] {
     //! The GEPi sequence to access the dtor of a struct.
 
     [0, 1]

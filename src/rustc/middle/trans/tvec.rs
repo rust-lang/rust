@@ -140,7 +140,7 @@ fn trans_fixed_vstore(bcx: block,
 {
     //!
     //
-    // [...]/_ allocates a fixed-size array and moves it around "by value".
+    // [...] allocates a fixed-size array and moves it around "by value".
     // In this case, it means that the caller has already given us a location
     // to store the array of the suitable size, so all we have to do is
     // generate the content.
