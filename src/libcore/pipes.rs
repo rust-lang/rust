@@ -667,7 +667,7 @@ pub fn select2<A: Send, Ab: Send, B: Send, Bb: Send>(
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
               (RecvPacketBuffered<A, Ab>, Option<B>)>
 {
-    let i = wait_many([a.header(), b.header()]/_);
+    let i = wait_many([a.header(), b.header()]);
 
     match i {
       0 => Left((try_recv(move a), move b)),
@@ -693,7 +693,7 @@ pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
 /// Returns 0 or 1 depending on which endpoint is ready to receive
 pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
         Either<(), ()> {
-    match wait_many([a.header(), b.header()]/_) {
+    match wait_many([a.header(), b.header()]) {
       0 => Left(()),
       1 => Right(()),
       _ => fail ~"wait returned unexpected index"

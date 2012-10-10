@@ -233,7 +233,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                     ~"try running with RUST_LOG=rustc=0,::rt::backtrace \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
-                ]/_.each |note| {
+                ].each |note| {
                     diagnostic::emit(None, *note, diagnostic::note)
                 }
             }

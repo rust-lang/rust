@@ -1019,7 +1019,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // functions. This is so that we have more information about the types
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
-        for [false, true]/_.each |check_blocks| {
+        for [false, true].each |check_blocks| {
             let check_blocks = *check_blocks;
             debug!("check_blocks=%b", check_blocks);
 
