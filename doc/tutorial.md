@@ -988,16 +988,17 @@ illuminate several of Rust's unique features as we encounter them.
 
 Rust has three competing goals that inform its view of memory:
 
-* Memory safety: memory that is managed by and is accessible to the
-  Rust language must be guaranteed to be valid; under normal
+* Memory safety: Memory that is managed by and is accessible to the
+  Rust language must be guaranteed to be valid. Under normal
   circumstances it must be impossible for Rust to trigger a
-  segmentation fault or leak memory
-* Performance: high-performance low-level code must be able to employ
-  a number of allocation strategies; low-performance high-level code
-  must be able to employ a single, garbage-collection-based, heap
-  allocation strategy
-* Concurrency: Rust must maintain memory safety guarantees, even for
-  code running in parallel
+  segmentation fault or leak memory.
+* Performance: High-performance low-level code must be able to employ
+  a number of allocation strategies. Tracing garbage collection must be
+  optional and, if it is not desired, memory safety must not be compromised.
+  Less performance-critical, high-level code should be able to employ a single,
+  garbage-collection-based, heap allocation strategy.
+* Concurrency: Rust code must be free of in-memory data races. (Note that other
+  types of races are still possible.)
 
 ## How performance considerations influence the memory model
 
