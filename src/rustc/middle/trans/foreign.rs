@@ -112,9 +112,10 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             Float => 4,
             Double => 8,
             Struct => {
-              do vec::foldl(0, struct_tys(ty)) |s, t| {
-                    s + ty_size(*t)
-                }
+              let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
+                  align(s, *t) + ty_size(*t)
+              };
+              align(size, ty)
             }
             Array => {
               let len = llvm::LLVMGetArrayLength(ty) as uint;
