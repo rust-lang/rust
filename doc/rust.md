@@ -3109,7 +3109,8 @@ Additional specific influences can be seen from the following languages:
 * The stack-growth implementation of Go.
 * The structural algebraic types and compilation manager of SML.
 * The attribute and assembly systems of C#.
-* The deterministic destructor system of C++.
+* The references and deterministic destructor system of C++.
+* The memory region systems of the ML Kit and Cyclone.
 * The typeclass system of Haskell.
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
