@@ -157,13 +157,13 @@ Some productions are defined by exclusion of particular Unicode characters:
 ~~~~~~~~ {.ebnf .gram}
 comment : block_comment | line_comment ;
 block_comment : "/*" block_comment_body * "*/" ;
-block_comment_body : block_comment | non_star * | '*' non_slash ;
+block_comment_body : non_star * | '*' non_slash ;
 line_comment : "//" non_eol * ;
 ~~~~~~~~
 
-Comments in Rust code follow the general C++ style of line and block-comment
-forms, with proper nesting of block-comment delimiters. Comments are
-interpreted as a form of whitespace.
+Comments in Rust code follow the general C++ style of line and block-comment forms,
+with no nesting of block-comment delimiters.
+Comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
