@@ -178,25 +178,27 @@ as well as from the managed box, and then compute the distance between them.
 
 # Borrowing managed boxes and rooting
 
-We’ve seen a few examples so far where heap boxes (both managed and
-unique) are borrowed. Up till this point, we’ve glossed over issues of
+We’ve seen a few examples so far of borrowing heap boxes, both managed
+and unique. Up till this point, we’ve glossed over issues of
 safety. As stated in the introduction, at runtime a borrowed pointer
-is simply a pointer, nothing more. Therefore, if we wish to avoid the
-issues that C has with dangling pointers (and we do!), a compile-time
-safety check is required.
+is simply a pointer, nothing more. Therefore, avoiding C's problems
+with dangling pointers requires a compile-time safety check.
 
-The basis for the check is the notion of _lifetimes_. A lifetime is
-basically a static approximation of the period in which the pointer is
-valid: it always corresponds to some expression or block within the
-program. Within that expression, the pointer can be used freely, but
-if the pointer somehow leaks outside of that expression, the compiler
-will report an error. We’ll be discussing lifetimes more in the
-examples to come, and a more thorough introduction is also available.
+The basis for the check is the notion of _lifetimes_. A lifetime is a
+static approximation of the span of execution during which the pointer
+is valid: it always corresponds to some expression or block within the
+program. Code inside that expression can use the pointer without
+restrictions. But if the pointer escapes from that expression (for
+example, if the expression contains an assignment expression that
+assigns the pointer to a mutable field of a data structure with a
+broader scope than the pointer itself), the compiler reports an
+error. We'll be discussing lifetimes more in the examples to come, and
+a more thorough introduction is also available.
 
-When a borrowed pointer is created, the compiler must ensure that it
-will remain valid for its entire lifetime. Sometimes this is
-relatively easy, such as when taking the address of a local variable
-or a field that is stored on the stack:
+When the `&` operator creates a borrowed pointer, the compiler must
+ensure that the pointer remains valid for its entire
+lifetime. Sometimes this is relatively easy, such as when taking the
+address of a local variable or a field that is stored on the stack:
 
 ~~~
 struct X { f: int }
@@ -207,12 +209,12 @@ fn example1() {
 }                      // -+
 ~~~
 
-Here, the lifetime of the borrowed pointer is simply L, the remainder
-of the function body. No extra work is required to ensure that `x.f`
-will not be freed. This is true even if `x` is mutated.
+Here, the lifetime of the borrowed pointer `y` is simply L, the
+remainder of the function body. The compiler need not do any other
+work to prove that code will not free `x.f`. This is true even if the
+code mutates `x`.
 
-The situation gets more complex when borrowing data that resides in
-heap boxes:
+The situation gets more complex when borrowing data inside heap boxes:
 
 ~~~
 # struct X { f: int }
@@ -223,20 +225,25 @@ fn example2() {
 }                      // -+
 ~~~
 
-In this example, the value `x` is in fact a heap box, and `y` is
-therefore a pointer into that heap box. Again the lifetime of `y` will
-be L, the remainder of the function body. But there is a crucial
-difference: suppose `x` were reassigned during the lifetime L? If
-we’re not careful, that could mean that the managed box would become
-unrooted and therefore be subject to garbage collection
+In this example, the value `x` is a heap box, and `y` is therefore a
+pointer into that heap box. Again the lifetime of `y` is L, the
+remainder of the function body. But there is a crucial difference:
+suppose `x` were to be reassigned during the lifetime L? If the
+compiler isn't careful, the managed box could become *unrooted*, and
+would therefore be subject to garbage collection. A heap box that is
+unrooted is one such that no pointer values in the heap point to
+it. It would violate memory safety for the box that was originally
+assigned to `x` to be garbage-collected, since a non-heap
+pointer---`y`---still points into it.
 
-> ***Note:***In our current implementation, the garbage collector is
-> implemented using reference counting and cycle detection.
+> ***Note:*** Our current implementation implements the garbage collector
+> using reference counting and cycle detection.
 
-For this reason, whenever the interior of a managed box stored in a
-mutable location is borrowed, the compiler will insert a temporary
-that ensures that the managed box remains live for the entire
-lifetime. So, the above example would be compiled as:
+For this reason, whenever an `&` expression borrows the interior of a
+managed box stored in a mutable location, the compiler inserts a
+temporary that ensures that the managed box remains live for the
+entire lifetime. So, the above example would be compiled as if it were
+written
 
 ~~~
 # struct X { f: int }
@@ -255,9 +262,9 @@ process is called *rooting*.
 
 The previous example demonstrated *rooting*, the process by which the
 compiler ensures that managed boxes remain live for the duration of a
-borrow. Unfortunately, rooting does not work if the data being
-borrowed is a unique box, as it is not possible to have two references
-to a unique box.
+borrow. Unfortunately, rooting does not work for borrows of unique
+boxes, because it is not possible to have two references to a unique
+box.
 
 For unique boxes, therefore, the compiler will only allow a borrow *if
 the compiler can guarantee that the unique box will not be reassigned
@@ -280,14 +287,14 @@ fn example3() -> int {
 ~~~
 
 Here, as before, the interior of the variable `x` is being borrowed
-and `x` is declared as mutable. However, the compiler can clearly see
-that `x` is not assigned anywhere in the lifetime L of the variable
+and `x` is declared as mutable. However, the compiler can prove that
+`x` is not assigned anywhere in the lifetime L of the variable
 `y`. Therefore, it accepts the function, even though `x` is mutable
 and in fact is mutated later in the function.
 
-It may not be clear why we are so concerned about the variable which
-was borrowed being mutated. The reason is that unique boxes are freed
-_as soon as their owning reference is changed or goes out of
+It may not be clear why we are so concerned about mutating a borrowed
+variable. The reason is that the runtime system frees any unique box
+_as soon as its owning reference changes or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
 
@@ -332,11 +339,11 @@ Once the reassignment occurs, the memory will look like this:
 Here you can see that the variable `y` still points at the old box,
 which has been freed.
 
-In fact, the compiler can apply this same kind of reasoning can be
-applied to any memory which is _(uniquely) owned by the stack
-frame_. So we could modify the previous example to introduce
-additional unique pointers and structs, and the compiler will still be
-able to detect possible mutations:
+In fact, the compiler can apply the same kind of reasoning to any
+memory that is _(uniquely) owned by the stack frame_. So we could
+modify the previous example to introduce additional unique pointers
+and structs, and the compiler will still be able to detect possible
+mutations:
 
 ~~~ {.xfail-test}
 fn example3() -> int {
@@ -353,11 +360,11 @@ fn example3() -> int {
 
 In this case, two errors are reported, one when the variable `x` is
 modified and another when `x.f` is modified. Either modification would
-cause the pointer `y` to be invalidated.
+invalidate the pointer `y`.
 
-Things get tricker when the unique box is not uniquely owned by the
-stack frame (or when the compiler doesn’t know who the owner
-is). Consider a program like this:
+Things get trickier when the unique box is not uniquely owned by the
+stack frame, or when there is no way for the compiler to determine the
+box's owner. Consider a program like this:
 
 ~~~
 struct R { g: int }
@@ -381,18 +388,18 @@ Here the heap looks something like:
     +------+
 ~~~
 
-In this case, the owning reference to the value being borrowed is in
-fact `x.f`. Moreover, `x.f` is both mutable and aliasable. Aliasable
-means that it is possible that there are other pointers to that same
-managed box, so even if the compiler were to prevent `x.f` from being
-mutated, the field might still be changed through some alias of
-`x`. Therefore, to be safe, the compiler only accepts pure actions
-during the lifetime of `y`. We’ll have a final example on purity but
-inn unique fields, as in the following example:
+In this case, the owning reference to the value being borrowed is
+`x.f`. Moreover, `x.f` is both mutable and *aliasable*. Aliasable
+means that there may be other pointers to that same managed box, so
+even if the compiler were to prove an absence of mutations to `x.f`,
+code could mutate `x.f` indirectly by changing an alias of
+`x`. Therefore, to be safe, the compiler only accepts *pure* actions
+during the lifetime of `y`. We define what "pure" means in the section
+on [purity](#purity).
 
 Besides ensuring purity, the only way to borrow the interior of a
-unique found in aliasable memory is to ensure that it is stored within
-unique fields, as in the following example:
+unique found in aliasable memory is to ensure that the borrowed field
+itself is also unique, as in the following example:
 
 ~~~
 struct R { g: int }
@@ -409,7 +416,7 @@ the compiler to know that, even if aliases to `x` exist, the field `f`
 cannot be changed and hence the unique box `g` will remain valid.
 
 If you do have a unique box in a mutable field, and you wish to borrow
-it, one option is to use the swap operator to bring that unique box
+it, one option is to use the swap operator to move that unique box
 onto your stack:
 
 ~~~
@@ -430,14 +437,13 @@ fn example5c(x: @S) -> int {
 
 Of course, this has the side effect of modifying your managed box for
 the duration of the borrow, so it only works when you know that you
-won’t be accessing that same box for the duration of the loan.  Note
-also that sometimes it is necessary to introduce additional blocks to
-constrain the scope of the loan.  In this example, the borrowed
-pointer `y` would still be in scope when you moved the value `v` back
-into `x.f`, and hence moving `v` would be considered illegal.  You
-cannot move values if they are outstanding loans which are still
-valid.  By introducing the block, the scope of `y` is restricted and so
-the move is legal.
+won't be accessing that same box for the duration of the loan. Also,
+it is sometimes necessary to introduce additional blocks to constrain
+the scope of the loan.  In this example, the borrowed pointer `y`
+would still be in scope when you moved the value `v` back into `x.f`,
+and hence moving `v` would be considered illegal.  You cannot move
+values if they are the targets of valid outstanding loans. Introducing
+the block restricts the scope of `y`, making the move legal.
 
 # Borrowing and enums
 
