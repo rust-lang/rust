@@ -2886,10 +2886,10 @@ non-executing state (blocked, dead) similarly deschedules the task.
 A call to `core::task::spawn`, passing a 0-argument function as its single
 argument, causes the runtime to construct a new task executing the passed
 function. The passed function is referred to as the _entry function_ for
-the spawned task, and any captured environment is carries is moved from the
+the spawned task, and any captured environment it carries is moved from the
 spawning task to the spawned task before the spawned task begins execution.
 
-The result of a `spawn` call is a `core::task::task` value.
+The result of a `spawn` call is a `core::task::Task` value.
 
 An example of a `spawn` call:
 
@@ -2938,16 +2938,20 @@ An example of a *receive*:
 let s = comm::recv(po);
 ~~~~~~~~
 
+Note: this communication system will be replaced by a higher-performance system called "pipes",
+in future versions of Rust.
+
 
 # Runtime services, linkage and debugging
 
 
-The Rust _runtime_ is a relatively compact collection of C and Rust code
+The Rust _runtime_ is a relatively compact collection of C++ and Rust code
 that provides fundamental services and datatypes to all Rust tasks at
 run-time. It is smaller and simpler than many modern language runtimes. It is
 tightly integrated into the language's execution model of memory, tasks,
 communication and logging.
 
+Note: The runtime library will merge with the `core` library in future versions of Rust.
 
 ### Memory allocation
 
