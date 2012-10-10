@@ -19,6 +19,10 @@ CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer
 # embedded into the executable, so use a no-op command.
 CFG_DSYMUTIL := true
 
+# Add a dSYM glob for all platforms, even though it will do nothing on
+# non-Darwin platforms; omitting it causes a full -R copy of lib/
+CFG_LIB_DSYM_GLOB=lib$(1)-*.dylib.dSYM
+
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
   CFG_LIB_GLOB=lib$(1)-*.so
@@ -77,7 +81,6 @@ endif
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_LIB_GLOB=lib$(1)-*.dylib
-  CFG_LIB_DSYM_GLOB=lib$(1)-*.dylib.dSYM
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind
