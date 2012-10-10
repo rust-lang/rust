@@ -1054,7 +1054,7 @@ copied, not just a pointer.
 For small structs like `Point`, this is usually more efficient than
 allocating memory and going through a pointer. But for big structs, or
 those with mutable fields, it can be useful to have a single copy on
-the heap, and refer to that through a pointer.
+the stack or on the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The safe pointer types are
 `@T` for managed boxes allocated on the local heap, `~T`, for
@@ -1087,8 +1087,7 @@ let y = x; // Copy of a pointer to the same box
 ~~~~
 
 Any type that contains managed boxes or other managed types is
-considered _managed_. Managed types are the only types that can
-construct cyclic data structures in Rust, such as doubly-linked lists.
+considered _managed_.
 
 ~~~
 // A linked list node
