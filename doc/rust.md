@@ -1435,27 +1435,11 @@ let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
 init : [ '=' | '<-' ] expr ;
 ~~~~~~~~
 
-
-A _slot declaration_ has one of two forms:
-
-* `let` `pattern` `optional-init`;
-* `let` `pattern` : `type` `optional-init`;
-
-Where `type` is a type expression, `pattern` is an irrefutable pattern (often
-just the name of a single slot), and `optional-init` is an optional
-initializer. If present, the initializer consists of either an assignment
-operator (`=`) or move operator (`<-`), followed by an expression.
-
-Both forms introduce a new slot into the enclosing block scope. The new slot
-is visible from the point of declaration until the end of the enclosing block
-scope.
-
-The former form, with no type annotation, causes the compiler to infer the
-static type of the slot through unification with the types of values assigned
-to the slot in the remaining code in the block scope. Inference only occurs on
-frame-local variable, not argument slots. Function signatures must
-always declare types for all argument slots.
-
+A _slot declaration_ introduces a new set of slots, given by a pattern.
+The pattern may be followed by a type annotation, and/or an initializer expression.
+When no type annotation is given, the compiler will infer the type,
+or signal an error if insufficient type information is available for definite inference.
+Any slots introduced by a slot declaration are visible from the point of declaration until the end of the enclosing block scope.
 
 ### Expression statements
 
@@ -1487,7 +1471,8 @@ The evaluation of an expression depends both on its own category and the context
 Path, field and index expressions are lvalues.
 All other expressions are rvalues.
 
-The left operand of an assignment expression and the operand of the borrow operator are lvalue contexts.
+The left operand of an assignment, compound-assignment, or binary move expression is an lvalue context,
+as is the single operand of a borrow, unary copy or move expression, and _both_ operands of a swap expression.
 All other expression contexts are rvalue contexts.
 
 When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
@@ -1572,9 +1557,8 @@ myrecord.myfield;
 {a: 10, b: 20}.a;
 ~~~~~~~~
 
-A field access on a record is an _lval_ referring to the value of that
-field. When the field is mutable, it can be
-[assigned](#assignment-expressions) to.
+A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
+When the field is mutable, it can be [assigned](#assignment-expressions) to.
 
 When the type of the expression to the left of the dot is a boxed
 record, it is automatically derferenced to make the field access
@@ -1615,7 +1599,7 @@ idx_expr : expr '[' expr ']'
 
 [Vector](#vector-types)-typed expressions can be indexed by writing a
 square-bracket-enclosed expression (the index) after them. When the
-vector is mutable, the resulting _lval_ can be assigned to.
+vector is mutable, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
@@ -1641,7 +1625,7 @@ operators, before the expression they apply to.
 `*`
   : Dereference. When applied to a [box](#box-types) or
     [resource](#resources) type, it accesses the inner value. For
-    mutable boxes, the resulting _lval_ can be assigned to. For
+    mutable boxes, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to. For
     [enums](#enumerated-types) that have only a single variant,
     containing a single parameter, the dereference operator accesses
     this parameter.
@@ -1762,11 +1746,11 @@ types.
 
 #### Binary move expressions
 
-A _binary move expression_ consists of an *lval* followed by a left-pointing
-arrow (`<-`) and an *rval* expression.
+A _binary move expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a left-pointing
+arrow (`<-`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
-Evaluating a move expression causes, as a side effect, the *rval* to be
-*moved* into the *lval*. If the *rval* was itself an *lval*, it must be a
+Evaluating a move expression causes, as a side effect, the rvalue to be
+*moved* into the lvalue. If the rvalue was itself an lvalue, it must be a
 local variable, as it will be de-initialized in the process.
 
 Evaluating a move expression does not change reference counts, nor does it
@@ -1792,17 +1776,13 @@ y.z <- c;
 
 #### Swap expressions
 
-A _swap expression_ consists of an *lval* followed by a bi-directional arrow
-(`<->`) and another *lval* expression.
+A _swap expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a bi-directional arrow (`<->`) and another [lvalue](#lvalues-rvalues-and-temporaries).
 
-Evaluating a swap expression causes, as a side effect, the values held in the
-left-hand-side and right-hand-side *lvals* to be exchanged indivisibly.
+Evaluating a swap expression causes, as a side effect, the values held in the left-hand-side and right-hand-side [lvalues](#lvalues-rvalues-and-temporaries) to be exchanged indivisibly.
 
-Evaluating a swap expression neither changes reference counts nor deeply
-copies any unique structure pointed to by the moved
-*rval*. Instead, the swap expression represents an indivisible *exchange of
-ownership* between the right-hand-side and the left-hand-side of the
-expression. No allocation or destruction is entailed.
+Evaluating a swap expression neither changes reference counts nor deeply copies any unique structure pointed to by the moved [rvalue](#lvalues-rvalues-and-temporaries).
+Instead, the swap expression represents an indivisible *exchange of ownership* between the right-hand-side and the left-hand-side of the expression.
+No allocation or destruction is entailed.
 
 An example of three different swap expressions:
 
@@ -1821,8 +1801,8 @@ y.z <-> b.c;
 
 #### Assignment expressions
 
-An _assignment expression_ consists of an *lval* expression followed by an
-equals sign (`=`) and an *rval* expression.
+An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
+equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
 Evaluating an assignment expression is equivalent to evaluating a [binary move
 expression](#binary-move-expressions) applied to a [unary copy
