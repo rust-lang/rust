@@ -113,7 +113,7 @@ fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = *pair;
-        io::println(fmt!("    -Z%-20s -- %s", name, desc));
+        io::println(fmt!("    -Z %-20s -- %s", name, desc));
     }
 }
 
