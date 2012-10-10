@@ -2182,54 +2182,6 @@ the *failing* state, a task unwinds its stack, destroying all frames and
 freeing all resources until it reaches its entry frame, at which point it
 halts execution in the *dead* state.
 
-### Note expressions
-
-~~~~~~~~{.ebnf .gram}
-note_expr : "note" expr ;
-~~~~~~~~
-
-**Note: Note expressions are not yet supported by the compiler.**
-
-A `note` expression has no effect during normal execution. The purpose of a
-`note` expression is to provide additional diagnostic information to the
-logging subsystem during task failure. See [log
-expressions](#log-expressions). Using `note` expressions, normal diagnostic
-logging can be kept relatively sparse, while still providing verbose
-diagnostic "back-traces" when a task fails.
-
-When a task is failing, control frames *unwind* from the innermost frame to
-the outermost, and from the innermost lexical block within an unwinding frame
-to the outermost. When unwinding a lexical block, the runtime processes all
-the `note` expressions in the block sequentially, from the first expression of
-the block to the last.  During processing, a `note` expression has equivalent
-meaning to a `log` expression: it causes the runtime to append the argument of
-the `note` to the internal logging diagnostic buffer.
-
-An example of a `note` expression:
-
-~~~~{.xfail-test}
-fn read_file_lines(path: ~str) -> ~[~str] {
-    note path;
-    let r: [~str];
-    let f: file = open_read(path);
-    lines(f) |s| {
-        r += ~[s];
-    }
-    return r;
-}
-~~~~
-
-In this example, if the task fails while attempting to open or read a file,
-the runtime will log the path name that was being read. If the function
-completes normally, the runtime will not log the path.
-
-A value that is marked by a `note` expression is *not* copied aside
-when control passes through the `note`. In other words, if a `note`
-expression notes a particular `lval`, and code after the `note`
-mutates that slot, and then a subsequent failure occurs, the *mutated*
-value will be logged during unwinding, *not* the original value that was
-denoted by the `lval` at the moment control passed through the `note`
-expression.
 
 ### Return expressions
 
