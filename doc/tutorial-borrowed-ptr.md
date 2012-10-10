@@ -112,10 +112,10 @@ In the previous example, the value `on_the_stack` was defined like so:
 let on_the_stack: Point = Point {x: 3.0, y: 4.0};
 ~~~
 
-This results in a by-value variable. As a consequence, we had to
-explicitly take the address of `on_the_stack` to get a borrowed
-pointer. Sometimes however it is more convenient to move the &
-operator into the definition of `on_the_stack`:
+This declaration means that code can only pass `Point` by value to other
+functions. As a consequence, we had to explicitly take the address of
+`on_the_stack` to get a borrowed pointer. Sometimes however it is more
+convenient to move the & operator into the definition of `on_the_stack`:
 
 ~~~
 # struct Point {x: float, y: float}
@@ -123,7 +123,8 @@ let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
 ~~~
 
 Applying `&` to an rvalue (non-assignable location) is just a convenient
-shorthand for creating a temporary and taking its address:
+shorthand for creating a temporary and taking its address. A more verbose
+way to write the same code is:
 
 ~~~
 # struct Point {x: float, y: float}
@@ -134,7 +135,7 @@ let on_the_stack2 : &Point = &tmp;
 # Taking the address of fields
 
 As in C, the `&` operator is not limited to taking the address of
-local variables. It can also be used to take the address of fields or
+local variables. It can also take the address of fields or
 individual array elements. For example, consider this type definition
 for `rectangle`:
 
@@ -144,7 +145,7 @@ struct Size {w: float, h: float} // as before
 struct Rectangle {origin: Point, size: Size}
 ~~~
 
-Now again I can define rectangles in a few different ways:
+Now, as before, we can define rectangles in a few different ways:
 
 ~~~
 # struct Point {x: float, y: float}
@@ -158,8 +159,8 @@ let rect_unique  = ~Rectangle {origin: Point {x: 5f, y: 6f},
                                size: Size {w: 3f, h: 4f}};
 ~~~
 
-In each case I can use the `&` operator to extact out individual
-subcomponents. For example, I could write:
+In each case, we can extract out individual subcomponents with the `&`
+operator. For example, I could write:
 
 ~~~
 # struct Point {x: float, y: float} // as before
@@ -173,7 +174,7 @@ compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
 
 which would borrow the field `origin` from the rectangle on the stack
-from the managed box and then compute the distance between them.
+as well as from the managed box, and then compute the distance between them.
 
 # Borrowing managed boxes and rooting
 
