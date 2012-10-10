@@ -4,16 +4,16 @@
 // Doesn't work; needs a design decision.
 
 fn main() {
-    let x : [int]/5 = [1,2,3,4,5]/5;
-    let _y : [int]/5 = [1,2,3,4,5]/_;
-    let mut z = [1,2,3,4,5]/_;
+    let x : [int * 5] = [1,2,3,4,5];
+    let _y : [int * 5] = [1,2,3,4,5];
+    let mut z = [1,2,3,4,5];
     z = x;
     assert z[0] == 1;
     assert z[4] == 5;
 
-    let a : [int]/5 = [1,1,1,1,1]/_;
-    let b : [int]/5 = [2,2,2,2,2]/_;
-    let c : [int]/5 = [2,2,2,2,3]/_;
+    let a : [int * 5] = [1,1,1,1,1];
+    let b : [int * 5] = [2,2,2,2,2];
+    let c : [int * 5] = [2,2,2,2,3];
 
     log(debug, a);
 
