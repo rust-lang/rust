@@ -2,32 +2,32 @@
 
 # Introduction
 
-Borrowed pointers are one of the more flexible and powerful tools
-available in Rust. A borrowed pointer can be used to point anywhere:
-into the managed and exchange heaps, into the stack, and even into the
-interior of another data structure. With regard to flexibility, it is
-comparable to a C pointer or C++ reference. However, unlike C and C++,
-the Rust compiler includes special checks that ensure that borrowed
-pointers are being used safely. Another advantage of borrowed pointers
-is that they are invisible to the garbage collector, so working with
-borrowed pointers helps keep things efficient.
+Borrowed pointers are one of the more flexible and powerful tools available in
+Rust. A borrowed pointer can point anywhere: into the managed or exchange
+heap, into the stack, and even into the interior of another data structure. A
+borrowed pointer is as flexible as a C pointer or C++ reference. However,
+unlike C and C++ compilers, the Rust compiler includes special static checks
+that ensure that programs use borrowed pointers safely. Another advantage of
+borrowed pointers is that they are invisible to the garbage collector, so
+working with borrowed pointers helps reduce the overhead of automatic memory
+management.
 
-Despite the fact that they are completely safe, at runtime, a borrowed
-pointer is “just a pointer”. They introduce zero overhead. All safety
-checks are done at compilation time.
+Despite their complete safety, a borrowed pointer's representation at runtime
+is the same as that of an ordinary pointer in a C program. They introduce zero
+overhead. The compiler does all safety checks at compile time.
 
 Although borrowed pointers have rather elaborate theoretical
 underpinnings (region pointers), the core concepts will be familiar to
-anyone who worked with C or C++. Therefore, the best way to explain
+anyone who has worked with C or C++. Therefore, the best way to explain
 how they are used—and their limitations—is probably just to work
 through several examples.
 
 # By example
 
-Borrowed pointers are called borrowed because they are only valid for
-a limit duration. Borrowed pointers never claim any kind of ownership
-over the data that they point at: instead, they are used for cases
-where you like to make use of data for a short time.
+Borrowed pointers are called *borrowed* because they are only valid for
+a limited duration. Borrowed pointers never claim any kind of ownership
+over the data that they point to: instead, they are used for cases
+where you would like to use data for a short time.
 
 As an example, consider a simple struct type `Point`:
 
@@ -35,7 +35,7 @@ As an example, consider a simple struct type `Point`:
 struct Point {x: float, y: float}
 ~~~
 
-We can use this simple definition to allocate points in many ways. For
+We can use this simple definition to allocate points in many different ways. For
 example, in this code, each of these three local variables contains a
 point, but allocated in a different place:
 
@@ -46,17 +46,17 @@ let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
 let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
 ~~~
 
-Suppose we wanted to write a procedure that computed the distance
-between any two points, no matter where they were stored. For example,
-we might like to compute the distance between `on_the_stack` and
-`shared_box`, or between `shared_box` and `unique_box`. One option is
-to define a function that takes two arguments of type point—that is,
-it takes the points by value. But this will cause the points to be
-copied when we call the function. For points, this is probably not so
-bad, but often copies are expensive or, worse, if there are mutable
-fields, they can change the semantics of your program. So we’d like to
-define a function that takes the points by pointer. We can use
-borrowed pointers to do this:
+Suppose we wanted to write a procedure that computed the distance between any
+two points, no matter where they were stored. For example, we might like to
+compute the distance between `on_the_stack` and `shared_box`, or between
+`shared_box` and `unique_box`. One option is to define a function that takes
+two arguments of type `Point`—that is, it takes the points by value. But we
+define it this way, calling the function will cause the points to be
+copied. For points, this is probably not so bad, but often copies are
+expensive. Worse, if the data type contains mutable fields, copying can change
+the semantics of your program in unexpected ways. So we'd like to define a
+function that takes the points by pointer. We can use borrowed pointers to do
+this:
 
 ~~~
 # struct Point {x: float, y: float}
@@ -80,28 +80,28 @@ compute_distance(&on_the_stack, shared_box);
 compute_distance(shared_box, unique_box);
 ~~~
 
-Here the `&` operator is used to take the address of the variable
+Here, the `&` operator takes the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
-`on_the_stack`, because we are created an alias: that is, another
-route to the same data.
+`on_the_stack`, because we have created an alias: that is, another
+name for the same data.
 
-In the case of the boxes `shared_box` and `unique_box`, however, no
-explicit action is necessary. The compiler will automatically convert
-a box like `@Point` or `~Point` to a borrowed pointer like
-`&Point`. This is another form of borrowing; in this case, the
-contents of the shared/unique box is being lent out.
+In contrast, we can pass the boxes `shared_box` and `unique_box` to
+`compute_distance` directly. The compiler automatically converts a box like
+`@Point` or `~Point` to a borrowed pointer like `&Point`. This is another form
+of borrowing: in this case, the caller lends the contents of the shared or
+unique box to the callee.
 
-Whenever a value is borrowed, there are some limitations on what you
-can do with the original. For example, if the contents of a variable
-have been lent out, you cannot send that variable to another task, nor
-will you be permitted to take actions that might cause the borrowed
-value to be freed or to change its type (I’ll get into what kinds of
-actions those are shortly). This rule should make intuitive sense: you
-must wait for a borrowed value to be returned (that is, for the
-borrowed pointer to go out of scope) before you can make full use of
-it again.
+Whenever a caller lends data to a callee, there are some limitations on what
+the caller can do with the original. For example, if the contents of a
+variable have been lent out, you cannot send that variable to another task. In
+addition, the compiler will reject any code that might cause the borrowed
+value to be freed or overwrite its component fields with values of different
+types (I'll get into what kinds of actions those are shortly). This rule
+should make intuitive sense: you must wait for a borrower to return the value
+that you lent it (that is, wait for the borrowed pointer to go out of scope)
+before you can make full use of it again.
 
 # Other uses for the & operator
 
