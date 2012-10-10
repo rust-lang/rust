@@ -163,7 +163,13 @@ line_comment : "//" non_eol * ;
 
 Comments in Rust code follow the general C++ style of line and block-comment forms,
 with no nesting of block-comment delimiters.
-Comments are interpreted as a form of whitespace.
+
+Line comments beginning with _three_ slashes (`///`),
+and block comments beginning with a repeated asterisk in the block-open sequence (`/**`),
+are interpreted as a special syntax for `doc` [attributes](#attributes).
+That is, they are equivalent to writing `#[doc "..."]` around the comment's text.
+
+Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
