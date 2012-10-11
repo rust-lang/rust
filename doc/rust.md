@@ -1167,12 +1167,12 @@ or constrained by some other [trait type](#trait-types).
 Traits are implemented for specific types through separate [implementations](#implementations).
 
 ~~~~
-# type surface = int;
-# type bounding_box = int;
+# type Surface = int;
+# type BoundingBox = int;
 
-trait shape {
-    fn draw(surface);
-    fn bounding_box() -> bounding_box;
+trait Shape {
+    fn draw(Surface);
+    fn bounding_box() -> BoundingBox;
 }
 ~~~~
 
@@ -1181,70 +1181,69 @@ All values that have [implementations](#implementations) of this trait in scope 
 using `value.bounding_box()` [syntax](#method-call-expressions).
 
 Type parameters can be specified for a trait to make it generic.
-These appear after the name, using the same syntax used in [generic
-functions](#generic-functions).
+These appear after the trait name, using the same syntax used in [generic functions](#generic-functions).
 
 ~~~~
-trait seq<T> {
+trait Seq<T> {
    fn len() -> uint;
    fn elt_at(n: uint) -> T;
    fn iter(fn(T));
 }
 ~~~~
 
-Generic functions may use traits as bounds on their type
-parameters. This will have two effects: only types that have the trait
-may instantiate the parameter, and within the
-generic function, the methods of the trait can be called on values
-that have the parameter's type. For example:
+Generic functions may use traits as _bounds_ on their type parameters.
+This will have two effects: only types that have the trait may instantiate the parameter,
+and within the generic function,
+the methods of the trait can be called on values that have the parameter's type.
+For example:
 
 ~~~~
-# type surface = int;
-# trait shape { fn draw(surface); }
+# type Surface = int;
+# trait Shape { fn draw(Surface); }
 
-fn draw_twice<T: shape>(surface: surface, sh: T) {
+fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
 }
 ~~~~
 
-Trait items also define a type with the same name as the
-trait. Values of this type are created by
-[casting](#type-cast-expressions) values (of a type for which an
-implementation of the given trait is in scope) to the trait
-type.
+Traits also define a [type](#trait-types) with the same name as the trait.
+Values of this type are created by [casting](#type-cast-expressions) pointer values
+(pointing to a type for which an implementation of the given trait is in scope)
+to pointers to the trait name, used as a type.
 
 ~~~~
-# trait shape { }
-# impl int: shape { }
+# trait Shape { }
+# impl int: Shape { }
 # let mycircle = 0;
 
-let myshape: shape = mycircle as shape;
+let myshape: Shape = @mycircle as @Shape;
 ~~~~
 
-The resulting value is a reference-counted box containing the value
-that was cast along with information that identify the methods of the
-implementation that was used. Values with a trait type can always
-have methods from their trait called on them, and can be used to
-instantiate type parameters that are bounded by their trait.
+The resulting value is a managed box containing the value that was cast,
+along with information that identify the methods of the implementation that was used.
+Values with a trait type can have [methods called](#method-call-expressions) on them,
+for any method in the trait,
+and can be used to instantiate type parameters that are bounded by the trait.
 
 ### Implementations
 
-An _implementation item_ provides an implementation of a
-[trait](#traits) for a type.
+An _implementation_ is an item that implements a [trait](#traits) for a specific type.
+
+Implementations are defined with the keyword `impl`.
 
 ~~~~
-# type point = {x: float, y: float};
-# type surface = int;
-# type bounding_box = {x: float, y: float, width: float, height: float};
-# trait shape { fn draw(surface); fn bounding_box() -> bounding_box; }
-# fn do_draw_circle(s: surface, c: circle) { }
+# type Point = {x: float, y: float};
+# type Surface = int;
+# type BoundingBox = {x: float, y: float, width: float, height: float};
+# trait Shape { fn draw(surface); fn bounding_box() -> BoundingBox; }
+# fn do_draw_circle(s: Surface, c: Circle) { }
 
-type circle = {radius: float, center: point};
+type Circle = {radius: float, center: point};
 
-impl circle: shape {
-    fn draw(s: surface) { do_draw_circle(s, self); }
-    fn bounding_box() -> bounding_box {
+impl Circle: Shape {
+    fn draw(s: Surface) { do_draw_circle(s, self); }
+    fn bounding_box() -> BoundingBox {
         let r = self.radius;
         {x: self.center.x - r, y: self.center.y - r,
          width: 2.0 * r, height: 2.0 * r}
@@ -1252,30 +1251,28 @@ impl circle: shape {
 }
 ~~~~
 
-It is possible to define an implementation without referring to a
-trait.  The methods in such an implementation can only be used
-statically (as direct calls on the values of the type that the
-implementation targets). In such an implementation, the type after the colon is omitted,
-and the name is mandatory.  Such implementations are
-limited to nominal types (enums, structs) and the implementation must
-appear in the same module or a sub-module as the receiver type.
+It is possible to define an implementation without referring to a trait.
+The methods in such an implementation can only be used statically
+(as direct calls on the values of the type that the implementation targets).
+In such an implementation, the type after the colon is omitted.
+Such implementations are limited to nominal types (enums, structs),
+and the implementation must appear in the same module or a sub-module as the `self` type.
 
-_When_ a trait is specified, all methods declared as part of the
-trait must be present, with matching types and type parameter
-counts, in the implementation.
+When a trait _is_ specified in an `impl`,
+all methods declared as part of the trait must be implemented,
+with matching types and type parameter counts.
 
-An implementation can take type parameters, which can be different
-from the type parameters taken by the trait it implements. They
-are written after the name of the implementation, or if that is not
-specified, after the `impl` keyword.
+An implementation can take type parameters,
+which can be different from the type parameters taken by the trait it implements.
+Implementation parameters are written after after the `impl` keyword.
 
 ~~~~
-# trait seq<T> { }
+# trait Seq<T> { }
 
-impl<T> ~[T]: seq<T> {
+impl<T> ~[T]: Seq<T> {
    ...
 }
-impl u32: seq<bool> {
+impl u32: Seq<bool> {
    /* Treat the integer as a sequence of bits */
 }
 ~~~~
