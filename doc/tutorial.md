@@ -1010,22 +1010,22 @@ generics](#generics).
 
 # The Rust memory model
 
-At this junction let's take a detour to explain the concepts involved
+At this junction, let's take a detour to explain the concepts involved
 in Rust's memory model. We've seen some of Rust's pointer sigils (`@`,
 `~`, and `&`) float by in a few examples, and we aren't going to get
 much further without explaining them. Rust has a very particular
 approach to memory management that plays a significant role in shaping
-the "feel" of the language. Understanding the memory landscape will
-illuminate several of Rust's unique features as we encounter them.
+the subjective experience of programming in the
+language. Understanding the memory landscape will illuminate several
+of Rust's unique features as we encounter them.
 
 Rust has three competing goals that inform its view of memory:
 
-* Memory safety: Memory that is managed by and is accessible to the
-  Rust language must be guaranteed to be valid. Under normal
-  circumstances it must be impossible for Rust to trigger a
-  segmentation fault or leak memory.
-* Performance: High-performance low-level code must be able to employ
-  a number of allocation strategies. Tracing garbage collection must be
+* Memory safety: Memory that the Rust language can observe must be
+  guaranteed to be valid. Under normal circumstances, it must be
+  impossible for Rust to trigger a segmentation fault or leak memory.
+* Performance: High-performance low-level code must be able to use
+  a number of different allocation strategies. Tracing garbage collection must be
   optional and, if it is not desired, memory safety must not be compromised.
   Less performance-critical, high-level code should be able to employ a single,
   garbage-collection-based, heap allocation strategy.
@@ -1034,7 +1034,7 @@ Rust has three competing goals that inform its view of memory:
 
 ## How performance considerations influence the memory model
 
-Most languages that offer strong memory safety guarantees rely upon a
+Most languages that offer strong memory safety guarantees rely on a
 garbage-collected heap to manage all of the objects. This approach is
 straightforward both in concept and in implementation, but has
 significant costs. Languages that follow this path tend to
@@ -1044,18 +1044,20 @@ boxes_: memory allocated on the heap whose lifetime is managed
 by the garbage collector.
 
 By comparison, languages like C++ offer very precise control over
-where objects are allocated. In particular, it is common to put them
+where objects are allocated. In particular, it is common to allocate them
 directly on the stack, avoiding expensive heap allocation. In Rust
-this is possible as well, and the compiler will use a clever _pointer
-lifetime analysis_ to ensure that no variable can refer to stack
+this is possible as well, and the compiler uses a [clever _pointer
+lifetime analysis_][borrow] to ensure that no variable can refer to stack
 objects after they are destroyed.
+
+[borrow]: tutorial-borrowed-ptr.html
 
 ## How concurrency considerations influence the memory model
 
 Memory safety in a concurrent environment involves avoiding race
 conditions between two threads of execution accessing the same
-memory. Even high-level languages often require programmers to
-correctly employ locking to ensure that a program is free of races.
+memory. Even high-level languages often require programmers to make
+correct use of locking to ensure that a program is free of races.
 
 Rust starts from the position that memory cannot be shared between
 tasks. Experience in other languages has proven that isolating each
@@ -1064,28 +1066,30 @@ easy for programmers to reason about. Heap isolation has the
 additional benefit that garbage collection must only be done
 per-heap. Rust never "stops the world" to reclaim memory.
 
-Complete isolation of heaps between tasks would, however, mean that any data
-transferred between tasks must be copied. While this is a fine and
-useful way to implement communication between tasks, it is also very
-inefficient for large data structures.  Because of this, Rust also
-employs a global _exchange heap_. Objects allocated in the exchange
-heap have _ownership semantics_, meaning that there is only a single
-variable that refers to them. For this reason, they are referred to as
-_owned boxes_. All tasks may allocate objects on the exchange heap,
-then transfer ownership of those objects to other tasks, avoiding
-expensive copies.
+Complete isolation of heaps between tasks would, however, mean that
+any data transferred between tasks must be copied. While this is a
+fine and useful way to implement communication between tasks, it is
+also very inefficient for large data structures. To reduce the amount
+of copying, Rust also uses a global _exchange heap_. Objects allocated
+in the exchange heap have _ownership semantics_, meaning that there is
+only a single variable that refers to them. For this reason, they are
+referred to as _owned boxes_. All tasks may allocate objects on the
+exchange heap, then transfer ownership of those objects to other
+tasks, avoiding expensive copies.
 
 # Boxes and pointers
 
-In contrast to a lot of modern languages, aggregate types like structs
-and enums are _not_ represented as pointers to allocated memory in
-Rust. They are, as in C and C++, represented directly. This means that
-if you `let x = Point {x: 1f, y: 1f};`, you are creating a struct on the
-stack. If you then copy it into a data structure, the whole struct is
-copied, not just a pointer.
+Many modern languages have a so-called "uniform representation" for
+aggregate types like structs and enums, so as to represent these types
+as pointers to heap memory by default. In contrast, Rust, like C and
+C++, represents such types directly. Another way to say this is that
+aggregate data in Rust are *unboxed*. This means that if you `let x =
+Point {x: 1f, y: 1f};`, you are creating a struct on the stack. If you
+then copy it into a data structure, you copy the entire struct, not
+just a pointer.
 
 For small structs like `Point`, this is usually more efficient than
-allocating memory and going through a pointer. But for big structs, or
+allocating memory and indirecting through a pointer. But for big structs, or
 those with mutable fields, it can be useful to have a single copy on
 the stack or on the heap, and refer to that through a pointer.
 
@@ -1100,16 +1104,15 @@ All pointer types can be dereferenced with the `*` unary operator.
 > ***Note***: You may also hear managed boxes referred to as 'shared
 > boxes' or 'shared pointers', and owned boxes as 'unique boxes/pointers'.
 > Borrowed pointers are sometimes called 'region pointers'. The preferred
-> terminology is as presented here.
+> terminology is what we present here.
 
 ## Managed boxes
 
-Managed boxes are pointers to heap-allocated, garbage collected memory.
-Creating a managed box is done by simply applying the unary `@`
-operator to an expression. The result of the expression will be boxed,
-resulting in a box of the right type. Copying a shared box, as happens
-during assignment, only copies a pointer, never the contents of the
-box.
+Managed boxes are pointers to heap-allocated, garbage collected
+memory.  Applying the unary `@` operator to an expression creates a
+managed box. The resulting box contains the result of the
+expression. Copying a shared box, as happens during assignment, only
+copies a pointer, never the contents of the box.
 
 ~~~~
 let x: @int = @10; // New box
@@ -1119,8 +1122,8 @@ let y = x; // Copy of a pointer to the same box
 // then the allocation will be freed.
 ~~~~
 
-Any type that contains managed boxes or other managed types is
-considered _managed_.
+A _managed_ type is either of the form `@T` for some type `T`, or any
+type that contains managed boxes or other managed types.
 
 ~~~
 // A linked list node
@@ -1148,19 +1151,19 @@ node3.prev = SomeNode(node2);
 
 Managed boxes never cross task boundaries.
 
-> ***Note:*** managed boxes are currently reclaimed through reference
-> counting and cycle collection, but we will switch to a tracing
-> garbage collector eventually.
+> ***Note:*** Currently, the Rust compiler generates code to reclaim
+> managed boxes through reference counting and a cycle collector, but
+> we will switch to a tracing garbage collector eventually.
 
 ## Owned boxes
 
-In contrast to managed boxes, owned boxes have a single owning memory
-slot and thus two owned boxes may not refer to the same memory. All
-owned boxes across all tasks are allocated on a single _exchange
-heap_, where their uniquely owned nature allows them to be passed
-between tasks efficiently.
+In contrast with managed boxes, owned boxes have a single owning
+memory slot and thus two owned boxes may not refer to the same
+memory. All owned boxes across all tasks are allocated on a single
+_exchange heap_, where their uniquely owned nature allows tasks to
+exchange them efficiently.
 
-Because owned boxes are uniquely owned, copying them involves allocating
+Because owned boxes are uniquely owned, copying them requires allocating
 a new owned box and duplicating the contents. Copying owned boxes
 is expensive so the compiler will complain if you do so without writing
 the word `copy`.
@@ -1180,11 +1183,11 @@ let z = *x + *y;
 assert z == 20;
 ~~~~
 
-This is where the 'move' operator comes in. It is similar to
-`copy`, but it de-initializes its source. Thus, the owned box can move
-from `x` to `y`, without violating the constraint that it only has a
-single owner (if you used assignment instead of the move operator, the
-box would, in principle, be copied).
+This is where the 'move' operator comes in. It is similar to `copy`,
+but it de-initializes its source. Thus, the owned box can move from
+`x` to `y`, without violating the constraint that it only has a single
+owner (using assignment instead of the move operator would, in
+principle, copy the box).
 
 ~~~~ {.xfail-test}
 let x = ~10;
@@ -1198,16 +1201,16 @@ to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
 
-> ***Note:*** this discussion of copying vs moving does not account
+> ***Note:*** This discussion of copying vs. moving does not account
 > for the "last use" rules that automatically promote copy operations
-> to moves. Last use is expected to be removed from the language in
+> to moves. We plan to remove last use from the language in
 > favor of explicit moves.
 
 ## Borrowed pointers
 
 Rust borrowed pointers are a general purpose reference/pointer type,
 similar to the C++ reference type, but guaranteed to point to valid
-memory. In contrast to owned pointers, where the holder of a unique
+memory. In contrast with owned pointers, where the holder of a unique
 pointer is the owner of the pointed-to memory, borrowed pointers never
 imply ownership. Pointers may be borrowed from any type, in which case
 the pointer is guaranteed not to outlive the value it points to.
@@ -1220,9 +1223,9 @@ struct Point {
 }
 ~~~~
 
-We can use this simple definition to allocate points in many ways. For
-example, in this code, each of these three local variables contains a
-point, but allocated in a different place:
+We can use this simple definition to allocate points in many different
+ways. For example, in this code, each of these three local variables
+contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: float, y: float }
@@ -1306,7 +1309,8 @@ let sum = *managed + *owned + *borrowed;
 ~~~
 
 Dereferenced mutable pointers may appear on the left hand side of
-assignments, in which case the value they point to is modified.
+assignments. Such an assignment modifies the value that the pointer
+points to.
 
 ~~~
 let managed = @mut 10;
@@ -1321,8 +1325,8 @@ let borrowed = &mut value;
 ~~~
 
 Pointers have high operator precedence, but lower precedence than the
-dot operator used for field and method access. This can lead to some
-awkward code filled with parenthesis.
+dot operator used for field and method access. This precedence order
+can sometimes make code awkward and parenthesis-filled.
 
 ~~~
 # struct Point { x: float, y: float }
@@ -1334,9 +1338,9 @@ let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
 ~~~
 
-To combat this ugliness the dot operator performs _automatic pointer
-dereferencing_ on the receiver (the value on the left hand side of the
-dot), so in most cases dereferencing the receiver is not necessary.
+To combat this ugliness the dot operator applies _automatic pointer
+dereferencing_ to the receiver (the value on the left hand side of the
+dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 
 ~~~
 # struct Point { x: float, y: float }
@@ -1348,8 +1352,9 @@ let rect = &Rectangle(*start, *end);
 let area = rect.area();
 ~~~
 
-Auto-dereferencing is performed through any number of pointers. If you
-felt inclined you could write something silly like
+You can write an expression that dereferences any number of pointers
+automatically. For example, if you felt inclined, you could write
+something silly like
 
 ~~~
 # struct Point { x: float, y: float }
@@ -1357,7 +1362,7 @@ let point = &@~Point { x: 10f, y: 20f };
 io::println(fmt!("%f", point.x));
 ~~~
 
-The indexing operator (`[]`) is also auto-dereferencing.
+The indexing operator (`[]`) also auto-dereferences.
 
 # Vectors and strings
 
