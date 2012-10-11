@@ -1630,7 +1630,9 @@ hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
 closures, but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
-for spawning [tasks](#tasks).
+for spawning [tasks][tasks].
+
+[tasks]: tutorial-tasks.html
 
 ## Closure compatibility
 
