@@ -1465,7 +1465,7 @@ fn trans_assign_op(bcx: block,
 
     // A user-defined operator method
     if bcx.ccx().maps.method_map.find(expr.id).is_some() {
-        // FIXME(#2582) evaluates the receiver twice!!
+        // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
         let bcx = trans_overloaded_op(bcx, expr, dst, ~[src],
                                       SaveIn(scratch.val), DoAutorefArg);
