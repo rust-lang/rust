@@ -18,7 +18,7 @@ impl direction : cmp::Eq {
 }
 
 impl direction: ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         match self {
           send => ~"Send",
           recv => ~"Recv"

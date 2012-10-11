@@ -154,7 +154,7 @@ impl T : FromStr {
 }
 
 /// Convert to a string in a given base
-pub fn to_str(n: T, radix: uint) -> ~str {
+pub pure fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
         do vec::as_imm_buf(slice) |p, len| {
             unsafe { str::raw::from_buf_len(p, len) }
@@ -162,7 +162,7 @@ pub fn to_str(n: T, radix: uint) -> ~str {
     }
 }
 
-pub fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
+pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     if n < 0 as T {
         uint::to_str_bytes(true, -n as uint, radix, f)
     } else {
@@ -171,7 +171,7 @@ pub fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string
-pub fn str(i: T) -> ~str { return to_str(i, 10u); }
+pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]

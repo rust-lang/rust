@@ -51,7 +51,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { str::push_str(&ss, " "); }
+    for n.times { str::push_str(&mut ss, " "); }
     return ss;
 }
 
@@ -302,7 +302,8 @@ pub fn to_writer(wr: io::Writer, json: &Json) {
 }
 
 /// Serializes a json value into a string
-pub fn to_str(json: &Json) -> ~str {
+pub pure fn to_str(json: &Json) -> ~str unsafe {
+    // ugh, should be safe
     io::with_str_writer(|wr| to_writer(wr, json))
 }
 
@@ -546,14 +547,14 @@ priv impl Parser {
 
             if (escape) {
                 match self.ch {
-                  '"' => str::push_char(&res, '"'),
-                  '\\' => str::push_char(&res, '\\'),
-                  '/' => str::push_char(&res, '/'),
-                  'b' => str::push_char(&res, '\x08'),
-                  'f' => str::push_char(&res, '\x0c'),
-                  'n' => str::push_char(&res, '\n'),
-                  'r' => str::push_char(&res, '\r'),
-                  't' => str::push_char(&res, '\t'),
+                  '"' => str::push_char(&mut res, '"'),
+                  '\\' => str::push_char(&mut res, '\\'),
+                  '/' => str::push_char(&mut res, '/'),
+                  'b' => str::push_char(&mut res, '\x08'),
+                  'f' => str::push_char(&mut res, '\x0c'),
+                  'n' => str::push_char(&mut res, '\n'),
+                  'r' => str::push_char(&mut res, '\r'),
+                  't' => str::push_char(&mut res, '\t'),
                   'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
@@ -582,7 +583,7 @@ priv impl Parser {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      str::push_char(&res, n as char);
+                      str::push_char(&mut res, n as char);
                   }
                   _ => return self.error(~"invalid escape")
                 }
@@ -594,7 +595,7 @@ priv impl Parser {
                     self.bump();
                     return Ok(res);
                 }
-                str::push_char(&res, self.ch);
+                str::push_char(&mut res, self.ch);
             }
         }
 
@@ -1166,11 +1167,11 @@ impl <A: ToJson> Option<A>: ToJson {
 }
 
 impl Json: to_str::ToStr {
-    fn to_str() -> ~str { to_str(&self) }
+    pure fn to_str() -> ~str { to_str(&self) }
 }
 
 impl Error: to_str::ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }

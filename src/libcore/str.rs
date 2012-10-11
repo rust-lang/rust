@@ -49,7 +49,7 @@ pub pure fn from_byte(b: u8) -> ~str {
 }
 
 /// Appends a character at the end of a string
-pub fn push_char(s: &const ~str, ch: char) {
+pub fn push_char(s: &mut ~str, ch: char) {
     unsafe {
         let code = ch as uint;
         let nb = if code < max_one_b { 1u }
@@ -140,7 +140,7 @@ pub pure fn from_chars(chs: &[char]) -> ~str {
 
 /// Appends a string slice to the back of a string, without overallocating
 #[inline(always)]
-pub fn push_str_no_overallocate(lhs: &const ~str, rhs: &str) {
+pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
     unsafe {
         let llen = lhs.len();
         let rlen = rhs.len();
@@ -157,7 +157,7 @@ pub fn push_str_no_overallocate(lhs: &const ~str, rhs: &str) {
 }
 /// Appends a string slice to the back of a string
 #[inline(always)]
-pub fn push_str(lhs: &const ~str, rhs: &str) {
+pub fn push_str(lhs: &mut ~str, rhs: &str) {
     unsafe {
         let llen = lhs.len();
         let rlen = rhs.len();
@@ -214,7 +214,7 @@ Section: Adding to and removing from a string
  *
  * If the string does not contain any characters
  */
-pub fn pop_char(s: &const ~str) -> char {
+pub fn pop_char(s: &mut ~str) -> char {
     let end = len(*s);
     assert end > 0u;
     let {ch, prev} = char_range_at_reverse(*s, end);
@@ -1802,9 +1802,9 @@ pub pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
-pub fn reserve(s: &const ~str, n: uint) {
+pub fn reserve(s: &mut ~str, n: uint) {
     unsafe {
-        let v: *mut ~[u8] = cast::transmute(copy s);
+        let v: *mut ~[u8] = cast::transmute(s);
         vec::reserve(&mut *v, n + 1);
     }
 }
@@ -1829,7 +1829,7 @@ pub fn reserve(s: &const ~str, n: uint) {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
-pub fn reserve_at_least(s: &const ~str, n: uint) {
+pub fn reserve_at_least(s: &mut ~str, n: uint) {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
 
@@ -1974,7 +1974,7 @@ pub mod raw {
     }
 
     /// Appends a byte to a string. (Not UTF-8 safe).
-    pub unsafe fn push_byte(s: &const ~str, b: u8) {
+    pub unsafe fn push_byte(s: &mut ~str, b: u8) {
         reserve_at_least(s, s.len() + 1);
         do as_buf(*s) |buf, len| {
             let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
@@ -1984,13 +1984,13 @@ pub mod raw {
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
-    unsafe fn push_bytes(s: &const ~str, bytes: &[u8]) {
+    unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         reserve_at_least(s, s.len() + bytes.len());
         for vec::each(bytes) |byte| { push_byte(s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
-    pub unsafe fn pop_byte(s: &const ~str) -> u8 {
+    pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
         let len = len(*s);
         assert (len > 0u);
         let b = s[len - 1u];
@@ -2008,7 +2008,7 @@ pub mod raw {
     }
 
     /// Sets the length of the string and adds the null terminator
-    pub unsafe fn set_len(v: &const ~str, new_len: uint) {
+    pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **vec::raw::VecRepr = cast::transmute(copy v);
         let repr: *vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;

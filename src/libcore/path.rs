@@ -61,7 +61,7 @@ pub pure fn Path(s: &str) -> Path {
 }
 
 impl PosixPath : ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         let mut s = ~"";
         if self.is_absolute {
             s += "/";
@@ -236,7 +236,7 @@ impl PosixPath : GenericPath {
 
 
 impl WindowsPath : ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         let mut s = ~"";
         match self.host {
           Some(ref h) => { s += "\\\\"; s += *h; }
