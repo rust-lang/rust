@@ -1048,7 +1048,7 @@ pub mod test {
                   as *request_wrapper;
             let buf_base = get_base_from_buf(buf);
             let buf_len = get_len_from_buf(buf);
-            let bytes = vec::raw::from_buf(buf_base, buf_len as uint);
+            let bytes = vec::from_buf(buf_base, buf_len as uint);
             let read_chan = *((*client_data).read_chan);
             let msg_from_server = str::from_bytes(bytes);
             core::comm::send(read_chan, msg_from_server);
@@ -1223,7 +1223,7 @@ pub mod test {
                             buf_base as uint,
                             buf_len as uint,
                             nread));
-            let bytes = vec::raw::from_buf(buf_base, buf_len);
+            let bytes = vec::from_buf(buf_base, buf_len);
             let request_str = str::from_bytes(bytes);
 
             let client_data = get_data_for_uv_handle(
