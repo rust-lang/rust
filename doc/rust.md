@@ -936,11 +936,13 @@ fn f(i: int) -> int {
 }
 ~~~~
 
-The typechecker would complain that `f` doesn't return a value in the
-`else` branch. Adding the `!` annotation on `my_err` would
-express that `f` requires no explicit `return`, as if it returns
-control to the caller, it returns a value (true because it never returns
-control).
+This will not compile without the `!` annotation on `my_err`,
+since the `else` branch of the conditional in `f` does not return an `int`,
+as required by the signature of `f`.
+Adding the `!` annotation to `my_err` informs the typechecker that,
+should control ever enter `my_err`, no further type judgments about `f` need to hold,
+since control will never resume in any context that relies on those judgments.
+Thus the return type on `f` only needs to reflect the `if` branch of the conditional.
 
 #### Pure functions
 
