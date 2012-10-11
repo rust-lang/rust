@@ -1528,7 +1528,7 @@ values.
 ~~~~~~~~{.ebnf .gram}
 rec_expr : '{' ident ':' expr
                [ ',' ident ':' expr ] *
-               [ "with" expr ] '}'
+               [ ".." expr ] '}'
 ~~~~~~~~
 
 A [_record_](#record-types) _expression_ is one or more comma-separated
