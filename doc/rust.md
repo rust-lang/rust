@@ -705,6 +705,7 @@ There are several kinds of item:
   * [modules](#modules)
   * [functions](#functions)
   * [type definitions](#type-definitions)
+  * [structures](#structures)
   * [enumerations](#enumerations)
   * [constants](#constants)
   * [traits](#traits)
@@ -1111,49 +1112,35 @@ that are composite records, each containing two unsigned 8-bit integers
 accessed through the components `x` and `y`, and laid out in memory with the
 `x` component preceding the `y` component.
 
+### Structures
+
+A _structure_ is a nominal [structure type](#structure-types) defined with the keyword `struct`.
+
+An example of a `struct` item and its use:
+
+~~~~
+struct Point {x: int, y: int}
+let p = Point {x: 10, y: 11};
+let px: int = p.x;
+~~~~
+
 ### Enumerations
 
-An _enumeration item_ simultaneously declares a new nominal
-[enumerated type](#enumerated-types) as well as a set of *constructors* that
-can be used to create or pattern-match values of the corresponding enumerated
-type.
+An _enumeration_ is a simulatneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
+that can be used to create or pattern-match values of the corresponding enumerated type.
 
-The constructors of an `enum` type may be recursive: that is, each constructor
-may take an argument that refers, directly or indirectly, to the enumerated
-type the constructor is a member of. Such recursion has restrictions:
-
-* Recursive types can be introduced only through `enum` constructors.
-* A recursive `enum` item must have at least one non-recursive constructor (in
-  order to give the recursion a basis case).
-* The recursive argument of recursive `enum` constructors must be [*box*
-  values](#box-types) (in order to bound the in-memory size of the
-  constructor).
-* Recursive type definitions can cross module boundaries, but not module
-  *visibility* boundaries or crate boundaries (in order to simplify the
-  module system).
-
+Enumerations are declared with the keyword `enum`.
 
 An example of an `enum` item and its use:
 
 ~~~~
-enum animal {
-  dog,
-  cat
+enum Animal {
+  Dog,
+  Cat
 }
 
-let mut a: animal = dog;
-a = cat;
-~~~~
-
-An example of a *recursive* `enum` item and its use:
-
-~~~~
-enum list<T> {
-  nil,
-  cons(T, @list<T>)
-}
-
-let a: list<int> = cons(7, @cons(13, @nil));
+let mut a: Animal = Dog;
+a = Cat;
 ~~~~
 
 ### Constants
@@ -2374,22 +2361,6 @@ A value of type `~str` is a Unicode string, represented as a vector of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints.
 
 
-### Record types
-
-The record type-constructor forms a new heterogeneous product of values.^[The
-record type-constructor is analogous to the `struct` type-constructor in the
-Algol/C family, the *record* types of the ML family, or the *structure* types
-of the Lisp family.] Fields of a record type are accessed by name and are
-arranged in memory in the order specified by the record type.
-
-An example of a record type and its use:
-
-~~~~
-type point = {x: int, y: int};
-let p: point = {x: 10, y: 11};
-let px: int = p.x;
-~~~~
-
 ### Tuple types
 
 The tuple type-constructor forms a new heterogeneous product of values similar
@@ -2413,6 +2384,7 @@ let p: pair = (10,~"hello");
 let (a, b) = p;
 assert b != ~"world";
 ~~~~
+
 
 ### Vector types
 
@@ -2448,16 +2420,88 @@ All accessible elements of a vector are always initialized, and access to a
 vector is always bounds-checked.
 
 
+### Structure types
+
+A `struct` *type* is a heterogeneous product of other types, called the *fields* of the type.
+^[`struct` types are analogous `struct` types in C,
+the *record* types of the ML family,
+or the *structure* types of the Lisp family.]
+
+New instances of a `struct` can be constructed with a [struct expression](#struct-expressions).
+
+The memory order of fields in a `struct` is given by the item defining it.
+Fields may be given in any order in a corresponding struct *expression*;
+the resulting `struct` value will always be laid out in memory in the order specified by the corresponding *item*.
+
+The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
+to restrict access to implementation-private data in a structure.
+
+
 ### Enumerated types
 
-An *enumerated type* is a nominal, heterogeneous disjoint union type.^[The
-`enum` type is analogous to a `data` constructor declaration in ML or a *pick
-ADT* in Limbo.] An [`enum` *item*](#enumerations) consists of a number of
-*constructors*, each of which is independently named and takes an optional
-tuple of arguments.
+An *enumerated type* is a nominal, heterogeneous disjoint union type,
+denoted by the name of an [`enum` item](#enumerations).
+^[The `enum` type is analogous to a `data` constructor declaration in ML,
+or a *pick ADT* in Limbo.]
 
-Enumerated types cannot be denoted *structurally* as types, but must be
-denoted by named reference to an [*enumeration* item](#enumerations).
+An [`enum` item](#enumerations) declares both the type and a number of *variant constructors*,
+each of which is independently named and takes an optional tuple of arguments.
+
+New instances of an `enum` can be constructed by calling one of the variant constructors,
+in a [call expression](#call-expressions).
+
+Any `enum` value consumes as much memory as the largest variant constructor for its corresponding `enum` type.
+
+Enum types cannot be denoted *structurally* as types,
+but must be denoted by named reference to an [`enum` item](#enumerations).
+
+
+### Recursive types
+
+Nominal types -- [enumerations](#enumerated-types) and [structures](#structure-types) -- may be recursive.
+That is, each `enum` constructor or `struct` field may refer, directly or indirectly, to the enclosing `enum` or `struct` type itself.
+Such recursion has restrictions:
+
+* Recursive types must include a nominal type in the recursion
+  (not mere [type definitions](#type-definitions),
+   or other structural types such as [vectors](#vector-types) or [tuples](#tuple-types)).
+* A recursive `enum` item must have at least one non-recursive constructor
+  (in order to give the recursion a basis case).
+* The size of a recursive type must be finite;
+  in other words the recursive fields of the type must be [pointer types](#pointer-types).
+* Recursive type definitions can cross module boundaries, but not module *visibility* boundaries,
+  or crate boundaries (in order to simplify the module system and type checker).
+
+An example of a *recursive* type and its use:
+
+~~~~
+enum List<T> {
+  Nil,
+  Cons(T, @List<T>)
+}
+
+let a: List<int> = Cons(7, @Cons(13, @Nil));
+~~~~
+
+
+### Record types
+
+> **Note:** Records are not nominal types, thus do not directly support recursion, visibility control,
+> out-of-order field initialization, or coherent trait implementation.
+> Records are therefore deprecared and will be removed in future versions of Rust.
+> [Structure types](#structure-types) should be used instead.
+
+The record type-constructor forms a new heterogeneous product of values.
+Fields of a record type are accessed by name and are arranged in memory in the order specified by the record type.
+
+An example of a record type and its use:
+
+~~~~
+type Point = {x: int, y: int};
+let p: Point = {x: 10, y: 11};
+let px: int = p.x;
+~~~~
+
 
 ### Pointer types
 
@@ -2507,6 +2551,7 @@ Raw pointers (`*`)
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
 
+
 ### Function types
 
 The function type-constructor `fn` forms new function types. A function type
@@ -2552,10 +2597,6 @@ fn main() {
 
 In this example, the trait `printable` occurs as a type in both the type signature of
 `print`, and the cast expression in `main`.
-
-### Struct types
-
-Every struct item defines a type.
 
 ### Type parameters
 
