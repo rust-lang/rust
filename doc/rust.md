@@ -591,6 +591,9 @@ Crates are provided to the Rust compiler through two kinds of file:
   - _crate files_, that end in `.rc` and each define a `crate`.
   - _source files_, that end in `.rs` and each define a `module`.
 
+> **Note:** The functionality of crate files will be merged into source files in future versions of Rust.
+> The separate processing of crate files, both their grammar and file extension, will be removed.
+
 The Rust compiler is always invoked with a single input file, and always
 produces a single output crate.
 
