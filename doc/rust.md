@@ -1697,7 +1697,7 @@ The default meaning of the operators on standard types is given here.
 
 #### Bitwise operators
 
-Bitwise operators apply are, like the [arithmetic operators](#arithmetic-operators),
+Bitwise operators are, like the [arithmetic operators](#arithmetic-operators),
 syntactic sugar for calls to built-in traits.
 This means that bitwise operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
@@ -1730,21 +1730,31 @@ and `&&` only when it evaluates to `true`.
 
 #### Comparison operators
 
+Comparison operators are, like the [arithmetic operators](#arithmetic-operators),
+and [bitwise operators](#bitwise-operators),
+syntactic sugar for calls to built-in traits.
+This means that comparison operators can be overridden for user-defined types.
+The default meaning of the operators on standard types is given here.
+
 `==`
   : Equal to.
+    Calls the `eq` method on the `core::cmp::Eq` trait.
 `!=`
   : Unequal to.
+    Calls the `ne` method on the `core::cmp::Eq` trait.
 `<`
   : Less than.
+    Calls the `lt` method on the `core::cmp::Ord` trait.
 `>`
   : Greater than.
+    Calls the `gt` method on the `core::cmp::Ord` trait.
 `<=`
   : Less than or equal.
+    Calls the `le` method on the `core::cmp::Ord` trait.
 `>=`
   : Greater than or equal.
+    Calls the `ge` method on the `core::cmp::Ord` trait.
 
-The binary comparison operators can be applied to any two operands of
-the same type, and produce a boolean value.
 
 #### Type cast expressions
 
