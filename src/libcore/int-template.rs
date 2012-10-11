@@ -50,7 +50,6 @@ pub pure fn compl(i: T) -> T {
 }
 
 /// Computes the absolute value
-// FIXME: abs should return an unsigned int (#2353)
 pub pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
