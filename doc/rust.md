@@ -1975,13 +1975,47 @@ An example of a call expression:
 let x: int = add(1, 2);
 ~~~~
 
-### Shared function expressions
+### Lambda expressions
 
-*TODO*.
+~~~~~~~~ {.abnf .gram}
+ident_list : [ ident [ ',' ident ]* ] ? ;
+lambda_expr : '|' ident_list '| expr ;
+~~~~~~~~
 
-### Unique function expressions
+A _lambda expression_ (a.k.a. "anonymous function expression") defines a function and denotes it as a value,
+in a single expression.
+Lambda expressions are written by prepending a list of identifiers, surrounded by pipe symbols (`|`),
+to an expression.
 
-*TODO*.
+A lambda expression denotes a function mapping parameters to the expression to the right of the `ident_list`.
+The identifiers in the `ident_list` are the parameters to the function, with types inferred from context.
+
+Lambda expressions are most useful when passing functions as arguments to other functions,
+as an abbreviation for defining and capturing a separate fucntion.
+
+Significantly, lambda expressions _capture their environment_,
+which regular [function definitions](#functions) do not.
+
+The exact type of capture depends on the [function type](#function-types) inferred for the lambda expression;
+in the simplest and least-expensive form, the environment is captured by reference,
+effectively borrowing pointers to all outer variables referenced inside the function.
+Other forms of capture include making copies of captured variables,
+and moving values from the environment into the lambda expression's captured environment.
+
+An example of a lambda expression:
+
+~~~~
+fn ten_times(f: fn(int)) {
+    let mut i = 0;
+    while i < 10 {
+        f(i);
+        i += 1;
+    }
+}
+
+ten_times(|j| io::println(fmt!("hello, %d", j)));
+
+~~~~
 
 ### While loops
 
