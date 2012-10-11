@@ -1973,7 +1973,7 @@ mod tests {
             // Test on-stack copy-from-buf.
             let a = ~[1, 2, 3];
             let mut ptr = raw::to_ptr(a);
-            let b = raw::from_buf(ptr, 3u);
+            let b = from_buf(ptr, 3u);
             assert (len(b) == 3u);
             assert (b[0] == 1);
             assert (b[1] == 2);
@@ -1982,7 +1982,7 @@ mod tests {
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
             ptr = raw::to_ptr(c);
-            let d = raw::from_buf(ptr, 5u);
+            let d = from_buf(ptr, 5u);
             assert (len(d) == 5u);
             assert (d[0] == 1);
             assert (d[1] == 2);
