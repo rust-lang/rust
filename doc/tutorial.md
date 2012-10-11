@@ -71,7 +71,7 @@ Snapshot binaries are currently built and tested on several platforms:
 
 * Windows (7, Server 2008 R2), x86 only
 * Linux (various distributions), x86 and x86-64
-* OSX 10.6 ("Snow Leopard") or 10.7 ("Lion"), x86 and x86-64
+* OSX 10.6 ("Snow Leopard") or greater, x86 and x86-64
 
 You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
@@ -79,7 +79,7 @@ supported build environments that are most likely to work.
 > ***Note:*** Windows users should read the detailed
 > [getting started][wiki-start] notes on the wiki. Even when using
 > the binary installer the Windows build requires a MinGW installation,
-> the precise details of which are not discussed in this tutorial.
+> the precise details of which are not discussed here.
 
 To build from source you will also need the following prerequisite
 packages:
