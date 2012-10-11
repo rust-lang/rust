@@ -1674,40 +1674,49 @@ Binary operators expressions are given in terms of
 
 #### Arithmetic operators
 
-Binary arithmetic expressions require both their operands to be of the
-same type, and can be applied only to numeric types, with the
-exception of `+`, which acts both as addition operator on numbers and
-as concatenate operator on vectors and strings.
+Binary arithmetic expressions are syntactic sugar for calls to built-in traits,
+defined in the `core::ops` module of the `core` library.
+This means that arithmetic operators can be overridden for user-defined types.
+The default meaning of the operators on standard types is given here.
 
 `+`
   : Addition and vector/string concatenation.
+    Calls the `add` method on the `core::ops::Add` trait.
 `-`
   : Subtraction.
+    Calls the `sub` method on the `core::ops::Sub` trait.
 `*`
   : Multiplication.
+    Calls the `mul` method on the `core::ops::Mul` trait.
 `/`
   : Division.
+    Calls the `div` method on the `core::ops::Div` trait.
 `%`
-  : Remainder.
+  : Modulo (a.k.a. "remainder").
+    Calls the `modulo` method on the `core::ops::Modulo` trait.
 
 #### Bitwise operators
 
-Bitwise operators apply only to integer types, and perform their
-operation on the bits of the two's complement representation of the
-values.
+Bitwise operators apply are, like the [arithmetic operators](#arithmetic-operators),
+syntactic sugar for calls to built-in traits.
+This means that bitwise operators can be overridden for user-defined types.
+The default meaning of the operators on standard types is given here.
 
 `&`
   : And.
+    Calls the `bitand` method on the `core::ops::BitAnd` trait.
 `|`
   : Inclusive or.
+    Calls the `bitor` method on the `core::ops::BitOr` trait.
 `^`
   : Exclusive or.
+    Calls the `bitxor` method on the `core::ops::BitXor` trait.
 `<<`
   : Logical left shift.
+    Calls the `shl` method on the `core::ops::Shl` trait.
 `>>`
   : Logical right shift.
-`>>>`
-  : Arithmetic right shift.
+    Calls the `shr` method on the `core::ops::Shr` trait.
 
 #### Lazy boolean operators
 
