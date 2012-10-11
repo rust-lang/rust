@@ -1807,10 +1807,13 @@ fn contains(v: &[int], elt: int) -> bool {
 
 # Generics
 
-Throughout this tutorial, we've been defining functions that act only on
-specific data types. With type parameters we can also define functions whose
-arguments represent generic types, and which can be invoked with a variety
-of types. Consider a generic `map` function.
+Throughout this tutorial, we've been defining functions that act only
+on specific data types. With type parameters we can also define
+functions whose arguments have generic types, and which can be invoked
+with a variety of types. Consider a generic `map` function, which
+takes a function `function` and a vector `vector` and returns a new
+vector consisting of the result of applying `function` to each element
+of `vector`:
 
 ~~~~
 fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
@@ -1824,17 +1827,18 @@ fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
 
 When defined with type parameters, as denoted by `<T, U>`, this
 function can be applied to any type of vector, as long as the type of
-`function`'s argument and the type of the vector's content agree with
+`function`'s argument and the type of the vector's contents agree with
 each other.
 
 Inside a generic function, the names of the type parameters
-(capitalized by convention) stand for opaque types. You can't look
-inside them, but you can pass them around.  Note that instances of
-generic types are often passed by pointer.  For example, the
-parameter `function()` is supplied with a pointer to a value of type
-`T` and not a value of type `T` itself.  This ensures that the
-function works with the broadest set of types possible, since some
-types are expensive or illegal to copy and pass by value.
+(capitalized by convention) stand for opaque types. All you can do
+with instances of these types is pass them around: you can't apply any
+operations to them or pattern-match on them. Note that instances of
+generic types are often passed by pointer.  For example, the parameter
+`function()` is supplied with a pointer to a value of type `T` and not
+a value of type `T` itself.  This ensures that the function works with
+the broadest set of types possible, since some types are expensive or
+illegal to copy and pass by value.
 
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
@@ -1852,15 +1856,16 @@ enum Maybe<T> {
 }
 ~~~~
 
-These declarations produce valid types like `Set<int>`, `Stack<int>`
-and `Maybe<int>`.
+These declarations can be instantiated to valid types like `Set<int>`,
+`Stack<int>` and `Maybe<int>`.
 
-Generic functions in Rust are compiled to very efficient runtime code
-through a process called _monomorphisation_. This is a fancy way of
-saying that, for each generic function you call, the compiler
-generates a specialized version that is optimized specifically for the
-argument types. In this respect Rust's generics have similar
-performance characteristics to C++ templates.
+The Rust compiler compiles generic functions very efficiently by
+*monomorphizing* them. *Monomorphization* is a fancy name for a simple
+idea: generate a separate copy of each generic function at each call
+site where it is called, a copy that is specialized to the argument
+types and can thus be optimized specifically for them. In this
+respect, Rust's generics have similar performance characteristics to
+C++ templates.
 
 ## Traits
 
@@ -1869,15 +1874,19 @@ are very limited. After all, since the function doesn't know what
 types it is operating on, it can't safely modify or query their
 values. This is where _traits_ come into play. Traits are Rust's most
 powerful tool for writing polymorphic code. Java developers will see
-in them aspects of Java interfaces, and Haskellers will notice their
-similarities to type classes.
+them as similar to Java interfaces, and Haskellers will notice their
+similarities to type classes. Rust's traits are a form of *bounded
+polymorphism*: a trait is a way of limiting the set of possible types
+that a type parameter could refer to.
 
-As motivation, let us consider copying in Rust. Perhaps surprisingly,
-the copy operation is not defined for all Rust types. In
-particular, types with user-defined destructors cannot be copied,
-either implicitly or explicitly, and neither can types that own other
-types containing destructors (the actual mechanism for defining
-destructors will be discussed elsewhere).
+As motivation, let us consider copying in Rust. The `copy` operation
+is not defined for all Rust types. One reason is user-defined
+destructors: copying a type that has a destructor could result in the
+destructor running multiple times. Therefore, types with user-defined
+destructors cannot be copied, either implicitly or explicitly, and
+neither can types that own other types containing destructors (see the
+section on [structs](#structs) for the actual mechanism for defining
+destructors).
 
 This complicates handling of generic functions. If you have a type
 parameter `T`, can you copy values of that type? In Rust, you can't,
@@ -1890,8 +1899,8 @@ fn head_bad<T>(v: &[T]) -> T {
 }
 ~~~~
 
-We can tell the compiler though that the `head` function is only for
-copyable types with the `Copy` trait.
+However, we can tell the compiler that the `head` function is only for
+copyable types: that is, those that have the `Copy` trait.
 
 ~~~~
 // This does
@@ -1903,14 +1912,17 @@ fn head<T: Copy>(v: &[T]) -> T {
 This says that we can call `head` on any type `T` as long as that type
 implements the `Copy` trait. When instantiating a generic function,
 you can only instantiate it with types that implement the correct
-trait, so you could not apply `head` to a type with a destructor.
+trait, so you could not apply `head` to a type with a
+destructor. (`Copy` is a special trait that is built in to the
+compiler, making it possible for the compiler to enforce this
+restriction.)
 
 While most traits can be defined and implemented by user code, three
 traits are automatically derived and implemented for all applicable
 types by the compiler, and may not be overridden:
 
-* `Copy` - Types that can be copied, either implicitly, or using the
-  `copy` expression. All types are copyable unless they are classes
+* `Copy` - Types that can be copied: either implicitly, or explicitly with the
+  `copy` operator. All types are copyable unless they are classes
   with destructors or otherwise contain classes with destructors.
 
 * `Send` - Sendable (owned) types. All types are sendable unless they
@@ -1957,7 +1969,7 @@ impl ~str: Printable {
 # (~"foo").print();
 ~~~~
 
-Methods defined in an implementation of a trait may be called just as
+Methods defined in an implementation of a trait may be called just like
 any other method, using dot notation, as in `1.print()`. Traits may
 themselves contain type parameters. A trait for generalized sequence
 types might look like the following:
@@ -1979,14 +1991,14 @@ impl<T> ~[T]: Seq<T> {
 The implementation has to explicitly declare the type parameter that
 it binds, `T`, before using it to specify its trait type. Rust
 requires this declaration because the `impl` could also, for example,
-specify an implementation of `Seq<int>`. The trait type -- appearing
-after the colon in the `impl` -- *refers* to a type, rather than
+specify an implementation of `Seq<int>`. The trait type (appearing
+after the colon in the `impl`) *refers* to a type, rather than
 defining one.
 
 The type parameters bound by a trait are in scope in each of the
 method declarations. So, re-declaring the type parameter
-`T` as an explicit type parameter for `len` -- in either the trait or
-the impl -- would be a compile-time error.
+`T` as an explicit type parameter for `len`, in either the trait or
+the impl, would be a compile-time error.
 
 Within a trait definition, `self` is a special type that you can think
 of as a type parameter. An implementation of the trait for any given
@@ -2006,16 +2018,17 @@ impl int: Eq {
 }
 ~~~~
 
-Notice that in the trait definition, `equals` takes a `self` type
-argument, whereas, in the impl, `equals` takes an `int` type argument,
-and uses `self` as the name of the receiver (analogous to the `this` pointer
-in C++).
+Notice that in the trait definition, `equals` takes a parameter of
+type `self`. In contrast, in the `impl`, `equals` takes a parameter of
+type `int`, and uses `self` as the name of the receiver (analogous to
+the `this` pointer in C++).
 
 ## Bounded type parameters and static method dispatch
 
-Traits give us a language for talking about the abstract capabilities
-of types, and we can use this to place _bounds_ on type parameters,
-so that we can then operate on generic types.
+Traits give us a language for defining predicates on types, or
+abstract properties that types can have. We can use this language to
+define _bounds_ on type parameters, so that we can then operate on
+generic types.
 
 ~~~~
 # trait Printable { fn print(); }
@@ -2026,14 +2039,14 @@ fn print_all<T: Printable>(printable_things: ~[T]) {
 }
 ~~~~
 
-By declaring `T` as conforming to the `Printable` trait (as we earlier
-did with `Copy`), it becomes possible to call methods from that trait
-on values of that type inside the function. It will also cause a
+Declaring `T` as conforming to the `Printable` trait (as we earlier
+did with `Copy`) makes it possible to call methods from that trait
+on values of type `T` inside the function. It will also cause a
 compile-time error when anyone tries to call `print_all` on an array
 whose element type does not have a `Printable` implementation.
 
 Type parameters can have multiple bounds by separating them with spaces,
-as in this version of `print_all` that makes copies of elements.
+as in this version of `print_all` that copies elements.
 
 ~~~
 # trait Printable { fn print(); }
@@ -2083,10 +2096,10 @@ fn draw_all(shapes: &[@Drawable]) {
 }
 ~~~~
 
-In this example there is no type parameter. Instead, the `@Drawable`
-type is used to refer to any managed box value that implements the
-`Drawable` trait. To construct such a value, you use the `as` operator
-to cast a value to a trait type:
+In this example, there is no type parameter. Instead, the `@Drawable`
+type denotes any managed box value that implements the `Drawable`
+trait. To construct such a value, you use the `as` operator to cast a
+value to a trait type:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
@@ -2104,10 +2117,12 @@ let r: @Rectangle = @new_rectangle();
 draw_all(&[c as @Drawable, r as @Drawable]);
 ~~~~
 
-Note that, like strings and vectors, trait types have dynamic size
-and may only be used via one of the pointer types. In turn, the
-`impl` is defined for `@Circle` and `@Rectangle` instead of for
-just `Circle` and `Rectangle`. Other pointer types work as well.
+We omit the code for `new_circle` and `new_rectangle`; imagine that
+these just return `Circle`s and `Rectangle`s with a default size. Note
+that, like strings and vectors, trait types have dynamic size and may
+only be referred to via one of the pointer types. That's why the `impl` is
+defined for `@Circle` and `@Rectangle` instead of for just `Circle`
+and `Rectangle`. Other pointer types work as well.
 
 ~~~{.xfail-test}
 # type Circle = int; type Rectangle = int;
@@ -2123,13 +2138,13 @@ let owny: ~Drawable = ~new_circle() as ~Drawable;
 let stacky: &Drawable = &new_circle() as &Drawable;
 ~~~
 
-> ***Note:*** Other pointer types actually _do not_ work here. This is
+> ***Note:*** Other pointer types actually _do not_ work here yet. This is
 > an evolving corner of the language.
 
 Method calls to trait types are _dynamically dispatched_. Since the
 compiler doesn't know specifically which functions to call at compile
-time it uses a lookup table (vtable) to decide at runtime which
-method to call.
+time it uses a lookup table (also known as a vtable or dictionary) to
+select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
 
@@ -2170,17 +2185,18 @@ fn chicken_farmer() {
 ~~~
 
 These farm animal functions have a new keyword, `pub`, attached to
-them.  This is a visibility modifier that allows item to be accessed
-outside of the module in which they are declared, using `::`, as in
-`farm::chicken`. Items, like `fn`, `struct`, etc. are private by
-default.
+them.  The `pub` keyword modifies an item's visibility, making it
+visible outside its containing module. An expression with `::`, like
+`farm::chicken`, can name an item outside of its containing
+module. Items, such as those declared with `fn`, `struct`, `enum`,
+`type`, or `const`, are module-private by default.
 
 Visibility restrictions in Rust exist only at module boundaries. This
-is quite different from most object-oriented languages that also enforce
-restrictions on objects themselves. That's not to say that Rust doesn't
-support encapsulation - both struct fields and methods can be private -
-but it is at the module level, not the class level. Note that fields
-and methods are _public_ by default.
+is quite different from most object-oriented languages that also
+enforce restrictions on objects themselves. That's not to say that
+Rust doesn't support encapsulation: both struct fields and methods can
+be private.  But this encapsulation is at the module level, not the
+struct level. Note that fields and methods are _public_ by default.
 
 ~~~
 mod farm {
@@ -2220,7 +2236,7 @@ fn main() {
 
 ## Crates
 
-The unit of independent compilation in Rust is the crate - rustc
+The unit of independent compilation in Rust is the crate: rustc
 compiles a single crate at a time, from which it produces either a
 library or executable.
 
@@ -2294,22 +2310,24 @@ fn main() { bar::baz(); }
 
 ## Using other crates
 
-Having compiled a crate into a library you can use it in another crate
-with an `extern mod` directive. `extern mod` can appear at the top of
-a crate file or at the top of modules. It will cause the compiler to
-look in the library search path (which you can extend with `-L`
-switch) for a compiled Rust library with the right name, then add a
-module with that crate's name into the local scope.
+The `extern mod` directive lets you use a crate (once it's been
+compiled into a library) from inside another crate. `extern mod` can
+appear at the top of a crate file or at the top of modules. It will
+cause the compiler to look in the library search path (which you can
+extend with the `-L` switch) for a compiled Rust library with the
+right name, then add a module with that crate's name into the local
+scope.
 
 For example, `extern mod std` links the [standard library].
 
 [standard library]: std/index.html
 
-When a comma-separated list of name/value pairs is given after `extern
-mod`, these are matched against the attributes provided in the `link`
-attribute of the crate file, and a crate is only used when the two
-match. A `name` value can be given to override the name used to search
-for the crate.
+When a comma-separated list of name/value pairs appears after `extern
+mod`, the compiler front-end matches these pairs against the
+attributes provided in the `link` attribute of the crate file. The
+front-end will only select this crate for use if the actual pairs
+match the declared attributes. You can provide a `name` value to
+override the name used to search for the crate.
 
 Our example crate declared this set of `link` attributes:
 
@@ -2317,7 +2335,7 @@ Our example crate declared this set of `link` attributes:
 #[link(name = "farm", vers = "2.5", author = "mjh")];
 ~~~~
 
-Which can then be linked with any (or all) of the following:
+Which you can then link with any (or all) of the following:
 
 ~~~~ {.xfail-test}
 extern mod farm;
@@ -2325,7 +2343,7 @@ extern mod my_farm (name = "farm", vers = "2.5");
 extern mod my_auxiliary_farm (name = "farm", author = "mjh");
 ~~~~
 
-If any of the requested metadata does not match then the crate
+If any of the requested metadata do not match, then the crate
 will not be compiled successfully.
 
 ## A minimal example
@@ -2361,7 +2379,7 @@ a hash representing the crate metadata.
 
 ## The core library
 
-The Rust [core] library acts as the language runtime and contains
+The Rust [core] library is the language runtime and contains
 required memory management and task scheduling code as well as a
 number of modules necessary for effective usage of the primitive
 types. Methods on [vectors] and [strings], implementations of most
