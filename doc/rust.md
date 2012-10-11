@@ -2071,6 +2071,52 @@ the loop.
 A `loop` expression is only permitted in the body of a loop.
 
 
+### Do expressions
+
+~~~~~~~~{.ebnf .gram}
+do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
+~~~~~~~~
+
+A _do expression_ provides a more-familiar block-syntax for a [lambda expression](#lambda-expressions),
+including a special translation of [return expressions](#return-expressions) inside the supplied block.
+
+The optional `ident_list` and `block` provided in a `do` expression are parsed as though they constitute a lambda expression;
+if the `ident_list` is missing, an empty `ident_list` is implied.
+
+The lambda expression is then provided as a _trailing argument_
+to the outermost [call](#call-expressions) or [method call](#method-call-expressions) expression
+in the `expr` following `do`.
+If the `expr` is a [path expression](#path-expressions), it is parsed as though it is a call expression.
+If the `expr` is a [field expression](#field-expressions), it is parsed as though it is a method call expression.
+
+Additionally, any occurrence of a [return expression](#return-expressions)
+inside the `block` of a `do` expression is rewritten
+as a reference to an (anonymous) flag set in the caller's environment,
+which is checked on return from the `expr` and, if set,
+causes a corresponding return from the caller.
+In this way, the meaning of `return` statements in language built-in control blocks is preserved,
+if they are rewritten using lambda functions and `do` expressions as abstractions.
+
+Therefore the two calls to `f` in this example are equivalent.
+Both cause an early return from the caller's frame:
+
+~~~~
+# fn f(f: fn(int)) { }
+# fn g(i: int) { }
+
+{
+  let mut _early_ret = false;
+  f(|j| { g(j); _early_ret = true; });
+  if early_ret { return; }
+}
+
+do f |j| {
+    g(j);
+    return;
+}
+~~~~
+
+
 ### For expressions
 
 ~~~~~~~~{.ebnf .gram}
