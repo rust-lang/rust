@@ -217,7 +217,7 @@ pub type TaskOpts = {
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
 
-// FIXME (#2585): Replace the 'consumed' bit with move mode on self
+// FIXME (#3724): Replace the 'consumed' bit with move mode on self
 pub enum TaskBuilder = {
     opts: TaskOpts,
     gen_body: fn@(v: fn~()) -> fn~(),
@@ -349,7 +349,7 @@ impl TaskBuilder {
      * Fails if a future_result was already set for this task.
      */
     fn future_result(blk: fn(v: future::Future<TaskResult>)) -> TaskBuilder {
-        // FIXME (#1087, #1857): Once linked failure and notification are
+        // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
         // sending out messages.
@@ -758,8 +758,8 @@ pub unsafe fn atomically<U>(f: fn() -> U) -> U {
 fn test_cant_dup_task_builder() {
     let b = task().unlinked();
     do b.spawn { }
-    // FIXME(#2585): For now, this is a -runtime- failure, because we haven't
-    // got modes on self. When 2585 is fixed, this test should fail to compile
+    // FIXME(#3724): For now, this is a -runtime- failure, because we haven't
+    // got move mode on self. When 3724 is fixed, this test should fail to compile
     // instead, and should go in tests/compile-fail.
     do b.spawn { } // b should have been consumed by the previous call
 }
