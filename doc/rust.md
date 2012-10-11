@@ -898,51 +898,69 @@ fn add(x: int, y: int) -> int {
 }
 ~~~~
 
-#### Diverging functions
 
-A special kind of function can be declared with a `!` character where the
-output slot type would normally be. For example:
+#### Generic functions
 
-~~~~
-fn my_err(s: ~str) -> ! {
-    log(info, s);
-    fail;
+A _generic function_ allows one or more _parameterized types_ to
+appear in its signature. Each type parameter must be explicitly
+declared, in an angle-bracket-enclosed, comma-separated list following
+the function name.
+
+~~~~ {.xfail-test}
+fn iter<T>(seq: ~[T], f: fn(T)) {
+    for seq.each |elt| { f(elt); }
+}
+fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
+    let mut acc = ~[];
+    for seq.each |elt| { acc.push(f(elt)); }
+    acc
 }
 ~~~~
 
-We call such functions "diverging" because they never return a value to the
-caller. Every control path in a diverging function must end with a
-[`fail`](#fail-expressions) or a call to another diverging function on every
-control path. The `!` annotation does *not* denote a type. Rather, the result
-type of a diverging function is a special type called $\bot$ ("bottom") that
-unifies with any type. Rust has no syntax for $\bot$.
+Inside the function signature and body, the name of the type parameter
+can be used as a type name.
 
-It might be necessary to declare a diverging function because as mentioned
-previously, the typechecker checks that every control path in a function ends
-with a [`return`](#return-expressions) or diverging expression. So, if `my_err`
-were declared without the `!` annotation, the following code would not
-typecheck:
+When a generic function is referenced, its type is instantiated based
+on the context of the reference. For example, calling the `iter`
+function defined above on `[1, 2]` will instantiate type parameter `T`
+with `int`, and require the closure parameter to have type
+`fn(int)`.
+
+Since a parameter type is opaque to the generic function, the set of
+operations that can be performed on it is limited. Values of parameter
+type can always be moved, but they can only be copied when the
+parameter is given a [`copy` bound](#type-kinds).
 
 ~~~~
-# fn my_err(s: ~str) -> ! { fail }
-
-fn f(i: int) -> int {
-   if i == 42 {
-     return 42;
-   }
-   else {
-     my_err(~"Bad number!");
-   }
-}
+fn id<T: Copy>(x: T) -> T { x }
 ~~~~
 
-This will not compile without the `!` annotation on `my_err`,
-since the `else` branch of the conditional in `f` does not return an `int`,
-as required by the signature of `f`.
-Adding the `!` annotation to `my_err` informs the typechecker that,
-should control ever enter `my_err`, no further type judgments about `f` need to hold,
-since control will never resume in any context that relies on those judgments.
-Thus the return type on `f` only needs to reflect the `if` branch of the conditional.
+Similarly, [trait](#traits) bounds can be specified for type
+parameters to allow methods with that trait to be called on values
+of that type.
+
+
+#### Unsafe functions
+
+Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
+
+Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
+Specifically, the following operations are considered unsafe:
+
+  - Dereferencing a [raw pointer](#pointer-types)
+  - Casting a [raw pointer](#pointer-types) to a safe pointer type
+  - Breaking the [purity-checking rules](#pure-functions)
+  - Calling an unsafe function
+
+##### Unsafe blocks
+
+A block of code can also be prefixed with the `unsafe` keyword,
+to permit a sequence of unsafe operations in an otherwise-safe function.
+This facility exists because the static semantics of a Rust are a necessary approximation of the dynamic semantics.
+When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe,
+they can encapsulate that sequence (taken as a whole) within an `unsafe` block.
+The compiler will consider uses of such code "safe", to the surrounding context.
+
 
 #### Pure functions
 
@@ -1003,66 +1021,52 @@ function. So, to use `foldl` in a pure list length function that a pure function
 could then use, we must use an `unsafe` block wrapped around the call to
 `pure_foldl` in the definition of `pure_length`.
 
-#### Generic functions
 
-A _generic function_ allows one or more _parameterized types_ to
-appear in its signature. Each type parameter must be explicitly
-declared, in an angle-bracket-enclosed, comma-separated list following
-the function name.
+#### Diverging functions
 
-~~~~ {.xfail-test}
-fn iter<T>(seq: ~[T], f: fn(T)) {
-    for seq.each |elt| { f(elt); }
-}
-fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
-    let mut acc = ~[];
-    for seq.each |elt| { acc.push(f(elt)); }
-    acc
+A special kind of function can be declared with a `!` character where the
+output slot type would normally be. For example:
+
+~~~~
+fn my_err(s: ~str) -> ! {
+    log(info, s);
+    fail;
 }
 ~~~~
 
-Inside the function signature and body, the name of the type parameter
-can be used as a type name.
+We call such functions "diverging" because they never return a value to the
+caller. Every control path in a diverging function must end with a
+[`fail`](#fail-expressions) or a call to another diverging function on every
+control path. The `!` annotation does *not* denote a type. Rather, the result
+type of a diverging function is a special type called $\bot$ ("bottom") that
+unifies with any type. Rust has no syntax for $\bot$.
 
-When a generic function is referenced, its type is instantiated based
-on the context of the reference. For example, calling the `iter`
-function defined above on `[1, 2]` will instantiate type parameter `T`
-with `int`, and require the closure parameter to have type
-`fn(int)`.
-
-Since a parameter type is opaque to the generic function, the set of
-operations that can be performed on it is limited. Values of parameter
-type can always be moved, but they can only be copied when the
-parameter is given a [`copy` bound](#type-kinds).
+It might be necessary to declare a diverging function because as mentioned
+previously, the typechecker checks that every control path in a function ends
+with a [`return`](#return-expressions) or diverging expression. So, if `my_err`
+were declared without the `!` annotation, the following code would not
+typecheck:
 
 ~~~~
-fn id<T: Copy>(x: T) -> T { x }
+# fn my_err(s: ~str) -> ! { fail }
+
+fn f(i: int) -> int {
+   if i == 42 {
+     return 42;
+   }
+   else {
+     my_err(~"Bad number!");
+   }
+}
 ~~~~
 
-Similarly, [trait](#traits) bounds can be specified for type
-parameters to allow methods with that trait to be called on values
-of that type.
-
-#### Unsafe functions
-
-Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
-
-Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
-Specifically, the following operations are considered unsafe:
-
-  - Dereferencing a [raw pointer](#pointer-types)
-  - Casting a [raw pointer](#pointer-types) to a safe pointer type
-  - Breaking the [purity-checking rules](#pure-functions)
-  - Calling an unsafe function
-
-##### Unsafe blocks
-
-A block of code can also be prefixed with the `unsafe` keyword,
-to permit a sequence of unsafe operations in an otherwise-safe function.
-This facility exists because the static semantics of a Rust are a necessary approximation of the dynamic semantics.
-When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe,
-they can encapsulate that sequence (taken as a whole) within an `unsafe` block.
-The compiler will consider uses of such code "safe", to the surrounding context.
+This will not compile without the `!` annotation on `my_err`,
+since the `else` branch of the conditional in `f` does not return an `int`,
+as required by the signature of `f`.
+Adding the `!` annotation to `my_err` informs the typechecker that,
+should control ever enter `my_err`, no further type judgments about `f` need to hold,
+since control will never resume in any context that relies on those judgments.
+Thus the return type on `f` only needs to reflect the `if` branch of the conditional.
 
 
 #### Extern functions
