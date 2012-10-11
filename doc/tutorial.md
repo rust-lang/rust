@@ -4,7 +4,7 @@
 
 Rust is a programming language with a focus on type safety, memory
 safety, concurrency and performance. It is intended for writing
-large-scale, high-performance software while preventing several
+large-scale, high-performance software that is free from several
 classes of common errors. Rust has a sophisticated memory model that
 encourages efficient data structures and safe concurrency patterns,
 forbidding invalid memory accesses that would otherwise cause
@@ -18,13 +18,14 @@ pleasant high-level features include:
 * **Type inference.** Type annotations on local variable declarations
   are optional.
 * **Safe task-based concurrency.** Rust's lightweight tasks do not share
-  memory and communicate through messages.
+  memory, instead communicating through messages.
 * **Higher-order functions.** Efficient and flexible closures provide
   iteration and other control structures
 * **Pattern matching and algebraic data types.** Pattern matching on
-  Rust's enums is a compact and expressive way to encode program
-  logic.
-* **Polymorphism.** Rust has type-parameric functions and
+  Rust's enumeration types (a more powerful version of C's enums,
+  similar to algebraic data types in functional languages) is a
+  compact and expressive way to encode program logic.
+* **Polymorphism.** Rust has type-parametric functions and
   types, type classes and OO-style interfaces.
 
 ## Scope
@@ -35,23 +36,23 @@ type system and memory model, generics, and modules. [Additional
 tutorials](#what-next) cover specific language features in greater
 depth.
 
-It assumes the reader is familiar with the basic concepts of
+This tutorial assumes that the reader is familiar with the basic concepts of
 programming, and has programmed in one or more other languages
-before. It will often make comparisons to other languages,
+before. We will often compare Rust to other languages,
 particularly those in the C family.
 
 ## Conventions
 
-Throughout the tutorial, words that indicate language keywords or
-identifiers defined in example code are displayed in `code font`.
+Throughout the tutorial, language keywords and identifiers defined in
+example code are displayed in `code font`.
 
 Code snippets are indented, and also shown in a monospaced font. Not
 all snippets constitute whole programs. For brevity, we'll often show
 fragments of programs that don't compile on their own. To try them
 out, you might have to wrap them in `fn main() { ... }`, and make sure
-they don't contain references to things that aren't actually defined.
+they don't contain references to names that aren't actually defined.
 
-> ***Warning:*** Rust is a language under heavy development. Notes
+> ***Warning:*** Rust is a language under ongoing development. Notes
 > about potential changes to the language, implementation
 > deficiencies, and other caveats appear offset in blockquotes.
 
@@ -77,9 +78,14 @@ You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
 
 > ***Note:*** Windows users should read the detailed
-> [getting started][wiki-start] notes on the wiki. Even when using
-> the binary installer the Windows build requires a MinGW installation,
-> the precise details of which are not discussed here.
+> "[getting started][wiki-start]" notes on the wiki. Even when using
+> the binary installer, the Windows build requires a MinGW installation,
+> the precise details of which are not discussed here. Finally, `rustc` may
+> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, I
+> know.
+
+[bug-3319]: https://github.com/mozilla/rust/issues/3319
+[wiki-start]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 
 To build from source you will also need the following prerequisite
 packages:
@@ -90,8 +96,8 @@ packages:
 * gnu make 3.81 or later
 * curl
 
-Assuming you're on a relatively modern *nix system and have met the
-prerequisites, something along these lines should work.
+If you've fulfilled those prerequisites, something along these lines
+should work.
 
 ~~~~ {.notrust}
 $ wget http://dl.rust-lang.org/dist/rust-0.4.tar.gz
@@ -104,7 +110,7 @@ $ make && make install
 You may need to use `sudo make install` if you do not normally have
 permission to modify the destination directory. The install locations
 can be adjusted by passing a `--prefix` argument to
-`configure`. Various other options are also supported, pass `--help`
+`configure`. Various other options are also supported: pass `--help`
 for more information on them.
 
 When complete, `make install` will place several programs into
@@ -130,10 +136,10 @@ If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce an executable called `hello` (or `hello.exe` on
 Windows) which, upon running, will likely do exactly what you expect.
 
-The Rust compiler tries to provide useful information when it runs
-into an error. If you modify the program to make it invalid (for
-example, by changing `io::println` to some nonexistent function), and
-then compile it, you'll see an error message like this:
+The Rust compiler tries to provide useful information when it encounters an
+error. If you introduce an error into the program (for example, by changing
+`io::println` to some nonexistent function), and then compile it, you'll see
+an error message like this:
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
@@ -144,18 +150,9 @@ hello.rs:2     io::print_with_unicorns("hello? yes, this is rust");
 In its simplest form, a Rust program is a `.rs` file with some types
 and functions defined in it. If it has a `main` function, it can be
 compiled to an executable. Rust does not allow code that's not a
-declaration to appear at the top level of the file—all statements must
+declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
 libraries, and included in other programs.
-
-> ***Note:*** There are some 'gotchas' to be aware of on
-> Windows. First, the MinGW environment must be set up
-> perfectly. Please read [the wiki][wiki-started]. Second, `rustc` may
-> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, I
-> know.
-
-[bug-3319]: https://github.com/mozilla/rust/issues/3319
-[wiki-started]:	https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 
 ## Editing Rust code
 
@@ -170,7 +167,7 @@ Sublime Text 2, available both [standalone][sublime] and through
 under `src/etc/kate`.
 
 There is ctags support via `src/etc/ctags.rust`, but many other
-tools and editors are not provided for yet. If you end up writing a Rust
+tools and editors are not yet supported. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
 [sublime]: http://github.com/dbp/sublime-rust
