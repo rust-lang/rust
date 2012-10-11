@@ -1479,12 +1479,12 @@ The evaluation of an expression depends both on its own category and the context
 [Path](#path-expressions), [field](#field-expressions) and [index](#index-expressions) expressions are lvalues.
 All other expressions are rvalues.
 
-The left operand of an [assignment](#assignment-expressions) or
+The left operand of an [assignment](#assignment-expressions),
+[binary move](#binary-move-expressions) or
 [compound-assignment](#compound-assignment-expressions) expression is an lvalue context,
 as is the single operand of a unary [borrow](#unary-operator-expressions),
 or [move](#unary-move-expressions) expression,
-and _both_ operands of a [swap](#swap-expressions)
-or [binary move](#binary-move-expressions) expression.
+and _both_ operands of a [swap](#swap-expressions) expression.
 All other expression contexts are rvalue contexts.
 
 When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
@@ -1737,8 +1737,6 @@ and `&&` only when it evaluates to `true`.
 The binary comparison operators can be applied to any two operands of
 the same type, and produce a boolean value.
 
-*TODO* details on how types are descended during comparison.
-
 #### Type cast expressions
 
 A type cast expression is denoted with the binary operator `as`.
@@ -1774,15 +1772,16 @@ types.
 A _binary move expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a left-pointing
 arrow (`<-`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
-Evaluating a move expression causes, as a side effect, the rvalue to be
-*moved* into the lvalue. If the rvalue was itself an lvalue, it must be a
-local variable, as it will be de-initialized in the process.
+Evaluating a move expression causes, as a side effect,
+the rvalue to be *moved* into the lvalue.
+If the rvalue was itself an lvalue, it must be a local variable,
+as it will be de-initialized in the process.
 
-Evaluating a move expression does not change reference counts, nor does it
-cause a deep copy of any unique structure pointed to by the moved
-*rval*. Instead, the move expression represents an indivisible *transfer of
-ownership* from the right-hand-side to the left-hand-side of the
-expression. No allocation or destruction is entailed.
+Evaluating a move expression does not change reference counts,
+nor does it cause a deep copy of any owned structure pointed to by the moved rvalue.
+Instead, the move expression represents an indivisible *transfer of ownership*
+from the right-hand-side to the left-hand-side of the expression.
+No allocation or destruction is entailed.
 
 An example of three different move expressions:
 
@@ -1805,8 +1804,10 @@ A _swap expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) fo
 
 Evaluating a swap expression causes, as a side effect, the values held in the left-hand-side and right-hand-side [lvalues](#lvalues-rvalues-and-temporaries) to be exchanged indivisibly.
 
-Evaluating a swap expression neither changes reference counts nor deeply copies any unique structure pointed to by the moved [rvalue](#lvalues-rvalues-and-temporaries).
-Instead, the swap expression represents an indivisible *exchange of ownership* between the right-hand-side and the left-hand-side of the expression.
+Evaluating a swap expression neither changes reference counts,
+nor deeply copies any owned structure pointed to by the moved [rvalue](#lvalues-rvalues-and-temporaries).
+Instead, the swap expression represents an indivisible *exchange of ownership*,
+between the right-hand-side and the left-hand-side of the expression.
 No allocation or destruction is entailed.
 
 An example of three different swap expressions:
@@ -1904,13 +1905,12 @@ Evaluating a copy expression first evaluates the argument expression, then
 copies the resulting value, allocating any memory necessary to hold the new
 copy.
 
-[Shared boxes](#box-types) (type `@`) are, as usual, shallow-copied, as they
-may be cyclic. [Unique boxes](#box-types), [vectors](#vector-types) and
-similar unique types are deep-copied.
+[Managed boxes](#pointer-types) (type `@`) are, as usual, shallow-copied,
+as are raw and borrowed pointers.
+[Owned boxes](#pointer-types), [owned vectors](#vector-types) and similar owned types are deep-copied.
 
-Since the binary [assignment operator](#assignment-expressions) `=` performs a
-copy implicitly, the unary copy operator is typically only used to cause an
-argument to a function to be copied and passed by value.
+Since the binary [assignment operator](#assignment-expressions) `=` performs a copy implicitly,
+the unary copy operator is typically only used to cause an argument to a function to be copied and passed by value.
 
 An example of a copy expression:
 
@@ -2670,15 +2670,15 @@ kinds are:
 
 Sendable
   : Values with a sendable type can be safely sent to another task.
-    This kind includes scalars, unique pointers, unique closures, and
+    This kind includes scalars, owning pointers, owned closures, and
     structural types containing only other sendable types.
 Copyable
   : This kind includes all types that can be copied. All types with
-    sendable kind are copyable, as are shared boxes, shared closures,
+    sendable kind are copyable, as are managed boxes, managed closures,
     trait types, and structural types built out of these.
 Noncopyable
   : [Resource](#resources) types, and every type that includes a
-    resource without storing it in a shared box, may not be copied.
+    resource without storing it in a managed box, may not be copied.
     Types of sendable or copyable type can always be used in places
     where a noncopyable type is expected, so in effect this kind
     includes all types.
@@ -2696,7 +2696,7 @@ declared for it. For example, this is not a valid program:
 fn box<T>(x: T) -> @T { @x }
 ~~~~
 
-Putting `x` into a shared box involves copying, and the `T` parameter
+Putting `x` into a managed box involves copying, and the `T` parameter
 is assumed to be noncopyable. To change that, a bound is declared:
 
 ~~~~
@@ -2746,7 +2746,7 @@ entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
 The _heap_ is a general term that describes two separate sets of boxes:
-shared boxes -- which may be subject to garbage collection -- and unique
+managed boxes -- which may be subject to garbage collection -- and owned
 boxes.  The lifetime of an allocation in the heap depends on the lifetime of
 the box values pointing to it. Since box values may themselves be passed in
 and out of frames, or stored in the heap, heap allocations may outlive the
@@ -2765,13 +2765,13 @@ it is only instantiated for (transitively) sendable kinds of data constructor an
 never including managed or borrowed pointers.
 
 When a stack frame is exited, its local allocations are all released, and its
-references to boxes (both shared and owned) are dropped.
+references to boxes (both managed and owned) are dropped.
 
-A shared box may (in the case of a recursive, mutable shared type) be cyclic;
-in this case the release of memory inside the shared structure may be deferred
+A managed box may (in the case of a recursive, mutable managed type) be cyclic;
+in this case the release of memory inside the managed structure may be deferred
 until task-local garbage collection can reclaim it. Code can ensure no such
-delayed deallocation occurs by restricting itself to unique boxes and similar
-unshared kinds of data.
+delayed deallocation occurs by restricting itself to owned boxes and similar
+unmanaged kinds of data.
 
 When a task finishes, its stack is necessarily empty and it therefore has no
 references to any boxes; the remainder of its heap is immediately freed.
@@ -2820,22 +2820,22 @@ fn incr(i: &mut int) {
 ### Memory boxes
 
 A _box_ is a reference to a heap allocation holding another value. There
-are two kinds of boxes: *shared boxes* and *unique boxes*.
+are two kinds of boxes: *managed boxes* and *owned boxes*.
 
-A _shared box_ type or value is constructed by the prefix *at* sigil `@`.
+A _managed box_ type or value is constructed by the prefix *at* sigil `@`.
 
-A _unique box_ type or value is constructed by the prefix *tilde* sigil `~`.
+An _owned box_ type or value is constructed by the prefix *tilde* sigil `~`.
 
-Multiple shared box values can point to the same heap allocation; copying a
-shared box value makes a shallow copy of the pointer (optionally incrementing
-a reference count, if the shared box is implemented through
+Multiple managed box values can point to the same heap allocation; copying a
+managed box value makes a shallow copy of the pointer (optionally incrementing
+a reference count, if the managed box is implemented through
 reference-counting).
 
-Unique box values exist in 1:1 correspondence with their heap allocation;
-copying a unique box value makes a deep copy of the heap allocation and
+Owned box values exist in 1:1 correspondence with their heap allocation;
+copying an owned box value makes a deep copy of the heap allocation and
 produces a pointer to the new allocation.
 
-An example of constructing one shared box type and value, and one unique box
+An example of constructing one managed box type and value, and one owned box
 type and value:
 
 ~~~~~~~~
