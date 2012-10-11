@@ -23,7 +23,7 @@ use comm = core::comm;
  * * ch - a channel of type T to send a `val` on
  * * val - a value of type T to send over the provided `ch`
  */
-pub fn delayed_send<T: Copy Send>(iotask: IoTask,
+pub fn delayed_send<T: Send>(iotask: IoTask,
                                   msecs: uint, ch: comm::Chan<T>, val: T) {
         unsafe {
             let timer_done_po = core::comm::Port::<()>();
