@@ -6,9 +6,7 @@ use ip = net_ip;
 use uv::iotask;
 use uv::iotask::IoTask;
 use future_spawn = future::spawn;
-// FIXME #1935
-// should be able to, but can't atm, replace w/ result::{result, extensions};
-use result::*;
+use result::{Result};
 use libc::size_t;
 use io::{Reader, ReaderUtil, Writer};
 use comm = core::comm;
@@ -1093,7 +1091,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         log(debug, fmt!("tcp on_read_cb nread: %d", nread as int));
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
-        let new_bytes = vec::raw::from_buf(buf_base, nread as uint);
+        let new_bytes = vec::from_buf(buf_base, nread as uint);
         core::comm::send(reader_ch, result::Ok(new_bytes));
       }
     }

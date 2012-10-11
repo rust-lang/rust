@@ -233,7 +233,6 @@ fn is_exported(i: ident, m: _mod) -> bool {
                     }
                   }
 
-                  // FIXME: glob-exports aren't supported yet. (#2006)
                   _ => ()
                 }
             }

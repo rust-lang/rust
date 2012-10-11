@@ -190,7 +190,7 @@ impl<T: Send> &MutexARC<T> {
  *
  * Will additionally fail if another task has failed while accessing the arc.
  */
-// FIXME(#2585) make this a by-move method on the arc
+// FIXME(#3724) make this a by-move method on the arc
 pub fn unwrap_mutex_arc<T: Send>(arc: MutexARC<T>) -> T {
     let MutexARC { x: x } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
@@ -368,7 +368,7 @@ impl<T: Const Send> &RWARC<T> {
  * Will additionally fail if another task has failed while accessing the arc
  * in write mode.
  */
-// FIXME(#2585) make this a by-move method on the arc
+// FIXME(#3724) make this a by-move method on the arc
 pub fn unwrap_rw_arc<T: Const Send>(arc: RWARC<T>) -> T {
     let RWARC { x: x, _ } <- arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };

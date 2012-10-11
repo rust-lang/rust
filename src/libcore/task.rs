@@ -759,8 +759,8 @@ fn test_cant_dup_task_builder() {
     let b = task().unlinked();
     do b.spawn { }
     // FIXME(#3724): For now, this is a -runtime- failure, because we haven't
-    // got move mode on self. When 3724 is fixed, this test should fail to compile
-    // instead, and should go in tests/compile-fail.
+    // got move mode on self. When 3724 is fixed, this test should fail to
+    // compile instead, and should go in tests/compile-fail.
     do b.spawn { } // b should have been consumed by the previous call
 }
 

@@ -1657,9 +1657,22 @@ impl<T: Eq> ~[T]: MutableEqVector<T> {
     }
 }
 
+
+/**
+* Constructs a vector from an unsafe pointer to a buffer
+*
+* # Arguments
+*
+* * ptr - An unsafe pointer to a buffer of `T`
+* * elts - The number of elements in the buffer
+*/
+// Wrapper for fn in raw: needs to be called by net_tcp::on_tcp_read_cb
+pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
+    raw::from_buf_raw(ptr, elts)
+}
+
 /// Unsafe operations
-pub mod raw {
-    // FIXME: This should have crate visibility (#1893 blocks that)
+mod raw {
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
@@ -1678,22 +1691,6 @@ pub mod raw {
         mut data: *u8,
         mut len: uint
     };
-
-    /**
-     * Constructs a vector from an unsafe pointer to a buffer
-     *
-     * # Arguments
-     *
-     * * ptr - An unsafe pointer to a buffer of `T`
-     * * elts - The number of elements in the buffer
-     */
-    #[inline(always)]
-    pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
-        let mut dst = with_capacity(elts);
-        set_len(&mut dst, elts);
-        as_mut_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
-        move dst
-    }
 
     /**
      * Sets the length of a vector
@@ -1773,6 +1770,23 @@ pub mod raw {
             rusti::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                  option::unwrap(move box2));
         }
+    }
+
+    /**
+    * Constructs a vector from an unsafe pointer to a buffer
+    *
+    * # Arguments
+    *
+    * * ptr - An unsafe pointer to a buffer of `T`
+    * * elts - The number of elements in the buffer
+    */
+    // Was in raw, but needs to be called by net_tcp::on_tcp_read_cb
+    #[inline(always)]
+    pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
+        let mut dst = with_capacity(elts);
+        set_len(&mut dst, elts);
+        as_mut_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
+        move dst
     }
 
     /**
