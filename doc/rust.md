@@ -943,14 +943,15 @@ of that type.
 #### Unsafe functions
 
 Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
+Such a function must be prefixed with the keyword `unsafe`.
 
 Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
 Specifically, the following operations are considered unsafe:
 
-  - Dereferencing a [raw pointer](#pointer-types)
-  - Casting a [raw pointer](#pointer-types) to a safe pointer type
-  - Breaking the [purity-checking rules](#pure-functions)
-  - Calling an unsafe function
+  - Dereferencing a [raw pointer](#pointer-types).
+  - Casting a [raw pointer](#pointer-types) to a safe pointer type.
+  - Breaking the [purity-checking rules](#pure-functions) in a `pure` function.
+  - Calling an unsafe function.
 
 ##### Unsafe blocks
 
