@@ -1919,6 +1919,20 @@ mutate(copy v);   // Pass a copy
 assert v[0] == 1; // Original was not modified
 ~~~~
 
+### Unary move expressions
+
+~~~~~~~~{.ebnf .gram}
+move_expr : "move" expr ;
+~~~~~~~~
+
+A _unary move expression_ is similar to a [unary copy](#unary-copy-expressions) expression,
+except that it can only be applied to an [lvalue](#lvalues-rvalues-and-temporaries),
+and it performs a _move_ on its operand, rather than a copy.
+That is, the memory location denoted by its operand is de-initialized after evaluation,
+and the resulting value is a shallow copy of the operand,
+even if the operand is an [owning type](#type-kinds).
+
+
 ### Call expressions
 
 ~~~~~~~~ {.abnf .gram}
