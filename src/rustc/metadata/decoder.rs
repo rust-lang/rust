@@ -647,7 +647,6 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
         let mth_item = lookup_item(m_did.node, cdata.data);
         let self_ty = get_self_ty(mth_item);
         rslt.push(@{did: translate_def_id(cdata, m_did),
-                    /* FIXME (maybe #2323) tjc: take a look at this. */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
                    ident: item_name(intr, mth_item),
                    self_type: self_ty});
