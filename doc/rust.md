@@ -1503,6 +1503,11 @@ string, boolean value, or the nil value.
 5;         // integer type
 ~~~~~~~~
 
+### Path expressions
+
+A [path](#paths) used as an expression context denotes either a local variable or an item.
+Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
+
 ### Tuple expressions
 
 Tuples are written by enclosing two or more comma-separated
