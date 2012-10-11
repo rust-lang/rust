@@ -1412,10 +1412,7 @@ sequence expression evaluation.
 ## Statements
 
 A _statement_ is a component of a block, which is in turn a component of an
-outer [expression](#expressions) or [function](#functions). When a function is
-spawned into a [task](#tasks), the task *executes* statements in an order
-determined by the body of the enclosing function. Each statement causes the
-task to perform certain actions.
+outer [expression](#expressions) or [function](#functions).
 
 Rust has two kinds of statement:
 [declaration statements](#declaration-statements) and
