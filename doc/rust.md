@@ -1104,7 +1104,7 @@ specific type; the type-specified aspects of a value include:
 * Whether the value represents textual or numerical information.
 * Whether the value represents integral or floating-point information.
 * The sequence of memory operations required to access the value.
-* The *kind* of the type (pinned, unique or shared).
+* The [kind](#type-kinds) of the type.
 
 For example, the type `{x: u8, y: u8`} defines the set of immutable values
 that are composite records, each containing two unsigned 8-bit integers
