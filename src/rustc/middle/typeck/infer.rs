@@ -565,11 +565,8 @@ impl infer_ctxt {
         do indent {
             let r <- self.try(f);
 
-            // FIXME (#2814)---could use a vec::clear() that ran
-            // destructors but kept the vec at its currently allocated
-            // length
-            self.ty_var_bindings.bindings = ~[];
-            self.int_var_bindings.bindings = ~[];
+            self.ty_var_bindings.bindings.truncate(0);
+            self.int_var_bindings.bindings.truncate(0);
             self.region_vars.commit();
             move r
         }
