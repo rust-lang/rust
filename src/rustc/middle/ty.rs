@@ -3552,7 +3552,6 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                         };
                         match variant.node.disr_expr {
                           Some (ex) => {
-                            // FIXME: issue #1417
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
                               const_eval::const_int(val) => val as int,
@@ -3914,10 +3913,6 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
         _ =>
             t
     };
-
-    // FIXME #2187: This also reduced int types to their compatible machine
-    // types, which isn't necessary after #2187
-    let t = mk_t(cx, mach_sty(cx.sess.targ_cfg, t));
 
     let sty = fold_sty(&get(t).sty, |t| { normalize_ty(cx, t) });
     let t_norm = mk_t(cx, sty);
