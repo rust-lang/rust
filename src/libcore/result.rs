@@ -105,11 +105,9 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
  */
 pub fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(t: T)
     -> Result<U, V>) -> Result<U, V> {
-    // XXX: Should be writable with move + match
-    if res.is_ok() {
-        op(unwrap(res))
-    } else {
-        Err(unwrap_err(res))
+    match move res {
+        Ok(move t) => op(t),
+        Err(move e) => Err(e)
     }
 }
 

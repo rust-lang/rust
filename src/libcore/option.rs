@@ -119,11 +119,9 @@ pub pure fn chain<T, U>(opt: Option<T>,
      * function that returns an option.
      */
 
-    // XXX write with move match
-    if opt.is_some() {
-        f(unwrap(opt))
-    } else {
-        None
+    match move opt {
+        Some(move t) => f(t),
+        None => None
     }
 }
 
