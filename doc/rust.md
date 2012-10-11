@@ -1178,7 +1178,7 @@ trait shape {
 
 This defines a trait with two methods.
 All values that have [implementations](#implementations) of this trait in scope can have their `draw` and `bounding_box` methods called,
-using `value.bounding_box()` [syntax](#field-expressions).
+using `value.bounding_box()` [syntax](#method-call-expressions).
 
 Type parameters can be specified for a trait to make it generic.
 These appear after the name, using the same syntax used in [generic
@@ -1558,13 +1558,27 @@ let base = {x: 1, y: 2, z: 3};
 {y: 0, z: 10, .. base};
 ~~~~
 
+### Method-call expressions
+
+~~~~~~~~{.ebnf .gram}
+method_call_expr : expr '.' ident paren_expr_list ;
+~~~~~~~~
+
+A _method call_ consists of an expression followed by a single dot, an identifier, and a parenthesized expression-list.
+Method calls are resolved to methods on specific traits,
+either statically dispatching to a method if the exact `self`-type of the left-hand-side is known,
+or dynamically dispatching if the left-hand-side expression is an indirect [trait type](#trait-types).
+
+
 ### Field expressions
 
 ~~~~~~~~{.ebnf .gram}
-field_expr : expr '.' expr
+field_expr : expr '.' ident
 ~~~~~~~~
 
-A dot can be used to access a field in a record.
+A _field expression_ consists of an expression followed by a single dot and an identifier,
+when not immediately followed by a parenthesized expression-list (the latter is a [method call expression](#method-call-expressions)).
+A field expression denotes a field of a [structure](#structure-types) or [record](#record-types).
 
 ~~~~~~~~ {.field}
 myrecord.myfield;
@@ -1574,17 +1588,9 @@ myrecord.myfield;
 A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
 When the field is mutable, it can be [assigned](#assignment-expressions) to.
 
-When the type of the expression to the left of the dot is a boxed
-record, it is automatically derferenced to make the field access
-possible.
+When the type of the expression to the left of the dot is a pointer to a record or structure,
+it is automatically derferenced to make the field access possible.
 
-Field access syntax is overloaded for [trait method](#traits)
-access. When no matching field is found, or the expression to the left
-of the dot is not a (boxed) record, an
-[implementation](#implementations) that matches this type and the
-given method name is looked up instead, and the result of the
-expression is this method, with its _self_ argument bound to the
-expression on the left of the dot.
 
 ### Vector expressions
 
