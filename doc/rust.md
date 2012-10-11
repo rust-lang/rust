@@ -1780,11 +1780,6 @@ fn avg(v: ~[float]) -> float {
 }
 ~~~~
 
-A cast is a *trivial cast* iff the type of the casted expression and the
-target type are identical after replacing all occurrences of `int`, `uint`,
-`float` with their machine type equivalents of the target architecture in both
-types.
-
 
 #### Binary move expressions
 
