@@ -677,7 +677,7 @@ a referencing crate file, or by the filename of the source file itself.
 
 A source file that contains a `main` function can be compiled to an
 executable. If a `main` function is present, it must have no [type parameters](#type-parameters)
-and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must either have no arguments, or a single argument of type `[~str]`.
+and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must take no arguments.
 
 # Items and attributes
 
