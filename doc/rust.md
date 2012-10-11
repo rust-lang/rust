@@ -1636,8 +1636,9 @@ task in a _failing state_.
 
 ### Unary operator expressions
 
-Rust defines five unary operators. They are all written as prefix
-operators, before the expression they apply to.
+Rust defines six symbolic unary operators,
+in addition to the unary [copy](#unary-copy-expressions) and [move](#unary-move-expressions) operators.
+They are all written as prefix operators, before the expression they apply to.
 
 `-`
   : Negation. May only be applied to numeric types.
@@ -1652,9 +1653,12 @@ operators, before the expression they apply to.
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
 `@` and `~`
-  :  [Boxing](#box-types) operators. Allocate a box to hold the value
-     they are applied to, and store the value in it. `@` creates a
-     shared, reference-counted box, whereas `~` creates a unique box.
+  :  [Boxing](#pointer-types) operators. Allocate a box to hold the value they are applied to,
+     and store the value in it. `@` creates a managed box, whereas `~` creates an owned box.
+`&`
+  : Borrow operator. Returns a borrowed pointer, pointing to its operand.
+    The operand of a borrowed pointer is statically proven to outlive the resulting pointer.
+    If the borrow-checker cannot prove this, it is a compilation error.
 
 ### Binary operator expressions
 
