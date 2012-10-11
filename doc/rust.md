@@ -706,7 +706,7 @@ There are several kinds of item:
   * [functions](#functions)
   * [type definitions](#type-definitions)
   * [enumerations](#enumerations)
-  * [resources](#resources)
+  * [constants](#constants)
   * [traits](#traits)
   * [implementations](#implementations)
 
@@ -1151,6 +1151,18 @@ enum list<T> {
 let a: list<int> = cons(7, @cons(13, @nil));
 ~~~~
 
+### Constants
+
+~~~~~~~~ {.ebnf .gram}
+const_item : "const" ident ':' type '=' expr ';' ;
+~~~~~~~~
+
+A Constant is a named value stored in read-only memory in a crate.
+The value bound to a constant is evaluated at compile time.
+Constants are declared with the `const` keyword.
+A constant item must have an expression giving its definition.
+The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
+
 ### Traits
 
 A _trait item_ describes a set of method types. [_implementation
@@ -1425,7 +1437,7 @@ statement block. The declared name may denote a new slot or a new item.
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item -- a function,
-enumeration, type, resource, trait, implementation or module -- locally
+enumeration, type, constant, trait, implementation or module -- locally
 within a statement block is simply a way of restricting its scope to a narrow
 region containing all of its uses; it is otherwise identical in meaning to
 declaring the item outside the statement block.
@@ -1629,8 +1641,7 @@ operators, before the expression they apply to.
 `-`
   : Negation. May only be applied to numeric types.
 `*`
-  : Dereference. When applied to a [box](#box-types) or
-    [resource](#resources) type, it accesses the inner value. For
+  : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location. For
     mutable boxes, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to. For
     [enums](#enumerated-types) that have only a single variant,
     containing a single parameter, the dereference operator accesses
@@ -2185,7 +2196,7 @@ fail_expr : "fail" expr ? ;
 
 Evaluating a `fail` expression causes a task to enter the *failing* state. In
 the *failing* state, a task unwinds its stack, destroying all frames and
-freeing all resources until it reaches its entry frame, at which point it
+running all destructors until it reaches its entry frame, at which point it
 halts execution in the *dead* state.
 
 
