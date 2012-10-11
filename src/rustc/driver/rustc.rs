@@ -16,6 +16,7 @@ use io::ReaderUtil;
 use std::getopts;
 use std::map::HashMap;
 use getopts::{opt_present};
+use getopts::groups;
 use rustc::driver::driver::*;
 use syntax::codemap;
 use syntax::diagnostic;
@@ -31,46 +32,11 @@ fn version(argv0: &str) {
 }
 
 fn usage(argv0: &str) {
-    io::println(fmt!("Usage: %s [options] <input>\n", argv0) +
-                 ~"
-Options:
-
-    --bin              Compile an executable crate (default)
-    -c                 Compile and assemble, but do not link
-    --cfg <cfgspec>    Configure the compilation environment
-    --emit-llvm        Produce an LLVM bitcode file
-    -g                 Produce debug info (experimental)
-    --gc               Garbage collect shared data (experimental/temporary)
-    -h --help          Display this message
-    -L <path>          Add a directory to the library search path
-    --lib              Compile a library crate
-    --ls               List the symbols defined by a compiled library crate
-    --jit              Execute using JIT (experimental)
-    --no-trans         Run all passes except translation; no output
-    -O                 Equivalent to --opt-level=2
-    -o <filename>      Write output to <filename>
-    --opt-level <lvl>  Optimize with possible levels 0-3
-    --out-dir <dir>    Write output to compiler-chosen filename in <dir>
-    --parse-only       Parse only; do not compile, assemble, or link
-    --pretty [type]    Pretty-print the input instead of compiling;
-                       valid types are: normal (un-annotated source),
-                       expanded (crates expanded), typed (crates expanded,
-                       with type annotations), or identified (fully
-                       parenthesized, AST nodes and blocks with IDs)
-    -S                 Compile only; do not assemble or link
-    --save-temps       Write intermediate files (.bc, .opt.bc, .o)
-                       in addition to normal output
-    --static           Use or produce static libraries or binaries
-                       (experimental)
-    --sysroot <path>   Override the system root
-    --test             Build a test harness
-    --target <triple>  Target cpu-manufacturer-kernel[-os] to compile for
-                       (default: host triple)
-                       (see http://sources.redhat.com/autobook/autobook/
-                       autobook_17.html for detail)
-    -W help            Print 'lint' options and default settings
-    -Z help            Print internal options for debugging rustc
-    -v --version       Print version info and exit
+    let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
+    io::println(groups::usage(message, optgroups()) +
+                ~"Additional help:
+    -W help             Print 'lint' options and default settings
+    -Z help             Print internal options for debugging rustc
 ");
 }
 
@@ -127,7 +93,7 @@ fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        match getopts::getopts(args, opts()) {
+        match getopts::groups::getopts(args, optgroups()) {
           Ok(m) => m,
           Err(f) => {
             early_error(demitter, getopts::fail_str(f))
