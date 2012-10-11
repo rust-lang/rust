@@ -75,7 +75,7 @@ export parser;
 export CRATE_FILE;
 export SOURCE_FILE;
 
-// FIXME (#1893): #ast expects to find this here but it's actually
+// FIXME (#3726): #ast expects to find this here but it's actually
 // defined in `parse` Fixing this will be easier when we have export
 // decls on individual items -- then parse can export this publicly, and
 // everything else crate-visibly.
