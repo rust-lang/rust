@@ -929,7 +929,7 @@ with `int`, and require the closure parameter to have type
 Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter
 type can always be moved, but they can only be copied when the
-parameter is given a [`copy` bound](#type-kinds).
+parameter is given a [`Copy` bound](#type-kinds).
 
 ~~~~
 fn id<T: Copy>(x: T) -> T { x }
