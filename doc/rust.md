@@ -1420,8 +1420,8 @@ Rust has two kinds of statement:
 
 ### Declaration statements
 
-A _declaration statement_ is one that introduces a *name* into the enclosing
-statement block. The declared name may denote a new slot or a new item.
+A _declaration statement_ is one that introduces one or more *names* into the enclosing statement block.
+The declared names may denote new slots or new items.
 
 #### Item declarations
 
