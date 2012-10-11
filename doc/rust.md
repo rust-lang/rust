@@ -681,14 +681,14 @@ and no [constraints](#constraints). Its return type must be [`nil`](#primitive-t
 
 # Items and attributes
 
-A crate is a collection of [items](#items), each of which may have some number
-of [attributes](#attributes) attached to it.
+Crates contain [items](#items),
+each of which may have some number of [attributes](#attributes) attached to it.
 
 ## Items
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | enum_item
-     | res_item | trait_item | impl_item | foreign_mod_item ;
+     | const_item | trait_item | impl_item | foreign_mod_item ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
