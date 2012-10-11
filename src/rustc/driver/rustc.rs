@@ -68,21 +68,21 @@ Options:
                        (default: host triple)
                        (see http://sources.redhat.com/autobook/autobook/
                        autobook_17.html for detail)
-
-    -(W|A|D|F) help    Print available 'lint' checks and default settings
-
-    -W <foo>           warn about <foo> by default
-    -A <foo>           allow <foo> by default
-    -D <foo>           deny <foo> by default
-    -F <foo>           forbid <foo> (deny, and deny all overrides)
-
-    -Z help            list internal options for debugging rustc
-
+    -W help            Print 'lint' options and default settings
+    -Z help            Print internal options for debugging rustc
     -v --version       Print version info and exit
 ");
 }
 
 fn describe_warnings() {
+    io::println(fmt!("
+Available lint options:
+    -W <foo>           Warn about <foo>
+    -A <foo>           Allow <foo>
+    -D <foo>           Deny <foo>
+    -F <foo>           Forbid <foo> (deny, and deny all overrides)
+"));
+
     let lint_dict = lint::get_lint_dict();
     let mut max_key = 0;
     for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
@@ -113,7 +113,7 @@ fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = *pair;
-        io::println(fmt!("    -Z%-20s -- %s", name, desc));
+        io::println(fmt!("    -Z %-20s -- %s", name, desc));
     }
 }
 
