@@ -146,7 +146,7 @@ impl &Sem<~[mut Waitqueue]> {
     }
 }
 
-// FIXME(#3136) should go inside of access()
+// FIXME(#3588) should go inside of access()
 #[doc(hidden)]
 struct SemRelease {
     sem: &Sem<()>,
@@ -577,7 +577,7 @@ impl &RWlock {
     }
 }
 
-// FIXME(#3136) should go inside of read()
+// FIXME(#3588) should go inside of read()
 #[doc(hidden)]
 struct RWlockReleaseRead {
     lock: &RWlock,
@@ -606,7 +606,7 @@ fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
     }
 }
 
-// FIXME(#3136) should go inside of downgrade()
+// FIXME(#3588) should go inside of downgrade()
 #[doc(hidden)]
 struct RWlockReleaseDowngrade {
     lock: &RWlock,
