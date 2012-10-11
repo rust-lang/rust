@@ -84,8 +84,9 @@ fn write_markdown(
     doc: doc::Doc,
     +writer_factory: WriterFactory
 ) {
-    // FIXME #2484: There is easy parallelism to be had here but
-    // we don't want to spawn too many pandoc processes
+    // There is easy parallelism to be had here, but
+    // we don't want to spawn too many pandoc processes.
+    // (See #2484, which is closed.)
     do doc.pages.map |page| {
         let ctxt = {
             w: writer_factory(*page)

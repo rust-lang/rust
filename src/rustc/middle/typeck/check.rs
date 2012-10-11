@@ -2278,8 +2278,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 let cty = fcx.expr_ty(e);
                 let declty = ty::mk_int(ccx.tcx);
                 demand::suptype(fcx, e.span, declty, cty);
-                // FIXME: issue #1417
-                // Also, check_expr (from check_const pass) doesn't guarantee
+                // check_expr (from check_const pass) doesn't guarantee
                 // that the expression is in an form that eval_const_expr can
                 // handle, so we may still get an internal compiler error
                 match const_eval::eval_const_expr(ccx.tcx, e) {
@@ -2620,7 +2619,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
 
       ~"get_tydesc" => {
-        // FIXME (#2712): return *intrinsic::tydesc, not *()
+        // FIXME (#3730): return *intrinsic::tydesc, not *()
         (1u, ~[], ty::mk_nil_ptr(tcx))
       }
       ~"visit_tydesc" => {

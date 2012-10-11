@@ -363,7 +363,7 @@ impl LookupContext {
         };
         let method = &ms[index];
 
-        /* FIXME(#3468) we should transform the vstore in accordance
+        /* FIXME(#3157) we should transform the vstore in accordance
            with the self type
 
         match method.self_type {
