@@ -184,8 +184,8 @@ and mostly have the same precedence as in C; comments are again like C.
 
 The main surface difference to be aware of is that the condition at
 the head of control structures like `if` and `while` do not require
-paretheses, while their bodies *must* be wrapped in
-brackets. Single-statement, bracket-less bodies are not allowed.
+parentheses, while their bodies *must* be wrapped in
+braces. Single-statement, unbraced bodies are not allowed.
 
 ~~~~
 # fn recalibrate_universe() -> bool { true }
@@ -200,9 +200,9 @@ fn main() {
 }
 ~~~~
 
-The `let` keyword introduces a local variable. Variables are immutable
-by default, so `let mut` can be used to introduce a local variable
-that can be reassigned.
+The `let` keyword introduces a local variable. Variables are immutable by
+default. To introduce a local variable that you can re-assign later, use `let
+mut` instead.
 
 ~~~~
 let hi = "hi";
@@ -224,14 +224,14 @@ let imaginary_size = monster_size * 10.0;
 let monster_size: int = 50;
 ~~~~
 
-Local variables may shadow earlier declarations, as in the previous
-example in which `monster_size` is first declared as a `float`
-then a second `monster_size` is declared as an int. If you were to actually
-compile this example though, the compiler will see that the second
-`monster_size` is unused, assume that you have made a mistake, and issue
-a warning. For occasions where unused variables are intentional, their
-name may be prefixed with an underscore to silence the warning, like
-`let _monster_size = 50;`.
+Local variables may shadow earlier declarations, as in the previous example:
+`monster_size` was first declared as a `float`, and then then a second
+`monster_size` was declared as an int. If you were to actually compile this
+example, though, the compiler will determine that the second `monster_size` is
+unused and issue a warning (because this situation is likely to indicate a
+programmer error). For occasions where unused variables are intentional, their
+name may be prefixed with an underscore to silence the warning, like `let
+_monster_size = 50;`.
 
 Rust identifiers follow the same rules as C; they start with an alphabetic
 character or an underscore, and after that may contain any sequence of
@@ -278,10 +278,10 @@ let price =
     };
 ~~~~
 
-Both pieces of code are exactly equivalent—they assign a value to
+Both pieces of code are exactly equivalent: they assign a value to
 `price` depending on the condition that holds. Note that there
-are not semicolons in the blocks of the second snippet. This is
-important; the lack of a semicolon after the last statement in a
+are no semicolons in the blocks of the second snippet. This is
+important: the lack of a semicolon after the last statement in a
 braced block gives the whole block the value of that last expression.
 
 Put another way, the semicolon in Rust *ignores the value of an expression*.
@@ -290,8 +290,10 @@ would simply assign `()` (nil or void) to `price`. But without the semicolon, ea
 branch has a different value, and `price` gets the value of the branch that
 was taken.
 
-In short, everything that's not a declaration (`let` for variables,
-`fn` for functions, et cetera) is an expression, including function bodies.
+In short, everything that's not a declaration (declarations are `let` for
+variables, `fn` for functions, and any top-level named items such as
+[traits](#traits), [enum types](#enums), and [constants](#constants)) is an
+expression, including function bodies.
 
 ~~~~
 fn is_four(x: int) -> bool {
@@ -314,7 +316,7 @@ something—in which case you'll have embedded it in a bigger statement.
 # fn foo() -> bool { true }
 # fn bar() -> bool { true }
 # fn baz() -> bool { true }
-// `let` is not an expression, so it is semi-colon terminated;
+// `let` is not an expression, so it is semicolon-terminated;
 let x = foo();
 
 // When used in statement position, bracy expressions do not
@@ -346,7 +348,7 @@ This may sound intricate, but it is super-useful and will grow on you.
 The basic types include the usual boolean, integral, and floating-point types.
 
 ------------------------- -----------------------------------------------
-`()`                      Nil, the type that has only a single value
+`()`                      Unit, the type that has only a single value
 `bool`                    Boolean type, with values `true` and `false`
 `int`, `uint`             Machine-pointer-sized signed and unsigned integers
 `i8`, `i16`, `i32`, `i64` Signed integers with a specific size (in bits)
@@ -394,10 +396,15 @@ type MonsterSize = uint;
 This will provide a synonym, `MonsterSize`, for unsigned integers. It will not
 actually create a new, incompatible type—`MonsterSize` and `uint` can be used
 interchangeably, and using one where the other is expected is not a type
-error.
+error. In that sense, types declared with `type` are *structural*: their
+meaning follows from their structure, and their names are irrelevant in the
+type system.
 
-To create data types which are not synonyms, `struct` and `enum`
-can be used. They're described in more detail below, but they look like this:
+Sometimes, you want your data types to be *nominal* instead of structural: you
+want their name to be part of their meaning, so that types with the same
+structure but different names are not interchangeable. Rust has two ways to
+create nominal data types: `struct` and `enum`. They're described in more
+detail below, but they look like this:
 
 ~~~~
 enum HidingPlaces {
@@ -416,12 +423,12 @@ enum MonsterSize = uint;      // a single-variant enum
 
 ## Literals
 
-Integers can be written in decimal (`144`), hexadecimal (`0x90`), and
+Integers can be written in decimal (`144`), hexadecimal (`0x90`), or
 binary (`0b10010000`) base. Each integral type has a corresponding literal
 suffix that can be used to indicate the type of a literal: `i` for `int`,
 `u` for `uint`, and `i8` for the `i8` type, etc.
 
-In the absense of an integer literal suffix, Rust will infer the
+In the absence of an integer literal suffix, Rust will infer the
 integer type based on type annotations and function signatures in the
 surrounding program. In the absence of any type information at all,
 Rust will assume that an unsuffixed integer literal has type
@@ -439,10 +446,10 @@ a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
 (32-bit) and `f64` (64-bit) can be used to create literals of a
 specific type.
 
-The nil literal is written just like the type: `()`. The keywords
+The unit literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
 
-Character literals are written between single quotes, as in `'x'`. Just as in
+Character literals are written between single quotes, as in `'x'`. Just like
 C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
 written between double quotes, allow the same escape sequences. Rust strings
@@ -450,13 +457,13 @@ may contain newlines.
 
 ## Constants
 
-Compile-time constants are declared with `const`. All scalar types,
-like integers and floats, may be declared `const`, as well as fixed
-length vectors, static strings (more on this later), and structs.
-Constants may be declared in any scope and may refer to other
-constants. Constant declarations are not type inferred, so must always
-have a type annotation.  By convention they are written in all capital
-letters.
+Compile-time constants are declared with `const`. A constant may have any
+scalar type (for example, integer or float). Other allowable constant types
+are fixed-length vectors, static strings (more on this later), and
+structs. Constants may be declared in any scope and may refer to other
+constants. The compiler does not infer types for constants, so constants must
+always be declared with a type annotation. By convention, they are written in
+all capital letters.
 
 ~~~
 // Scalars can be constants
@@ -480,7 +487,7 @@ const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
 `*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder, plus, minus). `-` is
-also a unary prefix operator that does negation. As in C, the bit operators
+also a unary prefix operator that negates numbers. As in C, the bit operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
 Note that, if applied to an integer value, `!` flips all the bits (like `~` in
@@ -502,21 +509,21 @@ assert y == 4u;
 ~~~~
 
 The main difference with C is that `++` and `--` are missing, and that
-the logical bitwise operators have higher precedence — in C, `x & 2 > 0`
+the logical bitwise operators have higher precedence—in C, `x & 2 > 0`
 means `x & (2 > 0)`, but in Rust, it means `(x & 2) > 0`, which is
-more likely what a novice expects.
+more likely to be what a novice expects.
 
 ## Syntax extensions
 
 *Syntax extensions* are special forms that are not built into the language,
 but are instead provided by the libraries. To make it clear to the reader when
-a syntax extension is being used, the names of all syntax extensions end with
-`!`. The standard library defines a few syntax extensions, the most useful of
-which is `fmt!`, a `sprintf`-style text formatter that is expanded at compile
-time.
+a name refers to a syntax extension, the names of all syntax extensions end
+with `!`. The standard library defines a few syntax extensions, the most
+useful of which is `fmt!`, a `sprintf`-style text formatter that an early
+compiler phase expands statically.
 
-`fmt!` supports most of the directives that [printf][pf] supports, but
-will give you a compile-time error when the types of the directives
+`fmt!` supports most of the directives that [printf][pf] supports, but unlike
+printf, will give you a compile-time error when the types of the directives
 don't match the types of the arguments.
 
 ~~~~
@@ -530,8 +537,9 @@ io::println(fmt!("what is this thing: %?", mystery_object));
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 
-You can define your own syntax extensions with the macro system, which is out
-of scope of this tutorial.
+You can define your own syntax extensions with the macro system. For details, see the [macro tutorial][macros].
+
+[macros]: tutorial-macros.html
 
 # Control structures
 
