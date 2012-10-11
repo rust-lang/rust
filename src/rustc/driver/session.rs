@@ -46,18 +46,15 @@ const trans_stats: uint = 1 << 4;
 const no_asm_comments: uint = 1 << 5;
 const no_verify: uint = 1 << 6;
 const trace: uint = 1 << 7;
-// FIXME (#2377): This exists to transition to a Rust crate runtime
-// It should be removed
-const no_rt: uint = 1 << 8;
-const coherence: uint = 1 << 9;
-const borrowck_stats: uint = 1 << 10;
-const borrowck_note_pure: uint = 1 << 11;
-const borrowck_note_loan: uint = 1 << 12;
-const no_landing_pads: uint = 1 << 13;
-const debug_llvm: uint = 1 << 14;
-const count_type_sizes: uint = 1 << 15;
-const meta_stats: uint = 1 << 16;
-const no_opt: uint = 1 << 17;
+const coherence: uint = 1 << 8;
+const borrowck_stats: uint = 1 << 9;
+const borrowck_note_pure: uint = 1 << 10;
+const borrowck_note_loan: uint = 1 << 11;
+const no_landing_pads: uint = 1 << 12;
+const debug_llvm: uint = 1 << 13;
+const count_type_sizes: uint = 1 << 14;
+const meta_stats: uint = 1 << 15;
+const no_opt: uint = 1 << 16;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -70,7 +67,6 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-asm-comments", ~"omit comments when using -S", no_asm_comments),
      (~"no-verify", ~"skip LLVM verification", no_verify),
      (~"trace", ~"emit trace logs", trace),
-     (~"no-rt", ~"do not link to the runtime", no_rt),
      (~"coherence", ~"perform coherence checking", coherence),
      (~"borrowck-stats", ~"gather borrowck statistics",  borrowck_stats),
      (~"borrowck-note-pure", ~"note where purity is req'd",
