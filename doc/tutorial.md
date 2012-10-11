@@ -545,8 +545,8 @@ You can define your own syntax extensions with the macro system. For details, se
 
 ## Conditionals
 
-We've seen `if` pass by a few times already. To recap, braces are
-compulsory, an optional `else` clause can be appended, and multiple
+We've seen `if` expressions a few times already. To recap, braces are
+compulsory, an `if` can have an optional `else` clause, and multiple
 `if`/`else` constructs can be chained together:
 
 ~~~~
@@ -559,10 +559,10 @@ if false {
 }
 ~~~~
 
-The condition given to an `if` construct *must* be of type boolean (no
-implicit conversion happens). If the arms return a value, this value
-must be of the same type for every arm in which control reaches the
-end of the block:
+The condition given to an `if` construct *must* be of type `bool` (no
+implicit conversion happens). If the arms are blocks that have a
+value, this value must be of the same type for every arm in which
+control reaches the end of the block:
 
 ~~~~
 fn signum(x: int) -> int {
@@ -575,9 +575,10 @@ fn signum(x: int) -> int {
 ## Pattern matching
 
 Rust's `match` construct is a generalized, cleaned-up version of C's
-`switch` construct. You provide it with a value and a number of *arms*,
-each labelled with a pattern, and the code will attempt to match each pattern
-in order. For the first one that matches, the arm is executed.
+`switch` construct. You provide it with a value and a number of
+*arms*, each labelled with a pattern, and the code compares the value
+against each pattern in order until one matches. The matching pattern
+executes its corresponding arm.
 
 ~~~~
 # let my_number = 1;
@@ -589,15 +590,19 @@ match my_number {
 }
 ~~~~
 
-There is no 'falling through' between arms, as in C—only one arm is
-executed, and it doesn't have to explicitly `break` out of the
+Unlike in C, there is no 'falling through' between arms: only one arm
+executes, and it doesn't have to explicitly `break` out of the
 construct when it is finished.
 
-The part to the left of the arrow `=>` is called the *pattern*. Literals are
-valid patterns and will match only their own value. The pipe operator
-(`|`) can be used to assign multiple patterns to a single arm. Ranges
-of numeric literal patterns can be expressed with two dots, as in `M..N`. The
-underscore (`_`) is a wildcard pattern that matches everything.
+A `match` arm consists of a *pattern*, then an arrow `=>`, followed by
+an *action* (expression). Literals are valid patterns and match only
+their own value. A single arm may match multiple different patterns by
+combining them with the pipe operator (`|`), so long as every pattern
+binds the same set of variables. Ranges of numeric literal patterns
+can be expressed with two dots, as in `M..N`. The underscore (`_`) is
+a wildcard pattern that matches any single value. The asterisk (`*`)
+is a different wildcard that can match one or more fields in an `enum`
+variant.
 
 The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
@@ -612,13 +617,14 @@ match my_number {
 }
 ~~~
 
-`match` constructs must be *exhaustive*: they must have an arm covering every
-possible case. For example, if the arm with the wildcard pattern was left off
-in the above example, the typechecker would reject it.
+`match` constructs must be *exhaustive*: they must have an arm
+covering every possible case. For example, the typechecker would
+reject the previous example if the arm with the wildcard pattern was
+omitted.
 
-A powerful application of pattern matching is *destructuring*, where
-you use the matching to get at the contents of data types. Remember
-that `(float, float)` is a tuple of two floats:
+A powerful application of pattern matching is *destructuring*:
+matching in order to bind names to the contents of data
+types. Remember that `(float, float)` is a tuple of two floats:
 
 ~~~~
 fn angle(vector: (float, float)) -> float {
@@ -631,37 +637,39 @@ fn angle(vector: (float, float)) -> float {
 }
 ~~~~
 
-A variable name in a pattern matches everything, *and* binds that name
-to the value of the matched thing inside of the arm block. Thus, `(0f,
+A variable name in a pattern matches any value, *and* binds that name
+to the value of the matched value inside of the arm's action. Thus, `(0f,
 y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any tuple, and binds both
-elements to a variable.
+elements to variables.
 
-Any `match` arm can have a guard clause (written `if EXPR`), which is
-an expression of type `bool` that determines, after the pattern is
-found to match, whether the arm is taken or not. The variables bound
-by the pattern are available in this guard expression.
+Any `match` arm can have a guard clause (written `if EXPR`), called a
+*pattern guard*, which is an expression of type `bool` that
+determines, after the pattern is found to match, whether the arm is
+taken or not. The variables bound by the pattern are in scope in this
+guard expression. The first arm in the `angle` example shows an
+example of a pattern guard.
 
 You've already seen simple `let` bindings, but `let` is a little
-fancier than you've been led to believe. It too supports destructuring
-patterns. For example, you can say this to extract the fields from a
-tuple, introducing two variables, `a` and `b`.
+fancier than you've been led to believe. It, too, supports destructuring
+patterns. For example, you can write this to extract the fields from a
+tuple, introducing two variables at once: `a` and `b`.
 
 ~~~~
 # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) }
 let (a, b) = get_tuple_of_two_ints();
 ~~~~
 
-Let bindings only work with _irrefutable_ patterns, that is, patterns
+Let bindings only work with _irrefutable_ patterns: that is, patterns
 that can never fail to match. This excludes `let` from matching
-literals and most enum variants.
+literals and most `enum` variants.
 
 ## Loops
 
-`while` produces a loop that runs as long as its given condition
-(which must have type `bool`) evaluates to true. Inside a loop, the
-keyword `break` can be used to abort the loop, and `loop` can be used
-to abort the current iteration and continue with the next.
+`while` denotes a loop that iterates as long as its given condition
+(which must have type `bool`) evaluates to `true`. Inside a loop, the
+keyword `break` aborts the loop, and `loop` aborts the current
+iteration and continues with the next.
 
 ~~~~
 let mut cake_amount = 8;
@@ -670,7 +678,7 @@ while cake_amount > 0 {
 }
 ~~~~
 
-`loop` is the preferred way of writing `while true`:
+`loop` denotes an infinite loop, and is the preferred way of writing `while true`:
 
 ~~~~
 let mut x = 5;
@@ -684,9 +692,8 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
-For more involved iteration, such as going over the elements of a
-collection, Rust uses higher-order functions. We'll come back to those
-in a moment.
+For more involved iteration, such as enumerating the elements of a
+collection, Rust uses [higher-order functions](#closures).
 
 # Data structures
 
