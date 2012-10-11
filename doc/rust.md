@@ -676,8 +676,8 @@ from outside the source file: either by an explicit `source_directive` in
 a referencing crate file, or by the filename of the source file itself.
 
 A source file that contains a `main` function can be compiled to an
-executable. If a `main` function is present, it must have no [type parameters](#type-parameters)
-and no [constraints](#constraints). Its return type must be [`nil`](#primitive-types) and it must take no arguments.
+executable. If a `main` function is present,
+its return type must be [`nil`](#primitive-types) and it must take no arguments.
 
 # Items and attributes
 
@@ -2292,8 +2292,7 @@ execute after the `assert`.
 ## Types
 
 Every slot and value in a Rust program has a type. The _type_ of a *value*
-defines the interpretation of the memory holding it. The type of a *slot* may
-also include [constraints](#constraints).
+defines the interpretation of the memory holding it.
 
 Built-in types and type-constructors are tightly integrated into the language,
 in nontrivial ways that are not possible to emulate in user-defined
@@ -2562,8 +2561,8 @@ Raw pointers (`*`)
 ### Function types
 
 The function type-constructor `fn` forms new function types. A function type
-consists of a sequence of input slots, an optional set of
-[input constraints](#constraints) and an output slot.
+consists of a set of function-type modifiers (`pure`, `unsafe`, `extern`, etc.),
+a sequence of input slots and an output slot.
 
 An example of a `fn` type:
 
