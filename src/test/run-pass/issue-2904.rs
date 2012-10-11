@@ -16,7 +16,7 @@ enum square {
 }
 
 impl square: to_str::ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         match self {
           bot => { ~"R" }
           wall => { ~"#" }

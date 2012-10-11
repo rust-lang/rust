@@ -195,11 +195,11 @@ fn check_crate(tcx: ty::ctxt,
 }
 
 impl LiveNode: to_str::ToStr {
-    fn to_str() -> ~str { fmt!("ln(%u)", *self) }
+    pure fn to_str() -> ~str { fmt!("ln(%u)", *self) }
 }
 
 impl Variable: to_str::ToStr {
-    fn to_str() -> ~str { fmt!("v(%u)", *self) }
+    pure fn to_str() -> ~str { fmt!("v(%u)", *self) }
 }
 
 // ______________________________________________________________________

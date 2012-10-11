@@ -232,7 +232,7 @@ pub pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
 }
 
 /// Convert to a string
-pub fn str(i: T) -> ~str { return to_str(i, 10u); }
+pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 #[test]
 pub fn test_to_str() {
