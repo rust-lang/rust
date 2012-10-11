@@ -119,12 +119,7 @@ fn req_loans_in_expr(ex: @ast::expr,
                 let arg_cmt = self.bccx.cat_expr(*arg);
                 self.guarantee_valid(arg_cmt, m_imm,  scope_r);
               }
-              ast::by_val => {
-                // FIXME (#2493): safety checks would be required here,
-                // but the correct set is really hard to get right,
-                // and modes are going away anyhow.
-              }
-              ast::by_move | ast::by_copy => {}
+               ast::by_val | ast::by_move | ast::by_copy => {}
             }
         }
         visit::visit_expr(ex, self, vt);
