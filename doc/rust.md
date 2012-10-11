@@ -1116,9 +1116,7 @@ accessed through the components `x` and `y`, and laid out in memory with the
 An _enumeration item_ simultaneously declares a new nominal
 [enumerated type](#enumerated-types) as well as a set of *constructors* that
 can be used to create or pattern-match values of the corresponding enumerated
-type. Note that `enum` previously was referred to as a `tag`, however this
-definition has been deprecated. While `tag` is no longer used, the two are
-synonymous.
+type.
 
 The constructors of an `enum` type may be recursive: that is, each constructor
 may take an argument that refers, directly or indirectly, to the enumerated
