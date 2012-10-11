@@ -42,8 +42,6 @@
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.
 
-// FIXME (#2006): change these to glob-exports when sufficiently supported.
-
 pub use types::common::c95::*;
 pub use types::common::c99::*;
 pub use types::common::posix88::*;
