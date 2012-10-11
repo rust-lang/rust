@@ -132,7 +132,7 @@ fn classify(e: @expr,
                 classify(base, def_map, tcx)
               }
 
-              // FIXME: #1272, we can probably do something CCI-ish
+              // FIXME: (#3728) we can probably do something CCI-ish
               // surrounding nonlocal constants. But we don't yet.
               ast::expr_path(_) => {
                 match def_map.find(e.id) {
