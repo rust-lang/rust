@@ -1647,11 +1647,10 @@ They are all written as prefix operators, before the expression they apply to.
 `-`
   : Negation. May only be applied to numeric types.
 `*`
-  : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location. For
-    mutable boxes, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to. For
-    [enums](#enumerated-types) that have only a single variant,
-    containing a single parameter, the dereference operator accesses
-    this parameter.
+  : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location.
+    For pointers to mutable locations, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
+    For [enums](#enumerated-types) that have only a single variant, containing a single parameter,
+    the dereference operator accesses this parameter.
 `!`
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
