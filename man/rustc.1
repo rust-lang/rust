@@ -1,4 +1,4 @@
-.TH RUSTC "1" "July 2012" "rustc 0.3" "User Commands"
+.TH RUSTC "1" "October 2012" "rustc 0.4" "User Commands"
 .SH NAME
 rustc \- rust compiler
 .SH SYNOPSIS
@@ -42,6 +42,9 @@ Compile a library crate
 \fB\-\-ls\fR
 List the symbols defined by a compiled library crate
 .TP
+\fB\-\-jit\fR
+Execute using JIT (experimental)
+.TP
 \fB\-\-no\-trans\fR
 Run all passes except translation; no output
 .TP
@@ -62,9 +65,9 @@ Parse only; do not compile, assemble, or link
 .TP
 \fB\-\-pretty\fR [type]
 Pretty\-print the input instead of compiling;
-valid types are: \fBnormal\fR (un\-annotated source),
-\fBexpanded\fR (crates expanded), \fBtyped\fR (crates expanded,
-with type annotations), or \fBidentified\fR (fully
+valid types are: normal (un\-annotated source),
+expanded (crates expanded), typed (crates expanded,
+with type annotations), or identified (fully
 parenthesized, AST nodes and blocks with IDs)
 .TP
 \fB\-S\fR
@@ -75,7 +78,8 @@ Write intermediate files (.bc, .opt.bc, .o)
 in addition to normal output
 .TP
 \fB\-\-static\fR
-Use or produce static libraries or binaries (experimental)
+Use or produce static libraries or binaries
+(experimental)
 .TP
 \fB\-\-sysroot\fR <path>
 Override the system root
@@ -84,24 +88,16 @@ Override the system root
 Build a test harness
 .TP
 \fB\-\-target\fR <triple>
-Target cpu\-manufacturer\-kernel[\-os] to compile for (default: host triple)
-(see <\fBhttp://sources.redhat.com/autobook/autobook/autobook_17.html\fR> for
-detail)
+Target cpu\-manufacturer\-kernel[\-os] to compile for
+(default: host triple)
+(see http://sources.redhat.com/autobook/autobook/
+autobook_17.html for detail)
 .TP
-\fB\-W\fR <foo>
-enable warning <foo>
+\fB\-W help\fR
+Print 'lint' options and default settings
 .TP
-\fB\-W\fR no\-<foo>
-disable warning <foo>
-.TP
-\fB\-W\fR err\-<foo>
-enable warning <foo> as an error
-.TP
-\fB\-W\fR help
-Print available warnings and default settings
-.TP
-\fB\-Z\fR help
-list internal options for debugging rustc
+\fB\-Z help\fR
+Print internal options for debugging rustc
 .TP
 \fB\-v\fR \fB\-\-version\fR
 Print version info and exit
@@ -117,11 +113,12 @@ To build either with a crate (.rc) file:
     $ rustc hello.rc
 
 .SH "BUGS"
-See <\fBhttps://github.com/mozilla/rust/issues\fR> for a list of known bugs.
+See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
 
 .SH "AUTHOR"
 See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
 <\fIgraydon@mozilla.com\fR> is the project leader.
 
 .SH "COPYRIGHT"
-See \fBLICENSE.txt\fR in the rust source distribution.
+This work is licensed under MIT-like terms.  See \fBLICENSE.txt\fR
+in the rust source distribution.
