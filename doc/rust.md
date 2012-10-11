@@ -1986,8 +1986,7 @@ let x: int = add(1, 2);
 ### While loops
 
 ~~~~~~~~{.ebnf .gram}
-while_expr : "while" expr '{' block '}'
-           | "do" '{' block '}' "while" expr ;
+while_expr : "while" expr '{' block '}' ;
 ~~~~~~~~
 
 A `while` loop begins by evaluating the boolean loop conditional expression.
