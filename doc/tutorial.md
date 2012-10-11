@@ -702,11 +702,11 @@ collection, Rust uses [higher-order functions](#closures).
 Rust struct types must be declared before they are used using the `struct`
 syntax: `struct Name { field1: T1, field2: T2 [, ...] }`, where `T1`, `T2`,
 ... denote types. To construct a struct, use the same syntax, but leave off
-the `struct`; for example: `Point { x: 1.0, y: 2.0 }`.
+the `struct`: for example: `Point { x: 1.0, y: 2.0 }`.
 
 Structs are quite similar to C structs and are even laid out the same way in
-memory (so you can read from a Rust struct in C, and vice-versa). The dot
-operator is used to access struct fields (`mypoint.x`).
+memory (so you can read from a Rust struct in C, and vice-versa). Use the dot
+operator to access struct fields, as in `mypoint.x`.
 
 Fields that you want to mutate must be explicitly marked `mut`.
 
@@ -720,7 +720,7 @@ struct Stack {
 With a value of such a type, you can do `mystack.head += 1`. If `mut` were
 omitted from the type, such an assignment would result in a type error.
 
-Structs can be destructured in `match` patterns. The basic syntax is
+`match` patterns destructure structs. The basic syntax is
 `Name {fieldname: pattern, ...}`:
 
 ~~~~
@@ -747,9 +747,9 @@ match mypoint {
 }
 ~~~
 
-Structs are the only type in Rust that may have user-defined destructors,
-using `drop` blocks, inside of which the struct's value may be referred
-to with the name `self`.
+Structs are the only type in Rust that may have user-defined
+destructors, defined with `drop` blocks. Inside a `drop`, the name
+`self` refers to the struct's value.
 
 ~~~
 struct TimeBomb {
@@ -783,16 +783,16 @@ A value of this type is either a `Circle`, in which case it contains a
 `Point` struct and a float, or a `Rectangle`, in which case it contains
 two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
-'tagged union' pattern in C, but with better ergonomics.
+'tagged union' pattern in C, but with better static guarantees.
 
-The above declaration will define a type `Shape` that can be used to
-refer to such shapes, and two functions, `Circle` and `Rectangle`,
-which can be used to construct values of the type (taking arguments of
-the specified types). So `Circle(Point {x: 0f, y: 0f}, 10f)` is the way to
+The above declaration will define a type `Shape` that can refer to
+such shapes, and two functions, `Circle` and `Rectangle`, which can be
+used to construct values of the type (taking arguments of the
+specified types). So `Circle(Point {x: 0f, y: 0f}, 10f)` is the way to
 create a new circle.
 
-Enum variants need not have type parameters. This, for example, is
-equivalent to a C enum:
+Enum variants need not have type parameters. This `enum` declaration,
+for example, is equivalent to a C enum:
 
 ~~~~
 enum Direction {
@@ -803,12 +803,12 @@ enum Direction {
 }
 ~~~~
 
-This will define `North`, `East`, `South`, and `West` as constants,
+This declaration defines `North`, `East`, `South`, and `West` as constants,
 all of which have type `Direction`.
 
-When an enum is C-like, that is, when none of the variants have
-parameters, it is possible to explicitly set the discriminator values
-to an integer value:
+When an enum is C-like (that is, when none of the variants have
+parameters), it is possible to explicitly set the discriminator values
+to a constant value:
 
 ~~~~
 enum Color {
@@ -821,16 +821,19 @@ enum Color {
 If an explicit discriminator is not specified for a variant, the value
 defaults to the value of the previous variant plus one. If the first
 variant does not have a discriminator, it defaults to 0. For example,
-the value of `North` is 0, `East` is 1, etc.
+the value of `North` is 0, `East` is 1, `South` is 2, and `West` is 3.
 
-When an enum is C-like the `as` cast operator can be used to get the
-discriminator's value.
+When an enum is C-like, you can apply the `as` cast operator to
+convert it to its discriminator value as an int.
 
 <a name="single_variant_enum"></a>
 
-There is a special case for enums with a single variant. These are
-used to define new types in such a way that the new name is not just a
-synonym for an existing type, but its own distinct type. If you say:
+There is a special case for enums with a single variant, which are
+sometimes called "newtype-style enums" (after Haskell's "newtype"
+feature). These are used to define new types in such a way that the
+new name is not just a synonym for an existing type, but its own
+distinct type: `type` creates a structural synonym, while this form of
+`enum` creates a nominal synonym. If you say:
 
 ~~~~
 enum GizmoId = int;
@@ -842,7 +845,7 @@ That is a shorthand for this:
 enum GizmoId { GizmoId(int) }
 ~~~~
 
-Enum types like this can have their content extracted with the
+You can extract the contents of such an enum type with the
 dereference (`*`) unary operator:
 
 ~~~~
@@ -850,6 +853,17 @@ dereference (`*`) unary operator:
 let my_gizmo_id: GizmoId = GizmoId(10);
 let id_int: int = *my_gizmo_id;
 ~~~~
+
+Types like this can be useful to differentiate between data that have
+the same type but must be used in different ways.
+
+~~~~
+enum Inches = int;
+enum Centimeters = int;
+~~~~
+
+The above definitions allow for a simple way for programs to avoid
+confusing numbers that correspond to different units.
 
 For enum types with multiple variants, destructuring is the only way to
 get at their contents. All variant constructors can be used as
@@ -866,9 +880,9 @@ fn area(sh: Shape) -> float {
 }
 ~~~~
 
-Like other patterns, a lone underscore ignores individual fields.
-Ignoring all fields of a variant can be written `Circle(*)`. As in
-their introductory form, nullary enum patterns are written without
+You can write a lone `_` to ignore an individual fields, and can
+ignore all fields of a variant like: `Circle(*)`. As in their
+introduction form, nullary enum patterns are written without
 parentheses.
 
 ~~~~
@@ -887,9 +901,9 @@ fn point_from_direction(dir: Direction) -> Point {
 ## Tuples
 
 Tuples in Rust behave exactly like structs, except that their fields
-do not have names (and can thus not be accessed with dot notation).
+do not have names. Thus, you cannot access their fields with dot notation.
 Tuples can have any arity except for 0 or 1 (though you may consider
-nil, `()`, as the empty tuple if you like).
+unit, `()`, as the empty tuple if you like).
 
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
@@ -902,10 +916,11 @@ match mytup {
 
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
-top level and inside other functions (or modules, which we'll come
-back to [later](#modules-and-crates)). They are introduced with the
-`fn` keyword, the type of arguments are specified following colons and
-the return type follows the arrow.
+top level and inside other functions (or in modules, which we'll come
+back to [later](#modules-and-crates)). The `fn` keyword introduces a
+function. A function has an argument list, which is a parenthesized
+list of `expr: type` pairs separated by commas. An arrow `->`
+separates the argument list and the function's return type.
 
 ~~~~
 fn line(a: int, b: int, x: int) -> int {
@@ -924,9 +939,12 @@ fn line(a: int, b: int, x: int) -> int {
 }
 ~~~~
 
-Functions that do not return a value are said to return nil, `()`,
-and both the return type and the return value may be omitted from
-the definition. The following two functions are equivalent.
+It's better Rust style to write a return value this way instead of
+writing an explicit `return`. The utility of `return` comes in when
+returning early from a function. Functions that do not return a value
+are said to return nil, `()`, and both the return type and the return
+value may be omitted from the definition. The following two functions
+are equivalent.
 
 ~~~~
 fn do_nothing_the_hard_way() -> () { return (); }
@@ -944,10 +962,12 @@ assert 8  == line(5, 3, 1);
 assert () == oops(5, 3, 1);
 ~~~~
 
-Methods are like functions, except that they are defined for a specific
-'self' type (like 'this' in C++). Calling a method is done with
-dot notation, as in `my_vec.len()`. Methods may be defined on most
-Rust types with the `impl` keyword. As an example, lets define a draw
+Methods are like functions, except that they have an implicit argument
+called `self`, which has the type that the method's receiver has. The
+`self` argument is like 'this' in C++. An expression with dot
+notation, as in `my_vec.len()`, denotes a method
+call. Implementations, written with the `impl` keyword, can define
+methods on most Rust types. As an example, let's define a `draw`
 method on our `Shape` enum.
 
 ~~~
@@ -978,15 +998,15 @@ s.draw();
 
 This defines an _implementation_ for `Shape` containing a single
 method, `draw`. In most respects the `draw` method is defined
-like any other function, with the exception of the name `self`. `self`
-is a special value that is automatically defined in each method,
+like any other function, except for the name `self`. `self`
+is a special value that is automatically in scope inside each method,
 referring to the value being operated on. If we wanted we could add
 additional methods to the same impl, or multiple impls for the same
 type. We'll discuss methods more in the context of [traits and
 generics](#generics).
 
-> ***Note:*** The method definition syntax will change to require
-> declaring the self type explicitly, as the first argument.
+> ***Note:*** In the future, the method definition syntax will change to
+> require declaring the `self` type explicitly, as the first argument.
 
 # The Rust memory model
 
