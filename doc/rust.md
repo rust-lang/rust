@@ -1000,7 +1000,7 @@ An example of a pure function that uses an unsafe block:
 ~~~~ {.xfail-test}
 # use std::list::*;
 
-fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
+fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&T, &U) -> U) -> U {
     match ls {
       Nil => u,
       Cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
@@ -1008,7 +1008,7 @@ fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
 }
 
 pure fn pure_length<T>(ls: List<T>) -> uint {
-    fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
+    fn count<T>(_t: &T, u: &uint) -> uint { *u + 1u }
     unsafe {
         pure_foldl(ls, 0u, count)
     }
