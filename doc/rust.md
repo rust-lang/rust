@@ -825,7 +825,7 @@ path_glob : ident [ "::" path_glob ] ?
 ~~~~~~~~
 
 A _use declaration_ creates one or more local name bindings synonymous
-with some other [path](#paths). Usually an use declaration is used to
+with some other [path](#paths). Usually a `use` declaration is used to
 shorten the path required to refer to a module item.
 
 *Note*: unlike many languages, Rust's `use` declarations do *not* declare
