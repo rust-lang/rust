@@ -1157,9 +1157,14 @@ The definition expression of a constant is limited to expression forms that can 
 
 ### Traits
 
-A _trait item_ describes a set of method types. [_implementation
-items_](#implementations) can be used to provide implementations of
-those methods for a specific type.
+A _trait_ describes a set of method types.
+
+Traits can include default implementations of methods,
+written in terms of some unknown [`self` type](#self-types);
+the `self` type may either be completely unspecified,
+or constrained by some other [trait type](#trait-types).
+
+Traits are implemented for specific types through separate [implementations](#implementations).
 
 ~~~~
 # type surface = int;
@@ -1171,10 +1176,9 @@ trait shape {
 }
 ~~~~
 
-This defines a trait with two methods. All values that have
-[implementations](#implementations) of this trait in scope can
-have their `draw` and `bounding_box` methods called, using
-`value.bounding_box()` [syntax](#field-expressions).
+This defines a trait with two methods.
+All values that have [implementations](#implementations) of this trait in scope can have their `draw` and `bounding_box` methods called,
+using `value.bounding_box()` [syntax](#field-expressions).
 
 Type parameters can be specified for a trait to make it generic.
 These appear after the name, using the same syntax used in [generic
