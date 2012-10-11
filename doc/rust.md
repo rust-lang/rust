@@ -478,11 +478,8 @@ with values. `proto!` is an item, defining a new name.
 
 ## Macros
 
-User-defined syntax extensions are called "macros", and they can be defined
-with the `macro_rules!` syntax extension. User-defined macros can currently
-only be invoked in expression position.
+~~~~~~~~ {.ebnf .gram}
 
-~~~~ {.ebnf .gram}
 expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
 matcher : '(' matcher * ')' | '[' matcher * ']'
@@ -494,13 +491,18 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
             | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
             | non_special_token
 
-~~~~
+~~~~~~~~
+
+User-defined syntax extensions are called "macros", and they can be defined
+with the `macro_rules!` syntax extension. User-defined macros can currently
+only be invoked in expression position.
+
 (A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
 any token other than a delimiter or `$`.)
 
 Macro invocations are looked up by name, and each macro rule is tried in turn;
 the first successful match is transcribed. The matching and transcribing
-processes are close cousins, and will be described together:
+processes are closely related, and will be described together:
 
 ### Macro By Example
 
