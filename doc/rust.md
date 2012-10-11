@@ -1236,10 +1236,10 @@ Implementations are defined with the keyword `impl`.
 # type Point = {x: float, y: float};
 # type Surface = int;
 # type BoundingBox = {x: float, y: float, width: float, height: float};
-# trait Shape { fn draw(surface); fn bounding_box() -> BoundingBox; }
+# trait Shape { fn draw(Surface); fn bounding_box() -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
 
-type Circle = {radius: float, center: point};
+type Circle = {radius: float, center: Point};
 
 impl Circle: Shape {
     fn draw(s: Surface) { do_draw_circle(s, self); }
