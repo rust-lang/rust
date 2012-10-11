@@ -1366,7 +1366,7 @@ The indexing operator (`[]`) also auto-dereferences.
 
 # Vectors and strings
 
-Vectors are a contiguous section of memory containing zero or more
+A vector is a contiguous section of memory containing zero or more
 values of the same type. Like other types in Rust, vectors can be
 stored on the stack, the local heap, or the exchange heap. Borrowed
 pointers to vectors are also called 'slices'.
@@ -1411,10 +1411,10 @@ my_crayons += your_crayons;
 
 > ***Note:*** The above examples of vector addition use owned
 > vectors. Some operations on slices and stack vectors are
-> not well supported yet, owned vectors are often the most
+> not yet well-supported. Owned vectors are often the most
 > usable.
 
-Indexing into vectors is done with square brackets:
+Square brackets denote indexing into a vector:
 
 ~~~~
 # enum Crayon { Almond, AntiqueBrass, Apricot,
@@ -1429,7 +1429,7 @@ match crayons[0] {
 ~~~~
 
 The elements of a vector _inherit the mutability of the vector_,
-and as such individual elements may not be reassigned when the
+and as such, individual elements may not be reassigned when the
 vector lives in an immutable slot.
 
 ~~~ {.xfail-test}
@@ -1459,13 +1459,13 @@ mutable_crayons[0] = Apricot;
 This is a simple example of Rust's _dual-mode data structures_, also
 referred to as _freezing and thawing_.
 
-Strings are implemented with vectors of `u8`, though they have a distinct
-type. They support most of the same allocation options as
-vectors, though the string literal without a storage sigil, e.g.
-`"foo"` is treated differently than a comparable vector (`[foo]`).
-Whereas plain vectors are stack-allocated fixed-length vectors,
-plain strings are region pointers to read-only memory. Strings
-are always immutable.
+Strings are implemented with vectors of `u8`, though they have a
+distinct type. They support most of the same allocation options as
+vectors, though the string literal without a storage sigil (for
+example, `"foo"`) is treated differently than a comparable vector
+(`[foo]`).  Whereas plain vectors are stack-allocated fixed-length
+vectors, plain strings are region pointers to read-only
+memory. All strings are immutable.
 
 ~~~
 // A plain string is a slice to read-only (static) memory
@@ -1528,8 +1528,9 @@ if favorite_crayon_name.len() > 5 {
 # Closures
 
 Named functions, like those we've seen so far, may not refer to local
-variables declared outside the function - they do not "close over
-their environment". For example, you couldn't write the following:
+variables declared outside the function: they do not close over their
+environment (sometimes referred to as "capturing" variables in their
+environment). For example, you couldn't write the following:
 
 ~~~~ {.ignore}
 let foo = 10;
@@ -1552,10 +1553,10 @@ let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
 call_closure_with_ten(closure);
 ~~~~
 
-Closures begin with the argument list between bars and are followed by
+Closures begin with the argument list between vertical bars and are followed by
 a single expression. The types of the arguments are generally omitted,
 as is the return type, because the compiler can almost always infer
-them. In the rare case where the compiler needs assistance though, the
+them. In the rare case where the compiler needs assistance, though, the
 arguments and return types may be annotated.
 
 ~~~~
@@ -1575,9 +1576,10 @@ let mut max = 0;
 Stack closures are very efficient because their environment is
 allocated on the call stack and refers by pointer to captured
 locals. To ensure that stack closures never outlive the local
-variables to which they refer, they can only be used in argument
-position and cannot be stored in structures nor returned from
-functions. Despite the limitations stack closures are used
+variables to which they refer, stack closures are not
+first-class. That is, they can only be used in argument position; they
+cannot be stored in data structures or returned from
+functions. Despite these limitations, stack closures are used
 pervasively in Rust code.
 
 ## Managed closures
@@ -1586,12 +1588,12 @@ When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
 this purpose, Rust provides a type of closure that has an arbitrary
 lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
-type described earlier).
+type described earlier). This type of closure *is* first-class.
 
 A managed closure does not directly access its environment, but merely
 copies out the values that it closes over into a private data
 structure. This means that it can not assign to these variables, and
-will not 'see' updates to them.
+cannot observe updates to them.
 
 This code creates a closure that adds a given string to its argument,
 returns it from a function, and then calls it:
@@ -1608,12 +1610,12 @@ fn main() {
 }
 ~~~~
 
-This example uses the long closure syntax, `fn@(s: ~str) ...`,
-making the fact that we are declaring a box closure explicit. In
-practice boxed closures are usually defined with the short closure
-syntax introduced earlier, in which case the compiler will infer
-the type of closure. Thus our managed closure example could also
-be written:
+This example uses the long closure syntax, `fn@(s: ~str) ...`. Using
+this syntax makes it explicit that we are declaring a boxed
+closure. In practice, boxed closures are usually defined with the
+short closure syntax introduced earlier, in which case the compiler
+infers the type of closure. Thus our managed closure example could
+also be written:
 
 ~~~~
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
@@ -1626,18 +1628,18 @@ fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
 Owned closures, written `fn~` in analogy to the `~` pointer type,
 hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
-closures, but they also 'own' them—meaning no other code can access
+closures, but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks](#tasks).
 
 ## Closure compatibility
 
-A nice property of Rust closures is that you can pass any kind of
+Rust closures have a convenient subtyping property: you can pass any kind of
 closure (as long as the arguments and return types match) to functions
 that expect a `fn()`. Thus, when writing a higher-order function that
-wants to do nothing with its function argument beyond calling it, you
-should almost always specify the type of that argument as `fn()`, so
-that callers have the flexibility to pass whatever they want.
+only calls its function argument, and does nothing else with it, you
+should almost always declare the type of that argument as `fn()`. That way,
+callers may pass any kind of closure.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
@@ -1650,7 +1652,7 @@ call_twice(bare_function);
 ~~~~
 
 > ***Note:*** Both the syntax and the semantics will be changing
-> in small ways. At the moment they can be unsound in multiple
+> in small ways. At the moment they can be unsound in some
 > scenarios, particularly with non-copyable types.
 
 ## Do syntax
@@ -1658,7 +1660,7 @@ call_twice(bare_function);
 The `do` expression provides a way to treat higher-order functions
 (functions that take closures as arguments) as control structures.
 
-Consider this function which iterates over a vector of
+Consider this function that iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
@@ -1702,13 +1704,14 @@ do each(&[1, 2, 3]) |n| {
 ~~~~
 
 The call is prefixed with the keyword `do` and, instead of writing the
-final closure inside the argument list it is moved outside of the
-parenthesis where it looks visually more like a typical block of
+final closure inside the argument list, it appears outside of the
+parentheses, where it looks more like a typical block of
 code.
 
-`do` is often used to create tasks with the `task::spawn` function.
-`spawn` has the signature `spawn(fn: fn~())`. In other words, it
-is a function that takes an owned closure that takes no arguments.
+`do` is a convenient way to create tasks with the `task::spawn`
+function.  `spawn` has the signature `spawn(fn: fn~())`. In other
+words, it is a function that takes an owned closure that takes no
+arguments.
 
 ~~~~
 use task::spawn;
@@ -1731,10 +1734,10 @@ do spawn {
 
 ## For loops
 
-Most iteration in Rust is done with `for` loops. Like `do`,
-`for` is a nice syntax for doing control flow with closures.
-Additionally, within a `for` loop, `break`, `loop`, and `return`
-work just as they do with `while` and `loop`.
+The most common way to express iteration in Rust is with a `for`
+loop. Like `do`, `for` is a nice syntax for describing control flow
+with closures.  Additionally, within a `for` loop, `break`, `loop`,
+and `return` work just as they do with `while` and `loop`.
 
 Consider again our `each` function, this time improved to
 break early when the iteratee returns `false`:
@@ -1765,7 +1768,7 @@ each(&[2, 4, 8, 5, 16], |n| {
 ~~~~
 
 With `for`, functions like `each` can be treated more
-like builtin looping structures. When calling `each`
+like built-in looping structures. When calling `each`
 in a `for` loop, instead of returning `false` to break
 out of the loop, you just write `break`. To skip ahead
 to the next iteration, write `loop`.
@@ -1783,8 +1786,8 @@ for each(&[2, 4, 8, 5, 16]) |n| {
 
 As an added bonus, you can use the `return` keyword, which is not
 normally allowed in closures, in a block that appears as the body of a
-`for` loop — this will cause a return to happen from the outer
-function, not just the loop body.
+`for` loop: the meaning of `return` in such a block is to return from
+the enclosing function, not just the loop body.
 
 ~~~~
 # use each = vec::each;
