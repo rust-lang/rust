@@ -2620,7 +2620,7 @@ fn map<A: Copy, B: Copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
 Here, `first` has type `B`, referring to `map`'s `B` type parameter; and `rest` has
 type `~[B]`, a vector type with element type `B`.
 
-### Self type
+### Self types
 
 The special type `self` has a meaning within methods inside an
 impl item. It refers to the type of the implicit `self` argument. For
