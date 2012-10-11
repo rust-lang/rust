@@ -119,8 +119,6 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
         if cx.sess.verbose() {fmt!("&%u", idx)} else {~"&"}
       }
 
-      // FIXME(#3011) -- even if this arm is removed, exhaustiveness checking
-      // does not fail
       br_cap_avoid(id, br) => {
         if cx.sess.verbose() {
             fmt!("br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br))
