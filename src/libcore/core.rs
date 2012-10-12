@@ -33,7 +33,7 @@ pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 pub use ops::{Shl, Shr, Index};
 
 #[cfg(test)]
-extern mod coreops(name = "core", vers = "0.4");
+extern mod coreops(name = "core", vers = "0.5");
 
 #[cfg(test)]
 pub use coreops::ops::{Const, Copy, Send, Owned};
@@ -72,6 +72,6 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    extern mod std(vers = "0.4");
+    extern mod std(vers = "0.5");
     pub use std::test;
 }
