@@ -3020,7 +3020,7 @@ fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
-      None => fail (#fmt("get_field: ty doesn't have a field %s",
+      None => fail (fmt!("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -3335,7 +3335,7 @@ fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@ast::method] {
                 match ast_util::split_trait_methods(ms) {
                    (_, p) => p
                 },
-            _ => cx.sess.bug(#fmt("provided_trait_methods: %? is not a trait",
+            _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
                                   id))
         }
     }

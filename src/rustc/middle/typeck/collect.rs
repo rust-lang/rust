@@ -266,7 +266,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     }
 
     if impl_m.tps.len() != trait_m.tps.len() {
-        tcx.sess.span_err(sp, #fmt("method `%s` \
+        tcx.sess.span_err(sp, fmt!("method `%s` \
            has %u type %s, but its trait declaration has %u type %s",
            tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
            pluralize(impl_m.tps.len(), ~"parameter"),
@@ -291,7 +291,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         // Would be nice to use the ty param names in the error message,
         // but we don't have easy access to them here
         if impl_param_bounds.len() != trait_param_bounds.len() {
-           tcx.sess.span_err(sp, #fmt("in method `%s`, \
+           tcx.sess.span_err(sp, fmt!("in method `%s`, \
              type parameter %u has %u %s, but the same type \
              parameter in its trait declaration has %u %s",
              tcx.sess.str_of(trait_m.ident),

@@ -162,7 +162,7 @@ fn item_family(item: ebml::Doc) -> Family {
       'g' => PublicField,
       'j' => PrivateField,
       'N' => InheritedField,
-       c => fail (#fmt("unexpected family char: %c", c))
+       c => fail (fmt!("unexpected family char: %c", c))
     }
 }
 
@@ -705,7 +705,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                            self_ty: self_ty,
                            vis: ast::public});
     }
-    #debug("get_trait_methods: }");
+    debug!("get_trait_methods: }");
     @result
 }
 

@@ -303,8 +303,8 @@ impl gather_loan_ctxt {
                   _ => {
                     self.bccx.tcx.sess.span_bug(
                         cmt.span,
-                        #fmt["loans required but scope is scope_region is %s",
-                             region_to_str(self.tcx(), scope_r)]);
+                        fmt!("loans required but scope is scope_region is %s",
+                             region_to_str(self.tcx(), scope_r)));
                   }
                 }
               }

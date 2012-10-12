@@ -157,7 +157,7 @@ fn fold_enum(
 
                     attr_parser::parse_desc(ast_variant.node.attrs)
                   }
-                  _ => fail #fmt("Enum variant %s has id that's not bound \
+                  _ => fail fmt!("Enum variant %s has id that's not bound \
                          to an enum item", variant.name)
                 }
             };

@@ -745,7 +745,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         // Index tydesc by addrspace.
         if ti.addrspace > gc_box_addrspace {
             let llty = T_ptr(ccx.tydesc_type);
-            let addrspace_name = #fmt("_gc_addrspace_metadata_%u",
+            let addrspace_name = fmt!("_gc_addrspace_metadata_%u",
                                       ti.addrspace as uint);
             let addrspace_gvar = str::as_c_str(addrspace_name, |buf| {
                 llvm::LLVMAddGlobal(ccx.llmod, llty, buf)

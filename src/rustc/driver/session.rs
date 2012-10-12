@@ -216,7 +216,7 @@ impl session {
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     fn impossible_case(sp: span, msg: &str) -> ! {
-        self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
+        self.span_bug(sp, fmt!("Impossible case reached: %s", msg));
     }
     fn verbose() -> bool { self.debugging_opt(verbose) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }

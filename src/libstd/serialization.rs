@@ -375,7 +375,7 @@ pub impl<T: Deserializable> Option<T>: Deserializable {
                 match i {
                   0 => None,
                   1 => Some(d.read_enum_variant_arg(0u, || deserialize(d))),
-                  _ => fail(#fmt("Bad variant for option: %u", i))
+                  _ => fail(fmt!("Bad variant for option: %u", i))
                 }
             }
         }
