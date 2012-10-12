@@ -2089,30 +2089,16 @@ in the `expr` following `do`.
 If the `expr` is a [path expression](#path-expressions), it is parsed as though it is a call expression.
 If the `expr` is a [field expression](#field-expressions), it is parsed as though it is a method call expression.
 
-Additionally, any occurrence of a [return expression](#return-expressions)
-inside the `block` of a `do` expression is rewritten
-as a reference to an (anonymous) flag set in the caller's environment,
-which is checked on return from the `expr` and, if set,
-causes a corresponding return from the caller.
-In this way, the meaning of `return` statements in language built-in control blocks is preserved,
-if they are rewritten using lambda functions and `do` expressions as abstractions.
-
-Therefore the two calls to `f` in this example are equivalent.
-Both cause an early return from the caller's frame:
+In this example, both calls to `f` are equivalent:
 
 ~~~~
 # fn f(f: fn(int)) { }
 # fn g(i: int) { }
 
-{
-  let mut _early_ret = false;
-  f(|j| { g(j); _early_ret = true; });
-  if _early_ret { return; }
-}
+f(|j| g(j));
 
 do f |j| {
     g(j);
-    return;
 }
 ~~~~
 
@@ -2130,7 +2116,15 @@ suited to passing the `block` function to a higher-order function implementing a
 Like a `do` expression, a `return` expression inside a `for` expresison is rewritten,
 to access a local flag that causes an early return in the caller.
 
-Additionally, [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
+Additionally, any occurrence of a [return expression](#return-expressions)
+inside the `block` of a `for` expression is rewritten
+as a reference to an (anonymous) flag set in the caller's environment,
+which is checked on return from the `expr` and, if set,
+causes a corresponding return from the caller.
+In this way, the meaning of `return` statements in language built-in control blocks is preserved,
+if they are rewritten using lambda functions and `do` expressions as abstractions.
+
+Like `return` expressions, any [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
 are rewritten inside `for` expressions, with a combination of local flag variables,
 and early boolean-valued returns from the `block` function,
 such that the meaning of `break` and `loop` is preserved in a primitive loop
@@ -2143,7 +2137,7 @@ An example a for loop:
 # fn bar(f: foo) { }
 # let a = 0, b = 0, c = 0;
 
-let v: [foo] = [a, b, c];
+let v: &[foo] = &[a, b, c];
 
 for v.each |e| {
     bar(*e);
@@ -2530,7 +2524,7 @@ The kind of a vector type depends on the kind of its member type, as with other 
 An example of a vector type and its use:
 
 ~~~~
-let v: &[int] = [7, 5, 3];
+let v: &[int] = &[7, 5, 3];
 let i: int = v[2];
 assert (i == 3);
 ~~~~
@@ -2701,16 +2695,16 @@ trait Printable {
   fn to_str() -> ~str;
 }
 
-impl ~str: Printable {
-  fn to_str() -> ~str { self }
+impl int: Printable {
+  fn to_str() -> ~str { int::to_str(self, 10) }
 }
 
-fn print(a: Printable) {
+fn print(a: @Printable) {
    io::println(a.to_str());
 }
 
 fn main() {
-   print(~"meow" as ~Printable);
+   print(@10 as @Printable);
 }
 ~~~~~~~~
 
