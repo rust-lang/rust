@@ -3,13 +3,7 @@
 
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;
-
-// FIXME: this is a near-duplicate of code in core::vec.
-type unboxed_vec_repr = {
-    mut fill: uint,
-    mut alloc: uint,
-    data: u8
-};
+use vec::UnboxedVecRepr;
 
 #[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
 
@@ -238,8 +232,8 @@ impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V>: TyVisitor {
     }
 
     fn visit_unboxed_vec(mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<unboxed_vec_repr>();
-        // FIXME: Inner really has to move its own pointers on this one.
+        self.align_to::<UnboxedVecRepr>();
+        // FIXME (#3732): Inner really has to move its own pointers on this one.
         // or else possibly we could have some weird interface wherein we
         // read-off a word from inner's pointers, but the read-word has to
         // always be the same in all sub-pointers? Dubious.
@@ -570,7 +564,7 @@ impl my_visitor: TyVisitor {
 
     fn visit_enter_enum(_n_variants: uint,
                         _sz: uint, _align: uint) -> bool {
-        // FIXME: this needs to rewind between enum variants, or something.
+        // FIXME (#3732): this needs to rewind between enum variants, or something.
         true
     }
     fn visit_enter_enum_variant(_variant: uint,
