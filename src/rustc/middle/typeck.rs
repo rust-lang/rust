@@ -46,7 +46,6 @@ use syntax::ast_map::node_id_to_str;
 use syntax::ast_util::{local_def, respan, split_trait_methods};
 use syntax::visit;
 use metadata::csearch;
-use driver::session::session;
 use util::common::may_break;
 use syntax::codemap::span;
 use pat_util::{pat_is_variant, pat_id_map, PatIdMap};

@@ -122,7 +122,7 @@ impl categorization : cmp::Eq {
 enum ptr_kind {
     uniq_ptr,
     gc_ptr,
-    region_ptr(ty::region),
+    region_ptr(ty::Region),
     unsafe_ptr
 }
 
@@ -993,7 +993,7 @@ impl &mem_categorization_ctxt {
         }
     }
 
-    fn region_to_str(r: ty::region) -> ~str {
+    fn region_to_str(r: ty::Region) -> ~str {
         region_to_str(self.tcx, r)
     }
 }

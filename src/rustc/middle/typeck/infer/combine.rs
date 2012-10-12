@@ -44,7 +44,7 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-use to_str::to_str;
+use to_str::ToStr;
 use ty::{FnTyBase, FnMeta, FnSig};
 
 trait combine {
@@ -72,8 +72,8 @@ trait combine {
     fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto>;
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn purities(a: purity, b: purity) -> cres<purity>;
-    fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region>;
-    fn regions(a: ty::region, b: ty::region) -> cres<ty::region>;
+    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
+    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
     fn vstores(vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
 }
@@ -103,7 +103,7 @@ fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
     }
 }
 
-fn eq_regions<C: combine>(self: &C, a: ty::region, b: ty::region) -> ures {
+fn eq_regions<C: combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
     debug!("eq_regions(%s, %s)",
            a.to_str(self.infcx()),
            b.to_str(self.infcx()));
@@ -127,8 +127,8 @@ fn eq_regions<C: combine>(self: &C, a: ty::region, b: ty::region) -> ures {
 
 fn eq_opt_regions<C:combine>(
     self: &C,
-    a: Option<ty::region>,
-    b: Option<ty::region>) -> cres<Option<ty::region>> {
+    a: Option<ty::Region>,
+    b: Option<ty::Region>) -> cres<Option<ty::Region>> {
 
     match (a, b) {
       (None, None) => {
@@ -160,9 +160,9 @@ fn super_substs<C:combine>(
     fn relate_region_param<C:combine>(
         self: &C,
         did: ast::def_id,
-        a: Option<ty::region>,
-        b: Option<ty::region>)
-        -> cres<Option<ty::region>>
+        a: Option<ty::Region>,
+        b: Option<ty::Region>)
+        -> cres<Option<ty::Region>>
     {
         let polyty = ty::lookup_item_type(self.infcx().tcx, did);
         match (polyty.region_param, a, b) {

@@ -225,12 +225,12 @@ priv impl ext_ctxt {
     }
 
     fn path_tps(span: span, strs: ~[ast::ident],
-                tps: ~[@ast::ty]) -> @ast::path {
+                tps: ~[@ast::Ty]) -> @ast::path {
         @{span: span, global: false, idents: strs, rp: None, types: tps}
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
-               tps: ~[@ast::ty]) -> @ast::ty {
+               tps: ~[@ast::Ty]) -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
           span: span}
@@ -334,7 +334,7 @@ fn mk_impl(
     ident: ast::ident,
     path: @ast::path,
     tps: ~[ast::ty_param],
-    f: fn(@ast::ty) -> @ast::method
+    f: fn(@ast::Ty) -> @ast::method
 ) -> @ast::item {
     // All the type parameters need to bound to the trait.
     let trait_tps = do tps.map |tp| {
@@ -502,7 +502,7 @@ fn mk_ser_method(
 fn mk_deser_method(
     cx: ext_ctxt,
     span: span,
-    ty: @ast::ty,
+    ty: @ast::Ty,
     deser_body: ast::blk
 ) -> @ast::method {
     let deser_bound = cx.ty_path(

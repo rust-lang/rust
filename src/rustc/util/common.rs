@@ -1,6 +1,5 @@
 use std::map::HashMap;
 use syntax::ast;
-use ast::{ty, pat};
 use syntax::codemap::{span};
 use syntax::visit;
 use syntax::print;

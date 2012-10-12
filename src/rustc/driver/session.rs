@@ -127,24 +127,24 @@ type options =
 
 type crate_metadata = {name: ~str, data: ~[u8]};
 
-type session_ = {targ_cfg: @config,
+type Session_ = {targ_cfg: @config,
                  opts: @options,
-                 cstore: metadata::cstore::cstore,
+                 cstore: metadata::cstore::CStore,
                  parse_sess: parse_sess,
-                 codemap: codemap::codemap,
+                 codemap: codemap::CodeMap,
                  // For a library crate, this is always none
                  mut main_fn: Option<(node_id, codemap::span)>,
                  span_diagnostic: diagnostic::span_handler,
-                 filesearch: filesearch::filesearch,
+                 filesearch: filesearch::FileSearch,
                  mut building_library: bool,
                  working_dir: Path,
                  lint_settings: lint::lint_settings};
 
-enum session {
-    session_(@session_)
+enum Session {
+    Session_(@Session_)
 }
 
-impl session {
+impl Session {
     fn span_fatal(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
@@ -270,7 +270,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: Copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
+fn expect<T: Copy>(sess: Session, opt: Option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

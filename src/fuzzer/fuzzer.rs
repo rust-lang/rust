@@ -104,7 +104,7 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     }
 }
 
-fn safe_to_steal_ty(t: @ast::ty, tm: test_mode) -> bool {
+fn safe_to_steal_ty(t: @ast::Ty, tm: test_mode) -> bool {
     // Restrictions happen to be the same.
     safe_to_replace_ty(t.node, tm)
 }
@@ -119,16 +119,16 @@ fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
     } else {/* now my indices are wrong :( */ }
 }
 
-fn stash_ty_if(c: fn@(@ast::ty, test_mode)->bool,
-               es: @mut ~[ast::ty],
-               e: @ast::ty,
+fn stash_ty_if(c: fn@(@ast::Ty, test_mode)->bool,
+               es: @mut ~[ast::Ty],
+               e: @ast::Ty,
                tm: test_mode) {
     if c(e, tm) {
         es.push(*e);
     } else {/* now my indices are wrong :( */ }
 }
 
-type stolen_stuff = {exprs: ~[ast::expr], tys: ~[ast::ty]};
+type stolen_stuff = {exprs: ~[ast::expr], tys: ~[ast::Ty]};
 
 fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
     let exprs = @mut ~[];
@@ -195,7 +195,7 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
 
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty,
+fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
                        tm: test_mode) -> ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_ty_rep(j_: @mut uint, i_: uint, newty_: ast::ty_,
@@ -225,7 +225,7 @@ fn as_str(f: fn@(+x: io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
-fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
+fn check_variants_of_ast(crate: ast::crate, codemap: codemap::CodeMap,
                          filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
@@ -239,7 +239,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
 
 fn check_variants_T<T: Copy>(
   crate: ast::crate,
-  codemap: codemap::codemap,
+  codemap: codemap::CodeMap,
   filename: &Path,
   thing_label: ~str,
   things: ~[T],
@@ -444,7 +444,7 @@ fn parse_and_print(code: @~str) -> ~str {
 
 fn has_raw_pointers(c: ast::crate) -> bool {
     let has_rp = @mut false;
-    fn visit_ty(flag: @mut bool, t: @ast::ty) {
+    fn visit_ty(flag: @mut bool, t: @ast::Ty) {
         match t.node {
           ast::ty_ptr(_) => { *flag = true; }
           _ => { }

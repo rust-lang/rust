@@ -6,7 +6,7 @@ use base::*;
 
 use fold::*;
 use ast_util::respan;
-use ast::{ident, path, ty, blk_, expr, expr_path,
+use ast::{ident, path, Ty, blk_, expr, expr_path,
              expr_vec, expr_mac, mac_invoc, node_id, expr_index};
 
 export add_new_extension;
@@ -29,7 +29,7 @@ enum matchable {
     match_expr(@expr),
     match_path(@path),
     match_ident(ast::spanned<ident>),
-    match_ty(@ty),
+    match_ty(@Ty),
     match_block(ast::blk),
     match_exact, /* don't bind anything, just verify the AST traversal */
 }

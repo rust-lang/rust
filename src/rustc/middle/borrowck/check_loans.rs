@@ -137,7 +137,7 @@ impl check_loan_ctxt {
     }
 
     fn walk_loans(scope_id: ast::node_id,
-                  f: fn(v: &loan) -> bool) {
+                  f: fn(v: &Loan) -> bool) {
         let mut scope_id = scope_id;
         let region_map = self.tcx().region_map;
         let req_loan_map = self.req_maps.req_loan_map;
@@ -160,7 +160,7 @@ impl check_loan_ctxt {
 
     fn walk_loans_of(scope_id: ast::node_id,
                      lp: @loan_path,
-                     f: fn(v: &loan) -> bool) {
+                     f: fn(v: &Loan) -> bool) {
         for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
                 if !f(loan) { return; }

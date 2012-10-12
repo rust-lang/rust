@@ -6,7 +6,7 @@ use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
-use middle::ty::{re_bound, re_free, re_scope, re_var, re_static, region};
+use middle::ty::{re_bound, re_free, re_scope, re_var, re_static, Region};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
@@ -21,11 +21,10 @@ use syntax::print::pprust::{path_to_str, proto_to_str,
                             mode_to_str, purity_to_str};
 use syntax::{ast, ast_util};
 use syntax::ast_map;
-use driver::session::session;
 
 fn note_and_explain_region(cx: ctxt,
                            prefix: ~str,
-                           region: ty::region,
+                           region: ty::Region,
                            suffix: ~str) {
     match explain_region_and_span(cx, region) {
       (str, Some(span)) => {
@@ -42,13 +41,13 @@ fn note_and_explain_region(cx: ctxt,
 
 /// Returns a string like "the block at 27:31" that attempts to explain a
 /// lifetime in a way it might plausibly be understood.
-fn explain_region(cx: ctxt, region: ty::region) -> ~str {
+fn explain_region(cx: ctxt, region: ty::Region) -> ~str {
   let (res, _) = explain_region_and_span(cx, region);
   return res;
 }
 
 
-fn explain_region_and_span(cx: ctxt, region: ty::region)
+fn explain_region_and_span(cx: ctxt, region: ty::Region)
     -> (~str, Option<span>)
 {
     return match region {
@@ -172,7 +171,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
-fn region_to_str(cx: ctxt, region: region) -> ~str {
+fn region_to_str(cx: ctxt, region: Region) -> ~str {
     if cx.sess.verbose() {
         return fmt!("&%?", region);
     }
@@ -381,7 +380,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
 fn parameterized(cx: ctxt,
                  base: ~str,
-                 self_r: Option<ty::region>,
+                 self_r: Option<ty::Region>,
                  tps: ~[ty::t]) -> ~str {
 
     let r_str = match self_r {

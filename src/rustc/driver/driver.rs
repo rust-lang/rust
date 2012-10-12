@@ -1,6 +1,6 @@
 // -*- rust -*-
 use metadata::{creader, cstore, filesearch};
-use session::{session, session_, OptLevel, No, Less, Default, Aggressive};
+use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
 use syntax::parse;
 use syntax::{ast, codemap};
 use syntax::attr;
@@ -32,7 +32,7 @@ fn source_name(input: input) -> ~str {
     }
 }
 
-fn default_configuration(sess: session, argv0: ~str, input: input) ->
+fn default_configuration(sess: Session, argv0: ~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -70,7 +70,7 @@ fn append_configuration(cfg: ast::crate_cfg, name: ~str) -> ast::crate_cfg {
     }
 }
 
-fn build_configuration(sess: session, argv0: ~str, input: input) ->
+fn build_configuration(sess: Session, argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -106,7 +106,7 @@ enum input {
     str_input(~str)
 }
 
-fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
+fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(file) => {
@@ -145,7 +145,7 @@ impl compile_upto : cmp::Eq {
     pure fn ne(other: &compile_upto) -> bool { !self.eq(other) }
 }
 
-fn compile_upto(sess: session, cfg: ast::crate_cfg,
+fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
                 outputs: Option<output_filenames>)
     -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
@@ -277,7 +277,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: Some(ty_cx)};
 }
 
-fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
+fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
                  outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
@@ -287,7 +287,7 @@ fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
+fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -571,7 +571,7 @@ fn build_session_options(binary: ~str,
 }
 
 fn build_session(sopts: @session::options,
-                 demitter: diagnostic::emitter) -> session {
+                 demitter: diagnostic::emitter) -> Session {
     let codemap = codemap::new_codemap();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -581,11 +581,10 @@ fn build_session(sopts: @session::options,
 }
 
 fn build_session_(sopts: @session::options,
-                  cm: codemap::codemap,
+                  cm: codemap::CodeMap,
                   demitter: diagnostic::emitter,
                   span_diagnostic_handler: diagnostic::span_handler)
-               -> session {
-
+               -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
@@ -595,7 +594,7 @@ fn build_session_(sopts: @session::options,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
-    session_(@{targ_cfg: target_cfg,
+    Session_(@{targ_cfg: target_cfg,
                opts: sopts,
                cstore: cstore,
                parse_sess: p_s,
@@ -609,7 +608,7 @@ fn build_session_(sopts: @session::options,
                lint_settings: lint_settings})
 }
 
-fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
+fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
     match name {
       ~"normal" => ppm_normal,
       ~"expanded" => ppm_expanded,
@@ -652,7 +651,7 @@ type output_filenames = @{out_filename:Path, obj_filename:Path};
 fn build_output_filenames(input: input,
                           odir: &Option<Path>,
                           ofile: &Option<Path>,
-                          sess: session)
+                          sess: Session)
         -> output_filenames {
     let obj_path;
     let out_path;
@@ -728,7 +727,7 @@ fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     fail;
 }
 
-fn list_metadata(sess: session, path: &Path, out: io::Writer) {
+fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
     metadata::loader::list_file_metadata(
         sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

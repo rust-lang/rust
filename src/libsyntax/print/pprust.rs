@@ -1,5 +1,5 @@
 use parse::{comments, lexer, token};
-use codemap::codemap;
+use codemap::CodeMap;
 use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
 use pp::{consistent, inconsistent, eof};
 use ast::{required, provided};
@@ -24,7 +24,7 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: Option<codemap>,
+      cm: Option<CodeMap>,
       intr: @token::ident_interner,
       comments: Option<~[comments::cmnt]>,
       literals: Option<~[comments::lit]>,
@@ -45,7 +45,7 @@ fn end(s: ps) {
 
 fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
-             cm: None::<codemap>,
+             cm: None::<CodeMap>,
              intr: intr,
              comments: None::<~[comments::cmnt]>,
              literals: None::<~[comments::lit]>,
@@ -63,7 +63,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, intr: @ident_interner,
+fn print_crate(cm: CodeMap, intr: @ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {
@@ -91,7 +91,7 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty, intr: @ident_interner) -> ~str {
+fn ty_to_str(ty: @ast::Ty, intr: @ident_interner) -> ~str {
     to_str(ty, print_type, intr)
 }
 
@@ -348,11 +348,11 @@ fn print_region(s: ps, region: @ast::region, sep: ~str) {
     word(s.s, sep);
 }
 
-fn print_type(s: ps, &&ty: @ast::ty) {
+fn print_type(s: ps, &&ty: @ast::Ty) {
     print_type_ex(s, ty, false);
 }
 
-fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
+fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     match ty.node {

@@ -10,7 +10,7 @@ trait proto_parser {
     fn parse_state(proto: protocol);
 }
 
-impl parser: proto_parser {
+impl parser::Parser: proto_parser {
     fn parse_proto(id: ~str) -> protocol {
         let proto = protocol(id, self.span);
 
