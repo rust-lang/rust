@@ -75,7 +75,6 @@ mod test_stmt_single_attr_outer {
         #[attr = "val"]
         fn f() { }
 
-        /* FIXME: Issue #493
         #[attr = "val"]
         mod mod1 {
             #[legacy_exports];
@@ -86,7 +85,6 @@ mod test_stmt_single_attr_outer {
         extern mod rustrt {
             #[legacy_exports];
         }
-        */
     }
 }
 
