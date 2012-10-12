@@ -30,7 +30,7 @@ fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::to_bytes(data);
     let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                             vec::len(bytes) as c_uint, ptr::null());
-    return as_hex(vec::raw::from_buf(hash, 20));
+    return as_hex(vec::from_buf(hash, 20));
 }
 
 fn main(args: ~[~str]) {
@@ -132,7 +132,7 @@ fn sha1(data: ~str) -> ~str {
         let bytes = str::to_bytes(data);
         let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                                 vec::len(bytes), ptr::null());
-        return as_hex(vec::raw::from_buf(hash, 20));
+        return as_hex(vec::from_buf(hash, 20));
     }
 }
 ~~~~
@@ -177,7 +177,7 @@ Let's look at our `sha1` function again.
 let bytes = str::to_bytes(data);
 let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
-return as_hex(vec::raw::from_buf(hash, 20));
+return as_hex(vec::from_buf(hash, 20));
 # }
 # }
 ~~~~
@@ -198,7 +198,7 @@ unsafe null pointer of type `*u8`. (Rust generics are awesome
 like that: they can take the right form depending on the type that they
 are expected to return.)
 
-Finally, `vec::raw::from_buf` builds up a new `~[u8]` from the
+Finally, `vec::from_buf` builds up a new `~[u8]` from the
 unsafe pointer that `SHA1` returned. SHA1 digests are always
 twenty bytes long, so we can pass `20` for the length of the new
 vector.
