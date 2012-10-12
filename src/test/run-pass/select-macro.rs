@@ -26,7 +26,7 @@ macro_rules! select_if (
     } => {
         if $index == $count {
             match move pipes::try_recv($port) {
-              $(Some($message($($(ref $x,)+)* move next)) => {
+              $(Some($message($($(move $x,)+)* move next)) => {
                 let $next = next;
                 $e
               })+
