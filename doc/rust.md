@@ -501,14 +501,13 @@ only be invoked in expression position.
 any token other than a delimiter or `$`.)
 
 Macro invocations are looked up by name, and each macro rule is tried in turn;
-the first successful match is transcribed. The matching and transcribing
+the first successful match is transcribed. The matching and transcription
 processes are closely related, and will be described together:
 
 ### Macro By Example
 
-Everything that does not begin with a `$` is matched and transcirbed
-literally, including delimiters. For parsing reasons, they must be matched,
-but they are otherwise not special.
+The macro expander matches and transcribes every token that does not begin with a `$` literally, including delimiters.
+For parsing reasons, delimiters must be balanced, but they are otherwise not special.
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the
 Rust syntax named by _designator_. Valid designators are `item`, `block`,
@@ -517,11 +516,11 @@ are the right-hand side and the left-hand side respectively of the `=>` in
 macro rules. In the transcriber, the designator is already known, and so only
 the name of a matched nonterminal comes after the dollar sign.
 
-In bothe the matcher and transcriber, the Kleene star-like operator,
-consisting of `$` and parens, optionally followed by a separator token,
-followed by `*` or `+`, indicates repetition. (`*` means zero or more
-repetitions, `+` means at least one repetition. The parens are not matched or
-transcribed). On the matcher side, a name is bound to _all_ of the names it
+In both the matcher and transcriber, the Kleene star-like operator indicates repetition.
+The Kleene star operator consists of `$` and parens, optionally followed by a separator token, followed by `*` or `+`.
+`*` means zero or more repetitions, `+` means at least one repetition.
+The parens are not matched or transcribed.
+On the matcher side, a name is bound to _all_ of the names it
 matches, in a structure that mimics the structure of the repetition
 encountered on a successful match. The job of the transcriber is to sort that
 structure out.
@@ -550,19 +549,16 @@ Rust syntax is restricted in two ways:
 1. The parser will always parse as much as possible. If it attempts to match
 `$i:expr [ , ]` against `8 [ , ]`, it will attempt to parse `i` as an array
 index operation and fail. Adding a separator can solve this problem.
-2. The parser must have eliminated all ambiguity by the time it reaches a
-`$` _name_ `:` _designator_. This most often affects them when they occur in
-the beginning of, or immediately after, a `$(...)*`; requiring a distinctive
-token in front can solve the problem.
+2. The parser must have eliminated all ambiguity by the time it reaches a `$` _name_ `:` _designator_.
+This requirement most often affects name-designator pairs when they occur at the beginning of, or immediately after, a `$(...)*`; requiring a distinctive token in front can solve the problem.
 
 
 ## Syntax extensions useful for the macro author
 
 * `log_syntax!` : print out the arguments at compile time
-* `trace_macros!` : supply `true` or `false` to enable or disable printing
-of the macro expansion process.
-* `ident_to_str!` : turns the identifier argument into a string literal
-* `concat_idents!` : creates a new identifier by concatenating its arguments
+* `trace_macros!` : supply `true` or `false` to enable or disable printing of the macro expansion process.
+* `ident_to_str!` : turn the identifier argument into a string literal
+* `concat_idents!` : create a new identifier by concatenating the arguments
 
 
 
