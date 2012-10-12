@@ -42,7 +42,7 @@ fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
             },
 
             do_baz(b) -> _next {
-                if *b { debug!("true") } else { debug!("false") }
+                if b { debug!("true") } else { debug!("false") }
             }
         }
     )
