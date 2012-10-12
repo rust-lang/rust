@@ -2686,8 +2686,8 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type binop = fn(int,int) -> int;
-let bo: binop = add;
+type Binop = fn(int,int) -> int;
+let bo: Binop = add;
 x = bo(5,7);
 ~~~~~~~~
 
@@ -2697,24 +2697,24 @@ Every trait item (see [traits](#traits)) defines a type with the same name
 as the trait. For a trait `T`, cast expressions introduce values of type `T`:
 
 ~~~~~~~~
-trait printable {
+trait Printable {
   fn to_str() -> ~str;
 }
 
-impl ~str: printable {
+impl ~str: Printable {
   fn to_str() -> ~str { self }
 }
 
-fn print(a: printable) {
+fn print(a: Printable) {
    io::println(a.to_str());
 }
 
 fn main() {
-   print(~"meow" as printable);
+   print(~"meow" as ~Printable);
 }
 ~~~~~~~~
 
-In this example, the trait `printable` occurs as a type in both the type signature of
+In this example, the trait `Printable` occurs as a type in both the type signature of
 `print`, and the cast expression in `main`.
 
 ### Type parameters
@@ -2740,16 +2740,16 @@ impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
 ~~~~~~
-trait printable {
+trait Printable {
   fn to_str() -> ~str;
 }
 
-impl ~str: printable {
+impl ~str: Printable {
   fn to_str() -> ~str { self }
 }
 ~~~~~~
 
-`self` refers to the value of type `str` that is the receiver for a
+`self` refers to the value of type `~str` that is the receiver for a
 call to the method `to_str`.
 
 ## Type kinds
