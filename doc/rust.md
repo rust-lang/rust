@@ -2748,40 +2748,45 @@ call to the method `to_str`.
 
 ## Type kinds
 
-Types in Rust are categorized into three kinds, based on whether they
-allow copying of their values, and sending to different tasks. The
-kinds are:
+Types in Rust are categorized into kinds, based on various properties of the components of the type.
+The kinds are:
 
-Sendable
-  : Values with a sendable type can be safely sent to another task.
+`Const`
+  : Types of this kind are deeply immutable;
+    they contain no mutable memory locations directly or indirectly via pointers.
+`Send`
+  : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
     structural types containing only other sendable types.
-Copyable
+`Owned`
+  : Types of this kind do not contain any borrowed pointers;
+    this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).    
+`Copy`
   : This kind includes all types that can be copied. All types with
     sendable kind are copyable, as are managed boxes, managed closures,
     trait types, and structural types built out of these.
-Noncopyable
-  : [Resource](#resources) types, and every type that includes a
-    resource without storing it in a managed box, may not be copied.
-    Types of sendable or copyable type can always be used in places
-    where a noncopyable type is expected, so in effect this kind
-    includes all types.
+_Default_
+  : Types with destructors, closure environments,
+    and various other _non-first-class_ types,
+    are not copyable at all.
+    Such types can usually only be accessed through pointers,
+    or in some cases, moved between mutable locations.
 
-These form a hierarchy. The noncopyable kind is the widest, including
-all types in the language. The copyable kind is a subset of that, and
-the sendable kind is a subset of the copyable kind.
+Kinds can be supplied as _bounds_ on type parameters, like traits,
+in which case the parameter is constrained to types satisfying that kind.
 
-Any operation that causes a value to be copied requires the type of
-that value to be of copyable kind. Type parameter types are assumed to
-be noncopyable, unless one of the special bounds `send` or `copy` is
-declared for it. For example, this is not a valid program:
+By default, type parameters do not carry any assumed kind-bounds at all.
+
+Any operation that causes a value to be copied requires the type of that value to be of copyable kind,
+so the `Copy` bound is frequently required on function type parameters.
+For example, this is not a valid program:
 
 ~~~~{.xfail-test}
 fn box<T>(x: T) -> @T { @x }
 ~~~~
 
-Putting `x` into a managed box involves copying, and the `T` parameter
-is assumed to be noncopyable. To change that, a bound is declared:
+Putting `x` into a managed box involves copying, and the `T` parameter has the default (non-copyable) kind.
+To change that, a bound is declared:
 
 ~~~~
 fn box<T: Copy>(x: T) -> @T { @x }
