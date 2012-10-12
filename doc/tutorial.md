@@ -216,7 +216,7 @@ while count < 10 {
 
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
-name. 
+name.
 
 ~~~~
 let monster_size: float = 57.8;
@@ -380,6 +380,10 @@ of:
 `[T]`                     Vector with unknown size (also called a slice)
 `[mut T]`                 Mutable vector with unknown size
 ------------------------- -----------------------------------------------
+
+> ***Note***: In the future, mutability for vectors may be defined by
+> the slot that contains the vector, not the type of the vector itself,
+> deprecating [mut T] syntax.
 
 In function types, the return type is specified with an arrow, as in
 the type `fn() -> bool` or the function declaration `fn foo() -> bool
@@ -1951,7 +1955,7 @@ trait Printable {
 ~~~~
 
 Traits may be implemented for specific types with [impls]. An impl
-that implements a trait includes the name of the trait at the start of 
+that implements a trait includes the name of the trait at the start of
 the definition, as in the following impls of `Printable` for `int`
 and `~str`.
 
