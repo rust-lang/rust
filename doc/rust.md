@@ -908,10 +908,10 @@ declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
 ~~~~ {.xfail-test}
-fn iter<T>(seq: ~[T], f: fn(T)) {
+fn iter<T>(seq: &[T], f: fn(T)) {
     for seq.each |elt| { f(elt); }
 }
-fn map<T, U>(seq: ~[T], f: fn(T) -> U) -> ~[U] {
+fn map<T, U>(seq: &[T], f: fn(T) -> U) -> ~[U] {
     let mut acc = ~[];
     for seq.each |elt| { acc.push(f(elt)); }
     acc
@@ -1608,9 +1608,9 @@ indicate that the elements of the resulting vector may be mutated.
 When no mutability is specified, the vector is immutable.
 
 ~~~~
-~[1, 2, 3, 4];
-~["a", "b", "c", "d"];
-~[mut 0u8, 0u8, 0u8, 0u8];
+[1, 2, 3, 4];
+["a", "b", "c", "d"];
+[mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
 ### Index expressions
@@ -1631,9 +1631,9 @@ task in a _failing state_.
 ~~~~
 # do task::spawn_unlinked {
 
-(~[1, 2, 3, 4])[0];
-(~[mut 'x', 'y'])[1] = 'z';
-(~["a", "b"])[10]; // fails
+([1, 2, 3, 4])[0];
+([mut 'x', 'y'])[1] = 'z';
+(["a", "b"])[10]; // fails
 
 # }
 ~~~~
@@ -1770,10 +1770,10 @@ Any other cast is unsupported and will fail to compile.
 An example of an `as` expression:
 
 ~~~~
-# fn sum(v: ~[float]) -> float { 0.0 }
-# fn len(v: ~[float]) -> int { 0 }
+# fn sum(v: &[float]) -> float { 0.0 }
+# fn len(v: &[float]) -> int { 0 }
 
-fn avg(v: ~[float]) -> float {
+fn avg(v: &[float]) -> float {
   let sum: float = sum(v);
   let sz: float = len(v) as float;
   return sum / sz;
@@ -1800,8 +1800,8 @@ No allocation or destruction is entailed.
 An example of three different move expressions:
 
 ~~~~~~~~
-# let mut x = ~[mut 0];
-# let a = ~[mut 0];
+# let mut x = &[mut 0];
+# let a = &[mut 0];
 # let b = 0;
 # let y = {mut z: 0};
 # let c = 0;
@@ -1827,8 +1827,8 @@ No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let mut x = ~[mut 0];
-# let mut a = ~[mut 0];
+# let mut x = &[mut 0];
+# let mut a = &[mut 0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -1929,11 +1929,11 @@ the unary copy operator is typically only used to cause an argument to a functio
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: ~[mut int]) {
+fn mutate(vec: &[mut int]) {
    vec[0] = 10;
 }
 
-let v = ~[mut 1,2,3];
+let v = &[mut 1,2,3];
 
 mutate(copy v);   // Pass a copy
 
@@ -2716,7 +2716,7 @@ In this example, the trait `Printable` occurs as a type in both the type signatu
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~~~~
-fn map<A: Copy, B: Copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
+fn map<A: Copy, B: Copy>(f: fn(A) -> B, xs: &[A]) -> ~[B] {
    if xs.len() == 0 { return ~[]; }
    let first: B = f(xs[0]);
    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
