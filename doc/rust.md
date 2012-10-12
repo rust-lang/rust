@@ -2107,7 +2107,7 @@ Both cause an early return from the caller's frame:
 {
   let mut _early_ret = false;
   f(|j| { g(j); _early_ret = true; });
-  if early_ret { return; }
+  if _early_ret { return; }
 }
 
 do f |j| {
