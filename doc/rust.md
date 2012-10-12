@@ -2120,13 +2120,21 @@ do f |j| {
 ### For expressions
 
 ~~~~~~~~{.ebnf .gram}
-for_expr : "for" pat "in" expr '{' block '}' ;
+for_expr : "for" expr [ '|' ident_list '|' ] ? '{' block '}' ;
 ~~~~~~~~
 
-A _for loop_ is controlled by a vector or string. The for loop bounds-checks
-the underlying sequence *once* when initiating the loop, then repeatedly
-executes the loop body with the loop variable referencing the successive
-elements of the underlying sequence, one iteration per sequence element.
+A _for expression_ is similar to a [`do` expression](#do-expressions),
+in that it provides a special block-form of lambda expression,
+suited to passing the `block` function to a higher-order function implementing a loop.
+
+Like a `do` expression, a `return` expression inside a `for` expresison is rewritten,
+to access a local flag that causes an early return in the caller.
+
+Additionally, [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
+are rewritten inside `for` expressions, with a combination of local flag variables,
+and early boolean-valued returns from the `block` function,
+such that the meaning of `break` and `loop` is preserved in a primitive loop
+when rewritten as a `for` loop controlled by a higher order function.
 
 An example a for loop:
 
@@ -2135,7 +2143,7 @@ An example a for loop:
 # fn bar(f: foo) { }
 # let a = 0, b = 0, c = 0;
 
-let v: ~[foo] = ~[a, b, c];
+let v: [foo] = [a, b, c];
 
 for v.each |e| {
     bar(*e);
