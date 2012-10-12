@@ -388,11 +388,10 @@ Examples of floating-point literals of various forms:
 12E+99_f64;                        // type f64
 ~~~~
 
-##### Nil and boolean literals
+##### Unit and boolean literals
 
-The _nil value_, the only value of the type by the same name, is
-written as `()`. The two values of the boolean type are written `true`
-and `false`.
+The _unit value_, the only value of the type that has the same name, is written as `()`.
+The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
@@ -564,23 +563,19 @@ This requirement most often affects name-designator pairs when they occur at the
 
 # Crates and source files
 
-Rust is a *compiled* language. Its semantics are divided along a
-*phase distinction* between compile-time and run-time. Those semantic
-rules that have a *static interpretation* govern the success or failure
-of compilation. A program that fails to compile due to violation of a
-compile-time rule has no defined semantics at run-time; the compiler should
-halt with an error report, and produce no executable artifact.
+Rust is a *compiled* language.
+Its semantics obey a *phase distinction* between compile-time and run-time.
+Those semantic rules that have a *static interpretation* govern the success or failure of compilation.
+We refer to these rules as "static semantics".
+Semantic rules called "dynamic semantics" govern the behavior of programs at run-time.
+A program that fails to compile due to violation of a compile-time rule has no defined dynamic semantics; the compiler should halt with an error report, and produce no executable artifact.
 
-The compilation model centres on artifacts called _crates_. Each compilation
-is directed towards a single crate in source form, and if successful,
-produces a single crate in binary form: either an executable or a library.
+The compilation model centres on artifacts called _crates_.
+Each compilation processes a single crate in source form, and if successful, produces a single crate in binary form: either an executable or a library.
 
-A _crate_ is a unit of compilation and linking, as well as versioning,
-distribution and runtime loading. A crate contains a _tree_ of nested
-[module](#modules) scopes. The top level of this tree is a module that is
-anonymous -- from the point of view of paths within the module -- and any item
-within a crate has a canonical [module path](#paths) denoting its location
-within the crate's module tree.
+A _crate_ is a unit of compilation and linking, as well as versioning, distribution and runtime loading.
+A crate contains a _tree_ of nested [module](#modules) scopes.
+The top level of this tree is a module that is anonymous (from the point of view of paths within the module) and any item within a crate has a canonical [module path](#paths) denoting its location within the crate's module tree.
 
 Crates are provided to the Rust compiler through two kinds of file:
 
@@ -590,18 +585,15 @@ Crates are provided to the Rust compiler through two kinds of file:
 > **Note:** The functionality of crate files will be merged into source files in future versions of Rust.
 > The separate processing of crate files, both their grammar and file extension, will be removed.
 
-The Rust compiler is always invoked with a single input file, and always
-produces a single output crate.
+The Rust compiler is always invoked with a single crate file as input, and always produces a single output crate.
 
 When the Rust compiler is invoked with a crate file, it reads the _explicit_
 definition of the crate it's compiling from that file, and populates the
 crate with modules derived from all the source files referenced by the
 crate, reading and processing all the referenced modules at once.
 
-When the Rust compiler is invoked with a source file, it creates an
-_implicit_ crate and treats the source file as though it was referenced as
-the sole module populating this implicit crate. The module name is derived
-from the source file name, with the `.rs` extension removed.
+When the Rust compiler is invoked with a source file, it creates an _implicit_ crate and treats the source file as if it is the sole module populating this explicit crate.
+The module name is derived from the source file name, with the `.rs` extension removed.
 
 ## Crate files
 
@@ -658,10 +650,8 @@ containing source files and/or further subdirectories. The filesystem
 directory associated with a `dir_directive` module can either be explicit,
 or if omitted, is implicitly the same name as the module.
 
-A `source_directive` references a source file, either explicitly or
-implicitly by combining the module name with the file extension `.rs`.  The
-module contained in that source file is bound to the module path formed by
-the `dir_directive` modules containing the `source_directive`.
+A `source_directive` references a source file, either explicitly or implicitly, by combining the module name with the file extension `.rs`.
+The module contained in that source file is bound to the module path formed by the `dir_directive` modules containing the `source_directive`.
 
 ## Source files
 
@@ -671,9 +661,8 @@ location of which -- in the module tree of the current crate -- is defined
 from outside the source file: either by an explicit `source_directive` in
 a referencing crate file, or by the filename of the source file itself.
 
-A source file that contains a `main` function can be compiled to an
-executable. If a `main` function is present,
-its return type must be [`nil`](#primitive-types) and it must take no arguments.
+A source file that contains a `main` function can be compiled to an executable.
+If a `main` function is present, its return type must be [`unit`](#primitive-types) and it must take no arguments.
 
 # Items and attributes
 
@@ -1494,10 +1483,10 @@ A temporary's lifetime equals the largest lifetime of any borrowed pointer that 
 
 A _literal expression_ consists of one of the [literal](#literals)
 forms described earlier. It directly describes a number, character,
-string, boolean value, or the nil value.
+string, boolean value, or the unit value.
 
 ~~~~~~~~ {.literals}
-();        // nil type
+();        // unit type
 "hello";   // string type
 '5';       // character type
 5;         // integer type
@@ -1862,7 +1851,7 @@ operators may be composed with the `=` operator. The expression `lval
 OP= val` is equivalent to `lval = lval OP val`. For example, `x = x +
 1` may be written as `x += 1`.
 
-Any such expression always has the [`nil`](#primitive-types) type.
+Any such expression always has the [`unit`](#primitive-types) type.
 
 #### Operator precedence
 
@@ -2414,11 +2403,8 @@ types. User-defined types have limited capabilities.
 
 The primitive types are the following:
 
-* The "nil" type `()`, having the single "nil" value `()`.^[The "nil" value
-  `()` is *not* a sentinel "null pointer" value for reference slots; the "nil"
-  type is the implicit return type from functions otherwise lacking a return
-  type, and can be used in other contexts (such as message-sending or
-  type-parametric code) as a zero-size type.]
+* The "unit" type `()`, having the single "unit" value `()` (occasionally called "nil").
+  ^[The "unit" value `()` is *not* a sentinel "null pointer" value for reference slots; the "unit" type is the implicit return type from functions otherwise lacking a return type, and can be used in other contexts (such as message-sending or type-parametric code) as a zero-size type.]
 * The boolean type `bool` with values `true` and `false`.
 * The machine types.
 * The machine-dependent integer and floating-point types.
