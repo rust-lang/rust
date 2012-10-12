@@ -246,7 +246,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
     }
 
     fn visit_unboxed_vec(mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<vec::raw::UnboxedVecRepr>();
+        self.align_to::<vec::UnboxedVecRepr>();
         if ! self.inner.visit_vec(mtbl, inner) { return false; }
         true
     }

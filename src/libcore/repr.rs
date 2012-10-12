@@ -15,7 +15,8 @@ use to_str::ToStr;
 use cast::transmute;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use reflect::{MovePtr, MovePtrAdaptor};
-use vec::raw::{VecRepr, UnboxedVecRepr, SliceRepr};
+use vec::UnboxedVecRepr;
+use vec::raw::{VecRepr, SliceRepr};
 pub use box::raw::BoxRepr;
 use box::raw::BoxHeaderRepr;
 
@@ -303,7 +304,7 @@ impl ReprVisitor : TyVisitor {
 
 
     fn visit_unboxed_vec(mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<vec::raw::UnboxedVecRepr> |b| {
+        do self.get::<vec::UnboxedVecRepr> |b| {
             self.write_unboxed_vec_repr(mtbl, b, inner);
         }
     }
