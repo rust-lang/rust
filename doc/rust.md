@@ -2404,11 +2404,10 @@ It is therefore recommended to use the macro forms of logging (`error!`, `debug!
 assert_expr : "assert" expr ;
 ~~~~~~~~
 
-An `assert` expression is similar to a `check` expression, except
-the condition may be any boolean-typed expression, and the compiler makes no
-use of the knowledge that the condition holds if the program continues to
-execute after the `assert`.
+> **Note:** In future versions of Rust, `assert` will be changed from a full expression to a macro.
 
+An `assert` expression causes the program to fail if its `expr` argument evaluates to `false`.
+The failure carries string representation of the false expression.
 
 # Type system
 
