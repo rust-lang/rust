@@ -2870,15 +2870,11 @@ references to any boxes; the remainder of its heap is immediately freed.
 
 A task's stack contains slots.
 
-A _slot_ is a component of a stack frame. A slot is either a *local variable*
-or a *reference*.
+A _slot_ is a component of a stack frame, either a function parameter,
+a [temporary](#lvalues-rvalues-and-temporaries), or a local variable.
 
 A _local variable_ (or *stack-local* allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
-
-A _reference_ references a value outside the frame. It may refer to a
-value allocated in another frame *or* a boxed value in the heap. The
-reference-formation rules ensure that the referent will outlive the reference.
 
 Local variables are immutable unless declared with `let mut`.  The
 `mut` keyword applies to all local variables declared within that
@@ -2891,20 +2887,6 @@ state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
 
-References are created for function arguments. If the compiler can not prove
-that the referred-to value will outlive the reference, it will try to set
-aside a copy of that value to refer to. If this is not semantically safe (for
-example, if the referred-to value contains mutable fields), it will reject the
-program. If the compiler deems copying the value expensive, it will warn.
-
-A function with an argument of type `&mut T`, for some type `T`, can write to
-the slot that its argument refers to. An example of such a function is:
-
-~~~~~~~~
-fn incr(i: &mut int) {
-    *i = *i + 1;
-}
-~~~~~~~~
 
 ### Memory boxes
 
