@@ -2180,7 +2180,7 @@ match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
 match_arm : match_pat '=>' expr_or_blockish ;
 
-match_pat : pat [ "to" pat ] ? [ "if" expr ] ;
+match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 ~~~~~~~~
 
 
