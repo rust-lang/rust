@@ -1030,7 +1030,7 @@ A special kind of function can be declared with a `!` character where the
 output slot type would normally be. For example:
 
 ~~~~
-fn my_err(s: ~str) -> ! {
+fn my_err(s: &str) -> ! {
     log(info, s);
     fail;
 }
