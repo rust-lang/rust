@@ -2178,7 +2178,7 @@ then any `else` block is executed.
 ~~~~~~~~{.ebnf .gram}
 match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
-match_arm : match_pat '=>' expr_or_blockish ;
+match_arm : match_pat '=>' [ expr "," | '{' block '}' ] ;
 
 match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 ~~~~~~~~
