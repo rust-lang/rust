@@ -2478,13 +2478,16 @@ type `float` may not be equal to the largest *supported* floating-point type.
 
 ### Textual types
 
-The types `char` and `~str` hold textual data.
+The types `char` and `str` hold textual data.
 
 A value of type `char` is a Unicode character, represented as a 32-bit
 unsigned word holding a UCS-4 codepoint.
 
-A value of type `~str` is a Unicode string, represented as a vector of 8-bit
+A value of type `str` is a Unicode string, represented as a vector of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints.
+Since `str` is of indefinite size, it is not a _first class_ type,
+but can only be instantiated through a pointer type,
+such as `&str`, `@str` or `~str`.
 
 
 ### Tuple types
@@ -2505,45 +2508,35 @@ order specified by the tuple type.
 An example of a tuple type and its use:
 
 ~~~~
-type pair = (int,~str);
-let p: pair = (10,~"hello");
+type Pair = (int,&str);
+let p: Pair = (10,"hello");
 let (a, b) = p;
-assert b != ~"world";
+assert b != "world";
 ~~~~
 
 
 ### Vector types
 
-The vector type-constructor represents a homogeneous array of values of a
-given type. A vector has a fixed size. The kind of a vector type depends on
-the kind of its member type, as with other simple structural types.
+The vector type-constructor represents a homogeneous array of values of a given type.
+A vector has a fixed size.
+A vector type can be accompanied by _definite_ size, written with a trailing asterisk and integer literal, such as `[int * 10]`.
+Such a definite-sized vector can be treated as a first class type since its size is known statically.
+A vector without such a size is said to be of _indefinite_ size,
+and is therefore not a _first class_ type,
+can only be instantiated through a pointer type,
+such as `&[T]`, `@[T]` or `~[T]`.
+The kind of a vector type depends on the kind of its member type, as with other simple structural types.
 
 An example of a vector type and its use:
 
 ~~~~
-let v: ~[int] = ~[7, 5, 3];
+let v: &[int] = [7, 5, 3];
 let i: int = v[2];
 assert (i == 3);
 ~~~~
 
-Vectors always *allocate* a storage region sufficient to store the first power
-of two worth of elements greater than or equal to the size of the vector. This
-behaviour supports idiomatic in-place "growth" of a mutable slot holding a
-vector:
-
-
-~~~~
-let mut v: ~[int] = ~[1, 2, 3];
-v += ~[4, 5, 6];
-~~~~
-
-Normal vector concatenation causes the allocation of a fresh vector to hold
-the result; in this case, however, the slot holding the vector recycles the
-underlying storage in-place (since the reference-count of the underlying
-storage is equal to 1).
-
-All accessible elements of a vector are always initialized, and access to a
-vector is always bounds-checked.
+All accessible elements of a vector are always initialized, and access to a vector is always bounds-checked.
+In the case of a definite-
 
 
 ### Structure types
