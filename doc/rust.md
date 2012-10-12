@@ -703,22 +703,19 @@ otherwise compose the item body. The meaning of these scoped items is the same
 as if the item was declared outside the scope -- it is still a static item --
 except that the item's *path name* within the module namespace is qualified by
 the name of the enclosing item, or is private to the enclosing item (in the
-case of functions). The exact locations in which sub-items may be declared is
-given by the grammar.
+case of functions).
+The grammar specifies the exact locations in which sub-item declarations may appear.
 
 ### Type Parameters
 
-All items except modules may be *parametrized* by type. Type parameters are
+All items except modules may be *parameterized* by type. Type parameters are
 given as a comma-separated list of identifiers enclosed in angle brackets
-(`<...>`), after the name of the item and before its definition. The type
-parameters of an item are considered "part of the name", not the type of the
-item; in order to refer to the type-parametrized item, a referencing
-[path](#paths) must in general provide type arguments as a list of
-comma-separated types enclosed within angle brackets. In practice, the
-type-inference system can usually infer such argument types from
-context. There are no general type-parametric types, only type-parametric
-items.
-
+(`<...>`), after the name of the item and before its definition.
+The type parameters of an item are considered "part of the name", not part of the type of the item.
+A referencing [path](#paths) must (in principle) provide type arguments as a list of comma-separated types enclosed within angle brackets, in order to refer to the type-parameterized item.
+In practice, the type-inference system can usually infer such argument types from context.
+There are no general type-parametric types, only type-parametric items.
+That is, Rust has no notion of type abstraction: there are no first-class "forall" types.
 
 ### Modules
 
@@ -763,9 +760,9 @@ mod math {
 view_item : extern_mod_decl | use_decl ;
 ~~~~~~~~
 
-A view item manages the namespace of a module; it does not define new items
-but simply changes the visibility of other items. There are several kinds of
-view item:
+A view item manages the namespace of a module.
+View items do not define new items, but rather, simply change other items' visibilit.
+There are several kinds of view item:
 
  * [`extern mod` declarations](#extern-mod-declarations)
  * [`use` declarations](#use-declarations)
@@ -789,7 +786,7 @@ compiler's library path and matching the `link_attrs` provided in the
 crate when it was compiled. If no `link_attrs` are provided, a default `name`
 attribute is assumed, equal to the `ident` given in the `use_decl`.
 
-Two examples of `extern mod` declarations:
+Three examples of `extern mod` declarations:
 
 ~~~~~~~~{.xfail-test}
 extern mod pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
@@ -844,8 +841,8 @@ fn main() {
     log(info, Some(1.0));
 
     // Equivalent to 'log(core::info,
-    //                    core::str::to_upper(core::str::slice("foo", 0u, 1u)));'
-    log(info, to_upper(slice("foo", 0u, 1u)));
+    //                    core::str::to_upper(core::str::slice("foo", 0, 1)));'
+    log(info, to_upper(slice("foo", 0, 1)));
 }
 ~~~~
 
@@ -857,13 +854,9 @@ If a sequence of such redirections form a cycle or cannot be unambiguously resol
 
 ### Functions
 
-A _function item_ defines a sequence of [statements](#statements) and an
-optional final [expression](#expressions) associated with a name and a set of
-parameters. Functions are declared with the keyword `fn`. Functions declare a
-set of *input* [*slots*](#memory-slots) as parameters, through which the
-caller passes arguments into the function, and an *output*
-[*slot*](#memory-slots) through which the function passes results back to
-the caller.
+A _function item_ defines a sequence of [statements](#statements) and an optional final [expression](#expressions), along with a name and a set of parameters.
+Functions are declared with the keyword `fn`.
+Functions declare a set of *input* [*slots*](#memory-slots) as parameters, through which the caller passes arguments into the function, and an *output* [*slot*](#memory-slots) through which the function passes results back to the caller.
 
 A function may also be copied into a first class *value*, in which case the
 value has the corresponding [*function type*](#function-types), and can be
@@ -941,12 +934,9 @@ Specifically, the following operations are considered unsafe:
 
 ##### Unsafe blocks
 
-A block of code can also be prefixed with the `unsafe` keyword,
-to permit a sequence of unsafe operations in an otherwise-safe function.
-This facility exists because the static semantics of a Rust are a necessary approximation of the dynamic semantics.
-When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe,
-they can encapsulate that sequence (taken as a whole) within an `unsafe` block.
-The compiler will consider uses of such code "safe", to the surrounding context.
+A block of code can also be prefixed with the `unsafe` keyword, to permit a sequence of unsafe operations in an otherwise-safe function.
+This facility exists because the static semantics of Rust are a necessary approximation of the dynamic semantics.
+When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe, they can encapsulate that sequence (taken as a whole) within an `unsafe` block. The compiler will consider uses of such code "safe", to the surrounding context.
 
 
 #### Pure functions
@@ -954,10 +944,9 @@ The compiler will consider uses of such code "safe", to the surrounding context.
 A pure function declaration is identical to a function declaration, except that
 it is declared with the additional keyword `pure`. In addition, the typechecker
 checks the body of a pure function with a restricted set of typechecking rules.
-A pure function
-
-* may not contain an assignment or self-call expression; and
-* may only call other pure functions, not general functions.
+A pure function may only modify data owned by its own stack frame.
+So, a pure function may modify a local variable allocated on the stack, but not a mutable reference that it takes as an argument.
+A pure function may only call other pure functions, not general functions.
 
 An example of a pure function:
 
@@ -978,36 +967,13 @@ pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 These purity-checking rules approximate the concept of referential transparency:
 that a call-expression could be rewritten with the literal-expression of its return value, without changing the meaning of the program.
 Since they are an approximation, sometimes these rules are *too* restrictive.
-Rust allows programmers to violate these rules using [`unsafe` blocks](#unsafe-blocks).
+Rust allows programmers to violate these rules using [`unsafe` blocks](#unsafe-blocks), which we already saw.
 As with any `unsafe` block, those that violate static purity carry transfer the burden of safety-proof from the compiler to the programmer.
 Programmers should exercise caution when breaking such rules.
 
-An example of a pure function that uses an unsafe block:
+For more details on purity, see [the borrowed pointer tutorial][borrow].
 
-~~~~ {.xfail-test}
-# use std::list::*;
-
-fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&T, &U) -> U) -> U {
-    match ls {
-      Nil => u,
-      Cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
-    }
-}
-
-pure fn pure_length<T>(ls: List<T>) -> uint {
-    fn count<T>(_t: &T, u: &uint) -> uint { *u + 1u }
-    unsafe {
-        pure_foldl(ls, 0u, count)
-    }
-}
-~~~~
-
-Despite its name, `pure_foldl` is a `fn`, not a `pure fn`, because there is no
-way in Rust to specify that the higher-order function argument `f` is a pure
-function. So, to use `foldl` in a pure list length function that a pure function
-could then use, we must use an `unsafe` block wrapped around the call to
-`pure_foldl` in the definition of `pure_length`.
-
+[borrow]: tutorial-borrowed-ptr.html
 
 #### Diverging functions
 
@@ -1092,10 +1058,8 @@ specific type; the type-specified aspects of a value include:
 * The sequence of memory operations required to access the value.
 * The [kind](#type-kinds) of the type.
 
-For example, the type `{x: u8, y: u8`} defines the set of immutable values
-that are composite records, each containing two unsigned 8-bit integers
-accessed through the components `x` and `y`, and laid out in memory with the
-`x` component preceding the `y` component.
+For example, the type `(u8, u8)` defines the set of immutable values that are composite pairs,
+each containing two unsigned 8-bit integers accessed by pattern-matching and laid out in memory with the `x` component preceding the `y` component.
 
 ### Structures
 
@@ -1111,7 +1075,7 @@ let px: int = p.x;
 
 ### Enumerations
 
-An _enumeration_ is a simulatneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
+An _enumeration_ is a simultaneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
 that can be used to create or pattern-match values of the corresponding enumerated type.
 
 Enumerations are declared with the keyword `enum`.
@@ -1134,7 +1098,7 @@ a = Cat;
 const_item : "const" ident ':' type '=' expr ';' ;
 ~~~~~~~~
 
-A Constant is a named value stored in read-only memory in a crate.
+A *constant* is a named value stored in read-only memory in a crate.
 The value bound to a constant is evaluated at compile time.
 Constants are declared with the `const` keyword.
 A constant item must have an expression giving its definition.
@@ -1206,7 +1170,7 @@ let myshape: Shape = @mycircle as @Shape;
 ~~~~
 
 The resulting value is a managed box containing the value that was cast,
-along with information that identify the methods of the implementation that was used.
+along with information that identifies the methods of the implementation that was used.
 Values with a trait type can have [methods called](#method-call-expressions) on them,
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
@@ -1271,9 +1235,9 @@ foreign_mod : [ foreign_fn ] * ;
 
 Foreign modules form the basis for Rust's foreign function interface. A
 foreign module describes functions in external, non-Rust
-libraries. Functions within foreign modules are declared the same as other
-Rust functions, with the exception that they may not have a body and are
-instead terminated by a semi-colon.
+libraries.
+Functions within foreign modules are declared in the same way as other Rust functions,
+with the exception that they may not have a body and are instead terminated by a semicolon.
 
 ~~~
 # use libc::{c_char, FILE};
@@ -1284,9 +1248,8 @@ extern mod c {
 }
 ~~~
 
-Functions within foreign modules may be called by Rust code as it would any
-normal function and the Rust compiler will automatically translate between
-the Rust ABI and the foreign ABI.
+Functions within foreign modules may be called by Rust code, just like functions defined in Rust.
+The Rust compiler automatically translates between the Rust ABI and the foreign ABI.
 
 The name of the foreign module has special meaning to the Rust compiler in
 that it will treat the module name as the name of a library to link to,
@@ -1300,7 +1263,7 @@ A number of [attributes](#attributes) control the behavior of foreign
 modules.
 
 By default foreign modules assume that the library they are calling use the
-standard C "cdecl" ABI. Other ABI's may be specified using the `abi`
+standard C "cdecl" ABI. Other ABIs may be specified using the `abi`
 attribute as in
 
 ~~~{.xfail-test}
@@ -1310,15 +1273,15 @@ extern mod kernel32 { }
 ~~~
 
 The `link_name` attribute allows the default library naming behavior to
-be overriden by explicitly specifying the name of the library.
+be overridden by explicitly specifying the name of the library.
 
 ~~~{.xfail-test}
 #[link_name = "crypto"]
 extern mod mycrypto { }
 ~~~
 
-The `nolink` attribute tells the Rust compiler not to perform any linking
-for the foreign module. This is particularly useful for creating foreign
+The `nolink` attribute tells the Rust compiler not to do any linking for the foreign module.
+This is particularly useful for creating foreign
 modules for libc, which tends to not follow standard library naming
 conventions and is linked to all Rust programs anyway.
 
@@ -1333,9 +1296,9 @@ attr : ident [ '=' literal
 
 Static entities in Rust -- crates, modules and items -- may have _attributes_
 applied to them. ^[Attributes in Rust are modeled on Attributes in ECMA-335,
-C#] An attribute is a general, free-form piece of metadata that is interpreted
-according to name, convention, and language and compiler version.  Attributes
-may appear as any of:
+C#]
+An attribute is a general, free-form metadatum that is interpreted according to name, convention, and language and compiler version.
+Attributes may appear as any of
 
 * A single identifier, the attribute name
 * An identifier followed by the equals sign '=' and a literal, providing a key/value pair
