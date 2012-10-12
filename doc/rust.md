@@ -859,8 +859,8 @@ fn main() {
     log(info, Some(1.0));
 
     // Equivalent to 'log(core::info,
-    //                    core::str::to_upper(core::str::slice(~"foo", 0u, 1u)));'
-    log(info, to_upper(slice(~"foo", 0u, 1u)));
+    //                    core::str::to_upper(core::str::slice("foo", 0u, 1u)));'
+    log(info, to_upper(slice("foo", 0u, 1u)));
 }
 ~~~~
 
@@ -1050,14 +1050,14 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: ~str) -> ! { fail }
+# fn my_err(s: &str) -> ! { fail }
 
 fn f(i: int) -> int {
    if i == 42 {
      return 42;
    }
    else {
-     my_err(~"Bad number!");
+     my_err("Bad number!");
    }
 }
 ~~~~
@@ -1502,7 +1502,7 @@ string, boolean value, or the nil value.
 
 ~~~~~~~~ {.literals}
 ();        // nil type
-~"hello";  // string type
+"hello";   // string type
 '5';       // character type
 5;         // integer type
 ~~~~~~~~
@@ -1520,7 +1520,7 @@ values.
 
 ~~~~~~~~ {.tuple}
 (0f, 4.5f);
-(~"a", 4u, true);
+("a", 4u, true);
 ~~~~~~~~
 
 ### Record expressions
@@ -1539,8 +1539,8 @@ written before its name.
 
 ~~~~
 {x: 10f, y: 20f};
-{name: ~"Joe", age: 35u, score: 100_000};
-{ident: ~"X", mut count: 0u};
+{name: "Joe", age: 35u, score: 100_000};
+{ident: "X", mut count: 0u};
 ~~~~
 
 The order of the fields in a record expression is significant, and
@@ -1609,7 +1609,7 @@ When no mutability is specified, the vector is immutable.
 
 ~~~~
 ~[1, 2, 3, 4];
-~[~"a", ~"b", ~"c", ~"d"];
+~["a", "b", "c", "d"];
 ~[mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -1633,7 +1633,7 @@ task in a _failing state_.
 
 (~[1, 2, 3, 4])[0];
 (~[mut 'x', 'y'])[1] = 'z';
-(~[~"a", ~"b"])[10]; // fails
+(~["a", "b"])[10]; // fails
 
 # }
 ~~~~
@@ -2034,7 +2034,7 @@ An example:
 let mut i = 0;
 
 while i < 10 {
-    io::println(~"hello\n");
+    io::println("hello\n");
     i = i + 1;
 }
 ~~~~
@@ -2281,9 +2281,9 @@ range of values may be specified with `..`. For example:
 # let x = 2;
 
 let message = match x {
-  0 | 1  => ~"not many",
-  2 .. 9 => ~"a few",
-  _      => ~"lots"
+  0 | 1  => "not many",
+  2 .. 9 => "a few",
+  _      => "lots"
 };
 ~~~~
 
@@ -2366,7 +2366,7 @@ The following examples all produce the same output, logged at the `error`
 logging level:
 
 ~~~~
-# let filename = ~"bulbasaur";
+# let filename = "bulbasaur";
 
 // Full version, logging a value.
 log(core::error, ~"file not found: " + filename);
