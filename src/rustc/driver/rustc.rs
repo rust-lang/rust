@@ -3,10 +3,10 @@
 #[allow(non_camel_case_types)];
 #[legacy_modes];
 
-extern mod core(vers = "0.4");
-extern mod std(vers = "0.4");
-extern mod rustc(vers = "0.4");
-extern mod syntax(vers = "0.4");
+extern mod core(vers = "0.5");
+extern mod std(vers = "0.5");
+extern mod rustc(vers = "0.5");
+extern mod syntax(vers = "0.5");
 
 use core::*;
 

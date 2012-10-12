@@ -8,8 +8,8 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.4");
-extern mod std(vers = "0.4");
+extern mod core(vers = "0.5");
+extern mod std(vers = "0.5");
 
 use core::*;
 

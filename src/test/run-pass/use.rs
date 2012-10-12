@@ -1,7 +1,7 @@
 #[no_core];
 extern mod core;
 extern mod zed(name = "core");
-extern mod bar(name = "core", vers = "0.4");
+extern mod bar(name = "core", vers = "0.5");
 
 
 use core::str;
