@@ -1671,6 +1671,13 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
     raw::from_buf_raw(ptr, elts)
 }
 
+/// The internal 'unboxed' representation of a vector
+pub struct UnboxedVecRepr {
+    mut fill: uint,
+    mut alloc: uint,
+    data: u8
+}
+
 /// Unsafe operations
 mod raw {
 
@@ -1678,13 +1685,6 @@ mod raw {
     pub struct VecRepr {
         box_header: box::raw::BoxHeaderRepr,
         unboxed: UnboxedVecRepr
-    }
-
-    /// The internal 'unboxed' representation of a vector
-    pub struct UnboxedVecRepr {
-        mut fill: uint,
-        mut alloc: uint,
-        data: u8
     }
 
     pub type SliceRepr = {
