@@ -2979,6 +2979,7 @@ and data races on memory are prohibited by the type system.
 
 Inter-task communication and co-ordination facilities are provided in the standard library.
 These include:
+
   - synchronous and asynchronous communication channels with various communication topologies
   - read-only and read-write shared variables with various safe mutual exclusion patterns
   - simple locks and semaphores
