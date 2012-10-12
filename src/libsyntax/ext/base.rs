@@ -269,21 +269,21 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               match max {
                 Some(max) if ! (min <= elts_len && elts_len <= max) => {
                   cx.span_fatal(sp,
-                                fmt!("#%s takes between %u and %u arguments.",
+                                fmt!("%s! takes between %u and %u arguments.",
                                      name, min, max));
                 }
                 None if ! (min <= elts_len) => {
-                  cx.span_fatal(sp, fmt!("#%s needs at least %u arguments.",
+                  cx.span_fatal(sp, fmt!("%s! needs at least %u arguments.",
                                          name, min));
                 }
                 _ => return elts /* we are good */
               }
           }
         _ => {
-            cx.span_fatal(sp, fmt!("#%s: malformed invocation", name))
+            cx.span_fatal(sp, fmt!("%s!: malformed invocation", name))
         }
       },
-      None => cx.span_fatal(sp, fmt!("#%s: missing arguments", name))
+      None => cx.span_fatal(sp, fmt!("%s!: missing arguments", name))
     }
 }
 
