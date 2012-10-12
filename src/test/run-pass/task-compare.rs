@@ -2,9 +2,6 @@
    A test case for issue #577, which also exposes #588
 */
 
-// FIXME: This won't work until we can compare resources (#2601)
-// xfail-test
-
 extern mod std;
 use task::join;
 
