@@ -1,6 +1,6 @@
 struct defer {
     x: &[&str],
-    drop { #error["%?", self.x]; }
+    drop { error!("%?", self.x); }
 }
 
 fn defer(x: &r/[&r/str]) -> defer/&r {

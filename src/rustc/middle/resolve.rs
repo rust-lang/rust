@@ -918,12 +918,12 @@ impl Resolver {
               match ns.find(|n| child.defined_in_namespace(n)) {
                 Some(ns) => {
                   self.session.span_err(sp,
-                       #fmt("Duplicate definition of %s %s",
+                       fmt!("Duplicate definition of %s %s",
                             namespace_to_str(ns),
                             self.session.str_of(name)));
                   do child.span_for_namespace(ns).iter() |sp| {
                       self.session.span_note(*sp,
-                           #fmt("First definition of %s %s here:",
+                           fmt!("First definition of %s %s here:",
                                 namespace_to_str(ns),
                                 self.session.str_of(name)));
                   }
