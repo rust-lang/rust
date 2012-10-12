@@ -554,12 +554,7 @@ impl Parser {
 
         let sp = mk_sp(lo, self.last_span.hi);
         return @{id: self.get_id(),
-              node: match self.maybe_parse_fixed_vstore() {
-                // Consider a fixed vstore suffix (/N or /_)
-                None => t,
-                Some(v) => {
-                  ty_fixed_length(@{id: self.get_id(), node:t, span: sp}, v)
-                } },
+              node: t,
               span: sp}
     }
 
@@ -688,23 +683,6 @@ impl Parser {
             }
           }
           _ => None
-        }
-    }
-
-    fn maybe_parse_fixed_vstore() -> Option<Option<uint>> {
-        if self.token == token::BINOP(token::SLASH) {
-            self.bump();
-            match copy self.token {
-              token::UNDERSCORE => {
-                self.bump(); Some(None)
-              }
-              token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
-                self.bump(); Some(Some(i as uint))
-              }
-              _ => None
-            }
-        } else {
-            None
         }
     }
 
@@ -1081,21 +1059,6 @@ impl Parser {
             let lit = self.parse_lit();
             hi = lit.span.hi;
             ex = expr_lit(@lit);
-        }
-
-        // Vstore is legal following expr_lit(lit_str(...)) and expr_vec(...)
-        // only.
-        match ex {
-          expr_lit(@{node: lit_str(_), span: _}) |
-          expr_vec(_, _)  => match self.maybe_parse_fixed_vstore() {
-            None => (),
-            Some(v) => {
-                hi = self.span.hi;
-                ex = expr_vstore(self.mk_expr(lo, hi, ex),
-                                 expr_vstore_fixed(v));
-            }
-          },
-          _ => ()
         }
 
         return self.mk_pexpr(lo, hi, ex);
