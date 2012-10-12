@@ -1502,7 +1502,7 @@ and [`core::str`]. Here are some examples.
 # fn unwrap_crayon(c: Crayon) -> int { 0 }
 # fn eat_crayon_wax(i: int) { }
 # fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
-# fn crayon_to_str(c: Crayon) -> ~str { ~"" }
+# fn crayon_to_str(c: Crayon) -> &str { "" }
 
 let crayons = &[Almond, AntiqueBrass, Apricot];
 
@@ -1649,11 +1649,11 @@ callers may pass any kind of closure.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice(|| { ~"I am an inferred stack closure"; } );
-call_twice(fn&() { ~"I am also a stack closure"; } );
-call_twice(fn@() { ~"I am a managed closure"; });
-call_twice(fn~() { ~"I am an owned closure"; });
-fn bare_function() { ~"I am a plain function"; }
+call_twice(|| { "I am an inferred stack closure"; } );
+call_twice(fn&() { "I am also a stack closure"; } );
+call_twice(fn@() { "I am a managed closure"; });
+call_twice(fn~() { "I am an owned closure"; });
+fn bare_function() { "I am a plain function"; }
 call_twice(bare_function);
 ~~~~
 
@@ -1767,7 +1767,7 @@ And using this function to iterate over a vector:
 # use println = io::println;
 each(&[2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
-        println(~"found odd number!");
+        println("found odd number!");
         false
     } else { true }
 });
@@ -1784,7 +1784,7 @@ to the next iteration, write `loop`.
 # use println = io::println;
 for each(&[2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
-        println(~"found odd number!");
+        println("found odd number!");
         break;
     }
 }
@@ -1967,12 +1967,12 @@ impl int: Printable {
     fn print() { io::println(fmt!("%d", self)) }
 }
 
-impl ~str: Printable {
+impl &str: Printable {
     fn print() { io::println(self) }
 }
 
 # 1.print();
-# (~"foo").print();
+# ("foo").print();
 ~~~~
 
 Methods defined in an implementation of a trait may be called just like
@@ -2162,8 +2162,8 @@ additional modules.
 
 ~~~~
 mod farm {
-    pub fn chicken() -> ~str { ~"cluck cluck" }
-    pub fn cow() -> ~str { ~"mooo" }
+    pub fn chicken() -> &str { "cluck cluck" }
+    pub fn cow() -> &str { "mooo" }
 }
 
 fn main() {
@@ -2360,13 +2360,13 @@ these two files:
 ~~~~
 // world.rs
 #[link(name = "world", vers = "1.0")];
-pub fn explore() -> ~str { ~"world" }
+pub fn explore() -> &str { "world" }
 ~~~~
 
 ~~~~ {.xfail-test}
 // main.rs
 extern mod world;
-fn main() { io::println(~"hello " + world::explore()); }
+fn main() { io::println("hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
