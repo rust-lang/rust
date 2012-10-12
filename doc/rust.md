@@ -2186,7 +2186,7 @@ match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured enum constructors, records and tuples, variable binding
+literals, destructured enum constructors, structures, records and tuples, variable binding
 specifications, wildcards (`*`), and placeholders (`_`). A `match` expression has a *head
 expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
@@ -2196,19 +2196,19 @@ In a pattern whose head expression has an `enum` type, a placeholder (`_`) stand
 variant. For example:
 
 ~~~~
-enum list<X> { nil, cons(X, @list<X>) }
+enum List<X> { Nil, Cons(X, @List<X>) }
 
-let x: list<int> = cons(10, @cons(11, @nil));
+let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    cons(_, @nil) => fail ~"singleton list",
-    cons(*)       => return,
-    nil           => fail ~"empty list"
+    Cons(_, @Nil) => fail ~"singleton list",
+    Cons(*)       => return,
+    Nil           => fail ~"empty list"
 }
 ~~~~
 
-The first pattern matches lists constructed by applying `cons` to any head value, and a
-tail value of `@nil`. The second pattern matches `any` list constructed with `cons`,
+The first pattern matches lists constructed by applying `Cons` to any head value, and a
+tail value of `@Nil`. The second pattern matches _any_ list constructed with `Cons`,
 ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
 `C` has exactly one argument, while the pattern `C(*)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
@@ -2225,18 +2225,18 @@ An example of an `match` expression:
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
-enum list<X> { nil, cons(X, @list<X>) }
+enum List<X> { Nil, Cons(X, @List<X>) }
 
-let x: list<int> = cons(10, @cons(11, @nil));
+let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    cons(a, @cons(b, _)) => {
+    Cons(a, @Cons(b, _)) => {
         process_pair(a,b);
     }
-    cons(10, _) => {
+    Cons(10, _) => {
         process_ten();
     }
-    nil => {
+    Nil => {
         return;
     }
     _ => {
@@ -2245,7 +2245,7 @@ match x {
 }
 ~~~~
 
-Records can also be pattern-matched and their fields bound to variables.
+Records and structures can also be pattern-matched and their fields bound to variables.
 When matching fields of a record, the fields being matched are specified
 first, then a placeholder (`_`) represents the remaining fields.
 
