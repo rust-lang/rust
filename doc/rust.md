@@ -1929,11 +1929,11 @@ the unary copy operator is typically only used to cause an argument to a functio
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: &[mut int]) {
+fn mutate(vec: ~[mut int]) {
    vec[0] = 10;
 }
 
-let v = &[mut 1,2,3];
+let v = ~[mut 1,2,3];
 
 mutate(copy v);   // Pass a copy
 
