@@ -207,12 +207,7 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
         token: tok0.tok,
         span: span0,
         last_span: span0,
-        buffer: [mut
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0}
-        ]/4,
+        buffer: [mut {tok: tok0.tok, sp: span0}, ..4],
         buffer_start: 0,
         buffer_end: 0,
         restriction: UNRESTRICTED,
@@ -231,7 +226,7 @@ struct parser {
     mut token: token::token,
     mut span: span,
     mut last_span: span,
-    mut buffer: [mut {tok: token::token, sp: span}]/4,
+    mut buffer: [mut {tok: token::token, sp: span} * 4],
     mut buffer_start: int,
     mut buffer_end: int,
     mut restriction: restriction,
@@ -559,12 +554,7 @@ impl parser {
 
         let sp = mk_sp(lo, self.last_span.hi);
         return @{id: self.get_id(),
-              node: match self.maybe_parse_fixed_vstore() {
-                // Consider a fixed vstore suffix (/N or /_)
-                None => t,
-                Some(v) => {
-                  ty_fixed_length(@{id: self.get_id(), node:t, span: sp}, v)
-                } },
+              node: t,
               span: sp}
     }
 
@@ -693,23 +683,6 @@ impl parser {
             }
           }
           _ => None
-        }
-    }
-
-    fn maybe_parse_fixed_vstore() -> Option<Option<uint>> {
-        if self.token == token::BINOP(token::SLASH) {
-            self.bump();
-            match copy self.token {
-              token::UNDERSCORE => {
-                self.bump(); Some(None)
-              }
-              token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
-                self.bump(); Some(Some(i as uint))
-              }
-              _ => None
-            }
-        } else {
-            None
         }
     }
 
@@ -1086,21 +1059,6 @@ impl parser {
             let lit = self.parse_lit();
             hi = lit.span.hi;
             ex = expr_lit(@lit);
-        }
-
-        // Vstore is legal following expr_lit(lit_str(...)) and expr_vec(...)
-        // only.
-        match ex {
-          expr_lit(@{node: lit_str(_), span: _}) |
-          expr_vec(_, _)  => match self.maybe_parse_fixed_vstore() {
-            None => (),
-            Some(v) => {
-                hi = self.span.hi;
-                ex = expr_vstore(self.mk_expr(lo, hi, ex),
-                                 expr_vstore_fixed(v));
-            }
-          },
-          _ => ()
         }
 
         return self.mk_pexpr(lo, hi, ex);

@@ -19,7 +19,7 @@ use ast::*;
 //     target uses". This _includes_ integer-constants, plus the following
 //     constructors:
 //
-//        fixed-size vectors and strings: []/_ and ""/_
+//        fixed-size vectors and strings: [] and ""/_
 //        vector and string slices: &[] and &""
 //        tuples: (,)
 //        records: {...}
