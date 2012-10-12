@@ -2414,7 +2414,7 @@ impl parser {
 
     fn expect_self_ident() {
         if !self.is_self_ident() {
-            self.fatal(#fmt("expected `self` but found `%s`",
+            self.fatal(fmt!("expected `self` but found `%s`",
                             token_to_str(self.reader, self.token)));
         }
         self.bump();
@@ -2696,7 +2696,7 @@ impl parser {
                   ctor_decl(a_fn_decl, attrs, blk, s) => {
                       match the_ctor {
                         Some((_, _, _, s_first)) => {
-                          self.span_note(s, #fmt("Duplicate constructor \
+                          self.span_note(s, fmt!("Duplicate constructor \
                                      declaration for class %s",
                                      *self.interner.get(class_name)));
                            self.span_fatal(copy s_first, ~"First constructor \
@@ -2710,7 +2710,7 @@ impl parser {
                   dtor_decl(blk, attrs, s) => {
                       match the_dtor {
                         Some((_, _, s_first)) => {
-                          self.span_note(s, #fmt("Duplicate destructor \
+                          self.span_note(s, fmt!("Duplicate destructor \
                                      declaration for class %s",
                                      *self.interner.get(class_name)));
                           self.span_fatal(copy s_first, ~"First destructor \

@@ -266,7 +266,7 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
         let ss = option::map_default(&ei.callie.span, @~"",
                                      |span| @codemap::span_to_str(*span, cm));
         print_diagnostic(*ss, note,
-                         fmt!("in expansion of #%s", ei.callie.name));
+                         fmt!("in expansion of %s!", ei.callie.name));
         let ss = codemap::span_to_str(ei.call_site, cm);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);

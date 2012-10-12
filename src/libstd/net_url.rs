@@ -65,10 +65,10 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                         str::push_char(&mut out, ch);
                       }
 
-                      _ => out += #fmt("%%%X", ch as uint)
+                      _ => out += fmt!("%%%X", ch as uint)
                     }
                 } else {
-                    out += #fmt("%%%X", ch as uint);
+                    out += fmt!("%%%X", ch as uint);
                 }
               }
             }
@@ -164,7 +164,7 @@ fn encode_plus(s: &str) -> ~str {
                 str::push_char(&mut out, ch);
               }
               ' ' => str::push_char(&mut out, '+'),
-              _ => out += #fmt("%%%X", ch as uint)
+              _ => out += fmt!("%%%X", ch as uint)
             }
         }
 
@@ -190,7 +190,7 @@ pub fn encode_form_urlencoded(m: HashMap<~str, @DVec<@~str>>) -> ~str {
                 first = false;
             }
 
-            out += #fmt("%s=%s", key, encode_plus(**value));
+            out += fmt!("%s=%s", key, encode_plus(**value));
         }
     }
 
@@ -332,7 +332,7 @@ pub pure fn query_to_str(query: Query) -> ~str {
         let (k, v) = copy *kv;
         // This is really safe...
         unsafe {
-          strvec += ~[#fmt("%s=%s",
+          strvec += ~[fmt!("%s=%s",
                            encode_component(k), encode_component(v))];
         }
     };
@@ -850,7 +850,7 @@ mod tests {
     fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.host == ~"0.42.42.42";
         assert url.path == ~"/";
     }
@@ -859,7 +859,7 @@ mod tests {
     fn test_url_with_underscores() {
         let urlstr = ~"http://dotcom.com/file_name.html";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.path == ~"/file_name.html";
     }
 
@@ -867,7 +867,7 @@ mod tests {
     fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.path == ~"/file-name.html";
     }
 
