@@ -37,11 +37,11 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         must_cast = true;
     }
 
-    #debug["monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?, \
+    debug!("monomorphic_fn(fn_id=%? (%s), real_substs=%?, substs=%?, \
            hash_id = %?",
            fn_id, ty::item_path_str(ccx.tcx, fn_id),
            real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
-           substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id];
+           substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
 
     match ccx.monomorphized.find(hash_id) {
       Some(val) => {

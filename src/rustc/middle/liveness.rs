@@ -902,11 +902,11 @@ impl Liveness {
                 self.propagate_through_fn_block(decl, body)
             });
 
-        // hack to skip the loop unless #debug is enabled:
+        // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body %d (entry=%s)",
                {
                    for uint::range(0u, self.ir.num_live_nodes) |ln_idx| {
-                       #debug["%s", self.ln_str(LiveNode(ln_idx))];
+                       debug!("%s", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.node.id
                },

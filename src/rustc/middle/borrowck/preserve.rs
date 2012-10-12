@@ -314,17 +314,17 @@ priv impl &preserve_ctxt {
           // we can only root values if the desired region is some concrete
           // scope within the fn body
           ty::re_scope(scope_id) => {
-            #debug["Considering root map entry for %s: \
+            debug!("Considering root map entry for %s: \
                     node %d:%u -> scope_id %?, root_ub %?",
                    self.bccx.cmt_to_repr(cmt), base.id,
-                   derefs, scope_id, self.root_ub];
+                   derefs, scope_id, self.root_ub);
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
-                #debug["Elected to root"];
+                debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
                 return Ok(pc_ok);
             } else {
-                #debug["Unable to root"];
+                debug!("Unable to root");
                 return Err({cmt:cmt,
                          code:err_out_of_root_scope(root_region,
                                                     self.scope_region)});

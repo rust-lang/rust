@@ -1,6 +1,6 @@
 struct foo {
     x: ~str,
-    drop { #error["%s", self.x]; }
+    drop { error!("%s", self.x); }
 }
 
 fn main() {

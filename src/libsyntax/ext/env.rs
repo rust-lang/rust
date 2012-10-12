@@ -1,6 +1,6 @@
 
 /*
- * The compiler code necessary to support the #env extension.  Eventually this
+ * The compiler code necessary to support the env! extension.  Eventually this
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
@@ -15,7 +15,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     // FIXME (#2248): if this was more thorough it would manufacture an
     // Option<str> rather than just an maybe-empty string.
 
-    let var = expr_to_str(cx, args[0], ~"#env requires a string");
+    let var = expr_to_str(cx, args[0], ~"env! requires a string");
     match os::getenv(var) {
       option::None => return mk_uniq_str(cx, sp, ~""),
       option::Some(s) => return mk_uniq_str(cx, sp, s)
