@@ -1502,9 +1502,9 @@ and [`core::str`]. Here are some examples.
 # fn unwrap_crayon(c: Crayon) -> int { 0 }
 # fn eat_crayon_wax(i: int) { }
 # fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
-# fn crayon_to_str(c: Crayon) -> ~str { ~"" }
+# fn crayon_to_str(c: Crayon) -> &str { "" }
 
-let crayons = &[Almond, AntiqueBrass, Apricot];
+let crayons = [Almond, AntiqueBrass, Apricot];
 
 // Check the length of the vector
 assert crayons.len() == 3;
@@ -1569,7 +1569,7 @@ let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
-common, called a _stack closure_, has type `fn&` and can directly
+common, called a _stack closure_, has type `&fn` and can directly
 access local variables in the enclosing scope.
 
 ~~~~
@@ -1591,7 +1591,7 @@ pervasively in Rust code.
 When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
 this purpose, Rust provides a type of closure that has an arbitrary
-lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
+lifetime, written `@fn` (boxed closure, analogous to the `@` pointer
 type described earlier). This type of closure *is* first-class.
 
 A managed closure does not directly access its environment, but merely
@@ -1604,8 +1604,9 @@ returns it from a function, and then calls it:
 
 ~~~~
 # extern mod std;
-fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    return fn@(s: ~str) -> ~str { s + suffix };
+fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
+    // The compiler knows that we intend this closure to be of type @fn
+    return |s| s + suffix;
 }
 
 fn main() {
@@ -1614,22 +1615,9 @@ fn main() {
 }
 ~~~~
 
-This example uses the long closure syntax, `fn@(s: ~str) ...`. Using
-this syntax makes it explicit that we are declaring a boxed
-closure. In practice, boxed closures are usually defined with the
-short closure syntax introduced earlier, in which case the compiler
-infers the type of closure. Thus our managed closure example could
-also be written:
-
-~~~~
-fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    return |s| s + suffix;
-}
-~~~~
-
 ## Owned closures
 
-Owned closures, written `fn~` in analogy to the `~` pointer type,
+Owned closures, written `~fn` in analogy to the `~` pointer type,
 hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
 closures, but they also own them: that is, no other code can access
@@ -1649,12 +1637,10 @@ callers may pass any kind of closure.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice(|| { ~"I am an inferred stack closure"; } );
-call_twice(fn&() { ~"I am also a stack closure"; } );
-call_twice(fn@() { ~"I am a managed closure"; });
-call_twice(fn~() { ~"I am an owned closure"; });
-fn bare_function() { ~"I am a plain function"; }
-call_twice(bare_function);
+let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
+fn function() { "I'm a normal function"; }
+call_twice(closure);
+call_twice(function);
 ~~~~
 
 > ***Note:*** Both the syntax and the semantics will be changing
@@ -1693,7 +1679,7 @@ structure.
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
-each(&[1, 2, 3], |n| {
+each([1, 2, 3], |n| {
     do_some_work(n);
 });
 ~~~~
@@ -1704,7 +1690,7 @@ call that can be written more like a built-in control structure:
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
-do each(&[1, 2, 3]) |n| {
+do each([1, 2, 3]) |n| {
     do_some_work(n);
 }
 ~~~~
@@ -1715,7 +1701,7 @@ parentheses, where it looks more like a typical block of
 code.
 
 `do` is a convenient way to create tasks with the `task::spawn`
-function.  `spawn` has the signature `spawn(fn: fn~())`. In other
+function.  `spawn` has the signature `spawn(fn: ~fn())`. In other
 words, it is a function that takes an owned closure that takes no
 arguments.
 
@@ -1765,9 +1751,9 @@ And using this function to iterate over a vector:
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-each(&[2, 4, 8, 5, 16], |n| {
+each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
-        println(~"found odd number!");
+        println("found odd number!");
         false
     } else { true }
 });
@@ -1782,9 +1768,9 @@ to the next iteration, write `loop`.
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-for each(&[2, 4, 8, 5, 16]) |n| {
+for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
-        println(~"found odd number!");
+        println("found odd number!");
         break;
     }
 }
@@ -1967,12 +1953,12 @@ impl int: Printable {
     fn print() { io::println(fmt!("%d", self)) }
 }
 
-impl ~str: Printable {
+impl &str: Printable {
     fn print() { io::println(self) }
 }
 
 # 1.print();
-# (~"foo").print();
+# ("foo").print();
 ~~~~
 
 Methods defined in an implementation of a trait may be called just like
@@ -2120,7 +2106,7 @@ impl @Rectangle: Drawable { fn draw() { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
-draw_all(&[c as @Drawable, r as @Drawable]);
+draw_all([c as @Drawable, r as @Drawable]);
 ~~~~
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
@@ -2162,8 +2148,8 @@ additional modules.
 
 ~~~~
 mod farm {
-    pub fn chicken() -> ~str { ~"cluck cluck" }
-    pub fn cow() -> ~str { ~"mooo" }
+    pub fn chicken() -> &str { "cluck cluck" }
+    pub fn cow() -> &str { "mooo" }
 }
 
 fn main() {
@@ -2360,13 +2346,13 @@ these two files:
 ~~~~
 // world.rs
 #[link(name = "world", vers = "1.0")];
-fn explore() -> ~str { ~"world" }
+fn explore() -> &str { "world" }
 ~~~~
 
 ~~~~ {.xfail-test}
 // main.rs
 extern mod world;
-fn main() { io::println(~"hello " + world::explore()); }
+fn main() { io::println("hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
