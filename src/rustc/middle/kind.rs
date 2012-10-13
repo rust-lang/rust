@@ -217,7 +217,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     match b.node.expr {
       Some(ex) => maybe_copy(cx, ex,
          Some(("Tail expressions in blocks must be copyable",
-                                   "(Try adding a move)"))),
+                                   "Try adding a move"))),
       _ => ()
     }
     visit::visit_block(b, cx, v);
