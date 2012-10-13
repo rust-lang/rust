@@ -1,5 +1,5 @@
 use util::interner;
-use util::interner::interner;
+use util::interner::Interner;
 use std::map::HashMap;
 
 #[auto_serialize]
@@ -19,7 +19,7 @@ enum binop {
 
 #[auto_serialize]
 #[auto_deserialize]
-enum token {
+enum Token {
     /* Expression-operator symbols. */
     EQ,
     LT,
@@ -84,7 +84,7 @@ enum nonterminal {
     nt_stmt(@ast::stmt),
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),
-    nt_ty(  @ast::ty),
+    nt_ty(  @ast::Ty),
     nt_ident(ast::ident, bool),
     nt_path(@ast::path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
@@ -106,7 +106,7 @@ fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-fn to_str(in: @ident_interner, t: token) -> ~str {
+fn to_str(in: @ident_interner, t: Token) -> ~str {
     match t {
       EQ => ~"=",
       LT => ~"<",
@@ -192,7 +192,7 @@ fn to_str(in: @ident_interner, t: token) -> ~str {
     }
 }
 
-pure fn can_begin_expr(t: token) -> bool {
+pure fn can_begin_expr(t: Token) -> bool {
     match t {
       LPAREN => true,
       LBRACE => true,
@@ -223,7 +223,7 @@ pure fn can_begin_expr(t: token) -> bool {
 }
 
 /// what's the opposite delimiter?
-fn flip_delimiter(t: token::token) -> token::token {
+fn flip_delimiter(t: token::Token) -> token::Token {
     match t {
       token::LPAREN => token::RPAREN,
       token::LBRACE => token::RBRACE,
@@ -237,7 +237,7 @@ fn flip_delimiter(t: token::token) -> token::token {
 
 
 
-fn is_lit(t: token) -> bool {
+fn is_lit(t: Token) -> bool {
     match t {
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
@@ -248,22 +248,22 @@ fn is_lit(t: token) -> bool {
     }
 }
 
-pure fn is_ident(t: token) -> bool {
+pure fn is_ident(t: Token) -> bool {
     match t { IDENT(_, _) => true, _ => false }
 }
 
-pure fn is_ident_or_path(t: token) -> bool {
+pure fn is_ident_or_path(t: Token) -> bool {
     match t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
-pure fn is_plain_ident(t: token) -> bool {
+pure fn is_plain_ident(t: Token) -> bool {
     match t { IDENT(_, false) => true, _ => false }
 }
 
-pure fn is_bar(t: token) -> bool {
+pure fn is_bar(t: Token) -> bool {
     match t { BINOP(OR) | OROR => true, _ => false }
 }
 
@@ -314,7 +314,7 @@ mod special_idents {
 }
 
 struct ident_interner {
-    priv interner: util::interner::interner<@~str>,
+    priv interner: util::interner::Interner<@~str>,
 }
 
 impl ident_interner {
@@ -457,8 +457,8 @@ impl binop : cmp::Eq {
     pure fn ne(other: &binop) -> bool { !self.eq(other) }
 }
 
-impl token : cmp::Eq {
-    pure fn eq(other: &token) -> bool {
+impl Token : cmp::Eq {
+    pure fn eq(other: &Token) -> bool {
         match self {
             EQ => {
                 match (*other) {
@@ -720,7 +720,7 @@ impl token : cmp::Eq {
             }
         }
     }
-    pure fn ne(other: &token) -> bool { !self.eq(other) }
+    pure fn ne(other: &Token) -> bool { !self.eq(other) }
 }
 
 // Local Variables:

@@ -28,17 +28,17 @@ fn empty_span() -> span {
 }
 
 trait append_types {
-    fn add_ty(ty: @ast::ty) -> @ast::path;
-    fn add_tys(+tys: ~[@ast::ty]) -> @ast::path;
+    fn add_ty(ty: @ast::Ty) -> @ast::path;
+    fn add_tys(+tys: ~[@ast::Ty]) -> @ast::path;
 }
 
 impl @ast::path: append_types {
-    fn add_ty(ty: @ast::ty) -> @ast::path {
+    fn add_ty(ty: @ast::Ty) -> @ast::path {
         @{types: vec::append_one(self.types, ty),
           .. *self}
     }
 
-    fn add_tys(+tys: ~[@ast::ty]) -> @ast::path {
+    fn add_tys(+tys: ~[@ast::Ty]) -> @ast::path {
         @{types: vec::append(self.types, tys),
           .. *self}
     }
@@ -47,18 +47,18 @@ impl @ast::path: append_types {
 trait ext_ctxt_ast_builder {
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param;
-    fn arg(name: ident, ty: @ast::ty) -> ast::arg;
+    fn arg(name: ident, ty: @ast::Ty) -> ast::arg;
     fn expr_block(e: @ast::expr) -> ast::blk;
-    fn fn_decl(+inputs: ~[ast::arg], output: @ast::ty) -> ast::fn_decl;
+    fn fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl;
     fn item(name: ident, span: span, +node: ast::item_) -> @ast::item;
     fn item_fn_poly(name: ident,
                     +inputs: ~[ast::arg],
-                    output: @ast::ty,
+                    output: @ast::Ty,
                     +ty_params: ~[ast::ty_param],
                     +body: ast::blk) -> @ast::item;
     fn item_fn(name: ident,
                +inputs: ~[ast::arg],
-               output: @ast::ty,
+               output: @ast::Ty,
                +body: ast::blk) -> @ast::item;
     fn item_enum_poly(name: ident,
                       span: span,
@@ -66,17 +66,17 @@ trait ext_ctxt_ast_builder {
                       +ty_params: ~[ast::ty_param]) -> @ast::item;
     fn item_enum(name: ident, span: span,
                  +enum_definition: ast::enum_def) -> @ast::item;
-    fn variant(name: ident, span: span, +tys: ~[@ast::ty]) -> ast::variant;
+    fn variant(name: ident, span: span, +tys: ~[@ast::Ty]) -> ast::variant;
     fn item_mod(name: ident, span: span, +items: ~[@ast::item]) -> @ast::item;
-    fn ty_path_ast_builder(path: @ast::path) -> @ast::ty;
+    fn ty_path_ast_builder(path: @ast::path) -> @ast::Ty;
     fn item_ty_poly(name: ident,
                     span: span,
-                    ty: @ast::ty,
+                    ty: @ast::Ty,
                     +params: ~[ast::ty_param]) -> @ast::item;
-    fn item_ty(name: ident, span: span, ty: @ast::ty) -> @ast::item;
-    fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty];
-    fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field;
-    fn ty_rec(+v: ~[ast::ty_field]) -> @ast::ty;
+    fn item_ty(name: ident, span: span, ty: @ast::Ty) -> @ast::item;
+    fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
+    fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field;
+    fn ty_rec(+v: ~[ast::ty_field]) -> @ast::Ty;
     fn field_imm(name: ident, e: @ast::expr) -> ast::field;
     fn rec(+v: ~[ast::field]) -> @ast::expr;
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk;
@@ -84,11 +84,11 @@ trait ext_ctxt_ast_builder {
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
     fn block_expr(b: ast::blk) -> @ast::expr;
     fn empty_span() -> span;
-    fn ty_option(ty: @ast::ty) -> @ast::ty;
+    fn ty_option(ty: @ast::Ty) -> @ast::Ty;
 }
 
 impl ext_ctxt: ext_ctxt_ast_builder {
-    fn ty_option(ty: @ast::ty) -> @ast::ty {
+    fn ty_option(ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path(~[self.ident_of(~"Option")],
                                       self.empty_span())
                                  .add_ty(ty))
@@ -146,18 +146,18 @@ impl ext_ctxt: ext_ctxt_ast_builder {
           span: self.empty_span()}
     }
 
-    fn ty_field_imm(name: ident, ty: @ast::ty) -> ast::ty_field {
+    fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {
         {node: {ident: name, mt: { ty: ty, mutbl: ast::m_imm } },
           span: self.empty_span()}
     }
 
-    fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::ty {
+    fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_rec(fields),
           span: self.empty_span()}
     }
 
-    fn ty_infer() -> @ast::ty {
+    fn ty_infer() -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_infer,
           span: self.empty_span()}
@@ -169,7 +169,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
         {ident: id, id: self.next_id(), bounds: @bounds}
     }
 
-    fn arg(name: ident, ty: @ast::ty) -> ast::arg {
+    fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
         {mode: ast::infer(self.next_id()),
          ty: ty,
          ident: name,
@@ -192,7 +192,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn fn_decl(+inputs: ~[ast::arg],
-               output: @ast::ty) -> ast::fn_decl {
+               output: @ast::Ty) -> ast::fn_decl {
         {inputs: inputs,
          output: output,
          cf: ast::return_val}
@@ -224,7 +224,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn item_fn_poly(name: ident,
                     +inputs: ~[ast::arg],
-                    output: @ast::ty,
+                    output: @ast::Ty,
                     +ty_params: ~[ast::ty_param],
                     +body: ast::blk) -> @ast::item {
         self.item(name,
@@ -237,7 +237,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn item_fn(name: ident,
                +inputs: ~[ast::arg],
-               output: @ast::ty,
+               output: @ast::Ty,
                +body: ast::blk) -> @ast::item {
         self.item_fn_poly(name, inputs, output, ~[], body)
     }
@@ -256,7 +256,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn variant(name: ident,
                span: span,
-               +tys: ~[@ast::ty]) -> ast::variant {
+               +tys: ~[@ast::Ty]) -> ast::variant {
         let args = tys.map(|ty| {ty: *ty, id: self.next_id()});
 
         {node: {name: name,
@@ -278,13 +278,13 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                       items: items}))
     }
 
-    fn ty_path_ast_builder(path: @ast::path) -> @ast::ty {
+    fn ty_path_ast_builder(path: @ast::path) -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_path(path, self.next_id()),
           span: path.span}
     }
 
-    fn ty_nil_ast_builder() -> @ast::ty {
+    fn ty_nil_ast_builder() -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_nil,
           span: self.empty_span()}
@@ -292,16 +292,16 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn item_ty_poly(name: ident,
                     span: span,
-                    ty: @ast::ty,
+                    ty: @ast::Ty,
                     +params: ~[ast::ty_param]) -> @ast::item {
         self.item(name, span, ast::item_ty(ty, params))
     }
 
-    fn item_ty(name: ident, span: span, ty: @ast::ty) -> @ast::item {
+    fn item_ty(name: ident, span: span, ty: @ast::Ty) -> @ast::item {
         self.item_ty_poly(name, span, ty, ~[])
     }
 
-    fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::ty] {
+    fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
             path(~[p.ident], self.empty_span())))
     }

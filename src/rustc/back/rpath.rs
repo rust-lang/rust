@@ -13,7 +13,7 @@ pure fn not_win32(os: session::os) -> bool {
   }
 }
 
-fn get_rpath_flags(sess: session::session, out_filename: &Path) -> ~[~str] {
+fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -35,7 +35,7 @@ fn get_rpath_flags(sess: session::session, out_filename: &Path) -> ~[~str] {
     rpaths_to_flags(rpaths)
 }
 
-fn get_sysroot_absolute_rt_lib(sess: session::session) -> Path {
+fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
     let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
     sess.filesearch.sysroot().push_rel(&r).push(os::dll_filename("rustrt"))
 }

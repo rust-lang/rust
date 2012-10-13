@@ -35,7 +35,7 @@
 // probably better off writing `resolve_all - resolve_ivar`.
 
 use integral::*;
-use to_str::to_str;
+use to_str::ToStr;
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;
@@ -98,7 +98,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_region_chk(orig: ty::region) -> fres<ty::region> {
+    fn resolve_region_chk(orig: ty::Region) -> fres<ty::Region> {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
         match self.err {
@@ -145,7 +145,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_region(orig: ty::region) -> ty::region {
+    fn resolve_region(orig: ty::Region) -> ty::Region {
         debug!("Resolve_region(%s)", orig.to_str(self.infcx));
         match orig {
           ty::re_var(rid) => self.resolve_region_var(rid),
@@ -153,14 +153,14 @@ impl resolve_state {
         }
     }
 
-    fn resolve_region_var(rid: RegionVid) -> ty::region {
+    fn resolve_region_var(rid: RegionVid) -> ty::Region {
         if !self.should(resolve_rvar) {
             return ty::re_var(rid)
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    fn assert_not_rvar(rid: RegionVid, r: ty::region) {
+    fn assert_not_rvar(rid: RegionVid, r: ty::Region) {
         match r {
           ty::re_var(rid2) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));

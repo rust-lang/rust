@@ -23,7 +23,7 @@ impl preserve_condition {
 
 impl borrowck_ctxt {
     fn preserve(cmt: cmt,
-                scope_region: ty::region,
+                scope_region: ty::Region,
                 item_ub: ast::node_id,
                 root_ub: ast::node_id)
         -> bckres<preserve_condition> {
@@ -41,7 +41,7 @@ enum preserve_ctxt = {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
-    scope_region: ty::region,
+    scope_region: ty::Region,
 
     // the scope for the body of the enclosing fn/method item
     item_ub: ast::node_id,
@@ -277,7 +277,7 @@ priv impl &preserve_ctxt {
     /// Checks that the scope for which the value must be preserved
     /// is a subscope of `scope_ub`; if so, success.
     fn compare_scope(cmt: cmt,
-                     scope_ub: ty::region) -> bckres<preserve_condition> {
+                     scope_ub: ty::Region) -> bckres<preserve_condition> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             Ok(pc_ok)
         } else {

@@ -7,8 +7,8 @@ use result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
-            scope_region: ty::region,
-            mutbl: ast::mutability) -> bckres<@DVec<loan>> {
+            scope_region: ty::Region,
+            mutbl: ast::mutability) -> bckres<@DVec<Loan>> {
         let lc = loan_ctxt_(@{bccx: self,
                               scope_region: scope_region,
                               loans: @DVec()});
@@ -23,10 +23,10 @@ type loan_ctxt_ = {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
-    scope_region: ty::region,
+    scope_region: ty::Region,
 
     // accumulated list of loans that will be required
-    loans: @DVec<loan>
+    loans: @DVec<Loan>
 };
 
 enum loan_ctxt {
@@ -37,7 +37,7 @@ impl loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn issue_loan(cmt: cmt,
-                  scope_ub: ty::region,
+                  scope_ub: ty::Region,
                   req_mutbl: ast::mutability) -> bckres<()> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             match req_mutbl {

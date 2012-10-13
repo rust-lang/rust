@@ -1,6 +1,6 @@
 use libc::{c_int, c_uint, c_char};
 use driver::session;
-use session::session;
+use session::Session;
 use lib::llvm::llvm;
 use syntax::attr;
 use middle::ty;
@@ -33,14 +33,14 @@ impl output_type : cmp::Eq {
     pure fn ne(other: &output_type) -> bool { !self.eq(other) }
 }
 
-fn llvm_err(sess: session, msg: ~str) -> ! unsafe {
+fn llvm_err(sess: Session, msg: ~str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {
         sess.fatal(msg);
     } else { sess.fatal(msg + ~": " + str::raw::from_c_str(cstr)); }
 }
 
-fn WriteOutputFile(sess:session,
+fn WriteOutputFile(sess: Session,
         PM: lib::llvm::PassManagerRef, M: ModuleRef,
         Triple: *c_char,
         // FIXME: When #2334 is fixed, change
@@ -69,7 +69,7 @@ mod jit {
         env: *(),
     }
 
-    fn exec(sess: session,
+    fn exec(sess: Session,
             pm: PassManagerRef,
             m: ModuleRef,
             opt: c_int,
@@ -131,7 +131,7 @@ mod write {
         return false;
     }
 
-    fn run_passes(sess: session, llmod: ModuleRef, output: &Path) {
+    fn run_passes(sess: Session, llmod: ModuleRef, output: &Path) {
         let opts = sess.opts;
         if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
@@ -384,7 +384,7 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: session, c: ast::crate, output: &Path,
+fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
@@ -392,7 +392,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
          vers: Option<~str>,
          cmh_items: ~[@ast::meta_item]};
 
-    fn provided_link_metas(sess: session, c: ast::crate) ->
+    fn provided_link_metas(sess: Session, c: ast::crate) ->
        provided_metas {
         let mut name: Option<~str> = None;
         let mut vers: Option<~str> = None;
@@ -454,13 +454,13 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
         return truncated_hash_result(symbol_hasher);
     }
 
-    fn warn_missing(sess: session, name: ~str, default: ~str) {
+    fn warn_missing(sess: Session, name: ~str, default: ~str) {
         if !sess.building_library { return; }
         sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
                        name, default));
     }
 
-    fn crate_meta_name(sess: session, _crate: ast::crate,
+    fn crate_meta_name(sess: Session, _crate: ast::crate,
                        output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
               Some(v) => v,
@@ -477,7 +477,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
             };
     }
 
-    fn crate_meta_vers(sess: session, _crate: ast::crate,
+    fn crate_meta_vers(sess: Session, _crate: ast::crate,
                        metas: provided_metas) -> ~str {
         return match metas.vers {
               Some(v) => v,
@@ -569,7 +569,7 @@ fn sanitize(s: ~str) -> ~str {
     return result;
 }
 
-fn mangle(sess: session, ss: path) -> ~str {
+fn mangle(sess: Session, ss: path) -> ~str {
     // Follow C++ namespace-mangling style
 
     let mut n = ~"_ZN"; // Begin name-sequence.
@@ -584,7 +584,7 @@ fn mangle(sess: session, ss: path) -> ~str {
     n
 }
 
-fn exported_name(sess: session, path: path, hash: ~str, vers: ~str) -> ~str {
+fn exported_name(sess: Session, path: path, hash: ~str, vers: ~str) -> ~str {
     return mangle(sess,
                   vec::append_one(
                       vec::append_one(path, path_name(sess.ident_of(hash))),
@@ -623,7 +623,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
 
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
-fn link_binary(sess: session,
+fn link_binary(sess: Session,
                obj_filename: &Path,
                out_filename: &Path,
                lm: link_meta) {

@@ -52,7 +52,7 @@ type encode_parms = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item
 };
 
@@ -77,7 +77,7 @@ enum encode_ctxt = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
@@ -385,6 +385,12 @@ fn encode_self_type(ebml_w: ebml::Serializer, self_type: ast::self_ty_) {
         }
     }
 
+    ebml_w.end_tag();
+}
+
+fn encode_method_sort(ebml_w: ebml::Serializer, sort: char) {
+    ebml_w.start_tag(tag_item_trait_method_sort);
+    ebml_w.writer.write(&[ sort as u8 ]);
     ebml_w.end_tag();
 }
 
@@ -746,6 +752,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         }
       }
       item_trait(tps, traits, ms) => {
+        let provided_methods = @dvec::DVec();
+
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -766,12 +774,21 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
+                encode_method_sort(ebml_w, 'r');
                 ebml_w.end_tag();
               }
               provided(m) => {
-                encode_info_for_method(ecx, ebml_w, path,
-                                       should_inline(m.attrs), item.id,
-                                       m, m.tps);
+                provided_methods.push(m);
+
+                ebml_w.start_tag(tag_item_trait_method);
+                encode_def_id(ebml_w, local_def(m.id));
+                encode_name(ecx, ebml_w, mty.ident);
+                encode_type_param_bounds(ebml_w, ecx, m.tps);
+                encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
+                encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
+                encode_self_type(ebml_w, mty.self_ty);
+                encode_method_sort(ebml_w, 'p');
+                ebml_w.end_tag();
               }
             }
             i += 1u;
@@ -805,7 +822,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
             ebml_w.end_tag();
         }
 
-
+        // Finally, output all the provided methods as items.
+        for provided_methods.each |m| {
+            index.push({val: m.id, pos: ebml_w.writer.tell()});
+            encode_info_for_method(ecx, ebml_w, path, true, item.id, *m,
+                                   m.tps);
+        }
       }
       item_mac(*) => fail ~"item macros unimplemented"
     }
@@ -1033,9 +1055,9 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 }
 
 fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
-                     cstore: cstore::cstore) {
+                     cstore: cstore::CStore) {
 
-    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::cstore)
+    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::CStore)
         -> ~[decoder::crate_dep] {
 
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};

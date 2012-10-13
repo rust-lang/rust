@@ -9,7 +9,7 @@
 //
 // * Functions called by the compiler itself.
 
-use driver::session::session;
+use driver::session::Session;
 use metadata::csearch::{each_path, get_item_attrs};
 use metadata::cstore::{iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
@@ -50,7 +50,7 @@ struct LanguageItems {
     mut log_type_fn: Option<def_id>
 }
 
-mod LanguageItems {
+mod language_items {
     #[legacy_exports];
     fn make() -> LanguageItems {
         LanguageItems {
@@ -83,7 +83,7 @@ mod LanguageItems {
     }
 }
 
-fn LanguageItemCollector(crate: @crate, session: session,
+fn LanguageItemCollector(crate: @crate, session: Session,
                          items: &r/LanguageItems)
     -> LanguageItemCollector/&r {
 
@@ -127,7 +127,7 @@ struct LanguageItemCollector {
     items: &LanguageItems,
 
     crate: @crate,
-    session: session,
+    session: Session,
 
     item_refs: HashMap<~str,&mut Option<def_id>>,
 }
@@ -239,8 +239,8 @@ impl LanguageItemCollector {
     }
 }
 
-fn collect_language_items(crate: @crate, session: session) -> LanguageItems {
-    let items = LanguageItems::make();
+fn collect_language_items(crate: @crate, session: Session) -> LanguageItems {
+    let items = language_items::make();
     let collector = LanguageItemCollector(crate, session, &items);
     collector.collect();
     copy items

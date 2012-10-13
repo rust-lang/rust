@@ -258,7 +258,7 @@ impl gather_loan_ctxt {
     // dynamically that they are not freed.
     fn guarantee_valid(cmt: cmt,
                        req_mutbl: ast::mutability,
-                       scope_r: ty::region) {
+                       scope_r: ty::Region) {
 
         self.bccx.guaranteed_paths += 1;
 
@@ -407,7 +407,7 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
+    fn add_loans(scope_id: ast::node_id, loans: @DVec<Loan>) {
         debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
         match self.req_maps.req_loan_map.find(scope_id) {
             Some(l) => {

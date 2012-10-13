@@ -1,6 +1,6 @@
 use combine::*;
 use unify::*;
-use to_str::to_str;
+use to_str::ToStr;
 
 enum Sub = combine_fields;  // "subtype", "subregion" etc
 
@@ -20,14 +20,14 @@ impl Sub: combine {
         Sub(opp).tys(b, a)
     }
 
-    fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         let opp = combine_fields {
             a_is_expected: !self.a_is_expected,.. *self
         };
         Sub(opp).regions(b, a)
     }
 
-    fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%s, %s)",
                self.tag(),
                a.to_str(self.infcx),

@@ -20,7 +20,6 @@
 use std::map::HashMap;
 use std::list;
 use std::list::{List, Cons, Nil};
-use driver::session::session;
 use metadata::csearch;
 use syntax::ast::*, syntax::ast_util, syntax::visit;
 use syntax::ast_map;
@@ -40,8 +39,13 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       Some(uses) => return uses,
       None => ()
     }
-    let fn_id_loc = if fn_id.crate == local_crate { fn_id }
-                    else { inline::maybe_instantiate_inline(ccx, fn_id) };
+
+    let fn_id_loc = if fn_id.crate == local_crate {
+        fn_id
+    } else {
+        inline::maybe_instantiate_inline(ccx, fn_id, true)
+    };
+
     // Conservatively assume full use for recursive loops
     ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
 
