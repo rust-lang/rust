@@ -38,6 +38,8 @@ use lint::{non_implicitly_copyable_typarams,implicit_copies};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
+const try_adding: &str = "Try adding a move";
+
 fn kind_to_str(k: kind) -> ~str {
     let mut kinds = ~[];
 
@@ -217,7 +219,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     match b.node.expr {
       Some(ex) => maybe_copy(cx, ex,
          Some(("Tail expressions in blocks must be copyable",
-                                   "Try adding a move"))),
+                                  try_adding))),
       _ => ()
     }
     visit::visit_block(b, cx, v);
@@ -279,11 +281,11 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(Some(ex)) => {
         maybe_copy(cx, ex, Some(("Returned values must be copyable",
-                                 "Try adding a move")));
+                                 try_adding)));
       }
       expr_cast(source, _) => {
         maybe_copy(cx, source, Some(("Casted values must be copyable",
-                                     "Try adding a move")));
+                                     try_adding)));
         check_cast_for_escaping_regions(cx, source, e);
       }
       expr_copy(expr) => check_copy_ex(cx, expr, false,
