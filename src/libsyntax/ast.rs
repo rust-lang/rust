@@ -118,7 +118,9 @@ type ty_param = {ident: ident, id: node_id, bounds: @~[ty_param_bound]};
 #[auto_deserialize]
 enum def {
     def_fn(def_id, purity),
-    def_static_method(def_id, purity),
+    def_static_method(/* method */ def_id,
+                      /* trait */  def_id,
+                      purity),
     def_self(node_id),
     def_mod(def_id),
     def_foreign_mod(def_id),
@@ -150,9 +152,10 @@ impl def : cmp::Eq {
                     _ => false
                 }
             }
-            def_static_method(e0a, e1a) => {
+            def_static_method(e0a, e1a, e2a) => {
                 match (*other) {
-                    def_static_method(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    def_static_method(e0b, e1b, e2b) =>
+                    e0a == e0b && e1a == e1b && e2a == e2b,
                     _ => false
                 }
             }

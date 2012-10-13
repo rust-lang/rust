@@ -794,6 +794,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
 
             ebml_w.start_tag(tag_items_data_item);
             encode_def_id(ebml_w, local_def(ty_m.id));
+            encode_parent_item(ebml_w, local_def(item.id));
             encode_name(ecx, ebml_w, ty_m.ident);
             encode_family(ebml_w,
                           purity_static_method_family(ty_m.purity));

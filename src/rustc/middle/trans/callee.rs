@@ -78,8 +78,9 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
             ast::def_fn(did, _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ref_expr.id))
             }
-            ast::def_static_method(did, _) => {
-                fn_callee(bcx, meth::trans_static_method_callee(bcx, did,
+            ast::def_static_method(impl_did, trait_did, _) => {
+                fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
+                                                                trait_did,
                                                                 ref_expr.id))
             }
             ast::def_variant(tid, vid) => {
