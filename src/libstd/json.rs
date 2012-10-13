@@ -273,8 +273,36 @@ pub impl PrettySerializer: serialization::Serializer {
     }
 }
 
+#[cfg(stage0)]
 pub impl Json: serialization::Serializable {
     fn serialize<S: serialization::Serializer>(&self, s: &S) {
+        match *self {
+            Number(v) => v.serialize(s),
+            String(ref v) => v.serialize(s),
+            Boolean(v) => v.serialize(s),
+            List(v) => v.serialize(s),
+            Object(ref v) => {
+                do s.emit_rec || {
+                    let mut idx = 0;
+                    for v.each |key, value| {
+                        do s.emit_field(*key, idx) {
+                            value.serialize(s);
+                        }
+                        idx += 1;
+                    }
+                }
+            },
+            Null => s.emit_nil(),
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<
+    S: serialization::Serializer
+> Json: serialization::Serializable<S> {
+    fn serialize(&self, s: &S) {
         match *self {
             Number(v) => v.serialize(s),
             String(ref v) => v.serialize(s),
