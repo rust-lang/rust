@@ -9,18 +9,22 @@ use io::Writer;
 use std::serialization::{Serializable, Deserializable, deserialize};
 use std::prettyprint;
 
-fn test_ser_and_deser<A:Eq Serializable Deserializable>(
-    a1: &A,
-    +expected: ~str
+fn test_prettyprint<A: Serializable<prettyprint::Serializer>>(
+    a: &A,
+    expected: &~str
 ) {
-    // check the pretty printer:
     let s = do io::with_str_writer |w| {
-        a1.serialize(&prettyprint::Serializer(w))
+        a.serialize(&prettyprint::Serializer(w))
     };
     debug!("s == %?", s);
-    assert s == expected;
+    assert s == *expected;
+}
 
-    // check the EBML serializer:
+fn test_ebml<A:
+    Eq
+    Serializable<ebml::Serializer>
+    Deserializable<ebml::Deserializer>
+>(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = &ebml::Serializer(wr);
         a1.serialize(ebml_w)
@@ -140,24 +144,40 @@ enum Quark<T> {
 enum CLike { A, B, C }
 
 fn main() {
-    test_ser_and_deser(&Plus(@Minus(@Val(3u), @Val(10u)),
-                             @Plus(@Val(22u), @Val(5u))),
-                       ~"Plus(@Minus(@Val(3u), @Val(10u)), \
-                        @Plus(@Val(22u), @Val(5u)))");
+    let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
+    test_prettyprint(a, &~"Plus(@Minus(@Val(3u), @Val(10u)), \
+                           @Plus(@Val(22u), @Val(5u)))");
+    test_ebml(a);
 
-    test_ser_and_deser(&{lo: 0u, hi: 5u, node: 22u},
-                       ~"{lo: 0u, hi: 5u, node: 22u}");
+    let a = &{lo: 0u, hi: 5u, node: 22u};
+    test_prettyprint(a, &~"{lo: 0u, hi: 5u, node: 22u}");
+    test_ebml(a);
 
-    test_ser_and_deser(&AnEnum({v: ~[1u, 2u, 3u]}),
-                       ~"AnEnum({v: ~[1u, 2u, 3u]})");
+    let a = &AnEnum({v: ~[1u, 2u, 3u]});
+    test_prettyprint(a, &~"AnEnum({v: ~[1u, 2u, 3u]})");
+    test_ebml(a);
 
-    test_ser_and_deser(&Point {x: 3u, y: 5u}, ~"Point {x: 3u, y: 5u}");
+    let a = &Point {x: 3u, y: 5u};
+    test_prettyprint(a, &~"Point {x: 3u, y: 5u}");
+    test_ebml(a);
 
-    test_ser_and_deser(&@[1u, 2u, 3u], ~"@[1u, 2u, 3u]");
+    let a = &@[1u, 2u, 3u];
+    test_prettyprint(a, &~"@[1u, 2u, 3u]");
+    test_ebml(a);
 
-    test_ser_and_deser(&Top(22u), ~"Top(22u)");
-    test_ser_and_deser(&Bottom(222u), ~"Bottom(222u)");
+    let a = &Top(22u);
+    test_prettyprint(a, &~"Top(22u)");
+    test_ebml(a);
 
-    test_ser_and_deser(&A, ~"A");
-    test_ser_and_deser(&B, ~"B");
+    let a = &Bottom(222u);
+    test_prettyprint(a, &~"Bottom(222u)");
+    test_ebml(a);
+
+    let a = &A;
+    test_prettyprint(a, &~"A");
+    test_ebml(a);
+
+    let a = &B;
+    test_prettyprint(a, &~"B");
+    test_ebml(a);
 }

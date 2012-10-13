@@ -13,16 +13,16 @@ For example, a type like:
 
 would generate two implementations like:
 
-    impl Node: Serializable {
-        fn serialize<S: Serializer>(s: &S) {
+    impl<S: Serializer> node_id: Serializable<S> {
+        fn serialize(s: &S) {
             do s.emit_struct("Node") {
                 s.emit_field("id", 0, || s.emit_uint(self))
             }
         }
     }
 
-    impl node_id: Deserializable {
-        static fn deserialize<D: Deserializer>(d: &D) -> Node {
+    impl<D: Deserializer> node_id: Deserializable {
+        static fn deserialize(d: &D) -> Node {
             do d.read_struct("Node") {
                 Node {
                     id: d.read_field(~"x", 0, || deserialize(d))
@@ -40,7 +40,10 @@ references other non-built-in types.  A type definition like:
 
 would yield functions like:
 
-    impl<T: Serializable> spanned<T>: Serializable {
+    impl<
+        S: Serializer,
+        T: Serializable<S>
+    > spanned<T>: Serializable<S> {
         fn serialize<S: Serializer>(s: &S) {
             do s.emit_rec {
                 s.emit_field("node", 0, || self.node.serialize(s));
@@ -49,8 +52,11 @@ would yield functions like:
         }
     }
 
-    impl<T: Deserializable> spanned<T>: Deserializable {
-        static fn deserialize<D: Deserializer>(d: &D) -> spanned<T> {
+    impl<
+        D: Deserializer,
+        T: Deserializable<D>
+    > spanned<T>: Deserializable<D> {
+        static fn deserialize(d: &D) -> spanned<T> {
             do d.read_rec {
                 {
                     node: d.read_field(~"node", 0, || deserialize(d)),
@@ -215,6 +221,25 @@ fn expand_auto_deserialize(
 }
 
 priv impl ext_ctxt {
+    fn bind_path(
+        span: span,
+        ident: ast::ident,
+        path: @ast::path,
+        bounds: @~[ast::ty_param_bound]
+    ) -> ast::ty_param {
+        let bound = ast::bound_trait(@{
+            id: self.next_id(),
+            node: ast::ty_path(path, self.next_id()),
+            span: span,
+        });
+
+        {
+            ident: ident,
+            id: self.next_id(),
+            bounds: @vec::append(~[bound], *bounds)
+        }
+    }
+
     fn expr(span: span, node: ast::expr_) -> @ast::expr {
         @{id: self.next_id(), callee_id: self.next_id(),
           node: node, span: span}
@@ -332,24 +357,28 @@ fn mk_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
+    ty_param: ast::ty_param,
     path: @ast::path,
     tps: ~[ast::ty_param],
     f: fn(@ast::ty) -> @ast::method
 ) -> @ast::item {
     // All the type parameters need to bound to the trait.
-    let trait_tps = do tps.map |tp| {
-        let t_bound = ast::bound_trait(@{
-            id: cx.next_id(),
-            node: ast::ty_path(path, cx.next_id()),
-            span: span,
-        });
+    let mut trait_tps = vec::append(
+        ~[ty_param],
+         do tps.map |tp| {
+            let t_bound = ast::bound_trait(@{
+                id: cx.next_id(),
+                node: ast::ty_path(path, cx.next_id()),
+                span: span,
+            });
 
-        {
-            ident: tp.ident,
-            id: cx.next_id(),
-            bounds: @vec::append(~[t_bound], *tp.bounds)
+            {
+                ident: tp.ident,
+                id: cx.next_id(),
+                bounds: @vec::append(~[t_bound], *tp.bounds)
+            }
         }
-    };
+    );
 
     let opt_trait = Some(@{
         path: path,
@@ -382,20 +411,37 @@ fn mk_ser_impl(
     tps: ~[ast::ty_param],
     body: @ast::expr
 ) -> @ast::item {
+    // Make a path to the std::serialization::Serializable typaram.
+    let ty_param = cx.bind_path(
+        span,
+        cx.ident_of(~"__S"),
+        cx.path(
+            span,
+            ~[
+                cx.ident_of(~"std"),
+                cx.ident_of(~"serialization"),
+                cx.ident_of(~"Serializer"),
+            ]
+        ),
+        @~[]
+    );
+
     // Make a path to the std::serialization::Serializable trait.
-    let path = cx.path(
+    let path = cx.path_tps(
         span,
         ~[
             cx.ident_of(~"std"),
             cx.ident_of(~"serialization"),
             cx.ident_of(~"Serializable"),
-        ]
+        ],
+        ~[cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[])]
     );
 
     mk_impl(
         cx,
         span,
         ident,
+        ty_param,
         path,
         tps,
         |_ty| mk_ser_method(cx, span, cx.expr_blk(body))
@@ -409,20 +455,37 @@ fn mk_deser_impl(
     tps: ~[ast::ty_param],
     body: @ast::expr
 ) -> @ast::item {
+    // Make a path to the std::serialization::Deserializable typaram.
+    let ty_param = cx.bind_path(
+        span,
+        cx.ident_of(~"__D"),
+        cx.path(
+            span,
+            ~[
+                cx.ident_of(~"std"),
+                cx.ident_of(~"serialization"),
+                cx.ident_of(~"Deserializer"),
+            ]
+        ),
+        @~[]
+    );
+
     // Make a path to the std::serialization::Deserializable trait.
-    let path = cx.path(
+    let path = cx.path_tps(
         span,
         ~[
             cx.ident_of(~"std"),
             cx.ident_of(~"serialization"),
             cx.ident_of(~"Deserializable"),
-        ]
+        ],
+        ~[cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[])]
     );
 
     mk_impl(
         cx,
         span,
         ident,
+        ty_param,
         path,
         tps,
         |ty| mk_deser_method(cx, span, ty, cx.expr_blk(body))
@@ -434,22 +497,6 @@ fn mk_ser_method(
     span: span,
     ser_body: ast::blk
 ) -> @ast::method {
-    let ser_bound = cx.ty_path(
-        span,
-        ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialization"),
-            cx.ident_of(~"Serializer"),
-        ],
-        ~[]
-    );
-
-    let ser_tps = ~[{
-        ident: cx.ident_of(~"__S"),
-        id: cx.next_id(),
-        bounds: @~[ast::bound_trait(ser_bound)],
-    }];
-
     let ty_s = @{
         id: cx.next_id(),
         node: ast::ty_rptr(
@@ -487,7 +534,7 @@ fn mk_ser_method(
     @{
         ident: cx.ident_of(~"serialize"),
         attrs: ~[],
-        tps: ser_tps,
+        tps: ~[],
         self_ty: { node: ast::sty_region(ast::m_imm), span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
@@ -505,22 +552,6 @@ fn mk_deser_method(
     ty: @ast::ty,
     deser_body: ast::blk
 ) -> @ast::method {
-    let deser_bound = cx.ty_path(
-        span,
-        ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialization"),
-            cx.ident_of(~"Deserializer"),
-        ],
-        ~[]
-    );
-
-    let deser_tps = ~[{
-        ident: cx.ident_of(~"__D"),
-        id: cx.next_id(),
-        bounds: @~[ast::bound_trait(deser_bound)],
-    }];
-
     let ty_d = @{
         id: cx.next_id(),
         node: ast::ty_rptr(
@@ -552,7 +583,7 @@ fn mk_deser_method(
     @{
         ident: cx.ident_of(~"deserialize"),
         attrs: ~[],
-        tps: deser_tps,
+        tps: ~[],
         self_ty: { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
