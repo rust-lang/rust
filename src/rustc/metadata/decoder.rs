@@ -178,6 +178,12 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
+fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
+                                        d: ebml::Doc) -> ast::def_id {
+    let trait_did = item_parent_item(d).expect(~"item without parent");
+    {crate: cnum, node: trait_did.node}
+}
+
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
     return translate_def_id(cdata, ebml::with_doc_data(tagdoc,
@@ -297,35 +303,39 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
-        -> def_like {
+    -> def_like
+{
     let fam = item_family(item);
     match fam {
-      Const     => dl_def(ast::def_const(did)),
-      Class     => dl_def(ast::def_class(did, true)),
-      Struct    => dl_def(ast::def_class(did, false)),
-      UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
-      Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
-      PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
-      ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
-      UnsafeStaticMethod => dl_def(ast::def_static_method(did,
-                                                          ast::unsafe_fn)),
-      StaticMethod => dl_def(ast::def_static_method(did, ast::impure_fn)),
-      PureStaticMethod => dl_def(ast::def_static_method(did, ast::pure_fn)),
-      Type | ForeignType => dl_def(ast::def_ty(did)),
-      Mod => dl_def(ast::def_mod(did)),
-      ForeignMod => dl_def(ast::def_foreign_mod(did)),
-      Variant => {
-          match item_parent_item(item) {
-              Some(t) => {
-                let tid = {crate: cnum, node: t.node};
-                dl_def(ast::def_variant(tid, did))
-              }
-              None => fail ~"item_to_def_like: enum item has no parent"
-          }
-      }
-      Trait | Enum => dl_def(ast::def_ty(did)),
-      Impl => dl_impl(did),
-      PublicField | PrivateField | InheritedField => dl_field,
+        Const     => dl_def(ast::def_const(did)),
+        Class     => dl_def(ast::def_class(did, true)),
+        Struct    => dl_def(ast::def_class(did, false)),
+        UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
+        Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
+        PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
+        ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
+        UnsafeStaticMethod => {
+            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did, ast::unsafe_fn))
+        }
+        StaticMethod => {
+            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did, ast::impure_fn))
+        }
+        PureStaticMethod => {
+            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did, ast::pure_fn))
+        }
+        Type | ForeignType => dl_def(ast::def_ty(did)),
+        Mod => dl_def(ast::def_mod(did)),
+        ForeignMod => dl_def(ast::def_foreign_mod(did)),
+        Variant => {
+            let enum_did = item_reqd_and_translated_parent_item(cnum, item);
+            dl_def(ast::def_variant(enum_did, did))
+        }
+        Trait | Enum => dl_def(ast::def_ty(did)),
+        Impl => dl_impl(did),
+        PublicField | PrivateField | InheritedField => dl_field,
     }
 }
 

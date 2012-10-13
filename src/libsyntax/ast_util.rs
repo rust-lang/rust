@@ -54,7 +54,7 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 
 pure fn def_id_of_def(d: def) -> def_id {
     match d {
-      def_fn(id, _) | def_static_method(id, _) | def_mod(id) |
+      def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
       def_use(id) | def_class(id, _) => {

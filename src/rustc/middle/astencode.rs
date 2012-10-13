@@ -345,8 +345,8 @@ impl ast::def: tr {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
         match self {
           ast::def_fn(did, p) => { ast::def_fn(did.tr(xcx), p) }
-          ast::def_static_method(did, p) => {
-            ast::def_static_method(did.tr(xcx), p)
+          ast::def_static_method(did, did2, p) => {
+            ast::def_static_method(did.tr(xcx), did2.tr(xcx), p)
           }
           ast::def_self(nid) => { ast::def_self(xcx.tr_id(nid)) }
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }

@@ -162,10 +162,49 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 
 fn trans_static_method_callee(bcx: block,
                               method_id: ast::def_id,
+                              trait_id: ast::def_id,
                               callee_id: ast::node_id) -> FnData
 {
     let _icx = bcx.insn_ctxt("impl::trans_static_method_callee");
     let ccx = bcx.ccx();
+
+    debug!("trans_static_method_callee(method_id=%?, trait_id=%s, \
+            callee_id=%?)",
+           method_id,
+           ty::item_path_str(bcx.tcx(), trait_id),
+           callee_id);
+    let _indenter = indenter();
+
+    // When we translate a static fn defined in a trait like:
+    //
+    //   trait<T1...Tn> Trait {
+    //       static fn foo<M1...Mn>(...) {...}
+    //   }
+    //
+    // this winds up being translated as something like:
+    //
+    //   fn foo<T1...Tn,self: Trait<T1...Tn>,M1...Mn>(...) {...}
+    //
+    // So when we see a call to this function foo, we have to figure
+    // out which impl the `Trait<T1...Tn>` bound on the type `self` was
+    // bound to.  Due to the fact that we use a flattened list of
+    // impls, one per bound, this means we have to total up the bounds
+    // found on the type parametesr T1...Tn to find the index of the
+    // one we are interested in.
+    let bound_index = {
+        let trait_polyty = ty::lookup_item_type(bcx.tcx(), trait_id);
+        let mut index = 0;
+        for trait_polyty.bounds.each |param_bounds| {
+            for param_bounds.each |param_bound| {
+                match *param_bound {
+                    ty::bound_trait(_) => { index += 1; }
+                    ty::bound_copy | ty::bound_owned |
+                    ty::bound_send | ty::bound_const => {}
+                }
+            }
+        }
+        index
+    };
 
     let mname = if method_id.crate == ast::local_crate {
         match bcx.tcx().items.get(method_id.node) {
@@ -187,9 +226,7 @@ fn trans_static_method_callee(bcx: block,
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(callee_id));
 
-    // FIXME(#3446) -- I am pretty sure index 0 is not the right one,
-    // if the static method is implemented on a generic type. (NDM)
-    match vtbls[0] {
+    match vtbls[bound_index] {
         typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);

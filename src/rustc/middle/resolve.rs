@@ -1126,6 +1126,7 @@ impl Resolver {
                             self.add_child(ident, new_parent, ~[ValueNS],
                                            ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
+                                                    local_def(item.id),
                                                     ty_m.purity);
                         (*method_name_bindings).define_value
                             (Public, def, ty_m.span);

@@ -641,10 +641,11 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
             let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
             return fn_data_to_datum(bcx, did, fn_data, lldest);
         }
-        ast::def_static_method(did, _) => {
-            let fn_data = meth::trans_static_method_callee(bcx, did,
+        ast::def_static_method(impl_did, trait_did, _) => {
+            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
+                                                           trait_did,
                                                            ref_expr.id);
-            return fn_data_to_datum(bcx, did, fn_data, lldest);
+            return fn_data_to_datum(bcx, impl_did, fn_data, lldest);
         }
         ast::def_variant(tid, vid) => {
             if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
