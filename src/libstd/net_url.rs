@@ -95,7 +95,7 @@ pub fn encode(s: &str) -> ~str {
  * This function is compliant with RFC 3986.
  */
 
-fn encode_component(s: &str) -> ~str {
+pub fn encode_component(s: &str) -> ~str {
     encode_inner(s, false)
 }
 
