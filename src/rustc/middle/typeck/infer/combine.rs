@@ -88,9 +88,9 @@ fn expected_found<C: combine,T>(
     self: &C, +a: T, +b: T) -> ty::expected_found<T> {
 
     if self.a_is_expected() {
-        ty::expected_found {expected: a, found: b}
+        ty::expected_found {expected: move a, found: move b}
     } else {
-        ty::expected_found {expected: b, found: a}
+        ty::expected_found {expected: move b, found: move a}
     }
 }
 
