@@ -25,7 +25,7 @@ mod pingpong {
                 pong: mk_packet::<pong>()
             }
         };
-        do pipes::entangle_buffer(buffer) |buffer, data| {
+        do pipes::entangle_buffer(move buffer) |buffer, data| {
             data.ping.set_buffer_(buffer);
             data.pong.set_buffer_(buffer);
             ptr::addr_of(&(data.ping))
@@ -40,9 +40,9 @@ mod pingpong {
                 let b = pipe.reuse_buffer();
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
                 let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
-                let message = pingpong::ping(s);
-                pipes::send(pipe, message);
-                c
+                let message = pingpong::ping(move s);
+                pipes::send(move pipe, move message);
+                move c
             }
         }
         type ping = pipes::SendPacketBuffered<pingpong::ping,
@@ -59,9 +59,9 @@ mod pingpong {
                 let b = pipe.reuse_buffer();
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
                 let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
-                let message = pingpong::pong(s);
-                pipes::send(pipe, message);
-                c
+                let message = pingpong::pong(move s);
+                pipes::send(move pipe, move message);
+                move c
             }
         }
         type pong = pipes::SendPacketBuffered<pingpong::pong,
@@ -77,34 +77,34 @@ mod test {
     fn client(-chan: pingpong::client::ping) {
         use pingpong::client;
 
-        let chan = client::ping(chan); return;
+        let chan = client::ping(move chan); return;
         log(error, "Sent ping");
-        let pong(_chan) = recv(chan);
+        let pong(_chan) = recv(move chan);
         log(error, "Received pong");
     }
     
     fn server(-chan: pingpong::server::ping) {
         use pingpong::server;
 
-        let ping(chan) = recv(chan); return;
+        let ping(chan) = recv(move chan); return;
         log(error, "Received ping");
-        let _chan = server::pong(chan);
+        let _chan = server::pong(move chan);
         log(error, "Sent pong");
     }
 }
 
 fn main() {
     let (client_, server_) = pingpong::init();
-    let client_ = ~mut Some(client_);
-    let server_ = ~mut Some(server_);
+    let client_ = ~mut Some(move client_);
+    let server_ = ~mut Some(move server_);
     do task::spawn |move client_| {
         let mut client__ = None;
         *client_ <-> client__;
-        test::client(option::unwrap(client__));
+        test::client(option::unwrap(move client__));
     };
     do task::spawn |move server_| {
         let mut server_ˊ = None;
         *server_ <-> server_ˊ;
-        test::server(option::unwrap(server_ˊ));
+        test::server(option::unwrap(move server_ˊ));
     };
 }

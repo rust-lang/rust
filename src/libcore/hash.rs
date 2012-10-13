@@ -438,7 +438,7 @@ pub fn test_siphash() {
         for vec::each(*r) |b| {
             s += uint::to_str(*b as uint, 16u);
         }
-        return s;
+        move s
     }
 
     while t < 64 {

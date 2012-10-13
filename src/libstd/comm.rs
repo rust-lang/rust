@@ -52,12 +52,12 @@ pub fn DuplexStream<T: Send, U: Send>()
     let (c2, p1) = pipes::stream();
     let (c1, p2) = pipes::stream();
     (DuplexStream {
-        chan: c1,
-        port: p1
+        chan: move c1,
+        port: move p1
     },
      DuplexStream {
-         chan: c2,
-         port: p2
+         chan: move c2,
+         port: move p2
      })
 }
 

@@ -562,7 +562,8 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
           new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
-    do listen_common(move host_ip, port, backlog, iotask, on_establish_cb)
+    do listen_common(move host_ip, port, backlog, iotask,
+                     move on_establish_cb)
         // on_connect_cb
         |move new_connect_cb, handle| unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)

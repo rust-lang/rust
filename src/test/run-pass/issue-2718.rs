@@ -1,3 +1,5 @@
+// tjc: I don't know why
+// xfail-pretty
 mod pipes {
     #[legacy_exports];
     use cast::{forget, transmute};
@@ -42,18 +44,18 @@ mod pipes {
     // We should consider moving this to core::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     unsafe fn uniquify<T>(+x: *T) -> ~T {
-        unsafe { cast::transmute(x) }
+        unsafe { cast::transmute(move x) }
     }
 
     fn swap_state_acq(+dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
+            transmute(rusti::atomic_xchg_acq(transmute(move dst), src as int))
         }
     }
 
     fn swap_state_rel(+dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
+            transmute(rusti::atomic_xchg_rel(transmute(move dst), src as int))
         }
     }
 
@@ -61,20 +63,20 @@ mod pipes {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         assert (*p).payload.is_none();
-        (*p).payload <- Some(payload);
+        (*p).payload <- Some(move payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
           empty => {
             // Yay, fastpath.
 
             // The receiver will eventually clean this up.
-            unsafe { forget(p); }
+            unsafe { forget(move p); }
           }
           full => { fail ~"duplicate send" }
           blocked => {
 
             // The receiver will eventually clean this up.
-            unsafe { forget(p); }
+            unsafe { forget(move p); }
           }
           terminated => {
             // The receiver will never receive this. Rely on drop_glue
@@ -94,7 +96,7 @@ mod pipes {
               full => {
                 let mut payload = None;
                 payload <-> (*p).payload;
-                return Some(option::unwrap(payload))
+                return Some(option::unwrap(move payload))
               }
               terminated => {
                 assert old_state == terminated;
@@ -109,7 +111,7 @@ mod pipes {
         match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
             // The receiver will eventually clean up.
-            unsafe { forget(p) }
+            unsafe { forget(move p) }
           }
           full => {
             // This is impossible
@@ -126,7 +128,7 @@ mod pipes {
         match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
             // the sender will clean up
-            unsafe { forget(p) }
+            unsafe { forget(move p) }
           }
           blocked => {
             // this shouldn't happen.
@@ -144,7 +146,7 @@ mod pipes {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;
-                sender_terminate(option::unwrap(p))
+                sender_terminate(option::unwrap(move p))
             }
         }
     }
@@ -153,7 +155,7 @@ mod pipes {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(p)
+            option::unwrap(move p)
         }
     }
 
@@ -169,7 +171,7 @@ mod pipes {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;
-                receiver_terminate(option::unwrap(p))
+                receiver_terminate(option::unwrap(move p))
             }
         }
     }
@@ -178,7 +180,7 @@ mod pipes {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(p)
+            option::unwrap(move p)
         }
     }
 
@@ -204,8 +206,8 @@ mod pingpong {
           ping(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
         let liberated_value <- *addr;
-        cast::forget(p);
-        liberated_value
+        cast::forget(move p);
+        move liberated_value
     }
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
@@ -213,8 +215,8 @@ mod pingpong {
           pong(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
         let liberated_value <- *addr;
-        cast::forget(p);
-        liberated_value
+        cast::forget(move p);
+        move liberated_value
     }
 
     fn init() -> (client::ping, server::ping) {
@@ -229,16 +231,16 @@ mod pingpong {
         fn do_ping(-c: ping) -> pong {
             let (sp, rp) = pipes::entangle();
 
-            pipes::send(c, ping(sp));
-            rp
+            pipes::send(move c, ping(move sp));
+            move rp
         }
 
         fn do_pong(-c: pong) -> (ping, ()) {
-            let packet = pipes::recv(c);
+            let packet = pipes::recv(move c);
             if packet.is_none() {
                 fail ~"sender closed the connection"
             }
-            (liberate_pong(option::unwrap(packet)), ())
+            (liberate_pong(option::unwrap(move packet)), ())
         }
     }
 
@@ -248,32 +250,32 @@ mod pingpong {
         type pong = pipes::send_packet<pingpong::pong>;
 
         fn do_ping(-c: ping) -> (pong, ()) {
-            let packet = pipes::recv(c);
+            let packet = pipes::recv(move c);
             if packet.is_none() {
                 fail ~"sender closed the connection"
             }
-            (liberate_ping(option::unwrap(packet)), ())
+            (liberate_ping(option::unwrap(move packet)), ())
         }
 
         fn do_pong(-c: pong) -> ping {
             let (sp, rp) = pipes::entangle();
-            pipes::send(c, pong(sp));
-            rp
+            pipes::send(move c, pong(move sp));
+            move rp
         }
     }
 }
 
 fn client(-chan: pingpong::client::ping) {
-    let chan = pingpong::client::do_ping(chan);
+    let chan = pingpong::client::do_ping(move chan);
     log(error, ~"Sent ping");
-    let (chan, _data) = pingpong::client::do_pong(chan);
+    let (_chan, _data) = pingpong::client::do_pong(move chan);
     log(error, ~"Received pong");
 }
 
 fn server(-chan: pingpong::server::ping) {
-    let (chan, _data) = pingpong::server::do_ping(chan);
+    let (chan, _data) = pingpong::server::do_ping(move chan);
     log(error, ~"Received ping");
-    let chan = pingpong::server::do_pong(chan);
+    let _chan = pingpong::server::do_pong(move chan);
     log(error, ~"Sent pong");
 }
 

@@ -3,7 +3,7 @@ struct X {
 }
 
 fn apply<T>(x: T, f: fn(T)) {
-    f(x);
+    f(move x);
 }
 
 fn check_int(x: int) {

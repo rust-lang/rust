@@ -130,7 +130,7 @@ pub fn run_tests_console(opts: &TestOpts,
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
-                st.failures.push(test);
+                st.failures.push(move test);
               }
               TrIgnored => {
                 st.ignored += 1u;
@@ -249,7 +249,7 @@ fn should_sort_failures_before_printing_them() {
               mut passed: 0u,
               mut failed: 0u,
               mut ignored: 0u,
-              mut failures: ~[test_b, test_a]};
+              mut failures: ~[move test_b, move test_a]};
 
         print_failures(st);
     };
@@ -534,9 +534,9 @@ mod tests {
             for vec::each(names) |name| {
                 let test = {name: *name, testfn: copy testfn, ignore: false,
                             should_fail: false};
-                tests.push(test);
+                tests.push(move test);
             }
-            tests
+            move tests
         };
         let filtered = filter_tests(&opts, tests);
 
@@ -549,7 +549,7 @@ mod tests {
               ~"test::parse_ignored_flag",
               ~"test::sort_tests"];
 
-        let pairs = vec::zip(expected, filtered);
+        let pairs = vec::zip(expected, move filtered);
 
         for vec::each(pairs) |p| {
             match *p {

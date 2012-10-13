@@ -17,19 +17,19 @@ fn test00() {
     let number_of_messages: int = 10;
 
     let c = p.chan();
-    do task::spawn {
+    do task::spawn |move c| {
         test00_start(c, number_of_messages * 0, number_of_messages);
     }
     let c = p.chan();
-    do task::spawn {
+    do task::spawn |move c| {
         test00_start(c, number_of_messages * 1, number_of_messages);
     }
     let c = p.chan();
-    do task::spawn {
+    do task::spawn |move c| {
         test00_start(c, number_of_messages * 2, number_of_messages);
     }
     let c = p.chan();
-    do task::spawn {
+    do task::spawn |move c| {
         test00_start(c, number_of_messages * 3, number_of_messages);
     }
 

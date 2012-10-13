@@ -374,7 +374,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
             rc.data = ptr::null();
             // Step 1 - drop our own reference.
             let new_count = rustrt::rust_atomic_decrement(&mut ptr.count);
-            assert new_count >= 0;
+        //    assert new_count >= 0;
             if new_count == 0 {
                 // We were the last owner. Can unwrap immediately.
                 // Also we have to free the server endpoints.
@@ -505,7 +505,7 @@ pub struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
 
 pub fn exclusive<T:Send >(user_data: T) -> Exclusive<T> {
     let data = ExData {
-        lock: LittleLock(), mut failed: false, mut data: user_data
+        lock: LittleLock(), mut failed: false, mut data: move user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(move data) } }
 }
@@ -558,17 +558,17 @@ pub mod tests {
     pub fn exclusive_arc() {
         let mut futures = ~[];
 
-        let num_tasks = 10u;
-        let count = 10u;
+        let num_tasks = 10;
+        let count = 10;
 
-        let total = exclusive(~mut 0u);
+        let total = exclusive(~mut 0);
 
-        for uint::range(0u, num_tasks) |_i| {
+        for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
-            futures.push(future::spawn(|| {
-                for uint::range(0u, count) |_i| {
+            futures.push(future::spawn(|move total| {
+                for uint::range(0, count) |_i| {
                     do total.with |count| {
-                        **count += 1u;
+                        **count += 1;
                     }
                 }
             }));
@@ -587,7 +587,7 @@ pub mod tests {
         // accesses will also fail.
         let x = exclusive(1);
         let x2 = x.clone();
-        do task::try {
+        do task::try |move x2| {
             do x2.with |one| {
                 assert *one == 2;
             }
@@ -600,27 +600,28 @@ pub mod tests {
     #[test]
     pub fn exclusive_unwrap_basic() {
         let x = exclusive(~~"hello");
-        assert unwrap_exclusive(x) == ~~"hello";
+        assert unwrap_exclusive(move x) == ~~"hello";
     }
 
     #[test]
     pub fn exclusive_unwrap_contended() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
-        do task::spawn {
+        do task::spawn |move x2| {
             let x2 = option::swap_unwrap(x2);
             do x2.with |_hello| { }
             task::yield();
         }
-        assert unwrap_exclusive(x) == ~~"hello";
+        assert unwrap_exclusive(move x) == ~~"hello";
 
         // Now try the same thing, but with the child task blocking.
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
         let mut res = None;
-        do task::task().future_result(|+r| res = Some(r)).spawn {
+        do task::task().future_result(|+r| res = Some(move r)).spawn
+              |move x2| {
             let x2 = option::swap_unwrap(x2);
-            assert unwrap_exclusive(x2) == ~~"hello";
+            assert unwrap_exclusive(move x2) == ~~"hello";
         }
         // Have to get rid of our reference before blocking.
         { let _x = move x; } // FIXME(#3161) util::ignore doesn't work here
@@ -633,11 +634,12 @@ pub mod tests {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
         let mut res = None;
-        do task::task().future_result(|+r| res = Some(r)).spawn {
+        do task::task().future_result(|+r| res = Some(move r)).spawn
+           |move x2| {
             let x2 = option::swap_unwrap(x2);
-            assert unwrap_exclusive(x2) == ~~"hello";
+            assert unwrap_exclusive(move x2) == ~~"hello";
         }
-        assert unwrap_exclusive(x) == ~~"hello";
+        assert unwrap_exclusive(move x) == ~~"hello";
         let res = option::swap_unwrap(&mut res);
         future::get(&res);
     }
@@ -656,7 +658,7 @@ pub mod tests {
                 for 10.times { task::yield(); } // try to let the unwrapper go
                 fail; // punt it awake from its deadlock
             }
-            let _z = unwrap_exclusive(x);
+            let _z = unwrap_exclusive(move x);
             do x2.with |_hello| { }
         };
         assert result.is_err();

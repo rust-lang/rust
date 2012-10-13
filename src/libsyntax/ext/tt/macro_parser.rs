@@ -345,7 +345,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                return failure(sp, ~"No rules expected the token "
+                return failure(sp, ~"No rules expected the token: "
                             + to_str(rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */

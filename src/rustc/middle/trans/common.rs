@@ -511,7 +511,7 @@ fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: kind,
+        kind: move kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx

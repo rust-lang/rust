@@ -250,7 +250,7 @@ mod test_qsort {
 
         sort::quick_sort(|x, y| { int::le(*x, *y) }, names);
 
-        let immut_names = vec::from_mut(names);
+        let immut_names = vec::from_mut(move names);
 
         let pairs = vec::zip(expected, immut_names);
         for vec::each(pairs) |p| {

@@ -9,8 +9,8 @@ fn main() {
     while (i > 0) {
         log(debug, i);
         let (ch, p) = pipes::stream();
-        po.add(p);
-        task::spawn(|copy i| child(i, ch) );
+        po.add(move p);
+        task::spawn(|move ch, copy i| child(i, ch) );
         i = i - 1;
     }
 

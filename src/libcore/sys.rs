@@ -153,7 +153,7 @@ pub mod tests {
 
         assert f(20) == 30;
 
-        let original_closure: Closure = cast::transmute(f);
+        let original_closure: Closure = cast::transmute(move f);
 
         let actual_function_pointer = original_closure.code;
         let environment = original_closure.env;
@@ -163,7 +163,7 @@ pub mod tests {
             env: environment
         };
 
-        let new_f: fn(int) -> int = cast::transmute(new_closure);
+        let new_f: fn(int) -> int = cast::transmute(move new_closure);
         assert new_f(20) == 30;
     }
 }

@@ -9,13 +9,14 @@ export mk_pass;
 export header_kind, header_name, header_text;
 
 fn mk_pass(+writer_factory: WriterFactory) -> Pass {
-    let f = fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+    let f = fn~(move writer_factory,
+                srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
         run(srv, doc, copy writer_factory)
     };
 
     {
         name: ~"markdown",
-        f: f
+        f: move f
     }
 }
 
@@ -44,7 +45,7 @@ fn run(
         ~"mods last", mods_last
     ).f(srv, doc);
 
-    write_markdown(sorted_doc, writer_factory);
+    write_markdown(sorted_doc, move writer_factory);
 
     return doc;
 }
@@ -118,9 +119,9 @@ fn should_request_new_writer_for_each_page() {
     let (srv, doc) = test::create_doc_srv(~"mod a { }");
     // Split the document up into pages
     let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
-    write_markdown(doc, writer_factory);
+    write_markdown(doc, move writer_factory);
     // We expect two pages to have been written
-    for iter::repeat(2u) {
+    for iter::repeat(2) {
         comm::recv(po);
     }
 }
@@ -150,8 +151,8 @@ fn should_write_title_for_each_page() {
     let (srv, doc) = test::create_doc_srv(
         ~"#[link(name = \"core\")]; mod a { }");
     let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
-    write_markdown(doc, writer_factory);
-    for iter::repeat(2u) {
+    write_markdown(doc, move writer_factory);
+    for iter::repeat(2) {
         let (page, markdown) = comm::recv(po);
         match page {
           doc::CratePage(_) => {
@@ -845,7 +846,7 @@ mod test {
         doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
-        write_markdown(doc, writer_factory);
+        write_markdown(doc, move writer_factory);
         return comm::recv(po).second();
     }
 
@@ -854,7 +855,7 @@ mod test {
         doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
-        let pass = mk_pass(writer_factory);
+        let pass = mk_pass(move writer_factory);
         pass.f(srv, doc);
         return comm::recv(po).second();
     }

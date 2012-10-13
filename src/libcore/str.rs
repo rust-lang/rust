@@ -2562,23 +2562,23 @@ mod tests {
     #[test]
     fn test_unsafe_slice() {
         unsafe {
-            assert ~"ab" == raw::slice_bytes(~"abc", 0u, 2u);
-            assert ~"bc" == raw::slice_bytes(~"abc", 1u, 3u);
-            assert ~"" == raw::slice_bytes(~"abc", 1u, 1u);
+            assert ~"ab" == raw::slice_bytes(~"abc", 0, 2);
+            assert ~"bc" == raw::slice_bytes(~"abc", 1, 3);
+            assert ~"" == raw::slice_bytes(~"abc", 1, 1);
             fn a_million_letter_a() -> ~str {
                 let mut i = 0;
                 let mut rs = ~"";
                 while i < 100000 { push_str(&mut rs, ~"aaaaaaaaaa"); i += 1; }
-                return rs;
+                move rs
             }
             fn half_a_million_letter_a() -> ~str {
                 let mut i = 0;
                 let mut rs = ~"";
                 while i < 100000 { push_str(&mut rs, ~"aaaaa"); i += 1; }
-                return rs;
+                move rs
             }
             assert half_a_million_letter_a() ==
-                raw::slice_bytes(a_million_letter_a(), 0u, 500000u);
+                raw::slice_bytes(a_million_letter_a(), 0u, 500000);
         }
     }
 
@@ -2664,16 +2664,16 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        assert ~"ab" == slice(~"abc", 0u, 2u);
-        assert ~"bc" == slice(~"abc", 1u, 3u);
-        assert ~"" == slice(~"abc", 1u, 1u);
-        assert ~"\u65e5" == slice(~"\u65e5\u672c", 0u, 3u);
+        assert ~"ab" == slice(~"abc", 0, 2);
+        assert ~"bc" == slice(~"abc", 1, 3);
+        assert ~"" == slice(~"abc", 1, 1);
+        assert ~"\u65e5" == slice(~"\u65e5\u672c", 0, 3);
 
         let data = ~"ประเทศไทย中华";
-        assert ~"ป" == slice(data, 0u, 3u);
-        assert ~"ร" == slice(data, 3u, 6u);
-        assert ~"" == slice(data, 3u, 3u);
-        assert ~"华" == slice(data, 30u, 33u);
+        assert ~"ป" == slice(data, 0, 3);
+        assert ~"ร" == slice(data, 3, 6);
+        assert ~"" == slice(data, 3, 3);
+        assert ~"华" == slice(data, 30, 33);
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
@@ -2682,13 +2682,13 @@ mod tests {
                 push_str(&mut rs, ~"华华华华华华华华华华");
                 i += 1;
             }
-            return rs;
+            move rs
         }
         fn half_a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 { push_str(&mut rs, ~"华华华华华"); i += 1; }
-            return rs;
+            move rs
         }
         assert half_a_million_letter_X() ==
             slice(a_million_letter_X(), 0u, 3u * 500000u);

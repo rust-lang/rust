@@ -35,12 +35,12 @@ fn run(args: ~[~str]) {
     let workers = uint::from_str(args[2]).get();
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
-    for uint::range(0u, workers) |_i| {
+    for uint::range(0, workers) |_i| {
         do task::task().future_result(|+r| {
-            worker_results.push(r);
+            worker_results.push(move r);
         }).spawn {
-            for uint::range(0u, size / workers) |_i| {
-                comm::send(to_child, bytes(100u));
+            for uint::range(0, size / workers) |_i| {
+                comm::send(to_child, bytes(100));
             }
         };
     }

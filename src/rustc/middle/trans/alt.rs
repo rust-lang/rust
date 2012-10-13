@@ -1202,7 +1202,7 @@ fn trans_alt_inner(scope_cx: block,
         arm_cxs.push(bcx);
     }
 
-    return controlflow::join_blocks(scope_cx, dvec::unwrap(arm_cxs));
+    return controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
 
     fn mk_fail(bcx: block, sp: span, msg: ~str,
                done: @mut Option<BasicBlockRef>) -> BasicBlockRef {

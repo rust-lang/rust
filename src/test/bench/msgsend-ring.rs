@@ -52,7 +52,7 @@ fn main() {
             get_chan_chan.send(Chan(&p));
             thread_ring(i, msg_per_task, num_chan,  p)
         };
-        futures.push(new_future);
+        futures.push(move new_future);
         
         num_chan = get_chan.recv();
     };

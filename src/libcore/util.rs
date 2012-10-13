@@ -100,7 +100,7 @@ mod tests {
         let x = ~[(5, false)];
         //FIXME #3387 assert x.eq(id(copy x));
         let y = copy x;
-        assert x.eq(&id(y));
+        assert x.eq(&id(move y));
     }
     #[test]
     fn test_swap() {

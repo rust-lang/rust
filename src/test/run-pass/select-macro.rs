@@ -17,18 +17,18 @@ macro_rules! select_if (
         $count:expr,
         $port:path => [
             $(type_this $message:path$(($(x $x: ident),+))dont_type_this*
-              -> $next:ident => { $e:expr }),+
+              -> $next:ident => { move $e:expr }),+
         ]
         $(, $ports:path => [
             $(type_this $messages:path$(($(x $xs: ident),+))dont_type_this*
-              -> $nexts:ident => { $es:expr }),+
+              -> $nexts:ident => { move $es:expr }),+
         ] )*
     } => {
         if $index == $count {
             match move pipes::try_recv($port) {
               $(Some($message($($(move $x,)+)* move next)) => {
-                let $next = next;
-                $e
+                let $next = move next;
+                move $e
               })+
               _ => fail
             }
@@ -38,7 +38,7 @@ macro_rules! select_if (
                 $count + 1
                 $(, $ports => [
                     $(type_this $messages$(($(x $xs),+))dont_type_this*
-                      -> $nexts => { $es }),+
+                      -> $nexts => { move $es }),+
                 ])*
             )
         }
@@ -54,7 +54,7 @@ macro_rules! select (
     } => {
         let index = pipes::selecti([$(($port).header()),+]/_);
         select_if!(index, 0 $(, $port => [
-            $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { $e }),+
+            $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { move $e }),+
         ])+)
     }
 )

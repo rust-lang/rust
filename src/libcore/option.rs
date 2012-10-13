@@ -120,7 +120,7 @@ pub pure fn chain<T, U>(opt: Option<T>,
      */
 
     match move opt {
-        Some(move t) => f(t),
+        Some(move t) => f(move t),
         None => None
     }
 }
@@ -294,7 +294,7 @@ impl<T: Copy> Option<T> {
      *
      * Fails if the value equals `none`
      */
-    pure fn expect(reason: ~str) -> T { expect(&self, reason) }
+    pure fn expect(reason: ~str) -> T { expect(&self, move reason) }
     /// Applies a function zero or more times until the result is none.
     pure fn while_some(blk: fn(v: T) -> Option<T>) { while_some(self, blk) }
 }
@@ -324,8 +324,8 @@ impl<T: Eq> Option<T> : Eq {
 fn test_unwrap_ptr() {
     let x = ~0;
     let addr_x = ptr::addr_of(&(*x));
-    let opt = Some(x);
-    let y = unwrap(opt);
+    let opt = Some(move x);
+    let y = unwrap(move opt);
     let addr_y = ptr::addr_of(&(*y));
     assert addr_x == addr_y;
 }
@@ -356,8 +356,8 @@ fn test_unwrap_resource() {
     let i = @mut 0;
     {
         let x = R(i);
-        let opt = Some(x);
-        let _y = unwrap(opt);
+        let opt = Some(move x);
+        let _y = unwrap(move opt);
     }
     assert *i == 1;
 }

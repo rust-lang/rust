@@ -8,6 +8,6 @@ extern mod rusti {
 fn main() {
     let mut x = @1;
     let mut y = @2;
-    rusti::move_val(&mut y, x);
+    rusti::move_val(&mut y, move x);
     assert *y == 1;
 }

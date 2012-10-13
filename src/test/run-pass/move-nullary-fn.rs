@@ -2,7 +2,7 @@
 fn f2(-thing: fn@()) { }
 
 fn f(-thing: fn@()) {
-    f2(thing);
+    f2(move thing);
 }
 
 fn main() {

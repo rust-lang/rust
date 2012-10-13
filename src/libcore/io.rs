@@ -737,7 +737,7 @@ pub fn BytesWriter() -> BytesWriter {
 pub fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
-    wr.buf.check_out(|buf| buf)
+    wr.buf.check_out(|buf| move buf)
 }
 
 pub fn with_str_writer(f: fn(Writer)) -> ~str {
@@ -747,7 +747,7 @@ pub fn with_str_writer(f: fn(Writer)) -> ~str {
     v.push(0);
     assert str::is_utf8(v);
 
-    unsafe { move ::cast::transmute(v) }
+    unsafe { move ::cast::transmute(move v) }
 }
 
 // Utility functions
