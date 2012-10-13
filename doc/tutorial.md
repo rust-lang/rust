@@ -1504,7 +1504,7 @@ and [`core::str`]. Here are some examples.
 # fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
 # fn crayon_to_str(c: Crayon) -> &str { "" }
 
-let crayons = &[Almond, AntiqueBrass, Apricot];
+let crayons = [Almond, AntiqueBrass, Apricot];
 
 // Check the length of the vector
 assert crayons.len() == 3;
@@ -1679,7 +1679,7 @@ structure.
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
-each(&[1, 2, 3], |n| {
+each([1, 2, 3], |n| {
     do_some_work(n);
 });
 ~~~~
@@ -1690,7 +1690,7 @@ call that can be written more like a built-in control structure:
 ~~~~
 # fn each(v: &[int], op: fn(v: &int)) { }
 # fn do_some_work(i: &int) { }
-do each(&[1, 2, 3]) |n| {
+do each([1, 2, 3]) |n| {
     do_some_work(n);
 }
 ~~~~
@@ -1751,7 +1751,7 @@ And using this function to iterate over a vector:
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-each(&[2, 4, 8, 5, 16], |n| {
+each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println("found odd number!");
         false
@@ -1768,7 +1768,7 @@ to the next iteration, write `loop`.
 ~~~~
 # use each = vec::each;
 # use println = io::println;
-for each(&[2, 4, 8, 5, 16]) |n| {
+for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println("found odd number!");
         break;
@@ -2106,7 +2106,7 @@ impl @Rectangle: Drawable { fn draw() { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
-draw_all(&[c as @Drawable, r as @Drawable]);
+draw_all([c as @Drawable, r as @Drawable]);
 ~~~~
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
