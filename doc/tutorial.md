@@ -1569,7 +1569,7 @@ let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
-common, called a _stack closure_, has type `fn&` and can directly
+common, called a _stack closure_, has type `&fn` and can directly
 access local variables in the enclosing scope.
 
 ~~~~
@@ -1591,7 +1591,7 @@ pervasively in Rust code.
 When you need to store a closure in a data structure, a stack closure
 will not do, since the compiler will refuse to let you store it. For
 this purpose, Rust provides a type of closure that has an arbitrary
-lifetime, written `fn@` (boxed closure, analogous to the `@` pointer
+lifetime, written `@fn` (boxed closure, analogous to the `@` pointer
 type described earlier). This type of closure *is* first-class.
 
 A managed closure does not directly access its environment, but merely
@@ -1604,8 +1604,9 @@ returns it from a function, and then calls it:
 
 ~~~~
 # extern mod std;
-fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    return fn@(s: ~str) -> ~str { s + suffix };
+fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
+    // The compiler knows that we intend this closure to be of type @fn
+    return |s| s + suffix;
 }
 
 fn main() {
@@ -1614,22 +1615,9 @@ fn main() {
 }
 ~~~~
 
-This example uses the long closure syntax, `fn@(s: ~str) ...`. Using
-this syntax makes it explicit that we are declaring a boxed
-closure. In practice, boxed closures are usually defined with the
-short closure syntax introduced earlier, in which case the compiler
-infers the type of closure. Thus our managed closure example could
-also be written:
-
-~~~~
-fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    return |s| s + suffix;
-}
-~~~~
-
 ## Owned closures
 
-Owned closures, written `fn~` in analogy to the `~` pointer type,
+Owned closures, written `~fn` in analogy to the `~` pointer type,
 hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
 closures, but they also own them: that is, no other code can access
@@ -1649,12 +1637,10 @@ callers may pass any kind of closure.
 
 ~~~~
 fn call_twice(f: fn()) { f(); f(); }
-call_twice(|| { "I am an inferred stack closure"; } );
-call_twice(fn&() { "I am also a stack closure"; } );
-call_twice(fn@() { "I am a managed closure"; });
-call_twice(fn~() { "I am an owned closure"; });
-fn bare_function() { "I am a plain function"; }
-call_twice(bare_function);
+let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
+fn function() { "I'm a normal function"; }
+call_twice(closure);
+call_twice(function);
 ~~~~
 
 > ***Note:*** Both the syntax and the semantics will be changing
@@ -1715,7 +1701,7 @@ parentheses, where it looks more like a typical block of
 code.
 
 `do` is a convenient way to create tasks with the `task::spawn`
-function.  `spawn` has the signature `spawn(fn: fn~())`. In other
+function.  `spawn` has the signature `spawn(fn: ~fn())`. In other
 words, it is a function that takes an owned closure that takes no
 arguments.
 
