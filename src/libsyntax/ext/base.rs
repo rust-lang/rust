@@ -231,7 +231,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         mut mod_path: ~[],
         mut trace_mac: false
     };
-    move (imp as ext_ctxt)
+    move ((move imp) as ext_ctxt)
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
