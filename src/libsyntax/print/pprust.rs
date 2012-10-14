@@ -444,7 +444,6 @@ fn print_item(s: ps, &&item: @ast::item) {
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
     s.ann.pre(ann_node);
-    print_visibility(s, item.vis);
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
@@ -480,10 +479,10 @@ fn print_item(s: ps, &&item: @ast::item) {
             ast::named => {
                 word_nbsp(s, ~"mod");
                 print_ident(s, item.ident);
+                nbsp(s);
             }
             ast::anonymous => {}
         }
-        nbsp(s);
         bopen(s);
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
@@ -491,7 +490,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_ty(ty, params) => {
         ibox(s, indent_unit);
         ibox(s, 0u);
-        word_nbsp(s, ~"type");
+        word_nbsp(s, visibility_qualified(item.vis, ~"type"));
         print_ident(s, item.ident);
         print_type_params(s, params);
         end(s); // end the inner ibox
@@ -503,15 +502,15 @@ fn print_item(s: ps, &&item: @ast::item) {
         end(s); // end the outer ibox
       }
       ast::item_enum(enum_definition, params) => {
-        print_enum_def(s, enum_definition, params, item.ident, item.span);
+        print_enum_def(s, enum_definition, params, item.ident, item.span, item.vis);
       }
       ast::item_class(struct_def, tps) => {
-          head(s, ~"struct");
+          head(s, visibility_qualified(item.vis, ~"struct"));
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
 
       ast::item_impl(tps, opt_trait, ty, methods) => {
-        head(s, ~"impl");
+        head(s, visibility_qualified(item.vis, ~"impl"));
         if tps.is_not_empty() {
             print_type_params(s, tps);
             space(s.s);
@@ -534,7 +533,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_trait(tps, traits, methods) => {
-        head(s, ~"trait");
+        head(s, visibility_qualified(item.vis, ~"trait"));
         print_ident(s, item.ident);
         print_type_params(s, tps);
         if vec::len(traits) != 0u {
@@ -550,6 +549,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) => {
+        print_visibility(s, item.vis);
         print_path(s, pth, false);
         word(s.s, ~"! ");
         print_ident(s, item.ident);
@@ -570,7 +570,7 @@ fn print_item(s: ps, &&item: @ast::item) {
 
 fn print_enum_def(s: ps, enum_definition: ast::enum_def,
                   params: ~[ast::ty_param], ident: ast::ident,
-                  span: ast::span) {
+                  span: ast::span, visibility: ast::visibility) {
     let mut newtype =
         vec::len(enum_definition.variants) == 1u &&
         ident == enum_definition.variants[0].node.name;
@@ -582,9 +582,9 @@ fn print_enum_def(s: ps, enum_definition: ast::enum_def,
     }
     if newtype {
         ibox(s, indent_unit);
-        word_space(s, ~"enum");
+        word_space(s, visibility_qualified(visibility, ~"enum"));
     } else {
-        head(s, ~"enum");
+        head(s, visibility_qualified(visibility, ~"enum"));
     }
 
     print_ident(s, ident);
@@ -877,7 +877,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
                                   indented: uint, attrs: ~[ast::attribute],
                                   close_box: bool) {
     match blk.node.rules {
-      ast::unsafe_blk => word(s.s, ~"unsafe"),
+      ast::unsafe_blk => word(s.s, ~"unsafe "),
       ast::default_blk => ()
     }
     maybe_print_comment(s, blk.span.lo);
