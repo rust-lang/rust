@@ -29,7 +29,7 @@ pub fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
+pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn(&T, &U) -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(&accum, elt);}
     accum
@@ -42,7 +42,7 @@ pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
+pub fn find<T: Copy>(ls: @List<T>, f: fn(&T) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
@@ -120,7 +120,7 @@ pure fn push<T: Copy>(ll: &mut @list<T>, vv: T) {
 */
 
 /// Iterate over a list
-pub fn iter<T>(l: @List<T>, f: fn((&T))) {
+pub fn iter<T>(l: @List<T>, f: fn(&T)) {
     let mut cur = l;
     loop {
         cur = match *cur {
@@ -134,7 +134,7 @@ pub fn iter<T>(l: @List<T>, f: fn((&T))) {
 }
 
 /// Iterate over a list
-pub fn each<T>(l: @List<T>, f: fn((&T)) -> bool) {
+pub fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
     let mut cur = l;
     loop {
         cur = match *cur {

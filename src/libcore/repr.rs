@@ -140,7 +140,7 @@ impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
     #[inline(always)]
-    fn get<T>(f: fn((&T))) -> bool {
+    fn get<T>(f: fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(copy self.ptr));
         }

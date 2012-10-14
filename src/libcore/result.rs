@@ -143,7 +143,7 @@ pub fn chain_err<T, U, V>(
  *         print_buf(buf)
  *     }
  */
-pub fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
+pub fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
     match *res {
       Ok(ref t) => f(t),
       Err(_) => ()
@@ -158,7 +158,7 @@ pub fn iter<T, E>(res: &Result<T, E>, f: fn((&T))) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-pub fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
+pub fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
     match *res {
       Ok(_) => (),
       Err(ref e) => f(e)
@@ -179,7 +179,7 @@ pub fn iter_err<T, E>(res: &Result<T, E>, f: fn((&E))) {
  *         parse_bytes(buf)
  *     }
  */
-pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
+pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
   -> Result<U, E> {
     match *res {
       Ok(ref t) => Ok(op(t)),
@@ -195,7 +195,7 @@ pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn((&T)) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
+pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -210,14 +210,14 @@ impl<T, E> Result<T, E> {
 
     pure fn is_err() -> bool { is_err(&self) }
 
-    pure fn iter(f: fn((&T))) {
+    pure fn iter(f: fn(&T)) {
         match self {
           Ok(ref t) => f(t),
           Err(_) => ()
         }
     }
 
-    fn iter_err(f: fn((&E))) {
+    fn iter_err(f: fn(&E)) {
         match self {
           Ok(_) => (),
           Err(ref e) => f(e)
@@ -228,7 +228,7 @@ impl<T, E> Result<T, E> {
 impl<T: Copy, E> Result<T, E> {
     pure fn get() -> T { get(&self) }
 
-    fn map_err<F:Copy>(op: fn((&E)) -> F) -> Result<T,F> {
+    fn map_err<F:Copy>(op: fn(&E) -> F) -> Result<T,F> {
         match self {
           Ok(copy t) => Ok(t),
           Err(ref e) => Err(op(e))
@@ -239,7 +239,7 @@ impl<T: Copy, E> Result<T, E> {
 impl<T, E: Copy> Result<T, E> {
     pure fn get_err() -> E { get_err(&self) }
 
-    fn map<U:Copy>(op: fn((&T)) -> U) -> Result<U,E> {
+    fn map<U:Copy>(op: fn(&T) -> U) -> Result<U,E> {
         match self {
           Ok(ref t) => Ok(op(t)),
           Err(copy e) => Err(e)
@@ -277,7 +277,7 @@ impl<T: Copy, E: Copy> Result<T, E> {
  *     }
  */
 pub fn map_vec<T,U:Copy,V:Copy>(
-    ts: &[T], op: fn((&T)) -> Result<V,U>) -> Result<~[V],U> {
+    ts: &[T], op: fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
     for vec::each(ts) |t| {
@@ -290,7 +290,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
 }
 
 pub fn map_opt<T,U:Copy,V:Copy>(
-    o_t: &Option<T>, op: fn((&T)) -> Result<V,U>) -> Result<Option<V>,U> {
+    o_t: &Option<T>, op: fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
 
     match *o_t {
       None => Ok(None),
@@ -311,7 +311,7 @@ pub fn map_opt<T,U:Copy,V:Copy>(
  * to accommodate an error like the vectors being of different lengths.
  */
 pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
-                op: fn((&S),(&T)) -> Result<V,U>) -> Result<~[V],U> {
+                op: fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
@@ -333,7 +333,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
  * on its own as no result vector is built.
  */
 pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
-                         op: fn((&S),(&T)) -> Result<(),U>) -> Result<(),U> {
+                         op: fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
