@@ -383,7 +383,7 @@ impl bckerr : cmp::Eq {
 type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
-type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
+struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -392,7 +392,7 @@ type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 type req_maps = {
-    req_loan_map: HashMap<ast::node_id, @DVec<@DVec<loan>>>,
+    req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
 };
 
@@ -581,6 +581,11 @@ impl borrowck_ctxt {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,
                                            method_map: self.method_map};
         mc.mut_to_str(mutbl)
+    }
+
+    fn loan_to_repr(loan: &Loan) -> ~str {
+        fmt!("Loan(lp=%?, cmt=%s, mutbl=%?)",
+             loan.lp, self.cmt_to_repr(loan.cmt), loan.mutbl)
     }
 }
 

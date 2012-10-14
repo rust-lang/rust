@@ -213,9 +213,10 @@ fn req_loans_in_expr(ex: @ast::expr,
 }
 
 impl gather_loan_ctxt {
-    fn tcx() -> ty::ctxt { self.bccx.tcx }
+    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn guarantee_adjustments(expr: @ast::expr,
+    fn guarantee_adjustments(&self,
+                             expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
                expr_repr(self.tcx(), expr), adjustment);
@@ -256,7 +257,8 @@ impl gather_loan_ctxt {
     // out loans, which will be added to the `req_loan_map`.  This can
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
-    fn guarantee_valid(cmt: cmt,
+    fn guarantee_valid(&self,
+                       cmt: cmt,
                        req_mutbl: ast::mutability,
                        scope_r: ty::region) {
 
@@ -280,35 +282,12 @@ impl gather_loan_ctxt {
           // it within that scope, the loan will be detected and an
           // error will be reported.
           Some(_) => {
-            match self.bccx.loan(cmt, scope_r, req_mutbl) {
-              Err(e) => { self.bccx.report(e); }
-              Ok(loans) if loans.len() == 0 => {}
-              Ok(loans) => {
-                match scope_r {
-                  ty::re_scope(scope_id) => {
-                    self.add_loans(scope_id, loans);
-
-                    if req_mutbl == m_imm && cmt.mutbl != m_imm {
-                        self.bccx.loaned_paths_imm += 1;
-
-                        if self.tcx().sess.borrowck_note_loan() {
-                            self.bccx.span_note(
-                                cmt.span,
-                                fmt!("immutable loan required"));
-                        }
-                    } else {
-                        self.bccx.loaned_paths_same += 1;
-                    }
+              match self.bccx.loan(cmt, scope_r, req_mutbl) {
+                  Err(e) => { self.bccx.report(e); }
+                  Ok(move loans) => {
+                      self.add_loans(cmt, req_mutbl, scope_r, move loans);
                   }
-                  _ => {
-                    self.bccx.tcx.sess.span_bug(
-                        cmt.span,
-                        fmt!("loans required but scope is scope_region is %s",
-                             region_to_str(self.tcx(), scope_r)));
-                  }
-                }
               }
-            }
           }
 
           // The path is not loanable: in that case, we must try and
@@ -385,7 +364,8 @@ impl gather_loan_ctxt {
     // has type `@mut{f:int}`, this check might fail because `&x.f`
     // reqires an immutable pointer, but `f` lives in (aliased)
     // mutable memory.
-    fn check_mutbl(req_mutbl: ast::mutability,
+    fn check_mutbl(&self,
+                   req_mutbl: ast::mutability,
                    cmt: cmt) -> bckres<preserve_condition> {
         debug!("check_mutbl(req_mutbl=%?, cmt.mutbl=%?)",
                req_mutbl, cmt.mutbl);
@@ -407,21 +387,58 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
+    fn add_loans(&self,
+                 cmt: cmt,
+                 req_mutbl: ast::mutability,
+                 scope_r: ty::region,
+                 +loans: ~[Loan]) {
+        if loans.len() == 0 {
+            return;
+        }
+
+        let scope_id = match scope_r {
+            ty::re_scope(scope_id) => scope_id,
+            _ => {
+                self.bccx.tcx.sess.span_bug(
+                    cmt.span,
+                    fmt!("loans required but scope is scope_region is %s",
+                         region_to_str(self.tcx(), scope_r)));
+            }
+        };
+
+        self.add_loans_to_scope_id(scope_id, move loans);
+
+        if req_mutbl == m_imm && cmt.mutbl != m_imm {
+            self.bccx.loaned_paths_imm += 1;
+
+            if self.tcx().sess.borrowck_note_loan() {
+                self.bccx.span_note(
+                    cmt.span,
+                    fmt!("immutable loan required"));
+            }
+        } else {
+            self.bccx.loaned_paths_same += 1;
+        }
+    }
+
+    fn add_loans_to_scope_id(&self, scope_id: ast::node_id, +loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
         match self.req_maps.req_loan_map.find(scope_id) {
-            Some(l) => {
-                l.push(loans);
+            Some(req_loans) => {
+                req_loans.push_all(loans);
             }
             None => {
-                self.req_maps.req_loan_map.insert(
-                    scope_id, @dvec::from_vec(~[loans]));
+                let dvec = @dvec::from_vec(move loans);
+                self.req_maps.req_loan_map.insert(scope_id, dvec);
             }
         }
     }
 
-    fn gather_pat(discr_cmt: cmt, root_pat: @ast::pat,
-                  arm_id: ast::node_id, alt_id: ast::node_id) {
+    fn gather_pat(&self,
+                  discr_cmt: cmt,
+                  root_pat: @ast::pat,
+                  arm_id: ast::node_id,
+                  alt_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
               ast::pat_ident(bm, _, _) if !self.pat_is_variant(pat) => {
@@ -475,7 +492,7 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn pat_is_variant(pat: @ast::pat) -> bool {
+    fn pat_is_variant(&self, pat: @ast::pat) -> bool {
         pat_util::pat_is_variant(self.bccx.tcx.def_map, pat)
     }
 }
