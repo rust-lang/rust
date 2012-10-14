@@ -1845,7 +1845,7 @@ const tag_six_b: uint = 252u;
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
-pub pure fn as_bytes<T>(s: &const ~str, f: fn((&~[u8])) -> T) -> T {
+pub pure fn as_bytes<T>(s: &const ~str, f: fn(&~[u8]) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
         f(&*v)

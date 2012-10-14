@@ -51,7 +51,7 @@ impl<A> Future<A> {
         get_ref(self)
     }
 
-    fn with<B>(blk: fn((&A)) -> B) -> B {
+    fn with<B>(blk: fn(&A) -> B) -> B {
         //! Work with the value without copying it
 
         with(&self, blk)
@@ -164,7 +164,7 @@ pub fn get<A:Copy>(future: &Future<A>) -> A {
     *get_ref(future)
 }
 
-pub fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
+pub fn with<A,B>(future: &Future<A>, blk: fn(&A) -> B) -> B {
     //! Work with the value without copying it
 
     blk(get_ref(future))
