@@ -131,18 +131,15 @@ impl check_loan_ctxt {
         }
     }
 
-    fn walk_loans(scope_id: ast::node_id,
-                  f: fn(v: &loan) -> bool) {
+    fn walk_loans(scope_id: ast::node_id, f: fn(v: &Loan) -> bool) {
         let mut scope_id = scope_id;
         let region_map = self.tcx().region_map;
         let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
-            for req_loan_map.find(scope_id).each |loanss| {
-                for loanss.each |loans| {
-                    for loans.each |loan| {
-                        if !f(loan) { return; }
-                    }
+            for req_loan_map.find(scope_id).each |loans| {
+                for loans.each |loan| {
+                    if !f(loan) { return; }
                 }
             }
 
@@ -155,7 +152,7 @@ impl check_loan_ctxt {
 
     fn walk_loans_of(scope_id: ast::node_id,
                      lp: @loan_path,
-                     f: fn(v: &loan) -> bool) {
+                     f: fn(v: &Loan) -> bool) {
         for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
                 if !f(loan) { return; }
@@ -256,36 +253,58 @@ impl check_loan_ctxt {
     }
 
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
-        let new_loanss = match self.req_maps.req_loan_map.find(scope_id) {
+        debug!("check_for_conflicting_loans(scope_id=%?)", scope_id);
+
+        let new_loans = match self.req_maps.req_loan_map.find(scope_id) {
             None => return,
-            Some(loanss) => loanss
+            Some(loans) => loans
         };
+
+        debug!("new_loans has length %?", new_loans.len());
 
         let par_scope_id = self.tcx().region_map.get(scope_id);
         for self.walk_loans(par_scope_id) |old_loan| {
-            for new_loanss.each |new_loans| {
-                for new_loans.each |new_loan| {
-                    if old_loan.lp != new_loan.lp { loop; }
-                    match (old_loan.mutbl, new_loan.mutbl) {
-                      (m_const, _) | (_, m_const) |
-                      (m_mutbl, m_mutbl) | (m_imm, m_imm) => {
-                        /*ok*/
-                      }
+            debug!("old_loan=%?", self.bccx.loan_to_repr(old_loan));
 
-                      (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
-                        self.bccx.span_err(
-                            new_loan.cmt.span,
-                            fmt!("loan of %s as %s \
-                                  conflicts with prior loan",
-                                 self.bccx.cmt_to_str(new_loan.cmt),
-                                 self.bccx.mut_to_str(new_loan.mutbl)));
-                        self.bccx.span_note(
-                            old_loan.cmt.span,
-                            fmt!("prior loan as %s granted here",
-                                 self.bccx.mut_to_str(old_loan.mutbl)));
-                      }
-                    }
-                }
+            for new_loans.each |new_loan| {
+                self.report_error_if_loans_conflict(old_loan, new_loan);
+            }
+        }
+
+        let len = new_loans.len();
+        for uint::range(0, len) |i| {
+            let loan_i = new_loans[i];
+            for uint::range(i+1, len) |j| {
+                let loan_j = new_loans[j];
+                self.report_error_if_loans_conflict(&loan_i, &loan_j);
+            }
+        }
+    }
+
+    fn report_error_if_loans_conflict(&self,
+                                      old_loan: &Loan,
+                                      new_loan: &Loan) {
+        if old_loan.lp != new_loan.lp {
+            return;
+        }
+
+        match (old_loan.mutbl, new_loan.mutbl) {
+            (m_const, _) | (_, m_const) |
+            (m_mutbl, m_mutbl) | (m_imm, m_imm) => {
+                /*ok*/
+            }
+
+            (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
+                self.bccx.span_err(
+                    new_loan.cmt.span,
+                    fmt!("loan of %s as %s \
+                          conflicts with prior loan",
+                         self.bccx.cmt_to_str(new_loan.cmt),
+                         self.bccx.mut_to_str(new_loan.mutbl)));
+                self.bccx.span_note(
+                    old_loan.cmt.span,
+                    fmt!("prior loan as %s granted here",
+                         self.bccx.mut_to_str(old_loan.mutbl)));
             }
         }
     }
