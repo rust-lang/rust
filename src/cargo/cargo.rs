@@ -1162,20 +1162,20 @@ fn sync_one_file(c: &Cargo, dir: &Path, src: @Source) -> bool {
     }
     match (src.key, src.keyfp) {
         (Some(_), Some(f)) => {
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with key %s",
+                          name, f));
                 return false;
             }
 
             if has_src_file {
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s",
-                              name));
+                    error(fmt!("signature verification failed for source %s with key %s",
+                              name, f));
                     return false;
                 }
             }
@@ -1273,21 +1273,21 @@ fn sync_one_git(c: &Cargo, dir: &Path, src: @Source) -> bool {
     }
     match (src.key, src.keyfp) {
         (Some(_), Some(f)) => {
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with key %s",
+                          name, f));
                 rollback(name, dir, false);
                 return false;
             }
 
             if has_src_file {
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s",
-                              name));
+                    error(fmt!("signature verification failed for source %s with key %s",
+                              name, f));
                     rollback(name, dir, false);
                     return false;
                 }
@@ -1370,11 +1370,11 @@ fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
                 return false;
             }
 
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with key %s",
+                          name, f));
                 return false;
             }
 
@@ -1390,11 +1390,11 @@ fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
                     return false;
                 }
 
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
                     error(~"signature verification failed for " +
-                          ~"source " + name);
+                          ~"source " + name + ~" with key " + f);
                     return false;
                 }
             }
@@ -1463,8 +1463,7 @@ fn cmd_init(c: &Cargo) {
         return;
     }
 
-    let r = pgp::verify(&c.root, &srcfile, &sigfile,
-                        pgp::signing_key_fp());
+    let r = pgp::verify(&c.root, &srcfile, &sigfile);
     if !r {
         error(fmt!("signature verification failed for '%s'",
                    srcfile.to_str()));
