@@ -489,11 +489,11 @@ pub fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
-pub fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
+pub fn walk_dir(p: &Path, f: fn(&Path) -> bool) {
 
     walk_dir_(p, f);
 
-    fn walk_dir_(p: &Path, f: fn((&Path)) -> bool) -> bool {
+    fn walk_dir_(p: &Path, f: fn(&Path) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
             let path = &p.push(*q);

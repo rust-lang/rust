@@ -53,7 +53,7 @@ pub fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, k: K) -> Option<V> {
 }
 
 /// Visit all pairs in the map in order.
-pub fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn((&K), (&V))) {
+pub fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn(&K, &V)) {
     match *m {
       Empty => (),
       /*

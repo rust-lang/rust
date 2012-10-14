@@ -1099,7 +1099,7 @@ pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub pure fn each<T>(v: &r/[T], f: fn((&r/T)) -> bool) {
+pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
     //             ^^^^
     // NB---this CANNOT be &[const T]!  The reason
     // is that you are passing it to `f()` using

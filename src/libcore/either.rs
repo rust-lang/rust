@@ -13,8 +13,8 @@ pub enum Either<T, U> {
     Right(U)
 }
 
-pub fn either<T, U, V>(f_left: fn((&T)) -> V,
-                       f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
+pub fn either<T, U, V>(f_left: fn(&T) -> V,
+                       f_right: fn(&U) -> V, value: &Either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
