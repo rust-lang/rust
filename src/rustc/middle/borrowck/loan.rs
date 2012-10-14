@@ -8,35 +8,37 @@ use result::{Result, Ok, Err};
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
             scope_region: ty::region,
-            mutbl: ast::mutability) -> bckres<@DVec<loan>> {
-        let lc = loan_ctxt_(@{bccx: self,
-                              scope_region: scope_region,
-                              loans: @DVec()});
+            mutbl: ast::mutability) -> bckres<~[Loan]> {
+        let lc = LoanContext {
+            bccx: self,
+            scope_region: scope_region,
+            loans: ~[]
+        };
         match lc.loan(cmt, mutbl) {
-          Ok(()) => {Ok(lc.loans)}
-          Err(e) => {Err(e)}
+          Err(e) => Err(e),
+          Ok(()) => {
+              let LoanContext {loans, _} = move lc;
+              Ok(loans)
+          }
         }
     }
 }
 
-type loan_ctxt_ = {
+struct LoanContext {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
     scope_region: ty::region,
 
     // accumulated list of loans that will be required
-    loans: @DVec<loan>
-};
-
-enum loan_ctxt {
-    loan_ctxt_(@loan_ctxt_)
+    mut loans: ~[Loan]
 }
 
-impl loan_ctxt {
-    fn tcx() -> ty::ctxt { self.bccx.tcx }
+impl LoanContext {
+    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn issue_loan(cmt: cmt,
+    fn issue_loan(&self,
+                  cmt: cmt,
                   scope_ub: ty::region,
                   req_mutbl: ast::mutability) -> bckres<()> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
@@ -57,12 +59,13 @@ impl loan_ctxt {
                 }
             }
 
-            (*self.loans).push({
+            self.loans.push(Loan {
                 // Note: cmt.lp must be Some(_) because otherwise this
                 // loan process does not apply at all.
                 lp: cmt.lp.get(),
                 cmt: cmt,
-                mutbl: req_mutbl});
+                mutbl: req_mutbl
+            });
             return Ok(());
         } else {
             // The loan being requested lives longer than the data
@@ -73,7 +76,7 @@ impl loan_ctxt {
         }
     }
 
-    fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
+    fn loan(&self, cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
         debug!("loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl));
@@ -144,7 +147,8 @@ impl loan_ctxt {
     // A "stable component" is one where assigning the base of the
     // component cannot cause the component itself to change types.
     // Example: record fields.
-    fn loan_stable_comp(cmt: cmt,
+    fn loan_stable_comp(&self,
+                        cmt: cmt,
                         cmt_base: cmt,
                         req_mutbl: ast::mutability) -> bckres<()> {
         let base_mutbl = match req_mutbl {
@@ -162,7 +166,8 @@ impl loan_ctxt {
     // An "unstable deref" means a deref of a ptr/comp where, if the
     // base of the deref is assigned to, pointers into the result of the
     // deref would be invalidated. Examples: interior of variants, uniques.
-    fn loan_unstable_deref(cmt: cmt,
+    fn loan_unstable_deref(&self,
+                           cmt: cmt,
                            cmt_base: cmt,
                            req_mutbl: ast::mutability) -> bckres<()> {
         // Variant components: the base must be immutable, because
