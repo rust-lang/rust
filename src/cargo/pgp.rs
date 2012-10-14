@@ -1,5 +1,5 @@
-fn gpg(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
-    return run::program_output(~"gpg", args);
+fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
+    return run::program_output(~"gpgv", args);
 }
 
 fn signing_key() -> ~str {
@@ -59,7 +59,7 @@ fn signing_key_fp() -> ~str {
 }
 
 fn supported() -> bool {
-    let r = gpg(~[~"--version"]);
+    let r = gpgv(~[~"--version"]);
     r.status == 0
 }
 
@@ -88,15 +88,14 @@ fn add(root: &Path, key: &Path) {
     }
 }
 
-fn verify(root: &Path, data: &Path, sig: &Path, keyfp: ~str) -> bool {
+fn verify(root: &Path, data: &Path, sig: &Path) -> bool {
     let path = root.push("gpg");
-    let p = gpg(~[~"--homedir", path.to_str(),
-                  ~"--with-fingerprint",
-                  ~"--verify", sig.to_str(),
-                 data.to_str()]);
-    let res = ~"Primary key fingerprint: " + keyfp;
-    for str::split_char_each(p.err, '\n') |line| {
-        if line == res { return true; }
+    let res = gpgv(~[~"--homedir", path.to_str(),
+                  ~"--keyring", ~"pubring.gpg",
+                  ~"--verbose",
+                 sig.to_str(), data.to_str()]);
+    if res.status != 0 {
+        return false;
     }
-    return false;
+    return true;
 }
