@@ -1,10 +1,10 @@
-use driver::session::session;
+use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
 
 export inject_intrinsic;
 
-fn inject_intrinsic(sess: session,
+fn inject_intrinsic(sess: Session,
                     crate: @ast::crate) -> @ast::crate {
 
     let intrinsic_module = @include_str!("intrinsic.rs");

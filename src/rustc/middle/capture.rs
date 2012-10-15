@@ -1,5 +1,4 @@
 use syntax::{ast, ast_util};
-use driver::session::session;
 use syntax::codemap::span;
 use std::map;
 use std::map::HashMap;

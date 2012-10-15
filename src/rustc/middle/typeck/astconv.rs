@@ -58,7 +58,7 @@ trait ast_conv {
 
 fn get_region_reporting_err(tcx: ty::ctxt,
                             span: span,
-                            res: Result<ty::region, ~str>) -> ty::region {
+                            res: Result<ty::Region, ~str>) -> ty::Region {
 
     match res {
       result::Ok(r) => r,
@@ -70,7 +70,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
 }
 
 fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Owned>(
-    self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
+    self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::Region {
 
     let res = match a_r.node {
         ast::re_static => Ok(ty::re_static),
@@ -155,7 +155,7 @@ const NO_TPS: uint = 2u;
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
-    self: AC, rscope: RS, &&ast_ty: @ast::ty) -> ty::t {
+    self: AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Owned>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {

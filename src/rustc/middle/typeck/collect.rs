@@ -76,7 +76,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
 impl @crate_ctxt {
     fn to_ty<RS: region_scope Copy Owned>(
-        rs: RS, ast_ty: @ast::ty) -> ty::t {
+        rs: RS, ast_ty: @ast::Ty) -> ty::t {
 
         ast_ty_to_ty(self, rs, ast_ty)
     }
@@ -345,7 +345,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
-                          with_r: ty::region) -> ty::t {
+                          with_r: ty::Region) -> ty::t {
         do ty::fold_regions(tcx, ty) |r, _in_fn| {
             if r == ty::re_bound(ty::br_self) {with_r} else {r}
         }

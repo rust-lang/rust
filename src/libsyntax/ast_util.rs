@@ -471,7 +471,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_expr_post: fn@(_e: @expr) {
         },
 
-        visit_ty: fn@(t: @ty) {
+        visit_ty: fn@(t: @Ty) {
             match t.node {
               ty_path(_, id) => vfn(id),
               _ => { /* fall through */ }

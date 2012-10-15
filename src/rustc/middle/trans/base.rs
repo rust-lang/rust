@@ -17,7 +17,7 @@ use libc::{c_uint, c_ulonglong};
 use std::{map, time, list};
 use std::map::HashMap;
 use driver::session;
-use session::session;
+use session::Session;
 use syntax::attr;
 use back::{link, abi, upcall};
 use syntax::{ast, ast_util, codemap, ast_map};
@@ -2377,7 +2377,7 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
 }
 
 
-fn decl_crate_map(sess: session::session, mapmeta: link_meta,
+fn decl_crate_map(sess: session::Session, mapmeta: link_meta,
                   llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
     let int_type = T_int(targ_cfg);
@@ -2482,7 +2482,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
                      false);
 }
 
-fn trans_crate(sess: session::session,
+fn trans_crate(sess: session::Session,
                crate: @ast::crate,
                tcx: ty::ctxt,
                output: &Path,

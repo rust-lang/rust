@@ -7,7 +7,7 @@ use syntax::fold;
 use syntax::print::pprust;
 use syntax::codemap::span;
 use driver::session;
-use session::session;
+use session::Session;
 use syntax::attr;
 use dvec::DVec;
 
@@ -19,14 +19,14 @@ type test = {span: span, path: ~[ast::ident],
              ignore: bool, should_fail: bool};
 
 type test_ctxt =
-    @{sess: session::session,
+    @{sess: session::Session,
       crate: @ast::crate,
       mut path: ~[ast::ident],
       testfns: DVec<test>};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-fn modify_for_testing(sess: session::session,
+fn modify_for_testing(sess: session::Session,
                       crate: @ast::crate) -> @ast::crate {
 
     if sess.opts.test {
@@ -36,7 +36,7 @@ fn modify_for_testing(sess: session::session,
     }
 }
 
-fn generate_test_harness(sess: session::session,
+fn generate_test_harness(sess: session::Session,
                          crate: @ast::crate) -> @ast::crate {
     let cx: test_ctxt =
         @{sess: sess,
@@ -261,13 +261,13 @@ fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
     else { vec::append(~[cx.sess.ident_of(~"std")], path) }
 }
 
-// The ast::ty of ~[std::test::test_desc]
-fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
+// The ast::Ty of ~[std::test::test_desc]
+fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::Ty {
     let test_desc_ty_path =
         path_node(mk_path(cx, ~[cx.sess.ident_of(~"test"),
                                 cx.sess.ident_of(~"TestDesc")]));
 
-    let test_desc_ty: ast::ty =
+    let test_desc_ty: ast::Ty =
         {id: cx.sess.next_node_id(),
          node: ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()),
          span: dummy_sp()};

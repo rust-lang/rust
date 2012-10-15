@@ -1,4 +1,4 @@
-use driver::session::session;
+use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
 use metadata::cstore::find_use_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
@@ -35,7 +35,7 @@ use syntax::ast::{pat_box, pat_lit, pat_range, pat_rec, pat_struct};
 use syntax::ast::{pat_tup, pat_uniq, pat_wild, private, provided, public};
 use syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl};
 use syntax::ast::{struct_field, struct_variant_kind, sty_static, subtract};
-use syntax::ast::{trait_ref, tuple_variant_kind, ty, ty_bool, ty_char};
+use syntax::ast::{trait_ref, tuple_variant_kind, Ty, ty_bool, ty_char};
 use syntax::ast::{ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16, ty_i32};
 use syntax::ast::{ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str, ty_u};
 use syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
@@ -115,7 +115,6 @@ impl PatternBindingMode : cmp::Eq {
 
 
 enum Namespace {
-    ModuleNS,
     TypeNS,
     ValueNS
 }
@@ -166,19 +165,8 @@ enum CaptureClause {
 
 type ResolveVisitor = vt<()>;
 
-enum ModuleDef {
-    NoModuleDef,                     // Does not define a module.
-    ModuleDef(Privacy, @Module),     // Defines a module.
-}
-
-impl ModuleDef {
-    pure fn is_none() -> bool {
-        match self { NoModuleDef => true, _ => false }
-    }
-}
-
 enum ImportDirectiveNS {
-    ModuleNSOnly,
+    TypeNSOnly,
     AnyNS
 }
 
@@ -363,7 +351,6 @@ struct ImportResolution {
 
     mut outstanding_references: uint,
 
-    mut module_target: Option<Target>,
     mut value_target: Option<Target>,
     mut type_target: Option<Target>,
 
@@ -375,7 +362,6 @@ fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
         privacy: privacy,
         span: span,
         outstanding_references: 0u,
-        module_target: None,
         value_target: None,
         type_target: None,
         used: false
@@ -385,7 +371,6 @@ fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
 impl ImportResolution {
     fn target_for_namespace(namespace: Namespace) -> Option<Target> {
         match namespace {
-            ModuleNS    => return copy self.module_target,
             TypeNS      => return copy self.type_target,
             ValueNS     => return copy self.value_target
         }
@@ -482,7 +467,7 @@ pure fn is_none<T>(x: Option<T>) -> bool {
     }
 }
 
-fn unused_import_lint_level(session: session) -> level {
+fn unused_import_lint_level(session: Session) -> level {
     for session.opts.lint_opts.each |lint_option_pair| {
         let (lint_type, lint_level) = *lint_option_pair;
         if lint_type == unused_imports {
@@ -504,8 +489,14 @@ impl Privacy : cmp::Eq {
     pure fn ne(other: &Privacy) -> bool { !self.eq(other) }
 }
 
-// Records a possibly-private definition.
-struct Definition {
+// Records a possibly-private type definition.
+enum TypeNsDef {
+    ModuleDef(Privacy, @Module),
+    TypeDef(Privacy, def)
+}
+
+// Records a possibly-private value definition.
+struct ValueNsDef {
     privacy: Privacy,
     def: def,
 }
@@ -513,13 +504,11 @@ struct Definition {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 struct NameBindings {
-    mut module_def: ModuleDef,         //< Meaning in module namespace.
-    mut type_def: Option<Definition>,  //< Meaning in type namespace.
-    mut value_def: Option<Definition>, //< Meaning in value namespace.
+    mut type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
+    mut value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 
     // For error reporting
-    // XXX: Merge me into Definition.
-    mut module_span: Option<span>,
+    // XXX: Merge me into TypeDef and ValueDef.
     mut type_span: Option<span>,
     mut value_span: Option<span>,
 }
@@ -532,30 +521,30 @@ impl NameBindings {
                      def_id: Option<def_id>,
                      legacy_exports: bool,
                      sp: span) {
-        if self.module_def.is_none() {
+        if self.type_def.is_none() {
             let module_ = @Module(parent_link, def_id, legacy_exports);
-            self.module_def = ModuleDef(privacy, module_);
-            self.module_span = Some(sp);
+            self.type_def = Some(ModuleDef(privacy, module_));
+            self.type_span = Some(sp);
         }
     }
 
     /// Records a type definition.
     fn define_type(privacy: Privacy, def: def, sp: span) {
-        self.type_def = Some(Definition { privacy: privacy, def: def });
+        self.type_def = Some(TypeDef(privacy, def));
         self.type_span = Some(sp);
     }
 
     /// Records a value definition.
     fn define_value(privacy: Privacy, def: def, sp: span) {
-        self.value_def = Some(Definition { privacy: privacy, def: def });
+        self.value_def = Some(ValueNsDef { privacy: privacy, def: def });
         self.value_span = Some(sp);
     }
 
     /// Returns the module node if applicable.
     fn get_module_if_available() -> Option<@Module> {
-        match self.module_def {
-            NoModuleDef         => return None,
-            ModuleDef(_privacy, module_)  => return Some(module_)
+        match self.type_def {
+            Some(ModuleDef(_, module_)) => return Some(module_),
+            None | Some(TypeDef(_, _))  => return None,
         }
     }
 
@@ -564,70 +553,76 @@ impl NameBindings {
      * definition.
      */
     fn get_module() -> @Module {
-        match self.module_def {
-            NoModuleDef => {
-                fail
-                    ~"get_module called on a node with no module definition!";
+        match self.type_def {
+            None | Some(TypeDef(*)) => {
+                fail ~"get_module called on a node with no module \
+                       definition!"
             }
-            ModuleDef(_, module_) => {
-                return module_;
-            }
+            Some(ModuleDef(_, module_)) => module_
         }
     }
 
     fn defined_in_namespace(namespace: Namespace) -> bool {
         match namespace {
-            ModuleNS => {
-                match self.module_def {
-                    NoModuleDef => false,
-                    _ => true
-                }
-            }
             TypeNS   => return self.type_def.is_some(),
             ValueNS  => return self.value_def.is_some()
         }
     }
 
-    fn def_for_namespace(namespace: Namespace) -> Option<Definition> {
+    fn def_for_namespace(namespace: Namespace) -> Option<def> {
         match namespace {
-          TypeNS => return self.type_def,
-          ValueNS => return self.value_def,
-          ModuleNS => match self.module_def {
-            NoModuleDef => return None,
-            ModuleDef(privacy, module_) =>
-                match module_.def_id {
-                    None => return None,
-                    Some(def_id) => {
-                        return Some(Definition {
-                            privacy: privacy,
-                            def: def_mod(def_id)
-                        });
+            TypeNS => {
+                match self.type_def {
+                    None => None,
+                    Some(ModuleDef(_, module_)) => {
+                        module_.def_id.map(|def_id| def_mod(*def_id))
                     }
+                    Some(TypeDef(_, def)) => Some(def)
                 }
-          }
+            }
+            ValueNS => {
+                match self.value_def {
+                    None => None,
+                    Some(value_def) => Some(value_def.def)
+                }
+            }
+        }
+    }
+
+    fn privacy_for_namespace(namespace: Namespace) -> Option<Privacy> {
+        match namespace {
+            TypeNS => {
+                match self.type_def {
+                    None => None,
+                    Some(ModuleDef(privacy, _)) | Some(TypeDef(privacy, _)) =>
+                        Some(privacy)
+                }
+            }
+            ValueNS => {
+                match self.value_def {
+                    None => None,
+                    Some(value_def) => Some(value_def.privacy)
+                }
+            }
         }
     }
 
     fn span_for_namespace(namespace: Namespace) -> Option<span> {
-        match self.def_for_namespace(namespace) {
-          Some(_) => {
+        if self.defined_in_namespace(namespace) {
             match namespace {
-              TypeNS   => self.type_span,
-              ValueNS  => self.value_span,
-              ModuleNS => self.module_span
+                TypeNS  => self.type_span,
+                ValueNS => self.value_span,
             }
-          }
-          None => None
+        } else {
+            None
         }
     }
 }
 
 fn NameBindings() -> NameBindings {
     NameBindings {
-        module_def: NoModuleDef,
         type_def: None,
         value_def: None,
-        module_span: None,
         type_span: None,
         value_span: None
     }
@@ -675,9 +670,8 @@ fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
 
 fn namespace_to_str(ns: Namespace) -> ~str {
     match ns {
-      TypeNS   => ~"type",
-      ValueNS  => ~"value",
-      ModuleNS => ~"module"
+        TypeNS  => ~"type",
+        ValueNS => ~"value",
     }
 }
 
@@ -693,9 +687,8 @@ fn has_legacy_export_attr(attrs: &[syntax::ast::attribute]) -> bool {
     return false;
 }
 
-fn Resolver(session: session, lang_items: LanguageItems,
+fn Resolver(session: Session, lang_items: LanguageItems,
             crate: @crate) -> Resolver {
-
     let graph_root = @NameBindings();
 
     (*graph_root).define_module(Public,
@@ -735,7 +728,7 @@ fn Resolver(session: session, lang_items: LanguageItems,
         primitive_type_table: @PrimitiveTypeTable(session.
                                                   parse_sess.interner),
 
-        namespaces: ~[ ModuleNS, TypeNS, ValueNS ],
+        namespaces: ~[ TypeNS, ValueNS ],
 
         def_map: HashMap(),
         export_map2: HashMap(),
@@ -749,7 +742,7 @@ fn Resolver(session: session, lang_items: LanguageItems,
 
 /// The main resolver class.
 struct Resolver {
-    session: session,
+    session: Session,
     lang_items: LanguageItems,
     crate: @crate,
 
@@ -992,14 +985,14 @@ impl Resolver {
 
         match item.node {
             item_mod(module_) => {
-              let legacy = has_legacy_export_attr(item.attrs);
-              let (name_bindings, new_parent) = self.add_child(ident, parent,
-                                                       ~[ModuleNS], sp);
+                let legacy = has_legacy_export_attr(item.attrs);
+                let (name_bindings, new_parent) =
+                    self.add_child(ident, parent, ~[TypeNS], sp);
 
                 let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = { crate: 0, node: item.id };
-              (*name_bindings).define_module(privacy, parent_link,
-                                             Some(def_id), legacy, sp);
+                (*name_bindings).define_module(privacy, parent_link,
+                                               Some(def_id), legacy, sp);
 
                 let new_parent =
                     ModuleReducedGraphParent((*name_bindings).get_module());
@@ -1007,25 +1000,30 @@ impl Resolver {
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
             item_foreign_mod(fm) => {
-              let legacy = has_legacy_export_attr(item.attrs);
-              let new_parent = match fm.sort {
-                named => {
-                  let (name_bindings, new_parent) = self.add_child(ident,
-                     parent, ~[ModuleNS], sp);
+                let legacy = has_legacy_export_attr(item.attrs);
+                let new_parent = match fm.sort {
+                    named => {
+                        let (name_bindings, new_parent) =
+                            self.add_child(ident, parent, ~[TypeNS], sp);
 
-                  let parent_link = self.get_parent_link(new_parent, ident);
-                  let def_id = { crate: 0, node: item.id };
-                  (*name_bindings).define_module(privacy, parent_link,
-                                                 Some(def_id), legacy, sp);
+                        let parent_link = self.get_parent_link(new_parent,
+                                                               ident);
+                        let def_id = { crate: 0, node: item.id };
+                        (*name_bindings).define_module(privacy,
+                                                       parent_link,
+                                                       Some(def_id),
+                                                       legacy,
+                                                       sp);
 
-                  ModuleReducedGraphParent((*name_bindings).get_module())
-                }
-                // For anon foreign mods, the contents just go in the
-                // current scope
-                anonymous => parent
-              };
+                        ModuleReducedGraphParent(name_bindings.get_module())
+                    }
 
-              visit_item(item, new_parent, visitor);
+                    // For anon foreign mods, the contents just go in the
+                    // current scope
+                    anonymous => parent
+                };
+
+                visit_item(item, new_parent, visitor);
             }
 
             // These items live in the value namespace.
@@ -1226,7 +1224,7 @@ impl Resolver {
                     match view_path.node {
                         view_path_simple(binding, full_path, ns, _) => {
                             let ns = match ns {
-                                module_ns => ModuleNSOnly,
+                                module_ns => TypeNSOnly,
                                 type_value_ns => AnyNS
                             };
 
@@ -1326,8 +1324,7 @@ impl Resolver {
                 match find_use_stmt_cnum(self.session.cstore, node_id) {
                     Some(crate_id) => {
                         let (child_name_bindings, new_parent) =
-                            // should this be in ModuleNS? --tjc
-                            self.add_child(name, parent, ~[ModuleNS],
+                            self.add_child(name, parent, ~[TypeNS],
                                            view_item.span);
 
                         let def_id = { crate: crate_id, node: 0 };
@@ -1410,8 +1407,8 @@ impl Resolver {
                            ident: ident, new_parent: ReducedGraphParent) {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
-            match copy child_name_bindings.module_def {
-              NoModuleDef => {
+            match copy child_name_bindings.type_def {
+              None => {
                 debug!("(building reduced graph for \
                         external crate) building module \
                         %s", final_ident);
@@ -1441,10 +1438,8 @@ impl Resolver {
                         fail ~"can't happen";
                       }
                       ModuleParentLink(parent_module, ident) => {
-
                         let name_bindings = parent_module.children.get(ident);
-
-                        resolution.module_target =
+                        resolution.type_target =
                             Some(Target(parent_module, name_bindings));
                       }
                     }
@@ -1456,12 +1451,15 @@ impl Resolver {
                   }
                 }
               }
-              ModuleDef(_priv, module_) => {
+              Some(ModuleDef(_, module_)) => {
                 debug!("(building reduced graph for \
                         external crate) already created \
                         module");
                 module_.def_id = Some(def_id);
                 modules.insert(def_id, module_);
+              }
+              Some(TypeDef(*)) => {
+                self.session.bug(~"external module def overwriting type def");
               }
             }
           }
@@ -1553,8 +1551,8 @@ impl Resolver {
                                    ~[], dummy_sp());
 
                 // Define or reuse the module node.
-                match child_name_bindings.module_def {
-                    NoModuleDef => {
+                match child_name_bindings.type_def {
+                    None => {
                         debug!("(building reduced graph for external crate) \
                                 autovivifying %s", *ident_str);
                         let parent_link = self.get_parent_link(new_parent,
@@ -1564,7 +1562,7 @@ impl Resolver {
                                                              None, false,
                                                              dummy_sp());
                     }
-                    ModuleDef(*) => { /* Fall through. */ }
+                    Some(_) => { /* Fall through. */ }
                 }
 
                 current_module = (*child_name_bindings).get_module();
@@ -1807,7 +1805,7 @@ impl Resolver {
                                                            target,
                                                            source);
                         }
-                        SingleImport(target, source, ModuleNSOnly) => {
+                        SingleImport(target, source, TypeNSOnly) => {
                             resolution_result =
                                 self.resolve_single_module_import
                                     (module_, containing_module, target,
@@ -1876,12 +1874,11 @@ impl Resolver {
             return Failed;
         }
 
-        // We need to resolve all four namespaces for this to succeed.
+        // We need to resolve both namespaces for this to succeed.
         //
         // XXX: See if there's some way of handling namespaces in a more
-        // generic way. We have four of them; it seems worth doing...
+        // generic way. We have two of them; it seems worth doing...
 
-        let mut module_result = UnknownResult;
         let mut value_result = UnknownResult;
         let mut type_result = UnknownResult;
 
@@ -1891,10 +1888,6 @@ impl Resolver {
                 // Continue.
             }
             Some(child_name_bindings) => {
-                if (*child_name_bindings).defined_in_namespace(ModuleNS) {
-                    module_result = BoundResult(containing_module,
-                                                child_name_bindings);
-                }
                 if (*child_name_bindings).defined_in_namespace(ValueNS) {
                     value_result = BoundResult(containing_module,
                                                child_name_bindings);
@@ -1906,11 +1899,10 @@ impl Resolver {
             }
         }
 
-        // Unless we managed to find a result in all four namespaces
-        // (exceedingly unlikely), search imports as well.
-
-        match (module_result, value_result, type_result) {
-            (BoundResult(*), BoundResult(*), BoundResult(*)) => {
+        // Unless we managed to find a result in both namespaces (unlikely),
+        // search imports as well.
+        match (value_result, type_result) {
+            (BoundResult(*), BoundResult(*)) => {
                 // Continue.
             }
             _ => {
@@ -1934,9 +1926,6 @@ impl Resolver {
                         // therefore accurately report that the names are
                         // unbound.
 
-                        if module_result.is_unknown() {
-                            module_result = UnboundResult;
-                        }
                         if value_result.is_unknown() {
                             value_result = UnboundResult;
                         }
@@ -1973,11 +1962,6 @@ impl Resolver {
 
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
-
-                        if module_result.is_unknown() {
-                            module_result = get_binding(import_resolution,
-                                                        ModuleNS);
-                        }
                         if value_result.is_unknown() {
                             value_result = get_binding(import_resolution,
                                                        ValueNS);
@@ -2001,20 +1985,6 @@ impl Resolver {
         assert module_.import_resolutions.contains_key(target);
         let import_resolution = module_.import_resolutions.get(target);
 
-        match module_result {
-            BoundResult(target_module, name_bindings) => {
-                debug!("(resolving single import) found module binding");
-                import_resolution.module_target =
-                    Some(Target(target_module, name_bindings));
-            }
-            UnboundResult => {
-                debug!("(resolving single import) didn't find module \
-                        binding");
-            }
-            UnknownResult => {
-                fail ~"module result should be known at this point";
-            }
-        }
         match value_result {
             BoundResult(target_module, name_bindings) => {
                 import_resolution.value_target =
@@ -2037,12 +2007,10 @@ impl Resolver {
         }
 
         let i = import_resolution;
-        match (i.module_target, i.value_target, i.type_target) {
-          /*
-            If this name wasn't found in any of the four namespaces, it's
-            definitely unresolved
-           */
-          (None, None, None) => { return Failed; }
+        match (i.value_target, i.type_target) {
+          // If this name wasn't found in either namespace, it's definitely
+          // unresolved.
+          (None, None) => { return Failed; }
           _ => {}
         }
 
@@ -2081,7 +2049,7 @@ impl Resolver {
                 // Continue.
             }
             Some(child_name_bindings) => {
-                if (*child_name_bindings).defined_in_namespace(ModuleNS) {
+                if (*child_name_bindings).defined_in_namespace(TypeNS) {
                     module_result = BoundResult(containing_module,
                                                 child_name_bindings);
                 }
@@ -2125,8 +2093,8 @@ impl Resolver {
                         // resolved. We can, therefore, just follow it.
 
                         if module_result.is_unknown() {
-                            match (*import_resolution).
-                                    target_for_namespace(ModuleNS) {
+                            match (*import_resolution).target_for_namespace(
+                                    TypeNS) {
                                 None => {
                                     module_result = UnboundResult;
                                 }
@@ -2156,7 +2124,7 @@ impl Resolver {
         match module_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found module binding");
-                import_resolution.module_target =
+                import_resolution.type_target =
                     Some(Target(target_module, name_bindings));
             }
             UnboundResult => {
@@ -2169,8 +2137,8 @@ impl Resolver {
         }
 
         let i = import_resolution;
-        if i.module_target.is_none() {
-          // If this name wasn't found in the module namespace, it's
+        if i.type_target.is_none() {
+          // If this name wasn't found in the type namespace, it's
           // definitely unresolved.
           return Failed;
         }
@@ -2222,7 +2190,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
-                   is_none(target_import_resolution.module_target),
+                   is_none(target_import_resolution.type_target),
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
@@ -2232,8 +2200,6 @@ impl Resolver {
                     let new_import_resolution =
                         @ImportResolution(privacy,
                                           target_import_resolution.span);
-                    new_import_resolution.module_target =
-                        copy target_import_resolution.module_target;
                     new_import_resolution.value_target =
                         copy target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2246,15 +2212,6 @@ impl Resolver {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
-                    match copy target_import_resolution.module_target {
-                        None => {
-                            // Continue.
-                        }
-                        Some(module_target) => {
-                            dest_import_resolution.module_target =
-                                Some(copy module_target);
-                        }
-                    }
                     match copy target_import_resolution.value_target {
                         None => {
                             // Continue.
@@ -2307,11 +2264,6 @@ impl Resolver {
                    self.module_to_str(module_));
 
             // Merge the child item into the import resolution.
-            if (*name_bindings).defined_in_namespace(ModuleNS) {
-                debug!("(resolving glob import) ... for module target");
-                dest_import_resolution.module_target =
-                    Some(Target(containing_module, name_bindings));
-            }
             if (*name_bindings).defined_in_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
@@ -2345,9 +2297,8 @@ impl Resolver {
 
         while index < module_path_len {
             let name = (*module_path).get_elt(index);
-            match self.resolve_name_in_module(search_module, name, ModuleNS,
-                                            xray) {
-
+            match self.resolve_name_in_module(search_module, name, TypeNS,
+                                              xray) {
                 Failed => {
                     self.session.span_err(span, ~"unresolved name");
                     return Failed;
@@ -2359,8 +2310,8 @@ impl Resolver {
                     return Indeterminate;
                 }
                 Success(target) => {
-                    match target.bindings.module_def {
-                        NoModuleDef => {
+                    match target.bindings.type_def {
+                        None | Some(TypeDef(*)) => {
                             // Not a module.
                             self.session.span_err(span,
                                                   fmt!("not a module: %s",
@@ -2368,7 +2319,7 @@ impl Resolver {
                                                            str_of(name)));
                             return Failed;
                         }
-                        ModuleDef(_, copy module_) => {
+                        Some(ModuleDef(_, copy module_)) => {
                             search_module = module_;
                         }
                     }
@@ -2443,7 +2394,6 @@ impl Resolver {
         match module_.children.find(name) {
             Some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) => {
-
                 return Success(Target(module_, name_bindings));
             }
             Some(_) | None => { /* Not found; continue. */ }
@@ -2516,15 +2466,15 @@ impl Resolver {
     fn resolve_module_in_lexical_scope(module_: @Module, name: ident)
                                     -> ResolveResult<@Module> {
 
-        match self.resolve_item_in_lexical_scope(module_, name, ModuleNS) {
+        match self.resolve_item_in_lexical_scope(module_, name, TypeNS) {
             Success(target) => {
-                match target.bindings.module_def {
-                    NoModuleDef => {
+                match target.bindings.type_def {
+                    None | Some(TypeDef(*)) => {
                         error!("!!! (resolving module in lexical scope) module
                                 wasn't actually a module!");
                         return Failed;
                     }
-                    ModuleDef(_, module_) => {
+                    Some(ModuleDef(_, module_)) => {
                         return Success(module_);
                     }
                 }
@@ -2661,8 +2611,7 @@ impl Resolver {
         debug!("(resolving one-level naming result) searching for module");
         match self.resolve_item_in_lexical_scope(module_,
                                                  source_name,
-                                                 ModuleNS) {
-
+                                                 TypeNS) {
             Failed => {
                 debug!("(resolving one-level renaming import) didn't find \
                         module result");
@@ -2682,7 +2631,7 @@ impl Resolver {
 
         let mut value_result;
         let mut type_result;
-        if allowable_namespaces == ModuleNSOnly {
+        if allowable_namespaces == TypeNSOnly {
             value_result = None;
             type_result = None;
         } else {
@@ -2772,7 +2721,6 @@ impl Resolver {
                        self.session.str_of(target_name),
                        self.module_to_str(module_));
 
-                import_resolution.module_target = module_result;
                 import_resolution.value_target = value_result;
                 import_resolution.type_target = type_result;
 
@@ -2885,18 +2833,19 @@ impl Resolver {
                                    ident: ident,
                                    namebindings: @NameBindings,
                                    reexport: bool) {
-        for [ModuleNS, TypeNS, ValueNS].each |ns| {
-            match namebindings.def_for_namespace(*ns) {
-                Some(d) if d.privacy == Public => {
+        for [ TypeNS, ValueNS ].each |ns| {
+            match (namebindings.def_for_namespace(*ns),
+                   namebindings.privacy_for_namespace(*ns)) {
+                (Some(d), Some(Public)) => {
                     debug!("(computing exports) YES: %s '%s' \
                             => %?",
                            if reexport { ~"reexport" } else { ~"export"},
                            self.session.str_of(ident),
-                           def_id_of_def(d.def));
+                           def_id_of_def(d));
                     exports2.push(Export2 {
                         reexport: reexport,
                         name: self.session.str_of(ident),
-                        def_id: def_id_of_def(d.def)
+                        def_id: def_id_of_def(d)
                     });
                 }
                 _ => ()
@@ -2914,12 +2863,13 @@ impl Resolver {
         }
 
         for module_.import_resolutions.each_ref |ident, importresolution| {
-            for [ModuleNS, TypeNS, ValueNS].each |ns| {
+            for [ TypeNS, ValueNS ].each |ns| {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
                                self.session.str_of(*ident));
-                        self.add_exports_of_namebindings(exports2, *ident,
+                        self.add_exports_of_namebindings(exports2,
+                                                         *ident,
                                                          target.bindings,
                                                          true)
                     }
@@ -3666,7 +3616,7 @@ impl Resolver {
                               span: span,
                               type_parameters: ~[ty_param],
                               opt_trait_reference: Option<@trait_ref>,
-                              self_type: @ty,
+                              self_type: @Ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {
 
@@ -3864,7 +3814,7 @@ impl Resolver {
         debug!("(resolving block) leaving block");
     }
 
-    fn resolve_type(ty: @ty, visitor: ResolveVisitor) {
+    fn resolve_type(ty: @Ty, visitor: ResolveVisitor) {
         match ty.node {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
@@ -3872,41 +3822,43 @@ impl Resolver {
             ty_path(path, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
                 // scopes looking for it.
+                let mut result_def = None;
 
-                let mut result_def;
-                match self.resolve_path(path, TypeNS, true, visitor) {
-                    Some(def) => {
-                        debug!("(resolving type) resolved `%s` to type",
-                               self.session.str_of(path.idents.last()));
-                        result_def = Some(def);
-                    }
-                    None => {
-                        result_def = None;
+                // First, check to see whether the name is a primitive type.
+                if path.idents.len() == 1u {
+                    let name = path.idents.last();
+
+                    match self.primitive_type_table
+                            .primitive_types
+                            .find(name) {
+
+                        Some(primitive_type) => {
+                            result_def =
+                                Some(def_prim_ty(primitive_type));
+                        }
+                        None => {
+                            // Continue.
+                        }
                     }
                 }
 
                 match result_def {
-                    Some(_) => {
-                        // Continue.
-                    }
                     None => {
-                        // Check to see whether the name is a primitive type.
-                        if path.idents.len() == 1u {
-                            let name = path.idents.last();
-
-                            match self.primitive_type_table
-                                    .primitive_types
-                                    .find(name) {
-
-                                Some(primitive_type) => {
-                                    result_def =
-                                        Some(def_prim_ty(primitive_type));
-                                }
-                                None => {
-                                    // Continue.
-                                }
+                        match self.resolve_path(path, TypeNS, true, visitor) {
+                            Some(def) => {
+                                debug!("(resolving type) resolved `%s` to \
+                                        type",
+                                       self.session.str_of(
+                                            path.idents.last()));
+                                result_def = Some(def);
+                            }
+                            None => {
+                                result_def = None;
                             }
                         }
+                    }
+                    Some(_) => {
+                        // Continue.
                     }
                 }
 
@@ -4223,12 +4175,17 @@ impl Resolver {
         // First, search children.
         match containing_module.children.find(name) {
             Some(child_name_bindings) => {
-                match (*child_name_bindings).def_for_namespace(namespace) {
-                    Some(def) if def.privacy == Public || xray == Xray => {
+                match (child_name_bindings.def_for_namespace(namespace),
+                       child_name_bindings.privacy_for_namespace(namespace)) {
+                    (Some(def), Some(Public)) => {
                         // Found it. Stop the search here.
-                        return ChildNameDefinition(def.def);
+                        return ChildNameDefinition(def);
                     }
-                    Some(_) | None => {
+                    (Some(def), _) if xray == Xray => {
+                        // Found it. Stop the search here.
+                        return ChildNameDefinition(def);
+                    }
+                    (Some(_), _) | (None, _) => {
                         // Continue.
                     }
                 }
@@ -4244,14 +4201,15 @@ impl Resolver {
                                        xray == Xray => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
-                        match (*target.bindings)
-                            .def_for_namespace(namespace) {
-                            Some(def) if def.privacy == Public => {
+                        match (target.bindings.def_for_namespace(namespace),
+                               target.bindings.privacy_for_namespace(
+                                    namespace)) {
+                            (Some(def), Some(Public)) => {
                                 // Found it.
                                 import_resolution.used = true;
-                                return ImportNameDefinition(def.def);
+                                return ImportNameDefinition(def);
                             }
-                            Some(_) | None => {
+                            (Some(_), _) | (None, _) => {
                                 // This can happen with external impls, due to
                                 // the imperfect way we read the metadata.
 
@@ -4391,9 +4349,6 @@ impl Resolver {
                 search_result = self.search_ribs(self.type_ribs, ident, span,
                                                  AllowCapturingSelf);
             }
-            ModuleNS => {
-                fail ~"module namespaces do not have local ribs";
-            }
         }
 
         match copy search_result {
@@ -4413,23 +4368,22 @@ impl Resolver {
     fn resolve_item_by_identifier_in_lexical_scope(ident: ident,
                                                    namespace: Namespace)
                                                 -> Option<def> {
-
         // Check the items.
         match self.resolve_item_in_lexical_scope(self.current_module,
                                                ident,
                                                namespace) {
-
             Success(target) => {
                 match (*target.bindings).def_for_namespace(namespace) {
                     None => {
-                        fail ~"resolved name in a namespace to a set of name \
-                              bindings with no def for that namespace?!";
+                        // This can happen if we were looking for a type and
+                        // found a module instead. Modules don't have defs.
+                        return None;
                     }
                     Some(def) => {
                         debug!("(resolving item path in lexical scope) \
                                 resolved `%s` to item",
                                self.session.str_of(ident));
-                        return Some(def.def);
+                        return Some(def);
                     }
                 }
             }
@@ -4703,7 +4657,7 @@ impl Resolver {
             for search_module.children.each |_name, child_name_bindings| {
                 match child_name_bindings.def_for_namespace(TypeNS) {
                     Some(def) => {
-                        match def.def {
+                        match def {
                             def_ty(trait_def_id) => {
                                 self.add_trait_info_if_containing_method(
                                     found_traits, trait_def_id, name);
@@ -4730,7 +4684,7 @@ impl Resolver {
                     Some(target) => {
                         match target.bindings.def_for_namespace(TypeNS) {
                             Some(def) => {
-                                match def.def {
+                                match def {
                                     def_ty(trait_def_id) => {
                                         self.
                                         add_trait_info_if_containing_method(
@@ -4937,15 +4891,6 @@ impl Resolver {
 
         debug!("Import resolutions:");
         for module_.import_resolutions.each |name, import_resolution| {
-            let mut module_repr;
-            match (*import_resolution).target_for_namespace(ModuleNS) {
-                None => { module_repr = ~""; }
-                Some(_) => {
-                    module_repr = ~" module:?";
-                    // XXX
-                }
-            }
-
             let mut value_repr;
             match (*import_resolution).target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }
@@ -4964,15 +4909,14 @@ impl Resolver {
                 }
             }
 
-            debug!("* %s:%s%s%s",
-                   self.session.str_of(name),
-                   module_repr, value_repr, type_repr);
+            debug!("* %s:%s%s", self.session.str_of(name),
+                   value_repr, type_repr);
         }
     }
 }
 
 /// Entry point to crate resolution.
-fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
+fn resolve_crate(session: Session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
                    exp_map2: ExportMap2,
                    trait_map: TraitMap } {

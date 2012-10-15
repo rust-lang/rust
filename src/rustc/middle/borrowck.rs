@@ -229,7 +229,6 @@ use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use util::common::indenter;
 use ty::to_str;
-use driver::session::session;
 use dvec::DVec;
 use mem_categorization::*;
 
@@ -319,8 +318,8 @@ enum bckerr_code {
     err_mut_variant,
     err_root_not_permitted,
     err_mutbl(ast::mutability),
-    err_out_of_root_scope(ty::region, ty::region), // superscope, subscope
-    err_out_of_scope(ty::region, ty::region) // superscope, subscope
+    err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
+    err_out_of_scope(ty::Region, ty::Region) // superscope, subscope
 }
 
 impl bckerr_code : cmp::Eq {
@@ -436,7 +435,7 @@ fn root_map() -> root_map {
 // Misc
 
 impl borrowck_ctxt {
-    fn is_subregion_of(r_sub: ty::region, r_sup: ty::region) -> bool {
+    fn is_subregion_of(r_sub: ty::Region, r_sup: ty::Region) -> bool {
         region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
     }
 

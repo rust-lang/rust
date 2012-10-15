@@ -3,7 +3,7 @@
 // probably just be folded into cstore.
 
 use result::Result;
-export filesearch;
+export FileSearch;
 export mk_filesearch;
 export pick;
 export pick_file;
@@ -21,7 +21,7 @@ fn pick_file(file: Path, path: &Path) -> Option<Path> {
     else { option::None }
 }
 
-trait filesearch {
+trait FileSearch {
     fn sysroot() -> Path;
     fn lib_search_paths() -> ~[Path];
     fn get_target_lib_path() -> Path;
@@ -30,11 +30,11 @@ trait filesearch {
 
 fn mk_filesearch(maybe_sysroot: Option<Path>,
                  target_triple: &str,
-                 addl_lib_search_paths: ~[Path]) -> filesearch {
+                 addl_lib_search_paths: ~[Path]) -> FileSearch {
     type filesearch_impl = {sysroot: Path,
                             addl_lib_search_paths: ~[Path],
                             target_triple: ~str};
-    impl filesearch_impl: filesearch {
+    impl filesearch_impl: FileSearch {
         fn sysroot() -> Path { self.sysroot }
         fn lib_search_paths() -> ~[Path] {
             let mut paths = self.addl_lib_search_paths;
@@ -64,10 +64,10 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
     debug!("using sysroot = %s", sysroot.to_str());
     {sysroot: sysroot,
      addl_lib_search_paths: addl_lib_search_paths,
-     target_triple: str::from_slice(target_triple)} as filesearch
+     target_triple: str::from_slice(target_triple)} as FileSearch
 }
 
-fn search<T: Copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
+fn search<T: Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
     for filesearch.lib_search_paths().each |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());

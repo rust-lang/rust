@@ -6,7 +6,6 @@ use codemap::span;
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
         CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
-use driver::session::session;
 use common::*;
 
 fn B(cx: block) -> BuilderRef {

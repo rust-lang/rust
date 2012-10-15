@@ -33,7 +33,7 @@ trait ast_fold {
     fn fold_pat(&&v: @pat) -> @pat;
     fn fold_decl(&&v: @decl) -> @decl;
     fn fold_expr(&&v: @expr) -> @expr;
-    fn fold_ty(&&v: @ty) -> @ty;
+    fn fold_ty(&&v: @Ty) -> @Ty;
     fn fold_mod(_mod) -> _mod;
     fn fold_foreign_mod(foreign_mod) -> foreign_mod;
     fn fold_variant(variant) -> variant;
@@ -728,7 +728,7 @@ impl ast_fold_precursor: ast_fold {
               node: n,
               span: self.new_span(s)};
     }
-    fn fold_ty(&&x: @ty) -> @ty {
+    fn fold_ty(&&x: @Ty) -> @Ty {
         let (n, s) = self.fold_ty(x.node, x.span, self as ast_fold);
         return @{id: self.new_id(x.id), node: n, span: self.new_span(s)};
     }

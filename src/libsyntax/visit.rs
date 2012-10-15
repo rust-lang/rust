@@ -55,7 +55,7 @@ type visitor<E> =
       visit_decl: fn@(@decl, E, vt<E>),
       visit_expr: fn@(@expr, E, vt<E>),
       visit_expr_post: fn@(@expr, E, vt<E>),
-      visit_ty: fn@(@ty, E, vt<E>),
+      visit_ty: fn@(@Ty, E, vt<E>),
       visit_ty_params: fn@(~[ty_param], E, vt<E>),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
       visit_ty_method: fn@(ty_method, E, vt<E>),
@@ -187,9 +187,9 @@ fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
     }
 }
 
-fn skip_ty<E>(_t: @ty, _e: E, _v: vt<E>) {}
+fn skip_ty<E>(_t: @Ty, _e: E, _v: vt<E>) {}
 
-fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
+fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
     match t.node {
       ty_box(mt) | ty_uniq(mt) |
       ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
@@ -490,7 +490,7 @@ type simple_visitor =
       visit_decl: fn@(@decl),
       visit_expr: fn@(@expr),
       visit_expr_post: fn@(@expr),
-      visit_ty: fn@(@ty),
+      visit_ty: fn@(@Ty),
       visit_ty_params: fn@(~[ty_param]),
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
       visit_ty_method: fn@(ty_method),
@@ -499,7 +499,7 @@ type simple_visitor =
       visit_struct_field: fn@(@struct_field),
       visit_struct_method: fn@(@method)};
 
-fn simple_ignore_ty(_t: @ty) {}
+fn simple_ignore_ty(_t: @Ty) {}
 
 fn default_simple_visitor() -> simple_visitor {
     return @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
@@ -577,7 +577,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     fn v_expr_post(f: fn@(@expr), ex: @expr, &&_e: (), _v: vt<()>) {
         f(ex);
     }
-    fn v_ty(f: fn@(@ty), ty: @ty, &&e: (), v: vt<()>) {
+    fn v_ty(f: fn@(@Ty), ty: @Ty, &&e: (), v: vt<()>) {
         f(ty);
         visit_ty(ty, e, v);
     }

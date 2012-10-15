@@ -1,5 +1,4 @@
 use syntax::ast;
-use driver::session::session;
 use lib::llvm::{ValueRef, TypeRef};
 use back::abi;
 use syntax::codemap::span;

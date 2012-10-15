@@ -52,7 +52,7 @@ type encode_parms = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item
 };
 
@@ -77,7 +77,7 @@ enum encode_ctxt = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
@@ -1035,9 +1035,9 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 }
 
 fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
-                     cstore: cstore::cstore) {
+                     cstore: cstore::CStore) {
 
-    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::cstore)
+    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::CStore)
         -> ~[decoder::crate_dep] {
 
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};

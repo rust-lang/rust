@@ -181,7 +181,7 @@ impl message: gen_send {
           }
         }
 
-    fn to_ty(cx: ext_ctxt) -> @ast::ty {
+    fn to_ty(cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars(self.get_params())))
     }
@@ -360,7 +360,7 @@ impl protocol: gen_init {
         }}
     }
 
-    fn buffer_ty_path(cx: ext_ctxt) -> @ast::ty {
+    fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty {
         let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
@@ -444,13 +444,13 @@ impl ~[@ast::item]: to_source {
     }
 }
 
-impl @ast::ty: to_source {
+impl @ast::Ty: to_source {
     fn to_source(cx: ext_ctxt) -> ~str {
         ty_to_str(self, cx.parse_sess().interner)
     }
 }
 
-impl ~[@ast::ty]: to_source {
+impl ~[@ast::Ty]: to_source {
     fn to_source(cx: ext_ctxt) -> ~str {
         str::connect(self.map(|i| i.to_source(cx)), ~", ")
     }

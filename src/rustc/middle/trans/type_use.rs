@@ -20,7 +20,6 @@
 use std::map::HashMap;
 use std::list;
 use std::list::{List, Cons, Nil};
-use driver::session::session;
 use metadata::csearch;
 use syntax::ast::*, syntax::ast_util, syntax::visit;
 use syntax::ast_map;

@@ -166,20 +166,20 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 }
 
 // a list of mapping from in-scope-region-names ("isr") to the
-// corresponding ty::region
-type isr_alist = @List<(ty::bound_region, ty::region)>;
+// corresponding ty::Region
+type isr_alist = @List<(ty::bound_region, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::region;
-    fn find(br: ty::bound_region) -> Option<ty::region>;
+    fn get(br: ty::bound_region) -> ty::Region;
+    fn find(br: ty::bound_region) -> Option<ty::Region>;
 }
 
 impl isr_alist: get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::region {
+    fn get(br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }
 
-    fn find(br: ty::bound_region) -> Option<ty::region> {
+    fn find(br: ty::bound_region) -> Option<ty::Region> {
         for list::each(self) |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
@@ -563,7 +563,7 @@ impl @fn_ctxt: ast_conv {
 
 impl @fn_ctxt {
     fn search_in_scope_regions(br: ty::bound_region)
-        -> Result<ty::region, ~str>
+        -> Result<ty::Region, ~str>
     {
         match self.in_scope_regions.find(br) {
             Some(r) => result::Ok(r),
@@ -581,13 +581,13 @@ impl @fn_ctxt {
 }
 
 impl @fn_ctxt: region_scope {
-    fn anon_region(span: span) -> Result<ty::region, ~str> {
+    fn anon_region(span: span) -> Result<ty::Region, ~str> {
         result::Ok(self.infcx().next_region_var_nb(span))
     }
-    fn self_region(_span: span) -> Result<ty::region, ~str> {
+    fn self_region(_span: span) -> Result<ty::Region, ~str> {
         self.search_in_scope_regions(ty::br_self)
     }
-    fn named_region(_span: span, id: ast::ident) -> Result<ty::region, ~str> {
+    fn named_region(_span: span, id: ast::ident) -> Result<ty::Region, ~str> {
         self.search_in_scope_regions(ty::br_named(id))
     }
 }
@@ -600,7 +600,7 @@ impl @fn_ctxt {
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
     }
 
-    fn block_region() -> ty::region {
+    fn block_region() -> ty::Region {
         ty::re_scope(self.region_lb)
     }
 
@@ -645,7 +645,7 @@ impl @fn_ctxt {
         self.write_ty(node_id, ty::mk_bot(self.tcx()));
     }
 
-    fn to_ty(ast_t: @ast::ty) -> ty::t {
+    fn to_ty(ast_t: @ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
     }
 
@@ -736,7 +736,7 @@ impl @fn_ctxt {
     }
 
     fn mk_subr(a_is_expected: bool, span: span,
-               sub: ty::region, sup: ty::region) -> Result<(), ty::type_err> {
+               sub: ty::Region, sup: ty::Region) -> Result<(), ty::type_err> {
         infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
     }
 
@@ -760,8 +760,8 @@ impl @fn_ctxt {
 
     fn region_var_if_parameterized(rp: Option<ty::region_variance>,
                                    span: span,
-                                   lower_bound: ty::region)
-        -> Option<ty::region>
+                                   lower_bound: ty::Region)
+        -> Option<ty::Region>
     {
         rp.map(
             |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
@@ -1359,7 +1359,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     // Check field access expressions
     fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
-                   base: @ast::expr, field: ast::ident, tys: ~[@ast::ty])
+                   base: @ast::expr, field: ast::ident, tys: ~[@ast::Ty])
         -> bool
     {
         let tcx = fcx.ccx.tcx;
@@ -2443,7 +2443,7 @@ fn instantiate_path(fcx: @fn_ctxt,
                     tpt: ty_param_bounds_and_ty,
                     span: span,
                     node_id: ast::node_id,
-                    region_lb: ty::region) {
+                    region_lb: ty::Region) {
     let ty_param_count = vec::len(*tpt.bounds);
     let ty_substs_len = vec::len(pth.types);
 
