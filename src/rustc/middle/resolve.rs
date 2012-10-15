@@ -3522,8 +3522,8 @@ impl Resolver {
         let outer_type_parameter_count = (*type_parameters).len();
         let borrowed_type_parameters: &~[ty_param] = &*type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
-                                        (borrowed_type_parameters, id, 0u,
-                                         NormalRibKind)) {
+                                        (borrowed_type_parameters, id, 0,
+                                         OpaqueFunctionRibKind)) {
 
             // Resolve the type parameters.
             self.resolve_type_parameters(*type_parameters, visitor);
