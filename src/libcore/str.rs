@@ -2075,14 +2075,14 @@ pub mod raw {
 
 }
 
-pub trait UniqueStr {
+pub trait Trimmable {
     pure fn trim() -> self;
     pure fn trim_left() -> self;
     pure fn trim_right() -> self;
 }
 
 /// Extension methods for strings
-impl ~str: UniqueStr {
+impl ~str: Trimmable {
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
     pure fn trim() -> ~str { trim(self) }
