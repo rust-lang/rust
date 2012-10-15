@@ -3199,7 +3199,7 @@ impl Resolver {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|| {
-                            self.resolve_expr(*dis_expr, visitor); 
+                            self.resolve_expr(*dis_expr, visitor);
                         });
                     }
                 }
@@ -3215,7 +3215,7 @@ impl Resolver {
                     visit_item(item, (), visitor);
                 }
             }
-                
+
             item_ty(_, type_parameters) => {
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, item.id, 0u,
