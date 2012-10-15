@@ -257,7 +257,10 @@ enum RibKind {
     MethodRibKind(node_id, MethodSort),
 
     // We passed through a function *item* scope. Disallow upvars.
-    OpaqueFunctionRibKind
+    OpaqueFunctionRibKind,
+
+    // We're in a constant item. Can't refer to dynamic stuff.
+    ConstantItemRibKind
 }
 
 // Methods can be required or provided. Required methods only occur in traits.
@@ -3114,9 +3117,16 @@ impl Resolver {
 
                     return None;
                 }
+                ConstantItemRibKind => {
+                    // Still doesn't deal with upvars
+                    self.session.span_err(span,
+                                          ~"attempt to use a non-constant \
+                                            value in a constant");
+
+                }
             }
 
-            rib_index += 1u;
+            rib_index += 1;
         }
 
         return Some(dl_def(def));
@@ -3130,8 +3140,8 @@ impl Resolver {
         // XXX: Try caching?
 
         let mut i = (*ribs).len();
-        while i != 0u {
-            i -= 1u;
+        while i != 0 {
+            i -= 1;
             let rib = (*ribs).get_elt(i);
             match rib.bindings.find(name) {
                 Some(def_like) => {
@@ -3179,7 +3189,33 @@ impl Resolver {
         }
 
         match item.node {
-            item_enum(_, type_parameters) |
+
+            // enum item: resolve all the variants' discrs,
+            // then resolve the ty params
+            item_enum(enum_def, type_parameters) => {
+
+                for enum_def.variants.each() |variant| {
+                    do variant.node.disr_expr.iter() |dis_expr| {
+                        // resolve the discriminator expr
+                        // as a constant
+                        self.with_constant_rib(|| {
+                            self.resolve_expr(*dis_expr, visitor); 
+                        });
+                    }
+                }
+
+                // n.b. the discr expr gets visted twice.
+                // but maybe it's okay since the first time will signal an
+                // error if there is one? -- tjc
+                do self.with_type_parameter_rib
+                        (HasTypeParameters(&type_parameters, item.id, 0,
+                                           NormalRibKind))
+                        || {
+
+                    visit_item(item, (), visitor);
+                }
+            }
+                
             item_ty(_, type_parameters) => {
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, item.id, 0u,
@@ -3344,7 +3380,9 @@ impl Resolver {
             }
 
             item_const(*) => {
-                visit_item(item, (), visitor);
+                self.with_constant_rib(|| {
+                    visit_item(item, (), visitor);
+                });
             }
 
           item_mac(*) => {
@@ -3401,6 +3439,12 @@ impl Resolver {
         f();
         (*self.label_ribs).pop();
     }
+    fn with_constant_rib(f: fn()) {
+        (*self.value_ribs).push(@Rib(ConstantItemRibKind));
+        f();
+        (*self.value_ribs).pop();
+    }
+
 
     fn resolve_function(rib_kind: RibKind,
                         optional_declaration: Option<@fn_decl>,
@@ -4127,7 +4171,7 @@ impl Resolver {
                                                  namespace);
         }
 
-        if path.idents.len() > 1u {
+        if path.idents.len() > 1 {
             return self.resolve_module_relative_path(path,
                                                   self.xray_context,
                                                   namespace);
