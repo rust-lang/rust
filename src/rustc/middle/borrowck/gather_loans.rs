@@ -260,7 +260,7 @@ impl gather_loan_ctxt {
     fn guarantee_valid(&self,
                        cmt: cmt,
                        req_mutbl: ast::mutability,
-                       scope_r: ty::region) {
+                       scope_r: ty::Region) {
 
         self.bccx.guaranteed_paths += 1;
 
@@ -390,7 +390,7 @@ impl gather_loan_ctxt {
     fn add_loans(&self,
                  cmt: cmt,
                  req_mutbl: ast::mutability,
-                 scope_r: ty::region,
+                 scope_r: ty::Region,
                  +loans: ~[Loan]) {
         if loans.len() == 0 {
             return;

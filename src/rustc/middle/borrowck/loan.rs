@@ -7,7 +7,7 @@ use result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
-            scope_region: ty::region,
+            scope_region: ty::Region,
             mutbl: ast::mutability) -> bckres<~[Loan]> {
         let lc = LoanContext {
             bccx: self,
@@ -28,7 +28,7 @@ struct LoanContext {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
-    scope_region: ty::region,
+    scope_region: ty::Region,
 
     // accumulated list of loans that will be required
     mut loans: ~[Loan]
@@ -39,7 +39,7 @@ impl LoanContext {
 
     fn issue_loan(&self,
                   cmt: cmt,
-                  scope_ub: ty::region,
+                  scope_ub: ty::Region,
                   req_mutbl: ast::mutability) -> bckres<()> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             match req_mutbl {

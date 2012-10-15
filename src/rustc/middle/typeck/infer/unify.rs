@@ -1,6 +1,6 @@
 use combine::combine;
 use integral::*;
-use to_str::to_str;
+use to_str::ToStr;
 use std::smallintmap::SmallIntMap;
 
 enum var_value<V:Copy, T:Copy> {
@@ -46,7 +46,7 @@ impl infer_ctxt {
         }
     }
 
-    fn set<V:Copy vid, T:Copy to_str>(
+    fn set<V:Copy vid, T:Copy ToStr>(
         vb: &vals_and_bindings<V, T>, vid: V,
         +new_v: var_value<V, T>) {
 

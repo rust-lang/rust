@@ -654,7 +654,7 @@ impl LookupContext {
         kind: AutoRefKind,
         autoderefs: uint,
         mutbls: &[ast::mutability],
-        mk_autoref_ty: &fn(ast::mutability, ty::region) -> ty::t)
+        mk_autoref_ty: &fn(ast::mutability, ty::Region) -> ty::t)
         -> Option<method_map_entry>
     {
         // This is hokey. We should have mutability inference as a
@@ -930,7 +930,7 @@ impl LookupContext {
 }
 
 fn transform_self_type_for_method(tcx: ty::ctxt,
-                                  self_region: Option<ty::region>,
+                                  self_region: Option<ty::Region>,
                                   impl_ty: ty::t,
                                   self_type: ast::self_ty_)
     -> ty::t

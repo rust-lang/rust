@@ -8,7 +8,7 @@ use vec::raw::to_ptr;
 use std::map::{HashMap,Set};
 use syntax::{ast, ast_map};
 use driver::session;
-use session::session;
+use session::Session;
 use middle::ty;
 use back::{link, abi, upcall};
 use syntax::codemap::span;
@@ -110,7 +110,7 @@ fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = {
-     sess: session::session,
+     sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
@@ -605,7 +605,7 @@ fn block_parent(cx: block) -> block {
 impl block {
     pure fn ccx() -> @crate_ctxt { self.fcx.ccx }
     pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess() -> session { self.fcx.ccx.sess }
+    pure fn sess() -> Session { self.fcx.ccx.sess }
 
     fn node_id_to_str(id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
@@ -1191,7 +1191,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-fn path_str(sess: session::session, p: path) -> ~str {
+fn path_str(sess: session::Session, p: path) -> ~str {
     let mut r = ~"", first = true;
     for vec::each(p) |e| {
         match *e {

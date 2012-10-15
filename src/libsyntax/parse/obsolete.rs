@@ -10,7 +10,7 @@ removed.
 use codemap::span;
 use ast::{expr, expr_lit, lit_nil};
 use ast_util::{respan};
-use token::token;
+use token::Token;
 
 /// The specific types of unsupported syntax
 pub enum ObsoleteSyntax {
@@ -47,7 +47,7 @@ pub trait ObsoleteReporter {
     fn obsolete_expr(sp: span, kind: ObsoleteSyntax) -> @expr;
 }
 
-impl parser : ObsoleteReporter {
+impl Parser : ObsoleteReporter {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
@@ -121,7 +121,7 @@ impl parser : ObsoleteReporter {
         }
     }
 
-    fn token_is_obsolete_ident(ident: &str, token: token) -> bool {
+    fn token_is_obsolete_ident(ident: &str, token: Token) -> bool {
         match token {
             token::IDENT(copy sid, _) => {
                 str::eq_slice(*self.id_to_str(sid), ident)

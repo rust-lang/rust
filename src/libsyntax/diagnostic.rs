@@ -9,7 +9,7 @@ export codemap_span_handler, codemap_handler;
 export ice_msg;
 export expect;
 
-type emitter = fn@(cmsp: Option<(codemap::codemap, span)>,
+type emitter = fn@(cmsp: Option<(codemap::CodeMap, span)>,
                    msg: &str, lvl: level);
 
 
@@ -33,7 +33,7 @@ trait handler {
     fn note(msg: &str);
     fn bug(msg: &str) -> !;
     fn unimpl(msg: &str) -> !;
-    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: &str, lvl: level);
+    fn emit(cmsp: Option<(codemap::CodeMap, span)>, msg: &str, lvl: level);
 }
 
 type handler_t = @{
@@ -43,7 +43,7 @@ type handler_t = @{
 
 type codemap_t = @{
     handler: handler,
-    cm: codemap::codemap
+    cm: codemap::CodeMap
 };
 
 impl codemap_t: span_handler {
@@ -107,7 +107,7 @@ impl handler_t: handler {
         self.fatal(ice_msg(msg));
     }
     fn unimpl(msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: &str, lvl: level) {
+    fn emit(cmsp: Option<(codemap::CodeMap, span)>, msg: &str, lvl: level) {
         self.emit(cmsp, msg, lvl);
     }
 }
@@ -116,7 +116,7 @@ fn ice_msg(msg: &str) -> ~str {
     fmt!("internal compiler error: %s", msg)
 }
 
-fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
+fn mk_span_handler(handler: handler, cm: codemap::CodeMap) -> span_handler {
     @{ handler: handler, cm: cm } as span_handler
 }
 
@@ -125,7 +125,7 @@ fn mk_handler(emitter: Option<emitter>) -> handler {
     let emit = match emitter {
       Some(e) => e,
       None => {
-        let f = fn@(cmsp: Option<(codemap::codemap, span)>,
+        let f = fn@(cmsp: Option<(codemap::CodeMap, span)>,
             msg: &str, t: level) {
             emit(cmsp, msg, t);
         };
@@ -189,8 +189,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
     io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
-fn emit(cmsp: Option<(codemap::codemap, span)>,
-        msg: &str, lvl: level) {
+fn emit(cmsp: Option<(codemap::CodeMap, span)>, msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
         let sp = codemap::adjust_span(cm,sp);
@@ -206,7 +205,7 @@ fn emit(cmsp: Option<(codemap::codemap, span)>,
     }
 }
 
-fn highlight_lines(cm: codemap::codemap, sp: span,
+fn highlight_lines(cm: codemap::CodeMap, sp: span,
                    lines: @codemap::file_lines) {
 
     let fm = lines.file;
@@ -261,7 +260,7 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     }
 }
 
-fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
+fn print_macro_backtrace(cm: codemap::CodeMap, sp: span) {
     do option::iter(&sp.expn_info) |ei| {
         let ss = option::map_default(&ei.callie.span, @~"",
                                      |span| @codemap::span_to_str(*span, cm));

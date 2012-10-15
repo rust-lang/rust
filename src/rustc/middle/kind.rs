@@ -1,8 +1,7 @@
 use syntax::{visit, ast_util};
 use syntax::ast::*;
 use syntax::codemap::span;
-use ty::{kind, kind_copyable, kind_noncopyable, kind_const};
-use driver::session::session;
+use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
 use std::map::HashMap;
 use util::ppaux::{ty_to_str, tys_to_str};
 use syntax::print::pprust::expr_to_str;
@@ -40,7 +39,7 @@ use lint::{non_implicitly_copyable_typarams,implicit_copies};
 
 const try_adding: &str = "Try adding a move";
 
-fn kind_to_str(k: kind) -> ~str {
+fn kind_to_str(k: Kind) -> ~str {
     let mut kinds = ~[];
 
     if ty::kind_lteq(kind_const(), k) {
@@ -387,7 +386,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_stmt(stmt, cx, v);
 }
 
-fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
+fn check_ty(aty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     match aty.node {
       ty_path(_, id) => {
         do option::iter(&cx.tcx.node_type_substs.find(id)) |ts| {

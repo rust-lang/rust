@@ -6,7 +6,7 @@
 
 use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
 use metadata::csearch::{get_impls_for_mod};
-use metadata::cstore::{cstore, iter_crate_data};
+use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, get, lookup_item_type, subst, t};
@@ -595,7 +595,7 @@ impl CoherenceChecker {
     fn create_impl_from_item(item: @item) -> @Impl {
         fn add_provided_methods(all_methods: &mut ~[@MethodInfo],
                                 all_provided_methods: ~[@ProvidedMethodInfo],
-                                sess: driver::session::session) {
+                                sess: driver::session::Session) {
             for all_provided_methods.each |provided_method| {
                 debug!(
                     "(creating impl) adding provided method `%s` to impl",
@@ -694,7 +694,7 @@ impl CoherenceChecker {
     // External crate handling
 
     fn add_impls_for_module(impls_seen: HashMap<def_id,()>,
-                            crate_store: cstore,
+                            crate_store: CStore,
                             module_def_id: def_id) {
 
         let implementations = get_impls_for_mod(crate_store,

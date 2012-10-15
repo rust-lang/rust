@@ -35,11 +35,11 @@ impl direction {
     }
 }
 
-type next_state = Option<{state: ~str, tys: ~[@ast::ty]}>;
+type next_state = Option<{state: ~str, tys: ~[@ast::Ty]}>;
 
 enum message {
     // name, span, data, current state, next state
-    message(~str, span, ~[@ast::ty], state, next_state)
+    message(~str, span, ~[@ast::Ty], state, next_state)
 }
 
 impl message {
@@ -78,7 +78,7 @@ enum state {
 
 impl state {
     fn add_message(name: ~str, span: span,
-                   +data: ~[@ast::ty], next: next_state) {
+                   +data: ~[@ast::Ty], next: next_state) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }
@@ -92,7 +92,7 @@ impl state {
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(cx: ext_ctxt) -> @ast::ty {
+    fn to_ty(cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(self.ty_params)))
@@ -200,7 +200,7 @@ impl protocol {
 trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(state: state, m: &[Tmessage]) -> Tstate;
-    fn visit_message(name: ~str, spane: span, tys: &[@ast::ty],
+    fn visit_message(name: ~str, spane: span, tys: &[@ast::Ty],
                      this: state, next: next_state) -> Tmessage;
 }
 

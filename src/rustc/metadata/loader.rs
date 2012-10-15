@@ -5,7 +5,7 @@ use syntax::{ast, attr};
 use syntax::print::pprust;
 use syntax::codemap::span;
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-use filesearch::filesearch;
+use filesearch::FileSearch;
 use io::WriterUtil;
 use syntax::parse::token::ident_interner;
 
@@ -28,7 +28,7 @@ enum os {
 
 type ctxt = {
     diag: span_handler,
-    filesearch: filesearch,
+    filesearch: FileSearch,
     span: span,
     ident: ast::ident,
     metas: ~[@ast::meta_item],
@@ -66,7 +66,7 @@ fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
 
 fn find_library_crate_aux(cx: ctxt,
                           nn: {prefix: ~str, suffix: ~str},
-                          filesearch: filesearch::filesearch) ->
+                          filesearch: filesearch::FileSearch) ->
    Option<{ident: ~str, data: @~[u8]}> {
     let crate_name = crate_name_from_metas(cx.metas);
     let prefix: ~str = nn.prefix + crate_name + ~"-";

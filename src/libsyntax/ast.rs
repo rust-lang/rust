@@ -129,7 +129,7 @@ type path = {span: span,
              global: bool,
              idents: ~[ident],
              rp: Option<@region>,
-             types: ~[@ty]};
+             types: ~[@Ty]};
 
 type crate_num = int;
 
@@ -156,7 +156,7 @@ enum ty_param_bound {
     bound_send,
     bound_const,
     bound_owned,
-    bound_trait(@ty),
+    bound_trait(@Ty),
 }
 
 #[auto_serialize]
@@ -702,7 +702,7 @@ type initializer = {op: init_op, expr: @expr};
 // a refinement on pat.
 #[auto_serialize]
 #[auto_deserialize]
-type local_ =  {is_mutbl: bool, ty: @ty, pat: @pat,
+type local_ =  {is_mutbl: bool, ty: @Ty, pat: @pat,
                 init: Option<initializer>, id: node_id};
 
 type local = spanned<local_>;
@@ -764,7 +764,7 @@ enum expr_ {
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),
-    expr_cast(@expr, @ty),
+    expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, ret, or fail)
@@ -788,7 +788,7 @@ enum expr_ {
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
-    expr_field(@expr, ident, ~[@ty]),
+    expr_field(@expr, ident, ~[@Ty]),
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
@@ -843,10 +843,10 @@ type capture_clause = @~[capture_item];
 #[auto_deserialize]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 enum token_tree {
-    tt_tok(span, token::token),
+    tt_tok(span, token::Token),
     tt_delim(~[token_tree]),
     // These only make sense for right-hand-sides of MBE macros
-    tt_seq(span, ~[token_tree], Option<token::token>, bool),
+    tt_seq(span, ~[token_tree], Option<token::Token>, bool),
     tt_nonterminal(span, ident)
 }
 
@@ -908,10 +908,10 @@ type matcher = spanned<matcher_>;
 #[auto_deserialize]
 enum matcher_ {
     // match one token
-    match_tok(token::token),
+    match_tok(token::Token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], Option<token::token>, bool, uint, uint),
+    match_seq(~[matcher], Option<token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     match_nonterminal(ident, ident, uint)
 }
@@ -984,7 +984,7 @@ impl ast::lit_: cmp::Eq {
 // type structure in middle/ty.rs as well.
 #[auto_serialize]
 #[auto_deserialize]
-type mt = {ty: @ty, mutbl: mutability};
+type mt = {ty: @Ty, mutbl: mutability};
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -1087,7 +1087,7 @@ impl float_ty : cmp::Eq {
 
 #[auto_serialize]
 #[auto_deserialize]
-type ty = {id: node_id, node: ty_, span: span};
+type Ty = {id: node_id, node: ty_, span: span};
 
 // Not represented directly in the AST, referred to by name through a ty_path.
 #[auto_serialize]
@@ -1163,9 +1163,9 @@ enum ty_ {
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
     ty_fn(proto, purity, @~[ty_param_bound], fn_decl),
-    ty_tup(~[@ty]),
+    ty_tup(~[@Ty]),
     ty_path(@path, node_id),
-    ty_fixed_length(@ty, Option<uint>),
+    ty_fixed_length(@Ty, Option<uint>),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -1175,16 +1175,16 @@ enum ty_ {
 
 // Equality and byte-iter (hashing) can be quite approximate for AST types.
 // since we only care about this for normalizing them to "real" types.
-impl ty : cmp::Eq {
-    pure fn eq(other: &ty) -> bool {
+impl Ty : cmp::Eq {
+    pure fn eq(other: &Ty) -> bool {
         ptr::addr_of(&self) == ptr::addr_of(&(*other))
     }
-    pure fn ne(other: &ty) -> bool {
+    pure fn ne(other: &Ty) -> bool {
         ptr::addr_of(&self) != ptr::addr_of(&(*other))
     }
 }
 
-impl ty : to_bytes::IterBytes {
+impl Ty : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
     }
@@ -1193,13 +1193,13 @@ impl ty : to_bytes::IterBytes {
 
 #[auto_serialize]
 #[auto_deserialize]
-type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
+type arg = {mode: mode, ty: @Ty, ident: ident, id: node_id};
 
 #[auto_serialize]
 #[auto_deserialize]
 type fn_decl =
     {inputs: ~[arg],
-     output: @ty,
+     output: @Ty,
      cf: ret_style};
 
 #[auto_serialize]
@@ -1362,7 +1362,7 @@ type foreign_mod =
 
 #[auto_serialize]
 #[auto_deserialize]
-type variant_arg = {ty: @ty, id: node_id};
+type variant_arg = {ty: @Ty, id: node_id};
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -1495,7 +1495,7 @@ impl visibility : cmp::Eq {
 type struct_field_ = {
     kind: struct_field_kind,
     id: node_id,
-    ty: @ty
+    ty: @Ty
 };
 
 type struct_field = spanned<struct_field_>;
@@ -1531,17 +1531,17 @@ type item = {ident: ident, attrs: ~[attribute],
 #[auto_serialize]
 #[auto_deserialize]
 enum item_ {
-    item_const(@ty, @expr),
+    item_const(@Ty, @expr),
     item_fn(fn_decl, purity, ~[ty_param], blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(@ty, ~[ty_param]),
+    item_ty(@Ty, ~[ty_param]),
     item_enum(enum_def, ~[ty_param]),
     item_class(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
               Option<@trait_ref>, /* (optional) trait this impl implements */
-              @ty, /* self */
+              @Ty, /* self */
               ~[@method]),
     item_mac(mac),
 }
@@ -1601,7 +1601,7 @@ type foreign_item =
 #[auto_deserialize]
 enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, ~[ty_param]),
-    foreign_item_const(@ty)
+    foreign_item_const(@Ty)
 }
 
 // The data we save and restore about an inlined item or method.  This is not
