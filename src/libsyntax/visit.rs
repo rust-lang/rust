@@ -182,6 +182,8 @@ fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
                 visit_enum_def(enum_definition, tps, e, v);
             }
         }
+        // Visit the disr expr if it exists
+        vr.node.disr_expr.iter(|ex| v.visit_expr(*ex, e, v));
     }
 }
 

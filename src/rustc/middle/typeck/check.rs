@@ -2219,9 +2219,14 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
 fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, rty, e.id);
+    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
+    check_const_with_ty(fcx, _sp, e, declty);
+}
+
+fn check_const_with_ty(fcx: @fn_ctxt, _sp: span, e: @ast::expr,
+                       declty: ty::t) {
     check_expr(fcx, e, None);
     let cty = fcx.expr_ty(e);
-    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
     demand::suptype(fcx, e.span, declty, cty);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
@@ -2259,27 +2264,31 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 variants: &mut ~[ty::variant_info]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
         for vs.each |v| {
-            match v.node.disr_expr {
-              Some(e) => {
-                let fcx = blank_fn_ctxt(ccx, rty, e.id);
-                check_expr(fcx, e, None);
-                let cty = fcx.expr_ty(e);
+            do v.node.disr_expr.iter |e_ref| {
+                let e = *e_ref;
+                debug!("disr expr, checking %s",
+                       expr_to_str(e, ccx.tcx.sess.intr()));
                 let declty = ty::mk_int(ccx.tcx);
-                demand::suptype(fcx, e.span, declty, cty);
+                let fcx = blank_fn_ctxt(ccx, rty, e.id);
+                check_const_with_ty(fcx, e.span, e, declty);
                 // check_expr (from check_const pass) doesn't guarantee
                 // that the expression is in an form that eval_const_expr can
                 // handle, so we may still get an internal compiler error
-                match const_eval::eval_const_expr(ccx.tcx, e) {
-                  const_eval::const_int(val) => {
+
+                match const_eval::eval_const_expr_partial(ccx.tcx, e) {
+                  Ok(const_eval::const_int(val)) => {
                     *disr_val = val as int;
                   }
-                  _ => {
+                  Ok(_) => {
                     ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
                                                     constant");
                   }
+                  Err(err) => {
+                    ccx.tcx.sess.span_err(e.span,
+                     #fmt("expected constant: %s", err));
+
+                  }
                 }
-              }
-              _ => ()
             }
             if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
