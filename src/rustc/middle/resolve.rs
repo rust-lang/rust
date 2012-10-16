@@ -9,9 +9,8 @@ use syntax::ast::{_mod, add, arm};
 use syntax::ast::{bind_by_ref, bind_by_implicit_ref, bind_by_value};
 use syntax::ast::{bitand, bitor, bitxor};
 use syntax::ast::{blk, bound_const, bound_copy, bound_owned, bound_send};
-use syntax::ast::{bound_trait, binding_mode,
-                     capture_clause, class_ctor, class_dtor};
-use syntax::ast::{crate, crate_num, decl_item};
+use syntax::ast::{bound_trait, binding_mode, capture_clause, class_ctor};
+use syntax::ast::{class_dtor, crate, crate_num, decl_item};
 use syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
@@ -294,6 +293,35 @@ enum EnumVariantOrConstResolution {
     EnumVariantOrConstNotFound
 }
 
+// Specifies how duplicates should be handled when adding a child item if
+// another item exists with the same name in some namespace.
+enum DuplicateCheckingMode {
+    ForbidDuplicateModules,
+    ForbidDuplicateTypes,
+    ForbidDuplicateValues,
+    ForbidDuplicateTypesAndValues,
+    OverwriteDuplicates
+}
+
+impl DuplicateCheckingMode : cmp::Eq {
+    pure fn eq(other: &DuplicateCheckingMode) -> bool {
+        (self as uint) == (*other as uint)
+    }
+    pure fn ne(other: &DuplicateCheckingMode) -> bool { !self.eq(other) }
+}
+
+// Returns the namespace associated with the given duplicate checking mode,
+// or fails for OverwriteDuplicates. This is used for error messages.
+fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode) ->
+        Namespace {
+    match mode {
+        ForbidDuplicateModules | ForbidDuplicateTypes |
+        ForbidDuplicateTypesAndValues => TypeNS,
+        ForbidDuplicateValues => ValueNS,
+        OverwriteDuplicates => fail ~"OverwriteDuplicates has no namespace"
+    }
+}
+
 /// One local scope.
 struct Rib {
     bindings: HashMap<ident,def_like>,
@@ -490,9 +518,10 @@ impl Privacy : cmp::Eq {
 }
 
 // Records a possibly-private type definition.
-enum TypeNsDef {
-    ModuleDef(Privacy, @Module),
-    TypeDef(Privacy, def)
+struct TypeNsDef {
+    mut privacy: Privacy,
+    mut module_def: Option<@Module>,
+    mut type_def: Option<def>
 }
 
 // Records a possibly-private value definition.
@@ -508,7 +537,7 @@ struct NameBindings {
     mut value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 
     // For error reporting
-    // XXX: Merge me into TypeDef and ValueDef.
+    // FIXME (#3783): Merge me into TypeNsDef and ValueNsDef.
     mut type_span: Option<span>,
     mut value_span: Option<span>,
 }
@@ -521,16 +550,46 @@ impl NameBindings {
                      def_id: Option<def_id>,
                      legacy_exports: bool,
                      sp: span) {
-        if self.type_def.is_none() {
-            let module_ = @Module(parent_link, def_id, legacy_exports);
-            self.type_def = Some(ModuleDef(privacy, module_));
-            self.type_span = Some(sp);
+        // Merges the module with the existing type def or creates a new one.
+        let module_ = @Module(parent_link, def_id, legacy_exports);
+        match self.type_def {
+            None => {
+                self.type_def = Some(TypeNsDef {
+                    privacy: privacy,
+                    module_def: Some(module_),
+                    type_def: None
+                });
+            }
+            Some(copy type_def) => {
+                self.type_def = Some(TypeNsDef {
+                    privacy: privacy,
+                    module_def: Some(module_),
+                    .. type_def
+                });
+            }
         }
+        self.type_span = Some(sp);
     }
 
     /// Records a type definition.
     fn define_type(privacy: Privacy, def: def, sp: span) {
-        self.type_def = Some(TypeDef(privacy, def));
+        // Merges the type with the existing type def or creates a new one.
+        match self.type_def {
+            None => {
+                self.type_def = Some(TypeNsDef {
+                    privacy: privacy,
+                    module_def: None,
+                    type_def: Some(def)
+                });
+            }
+            Some(copy type_def) => {
+                self.type_def = Some(TypeNsDef {
+                    privacy: privacy,
+                    type_def: Some(def),
+                    .. type_def
+                });
+            }
+        }
         self.type_span = Some(sp);
     }
 
@@ -543,8 +602,8 @@ impl NameBindings {
     /// Returns the module node if applicable.
     fn get_module_if_available() -> Option<@Module> {
         match self.type_def {
-            Some(ModuleDef(_, module_)) => return Some(module_),
-            None | Some(TypeDef(_, _))  => return None,
+            Some(type_def) => type_def.module_def,
+            None => None
         }
     }
 
@@ -553,12 +612,12 @@ impl NameBindings {
      * definition.
      */
     fn get_module() -> @Module {
-        match self.type_def {
-            None | Some(TypeDef(*)) => {
+        match self.get_module_if_available() {
+            None => {
                 fail ~"get_module called on a node with no module \
                        definition!"
             }
-            Some(ModuleDef(_, module_)) => module_
+            Some(module_def) => module_def
         }
     }
 
@@ -574,10 +633,23 @@ impl NameBindings {
             TypeNS => {
                 match self.type_def {
                     None => None,
-                    Some(ModuleDef(_, module_)) => {
-                        module_.def_id.map(|def_id| def_mod(*def_id))
+                    Some(type_def) => {
+                        // FIXME (#3784): This is reallllly questionable.
+                        // Perhaps the right thing to do is to merge def_mod
+                        // and def_ty.
+                        match type_def.type_def {
+                            Some(type_def) => Some(type_def),
+                            None => {
+                                match type_def.module_def {
+                                    Some(module_def) => {
+                                        module_def.def_id.map(|def_id|
+                                            def_mod(*def_id))
+                                    }
+                                    None => None
+                                }
+                            }
+                        }
                     }
-                    Some(TypeDef(_, def)) => Some(def)
                 }
             }
             ValueNS => {
@@ -594,8 +666,7 @@ impl NameBindings {
             TypeNS => {
                 match self.type_def {
                     None => None,
-                    Some(ModuleDef(privacy, _)) | Some(TypeDef(privacy, _)) =>
-                        Some(privacy)
+                    Some(type_def) => Some(type_def.privacy)
                 }
             }
             ValueNS => {
@@ -882,9 +953,7 @@ impl Resolver {
      */
     fn add_child(name: ident,
                  reduced_graph_parent: ReducedGraphParent,
-                 // Pass in the namespaces for the child item so that we can
-                 // check for duplicate items in the same namespace
-                 ns: ~[Namespace],
+                 duplicate_checking_mode: DuplicateCheckingMode,
                  // For printing errors
                  sp: span)
               -> (@NameBindings, ReducedGraphParent) {
@@ -904,29 +973,67 @@ impl Resolver {
         let new_parent = ModuleReducedGraphParent(module_);
         match module_.children.find(name) {
             None => {
-              let child = @NameBindings();
-              module_.children.insert(name, child);
-              return (child, new_parent);
+                let child = @NameBindings();
+                module_.children.insert(name, child);
+                return (child, new_parent);
             }
             Some(child) => {
-              // We don't want to complain if the multiple definitions
-              // are in different namespaces.
-              match ns.find(|n| child.defined_in_namespace(n)) {
-                Some(ns) => {
-                  self.session.span_err(sp,
-                       fmt!("Duplicate definition of %s %s",
-                            namespace_to_str(ns),
-                            self.session.str_of(name)));
-                  do child.span_for_namespace(ns).iter() |sp| {
-                      self.session.span_note(*sp,
-                           fmt!("First definition of %s %s here:",
-                                namespace_to_str(ns),
-                                self.session.str_of(name)));
-                  }
+                // Enforce the duplicate checking mode. If we're requesting
+                // duplicate module checking, check that there isn't a module
+                // in the module with the same name. If we're requesting
+                // duplicate type checking, check that there isn't a type in
+                // the module with the same name. If we're requesting
+                // duplicate value checking, check that there isn't a value in
+                // the module with the same name. If we're requesting
+                // duplicate type checking and duplicate value checking, check
+                // that there isn't a duplicate type and a duplicate value
+                // with the same name. If no duplicate checking was requested
+                // at all, do nothing.
+
+                let mut is_duplicate = false;
+                match duplicate_checking_mode {
+                    ForbidDuplicateModules => {
+                        is_duplicate =
+                            child.get_module_if_available().is_some();
+                    }
+                    ForbidDuplicateTypes => {
+                        match child.def_for_namespace(TypeNS) {
+                            Some(def_mod(_)) | None => {}
+                            Some(_) => is_duplicate = true
+                        }
+                    }
+                    ForbidDuplicateValues => {
+                        is_duplicate = child.defined_in_namespace(ValueNS);
+                    }
+                    ForbidDuplicateTypesAndValues => {
+                        match child.def_for_namespace(TypeNS) {
+                            Some(def_mod(_)) | None => {}
+                            Some(_) => is_duplicate = true
+                        };
+                        if child.defined_in_namespace(ValueNS) {
+                            is_duplicate = true;
+                        }
+                    }
+                    OverwriteDuplicates => {}
                 }
-                _ => {}
-              }
-              return (child, new_parent);
+                if duplicate_checking_mode != OverwriteDuplicates &&
+                        is_duplicate {
+                    // Return an error here by looking up the namespace that
+                    // had the duplicate.
+                    let ns = namespace_for_duplicate_checking_mode(
+                        duplicate_checking_mode);
+                    self.session.span_err(sp,
+                        fmt!("duplicate definition of %s %s",
+                             namespace_to_str(ns),
+                             self.session.str_of(name)));
+                    do child.span_for_namespace(ns).iter() |sp| {
+                        self.session.span_note(*sp,
+                             fmt!("first definition of %s %s here:",
+                                  namespace_to_str(ns),
+                                  self.session.str_of(name)));
+                    }
+                }
+                return (child, new_parent);
             }
         }
     }
@@ -987,7 +1094,7 @@ impl Resolver {
             item_mod(module_) => {
                 let legacy = has_legacy_export_attr(item.attrs);
                 let (name_bindings, new_parent) =
-                    self.add_child(ident, parent, ~[TypeNS], sp);
+                    self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = { crate: 0, node: item.id };
@@ -999,12 +1106,14 @@ impl Resolver {
 
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
+
             item_foreign_mod(fm) => {
                 let legacy = has_legacy_export_attr(item.attrs);
                 let new_parent = match fm.sort {
                     named => {
                         let (name_bindings, new_parent) =
-                            self.add_child(ident, parent, ~[TypeNS], sp);
+                            self.add_child(ident, parent,
+                                           ForbidDuplicateModules, sp);
 
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
@@ -1028,15 +1137,15 @@ impl Resolver {
 
             // These items live in the value namespace.
             item_const(*) => {
-              let (name_bindings, _) = self.add_child(ident, parent,
-                                                      ~[ValueNS], sp);
+                let (name_bindings, _) =
+                    self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
                 (*name_bindings).define_value
                     (privacy, def_const(local_def(item.id)), sp);
             }
             item_fn(_, purity, _, _) => {
-              let (name_bindings, new_parent) = self.add_child(ident, parent,
-                                                        ~[ValueNS], sp);
+              let (name_bindings, new_parent) =
+                self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
                 let def = def_fn(local_def(item.id), purity);
                 (*name_bindings).define_value(privacy, def, sp);
@@ -1045,17 +1154,16 @@ impl Resolver {
 
             // These items live in the type namespace.
             item_ty(*) => {
-              let (name_bindings, _) = self.add_child(ident, parent,
-                                                      ~[TypeNS], sp);
+                let (name_bindings, _) =
+                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 (*name_bindings).define_type
                     (privacy, def_ty(local_def(item.id)), sp);
             }
 
             item_enum(enum_definition, _) => {
-
-              let (name_bindings, new_parent) = self.add_child(ident, parent,
-                                                               ~[TypeNS], sp);
+                let (name_bindings, new_parent) =
+                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 (*name_bindings).define_type
                     (privacy, def_ty(local_def(item.id)), sp);
@@ -1072,7 +1180,7 @@ impl Resolver {
             // These items live in both the type and value namespaces.
             item_class(*) => {
                 let (name_bindings, new_parent) =
-                    self.add_child(ident, parent, ~[TypeNS], sp);
+                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 (*name_bindings).define_type
                     (privacy, def_ty(local_def(item.id)), sp);
@@ -1083,13 +1191,75 @@ impl Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_impl(*) => {
+            item_impl(_, trait_ref_opt, ty, methods) => {
+                // If this implements an anonymous trait and it has static
+                // methods, then add all the static methods within to a new
+                // module, if the type was defined within this module.
+                //
+                // FIXME (#3785): This is quite unsatisfactory. Perhaps we
+                // should modify anonymous traits to only be implementable in
+                // the same module that declared the type.
+
+                // Bail out early if there are no static methods.
+                let mut has_static_methods = false;
+                for methods.each |method| {
+                    match method.self_ty.node {
+                        sty_static => has_static_methods = true,
+                        _ => {}
+                    }
+                }
+
+                // If there are static methods, then create the module
+                // and add them.
+                match (trait_ref_opt, ty) {
+                    (None, @{ id: _, node: ty_path(path, _), span: _ }) if
+                            has_static_methods && path.idents.len() == 1 => {
+                        // Create the module.
+                        let name = path_to_ident(path);
+                        let (name_bindings, new_parent) =
+                            self.add_child(name,
+                                           parent,
+                                           ForbidDuplicateModules,
+                                           sp);
+
+                        let parent_link = self.get_parent_link(new_parent,
+                                                               ident);
+                        let def_id = local_def(item.id);
+                        name_bindings.define_module(privacy, parent_link,
+                                                    Some(def_id), false, sp);
+
+                        let new_parent = ModuleReducedGraphParent(
+                            name_bindings.get_module());
+
+                        // For each static method...
+                        for methods.each |method| {
+                            match method.self_ty.node {
+                                sty_static => {
+                                    // Add the static method to the module.
+                                    let ident = method.ident;
+                                    let (method_name_bindings, _) =
+                                        self.add_child(ident,
+                                                       new_parent,
+                                                       ForbidDuplicateValues,
+                                                       method.span);
+                                    let def = def_fn(local_def(method.id),
+                                                     method.purity);
+                                    method_name_bindings.define_value(
+                                        Public, def, method.span);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
                 visit_item(item, parent, visitor);
             }
 
             item_trait(_, _, methods) => {
-              let (name_bindings, new_parent) = self.add_child(ident, parent,
-                                                               ~[TypeNS], sp);
+                let (name_bindings, new_parent) =
+                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 // Add the names of all the methods to the trait info.
                 let method_names = @HashMap();
@@ -1103,8 +1273,8 @@ impl Resolver {
                       sty_static => {
                         // which parent to use??
                         let (method_name_bindings, _) =
-                            self.add_child(ident, new_parent, ~[ValueNS],
-                                           ty_m.span);
+                            self.add_child(ident, new_parent,
+                                           ForbidDuplicateValues, ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
                                                     local_def(item.id),
                                                     ty_m.purity);
@@ -1142,7 +1312,7 @@ impl Resolver {
                                        &&visitor: vt<ReducedGraphParent>) {
 
         let ident = variant.node.name;
-        let (child, _) = self.add_child(ident, parent, ~[ValueNS],
+        let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                         variant.span);
 
         let privacy;
@@ -1324,7 +1494,7 @@ impl Resolver {
                 match find_use_stmt_cnum(self.session.cstore, node_id) {
                     Some(crate_id) => {
                         let (child_name_bindings, new_parent) =
-                            self.add_child(name, parent, ~[TypeNS],
+                            self.add_child(name, parent, ForbidDuplicateTypes,
                                            view_item.span);
 
                         let def_id = { crate: crate_id, node: 0 };
@@ -1355,7 +1525,8 @@ impl Resolver {
 
         let name = foreign_item.ident;
         let (name_bindings, new_parent) =
-            self.add_child(name, parent, ~[ValueNS], foreign_item.span);
+            self.add_child(name, parent, ForbidDuplicateValues,
+                           foreign_item.span);
 
         match foreign_item.node {
             foreign_item_fn(_, purity, type_parameters) => {
@@ -1408,7 +1579,13 @@ impl Resolver {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match copy child_name_bindings.type_def {
-              None => {
+              Some(TypeNsDef { module_def: Some(copy module_def), _ }) => {
+                debug!("(building reduced graph for external crate) \
+                        already created module");
+                module_def.def_id = Some(def_id);
+                modules.insert(def_id, module_def);
+              }
+              Some(_) | None => {
                 debug!("(building reduced graph for \
                         external crate) building module \
                         %s", final_ident);
@@ -1451,16 +1628,6 @@ impl Resolver {
                   }
                 }
               }
-              Some(ModuleDef(_, module_)) => {
-                debug!("(building reduced graph for \
-                        external crate) already created \
-                        module");
-                module_.def_id = Some(def_id);
-                modules.insert(def_id, module_);
-              }
-              Some(TypeDef(*)) => {
-                self.session.bug(~"external module def overwriting type def");
-              }
             }
           }
           def_fn(*) | def_static_method(*) | def_const(*) |
@@ -1476,8 +1643,7 @@ impl Resolver {
             // If this is a trait, add all the method names
             // to the trait info.
 
-            match get_method_names_if_trait(self.session.cstore,
-                                            def_id) {
+            match get_method_names_if_trait(self.session.cstore, def_id) {
               None => {
                 // Nothing to do.
               }
@@ -1547,8 +1713,8 @@ impl Resolver {
                 let (child_name_bindings, new_parent) =
                     self.add_child(ident,
                                    ModuleReducedGraphParent(current_module),
-                                   // May want a better span
-                                   ~[], dummy_sp());
+                                   OverwriteDuplicates,
+                                   dummy_sp());
 
                 // Define or reuse the module node.
                 match child_name_bindings.type_def {
@@ -1572,7 +1738,8 @@ impl Resolver {
             let (child_name_bindings, new_parent) =
                 self.add_child(final_ident,
                                ModuleReducedGraphParent(current_module),
-                              ~[], dummy_sp());
+                               OverwriteDuplicates,
+                               dummy_sp());
 
             match path_entry.def_like {
                 dl_def(def) => {
@@ -1582,12 +1749,12 @@ impl Resolver {
                                              final_ident, new_parent);
                 }
                 dl_impl(_) => {
-                    // Because of the infelicitous way the metadata is
-                    // written, we can't process this impl now. We'll get it
-                    // later.
-
+                    // We only process static methods of impls here.
                     debug!("(building reduced graph for external crate) \
-                            ignoring impl %s", final_ident_str);
+                            processing impl %s", final_ident_str);
+
+                    // FIXME (#3786): Cross-crate static methods in anonymous
+                    // traits.
                 }
                 dl_field => {
                     debug!("(building reduced graph for external crate) \
@@ -2310,17 +2477,33 @@ impl Resolver {
                     return Indeterminate;
                 }
                 Success(target) => {
+                    // Check to see whether there are type bindings, and, if
+                    // so, whether there is a module within.
                     match target.bindings.type_def {
-                        None | Some(TypeDef(*)) => {
-                            // Not a module.
+                        Some(copy type_def) => {
+                            match type_def.module_def {
+                                None => {
+                                    // Not a module.
+                                    self.session.span_err(span,
+                                                          fmt!("not a \
+                                                                module: %s",
+                                                               self.session.
+                                                                   str_of(
+                                                                    name)));
+                                    return Failed;
+                                }
+                                Some(copy module_def) => {
+                                    search_module = module_def;
+                                }
+                            }
+                        }
+                        None => {
+                            // There are no type bindings at all.
                             self.session.span_err(span,
                                                   fmt!("not a module: %s",
-                                                       self.session.
-                                                           str_of(name)));
+                                                       self.session.str_of(
+                                                            name)));
                             return Failed;
-                        }
-                        Some(ModuleDef(_, copy module_)) => {
-                            search_module = module_;
                         }
                     }
                 }
@@ -2469,13 +2652,23 @@ impl Resolver {
         match self.resolve_item_in_lexical_scope(module_, name, TypeNS) {
             Success(target) => {
                 match target.bindings.type_def {
-                    None | Some(TypeDef(*)) => {
+                    Some(type_def) => {
+                        match type_def.module_def {
+                            None => {
+                                error!("!!! (resolving module in lexical \
+                                        scope) module wasn't actually a \
+                                        module!");
+                                return Failed;
+                            }
+                            Some(module_def) => {
+                                return Success(module_def);
+                            }
+                        }
+                    }
+                    None => {
                         error!("!!! (resolving module in lexical scope) module
                                 wasn't actually a module!");
                         return Failed;
-                    }
-                    Some(ModuleDef(_, module_)) => {
-                        return Success(module_);
                     }
                 }
             }
@@ -3403,7 +3596,6 @@ impl Resolver {
                         self_binding: SelfBinding,
                         capture_clause: CaptureClause,
                         visitor: ResolveVisitor) {
-
         // Check each element of the capture clause.
         match capture_clause {
             NoCaptureClause => {
@@ -3495,7 +3687,6 @@ impl Resolver {
 
     fn resolve_type_parameters(type_parameters: ~[ty_param],
                                visitor: ResolveVisitor) {
-
         for type_parameters.each |type_parameter| {
             for type_parameter.bounds.each |bound| {
                 match *bound {
@@ -3517,7 +3708,6 @@ impl Resolver {
                      methods: ~[@method],
                      optional_destructor: Option<class_dtor>,
                      visitor: ResolveVisitor) {
-
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = (*type_parameters).len();
         let borrowed_type_parameters: &~[ty_param] = &*type_parameters;
@@ -3619,23 +3809,21 @@ impl Resolver {
                               self_type: @Ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {
-
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = type_parameters.len();
         let borrowed_type_parameters: &~[ty_param] = &type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
                                         (borrowed_type_parameters, id, 0u,
                                          NormalRibKind)) {
-
             // Resolve the type parameters.
             self.resolve_type_parameters(type_parameters, visitor);
 
             // Resolve the trait reference, if necessary.
             let original_trait_refs = self.current_trait_refs;
             match opt_trait_reference {
-              Some(trait_reference) => {
-                let new_trait_refs = @DVec();
-                match self.resolve_path(
+                Some(trait_reference) => {
+                    let new_trait_refs = @DVec();
+                    match self.resolve_path(
                         trait_reference.path, TypeNS, true, visitor) {
                         None => {
                             self.session.span_err(span,
@@ -3649,10 +3837,10 @@ impl Resolver {
                             (*new_trait_refs).push(def_id_of_def(def));
                         }
                     }
-                // Record the current set of trait references.
-                self.current_trait_refs = Some(new_trait_refs);
-            }
-            None => ()
+                    // Record the current set of trait references.
+                    self.current_trait_refs = Some(new_trait_refs);
+                }
+                None => ()
             }
 
             // Resolve the self type.
