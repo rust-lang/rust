@@ -1,4 +1,3 @@
-// xfail-test
 struct list<T> {
     element: &self/T,
     mut next: Option<@list<T>>
@@ -11,13 +10,13 @@ impl<T> list<T>{
             next: option::None
         };
 
-        self.next = Some(@newList);
+        self.next = Some(@(move newList));
     }
 }
 
 fn main() {
     let s = @"str";
-    let ls: list<@str> = list {
+    let ls = list {
         element: &s,
         next: option::None
     };

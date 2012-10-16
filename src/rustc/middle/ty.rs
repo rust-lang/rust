@@ -1473,7 +1473,10 @@ fn subst(cx: ctxt,
             fold_regions_and_ty(
                 cx, typ,
                 |r| match r {
-                    re_bound(br_self) => substs.self_r.get(),
+                    re_bound(br_self) => substs.self_r.expect(
+                        #fmt("ty::subst: \
+                      Reference to self region when given substs with no \
+                      self region, ty = %s", ty_to_str(cx, typ))),
                     _ => r
                 },
                 |t| do_subst(cx, substs, t),
@@ -3910,9 +3913,11 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
         ty_enum(did, r) =>
             match r.self_r {
                 Some(_) =>
-                    // This enum has a self region. Get rid of it
+                    // Use re_static since trans doesn't care about regions
                     mk_enum(cx, did,
-                            {self_r: None, self_ty: None, tps: r.tps}),
+                     {self_r: Some(ty::re_static),
+                      self_ty: None,
+                      tps: r.tps}),
                 None =>
                     t
             },
@@ -3921,7 +3926,8 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             match r.self_r {
               Some(_) =>
                 // Ditto.
-                mk_class(cx, did, {self_r: None, self_ty: None, tps: r.tps}),
+                mk_class(cx, did, {self_r: Some(ty::re_static), self_ty: None,
+                                   tps: r.tps}),
               None =>
                 t
             },
