@@ -1165,8 +1165,8 @@ fn sync_one_file(c: &Cargo, dir: &Path, src: @Source) -> bool {
             let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s with key %s",
-                          name, f));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 return false;
             }
 
@@ -1174,8 +1174,8 @@ fn sync_one_file(c: &Cargo, dir: &Path, src: @Source) -> bool {
                 let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s with key %s",
-                              name, f));
+                    error(fmt!("signature verification failed for source %s \
+                                with key %s", name, f));
                     return false;
                 }
             }
@@ -1276,8 +1276,8 @@ fn sync_one_git(c: &Cargo, dir: &Path, src: @Source) -> bool {
             let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s with key %s",
-                          name, f));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 rollback(name, dir, false);
                 return false;
             }
@@ -1286,8 +1286,8 @@ fn sync_one_git(c: &Cargo, dir: &Path, src: @Source) -> bool {
                 let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s with key %s",
-                              name, f));
+                    error(fmt!("signature verification failed for source %s \
+                                with key %s", name, f));
                     rollback(name, dir, false);
                     return false;
                 }
@@ -1373,8 +1373,8 @@ fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
             let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s with key %s",
-                          name, f));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 return false;
             }
 
