@@ -640,8 +640,8 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     // that as a direct dependency.
     match ty.node {
       ast::ty_path(path, id) => {
-        match cx.def_map.get(id) {
-          ast::def_ty(did) | ast::def_class(did) => {
+        match cx.def_map.find(id) {
+          Some(ast::def_ty(did)) | Some(ast::def_class(did)) => {
             if did.crate == ast::local_crate {
                 if cx.opt_region_is_relevant(path.rp) {
                     cx.add_dep(did.node);
