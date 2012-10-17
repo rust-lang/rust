@@ -148,8 +148,8 @@ fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     return {substs: substs, ty: ty};
 }
 
-const NO_REGIONS: uint = 1u;
-const NO_TPS: uint = 2u;
+const NO_REGIONS: uint = 1;
+const NO_TPS: uint = 2;
 
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
