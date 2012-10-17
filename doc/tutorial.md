@@ -2360,7 +2360,7 @@ these two files:
 ~~~~
 // world.rs
 #[link(name = "world", vers = "1.0")];
-fn explore() -> ~str { ~"world" }
+pub fn explore() -> ~str { ~"world" }
 ~~~~
 
 ~~~~ {.xfail-test}
