@@ -129,6 +129,12 @@ enum item_or_view_item {
     iovi_view_item(@view_item)
 }
 
+enum view_item_parse_mode {
+    VIEW_ITEMS_AND_ITEMS_ALLOWED,
+    VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
+    IMPORTS_AND_ITEMS_ALLOWED
+}
+
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
@@ -2260,9 +2266,7 @@ impl parser {
 
         let {attrs_remaining, view_items, items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            true,  // items_allowed
-                                            false, // foreign_items_allowed
-                                            true); // restrict_to_imports
+                                            IMPORTS_AND_ITEMS_ALLOWED);
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
@@ -2886,9 +2890,7 @@ impl parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            true,   // items_allowed
-                                            false,  // foreign_items_allowed
-                                            false); // restrict_to_imports
+                                            VIEW_ITEMS_AND_ITEMS_ALLOWED);
         let mut items: ~[@item] = move starting_items;
 
         let mut first = true;
@@ -3002,9 +3004,7 @@ impl parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: _, foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            false,  // items_allowed
-                                            true,   // foreign_items_allowed
-                                            false); // restrict_to_imports
+                                        VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED);
 
         let mut items: ~[@foreign_item] = move foreign_items;
         let mut initial_attrs = attrs_remaining;
@@ -3558,15 +3558,29 @@ impl parser {
     }
 
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
-                                  items_allowed: bool,
-                                  foreign_items_allowed: bool,
-                                  restricted_to_imports: bool)
+                                  mode: view_item_parse_mode)
                                -> {attrs_remaining: ~[attribute],
                                    view_items: ~[@view_item],
                                    items: ~[@item],
                                    foreign_items: ~[@foreign_item]} {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
+
+        let items_allowed = match mode {
+            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+        };
+
+        let restricted_to_imports = match mode {
+            IMPORTS_AND_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_ITEMS_ALLOWED |
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => false
+        };
+
+        let foreign_items_allowed = match mode {
+            VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED => true,
+            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
+        };
 
         let (view_items, items, foreign_items) = (DVec(), DVec(), DVec());
         loop {
