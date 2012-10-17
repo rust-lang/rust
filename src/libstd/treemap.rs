@@ -67,7 +67,7 @@ pub fn find<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, k: K)
 }
 
 /// Visit all pairs in the map in order.
-pub fn traverse<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>, 
+pub fn traverse<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>,
                                          f: fn((&K), (&V))) {
     match copy *m {
       None => (),
@@ -80,10 +80,10 @@ pub fn traverse<K: Copy Eq Ord, V: Copy>(m: &const TreeEdge<K, V>,
     }
 }
 
-/// Compare two treemaps and return true iff 
+/// Compare two treemaps and return true iff
 /// they contain same keys and values
 pub fn equals<K: Copy Eq Ord, V: Copy Eq>(t1: &const TreeEdge<K, V>,
-                                          t2: &const TreeEdge<K, V>) 
+                                          t2: &const TreeEdge<K, V>)
                                         -> bool {
     let mut v1 = ~[];
     let mut v2 = ~[];
