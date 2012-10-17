@@ -203,6 +203,13 @@ pub pure fn connect(v: &[~str], sep: &str) -> ~str {
     move s
 }
 
+/// Given a string, make a new string with repeated copies of it
+pub fn repeat(ss: &str, nn: uint) -> ~str {
+    let mut acc = ~"";
+    for nn.times { acc += ss; }
+    return acc;
+}
+
 /*
 Section: Adding to and removing from a string
 */
@@ -572,6 +579,40 @@ pub pure fn lines_any(s: &str) -> ~[~str] {
 pub pure fn words(s: &str) -> ~[~str] {
     split_nonempty(s, |c| char::is_whitespace(c))
 }
+
+/** Split a string into a vector of substrings,
+ *  each of which is less than a limit
+ */
+pub fn split_within(ss: &str, lim: uint) -> ~[~str] {
+    let words = str::words(ss);
+
+    // empty?
+    if words == ~[] { return ~[]; }
+
+    let mut rows : ~[~str] = ~[];
+    let mut row  : ~str    = ~"";
+
+    for words.each |wptr| {
+        let word = *wptr;
+
+        // if adding this word to the row would go over the limit,
+        // then start a new row
+        if str::len(row) + str::len(word) + 1 > lim {
+            rows += [row]; // save previous row
+            row = word;    // start a new one
+        } else {
+            if str::len(row) > 0 { row += ~" " } // separate words
+            row += word;  // append to this row
+        }
+    }
+
+    // save the last row
+    if row != ~"" { rows += [row]; }
+
+    return rows;
+}
+
+
 
 /// Convert a string to lowercase. ASCII only
 pub pure fn to_lower(s: &str) -> ~str {
@@ -2480,6 +2521,18 @@ mod tests {
     }
 
     #[test]
+    fn test_split_within() {
+        assert split_within(~"", 0) == ~[];
+        assert split_within(~"", 15) == ~[];
+        assert split_within(~"hello", 15) == ~[~"hello"];
+
+        let data = ~"\nMary had a little lamb\nLittle lamb\n";
+        assert split_within(data, 15) == ~[~"Mary had a little",
+                                           ~"lamb Little",
+                                           ~"lamb"];
+    }
+
+    #[test]
     fn test_find_str() {
         // byte positions
         assert find_str(~"banana", ~"apple pie").is_none();
@@ -2552,6 +2605,15 @@ mod tests {
         let v: ~[~str] = ~[];
         t(v, ~" ", ~"");
         t(~[~"hi"], ~" ", ~"hi");
+    }
+
+    #[test]
+    fn test_repeat() {
+        assert repeat(~"x", 4) == ~"xxxx";
+        assert repeat(~"hi", 4) == ~"hihihihi";
+        assert repeat(~"ไท华", 3) == ~"ไท华ไท华ไท华";
+        assert repeat(~"", 4) == ~"";
+        assert repeat(~"hi", 0) == ~"";
     }
 
     #[test]

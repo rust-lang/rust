@@ -10,8 +10,10 @@ use util::ppaux;
 use back::link;
 use result::{Ok, Err};
 use std::getopts;
+use std::getopts::{opt_present};
+use std::getopts::groups;
+use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use io::WriterUtil;
-use getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 use back::{x86, x86_64};
 use std::map::HashMap;
 use lib::llvm::llvm;
@@ -623,27 +625,69 @@ fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
     }
 }
 
-fn opts() -> ~[getopts::Opt] {
-    return ~[optflag(~"h"), optflag(~"help"),
-             optflag(~"v"), optflag(~"version"),
-          optflag(~"emit-llvm"), optflagopt(~"pretty"),
-          optflag(~"ls"), optflag(~"parse-only"), optflag(~"no-trans"),
-          optflag(~"O"), optopt(~"opt-level"), optmulti(~"L"), optflag(~"S"),
-          optopt(~"o"), optopt(~"out-dir"), optflag(~"xg"),
-          optflag(~"c"), optflag(~"g"), optflag(~"save-temps"),
-          optopt(~"sysroot"), optopt(~"target"),
-          optflag(~"jit"),
-
-          optmulti(~"W"), optmulti(~"warn"),
-          optmulti(~"A"), optmulti(~"allow"),
-          optmulti(~"D"), optmulti(~"deny"),
-          optmulti(~"F"), optmulti(~"forbid"),
-
-          optmulti(~"Z"),
-
-          optmulti(~"cfg"), optflag(~"test"),
-          optflag(~"lib"), optflag(~"bin"),
-          optflag(~"static"), optflag(~"gc")];
+// rustc command line options
+fn optgroups() -> ~[getopts::groups::OptGroup] {
+ ~[
+  optflag(~"",  ~"bin", ~"Compile an executable crate (default)"),
+  optflag(~"c", ~"",    ~"Compile and assemble, but do not link"),
+  optmulti(~"", ~"cfg", ~"Configure the compilation
+                          environment", ~"SPEC"),
+  optflag(~"",  ~"emit-llvm",
+                        ~"Produce an LLVM bitcode file"),
+  optflag(~"g", ~"",    ~"Produce debug info (experimental)"),
+  optflag(~"",  ~"gc",  ~"Garbage collect shared data (experimental)"),
+  optflag(~"h", ~"help",~"Display this message"),
+  optmulti(~"L", ~"",   ~"Add a directory to the library search path",
+                              ~"PATH"),
+  optflag(~"",  ~"lib", ~"Compile a library crate"),
+  optflag(~"",  ~"ls",  ~"List the symbols defined by a library crate"),
+  optflag(~"",  ~"jit", ~"Execute using JIT (experimental)"),
+  optflag(~"", ~"no-trans",
+                        ~"Run all passes except translation; no output"),
+  optflag(~"O", ~"",    ~"Equivalent to --opt-level=2"),
+  optopt(~"o", ~"",     ~"Write output to <filename>", ~"FILENAME"),
+  optopt(~"", ~"opt-level",
+                        ~"Optimize with possible levels 0-3", ~"LEVEL"),
+  optopt( ~"",  ~"out-dir",
+                        ~"Write output to compiler-chosen filename
+                          in <dir>", ~"DIR"),
+  optflag(~"", ~"parse-only",
+                        ~"Parse only; do not compile, assemble, or link"),
+  optflagopt(~"", ~"pretty",
+                        ~"Pretty-print the input instead of compiling;
+                          valid types are: normal (un-annotated source),
+                          expanded (crates expanded),
+                          typed (crates expanded, with type annotations),
+                          or identified (fully parenthesized,
+                          AST nodes and blocks with IDs)", ~"TYPE"),
+  optflag(~"S", ~"",    ~"Compile only; do not assemble or link"),
+  optflag(~"", ~"xg",   ~"Extra debugging info (experimental)"),
+  optflag(~"", ~"save-temps",
+                        ~"Write intermediate files (.bc, .opt.bc, .o)
+                          in addition to normal output"),
+  optflag(~"", ~"static",
+                        ~"Use or produce static libraries or binaries
+                         (experimental)"),
+  optopt(~"", ~"sysroot",
+                        ~"Override the system root", ~"PATH"),
+  optflag(~"", ~"test", ~"Build a test harness"),
+  optopt(~"", ~"target",
+                        ~"Target triple cpu-manufacturer-kernel[-os]
+                          to compile for (see
+         http://sources.redhat.com/autobook/autobook/autobook_17.html
+                          for detail)", ~"TRIPLE"),
+  optmulti(~"W", ~"warn",
+                        ~"Set lint warnings", ~"OPT"),
+  optmulti(~"A", ~"allow",
+                        ~"Set lint allowed", ~"OPT"),
+  optmulti(~"D", ~"deny",
+                        ~"Set lint denied", ~"OPT"),
+  optmulti(~"F", ~"forbid",
+                        ~"Set lint forbidden", ~"OPT"),
+  optmulti(~"Z", ~"",   ~"Set internal debugging options", "FLAG"),
+  optflag( ~"v", ~"version",
+                        ~"Print version info and exit"),
+ ]
 }
 
 type output_filenames = @{out_filename:Path, obj_filename:Path};
@@ -741,7 +785,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            match getopts::getopts(~[~"--test"], opts()) {
+            match getopts(~[~"--test"], optgroups()) {
               Ok(m) => m,
               Err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
@@ -758,7 +802,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            match getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
+            match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(m) => m,
               Err(f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
