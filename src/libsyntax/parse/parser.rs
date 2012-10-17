@@ -24,8 +24,7 @@ use obsolete::{
 };
 use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
-             bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
-             bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
+             bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
              by_move, by_ref, by_val, capture_clause,
              capture_item, cdir_dir_mod, cdir_src_mod, cdir_view_item,
              class_immutable, class_mutable,
@@ -2295,19 +2294,20 @@ impl Parser {
         return spanned(lo, hi, bloc);
     }
 
+    fn mk_ty_path(i: ident) -> @Ty {
+        @{id: self.get_id(), node: ty_path(
+            ident_to_path(copy self.last_span, i),
+            self.get_id()), span: self.last_span}
+    }
+
     fn parse_optional_ty_param_bounds() -> @~[ty_param_bound] {
         let mut bounds = ~[];
         if self.eat(token::COLON) {
             while is_ident(self.token) {
                 if is_ident(self.token) {
-                    // XXX: temporary until kinds become traits
                     let maybe_bound = match self.token {
                       token::IDENT(copy sid, _) => {
                         match *self.id_to_str(sid) {
-                          ~"Send" => Some(bound_send),
-                          ~"Copy" => Some(bound_copy),
-                          ~"Const" => Some(bound_const),
-                          ~"Owned" => Some(bound_owned),
 
                           ~"send"
                           | ~"copy"
@@ -2317,7 +2317,7 @@ impl Parser {
                                           ObsoleteLowerCaseKindBounds);
                             // Bogus value, but doesn't matter, since
                             // is an error
-                            Some(bound_send)
+                            Some(ty_param_bound(self.mk_ty_path(sid)))
                           }
 
                           _ => None
@@ -2332,11 +2332,11 @@ impl Parser {
                             bounds.push(bound);
                         }
                         None => {
-                            bounds.push(bound_trait(self.parse_ty(false)));
+                            bounds.push(ty_param_bound(self.parse_ty(false)));
                         }
                     }
                 } else {
-                    bounds.push(bound_trait(self.parse_ty(false)));
+                    bounds.push(ty_param_bound(self.parse_ty(false)));
                 }
             }
         }

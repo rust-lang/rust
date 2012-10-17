@@ -9,9 +9,9 @@ use middle::pat_util::{pat_bindings};
 use syntax::ast::{_mod, add, arm};
 use syntax::ast::{bind_by_ref, bind_by_implicit_ref, bind_by_value};
 use syntax::ast::{bitand, bitor, bitxor};
-use syntax::ast::{blk, bound_const, bound_copy, bound_owned, bound_send};
-use syntax::ast::{bound_trait, binding_mode, capture_clause, class_ctor};
-use syntax::ast::{class_dtor, crate, crate_num, decl_item};
+use syntax::ast::{binding_mode, blk,
+                     capture_clause, class_ctor, class_dtor};
+use syntax::ast::{crate, crate_num, decl_item};
 use syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
@@ -39,6 +39,7 @@ use syntax::ast::{trait_ref, tuple_variant_kind, Ty, ty_bool, ty_char};
 use syntax::ast::{ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16, ty_i32};
 use syntax::ast::{ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str, ty_u};
 use syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
+use syntax::ast::{ty_param_bound};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named};
@@ -3764,14 +3765,7 @@ impl Resolver {
                                visitor: ResolveVisitor) {
         for type_parameters.each |type_parameter| {
             for type_parameter.bounds.each |bound| {
-                match *bound {
-                    bound_copy | bound_send | bound_const | bound_owned => {
-                        // Nothing to do.
-                    }
-                    bound_trait(trait_type) => {
-                        self.resolve_type(trait_type, visitor);
-                    }
-                }
+                self.resolve_type(**bound, visitor);
             }
         }
     }
@@ -4088,7 +4082,7 @@ impl Resolver {
                 let mut result_def = None;
 
                 // First, check to see whether the name is a primitive type.
-                if path.idents.len() == 1u {
+                if path.idents.len() == 1 {
                     let name = path.idents.last();
 
                     match self.primitive_type_table
