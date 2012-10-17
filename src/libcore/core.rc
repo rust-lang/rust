@@ -200,6 +200,7 @@ pub mod flate;
 pub mod repr;
 pub mod cleanup;
 pub mod reflect;
+pub mod condition;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
