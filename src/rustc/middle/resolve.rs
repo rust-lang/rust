@@ -1,5 +1,6 @@
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
+use metadata::csearch::{get_static_methods_if_impl, get_type_name_if_impl};
 use metadata::cstore::find_use_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -1082,7 +1083,6 @@ impl Resolver {
     fn build_reduced_graph_for_item(item: @item,
                                     parent: ReducedGraphParent,
                                     &&visitor: vt<ReducedGraphParent>) {
-
         let ident = item.ident;
         let sp = item.span;
         let legacy = match parent {
@@ -1276,7 +1276,7 @@ impl Resolver {
                             self.add_child(ident, new_parent,
                                            ForbidDuplicateValues, ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
-                                                    local_def(item.id),
+                                                    Some(local_def(item.id)),
                                                     ty_m.purity);
                         (*method_name_bindings).define_value
                             (Public, def, ty_m.span);
@@ -1734,27 +1734,105 @@ impl Resolver {
                 current_module = (*child_name_bindings).get_module();
             }
 
-            // Add the new child item.
-            let (child_name_bindings, new_parent) =
-                self.add_child(final_ident,
-                               ModuleReducedGraphParent(current_module),
-                               OverwriteDuplicates,
-                               dummy_sp());
-
             match path_entry.def_like {
                 dl_def(def) => {
+                    // Add the new child item.
+                    let (child_name_bindings, new_parent) =
+                        self.add_child(final_ident,
+                                       ModuleReducedGraphParent(
+                                            current_module),
+                                       OverwriteDuplicates,
+                                       dummy_sp());
+
                     self.handle_external_def(def, modules,
                                              child_name_bindings,
                                              self.session.str_of(final_ident),
                                              final_ident, new_parent);
                 }
-                dl_impl(_) => {
+                dl_impl(def) => {
                     // We only process static methods of impls here.
                     debug!("(building reduced graph for external crate) \
                             processing impl %s", final_ident_str);
 
-                    // FIXME (#3786): Cross-crate static methods in anonymous
-                    // traits.
+                    match get_type_name_if_impl(self.session.cstore, def) {
+                        None => {}
+                        Some(final_ident) => {
+                            let static_methods_opt =
+                                get_static_methods_if_impl(
+                                    self.session.cstore, def);
+                            match static_methods_opt {
+                                Some(static_methods) if
+                                    static_methods.len() >= 1 => {
+                                    debug!("(building reduced graph for \
+                                            external crate) processing \
+                                            static methods for type name %s",
+                                            self.session.str_of(final_ident));
+
+                                    let (child_name_bindings, new_parent) =
+                                        self.add_child(final_ident,
+                                            ModuleReducedGraphParent(
+                                                            current_module),
+                                            OverwriteDuplicates,
+                                            dummy_sp());
+
+                                    // Process the static methods. First,
+                                    // create the module.
+                                    let type_module;
+                                    match copy child_name_bindings.type_def {
+                                        Some(TypeNsDef {
+                                            module_def: Some(copy module_def),
+                                            _
+                                        }) => {
+                                            // We already have a module. This
+                                            // is OK.
+                                            type_module = module_def;
+                                        }
+                                        Some(_) | None => {
+                                            let parent_link =
+                                                self.get_parent_link(
+                                                    new_parent, final_ident);
+                                            child_name_bindings.define_module(
+                                                Public,
+                                                parent_link,
+                                                Some(def),
+                                                false,
+                                                dummy_sp());
+                                            type_module =
+                                                child_name_bindings.
+                                                    get_module();
+                                        }
+                                    }
+
+                                    // Add each static method to the module.
+                                    let new_parent = ModuleReducedGraphParent(
+                                        type_module);
+                                    for static_methods.each
+                                            |static_method_info| {
+                                        let ident = static_method_info.ident;
+                                        debug!("(building reduced graph for \
+                                                 external crate) creating \
+                                                 static method '%s'",
+                                               self.session.str_of(ident));
+
+                                        let (method_name_bindings, _) =
+                                            self.add_child(
+                                                ident,
+                                                new_parent,
+                                                OverwriteDuplicates,
+                                                dummy_sp());
+                                        let def = def_fn(
+                                            static_method_info.def_id,
+                                            static_method_info.purity);
+                                        method_name_bindings.define_value(
+                                            Public, def, dummy_sp());
+                                    }
+                                }
+
+                                // Otherwise, do nothing.
+                                Some(_) | None => {}
+                            }
+                        }
+                    }
                 }
                 dl_field => {
                     debug!("(building reduced graph for external crate) \
@@ -1770,7 +1848,6 @@ impl Resolver {
                               module_path: @DVec<ident>,
                               subclass: @ImportDirectiveSubclass,
                               span: span) {
-
         let directive = @ImportDirective(privacy, module_path,
                                          subclass, span);
         module_.imports.push(directive);
@@ -2453,7 +2530,6 @@ impl Resolver {
                                      xray: XrayFlag,
                                      span: span)
                                   -> ResolveResult<@Module> {
-
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = (*module_path).len();
@@ -2648,7 +2724,6 @@ impl Resolver {
 
     fn resolve_module_in_lexical_scope(module_: @Module, name: ident)
                                     -> ResolveResult<@Module> {
-
         match self.resolve_item_in_lexical_scope(module_, name, TypeNS) {
             Success(target) => {
                 match target.bindings.type_def {
@@ -4035,9 +4110,10 @@ impl Resolver {
                         match self.resolve_path(path, TypeNS, true, visitor) {
                             Some(def) => {
                                 debug!("(resolving type) resolved `%s` to \
-                                        type",
+                                        type %?",
                                        self.session.str_of(
-                                            path.idents.last()));
+                                            path.idents.last()),
+                                       def);
                                 result_def = Some(def);
                             }
                             None => {

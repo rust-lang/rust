@@ -1,4 +1,8 @@
 use dvec::DVec;
+use std::serialization::{Serializable,
+                         Deserializable,
+                         Serializer,
+                         Deserializer};
 
 export filename;
 export filemap;
@@ -176,6 +180,34 @@ impl span : cmp::Eq {
         return self.lo == (*other).lo && self.hi == (*other).hi;
     }
     pure fn ne(other: &span) -> bool { !self.eq(other) }
+}
+
+#[cfg(stage0)]
+impl span: Serializable {
+    /* Note #1972 -- spans are serialized but not deserialized */
+    fn serialize<S: Serializer>(&self, _s: &S) { }
+}
+
+#[cfg(stage0)]
+impl span: Deserializable {
+    static fn deserialize<D: Deserializer>(_d: &D) -> span {
+        ast_util::dummy_sp()
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<S: Serializer> span: Serializable<S> {
+    /* Note #1972 -- spans are serialized but not deserialized */
+    fn serialize(&self, _s: &S) { }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<D: Deserializer> span: Deserializable<D> {
+    static fn deserialize(_d: &D) -> span {
+        ast_util::dummy_sp()
+    }
 }
 
 fn span_to_str_no_adj(sp: span, cm: CodeMap) -> ~str {
