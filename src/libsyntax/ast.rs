@@ -123,13 +123,11 @@ const crate_node_id: node_id = 0;
 
 #[auto_serialize]
 #[auto_deserialize]
-enum ty_param_bound {
-    bound_copy,
-    bound_send,
-    bound_const,
-    bound_owned,
-    bound_trait(@Ty),
-}
+// The AST represents all type param bounds as types.
+// typeck::collect::compute_bounds matches these against
+// the "special" built-in traits (see middle::lang_items) and
+// detects Copy, Send, Owned, and Const.
+enum ty_param_bound = @Ty;
 
 #[auto_serialize]
 #[auto_deserialize]
