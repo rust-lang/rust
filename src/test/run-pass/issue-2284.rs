@@ -1,4 +1,3 @@
-// xfail-test
 trait Send {
     fn f();
 }
