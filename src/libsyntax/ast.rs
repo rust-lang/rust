@@ -7,34 +7,6 @@ use std::serialization::{Serializable,
 use codemap::{span, filename};
 use parse::token;
 
-#[cfg(stage0)]
-impl span: Serializable {
-    /* Note #1972 -- spans are serialized but not deserialized */
-    fn serialize<S: Serializer>(&self, _s: &S) { }
-}
-
-#[cfg(stage0)]
-impl span: Deserializable {
-    static fn deserialize<D: Deserializer>(_d: &D) -> span {
-        ast_util::dummy_sp()
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-impl<S: Serializer> span: Serializable<S> {
-    /* Note #1972 -- spans are serialized but not deserialized */
-    fn serialize(&self, _s: &S) { }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-impl<D: Deserializer> span: Deserializable<D> {
-    static fn deserialize(_d: &D) -> span {
-        ast_util::dummy_sp()
-    }
-}
-
 #[auto_serialize]
 #[auto_deserialize]
 type spanned<T> = {node: T, span: span};
@@ -168,7 +140,7 @@ type ty_param = {ident: ident, id: node_id, bounds: @~[ty_param_bound]};
 enum def {
     def_fn(def_id, purity),
     def_static_method(/* method */ def_id,
-                      /* trait */  def_id,
+                      /* trait */  Option<def_id>,
                       purity),
     def_self(node_id),
     def_mod(def_id),
