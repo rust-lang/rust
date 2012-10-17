@@ -207,7 +207,7 @@ pub pure fn connect(v: &[~str], sep: &str) -> ~str {
 pub fn repeat(ss: &str, nn: uint) -> ~str {
     let mut acc = ~"";
     for nn.times { acc += ss; }
-    return acc;
+    move acc
 }
 
 /*
@@ -593,23 +593,23 @@ pub fn split_within(ss: &str, lim: uint) -> ~[~str] {
     let mut row  : ~str    = ~"";
 
     for words.each |wptr| {
-        let word = *wptr;
+        let word = copy *wptr;
 
         // if adding this word to the row would go over the limit,
         // then start a new row
-        if str::len(row) + str::len(word) + 1 > lim {
-            rows += [row]; // save previous row
-            row = word;    // start a new one
+        if row.len() + word.len() + 1 > lim {
+            rows.push(copy row); // save previous row
+            row = move word;    // start a new one
         } else {
-            if str::len(row) > 0 { row += ~" " } // separate words
+            if row.len() > 0 { row += ~" " } // separate words
             row += word;  // append to this row
         }
     }
 
     // save the last row
-    if row != ~"" { rows += [row]; }
+    if row != ~"" { rows.push(move row); }
 
-    return rows;
+    move rows
 }
 
 
