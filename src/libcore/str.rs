@@ -2527,9 +2527,10 @@ mod tests {
         assert split_within(~"hello", 15) == ~[~"hello"];
 
         let data = ~"\nMary had a little lamb\nLittle lamb\n";
-        assert split_within(data, 15) == ~[~"Mary had a little",
-                                           ~"lamb Little",
-                                           ~"lamb"];
+        error!("~~~~ %?", split_within(data, 15));
+        assert split_within(data, 15) == ~[~"Mary had a",
+                                           ~"little lamb",
+                                           ~"Little lamb"];
     }
 
     #[test]
