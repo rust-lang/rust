@@ -502,7 +502,8 @@ fn print_item(s: ps, &&item: @ast::item) {
         end(s); // end the outer ibox
       }
       ast::item_enum(enum_definition, params) => {
-        print_enum_def(s, enum_definition, params, item.ident, item.span, item.vis);
+        print_enum_def(s, enum_definition, params, item.ident,
+                       item.span, item.vis);
       }
       ast::item_class(struct_def, tps) => {
           head(s, visibility_qualified(item.vis, ~"struct"));
