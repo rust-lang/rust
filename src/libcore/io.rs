@@ -328,7 +328,7 @@ impl ByteBuf: Reader {
     fn tell() -> uint { self.pos }
 }
 
-pub fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
+pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
     f({buf: bytes, mut pos: 0u} as Reader)
 }
 
@@ -730,21 +730,25 @@ impl @BytesWriter : Writer {
     fn get_type() -> WriterType { (*self).get_type() }
 }
 
-pub fn BytesWriter() -> BytesWriter {
+pub pure fn BytesWriter() -> BytesWriter {
     BytesWriter { buf: DVec(), mut pos: 0u }
 }
 
-pub fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
+pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
-    wr.buf.check_out(|buf| move buf)
+    // FIXME (#3758): This should not be needed.
+    unsafe { wr.buf.check_out(|buf| move buf) }
 }
 
-pub fn with_str_writer(f: fn(Writer)) -> ~str {
+pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
-    // Make sure the vector has a trailing null and is proper utf8.
-    v.push(0);
+    // FIXME (#3758): This should not be needed.
+    unsafe {
+        // Make sure the vector has a trailing null and is proper utf8.
+        v.push(0);
+    }
     assert str::is_utf8(v);
 
     unsafe { move ::cast::transmute(move v) }
