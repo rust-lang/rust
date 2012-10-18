@@ -1665,7 +1665,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_loop(body, _) => {
         check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
-        bot = !may_break(body);
+        bot = !may_break(tcx, expr.id, body);
       }
       ast::expr_match(discrim, arms) => {
         bot = alt::check_alt(fcx, expr, discrim, arms);
@@ -2542,6 +2542,30 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
             ty::vstore_slice(r)
         }
     }
+}
+
+// Returns true if b contains a break that can exit from b
+fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
+    // First: is there an unlabeled break immediately
+    // inside the loop?
+    (loop_query(b, |e| {
+        match e {
+          ast::expr_break(_) => true,
+          _ => false
+        }
+    })) ||
+   // Second: is there a labeled break with label
+   // <id> nested anywhere inside the loop?
+   (block_query(b, |e| {
+       match e.node {
+           ast::expr_break(Some(_)) =>
+               match cx.def_map.find(e.id) {
+                 Some(ast::def_label(loop_id)) if id == loop_id => true,
+                 _ => false,
+              },
+           _ => false
+       }
+   }))
 }
 
 fn check_bounds_are_used(ccx: @crate_ctxt,

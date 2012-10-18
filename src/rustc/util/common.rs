@@ -58,22 +58,19 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     return *rs;
 }
 
-fn has_nonlocal_exits(b: ast::blk) -> bool {
-    do loop_query(b) |e| {
-        match e {
-          ast::expr_break(_) | ast::expr_again(_) => true,
-          _ => false
-        }
-    }
-}
-
-fn may_break(b: ast::blk) -> bool {
-    do loop_query(b) |e| {
-        match e {
-          ast::expr_break(_) => true,
-          _ => false
-        }
-    }
+// Takes a predicate p, returns true iff p is true for any subexpressions
+// of b -- skipping any inner loops (loop, while, loop_body)
+fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
+    let rs = @mut false;
+    let visit_expr =
+        |e: @ast::expr, &&flag: @mut bool, v: visit::vt<@mut bool>| {
+        *flag |= p(e);
+        visit::visit_expr(e, flag, v)
+    };
+    let v = visit::mk_vt(@{visit_expr: visit_expr
+                           ,.. *visit::default_visitor()});
+    visit::visit_block(b, rs, v);
+    return *rs;
 }
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {

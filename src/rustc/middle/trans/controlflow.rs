@@ -113,7 +113,9 @@ fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
     //    |           body_bcx_out --+
     // next_bcx
 
-    let loop_bcx = loop_scope_block(bcx, next_bcx, ~"`while`", body.info());
+    // tjc: while should have labels...
+    let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"`while`",
+                                    body.info());
     let cond_bcx_in = scope_block(loop_bcx, cond.info(), ~"while loop cond");
     let body_bcx_in = scope_block(loop_bcx, body.info(), ~"while loop body");
     Br(bcx, loop_bcx.llbb);
@@ -133,10 +135,11 @@ fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
     return next_bcx;
 }
 
-fn trans_loop(bcx:block, body: ast::blk) -> block {
+fn trans_loop(bcx:block, body: ast::blk, opt_label: Option<ident>) -> block {
     let _icx = bcx.insn_ctxt("trans_loop");
     let next_bcx = sub_block(bcx, ~"next");
-    let body_bcx_in = loop_scope_block(bcx, next_bcx, ~"`loop`", body.info());
+    let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, ~"`loop`",
+                                       body.info());
     Br(bcx, body_bcx_in.llbb);
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
     cleanup_and_Br(body_bcx_out, body_bcx_in, body_bcx_in.llbb);
@@ -201,7 +204,7 @@ fn trans_log(log_ex: @ast::expr,
     }
 }
 
-fn trans_break_cont(bcx: block, to_end: bool)
+fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
     -> block {
     let _icx = bcx.insn_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
@@ -209,13 +212,22 @@ fn trans_break_cont(bcx: block, to_end: bool)
     let mut target;
     loop {
         match unwind.kind {
-          block_scope({loop_break: Some(brk), _}) => {
+          block_scope({loop_break: Some(brk), loop_label: l, _}) => {
+              // If we're looking for a labeled loop, check the label...
             target = if to_end {
                 brk
             } else {
                 unwind
             };
-            break;
+              match opt_label {
+                  Some(desired) => match l {
+                      Some(actual) if actual == desired => break,
+                      // If it doesn't match the one we want,
+                      // don't break
+                      _ => ()
+                  },
+                  None => break
+              }
           }
           _ => ()
         }
@@ -235,12 +247,12 @@ fn trans_break_cont(bcx: block, to_end: bool)
     return bcx;
 }
 
-fn trans_break(bcx: block) -> block {
-    return trans_break_cont(bcx, true);
+fn trans_break(bcx: block, label_opt: Option<ident>) -> block {
+    return trans_break_cont(bcx, label_opt, true);
 }
 
-fn trans_cont(bcx: block) -> block {
-    return trans_break_cont(bcx, false);
+fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
+    return trans_break_cont(bcx, label_opt, false);
 }
 
 fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
