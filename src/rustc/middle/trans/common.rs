@@ -445,6 +445,7 @@ enum block_kind {
 
 type scope_info = {
     loop_break: Option<block>,
+    loop_label: Option<ident>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.

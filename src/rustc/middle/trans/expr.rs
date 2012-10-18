@@ -410,16 +410,10 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
 
     match expr.node {
         ast::expr_break(label_opt) => {
-            if label_opt.is_some() {
-                bcx.tcx().sess.span_unimpl(expr.span, ~"labeled break");
-            }
-            return controlflow::trans_break(bcx);
+            return controlflow::trans_break(bcx, label_opt);
         }
         ast::expr_again(label_opt) => {
-            if label_opt.is_some() {
-                bcx.tcx().sess.span_unimpl(expr.span, ~"labeled again");
-            }
-            return controlflow::trans_cont(bcx);
+            return controlflow::trans_cont(bcx, label_opt);
         }
         ast::expr_ret(ex) => {
             return controlflow::trans_ret(bcx, ex);
@@ -436,8 +430,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_while(cond, body) => {
             return controlflow::trans_while(bcx, cond, body);
         }
-        ast::expr_loop(body, _) => {
-            return controlflow::trans_loop(bcx, body);
+        ast::expr_loop(body, opt_label) => {
+            return controlflow::trans_loop(bcx, body, opt_label);
         }
         ast::expr_assign(dst, src) => {
             let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));

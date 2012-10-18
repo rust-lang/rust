@@ -1180,7 +1180,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
+        opt_ident.iter(|ident| {
+            print_ident(s, *ident);
+            word_space(s, ~":");
+        });
         print_block(s, blk);
       }
       ast::expr_match(expr, arms) => {
