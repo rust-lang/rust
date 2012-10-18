@@ -187,6 +187,7 @@ need_cmd cmp
 need_cmd mkdir
 need_cmd printf
 need_cmd cut
+need_cmd head
 need_cmd grep
 need_cmd xargs
 need_cmd cp
