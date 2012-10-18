@@ -2262,9 +2262,8 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn to_managed() -> @str {
-        let v = at_vec::from_fn(self.len() + 1, |i| {
-            if i == self.len() { 0 } else { self[i] }
-        });
+        let bytes = as_bytes_slice(self);
+        let v = at_vec::from_fn(bytes.len(), |i| bytes[i]);
         unsafe { ::cast::transmute(v) }
     }
 
