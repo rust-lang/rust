@@ -297,39 +297,41 @@ pub fn file_reader(path: &Path) -> Result<Reader, ~str> {
 }
 
 
-// Byte buffer readers
+// Byte readers
+pub struct BytesReader {
+    bytes: &[u8],
+    mut pos: uint
+}
 
-pub type ByteBuf = {buf: &[const u8], mut pos: uint};
+impl BytesReader: Reader {
+    fn read(bytes: &[mut u8], len: uint) -> uint {
+        let count = uint::min(len, self.bytes.len() - self.pos);
 
-impl ByteBuf: Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint {
-        let count = uint::min(len, self.buf.len() - self.pos);
-
-        let view = vec::const_view(self.buf, self.pos, self.buf.len());
-        vec::bytes::memcpy(buf, view, count);
+        let view = vec::view(self.bytes, self.pos, self.bytes.len());
+        vec::bytes::memcpy(bytes, view, count);
 
         self.pos += count;
 
         count
     }
     fn read_byte() -> int {
-        if self.pos == self.buf.len() { return -1; }
-        let b = self.buf[self.pos];
+        if self.pos == self.bytes.len() { return -1; }
+        let b = self.bytes[self.pos];
         self.pos += 1u;
         return b as int;
     }
     // FIXME (#2738): implement this
     fn unread_byte(_byte: int) { error!("Unimplemented: unread_byte"); fail; }
-    fn eof() -> bool { self.pos == self.buf.len() }
+    fn eof() -> bool { self.pos == self.bytes.len() }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        self.pos = seek_in_buf(offset, pos, self.buf.len(), whence);
+        self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
     }
     fn tell() -> uint { self.pos }
 }
 
 pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
-    f({buf: bytes, mut pos: 0u} as Reader)
+    f(BytesReader { bytes: bytes, pos: 0u } as Reader)
 }
 
 pub fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
