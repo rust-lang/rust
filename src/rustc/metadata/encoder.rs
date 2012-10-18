@@ -90,6 +90,12 @@ fn encode_name(ecx: @encode_ctxt, ebml_w: ebml::Serializer, name: ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
 }
 
+fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+                             name: ident) {
+    ebml_w.wr_tagged_str(tag_item_impl_type_basename,
+                         ecx.tcx.sess.str_of(name));
+}
+
 fn encode_def_id(ebml_w: ebml::Serializer, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
@@ -484,7 +490,12 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
            ecx.tcx.sess.str_of(m.ident), all_tps.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
-    encode_family(ebml_w, purity_fn_family(m.purity));
+    match m.self_ty.node {
+        ast::sty_static => {
+            encode_family(ebml_w, purity_static_method_family(m.purity));
+        }
+        _ => encode_family(ebml_w, purity_fn_family(m.purity))
+    }
     encode_type_param_bounds(ebml_w, ecx, all_tps);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
     encode_name(ecx, ebml_w, m.ident);
@@ -701,7 +712,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, opt_trait, _, methods) => {
+      item_impl(tps, opt_trait, ty, methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -711,6 +722,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
+        match ty.node {
+            ast::ty_path(path, _) if path.idents.len() == 1 => {
+                encode_impl_type_basename(ecx, ebml_w,
+                                          ast_util::path_to_ident(path));
+            }
+            _ => {}
+        }
         for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
             ebml_w.writer.write(str::to_bytes(def_to_str(local_def(m.id))));

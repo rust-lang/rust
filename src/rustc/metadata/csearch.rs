@@ -25,6 +25,8 @@ export get_impls_for_mod;
 export get_trait_methods;
 export get_provided_trait_methods;
 export get_method_names_if_trait;
+export get_type_name_if_impl;
+export get_static_methods_if_impl;
 export get_item_attrs;
 export each_path;
 export get_type;
@@ -33,10 +35,17 @@ export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 export ProvidedTraitMethodInfo;
+export StaticMethodInfo;
 
 struct ProvidedTraitMethodInfo {
     ty: ty::method,
     def_id: ast::def_id
+}
+
+struct StaticMethodInfo {
+    ident: ast::ident,
+    def_id: ast::def_id,
+    purity: ast::purity
 }
 
 fn get_symbol(cstore: cstore::CStore, def: ast::def_id) -> ~str {
@@ -118,6 +127,18 @@ fn get_method_names_if_trait(cstore: cstore::CStore, def: ast::def_id)
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
+}
+
+fn get_type_name_if_impl(cstore: cstore::CStore, def: ast::def_id) ->
+        Option<ast::ident> {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_type_name_if_impl(cstore.intr, cdata, def.node)
+}
+
+fn get_static_methods_if_impl(cstore: cstore::CStore, def: ast::def_id) ->
+        Option<~[StaticMethodInfo]> {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_static_methods_if_impl(cstore.intr, cdata, def.node)
 }
 
 fn get_item_attrs(cstore: cstore::CStore,
