@@ -2,6 +2,6 @@
 mod a {}
 
 #[legacy_exports]
-mod a {} //~ ERROR Duplicate definition of module a
+mod a {} //~ ERROR duplicate definition of type a
 
 fn main() {}
