@@ -1162,7 +1162,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     if (parms.tcx.sess.meta_stats()) {
 
-        do wr.buf.borrow |v| {
+        do wr.bytes.borrow |v| {
             do v.each |e| {
                 if *e == 0 {
                     ecx.stats.zero_bytes += 1;
@@ -1195,7 +1195,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(*bytes, 0, 8)
-    }) + flate::deflate_bytes(wr.buf.check_out(|buf| buf))
+    }) + flate::deflate_bytes(wr.bytes.check_out(|buf| buf))
 }
 
 // Get the encoded string for a type
