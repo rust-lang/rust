@@ -751,10 +751,6 @@ enum log_level { error, debug, other }
 
 #[auto_serialize]
 #[auto_deserialize]
-enum alt_mode { alt_check, alt_exhaustive, }
-
-#[auto_serialize]
-#[auto_deserialize]
 enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),

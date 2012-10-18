@@ -22,7 +22,7 @@ use obsolete::{
     ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
     ObsoleteModeInFnType, ObsoleteByMutRefMode
 };
-use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
+use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
              bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
