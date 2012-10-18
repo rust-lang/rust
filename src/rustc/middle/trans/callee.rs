@@ -75,10 +75,10 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
 
     fn trans_def(bcx: block, def: ast::def, ref_expr: @ast::expr) -> Callee {
         match def {
-            ast::def_fn(did, _) => {
+            ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ref_expr.id))
             }
-            ast::def_static_method(impl_did, trait_did, _) => {
+            ast::def_static_method(impl_did, Some(trait_did), _) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
                                                                 trait_did,
                                                                 ref_expr.id))

@@ -19,7 +19,7 @@ use syntax::diagnostic::span_handler;
 use common::*;
 use syntax::parse::token::ident_interner;
 use hash::{Hash, HashUtil};
-use csearch::ProvidedTraitMethodInfo;
+use csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 
 export class_dtor;
 export get_class_fields;
@@ -31,6 +31,7 @@ export get_type_param_count;
 export get_impl_traits;
 export get_class_method;
 export get_impl_method;
+export get_static_methods_if_impl;
 export lookup_def;
 export resolve_path;
 export get_crate_attributes;
@@ -43,6 +44,7 @@ export get_impls_for_mod;
 export get_trait_methods;
 export get_provided_trait_methods;
 export get_method_names_if_trait;
+export get_type_name_if_impl;
 export get_item_attrs;
 export get_crate_module_paths;
 export def_like;
@@ -185,6 +187,12 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     None
 }
 
+fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
+        Option<ast::def_id> {
+    let trait_did_opt = item_parent_item(d);
+    trait_did_opt.map(|trait_did| {crate: cnum, node: trait_did.node})
+}
+
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect(~"item without parent");
@@ -321,16 +329,16 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
         PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
         ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
         UnsafeStaticMethod => {
-            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did, ast::unsafe_fn))
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::unsafe_fn))
         }
         StaticMethod => {
-            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did, ast::impure_fn))
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
         }
         PureStaticMethod => {
-            let trait_did = item_reqd_and_translated_parent_item(cnum, item);
-            dl_def(ast::def_static_method(did, trait_did, ast::pure_fn))
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::pure_fn))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -781,6 +789,67 @@ fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
             (item_name(intr, method), get_self_ty(method)));
     }
     return Some(resulting_methods);
+}
+
+fn get_type_name_if_impl(intr: @ident_interner,
+                         cdata: cmd,
+                         node_id: ast::node_id) -> Option<ast::ident> {
+    let item = lookup_item(node_id, cdata.data);
+    if item_family(item) != Impl {
+        return None;
+    }
+
+    for ebml::tagged_docs(item, tag_item_impl_type_basename) |doc| {
+        return Some(intr.intern(@str::from_bytes(ebml::doc_data(doc))));
+    }
+
+    return None;
+}
+
+fn get_static_methods_if_impl(intr: @ident_interner,
+                               cdata: cmd,
+                               node_id: ast::node_id) ->
+                               Option<~[StaticMethodInfo]> {
+    let item = lookup_item(node_id, cdata.data);
+    if item_family(item) != Impl {
+        return None;
+    }
+
+    // If this impl has a trait ref, don't consider it.
+    for ebml::tagged_docs(item, tag_impl_trait) |_doc| {
+        return None;
+    }
+
+    let impl_method_ids = DVec();
+    for ebml::tagged_docs(item, tag_item_impl_method) |impl_method_doc| {
+        impl_method_ids.push(parse_def_id(ebml::doc_data(impl_method_doc)));
+    }
+
+    let static_impl_methods = DVec();
+    for impl_method_ids.each |impl_method_id| {
+        let impl_method_doc = lookup_item(impl_method_id.node, cdata.data);
+        let family = item_family(impl_method_doc);
+        match family {
+            StaticMethod | UnsafeStaticMethod | PureStaticMethod => {
+                let purity;
+                match item_family(impl_method_doc) {
+                    StaticMethod => purity = ast::impure_fn,
+                    UnsafeStaticMethod => purity = ast::unsafe_fn,
+                    PureStaticMethod => purity = ast::pure_fn,
+                    _ => fail
+                }
+
+                static_impl_methods.push(StaticMethodInfo {
+                    ident: item_name(intr, impl_method_doc),
+                    def_id: item_def_id(impl_method_doc, cdata),
+                    purity: purity
+                });
+            }
+            _ => {}
+        }
+    }
+
+    return Some(dvec::unwrap(move static_impl_methods));
 }
 
 fn get_item_attrs(cdata: cmd,
