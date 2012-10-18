@@ -362,10 +362,10 @@ fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
-    PV=$(pandoc --version | awk '/^pandoc/ {print $2}')
-    if [ "$PV" \< "1.8" ]
+    read PV_MAJOR PV_MINOR <<<$(pandoc --version | awk '/^pandoc/ {split($2, PV, "."); print PV[1] " " PV[2]}')
+    if [ "$PV_MAJOR" -lt "1" ] || [ "$PV_MINOR" -lt "8" ]
     then
-	step_msg "pandoc $PV is too old. disabling"
+	step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. disabling"
 	BAD_PANDOC=1
     fi
 fi
