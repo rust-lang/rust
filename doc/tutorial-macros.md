@@ -155,17 +155,22 @@ If it is under more, it'll be repeated, as appropriate.
 
 ## Parsing limitations
 
-The macro parser will parse Rust syntax with two limitations:
 
-1. The parser will always parse as much as possible. For example, if the comma
-were omitted from the syntax of `early_return!` above, `input_1 [` would've
-been interpreted as the beginning of an array index. In fact, invoking the
-macro would have been impossible.
-2. The parser must have eliminated all ambiguity by the time it reaches a
+For technical reasons, there are two limitations to the treatment of syntax
+fragments by the macro parser:
+
+1. The parser will always parse as much as possible of a Rust syntactic
+fragment. For example, if the comma were omitted from the syntax of
+`early_return!` above, `input_1 [` would've been interpreted as the beginning
+of an array index. In fact, invoking the macro would have been impossible.
+2. The parser must have eliminated all ambiguity by the time it reaches a 
 `$name:fragment_specifier` declaration. This limitation can result in parse
 errors when declarations occur at the beginning of, or immediately after,
-a `$(...)*`. Changing the invocation syntax to require a distinctive
-token in front can solve the problem.
+a `$(...)*`. For example, the grammar `$($t:ty)* $e:expr` will always fail to
+parse because the parser would be forced to choose between parsing `t` and
+parsing `e`. Changing the invocation syntax to require a distinctive token in
+front can solve the problem. In the above example, `$(T $t:ty)* E $e:exp`
+solves the problem.
 
 ## A final note
 
