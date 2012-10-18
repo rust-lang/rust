@@ -1050,7 +1050,7 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
 }
 
 fn simple_block_scope() -> block_kind {
-    block_scope({loop_break: None, mut cleanups: ~[],
+    block_scope({loop_break: None, loop_label: None, mut cleanups: ~[],
                  mut cleanup_paths: ~[], mut landing_pad: None})
 }
 
@@ -1067,10 +1067,11 @@ fn scope_block(bcx: block,
                   n, opt_node_info);
 }
 
-fn loop_scope_block(bcx: block, loop_break: block, n: ~str,
-                    opt_node_info: Option<node_info>) -> block {
+fn loop_scope_block(bcx: block, loop_break: block, loop_label: Option<ident>,
+                    n: ~str, opt_node_info: Option<node_info>) -> block {
     return new_block(bcx.fcx, Some(bcx), block_scope({
         loop_break: Some(loop_break),
+        loop_label: loop_label,
         mut cleanups: ~[],
         mut cleanup_paths: ~[],
         mut landing_pad: None

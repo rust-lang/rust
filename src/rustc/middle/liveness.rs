@@ -95,9 +95,9 @@
 use dvec::DVec;
 use std::map::HashMap;
 use syntax::{visit, ast_util};
-use syntax::print::pprust::{expr_to_str};
+use syntax::print::pprust::{expr_to_str, block_to_str};
 use visit::vt;
-use syntax::codemap::span;
+use syntax::codemap::{span, span_to_str};
 use syntax::ast::*;
 use io::WriterUtil;
 use capture::{cap_move, cap_drop, cap_copy, cap_ref};
@@ -165,6 +165,16 @@ impl LiveNodeKind : cmp::Eq {
         }
     }
     pure fn ne(other: &LiveNodeKind) -> bool { !self.eq(other) }
+}
+
+fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
+    let cm = cx.sess.codemap;
+    match lnk {
+        FreeVarNode(s) => fmt!("Free var node [%s]", span_to_str(s, cm)),
+        ExprNode(s)    => fmt!("Expr node [%s]", span_to_str(s, cm)),
+        VarDefNode(s)  => fmt!("Var def node [%s]", span_to_str(s, cm)),
+        ExitNode       => ~"Exit node"
+    }
 }
 
 fn check_crate(tcx: ty::ctxt,
@@ -277,8 +287,8 @@ fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
         tcx: tcx,
         method_map: method_map,
         last_use_map: last_use_map,
-        num_live_nodes: 0u,
-        num_vars: 0u,
+        num_live_nodes: 0,
+        num_vars: 0,
         live_node_map: HashMap(),
         variable_map: HashMap(),
         capture_map: HashMap(),
@@ -291,9 +301,10 @@ impl IrMaps {
     fn add_live_node(lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
         self.lnks.push(lnk);
-        self.num_live_nodes += 1u;
+        self.num_live_nodes += 1;
 
-        debug!("%s is of kind %?", ln.to_str(), lnk);
+        debug!("%s is of kind %s", ln.to_str(),
+               live_node_kind_to_str(lnk, self.tcx));
 
         ln
     }
@@ -308,7 +319,7 @@ impl IrMaps {
     fn add_variable(vk: VarKind) -> Variable {
         let v = Variable(self.num_vars);
         self.var_kinds.push(vk);
-        self.num_vars += 1u;
+        self.num_vars += 1;
 
         match vk {
             Local(LocalInfo {id:node_id, _}) |
@@ -491,6 +502,10 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
       }
       expr_fn(_, _, _, cap_clause) |
       expr_fn_block(_, _, cap_clause) => {
+          // Interesting control flow (for loops can contain labeled
+          // breaks or continues)
+          self.add_live_node_for_node(expr.id, ExprNode(expr.span));
+
         // Make a live_node for each captured variable, with the span
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
@@ -571,14 +586,22 @@ const ACC_READ: uint = 1u;
 const ACC_WRITE: uint = 2u;
 const ACC_USE: uint = 4u;
 
+type LiveNodeMap = HashMap<node_id, LiveNode>;
+
 struct Liveness {
     tcx: ty::ctxt,
     ir: @IrMaps,
     s: Specials,
     successors: ~[mut LiveNode],
     users: ~[mut users],
-    mut break_ln: LiveNode,
-    mut cont_ln: LiveNode,
+    // The list of node IDs for the nested loop scopes
+    // we're in.
+    mut loop_scope: @DVec<node_id>,
+    // mappings from loop node ID to LiveNode
+    // ("break" label should map to loop node ID,
+    // it probably doesn't now)
+    break_ln: LiveNodeMap,
+    cont_ln: LiveNodeMap
 }
 
 fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
@@ -594,8 +617,9 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
             vec::to_mut(
                 vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                invalid_users())),
-        break_ln: invalid_node(),
-        cont_ln: invalid_node()
+        loop_scope: @DVec(),
+        break_ln: HashMap(),
+        cont_ln: HashMap()
     }
 }
 
@@ -691,6 +715,9 @@ impl Liveness {
         if reader.is_valid() {Some((*self.ir).lnk(reader))} else {None}
     }
 
+    /*
+    Is this variable live on entry to any of its successor nodes?
+    */
     fn live_on_exit(ln: LiveNode, var: Variable)
         -> Option<LiveNodeKind> {
 
@@ -717,8 +744,8 @@ impl Liveness {
     }
 
     fn indices(ln: LiveNode, op: fn(uint)) {
-        let node_base_idx = self.idx(ln, Variable(0u));
-        for uint::range(0u, self.ir.num_vars) |var_idx| {
+        let node_base_idx = self.idx(ln, Variable(0));
+        for uint::range(0, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx)
         }
     }
@@ -735,13 +762,35 @@ impl Liveness {
     fn write_vars(wr: io::Writer,
                   ln: LiveNode,
                   test: fn(uint) -> LiveNode) {
-        let node_base_idx = self.idx(ln, Variable(0u));
-        for uint::range(0u, self.ir.num_vars) |var_idx| {
+        let node_base_idx = self.idx(ln, Variable(0));
+        for uint::range(0, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 wr.write_str(~" ");
                 wr.write_str(Variable(var_idx).to_str());
             }
+        }
+    }
+
+    fn find_loop_scope(opt_label: Option<ident>, id: node_id, sp: span)
+        -> node_id {
+        match opt_label {
+            Some(_) => // Refers to a labeled loop. Use the results of resolve
+                      // to find with one
+                match self.tcx.def_map.find(id) {
+                  Some(def_label(loop_id)) => loop_id,
+                  _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
+                                                 doesn't refer to a loop")
+            },
+            None =>
+                // Vanilla 'break' or 'loop', so use the enclosing
+                // loop scope
+                if self.loop_scope.len() == 0 {
+                    self.tcx.sess.span_bug(sp, ~"break outside loop");
+                }
+                else {
+                    self.loop_scope.last()
+                }
         }
     }
 
@@ -833,18 +882,18 @@ impl Liveness {
         let idx = self.idx(ln, var);
         let user = &mut self.users[idx];
 
-        if (acc & ACC_WRITE) != 0u {
+        if (acc & ACC_WRITE) != 0 {
             user.reader = invalid_node();
             user.writer = ln;
         }
 
         // Important: if we both read/write, must do read second
         // or else the write will override.
-        if (acc & ACC_READ) != 0u {
+        if (acc & ACC_READ) != 0 {
             user.reader = ln;
         }
 
-        if (acc & ACC_USE) != 0u {
+        if (acc & ACC_USE) != 0 {
             self.users[idx].used = true;
         }
 
@@ -858,10 +907,13 @@ impl Liveness {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
+
+        debug!("compute: using id for block, %s", block_to_str(body,
+                      self.tcx.sess.intr()));
+
         let entry_ln: LiveNode =
-            self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln, || {
-                self.propagate_through_fn_block(decl, body)
-            });
+            self.with_loop_nodes(body.node.id, self.s.exit_ln, self.s.exit_ln,
+              || { self.propagate_through_fn_block(decl, body) });
 
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body %d (entry=%s)",
@@ -972,6 +1024,9 @@ impl Liveness {
     }
 
     fn propagate_through_expr(expr: @expr, succ: LiveNode) -> LiveNode {
+      debug!("propagate_through_expr: %s",
+             expr_to_str(expr, self.tcx.sess.intr()));
+
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
@@ -983,16 +1038,27 @@ impl Liveness {
               self.propagate_through_expr(e, succ)
           }
 
-          expr_fn(*) | expr_fn_block(*) => {
-            // the construction of a closure itself is not important,
-            // but we have to consider the closed over variables.
-            let caps = (*self.ir).captures(expr);
-            do (*caps).foldr(succ) |cap, succ| {
-                self.init_from_succ(cap.ln, succ);
-                let var = self.variable(cap.var_nid, expr.span);
-                self.acc(cap.ln, var, ACC_READ | ACC_USE);
-                cap.ln
-            }
+          expr_fn(_, _, blk, _) | expr_fn_block(_, blk, _) => {
+            debug!("%s is an expr_fn or expr_fn_block",
+                   expr_to_str(expr, self.tcx.sess.intr()));
+
+              /*
+              The next-node for a break is the successor of the entire
+              loop. The next-node for a continue is the top of this loop.
+              */
+              self.with_loop_nodes(blk.node.id, succ,
+                  self.live_node(expr.id, expr.span), || {
+
+                 // the construction of a closure itself is not important,
+                 // but we have to consider the closed over variables.
+                 let caps = (*self.ir).captures(expr);
+                 do (*caps).foldr(succ) |cap, succ| {
+                     self.init_from_succ(cap.ln, succ);
+                     let var = self.variable(cap.var_nid, expr.span);
+                     self.acc(cap.ln, var, ACC_READ | ACC_USE);
+                     cap.ln
+                 }
+              })
           }
 
           expr_if(cond, then, els) => {
@@ -1021,6 +1087,8 @@ impl Liveness {
             self.propagate_through_loop(expr, Some(cond), blk, succ)
           }
 
+          // Note that labels have been resolved, so we don't need to look
+          // at the label ident
           expr_loop(blk, _) => {
             self.propagate_through_loop(expr, None, blk, succ)
           }
@@ -1062,29 +1130,31 @@ impl Liveness {
           }
 
           expr_break(opt_label) => {
-            if !self.break_ln.is_valid() {
-                self.tcx.sess.span_bug(
-                    expr.span, ~"break with invalid break_ln");
-            }
+              // Find which label this break jumps to
+              let sc = self.find_loop_scope(opt_label, expr.id, expr.span);
 
-            if opt_label.is_some() {
-                self.tcx.sess.span_unimpl(expr.span, ~"labeled break");
-            }
+              // Now that we know the label we're going to,
+              // look it up in the break loop nodes table
 
-            self.break_ln
+              match self.break_ln.find(sc) {
+                  Some(b) => b,
+                  None => self.tcx.sess.span_bug(expr.span,
+                                ~"Break to unknown label")
+              }
           }
 
           expr_again(opt_label) => {
-            if !self.cont_ln.is_valid() {
-                self.tcx.sess.span_bug(
-                    expr.span, ~"cont with invalid cont_ln");
-            }
+              // Find which label this expr continues to to
+              let sc = self.find_loop_scope(opt_label, expr.id, expr.span);
 
-            if opt_label.is_some() {
-                self.tcx.sess.span_unimpl(expr.span, ~"labeled again");
-            }
+              // Now that we know the label we're going to,
+              // look it up in the continue loop nodes table
 
-            self.cont_ln
+              match self.cont_ln.find(sc) {
+                  Some(b) => b,
+                  None => self.tcx.sess.span_bug(expr.span,
+                                ~"Loop to unknown label")
+              }
           }
 
           expr_move(l, r) | expr_assign(l, r) => {
@@ -1314,6 +1384,7 @@ impl Liveness {
 
         */
 
+
         // first iteration:
         let mut first_merge = true;
         let ln = self.live_node(expr.id, expr.span);
@@ -1325,8 +1396,11 @@ impl Liveness {
             self.merge_from_succ(ln, succ, first_merge);
             first_merge = false;
         }
+        debug!("propagate_through_loop: using id for loop body %d %s",
+               expr.id, block_to_str(body, self.tcx.sess.intr()));
+
         let cond_ln = self.propagate_through_opt_expr(cond, ln);
-        let body_ln = self.with_loop_nodes(succ, ln, || {
+        let body_ln = self.with_loop_nodes(expr.id, succ, ln, || {
             self.propagate_through_block(body, cond_ln)
         });
 
@@ -1334,7 +1408,8 @@ impl Liveness {
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
             assert cond_ln == self.propagate_through_opt_expr(cond, ln);
-            assert body_ln == self.with_loop_nodes(succ, ln, || {
+            assert body_ln == self.with_loop_nodes(expr.id, succ, ln,
+            || {
                 self.propagate_through_block(body, cond_ln)
             });
         }
@@ -1342,15 +1417,16 @@ impl Liveness {
         cond_ln
     }
 
-    fn with_loop_nodes<R>(break_ln: LiveNode,
+    fn with_loop_nodes<R>(loop_node_id: node_id,
+                          break_ln: LiveNode,
                           cont_ln: LiveNode,
                           f: fn() -> R) -> R {
-        let bl = self.break_ln, cl = self.cont_ln;
-        self.break_ln = break_ln;
-        self.cont_ln = cont_ln;
-        let r <- f();
-        self.break_ln = bl;
-        self.cont_ln = cl;
+      debug!("with_loop_nodes: %d %u", loop_node_id, *break_ln);
+        self.loop_scope.push(loop_node_id);
+        self.break_ln.insert(loop_node_id, break_ln);
+        self.cont_ln.insert(loop_node_id, cont_ln);
+        let r = f();
+        self.loop_scope.pop();
         move r
     }
 }
@@ -1526,6 +1602,10 @@ impl @Liveness {
         }
     }
 
+    /*
+    Checks whether <var> is live on entry to any of the successors of <ln>.
+    If it is, report an error.
+    */
     fn check_move_from_var(span: span, ln: LiveNode, var: Variable) {
         debug!("check_move_from_var(%s, %s)",
                ln.to_str(), var.to_str());
