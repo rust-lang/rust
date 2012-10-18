@@ -136,13 +136,15 @@ fn readclose(fd: libc::c_int) -> ~str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = ~"";
-    while !reader.eof() {
-        let bytes = reader.read_bytes(4096u);
-        buf += str::from_bytes(bytes);
-    }
+    let buf = io::with_bytes_writer(|writer| {
+        let mut bytes = [mut 0, ..4096];
+        while !reader.eof() {
+            let nread = reader.read(bytes, bytes.len());
+            writer.write(bytes.view(0, nread));
+        }
+    });
     os::fclose(file);
-    return buf;
+    str::from_bytes(buf)
 }
 
 fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
