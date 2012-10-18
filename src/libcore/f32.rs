@@ -4,7 +4,7 @@
 
 //! Operations and constants for `f32`
 
-pub use cmath::c_float::*;
+pub use cmath::c_float_utils::*;
 pub use cmath::c_float_targ_consts::*;
 
 // These are not defined inside consts:: for consistency with

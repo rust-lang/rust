@@ -87,7 +87,7 @@ pub use funcs::extra::*;
 
 pub use size_t;
 pub use c_float, c_double, c_void, FILE, fpos_t;
-pub use DIR, dirent;
+pub use DIR, dirent_t;
 pub use c_char, c_schar, c_uchar;
 pub use c_short, c_ushort, c_int, c_uint, c_long, c_ulong;
 pub use size_t, ptrdiff_t, clock_t, time_t;
@@ -147,7 +147,7 @@ mod types {
         }
         pub mod posix88 {
             pub enum DIR {}
-            pub enum dirent {}
+            pub enum dirent_t {}
         }
         pub mod posix01 {}
         pub mod posix08 {}
@@ -1019,7 +1019,7 @@ pub mod funcs {
         pub extern mod dirent {
             fn opendir(dirname: *c_char) -> *DIR;
             fn closedir(dirp: *DIR) -> c_int;
-            fn readdir(dirp: *DIR) -> *dirent;
+            fn readdir(dirp: *DIR) -> *dirent_t;
             fn rewinddir(dirp: *DIR);
             fn seekdir(dirp: *DIR, loc: c_long);
             fn telldir(dirp: *DIR) -> c_long;

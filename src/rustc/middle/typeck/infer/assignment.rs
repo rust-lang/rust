@@ -48,7 +48,7 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
-use to_str::to_str;
+use to_str::ToStr;
 use combine::combine_fields;
 
 fn to_ares(+c: cres<ty::t>) -> ares {
@@ -190,7 +190,7 @@ priv impl Assign {
                   a: ty::t,
                   nr_b: ty::t,
                   m: ast::mutability,
-                  r_b: ty::region) -> ares {
+                  r_b: ty::Region) -> ares {
 
         debug!("try_assign(a=%s, nr_b=%s, m=%?, r_b=%s)",
                a.to_str(self.infcx),

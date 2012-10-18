@@ -1,9 +1,9 @@
 // Earley-like parser for macros.
 use parse::token;
-use parse::token::{token, EOF, to_str, nonterminal};
+use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::lexer::*; //resolve bug?
 //import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
-use parse::parser::{parser,SOURCE_FILE};
+use parse::parser::{Parser, SOURCE_FILE};
 //import parse::common::parser_common;
 use parse::common::*; //resolve bug?
 use parse::parse_sess;
@@ -97,7 +97,7 @@ fn is_some(&&mpu: matcher_pos_up) -> bool {
 
 type matcher_pos = ~{
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
-    sep: Option<token>,
+    sep: Option<Token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
     matches: ~[DVec<@named_match>],
@@ -122,7 +122,7 @@ fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn initial_matcher_pos(ms: ~[matcher], sep: Option<token>, lo: uint)
+fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: uint)
     -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
@@ -354,7 +354,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
+                let rust_parser = Parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
                 let ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
@@ -381,7 +381,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     }
 }
 
-fn parse_nt(p: parser, name: ~str) -> nonterminal {
+fn parse_nt(p: Parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),

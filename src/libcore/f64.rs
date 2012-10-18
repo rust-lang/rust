@@ -4,7 +4,7 @@
 
 //! Operations and constants for `f64`
 
-pub use cmath::c_double::*;
+pub use cmath::c_double_utils::*;
 pub use cmath::c_double_targ_consts::*;
 
 // FIXME (#1433): obtain these in a different way
@@ -59,7 +59,7 @@ pub pure fn ge(x: f64, y: f64) -> bool { return x >= y; }
 pub pure fn gt(x: f64, y: f64) -> bool { return x > y; }
 
 pub pure fn sqrt(x: f64) -> f64 {
-    cmath::c_double::sqrt(x as libc::c_double) as f64
+    cmath::c_double_utils::sqrt(x as libc::c_double) as f64
 }
 
 /// Returns true if `x` is a positive number, including +0.0f640 and +Infinity

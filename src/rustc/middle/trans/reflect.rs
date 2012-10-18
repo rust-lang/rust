@@ -1,5 +1,4 @@
 use std::map::HashMap;
-use driver::session::session;
 use lib::llvm::{TypeRef, ValueRef};
 use syntax::ast;
 use back::abi;

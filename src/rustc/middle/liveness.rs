@@ -99,7 +99,6 @@ use syntax::print::pprust::{expr_to_str};
 use visit::vt;
 use syntax::codemap::span;
 use syntax::ast::*;
-use driver::session::session;
 use io::WriterUtil;
 use capture::{cap_move, cap_drop, cap_copy, cap_ref};
 

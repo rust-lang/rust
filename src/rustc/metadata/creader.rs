@@ -7,7 +7,7 @@ use syntax::visit;
 use syntax::codemap::span;
 use std::map::HashMap;
 use syntax::print::pprust;
-use filesearch::filesearch;
+use filesearch::FileSearch;
 use common::*;
 use dvec::DVec;
 use syntax::parse::token::ident_interner;
@@ -17,7 +17,7 @@ export read_crates;
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 fn read_crates(diag: span_handler, crate: ast::crate,
-               cstore: cstore::cstore, filesearch: filesearch,
+               cstore: cstore::CStore, filesearch: FileSearch,
                os: loader::os, static: bool, intr: @ident_interner) {
     let e = @{diag: diag,
               filesearch: filesearch,
@@ -88,8 +88,8 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
 }
 
 type env = @{diag: span_handler,
-             filesearch: filesearch,
-             cstore: cstore::cstore,
+             filesearch: FileSearch,
+             cstore: cstore::CStore,
              os: loader::os,
              static: bool,
              crate_cache: DVec<cache_entry>,

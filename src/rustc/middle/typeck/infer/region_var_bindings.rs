@@ -312,10 +312,10 @@ use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
-use ty::{region, RegionVid};
 use region::is_subregion_of;
+use ty::{Region, RegionVid};
 use syntax::codemap;
-use to_str::to_str;
+use to_str::ToStr;
 use util::ppaux::note_and_explain_region;
 
 export RegionVarBindings;
@@ -325,8 +325,8 @@ export glb_regions;
 
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
-    ConstrainRegSubVar(region, RegionVid),
-    ConstrainVarSubReg(RegionVid, region)
+    ConstrainRegSubVar(Region, RegionVid),
+    ConstrainVarSubReg(RegionVid, Region)
 }
 
 impl Constraint : cmp::Eq {
@@ -365,8 +365,8 @@ impl Constraint : to_bytes::IterBytes {
 }
 
 struct TwoRegions {
-    a: region,
-    b: region,
+    a: Region,
+    b: Region,
 }
 
 impl TwoRegions : cmp::Eq {
@@ -394,7 +394,7 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
-    values: Cell<~[ty::region]>,
+    values: Cell<~[ty::Region]>,
     constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
@@ -501,7 +501,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn make_subregion(span: span, sub: region, sup: region) -> cres<()> {
+    fn make_subregion(span: span, sub: Region, sup: Region) -> cres<()> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
@@ -529,7 +529,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn lub_regions(span: span, a: region, b: region) -> cres<region> {
+    fn lub_regions(span: span, a: Region, b: Region) -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
@@ -551,7 +551,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn glb_regions(span: span, a: region, b: region) -> cres<region> {
+    fn glb_regions(span: span, a: Region, b: Region) -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
@@ -574,7 +574,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn resolve_var(rid: RegionVid) -> ty::region {
+    fn resolve_var(rid: RegionVid) -> ty::Region {
         debug!("RegionVarBindings: resolve_var(%?=%u)", rid, *rid);
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
@@ -586,9 +586,9 @@ impl RegionVarBindings {
         self.values.with_ref(|values| values[*rid])
     }
 
-    fn combine_vars(combines: CombineMap, a: region, b: region, span: span,
-                    relate: fn(old_r: region, new_r: region) -> cres<()>)
-        -> cres<region> {
+    fn combine_vars(combines: CombineMap, a: Region, b: Region, span: span,
+                    relate: fn(old_r: Region, new_r: Region) -> cres<()>)
+        -> cres<Region> {
 
         let vars = TwoRegions { a: a, b: b };
         match combines.find(vars) {
@@ -623,11 +623,11 @@ impl RegionVarBindings {
 }
 
 priv impl RegionVarBindings {
-    fn is_subregion_of(sub: region, sup: region) -> bool {
+    fn is_subregion_of(sub: Region, sup: Region) -> bool {
         is_subregion_of(self.tcx.region_map, sub, sup)
     }
 
-    fn lub_concrete_regions(+a: region, +b: region) -> region {
+    fn lub_concrete_regions(+a: Region, +b: Region) -> Region {
         match (a, b) {
           (ty::re_static, _) | (_, ty::re_static) => {
             ty::re_static // nothing lives longer than static
@@ -682,7 +682,7 @@ priv impl RegionVarBindings {
         }
     }
 
-    fn glb_concrete_regions(+a: region, +b: region) -> cres<region> {
+    fn glb_concrete_regions(+a: Region, +b: Region) -> cres<Region> {
         match (a, b) {
           (ty::re_static, r) | (r, ty::re_static) => {
             // static lives longer than everything else
@@ -771,7 +771,7 @@ impl Classification : cmp::Eq {
     pure fn ne(other: &Classification) -> bool { !self.eq(other) }
 }
 
-enum GraphNodeValue { NoValue, Value(region), ErrorValue }
+enum GraphNodeValue { NoValue, Value(Region), ErrorValue }
 
 struct GraphNode {
     span: span,
@@ -792,7 +792,7 @@ struct Graph {
 }
 
 struct SpannedRegion {
-    region: region,
+    region: Region,
     span: span,
 }
 
@@ -803,7 +803,7 @@ fn TwoRegionsMap() -> TwoRegionsMap {
 }
 
 impl RegionVarBindings {
-    fn infer_variable_values() -> ~[region] {
+    fn infer_variable_values() -> ~[Region] {
         let graph = self.construct_graph();
         self.expansion(&graph);
         self.contraction(&graph);
@@ -895,7 +895,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn expand_node(a_region: region,
+    fn expand_node(a_region: Region,
                    b_vid: RegionVid,
                    b_node: &GraphNode) -> bool {
         debug!("expand_node(%?, %? == %?)",
@@ -955,7 +955,7 @@ impl RegionVarBindings {
 
     fn contract_node(a_vid: RegionVid,
                      a_node: &GraphNode,
-                     b_region: region) -> bool {
+                     b_region: Region) -> bool {
         debug!("contract_node(%? == %?/%?, %?)",
                a_vid, a_node.value, a_node.classification, b_region);
 
@@ -985,8 +985,8 @@ impl RegionVarBindings {
         fn check_node(self: &RegionVarBindings,
                       a_vid: RegionVid,
                       a_node: &GraphNode,
-                      a_region: region,
-                      b_region: region) -> bool {
+                      a_region: Region,
+                      b_region: Region) -> bool {
             if !self.is_subregion_of(a_region, b_region) {
                 debug!("Setting %? to ErrorValue: %? not subregion of %?",
                        a_vid, a_region, b_region);
@@ -998,8 +998,8 @@ impl RegionVarBindings {
         fn adjust_node(self: &RegionVarBindings,
                        a_vid: RegionVid,
                        a_node: &GraphNode,
-                       a_region: region,
-                       b_region: region) -> bool {
+                       a_region: Region,
+                       b_region: Region) -> bool {
             match self.glb_concrete_regions(a_region, b_region) {
               Ok(glb) => {
                 if glb == a_region {
@@ -1040,7 +1040,7 @@ impl RegionVarBindings {
         debug!("---- %s Complete after %u iteration(s)", tag, iteration);
     }
 
-    fn extract_regions_and_report_errors(graph: &Graph) -> ~[region] {
+    fn extract_regions_and_report_errors(graph: &Graph) -> ~[Region] {
         let dup_map = TwoRegionsMap();
         graph.nodes.mapi(|idx, node| {
             match node.value {
@@ -1073,8 +1073,8 @@ impl RegionVarBindings {
 
     // Used to suppress reporting the same basic error over and over
     fn is_reported(dup_map: TwoRegionsMap,
-                   r_a: region,
-                   r_b: region) -> bool {
+                   r_a: Region,
+                   r_b: Region) -> bool {
         let key = TwoRegions { a: r_a, b: r_b };
         !dup_map.insert(key, ())
     }

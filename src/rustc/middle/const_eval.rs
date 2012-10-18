@@ -1,4 +1,4 @@
-use syntax::{ast,ast_util,visit};
+use syntax::{ast,ast_map,ast_util,visit};
 use ast::*;
 
 //
@@ -135,28 +135,7 @@ fn classify(e: @expr,
               // FIXME: (#3728) we can probably do something CCI-ish
               // surrounding nonlocal constants. But we don't yet.
               ast::expr_path(_) => {
-                match def_map.find(e.id) {
-                  Some(ast::def_const(def_id)) => {
-                    if ast_util::is_local(def_id) {
-                        let ty = ty::expr_ty(tcx, e);
-                        if ty::type_is_integral(ty) {
-                            integral_const
-                        } else {
-                            general_const
-                        }
-                    } else {
-                        non_const
-                    }
-                  }
-                  Some(_) => {
-                    non_const
-                  }
-                  None => {
-                    tcx.sess.span_bug(e.span,
-                                      ~"unknown path when \
-                                        classifying constants");
-                  }
-                }
+                lookup_constness(tcx, e)
               }
 
               _ => non_const
@@ -164,6 +143,40 @@ fn classify(e: @expr,
         tcx.ccache.insert(did, cn);
         cn
       }
+    }
+}
+
+fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
+    match tcx.def_map.find(e.id) {
+        Some(ast::def_const(def_id)) => {
+            if ast_util::is_local(def_id) {
+                match tcx.items.find(def_id.node) {
+                    None => None,
+                    Some(ast_map::node_item(it, _)) => match it.node {
+                        item_const(_, const_expr) => Some(const_expr),
+                        _ => None
+                    },
+                    Some(_) => None
+                }
+            }
+            else { None }
+        }
+        Some(_) => None,
+        None => None
+    }
+}
+
+fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
+    match lookup_const(tcx, e) {
+        Some(rhs) => {
+            let ty = ty::expr_ty(tcx, rhs);
+            if ty::type_is_integral(ty) {
+                integral_const
+            } else {
+                general_const
+            }
+        }
+        None => non_const
     }
 }
 
@@ -204,58 +217,67 @@ impl const_val : cmp::Eq {
     pure fn ne(other: &const_val) -> bool { !self.eq(other) }
 }
 
-// FIXME: issue #1417
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
+    match eval_const_expr_partial(tcx, e) {
+        Ok(r) => r,
+        Err(s) => fail s
+    }
+}
+
+fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
+    -> Result<const_val, ~str> {
     use middle::ty;
-    fn fromb(b: bool) -> const_val { const_int(b as i64) }
+    fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
       expr_unary(neg, inner) => {
-        match eval_const_expr(tcx, inner) {
-          const_float(f) => const_float(-f),
-          const_int(i) => const_int(-i),
-          const_uint(i) => const_uint(-i),
-          const_str(_) => fail ~"Negate on string",
-          const_bool(_) => fail ~"Negate on boolean"
+        match eval_const_expr_partial(tcx, inner) {
+          Ok(const_float(f)) => Ok(const_float(-f)),
+          Ok(const_int(i)) => Ok(const_int(-i)),
+          Ok(const_uint(i)) => Ok(const_uint(-i)),
+          Ok(const_str(_)) => Err(~"Negate on string"),
+          Ok(const_bool(_)) => Err(~"Negate on boolean"),
+          err => err
         }
       }
       expr_unary(not, inner) => {
-        match eval_const_expr(tcx, inner) {
-          const_int(i) => const_int(!i),
-          const_uint(i) => const_uint(!i),
-          const_bool(b) => const_bool(!b),
-          _ => fail ~"Not on float or string"
+        match eval_const_expr_partial(tcx, inner) {
+          Ok(const_int(i)) => Ok(const_int(!i)),
+          Ok(const_uint(i)) => Ok(const_uint(!i)),
+          Ok(const_bool(b)) => Ok(const_bool(!b)),
+          _ => Err(~"Not on float or string")
         }
       }
       expr_binary(op, a, b) => {
-        match (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
-          (const_float(a), const_float(b)) => {
+        match (eval_const_expr_partial(tcx, a),
+               eval_const_expr_partial(tcx, b)) {
+          (Ok(const_float(a)), Ok(const_float(b))) => {
             match op {
-              add => const_float(a + b),
-              subtract => const_float(a - b),
-              mul => const_float(a * b),
-              div => const_float(a / b),
-              rem => const_float(a % b),
+              add => Ok(const_float(a + b)),
+              subtract => Ok(const_float(a - b)),
+              mul => Ok(const_float(a * b)),
+              div => Ok(const_float(a / b)),
+              rem => Ok(const_float(a % b)),
               eq => fromb(a == b),
               lt => fromb(a < b),
               le => fromb(a <= b),
               ne => fromb(a != b),
               ge => fromb(a >= b),
               gt => fromb(a > b),
-              _ => fail ~"Can't do this op on floats"
+              _ => Err(~"Can't do this op on floats")
             }
           }
-          (const_int(a), const_int(b)) => {
+          (Ok(const_int(a)), Ok(const_int(b))) => {
             match op {
-              add => const_int(a + b),
-              subtract => const_int(a - b),
-              mul => const_int(a * b),
-              div => const_int(a / b),
-              rem => const_int(a % b),
-              and | bitand => const_int(a & b),
-              or | bitor => const_int(a | b),
-              bitxor => const_int(a ^ b),
-              shl => const_int(a << b),
-              shr => const_int(a >> b),
+              add => Ok(const_int(a + b)),
+              subtract => Ok(const_int(a - b)),
+              mul => Ok(const_int(a * b)),
+              div => Ok(const_int(a / b)),
+              rem => Ok(const_int(a % b)),
+              and | bitand => Ok(const_int(a & b)),
+              or | bitor => Ok(const_int(a | b)),
+              bitxor => Ok(const_int(a ^ b)),
+              shl => Ok(const_int(a << b)),
+              shr => Ok(const_int(a >> b)),
               eq => fromb(a == b),
               lt => fromb(a < b),
               le => fromb(a <= b),
@@ -264,18 +286,18 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               gt => fromb(a > b)
             }
           }
-          (const_uint(a), const_uint(b)) => {
+          (Ok(const_uint(a)), Ok(const_uint(b))) => {
             match op {
-              add => const_uint(a + b),
-              subtract => const_uint(a - b),
-              mul => const_uint(a * b),
-              div => const_uint(a / b),
-              rem => const_uint(a % b),
-              and | bitand => const_uint(a & b),
-              or | bitor => const_uint(a | b),
-              bitxor => const_uint(a ^ b),
-              shl => const_uint(a << b),
-              shr => const_uint(a >> b),
+              add => Ok(const_uint(a + b)),
+              subtract => Ok(const_uint(a - b)),
+              mul => Ok(const_uint(a * b)),
+              div => Ok(const_uint(a / b)),
+              rem => Ok(const_uint(a % b)),
+              and | bitand => Ok(const_uint(a & b)),
+              or | bitor => Ok(const_uint(a | b)),
+              bitxor => Ok(const_uint(a ^ b)),
+              shl => Ok(const_uint(a << b)),
+              shr => Ok(const_uint(a >> b)),
               eq => fromb(a == b),
               lt => fromb(a < b),
               le => fromb(a <= b),
@@ -285,22 +307,22 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
             }
           }
           // shifts can have any integral type as their rhs
-          (const_int(a), const_uint(b)) => {
+          (Ok(const_int(a)), Ok(const_uint(b))) => {
             match op {
-              shl => const_int(a << b),
-              shr => const_int(a >> b),
-              _ => fail ~"Can't do this op on an int and uint"
+              shl => Ok(const_int(a << b)),
+              shr => Ok(const_int(a >> b)),
+              _ => Err(~"Can't do this op on an int and uint")
             }
           }
-          (const_uint(a), const_int(b)) => {
+          (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
-              shl => const_uint(a << b),
-              shr => const_uint(a >> b),
-              _ => fail ~"Can't do this op on a uint and int"
+              shl => Ok(const_uint(a << b)),
+              shr => Ok(const_uint(a >> b)),
+              _ => Err(~"Can't do this op on a uint and int")
             }
           }
-          (const_bool(a), const_bool(b)) => {
-            const_bool(match op {
+          (Ok(const_bool(a)), Ok(const_bool(b))) => {
+            Ok(const_bool(match op {
               and => a && b,
               or => a || b,
               bitxor => a ^ b,
@@ -308,47 +330,53 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               bitor => a | b,
               eq => a == b,
               ne => a != b,
-              _ => fail ~"Can't do this op on bools"
-             })
+              _ => return Err(~"Can't do this op on bools")
+             }))
           }
-          _ => fail ~"Bad operands for binary"
+          _ => Err(~"Bad operands for binary")
         }
       }
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
-        let base = eval_const_expr(tcx, base);
+        let base = eval_const_expr_partial(tcx, base);
         match ty::get(ety).sty {
           ty::ty_float(_) => {
             match base {
-              const_uint(u) => const_float(u as f64),
-              const_int(i) => const_float(i as f64),
-              const_float(_) => base,
-              _ => fail ~"Can't cast float to str"
+              Ok(const_uint(u)) => Ok(const_float(u as f64)),
+              Ok(const_int(i)) => Ok(const_float(i as f64)),
+              Ok(const_float(_)) => base,
+              _ => Err(~"Can't cast float to str")
             }
           }
           ty::ty_uint(_) => {
             match base {
-              const_uint(_) => base,
-              const_int(i) => const_uint(i as u64),
-              const_float(f) => const_uint(f as u64),
-              _ => fail ~"Can't cast str to uint"
+              Ok(const_uint(_)) => base,
+              Ok(const_int(i)) => Ok(const_uint(i as u64)),
+              Ok(const_float(f)) => Ok(const_uint(f as u64)),
+              _ => Err(~"Can't cast str to uint")
             }
           }
           ty::ty_int(_) | ty::ty_bool => {
             match base {
-              const_uint(u) => const_int(u as i64),
-              const_int(_) => base,
-              const_float(f) => const_int(f as i64),
-              _ => fail ~"Can't cast str to int"
+              Ok(const_uint(u)) => Ok(const_int(u as i64)),
+              Ok(const_int(_)) => base,
+              Ok(const_float(f)) => Ok(const_int(f as i64)),
+              _ => Err(~"Can't cast str to int")
             }
           }
-          _ => fail ~"Can't cast this type"
+          _ => Err(~"Can't cast this type")
         }
       }
-      expr_lit(lit) => lit_to_const(lit),
+      expr_path(_) => {
+          match lookup_const(tcx, e) {
+              Some(actual_e) => eval_const_expr_partial(tcx, actual_e),
+              None => Err(~"Non-constant path in constant expr")
+          }
+      }
+      expr_lit(lit) => Ok(lit_to_const(lit)),
       // If we have a vstore, just keep going; it has to be a string
-      expr_vstore(e, _) => eval_const_expr(tcx, e),
-      _ => fail ~"Unsupported constant expr"
+      expr_vstore(e, _) => eval_const_expr_partial(tcx, e),
+      _ => Err(~"Unsupported constant expr")
     }
 }
 
