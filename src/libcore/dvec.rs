@@ -56,7 +56,7 @@ pub enum DVec<A> {
 }
 
 /// Creates a new, empty dvec
-pub fn DVec<A>() -> DVec<A> {
+pub pure fn DVec<A>() -> DVec<A> {
     DVec_({mut data: ~[]})
 }
 

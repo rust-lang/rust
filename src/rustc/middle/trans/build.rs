@@ -433,8 +433,7 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) -> ValueRef {
 //
 // XXX: Use a small-vector optimization to avoid allocations here.
 fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
-    let mut v: ~[ValueRef] = ~[];
-    for vec::each(ixs) |i| { v.push(C_i32(*i as i32)); }
+    let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
     count_insn(cx, "gepi");
     return InBoundsGEP(cx, base, v);
 }

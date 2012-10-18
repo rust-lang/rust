@@ -2135,7 +2135,7 @@ pub trait StrSlice {
     pure fn trim() -> ~str;
     pure fn trim_left() -> ~str;
     pure fn trim_right() -> ~str;
-    pure fn to_unique() -> ~str;
+    pure fn to_owned() -> ~str;
     pure fn to_managed() -> @str;
     pure fn char_at(i: uint) -> char;
 }
@@ -2258,13 +2258,12 @@ impl &str: StrSlice {
     pure fn trim_right() -> ~str { trim_right(self) }
 
     #[inline]
-    pure fn to_unique() -> ~str { self.slice(0, self.len()) }
+    pure fn to_owned() -> ~str { self.slice(0, self.len()) }
 
     #[inline]
     pure fn to_managed() -> @str {
-        let v = at_vec::from_fn(self.len() + 1, |i| {
-            if i == self.len() { 0 } else { self[i] }
-        });
+        let bytes = as_bytes_slice(self);
+        let v = at_vec::from_fn(bytes.len(), |i| bytes[i]);
         unsafe { ::cast::transmute(v) }
     }
 
