@@ -119,8 +119,8 @@ impl<T: Reader> T : ReaderUtil {
             }
             return (i, 0);
         }
-        let mut bytes: ~[u8] = ~[];
-        let mut chars: ~[char] = ~[];
+        let mut bytes = ~[];
+        let mut chars = ~[];
         // might need more bytes, but reading n will never over-read
         let mut nbread = n;
         while nbread > 0 {

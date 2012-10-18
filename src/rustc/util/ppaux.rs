@@ -282,8 +282,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           _ => { }
         }
         s += ~"(";
-        let mut strs = ~[];
-        for inputs.each |a| { strs.push(fn_input_to_str(cx, *a)); }
+        let strs = inputs.map(|a| fn_input_to_str(cx, *a));
         s += str::connect(strs, ~", ");
         s += ~")";
         if ty::get(output).sty != ty_nil {
@@ -338,13 +337,11 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
       ty_rec(elems) => {
-        let mut strs: ~[~str] = ~[];
-        for elems.each |fld| { strs.push(field_to_str(cx, *fld)); }
+        let strs = elems.map(|fld| field_to_str(cx, *fld));
         ~"{" + str::connect(strs, ~",") + ~"}"
       }
       ty_tup(elems) => {
-        let mut strs = ~[];
-        for elems.each |elem| { strs.push(ty_to_str(cx, *elem)); }
+        let strs = elems.map(|elem| ty_to_str(cx, *elem));
         ~"(" + str::connect(strs, ~",") + ~")"
       }
       ty_fn(ref f) => {
