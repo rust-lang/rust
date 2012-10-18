@@ -2135,7 +2135,7 @@ pub trait StrSlice {
     pure fn trim() -> ~str;
     pure fn trim_left() -> ~str;
     pure fn trim_right() -> ~str;
-    pure fn to_unique() -> ~str;
+    pure fn to_owned() -> ~str;
     pure fn to_managed() -> @str;
     pure fn char_at(i: uint) -> char;
 }
@@ -2258,7 +2258,7 @@ impl &str: StrSlice {
     pure fn trim_right() -> ~str { trim_right(self) }
 
     #[inline]
-    pure fn to_unique() -> ~str { self.slice(0, self.len()) }
+    pure fn to_owned() -> ~str { self.slice(0, self.len()) }
 
     #[inline]
     pure fn to_managed() -> @str {
