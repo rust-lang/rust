@@ -598,13 +598,12 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
                                 tcx, cdata);
         let name = item_name(intr, item);
-        let mut arg_tys: ~[ty::t] = ~[];
-        match ty::get(ctor_ty).sty {
-          ty::ty_fn(f) => {
-            for f.sig.inputs.each |a| { arg_tys.push(a.ty); }
-          }
-          _ => { /* Nullary enum variant. */ }
-        }
+        let arg_tys = match ty::get(ctor_ty).sty {
+          ty::ty_fn(f) => f.sig.inputs.map(|a| a.ty),
+
+          // Nullary enum variant.
+          _ => ~[],
+        };
         match variant_disr_val(item) {
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }

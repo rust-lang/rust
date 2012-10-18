@@ -34,9 +34,7 @@ type flag = HashMap<~str, ()>;
 fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
 fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
-    let mut es = ~[];
-    for fields.each |f| { es.push(f.node.expr); }
-    return es;
+    fields.map(|f| f.node.expr)
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions

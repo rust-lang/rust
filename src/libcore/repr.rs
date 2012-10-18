@@ -559,7 +559,7 @@ impl ReprPrinter {
         unsafe {
             self.align(sys::min_align_of::<T>());
             let value_addr: &T = transmute(copy self.ptr);
-            (*value_addr).write_repr(self.writer);
+            value_addr.write_repr(self.writer);
             self.bump(sys::size_of::<T>());
             true
         }
