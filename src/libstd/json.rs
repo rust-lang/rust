@@ -897,7 +897,7 @@ pub impl Deserializer: serialization::Deserializer {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&name.to_unique()) {
+                match obj.find_ref(&name.to_owned()) {
                     None => fail fmt!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);

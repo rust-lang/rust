@@ -225,7 +225,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 
 pub pure fn unwrap_expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
-    if opt.is_none() { fail reason.to_unique(); }
+    if opt.is_none() { fail reason.to_owned(); }
     unwrap(move opt)
 }
 
