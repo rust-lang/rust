@@ -353,7 +353,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
         match p.node {
             ast::pat_enum(_, subpats) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
-                    Some(option::get_default(&subpats,
+                    Some(option::get_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
                 } else {

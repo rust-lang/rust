@@ -52,7 +52,7 @@ fn fold_crate(
     {
         topmod: doc::ModDoc_({
             item: {
-                name: option::get_default(&attrs.name, doc.topmod.name()),
+                name: option::get_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
             .. *doc.topmod
@@ -151,7 +151,7 @@ fn fold_enum(
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant = option::get(
-                        &vec::find(enum_definition.variants, |v| {
+                        vec::find(enum_definition.variants, |v| {
                             to_str(v.node.name) == variant.name
                         }));
 

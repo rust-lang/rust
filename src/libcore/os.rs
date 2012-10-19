@@ -473,7 +473,7 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(&getenv_nonempty("TMPDIR"),
+        option::get_default(getenv_nonempty("TMPDIR"),
                             Path("/tmp"))
     }
 

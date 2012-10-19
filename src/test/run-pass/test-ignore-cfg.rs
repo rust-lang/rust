@@ -20,10 +20,10 @@ fn checktests() {
     let tests = __test::tests();
 
     let shouldignore = option::get(
-        &vec::find(tests, |t| t.name == ~"shouldignore" ));
+        vec::find(tests, |t| t.name == ~"shouldignore" ));
     assert shouldignore.ignore == true;
 
     let shouldnotignore = option::get(
-        &vec::find(tests, |t| t.name == ~"shouldnotignore" ));
+        vec::find(tests, |t| t.name == ~"shouldnotignore" ));
     assert shouldnotignore.ignore == false;
 }

@@ -113,7 +113,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
 
     ccx.stats.n_monos += 1;
 
-    let depth = option::get_default(&ccx.monomorphizing.find(fn_id), 0u);
+    let depth = option::get_default(ccx.monomorphizing.find(fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be
     // causing an infinite expansion.
@@ -158,7 +158,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       }
       ast_map::node_variant(v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
-        let this_tv = option::get(&vec::find(*tvs, |tv| {
+        let this_tv = option::get(vec::find(*tvs, |tv| {
             tv.id.node == fn_id.node}));
         let d = mk_lldecl();
         set_inline_hint(d);
