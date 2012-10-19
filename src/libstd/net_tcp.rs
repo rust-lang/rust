@@ -746,6 +746,22 @@ impl TcpSocket {
         -> future::Future<result::Result<(), TcpErrData>> {
         write_future(&self, raw_write_data)
     }
+    pub fn getpeername() -> ip::IpAddr {
+        unsafe {
+            let addr = uv::ll::ip4_addr("", 0);
+            uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
+                                    ptr::addr_of(&addr));
+            ip::Ipv4(move addr)
+        }
+    }
+    pub fn getpeername6() -> ip::IpAddr {
+        unsafe {
+            let addr = uv::ll::ip6_addr("", 0);
+            uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
+                                     ptr::addr_of(&addr));
+            ip::Ipv6(move addr)
+        }
+    }
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
