@@ -72,6 +72,7 @@ Kevin Cantu <me@kevincantu.org>
 Lennart Kudling
 Lindsey Kuper <lindsey@rockstargirl.org>
 Luca Bruno <lucab@debian.org>
+Luqman Aden <laden@csclub.uwaterloo.ca>
 Magnus Auvinen <magnus.auvinen@gmail.com>
 Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
