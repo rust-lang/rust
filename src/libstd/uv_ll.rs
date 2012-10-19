@@ -590,6 +590,8 @@ extern mod rustrt {
         -> libc::c_int;
     fn rust_uv_ip6_name(src: *sockaddr_in6, dst: *u8, size: libc::size_t)
         -> libc::c_int;
+    fn rust_uv_ip4_port(src: *sockaddr_in) -> libc::c_uint;
+    fn rust_uv_ip6_port(src: *sockaddr_in6) -> libc::c_uint;
     // FIXME ref #2064
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
@@ -606,6 +608,10 @@ extern mod rustrt {
     // FIXME ref #2064
     fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
                         ++addr: *sockaddr_in6) -> libc::c_int;
+    fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
+                               ++name: *sockaddr_in) -> libc::c_int;
+    fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
+                                ++name: *sockaddr_in6) ->libc::c_int;
     fn rust_uv_listen(stream: *libc::c_void, backlog: libc::c_int,
                       cb: *u8) -> libc::c_int;
     fn rust_uv_accept(server: *libc::c_void, client: *libc::c_void)
@@ -736,6 +742,16 @@ pub unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
                                  addr_ptr);
 }
 
+pub unsafe fn tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
+                              name: *sockaddr_in) -> libc::c_int {
+    return rustrt::rust_uv_tcp_getpeername(tcp_handle_ptr, name);
+}
+
+pub unsafe fn tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
+                               name: *sockaddr_in6) ->libc::c_int {
+    return rustrt::rust_uv_tcp_getpeername6(tcp_handle_ptr, name);
+}
+
 pub unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
     return rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
@@ -856,6 +872,12 @@ pub unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
           _ => ~""
         }
     }
+}
+pub unsafe fn ip4_port(src: &sockaddr_in) -> uint {
+    rustrt::rust_uv_ip4_port(to_unsafe_ptr(src)) as uint
+}
+pub unsafe fn ip6_port(src: &sockaddr_in6) -> uint {
+    rustrt::rust_uv_ip6_port(to_unsafe_ptr(src)) as uint
 }
 
 pub unsafe fn timer_init(loop_ptr: *libc::c_void,

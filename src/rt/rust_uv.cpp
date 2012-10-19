@@ -270,6 +270,20 @@ rust_uv_tcp_bind6
 }
 
 extern "C" int
+rust_uv_tcp_getpeername
+(uv_tcp_t* handle, sockaddr_in* name) {
+    int namelen = sizeof(sockaddr_in);
+    return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
+}
+
+extern "C" int
+rust_uv_tcp_getpeername6
+(uv_tcp_t* handle, sockaddr_in6* name) {
+    int namelen = sizeof(sockaddr_in6);
+    return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
+}
+
+extern "C" int
 rust_uv_listen(uv_stream_t* stream, int backlog,
         uv_connection_cb cb) {
     return uv_listen(stream, backlog, cb);
@@ -479,6 +493,14 @@ extern "C" int
 rust_uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
     int result = uv_ip6_name(src, dst, size);
     return result;
+}
+extern "C" unsigned int
+rust_uv_ip4_port(struct sockaddr_in* src) {
+    return ntohs(src->sin_port);
+}
+extern "C" unsigned int
+rust_uv_ip6_port(struct sockaddr_in6* src) {
+    return ntohs(src->sin6_port);
 }
 
 extern "C" uintptr_t*
