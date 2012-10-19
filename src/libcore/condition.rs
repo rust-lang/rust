@@ -51,6 +51,11 @@ struct HandleBlock<T, U:Copy> {
     }
 }
 
+struct Trap<T, U:Copy> {
+    cond: &Condition<T,U>,
+    handler: @Handler<T, U>
+}
+
 impl<T, U: Copy> ProtectBlock<T,U> {
     fn handle(&self, h: &self/fn(&T) ->U) -> HandleBlock/&self<T,U> {
         unsafe {
@@ -65,6 +70,20 @@ impl<T, U: Copy> ProtectBlock<T,U> {
 }
 
 
+
+impl<T, U: Copy> Trap<T,U> {
+    fn in<V: Copy>(&self, inner: &self/fn() -> V) -> V {
+        unsafe {
+            let prev = task::local_data::local_data_get(self.cond.key);
+            let _g = Guard { cond: self.cond,
+                             prev: prev };
+            debug!("Trap: pushing handler to TLS");
+            task::local_data::local_data_set(self.cond.key, self.handler);
+            inner()
+        }
+    }
+}
+
 impl<T, U: Copy>  Condition<T,U> {
 
     fn guard(&self, h: &self/fn(&T) ->U) -> Guard/&self<T,U> {
@@ -76,6 +95,14 @@ impl<T, U: Copy>  Condition<T,U> {
             let h = @Handler{handle: *p};
             task::local_data::local_data_set(self.key, h);
             move g
+        }
+    }
+
+    fn trap(&self, h: &self/fn(&T) ->U) -> Trap/&self<T,U> {
+        unsafe {
+            let p : *RustClosure = ::cast::transmute(&h);
+            let h = @Handler{handle: *p};
+            move Trap { cond: self, handler: h }
         }
     }
 
@@ -226,6 +253,48 @@ fn nested_guard_test_outer() {
     debug!("nested_guard_test_outer: in protected block");
     nested_guard_test_inner();
     trouble(1);
+
+    assert outer_trapped;
+}
+
+
+
+#[cfg(test)]
+fn nested_trap_test_inner() {
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
+
+    let mut inner_trapped = false;
+
+    do sadness_condition.trap(|_j| {
+        debug!("nested_trap_test_inner: in handler");
+        inner_trapped = true;
+        0
+    }).in {
+        debug!("nested_trap_test_inner: in protected block");
+        trouble(1);
+    }
+
+    assert inner_trapped;
+}
+
+#[test]
+fn nested_trap_test_outer() {
+
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
+
+    let mut outer_trapped = false;
+
+    do sadness_condition.trap(|_j| {
+        debug!("nested_trap_test_outer: in handler");
+        outer_trapped = true; 0
+    }).in {
+        debug!("nested_guard_test_outer: in protected block");
+        nested_trap_test_inner();
+        trouble(1);
+    }
+
 
     assert outer_trapped;
 }
