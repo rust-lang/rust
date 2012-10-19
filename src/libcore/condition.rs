@@ -1,23 +1,23 @@
 // helper for transmutation, shown below.
 type RustClosure = (int,int);
 
-struct Condition {
-    key: task::local_data::LocalDataKey<Handler>
+struct Condition<T, U:Copy> {
+    key: task::local_data::LocalDataKey<Handler<T,U>>
 }
 
-struct Handler {
+struct Handler<T, U:Copy> {
     handle: RustClosure,
-    prev: Option<@Handler>
+    prev: Option<@Handler<T, U>>
 }
 
 
-struct ProtectBlock {
-    cond: &Condition,
+struct ProtectBlock<T, U:Copy> {
+    cond: &Condition<T, U>,
     inner: RustClosure
 }
 
-struct PopHandler {
-    cond: &Condition,
+struct PopHandler<T, U:Copy> {
+    cond: &Condition<T,U>,
     drop {
         unsafe {
             debug!("PopHandler: popping handler from TLS");
@@ -35,9 +35,9 @@ struct PopHandler {
     }
 }
 
-struct HandleBlock {
-    pb: &ProtectBlock,
-    handler: @Handler,
+struct HandleBlock<T, U:Copy> {
+    pb: &ProtectBlock<T,U>,
+    handler: @Handler<T,U>,
     drop {
         unsafe {
             debug!("HandleBlock: pushing handler to TLS");
@@ -54,8 +54,8 @@ struct HandleBlock {
     }
 }
 
-impl ProtectBlock {
-    fn handle<T, U: Copy>(&self, h: &self/fn(&T) ->U) -> HandleBlock/&self {
+impl<T, U: Copy> ProtectBlock<T,U> {
+    fn handle(&self, h: &self/fn(&T) ->U) -> HandleBlock/&self<T,U> {
         unsafe {
             debug!("ProtectBlock.handle: setting up handler block");
             let p : *RustClosure = ::cast::transmute(&h);
@@ -67,9 +67,9 @@ impl ProtectBlock {
 }
 
 
-impl Condition {
+impl<T, U: Copy>  Condition<T,U> {
 
-    fn protect(&self, inner: &self/fn()) -> ProtectBlock/&self {
+    fn protect(&self, inner: &self/fn()) -> ProtectBlock/&self<T,U> {
         unsafe {
             // transmutation to avoid copying non-copyable, should
             // be fixable by tracking closure pointees in regionck.
@@ -80,7 +80,7 @@ impl Condition {
         }
     }
 
-    fn raise<T, U: Copy>(t:&T) -> U {
+    fn raise(t:&T) -> U {
         unsafe {
             match task::local_data::local_data_get(self.key) {
                 None => {
@@ -100,15 +100,13 @@ impl Condition {
 
 
 #[cfg(test)]
-fn happiness_key(_x: @Handler) { }
-
-#[cfg(test)]
-fn sadness_key(_x: @Handler) { }
+fn sadness_key(_x: @Handler<int,int>) { }
 
 #[cfg(test)]
 fn trouble(i: int) {
     // Condition should work as a const, just limitations in consts.
-    let sadness_condition : Condition = Condition { key: sadness_key };
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
     debug!("trouble: raising conition");
     let j = sadness_condition.raise(&i);
     debug!("trouble: handler recovered with %d", j);
@@ -117,7 +115,8 @@ fn trouble(i: int) {
 #[test]
 fn test1() {
 
-    let sadness_condition : Condition = Condition { key: sadness_key };
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
 
     let mut i = 10;
 
@@ -138,7 +137,8 @@ fn test1() {
 }
 #[cfg(test)]
 fn nested_test_inner() {
-    let sadness_condition : Condition = Condition { key: sadness_key };
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
 
     let mut inner_trapped = false;
 
@@ -159,7 +159,8 @@ fn nested_test_inner() {
 #[test]
 fn nested_test_outer() {
 
-    let sadness_condition : Condition = Condition { key: sadness_key };
+    let sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
 
     let mut outer_trapped = false;
 
