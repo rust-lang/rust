@@ -481,7 +481,7 @@ pub fn tmpdir() -> Path {
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         option::get_default(
-                    &option::or(getenv_nonempty("TMP"),
+                    option::or(getenv_nonempty("TMP"),
                     option::or(getenv_nonempty("TEMP"),
                     option::or(getenv_nonempty("USERPROFILE"),
                                getenv_nonempty("WINDIR")))),
