@@ -23,6 +23,12 @@ impl ty::Region: ToStr {
     }
 }
 
+impl ty::FnTy: ToStr {
+    fn to_str(cx: infer_ctxt) -> ~str {
+        ty::mk_fn(cx.tcx, self).to_str(cx)
+    }
+}
+
 impl<V:Copy ToStr> bound<V>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {

@@ -735,6 +735,7 @@ pure fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
+#[cfg(stage0)]
 impl &str : Eq {
     #[inline(always)]
     pure fn eq(other: & &str) -> bool {
@@ -742,6 +743,17 @@ impl &str : Eq {
     }
     #[inline(always)]
     pure fn ne(other: & &str) -> bool { !self.eq(other) }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl &str : Eq {
+    #[inline(always)]
+    pure fn eq(other: & &self/str) -> bool {
+        eq_slice(self, (*other))
+    }
+    #[inline(always)]
+    pure fn ne(other: & &self/str) -> bool { !self.eq(other) }
 }
 
 impl ~str : Eq {
@@ -773,6 +785,7 @@ impl ~str : Ord {
     pure fn gt(other: &~str) -> bool { gt(self, (*other)) }
 }
 
+#[cfg(stage0)]
 impl &str : Ord {
     #[inline(always)]
     pure fn lt(other: & &str) -> bool { lt(self, (*other)) }
@@ -782,6 +795,19 @@ impl &str : Ord {
     pure fn ge(other: & &str) -> bool { ge(self, (*other)) }
     #[inline(always)]
     pure fn gt(other: & &str) -> bool { gt(self, (*other)) }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl &str : Ord {
+    #[inline(always)]
+    pure fn lt(other: & &self/str) -> bool { lt(self, (*other)) }
+    #[inline(always)]
+    pure fn le(other: & &self/str) -> bool { le(self, (*other)) }
+    #[inline(always)]
+    pure fn ge(other: & &self/str) -> bool { ge(self, (*other)) }
+    #[inline(always)]
+    pure fn gt(other: & &self/str) -> bool { gt(self, (*other)) }
 }
 
 impl @str : Ord {
@@ -2096,9 +2122,19 @@ impl ~str: Trimmable {
 
 #[cfg(notest)]
 pub mod traits {
+    #[cfg(stage0)]
     impl ~str : Add<&str,~str> {
         #[inline(always)]
         pure fn add(rhs: & &str) -> ~str {
+            append(copy self, (*rhs))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl ~str : Add<&str,~str> {
+        #[inline(always)]
+        pure fn add(rhs: & &self/str) -> ~str {
             append(copy self, (*rhs))
         }
     }
@@ -2558,7 +2594,7 @@ mod tests {
         assert find_str_between(data, ~"ab", 2u, 4u).is_none();
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
-        data += data;
+        data = data + data;
         assert find_str_between(data, ~"", 0u, 43u) == Some(0u);
         assert find_str_between(data, ~"", 6u, 43u) == Some(6u);
 

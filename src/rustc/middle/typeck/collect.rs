@@ -272,46 +272,60 @@ fn ensure_supertraits(ccx: @crate_ctxt,
  *
  * - impl_m: the method in the impl
  * - impl_tps: the type params declared on the impl itself (not the method!)
+ * - impl_body_id: the id of the method body from the impl
  * - trait_m: the method in the trait
  * - trait_substs: the substitutions used on the type of the trait
  * - self_ty: the self type of the impl
  */
-fn compare_impl_method(tcx: ty::ctxt, sp: span,
-                       impl_m: ty::method, impl_tps: uint,
-                       trait_m: ty::method, trait_substs: ty::substs,
-                       self_ty: ty::t) {
+fn compare_impl_method(tcx: ty::ctxt,
+                       impl_tps: uint,
+                       cm: &ConvertedMethod,
+                       trait_m: &ty::method,
+                       trait_substs: &ty::substs,
+                       self_ty: ty::t)
+{
+    debug!("compare_impl_method()");
+    let _indenter = indenter();
+
+    let impl_m = &cm.mty;
 
     if impl_m.fty.meta.purity != trait_m.fty.meta.purity {
         tcx.sess.span_err(
-            sp, fmt!("method `%s`'s purity does \
-                          not match the trait method's \
-                          purity", tcx.sess.str_of(impl_m.ident)));
+            cm.span,
+            fmt!("method `%s`'s purity does \
+                  not match the trait method's \
+                  purity", tcx.sess.str_of(impl_m.ident)));
     }
 
     // is this check right?
     if impl_m.self_ty != trait_m.self_ty {
         tcx.sess.span_err(
-            sp, fmt!("method `%s`'s self type does \
-                          not match the trait method's \
-                          self type", tcx.sess.str_of(impl_m.ident)));
+            cm.span,
+            fmt!("method `%s`'s self type does \
+                  not match the trait method's \
+                  self type", tcx.sess.str_of(impl_m.ident)));
     }
 
     if impl_m.tps.len() != trait_m.tps.len() {
-        tcx.sess.span_err(sp, fmt!("method `%s` \
-           has %u type %s, but its trait declaration has %u type %s",
-           tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
-           pluralize(impl_m.tps.len(), ~"parameter"),
-           trait_m.tps.len(),
-           pluralize(trait_m.tps.len(), ~"parameter")));
+        tcx.sess.span_err(
+            cm.span,
+            fmt!("method `%s` has %u type %s, but its trait \
+                  declaration has %u type %s",
+                 tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
+                 pluralize(impl_m.tps.len(), ~"parameter"),
+                 trait_m.tps.len(),
+                 pluralize(trait_m.tps.len(), ~"parameter")));
         return;
     }
 
     if vec::len(impl_m.fty.sig.inputs) != vec::len(trait_m.fty.sig.inputs) {
-        tcx.sess.span_err(sp,fmt!("method `%s` has %u parameters \
-                                   but the trait has %u",
-                                   tcx.sess.str_of(trait_m.ident),
-                                   vec::len(impl_m.fty.sig.inputs),
-                                   vec::len(trait_m.fty.sig.inputs)));
+        tcx.sess.span_err(
+            cm.span,
+            fmt!("method `%s` has %u parameters \
+                  but the trait has %u",
+                 tcx.sess.str_of(trait_m.ident),
+                 vec::len(impl_m.fty.sig.inputs),
+                 vec::len(trait_m.fty.sig.inputs)));
         return;
     }
 
@@ -322,14 +336,16 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         // Would be nice to use the ty param names in the error message,
         // but we don't have easy access to them here
         if impl_param_bounds.len() != trait_param_bounds.len() {
-           tcx.sess.span_err(sp, fmt!("in method `%s`, \
-             type parameter %u has %u %s, but the same type \
-             parameter in its trait declaration has %u %s",
-             tcx.sess.str_of(trait_m.ident),
-             i, impl_param_bounds.len(),
-             pluralize(impl_param_bounds.len(), ~"bound"),
-             trait_param_bounds.len(),
-             pluralize(trait_param_bounds.len(), ~"bound")));
+           tcx.sess.span_err(
+               cm.span,
+               fmt!("in method `%s`, \
+                     type parameter %u has %u %s, but the same type \
+                     parameter in its trait declaration has %u %s",
+                    tcx.sess.str_of(trait_m.ident),
+                    i, impl_param_bounds.len(),
+                    pluralize(impl_param_bounds.len(), ~"bound"),
+                    trait_param_bounds.len(),
+                    pluralize(trait_param_bounds.len(), ~"bound")));
            return;
         }
         // tjc: I'm mildly worried that there's something I'm
@@ -337,35 +353,51 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         // but I can't figure out what.
     }
 
+    // Replace any references to the self region in the self type with
+    // a free region.  So, for example, if the impl type is
+    // "&self/str", then this would replace the self type with a free
+    // region `self`.
+    //
+    // Note: Ideal would be to use the node-id of the method body here,
+    // not the node id of the method itself.
+    let dummy_self_r = ty::re_free(cm.body_id, ty::br_self);
+    let self_ty = replace_bound_self(tcx, self_ty, dummy_self_r);
+
     // Perform substitutions so that the trait/impl methods are expressed
     // in terms of the same set of type/region parameters:
-    // - replace trait type parameters with those from `trait_substs`
+    // - replace trait type parameters with those from `trait_substs`,
+    //   except with any reference to bound self replaced with `dummy_self_r`
     // - replace method parameters on the trait with fresh, dummy parameters
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
-    let dummy_self_r = ty::re_free(0, ty::br_self);
     let impl_fty = {
         let impl_fty = ty::mk_fn(tcx, impl_m.fty);
+        debug!("impl_fty (pre-subst): %s", ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
+    debug!("impl_fty: %s", ty_to_str(tcx, impl_fty));
     let trait_fty = {
         let dummy_tps = do vec::from_fn((*trait_m.tps).len()) |i| {
             // hack: we don't know the def id of the impl tp, but it
             // is not important for unification
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
         };
+        let trait_tps = trait_substs.tps.map(
+            |t| replace_bound_self(tcx, *t, dummy_self_r));
         let substs = {
             self_r: Some(dummy_self_r),
             self_ty: Some(self_ty),
-            tps: vec::append(trait_substs.tps, dummy_tps)
+            tps: vec::append(trait_tps, dummy_tps)
         };
         let trait_fty = ty::mk_fn(tcx, trait_m.fty);
+        debug!("trait_fty (pre-subst): %s", ty_to_str(tcx, trait_fty));
         ty::subst(tcx, &substs, trait_fty)
     };
+    debug!("trait_fty: %s", ty_to_str(tcx, trait_fty));
     require_same_types(
-        tcx, None, false, sp, impl_fty, trait_fty,
-        || ~"method `" + tcx.sess.str_of(trait_m.ident)
-           + ~"` has an incompatible type");
+        tcx, None, false, cm.span, impl_fty, trait_fty,
+        || fmt!("method `%s` has an incompatible type",
+                tcx.sess.str_of(trait_m.ident)));
     return;
 
     // Replaces bound references to the self region with `with_r`.
@@ -382,7 +414,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
                                rp: Option<ty::region_variance>,
                                selfty: ty::t,
                                a_trait_ty: @ast::trait_ref,
-                               impl_ms: ~[converted_method]) {
+                               impl_ms: ~[ConvertedMethod]) {
 
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
@@ -391,32 +423,32 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     }
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
         match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
-          Some({mty: impl_m, span, _}) => {
-            compare_impl_method(
-                ccx.tcx, span, impl_m, vec::len(tps),
-                *trait_m, tpt.substs, selfty);
-          }
-          None => {
-              // If we couldn't find an implementation for trait_m in
-              // the impl, then see if there was a default
-              // implementation in the trait itself.  If not, raise a
-              // "missing method" error.
+            Some(ref cm) => {
+                compare_impl_method(
+                    ccx.tcx, vec::len(tps), cm, trait_m,
+                    &tpt.substs, selfty);
+            }
+            None => {
+                // If we couldn't find an implementation for trait_m in
+                // the impl, then see if there was a default
+                // implementation in the trait itself.  If not, raise a
+                // "missing method" error.
 
-              let provided_methods = ty::provided_trait_methods(tcx, did);
-              match vec::find(provided_methods, |provided_method|
-                              *provided_method == trait_m.ident) {
-                Some(_) => {
-                    // If there's a provided method with the name we
-                    // want, then we're fine; nothing else to do.
+                let provided_methods = ty::provided_trait_methods(tcx, did);
+                match vec::find(provided_methods, |provided_method|
+                                *provided_method == trait_m.ident) {
+                    Some(_) => {
+                        // If there's a provided method with the name we
+                        // want, then we're fine; nothing else to do.
+                    }
+                    None => {
+                        tcx.sess.span_err(
+                            a_trait_ty.path.span,
+                            fmt!("missing method `%s`",
+                                 tcx.sess.str_of(trait_m.ident)));
+                    }
                 }
-                None => {
-                    tcx.sess.span_err(
-                        a_trait_ty.path.span,
-                        fmt!("missing method `%s`",
-                             tcx.sess.str_of(trait_m.ident)));
-                }
-              }
-          }
+            }
         } // match
     } // |trait_m|
 } // fn
@@ -434,12 +466,17 @@ fn convert_field(ccx: @crate_ctxt,
                            ty: tt});
 }
 
-type converted_method = {mty: ty::method, id: ast::node_id, span: span};
+struct ConvertedMethod {
+    mty: ty::method,
+    id: ast::node_id,
+    span: span,
+    body_id: ast::node_id
+}
 
 fn convert_methods(ccx: @crate_ctxt,
                    ms: ~[@ast::method],
                    rp: Option<ty::region_variance>,
-                   rcvr_bounds: @~[ty::param_bounds]) -> ~[converted_method] {
+                   rcvr_bounds: @~[ty::param_bounds]) -> ~[ConvertedMethod] {
 
     let tcx = ccx.tcx;
     do vec::map(ms) |m| {
@@ -455,7 +492,8 @@ fn convert_methods(ccx: @crate_ctxt,
              region_param: rp,
              ty: fty});
         write_ty_to_tcx(tcx, m.id, fty);
-        {mty: mty, id: m.id, span: m.span}
+        ConvertedMethod {mty: mty, id: m.id,
+                         span: m.span, body_id: m.body.node.id}
     }
 }
 

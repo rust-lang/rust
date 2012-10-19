@@ -133,7 +133,7 @@ mod middle {
             #[legacy_exports]
             mod lub;
             #[legacy_exports]
-            mod region_var_bindings;
+            mod region_inference;
             #[legacy_exports]
             mod resolve;
             #[legacy_exports]
