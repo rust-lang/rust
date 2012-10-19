@@ -134,45 +134,66 @@ to read the whole thing):
 
 http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
-NOTE--for the most part, we do not yet handle these cases correctly!
+Although my explanation will never compete with SPJ's (for one thing,
+his is approximately 100 pages), I will attempt to explain the basic
+problem and also how we solve it.  Note that the paper only discusses
+subtyping, not the computation of LUB/GLB.
 
-## Subtyping and bound regions
+The problem we are addressing is that there is a kind of subtyping
+between functions with bound region parameters.  Consider, for
+example, whether the following relation holds:
 
-### Simple examples
+    fn(&a/int) <: fn(&b/int)? (Yes, a => b)
 
-The situation is well-summarized by these examples (here I am omitting
-the types as they are not interesting, and I am writing binding
-explicitly):
+The answer is that of course it does.  These two types are basically
+the same, except that in one we used the name `a` and one we used
+the name `b`.
 
-    1. fn<a>(&a/T) <: fn<b>(&b/T)?        Yes: a -> b
-    2. fn<a>(&a/T) <: fn(&b/T)?           Yes: a -> b
-    3. fn(&a/T)    <: fn<b>(&b/T)?        No!
-    4. fn(&a/T)    <: fn(&b/T)?           No!
-    5. fn(&a/T)    <: fn(&a)?           Yes!
+In the examples that follow, it becomes very important to know whether
+a lifetime is bound in a function type (that is, is a lifetime
+parameter) or appears free (is defined in some outer scope).
+Therefore, from now on I will write the bindings explicitly, using a
+notation like `fn<a>(&a/int)` to indicate that `a` is a lifetime
+parameter.
 
-In case one, the two function types are equivalent because both
-reference a bound region, just with different names.
+Now let's consider two more function types.  Here, we assume that the
+`self` lifetime is defined somewhere outside and hence is not a
+lifetime parameter bound by the function type (it "appears free"):
 
-In case two, the subtyping relationship is valid because the subtyping
-function accepts a pointer in *any* region, whereas the supertype
-function accepts a pointer *only in the region `b`*.  Therefore, it is
-safe to use the subtype wherever the supertype is expected, as the
-supertype can only be passed pointers in region `b`, and the subtype
-can handle `b` (but also others).
+    fn<a>(&a/int) <: fn(&self/int)? (Yes, a => self)
 
-Case three is the opposite: here the subtype requires the region `a`,
-but the supertype must accept pointers in any region.  That means that
-it is not safe to use the subtype where the supertype is expected: the
-supertype can be passed pointers in any region, but the subtype can
-only handle pointers in the region `a`.
+This subtyping relation does in fact hold.  To see why, you have to
+consider what subtyping means.  One way to look at `T1 <: T2` is to
+say that it means that it is always ok to treat an instance of `T1` as
+if it had the type `T2`.  So, with our functions, it is always ok to
+treat a function that can take pointers with any lifetime as if it
+were a function that can only take a pointer with the specific
+lifetime `&self`.  After all, `&self` is a lifetime, after all, and
+the function can take values of any lifetime.
 
-Case four is fairly simple.  The subtype expects region `a` but the supertype
-expects region `b`.  These two regions are not the same.  Therefore, not
-a subtype.
+You can also look at subtyping as the *is a* relationship.  This amounts
+to the same thing: a function that accepts pointers with any lifetime
+*is a* function that accepts pointers with some specific lifetime.
 
-Case five is similar to four, except that the subtype and supertype
-expect the same region, so in fact they are the same type.  That's
-fine.
+So, what if we reverse the order of the two function types, like this:
+
+    fn(&self/int) <: fn<a>(&a/int)? (No)
+
+Does the subtyping relationship still hold?  The answer of course is
+no.  In this case, the function accepts *only the lifetime `&self`*,
+so it is not reasonable to treat it as if it were a function that
+accepted any lifetime.
+
+What about these two examples:
+
+    fn<a,b>(&a/int, &b/int) <: fn<a>(&a/int, &a/int)? (Yes)
+    fn<a>(&a/int, &a/int) <: fn<a,b>(&a/int, &b/int)? (No)
+
+Here, it is true that functions which take two pointers with any two
+lifetimes can be treated as if they only accepted two pointers with
+the same lifetime, but not the reverse.
+
+## The algorithm
 
 Here is the algorithm we use to perform the subtyping check:
 
@@ -184,15 +205,13 @@ Here is the algorithm we use to perform the subtyping check:
 4. Ensure that no skolemized regions 'leak' into region variables
    visible from "the outside"
 
-I'll walk briefly through how this works with the examples above.
-I'll ignore the last step for now, it'll come up in the complex
-examples below.
+Let's walk through some examples and see how this algorithm plays out.
 
 #### First example
 
-Let's look first at the first example, which was:
+We'll start with the first example, which was:
 
-    1. fn<a>(&a/T) <: fn<b>(&b/T/T)?        Yes: a -> x
+    1. fn<a>(&a/T) <: fn<b>(&b/T)?        Yes: a -> b
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
@@ -204,7 +223,7 @@ region whose value is being inferred by the system.  I also replaced
 `&b` with `&x`---I'll use letters late in the alphabet (`x`, `y`, `z`)
 to indicate skolemized region names.  We can assume they don't appear
 elsewhere.  Note that neither the sub- nor the supertype bind any
-region names anymore (that is, the `<a>` and `<b>` have been removed).
+region names anymore (as indicated by the absence of `<` and `>`).
 
 The next step is to check that the parameter types match.  Because
 parameters are contravariant, this means that we check whether:
@@ -226,25 +245,25 @@ So far we have encountered no error, so the subtype check succeeds.
 
 Now let's look first at the third example, which was:
 
-    3. fn(&a/T)    <: fn<b>(&b/T)?        No!
+    3. fn(&self/T)    <: fn<b>(&b/T)?        No!
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    3. fn(&a/T) <: fn(&x/T)?
+    3. fn(&self/T) <: fn(&x/T)?
 
-This looks pretty much the same as before, except that on the LHS `&a`
-was not bound, and hence was left as-is and not replaced with a
-variable.  The next step is again to check that the parameter types
-match.  This will ultimately require (as before) that `&a` <= `&x`
-must hold: but this does not hold.  `a` and `x` are both distinct free
-regions.  So the subtype check fails.
+This looks pretty much the same as before, except that on the LHS
+`&self` was not bound, and hence was left as-is and not replaced with
+a variable.  The next step is again to check that the parameter types
+match.  This will ultimately require (as before) that `&self` <= `&x`
+must hold: but this does not hold.  `self` and `x` are both distinct
+free regions.  So the subtype check fails.
 
 #### Checking for skolemization leaks
 
-You may be wondering about that mysterious last step.  So far it has not
-been relevant.  The purpose of that last step is to catch something like
-*this*:
+You may be wondering about that mysterious last step in the algorithm.
+So far it has not been relevant.  The purpose of that last step is to
+catch something like *this*:
 
     fn<a>() -> fn(&a/T) <: fn() -> fn<b>(&b/T)?   No.
 
@@ -295,10 +314,11 @@ rule.
 
 So the way we solve this is to add a fourth step that examines the
 constraints that refer to skolemized names.  Basically, consider a
-non-directed verison of the constraint graph.  The only things
-reachable from a skolemized region ought to be the region variables
-that were created at the same time.  So this case here would fail
-because `&x` was created alone, but is relatable to `&A`.
+non-directed verison of the constraint graph.  Let `Tainted(x)` be the
+set of all things reachable from a skolemized variable `x`.
+`Tainted(x)` should not contain any regions that existed before the
+step at which the skolemization was performed.  So this case here
+would fail because `&x` was created alone, but is relatable to `&A`.
 
 */
 
@@ -313,7 +333,8 @@ use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
 use region::is_subregion_of;
-use ty::{Region, RegionVid};
+use ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound,
+         re_scope, ReVar, ReSkolemized};
 use syntax::codemap;
 use to_str::ToStr;
 use util::ppaux::note_and_explain_region;
@@ -350,7 +371,7 @@ impl Constraint : cmp::Eq {
 }
 
 impl Constraint : to_bytes::IterBytes {
-   pure  fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+   pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
@@ -394,10 +415,11 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
-    values: Cell<~[ty::Region]>,
+    values: Cell<~[Region]>,
     constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
+    mut skolemization_count: uint,
 
     // The undo log records actions that might later be undone.
     //
@@ -407,7 +429,7 @@ struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    undo_log: DVec<UndoLogEntry>
+    mut undo_log: ~[UndoLogEntry]
 }
 
 fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
@@ -418,7 +440,8 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         constraints: HashMap(),
         lubs: CombineMap(),
         glbs: CombineMap(),
-        undo_log: DVec()
+        skolemization_count: 0,
+        undo_log: ~[]
     }
 }
 
@@ -430,11 +453,11 @@ fn CombineMap() -> CombineMap {
 }
 
 impl RegionVarBindings {
-    fn in_snapshot() -> bool {
+    fn in_snapshot(&self) -> bool {
         self.undo_log.len() > 0
     }
 
-    fn start_snapshot() -> uint {
+    fn start_snapshot(&self) -> uint {
         debug!("RegionVarBindings: snapshot()=%u", self.undo_log.len());
         if self.in_snapshot() {
             self.undo_log.len()
@@ -444,14 +467,14 @@ impl RegionVarBindings {
         }
     }
 
-    fn commit() {
+    fn commit(&self) {
         debug!("RegionVarBindings: commit()");
         while self.undo_log.len() > 0 {
             self.undo_log.pop();
         }
     }
 
-    fn rollback_to(snapshot: uint) {
+    fn rollback_to(&self, snapshot: uint) {
         debug!("RegionVarBindings: rollback_to(%u)", snapshot);
         while self.undo_log.len() > snapshot {
             let undo_item = self.undo_log.pop();
@@ -472,11 +495,11 @@ impl RegionVarBindings {
         }
     }
 
-    fn num_vars() -> uint {
+    fn num_vars(&self) -> uint {
         self.var_spans.len()
     }
 
-    fn new_region_var(span: span) -> RegionVid {
+    fn new_region_var(&self, span: span) -> RegionVid {
         let id = self.num_vars();
         self.var_spans.push(span);
         let vid = RegionVid(id);
@@ -488,7 +511,13 @@ impl RegionVarBindings {
         return vid;
     }
 
-    fn add_constraint(+constraint: Constraint, span: span) {
+    fn new_skolemized(&self, br: ty::bound_region) -> Region {
+        let sc = self.skolemization_count;
+        self.skolemization_count += 1;
+        re_infer(ReSkolemized(sc, br))
+    }
+
+    fn add_constraint(&self, +constraint: Constraint, span: span) {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
@@ -501,21 +530,22 @@ impl RegionVarBindings {
         }
     }
 
-    fn make_subregion(span: span, sub: Region, sup: Region) -> cres<()> {
+    fn make_subregion(&self, span: span,
+                      sub: Region, sup: Region) -> cres<()> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
         debug!("RegionVarBindings: make_subregion(%?, %?)", sub, sup);
         match (sub, sup) {
-          (ty::re_var (sub_id), ty::re_var(sup_id)) => {
+          (re_infer(ReVar(sub_id)), re_infer(ReVar(sup_id))) => {
             self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), span);
             Ok(())
           }
-          (r, ty::re_var(sup_id)) => {
+          (r, re_infer(ReVar(sup_id))) => {
             self.add_constraint(ConstrainRegSubVar(r, sup_id), span);
             Ok(())
           }
-          (ty::re_var(sub_id), r) => {
+          (re_infer(ReVar(sub_id)), r) => {
             self.add_constraint(ConstrainVarSubReg(sub_id, r), span);
             Ok(())
           }
@@ -529,17 +559,17 @@ impl RegionVarBindings {
         }
     }
 
-    fn lub_regions(span: span, a: Region, b: Region) -> cres<Region> {
+    fn lub_regions(&self, span: span, a: Region, b: Region) -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
         debug!("RegionVarBindings: lub_regions(%?, %?)", a, b);
         match (a, b) {
-          (ty::re_static, _) | (_, ty::re_static) => {
-            Ok(ty::re_static) // nothing lives longer than static
+          (re_static, _) | (_, re_static) => {
+            Ok(re_static) // nothing lives longer than static
           }
 
-          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
+          (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
                 self.lubs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, old_r, new_r))
@@ -551,18 +581,18 @@ impl RegionVarBindings {
         }
     }
 
-    fn glb_regions(span: span, a: Region, b: Region) -> cres<Region> {
+    fn glb_regions(&self, span: span, a: Region, b: Region) -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
 
         debug!("RegionVarBindings: glb_regions(%?, %?)", a, b);
         match (a, b) {
-          (ty::re_static, r) | (r, ty::re_static) => {
+          (re_static, r) | (r, re_static) => {
             // static lives longer than everything else
             Ok(r)
           }
 
-          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
+          (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
                 self.glbs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, new_r, old_r))
@@ -574,7 +604,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn resolve_var(rid: RegionVid) -> ty::Region {
+    fn resolve_var(&self, rid: RegionVid) -> ty::Region {
         debug!("RegionVarBindings: resolve_var(%?=%u)", rid, *rid);
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
@@ -586,26 +616,126 @@ impl RegionVarBindings {
         self.values.with_ref(|values| values[*rid])
     }
 
-    fn combine_vars(combines: CombineMap, a: Region, b: Region, span: span,
+    fn combine_vars(&self,
+                    combines: CombineMap,
+                    a: Region,
+                    b: Region,
+                    span: span,
                     relate: fn(old_r: Region, new_r: Region) -> cres<()>)
         -> cres<Region> {
 
         let vars = TwoRegions { a: a, b: b };
         match combines.find(vars) {
-          Some(c) => Ok(ty::re_var(c)),
+          Some(c) => Ok(re_infer(ReVar(c))),
           None => {
             let c = self.new_region_var(span);
             combines.insert(vars, c);
             if self.in_snapshot() {
                 self.undo_log.push(AddCombination(combines, vars));
             }
-            do relate(a, ty::re_var(c)).then {
-                do relate(b, ty::re_var(c)).then {
-                    debug!("combine_vars() c=%?", ty::re_var(c));
-                    Ok(ty::re_var(c))
+            do relate(a, re_infer(ReVar(c))).then {
+                do relate(b, re_infer(ReVar(c))).then {
+                    debug!("combine_vars() c=%?", c);
+                    Ok(re_infer(ReVar(c)))
                 }
             }
           }
+        }
+    }
+
+    fn tainted(&self, snapshot: uint, r0: Region) -> ~[Region] {
+        /*!
+         *
+         * Computes all regions that have been related to `r0` in any
+         * way since the snapshot `snapshot` was taken---excluding
+         * `r0` itself and any region variables added as part of the
+         * snapshot.  This is used when checking whether skolemized
+         * regions are being improperly related to other regions.
+         */
+
+        debug!("tainted(snapshot=%u, r0=%?)", snapshot, r0);
+        let _indenter = indenter();
+
+        let undo_len = self.undo_log.len();
+
+        // collect variables added since the snapshot was taken
+        let new_vars = do vec::build |push| {
+            for uint::range(snapshot, undo_len) |i| {
+                match self.undo_log[i] {
+                    AddVar(vid) => push(vid),
+                    _ => ()
+                }
+            }
+        };
+
+        // `result_set` acts as a worklist: we explore all outgoing
+        // edges and add any new regions we find to result_set.  This
+        // is not a terribly efficient implementation.
+        let mut result_set = ~[r0], result_index = 0;
+        while result_index < result_set.len() {
+            // nb: can't use uint::range() here because result_set grows
+            let r = result_set[result_index];
+
+            debug!("result_index=%u, r=%?", result_index, r);
+
+            let mut undo_index = snapshot;
+            while undo_index < undo_len {
+                // nb: can't use uint::range() here as we move result_set
+                let regs = match self.undo_log[undo_index] {
+                    AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
+                        Some((re_infer(ReVar(*a)),
+                              re_infer(ReVar(*b))))
+                    }
+                    AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
+                        Some((*a, re_infer(ReVar(*b))))
+                    }
+                    AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
+                        Some((re_infer(ReVar(*a)), *b))
+                    }
+                    _ => {
+                        None
+                    }
+                };
+
+                match regs {
+                    None => {}
+                    Some((ref r1, ref r2)) => {
+                        result_set =
+                            consider_adding_edge(move result_set, &r, r1, r2);
+                        result_set =
+                            consider_adding_edge(move result_set, &r, r2, r1);
+                    }
+                }
+
+                undo_index += 1;
+            }
+
+            result_index += 1;
+        }
+
+        // Drop `r0` itself and any region variables that were created
+        // since the snapshot.
+        result_set.retain(|r| {
+            match *r {
+                re_infer(ReVar(ref vid)) => !new_vars.contains(vid),
+                _ => *r != r0
+            }
+        });
+
+        return result_set;
+
+        fn consider_adding_edge(+result_set: ~[Region],
+                                r: &Region,
+                                r1: &Region,
+                                r2: &Region) -> ~[Region]
+        {
+            let mut result_set = move result_set;
+            if *r == *r1 { // Clearly, this is potentially inefficient.
+                if !result_set.contains(r2) {
+                    result_set.push(*r2);
+                }
+            }
+            return move result_set;
         }
     }
 
@@ -616,32 +746,32 @@ impl RegionVarBindings {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    fn resolve_regions() {
+    fn resolve_regions(&self) {
         debug!("RegionVarBindings: resolve_regions()");
         self.values.put_back(self.infer_variable_values());
     }
 }
 
 priv impl RegionVarBindings {
-    fn is_subregion_of(sub: Region, sup: Region) -> bool {
+    fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
         is_subregion_of(self.tcx.region_map, sub, sup)
     }
 
-    fn lub_concrete_regions(+a: Region, +b: Region) -> Region {
+    fn lub_concrete_regions(&self, +a: Region, +b: Region) -> Region {
         match (a, b) {
-          (ty::re_static, _) | (_, ty::re_static) => {
-            ty::re_static // nothing lives longer than static
+          (re_static, _) | (_, re_static) => {
+            re_static // nothing lives longer than static
           }
 
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
+          (re_infer(ReVar(v_id)), _) | (_, re_infer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
                 self.var_spans[*v_id],
                 fmt!("lub_concrete_regions invoked with \
                       non-concrete regions: %?, %?", a, b));
           }
 
-          (f @ ty::re_free(f_id, _), ty::re_scope(s_id)) |
-          (ty::re_scope(s_id), f @ ty::re_free(f_id, _)) => {
+          (f @ re_free(f_id, _), re_scope(s_id)) |
+          (re_scope(s_id), f @ re_free(f_id, _)) => {
             // A "free" region can be interpreted as "some region
             // at least as big as the block f_id".  So, we can
             // reasonably compare free regions and scopes:
@@ -654,98 +784,103 @@ priv impl RegionVarBindings {
 
               // otherwise, we don't know what the free region is,
               // so we must conservatively say the LUB is static:
-              _ => ty::re_static
+              _ => re_static
             }
           }
 
-          (ty::re_scope(a_id), ty::re_scope(b_id)) => {
+          (re_scope(a_id), re_scope(b_id)) => {
             // The region corresponding to an outer block is a
             // subtype of the region corresponding to an inner
             // block.
             let rm = self.tcx.region_map;
             match region::nearest_common_ancestor(rm, a_id, b_id) {
-              Some(r_id) => ty::re_scope(r_id),
-              _ => ty::re_static
+              Some(r_id) => re_scope(r_id),
+              _ => re_static
             }
           }
 
           // For these types, we cannot define any additional
           // relationship:
-          (ty::re_free(_, _), ty::re_free(_, _)) |
-          (ty::re_bound(_), ty::re_bound(_)) |
-          (ty::re_bound(_), ty::re_free(_, _)) |
-          (ty::re_bound(_), ty::re_scope(_)) |
-          (ty::re_free(_, _), ty::re_bound(_)) |
-          (ty::re_scope(_), ty::re_bound(_)) => {
-            if a == b {a} else {ty::re_static}
+          (re_infer(ReSkolemized(*)), _) |
+          (_, re_infer(ReSkolemized(*))) |
+          (re_free(_, _), re_free(_, _)) |
+          (re_bound(_), re_bound(_)) |
+          (re_bound(_), re_free(_, _)) |
+          (re_bound(_), re_scope(_)) |
+          (re_free(_, _), re_bound(_)) |
+          (re_scope(_), re_bound(_)) => {
+            if a == b {a} else {re_static}
           }
         }
     }
 
-    fn glb_concrete_regions(+a: Region, +b: Region) -> cres<Region> {
+    fn glb_concrete_regions(&self, +a: Region, +b: Region) -> cres<Region> {
         match (a, b) {
-          (ty::re_static, r) | (r, ty::re_static) => {
-            // static lives longer than everything else
-            Ok(r)
-          }
-
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
-            self.tcx.sess.span_bug(
-                self.var_spans[*v_id],
-                fmt!("glb_concrete_regions invoked with \
-                      non-concrete regions: %?, %?", a, b));
-          }
-
-          (ty::re_free(f_id, _), s @ ty::re_scope(s_id)) |
-          (s @ ty::re_scope(s_id), ty::re_free(f_id, _)) => {
-            // Free region is something "at least as big as
-            // `f_id`."  If we find that the scope `f_id` is bigger
-            // than the scope `s_id`, then we can say that the GLB
-            // is the scope `s_id`.  Otherwise, as we do not know
-            // big the free region is precisely, the GLB is undefined.
-            let rm = self.tcx.region_map;
-            match region::nearest_common_ancestor(rm, f_id, s_id) {
-              Some(r_id) if r_id == f_id => Ok(s),
-              _ => Err(ty::terr_regions_no_overlap(b, a))
+            (re_static, r) | (r, re_static) => {
+                // static lives longer than everything else
+                Ok(r)
             }
-          }
 
-          (ty::re_scope(a_id), ty::re_scope(b_id)) |
-          (ty::re_free(a_id, _), ty::re_free(b_id, _)) => {
-            if a == b {
-                // Same scope or same free identifier, easy case.
-                Ok(a)
-            } else {
-                // We want to generate the intersection of two
-                // scopes or two free regions.  So, if one of
-                // these scopes is a subscope of the other, return
-                // it.  Otherwise fail.
+            (re_infer(ReVar(v_id)), _) |
+            (_, re_infer(ReVar(v_id))) => {
+                self.tcx.sess.span_bug(
+                    self.var_spans[*v_id],
+                    fmt!("glb_concrete_regions invoked with \
+                          non-concrete regions: %?, %?", a, b));
+            }
+
+            (re_free(f_id, _), s @ re_scope(s_id)) |
+            (s @ re_scope(s_id), re_free(f_id, _)) => {
+                // Free region is something "at least as big as
+                // `f_id`."  If we find that the scope `f_id` is bigger
+                // than the scope `s_id`, then we can say that the GLB
+                // is the scope `s_id`.  Otherwise, as we do not know
+                // big the free region is precisely, the GLB is undefined.
                 let rm = self.tcx.region_map;
-                match region::nearest_common_ancestor(rm, a_id, b_id) {
-                  Some(r_id) if a_id == r_id => Ok(ty::re_scope(b_id)),
-                  Some(r_id) if b_id == r_id => Ok(ty::re_scope(a_id)),
-                  _ => Err(ty::terr_regions_no_overlap(b, a))
+                match region::nearest_common_ancestor(rm, f_id, s_id) {
+                    Some(r_id) if r_id == f_id => Ok(s),
+                    _ => Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
-          }
 
-          // For these types, we cannot define any additional
-          // relationship:
-          (ty::re_bound(_), ty::re_bound(_)) |
-          (ty::re_bound(_), ty::re_free(_, _)) |
-          (ty::re_bound(_), ty::re_scope(_)) |
-          (ty::re_free(_, _), ty::re_bound(_)) |
-          (ty::re_scope(_), ty::re_bound(_)) => {
-            if a == b {
-                Ok(a)
-            } else {
-                Err(ty::terr_regions_no_overlap(b, a))
+            (re_scope(a_id), re_scope(b_id)) |
+            (re_free(a_id, _), re_free(b_id, _)) => {
+                if a == b {
+                    // Same scope or same free identifier, easy case.
+                    Ok(a)
+                } else {
+                    // We want to generate the intersection of two
+                    // scopes or two free regions.  So, if one of
+                    // these scopes is a subscope of the other, return
+                    // it.  Otherwise fail.
+                    let rm = self.tcx.region_map;
+                    match region::nearest_common_ancestor(rm, a_id, b_id) {
+                        Some(r_id) if a_id == r_id => Ok(re_scope(b_id)),
+                        Some(r_id) if b_id == r_id => Ok(re_scope(a_id)),
+                        _ => Err(ty::terr_regions_no_overlap(b, a))
+                    }
+                }
             }
-          }
+
+            // For these types, we cannot define any additional
+            // relationship:
+            (re_infer(ReSkolemized(*)), _) |
+            (_, re_infer(ReSkolemized(*))) |
+            (re_bound(_), re_bound(_)) |
+            (re_bound(_), re_free(_, _)) |
+            (re_bound(_), re_scope(_)) |
+            (re_free(_, _), re_bound(_)) |
+            (re_scope(_), re_bound(_)) => {
+                if a == b {
+                    Ok(a)
+                } else {
+                    Err(ty::terr_regions_no_overlap(b, a))
+                }
+            }
         }
     }
 
-    fn report_type_error(span: span, terr: &ty::type_err) {
+    fn report_type_error(&self, span: span, terr: &ty::type_err) {
         let terr_str = ty::type_err_to_str(self.tcx, terr);
         self.tcx.sess.span_err(span, terr_str);
     }
@@ -803,14 +938,14 @@ fn TwoRegionsMap() -> TwoRegionsMap {
 }
 
 impl RegionVarBindings {
-    fn infer_variable_values() -> ~[Region] {
+    fn infer_variable_values(&self) -> ~[Region] {
         let graph = self.construct_graph();
         self.expansion(&graph);
         self.contraction(&graph);
         self.extract_regions_and_report_errors(&graph)
     }
 
-    fn construct_graph() -> Graph {
+    fn construct_graph(&self) -> Graph {
         let num_vars = self.num_vars();
         let num_edges = self.constraints.size();
 
@@ -871,7 +1006,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn expansion(graph: &Graph) {
+    fn expansion(&self, graph: &Graph) {
         do self.iterate_until_fixed_point(~"Expansion", graph) |edge| {
             match edge.constraint {
               ConstrainRegSubVar(copy a_region, copy b_vid) => {
@@ -895,7 +1030,8 @@ impl RegionVarBindings {
         }
     }
 
-    fn expand_node(a_region: Region,
+    fn expand_node(&self,
+                   a_region: Region,
                    b_vid: RegionVid,
                    b_node: &GraphNode) -> bool {
         debug!("expand_node(%?, %? == %?)",
@@ -929,7 +1065,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn contraction(graph: &Graph) {
+    fn contraction(&self, graph: &Graph) {
         do self.iterate_until_fixed_point(~"Contraction", graph) |edge| {
             match edge.constraint {
               ConstrainRegSubVar(*) => {
@@ -953,33 +1089,34 @@ impl RegionVarBindings {
         }
     }
 
-    fn contract_node(a_vid: RegionVid,
+    fn contract_node(&self,
+                     a_vid: RegionVid,
                      a_node: &GraphNode,
                      b_region: Region) -> bool {
         debug!("contract_node(%? == %?/%?, %?)",
                a_vid, a_node.value, a_node.classification, b_region);
 
         return match a_node.value {
-          NoValue => {
-            assert a_node.classification == Contracting;
-            a_node.value = Value(b_region);
-            true // changed
-          }
-
-          ErrorValue => {
-            false // no change
-          }
-
-          Value(copy a_region) => {
-            match a_node.classification {
-              Expanding => {
-                check_node(&self, a_vid, a_node, a_region, b_region)
-              }
-              Contracting => {
-                adjust_node(&self, a_vid, a_node, a_region, b_region)
-              }
+            NoValue => {
+                assert a_node.classification == Contracting;
+                a_node.value = Value(b_region);
+                true // changed
             }
-          }
+
+            ErrorValue => {
+                false // no change
+            }
+
+            Value(copy a_region) => {
+                match a_node.classification {
+                    Expanding => {
+                        check_node(self, a_vid, a_node, a_region, b_region)
+                    }
+                    Contracting => {
+                        adjust_node(self, a_vid, a_node, a_region, b_region)
+                    }
+                }
+            }
         };
 
         fn check_node(self: &RegionVarBindings,
@@ -1001,25 +1138,26 @@ impl RegionVarBindings {
                        a_region: Region,
                        b_region: Region) -> bool {
             match self.glb_concrete_regions(a_region, b_region) {
-              Ok(glb) => {
-                if glb == a_region {
-                    false
-                } else {
-                    debug!("Contracting value of %? from %? to %?",
-                           a_vid, a_region, glb);
-                    a_node.value = Value(glb);
-                    true
+                Ok(glb) => {
+                    if glb == a_region {
+                        false
+                    } else {
+                        debug!("Contracting value of %? from %? to %?",
+                               a_vid, a_region, glb);
+                        a_node.value = Value(glb);
+                        true
+                    }
                 }
-              }
-              Err(_) => {
-                a_node.value = ErrorValue;
-                false
-              }
+                Err(_) => {
+                    a_node.value = ErrorValue;
+                    false
+                }
             }
         }
     }
 
     fn iterate_until_fixed_point(
+        &self,
         tag: ~str,
         graph: &Graph,
         body: fn(edge: &GraphEdge) -> bool)
@@ -1040,7 +1178,7 @@ impl RegionVarBindings {
         debug!("---- %s Complete after %u iteration(s)", tag, iteration);
     }
 
-    fn extract_regions_and_report_errors(graph: &Graph) -> ~[Region] {
+    fn extract_regions_and_report_errors(&self, graph: &Graph) -> ~[Region] {
         let dup_map = TwoRegionsMap();
         graph.nodes.mapi(|idx, node| {
             match node.value {
@@ -1050,7 +1188,7 @@ impl RegionVarBindings {
                 self.tcx.sess.span_err(
                     node.span,
                     fmt!("Unconstrained region variable #%u", idx));
-                ty::re_static
+                re_static
               }
 
               ErrorValue => {
@@ -1065,21 +1203,23 @@ impl RegionVarBindings {
                         graph, dup_map, node_vid);
                   }
                 }
-                ty::re_static
+                re_static
               }
             }
         })
     }
 
     // Used to suppress reporting the same basic error over and over
-    fn is_reported(dup_map: TwoRegionsMap,
+    fn is_reported(&self,
+                   dup_map: TwoRegionsMap,
                    r_a: Region,
                    r_b: Region) -> bool {
         let key = TwoRegions { a: r_a, b: r_b };
         !dup_map.insert(key, ())
     }
 
-    fn report_error_for_expanding_node(graph: &Graph,
+    fn report_error_for_expanding_node(&self,
+                                       graph: &Graph,
                                        dup_map: TwoRegionsMap,
                                        node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
@@ -1131,7 +1271,8 @@ impl RegionVarBindings {
         }
     }
 
-    fn report_error_for_contracting_node(graph: &Graph,
+    fn report_error_for_contracting_node(&self,
+                                         graph: &Graph,
                                          dup_map: TwoRegionsMap,
                                          node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
@@ -1184,7 +1325,8 @@ impl RegionVarBindings {
         }
     }
 
-    fn collect_concrete_regions(graph: &Graph,
+    fn collect_concrete_regions(&self,
+                                graph: &Graph,
                                 orig_node_idx: RegionVid,
                                 dir: Direction) -> ~[SpannedRegion] {
         let set = HashMap();
@@ -1226,7 +1368,8 @@ impl RegionVarBindings {
         return result;
     }
 
-    fn each_edge(graph: &Graph,
+    fn each_edge(&self,
+                 graph: &Graph,
                  node_idx: RegionVid,
                  dir: Direction,
                  op: fn(edge: &GraphEdge) -> bool) {

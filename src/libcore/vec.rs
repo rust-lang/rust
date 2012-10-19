@@ -737,6 +737,27 @@ pub pure fn filter<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
 }
 
 /**
+ * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
+ */
+pub fn retain<T>(v: &mut ~[T], f: pure fn(t: &T) -> bool) {
+    let len = v.len();
+    let mut deleted: uint = 0;
+
+    for uint::range(0, len) |i| {
+        if !f(&v[i]) {
+            deleted += 1;
+        } else if deleted > 0 {
+            v[i - deleted] <-> v[i];
+        }
+    }
+
+    while deleted > 0 {
+        v.pop();
+        deleted -= 1;
+    }
+}
+
+/**
  * Concatenate a vector of vectors.
  *
  * Flattens a vector of vectors of T into a single vector of T.
@@ -759,14 +780,17 @@ pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
 }
 
 /// Reduce a vector from left to right
-pub pure fn foldl<T: Copy, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
-    let mut accum = z;
-    for each(v) |elt| {
-        // it should be possible to move accum in, but the liveness analysis
-        // is not smart enough.
-        accum = p(accum, elt);
+pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
+    let mut accum = move z;
+    let mut i = 0;
+    let l = v.len();
+    while i < l {
+        // Use a while loop so that liveness analysis can handle moving
+        // the accumulator.
+        accum = p(move accum, &v[i]);
+        i += 1;
     }
-    return accum;
+    return move accum;
 }
 
 /// Reduce a vector from right to left
@@ -1293,12 +1317,23 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
     return true;
 }
 
+#[cfg(stage0)]
 impl<T: Eq> &[T] : Eq {
     #[inline(always)]
     pure fn eq(other: & &[T]) -> bool { eq(self, (*other)) }
     #[inline(always)]
     pure fn ne(other: & &[T]) -> bool { !self.eq(other) }
 }
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T: Eq> &[T] : Eq {
+    #[inline(always)]
+    pure fn eq(other: & &self/[T]) -> bool { eq(self, (*other)) }
+    #[inline(always)]
+    pure fn ne(other: & &self/[T]) -> bool { !self.eq(other) }
+}
+
 
 impl<T: Eq> ~[T] : Eq {
     #[inline(always)]
@@ -1335,6 +1370,7 @@ pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
 pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
+#[cfg(stage0)]
 impl<T: Ord> &[T] : Ord {
     #[inline(always)]
     pure fn lt(other: & &[T]) -> bool { lt(self, (*other)) }
@@ -1344,6 +1380,19 @@ impl<T: Ord> &[T] : Ord {
     pure fn ge(other: & &[T]) -> bool { ge(self, (*other)) }
     #[inline(always)]
     pure fn gt(other: & &[T]) -> bool { gt(self, (*other)) }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T: Ord> &[T] : Ord {
+    #[inline(always)]
+    pure fn lt(other: & &self/[T]) -> bool { lt(self, (*other)) }
+    #[inline(always)]
+    pure fn le(other: & &self/[T]) -> bool { le(self, (*other)) }
+    #[inline(always)]
+    pure fn ge(other: & &self/[T]) -> bool { ge(self, (*other)) }
+    #[inline(always)]
+    pure fn gt(other: & &self/[T]) -> bool { gt(self, (*other)) }
 }
 
 impl<T: Ord> ~[T] : Ord {
@@ -1370,6 +1419,7 @@ impl<T: Ord> @[T] : Ord {
 
 #[cfg(notest)]
 pub mod traits {
+    #[cfg(stage0)]
     impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> ~[T] {
@@ -1377,9 +1427,28 @@ pub mod traits {
         }
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
+        #[inline(always)]
+        pure fn add(rhs: & &self/[const T]) -> ~[T] {
+            append(copy self, (*rhs))
+        }
+    }
+
+    #[cfg(stage0)]
     impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> ~[mut T] {
+            append_mut(copy self, (*rhs))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
+        #[inline(always)]
+        pure fn add(rhs: & &self/[const T]) -> ~[mut T] {
             append_mut(copy self, (*rhs))
         }
     }
@@ -1590,6 +1659,7 @@ pub trait MutableVector<T> {
     fn unshift(&mut self, x: T);
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
+    fn retain(&mut self, f: pure fn(t: &T) -> bool);
 }
 
 pub trait MutableCopyableVector<T: Copy> {
@@ -1630,6 +1700,10 @@ impl<T> ~[T]: MutableVector<T> {
 
     fn truncate(&mut self, newlen: uint) {
         truncate(self, newlen);
+    }
+
+    fn retain(&mut self, f: pure fn(t: &T) -> bool) {
+        retain(self, f);
     }
 }
 

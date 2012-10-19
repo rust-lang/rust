@@ -387,7 +387,7 @@ impl ty::Region: tr {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
             ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),
             ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
-            ty::re_static | ty::re_var(*) => self,
+            ty::re_static | ty::re_infer(*) => self,
         }
     }
 }

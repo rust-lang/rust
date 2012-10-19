@@ -262,7 +262,7 @@ use util::common::{indent, indenter};
 use ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 use ast::{m_const, m_imm, m_mutbl};
 use dvec::DVec;
-use region_var_bindings::{RegionVarBindings};
+use region_inference::{RegionVarBindings};
 use ast_util::dummy_sp;
 use cmp::Eq;
 
@@ -628,7 +628,7 @@ impl infer_ctxt {
     }
 
     fn next_region_var_nb(span: span) -> ty::Region {
-        ty::re_var(self.region_vars.new_region_var(span))
+        ty::re_infer(ty::ReVar(self.region_vars.new_region_var(span)))
     }
 
     fn next_region_var_with_lb(span: span,

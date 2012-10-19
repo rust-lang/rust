@@ -97,7 +97,7 @@ fn replace_bound_regions_in_fn_ty(
                       r: ty::Region) -> isr_alist {
             match r {
               ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |
-              ty::re_var(_) => {
+              ty::re_infer(_) => {
                 isr
               }
               ty::re_bound(br) => {
@@ -165,7 +165,7 @@ fn replace_bound_regions_in_fn_ty(
               ty::re_static |
               ty::re_scope(_) |
               ty::re_free(_, _) |
-              ty::re_var(_) => r
+              ty::re_infer(_) => r
             }
         }
     }

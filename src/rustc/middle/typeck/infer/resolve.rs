@@ -148,21 +148,21 @@ impl resolve_state {
     fn resolve_region(orig: ty::Region) -> ty::Region {
         debug!("Resolve_region(%s)", orig.to_str(self.infcx));
         match orig {
-          ty::re_var(rid) => self.resolve_region_var(rid),
+          ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig
         }
     }
 
     fn resolve_region_var(rid: RegionVid) -> ty::Region {
         if !self.should(resolve_rvar) {
-            return ty::re_var(rid)
+            return ty::re_infer(ty::ReVar(rid));
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
     fn assert_not_rvar(rid: RegionVid, r: ty::Region) {
         match r {
-          ty::re_var(rid2) => {
+          ty::re_infer(ty::ReVar(rid2)) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));
           }
           _ => { }

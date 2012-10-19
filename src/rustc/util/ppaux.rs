@@ -6,7 +6,8 @@ use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
-use middle::ty::{re_bound, re_free, re_scope, re_var, re_static, Region};
+use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
+use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
@@ -95,7 +96,7 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
-      re_var(_) | re_bound(_) => {
+      re_infer(_) | re_bound(_) => {
         (fmt!("lifetime %?", region), None)
       }
     };
@@ -184,8 +185,9 @@ fn region_to_str(cx: ctxt, region: Region) -> ~str {
       re_scope(_) => ~"&",
       re_bound(br) => bound_region_to_str(cx, br),
       re_free(_, br) => bound_region_to_str(cx, br),
-      re_var(_)    => ~"&",
-      re_static     => ~"&static"
+      re_infer(ReSkolemized(_, br)) => bound_region_to_str(cx, br),
+      re_infer(ReVar(_)) => ~"&",
+      re_static => ~"&static"
     }
 }
 

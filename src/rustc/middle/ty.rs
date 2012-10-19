@@ -12,7 +12,7 @@ use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::span;
 use metadata::csearch;
 use util::ppaux::{region_to_str, explain_region, vstore_to_str,
-                  note_and_explain_region};
+                  note_and_explain_region, bound_region_to_str};
 use middle::lint;
 use middle::lint::{get_lint_level, allow};
 use syntax::ast::*;
@@ -107,7 +107,8 @@ export InferTy, TyVar, IntVar;
 export ty_self, mk_self, type_has_self;
 export ty_class;
 export Region, bound_region, encl_region;
-export re_bound, re_free, re_scope, re_static, re_var;
+export re_bound, re_free, re_scope, re_static, re_infer;
+export ReVar, ReSkolemized;
 export br_self, br_anon, br_named, br_cap_avoid;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_is_region_ptr;
@@ -179,6 +180,8 @@ export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
 export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
 export terr_regions_does_not_outlive, terr_mutability, terr_purity_mismatch;
 export terr_regions_not_same, terr_regions_no_overlap;
+export terr_regions_insufficiently_polymorphic;
+export terr_regions_overly_polymorphic;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 export terr_fn, terr_trait;
@@ -555,7 +558,7 @@ enum Region {
     re_static,
 
     /// A region variable.  Should not exist after typeck.
-    re_var(RegionVid)
+    re_infer(InferRegion)
 }
 
 #[auto_serialize]
@@ -671,6 +674,8 @@ enum type_err {
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
     terr_regions_no_overlap(Region, Region),
+    terr_regions_insufficiently_polymorphic(bound_region, Region),
+    terr_regions_overly_polymorphic(bound_region, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<vstore>),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
@@ -704,6 +709,39 @@ impl InferTy : to_bytes::IterBytes {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f)
         }
+    }
+}
+
+#[auto_serialize]
+#[auto_deserialize]
+enum InferRegion {
+    ReVar(RegionVid),
+    ReSkolemized(uint, bound_region)
+}
+
+impl InferRegion : to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        match self {
+            ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
+            ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
+        }
+    }
+}
+
+impl InferRegion : cmp::Eq {
+    pure fn eq(other: &InferRegion) -> bool {
+        match (self, *other) {
+            (ReVar(rva), ReVar(rvb)) => {
+                rva == rvb
+            }
+            (ReSkolemized(rva, _), ReSkolemized(rvb, _)) => {
+                rva == rvb
+            }
+            _ => false
+        }
+    }
+    pure fn ne(other: &InferRegion) -> bool {
+        !(self == (*other))
     }
 }
 
@@ -923,7 +961,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     fn rflags(r: Region) -> uint {
         (has_regions as uint) | {
             match r {
-              ty::re_var(_) => needs_infer as uint,
+              ty::re_infer(_) => needs_infer as uint,
               _ => 0u
             }
         }
@@ -2591,7 +2629,7 @@ impl Region : to_bytes::IterBytes {
           re_scope(ref id) =>
           to_bytes::iter_bytes_2(&2u8, id, lsb0, f),
 
-          re_var(ref id) =>
+          re_infer(ref id) =>
           to_bytes::iter_bytes_2(&3u8, id, lsb0, f),
 
           re_static => 4u8.iter_bytes(lsb0, f)
@@ -3253,92 +3291,103 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
     }
 
     match *err {
-      terr_mismatch => ~"types differ",
-      terr_ret_style_mismatch(values) => {
-        fn to_str(s: ast::ret_style) -> ~str {
-            match s {
-              ast::noreturn => ~"non-returning",
-              ast::return_val => ~"return-by-value"
+        terr_mismatch => ~"types differ",
+        terr_ret_style_mismatch(values) => {
+            fn to_str(s: ast::ret_style) -> ~str {
+                match s {
+                    ast::noreturn => ~"non-returning",
+                    ast::return_val => ~"return-by-value"
+                }
             }
+            fmt!("expected %s function, found %s function",
+                 to_str(values.expected),
+                 to_str(values.expected))
         }
-        fmt!("expected %s function, found %s function",
-                    to_str(values.expected),
-                    to_str(values.expected))
-      }
-      terr_purity_mismatch(values) => {
-        fmt!("expected %s fn but found %s fn",
-                    purity_to_str(values.expected),
-                    purity_to_str(values.found))
-      }
-      terr_proto_mismatch(values) => {
-        fmt!("expected %s closure, found %s closure",
-             proto_ty_to_str(cx, values.expected),
-             proto_ty_to_str(cx, values.found))
-      }
-      terr_mutability => ~"values differ in mutability",
-      terr_box_mutability => ~"boxed values differ in mutability",
-      terr_vec_mutability => ~"vectors differ in mutability",
-      terr_ptr_mutability => ~"pointers differ in mutability",
-      terr_ref_mutability => ~"references differ in mutability",
-      terr_ty_param_size(values) => {
-        fmt!("expected a type with %? type params \
-              but found one with %? type params",
-             values.expected, values.found)
-      }
-      terr_tuple_size(values) => {
-        fmt!("expected a tuple with %? elements \
-              but found one with %? elements",
-             values.expected, values.found)
-      }
-      terr_record_size(values) => {
-        fmt!("expected a record with %? fields \
-              but found one with %? fields",
-             values.expected, values.found)
-      }
-      terr_record_mutability => {
-        ~"record elements differ in mutability"
-      }
-      terr_record_fields(values) => {
-        fmt!("expected a record with field `%s` but found one with field \
-              `%s`",
-             cx.sess.str_of(values.expected), cx.sess.str_of(values.found))
-      }
-      terr_arg_count => ~"incorrect number of function parameters",
-      terr_mode_mismatch(values) => {
-        fmt!("expected argument mode %s, but found %s",
-             mode_to_str(values.expected), mode_to_str(values.found))
-      }
-      terr_regions_does_not_outlive(*) => {
-        fmt!("lifetime mismatch")
-      }
-      terr_regions_not_same(*) => {
-        fmt!("lifetimes are not the same")
-      }
-      terr_regions_no_overlap(*) => {
-        fmt!("lifetimes do not intersect")
-      }
-      terr_vstores_differ(k, values) => {
-        fmt!("%s storage differs: expected %s but found %s",
-                    terr_vstore_kind_to_str(k),
-                    vstore_to_str(cx, values.expected),
-                    vstore_to_str(cx, values.found))
-      }
-      terr_in_field(err, fname) => {
-        fmt!("in field `%s`, %s", cx.sess.str_of(fname),
-             type_err_to_str(cx, err))
-      }
-      terr_sorts(values) => {
-        fmt!("expected %s but found %s",
-                    ty_sort_str(cx, values.expected),
-                    ty_sort_str(cx, values.found))
-      }
-      terr_self_substs => {
-        ~"inconsistent self substitution" // XXX this is more of a bug
-      }
-      terr_no_integral_type => {
-        ~"couldn't determine an appropriate integral type for integer \
-          literal"
-      }
+        terr_purity_mismatch(values) => {
+            fmt!("expected %s fn but found %s fn",
+                 purity_to_str(values.expected),
+                 purity_to_str(values.found))
+        }
+        terr_proto_mismatch(values) => {
+            fmt!("expected %s closure, found %s closure",
+                 proto_ty_to_str(cx, values.expected),
+                 proto_ty_to_str(cx, values.found))
+        }
+        terr_mutability => ~"values differ in mutability",
+        terr_box_mutability => ~"boxed values differ in mutability",
+        terr_vec_mutability => ~"vectors differ in mutability",
+        terr_ptr_mutability => ~"pointers differ in mutability",
+        terr_ref_mutability => ~"references differ in mutability",
+        terr_ty_param_size(values) => {
+            fmt!("expected a type with %? type params \
+                  but found one with %? type params",
+                 values.expected, values.found)
+        }
+        terr_tuple_size(values) => {
+            fmt!("expected a tuple with %? elements \
+                  but found one with %? elements",
+                 values.expected, values.found)
+        }
+        terr_record_size(values) => {
+            fmt!("expected a record with %? fields \
+                  but found one with %? fields",
+                 values.expected, values.found)
+        }
+        terr_record_mutability => {
+            ~"record elements differ in mutability"
+        }
+        terr_record_fields(values) => {
+            fmt!("expected a record with field `%s` but found one with field \
+                  `%s`",
+                 cx.sess.str_of(values.expected),
+                 cx.sess.str_of(values.found))
+        }
+        terr_arg_count => ~"incorrect number of function parameters",
+        terr_mode_mismatch(values) => {
+            fmt!("expected argument mode %s, but found %s",
+                 mode_to_str(values.expected), mode_to_str(values.found))
+        }
+        terr_regions_does_not_outlive(*) => {
+            fmt!("lifetime mismatch")
+        }
+        terr_regions_not_same(*) => {
+            fmt!("lifetimes are not the same")
+        }
+        terr_regions_no_overlap(*) => {
+            fmt!("lifetimes do not intersect")
+        }
+        terr_regions_insufficiently_polymorphic(br, _) => {
+            fmt!("expected bound lifetime parameter %s, \
+                  but found concrete lifetime",
+                 bound_region_to_str(cx, br))
+        }
+        terr_regions_overly_polymorphic(br, _) => {
+            fmt!("expected concrete lifetime, \
+                  but found bound lifetime parameter %s",
+                 bound_region_to_str(cx, br))
+        }
+        terr_vstores_differ(k, values) => {
+            fmt!("%s storage differs: expected %s but found %s",
+                 terr_vstore_kind_to_str(k),
+                 vstore_to_str(cx, values.expected),
+                 vstore_to_str(cx, values.found))
+        }
+        terr_in_field(err, fname) => {
+            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
+                 type_err_to_str(cx, err))
+        }
+        terr_sorts(values) => {
+            fmt!("expected %s but found %s",
+                 ty_sort_str(cx, values.expected),
+                 ty_sort_str(cx, values.found))
+        }
+        terr_self_substs => {
+            ~"inconsistent self substitution" // XXX this is more of a bug
+        }
+        terr_no_integral_type => {
+            ~"couldn't determine an appropriate integral type for integer \
+              literal"
+        }
     }
 }
 
@@ -3358,6 +3407,16 @@ fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
             note_and_explain_region(cx, ~"", region1, ~"...");
             note_and_explain_region(cx, ~"...does not overlap ",
                                     region2, ~"");
+        }
+        terr_regions_insufficiently_polymorphic(_, conc_region) => {
+            note_and_explain_region(cx,
+                                    ~"concrete lifetime that was found is ",
+                                    conc_region, ~"");
+        }
+        terr_regions_overly_polymorphic(_, conc_region) => {
+            note_and_explain_region(cx,
+                                    ~"expected concrete lifetime is ",
+                                    conc_region, ~"");
         }
         _ => {}
     }
@@ -4182,9 +4241,9 @@ impl Region : cmp::Eq {
                     _ => false
                 }
             }
-            re_var(e0a) => {
+            re_infer(e0a) => {
                 match (*other) {
-                    re_var(e0b) => e0a == e0b,
+                    re_infer(e0b) => e0a == e0b,
                     _ => false
                 }
             }
