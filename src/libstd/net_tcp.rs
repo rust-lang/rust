@@ -1249,6 +1249,10 @@ mod test {
                 impl_gl_tcp_ipv4_server_and_client();
             }
             #[test]
+            fn test_gl_tcp_get_peer_name() unsafe {
+                impl_gl_tcp_ipv4_get_peer_name();
+            }
+            #[test]
             fn test_gl_tcp_ipv4_client_error_connection_refused() unsafe {
                 impl_gl_tcp_ipv4_client_error_connection_refused();
             }
@@ -1272,6 +1276,11 @@ mod test {
             #[ignore(cfg(target_os = "linux"))]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
                 impl_gl_tcp_ipv4_server_and_client();
+            }
+            #[test]
+            #[ignore(cfg(target_os = "linux"))]
+            fn test_gl_tcp_get_peer_name() unsafe {
+                impl_gl_tcp_ipv4_get_peer_name();
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
@@ -1341,6 +1350,52 @@ mod test {
                        expected_resp, actual_resp));
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
+    }
+    fn impl_gl_tcp_ipv4_get_peer_name() {
+        let hl_loop = uv::global_loop::get();
+        let server_ip = ~"127.0.0.1";
+        let server_port = 8889u;
+        let expected_resp = ~"pong";
+
+        let server_result_po = core::comm::Port::<~str>();
+        let server_result_ch = core::comm::Chan(&server_result_po);
+
+        let cont_po = core::comm::Port::<()>();
+        let cont_ch = core::comm::Chan(&cont_po);
+        // server
+        do task::spawn_sched(task::ManualThreads(1u)) {
+            let actual_req = do comm::listen |server_ch| {
+                run_tcp_test_server(
+                    server_ip,
+                    server_port,
+                    expected_resp,
+                    server_ch,
+                    cont_ch,
+                    hl_loop)
+            };
+            server_result_ch.send(actual_req);
+        };
+        core::comm::recv(cont_po);
+        // client
+        log(debug, ~"server started, firing up client..");
+        do core::comm::listen |client_ch| {
+            let server_ip_addr = ip::v4::parse_addr(server_ip);
+            let iotask = uv::global_loop::get();
+            let connect_result = connect(move server_ip_addr, server_port,
+                                         iotask);
+
+            let sock = result::unwrap(move connect_result);
+
+            // This is what we are actually testing!
+            assert net::ip::format_addr(&sock.getpeername()) == ~"127.0.0.1";
+            assert net::ip::get_port(&sock.getpeername()) == 8889;
+
+            // Fulfill the protocol the test server expects
+            let resp_bytes = str::to_bytes(~"ping");
+            tcp_write_single(&sock, resp_bytes);
+            let read_result = sock.read(0u);
+            client_ch.send(str::from_bytes(read_result.get()));
+        };
     }
     fn impl_gl_tcp_ipv4_client_error_connection_refused() {
         let hl_loop = uv::global_loop::get();
