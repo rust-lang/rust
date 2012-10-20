@@ -755,7 +755,7 @@ impl TcpSocket {
         -> future::Future<result::Result<(), TcpErrData>> {
         write_future(&self, raw_write_data)
     }
-    pub fn getpeername() -> ip::IpAddr {
+    pub fn get_peer_addr() -> ip::IpAddr {
         unsafe {
             if self.socket_data.ipv6 {
                 let addr = uv::ll::ip6_addr("", 0);
@@ -1249,8 +1249,8 @@ mod test {
                 impl_gl_tcp_ipv4_server_and_client();
             }
             #[test]
-            fn test_gl_tcp_get_peer_name() unsafe {
-                impl_gl_tcp_ipv4_get_peer_name();
+            fn test_gl_tcp_get_peer_addr() unsafe {
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             fn test_gl_tcp_ipv4_client_error_connection_refused() unsafe {
@@ -1279,8 +1279,8 @@ mod test {
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            fn test_gl_tcp_get_peer_name() unsafe {
-                impl_gl_tcp_ipv4_get_peer_name();
+            fn test_gl_tcp_get_peer_addr() unsafe {
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
@@ -1351,7 +1351,7 @@ mod test {
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
     }
-    fn impl_gl_tcp_ipv4_get_peer_name() {
+    fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 8889u;
@@ -1387,8 +1387,8 @@ mod test {
             let sock = result::unwrap(move connect_result);
 
             // This is what we are actually testing!
-            assert net::ip::format_addr(&sock.getpeername()) == ~"127.0.0.1";
-            assert net::ip::get_port(&sock.getpeername()) == 8889;
+            assert net::ip::format_addr(&sock.get_peer_addr()) == ~"127.0.0.1";
+            assert net::ip::get_port(&sock.get_peer_addr()) == 8889;
 
             // Fulfill the protocol the test server expects
             let resp_bytes = str::to_bytes(~"ping");
@@ -1592,8 +1592,11 @@ mod test {
                             ~"SERVER/WORKER: send on cont ch");
                         cont_ch.send(());
                         let sock = result::unwrap(move accept_result);
+                        let peer_addr = sock.get_peer_addr();
                         log(debug, ~"SERVER: successfully accepted"+
-                            ~"connection!");
+                            fmt!(" connection from %s:%u",
+                                 ip::format_addr(&peer_addr),
+                                 ip::get_port(&peer_addr)));
                         let received_req_bytes = read(&sock, 0u);
                         match move received_req_bytes {
                           result::Ok(move data) => {
