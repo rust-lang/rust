@@ -5,7 +5,7 @@
 use libc::*;
 
 struct KEYGEN {
-    hash_algorithm: [c_uint]/2,
+    hash_algorithm: [c_uint * 2],
     count: uint32_t,
     salt: *c_void,
     salt_size: uint32_t,
