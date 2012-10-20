@@ -24,6 +24,7 @@ export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
 export get_provided_trait_methods;
+export get_supertraits;
 export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_static_methods_if_impl;
@@ -120,6 +121,12 @@ fn get_provided_trait_methods(tcx: ty::ctxt, def: ast::def_id) ->
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
+}
+
+fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
+    let cstore = tcx.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_supertraits(cdata, def.node, tcx)
 }
 
 fn get_method_names_if_trait(cstore: cstore::CStore, def: ast::def_id)
