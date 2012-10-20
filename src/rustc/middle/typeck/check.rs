@@ -1441,6 +1441,136 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         return bot;
     }
 
+    fn check_struct_constructor(fcx: @fn_ctxt,
+                                id: ast::node_id,
+                                span: syntax::codemap::span,
+                                class_id: ast::def_id,
+                                fields: ~[ast::field],
+                                base_expr: Option<@ast::expr>) -> bool {
+        let mut bot = false;
+        let tcx = fcx.ccx.tcx;
+
+        // Look up the number of type parameters and the raw type, and
+        // determine whether the class is region-parameterized.
+        let type_parameter_count, region_parameterized, raw_type;
+        if class_id.crate == ast::local_crate {
+            region_parameterized =
+                tcx.region_paramd_items.find(class_id.node);
+            match tcx.items.find(class_id.node) {
+                Some(ast_map::node_item(@{
+                        node: ast::item_class(_, type_parameters),
+                        _
+                    }, _)) => {
+
+                    type_parameter_count = type_parameters.len();
+
+                    let self_region =
+                        bound_self_region(region_parameterized);
+
+                    raw_type = ty::mk_class(tcx, class_id, {
+                        self_r: self_region,
+                        self_ty: None,
+                        tps: ty::ty_params_to_tys(tcx, type_parameters)
+                    });
+                }
+                _ => {
+                    tcx.sess.span_bug(span,
+                                      ~"resolve didn't map this to a class");
+                }
+            }
+        } else {
+            let item_type = ty::lookup_item_type(tcx, class_id);
+            type_parameter_count = (*item_type.bounds).len();
+            region_parameterized = item_type.region_param;
+            raw_type = item_type.ty;
+        }
+
+        // Generate the struct type.
+        let self_region =
+            fcx.region_var_if_parameterized(region_parameterized,
+                                            span,
+                                            ty::re_scope(id));
+        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
+        let substitutions = {
+            self_r: self_region,
+            self_ty: None,
+            tps: type_parameters
+        };
+
+        let struct_type = ty::subst(tcx, &substitutions, raw_type);
+
+        // Look up the class fields and build up a map.
+        let class_fields = ty::lookup_class_fields(tcx, class_id);
+        let class_field_map = HashMap();
+        let mut fields_found = 0;
+        for class_fields.each |field| {
+            // XXX: Check visibility here.
+            class_field_map.insert(field.ident, (field.id, false));
+        }
+
+        // Typecheck each field.
+        for fields.each |field| {
+            match class_field_map.find(field.node.ident) {
+                None => {
+                    tcx.sess.span_err(
+                        field.span,
+                        fmt!("structure has no field named field named `%s`",
+                             tcx.sess.str_of(field.node.ident)));
+                }
+                Some((_, true)) => {
+                    tcx.sess.span_err(
+                        field.span,
+                        fmt!("field `%s` specified more than once",
+                             tcx.sess.str_of(field.node.ident)));
+                }
+                Some((field_id, false)) => {
+                    let expected_field_type =
+                        ty::lookup_field_type(tcx, class_id, field_id,
+                                              &substitutions);
+                    bot |= check_expr(fcx,
+                                      field.node.expr,
+                                      Some(expected_field_type));
+                    fields_found += 1;
+                }
+            }
+        }
+
+        match base_expr {
+            None => {
+                // Make sure the programmer specified all the fields.
+                assert fields_found <= class_fields.len();
+                if fields_found < class_fields.len() {
+                    let mut missing_fields = ~[];
+                    for class_fields.each |class_field| {
+                        let name = class_field.ident;
+                        let (_, seen) = class_field_map.get(name);
+                        if !seen {
+                            missing_fields.push(
+                                ~"`" + tcx.sess.str_of(name) + ~"`");
+                        }
+                    }
+
+                    tcx.sess.span_err(span,
+                                      fmt!("missing field%s: %s",
+                                           if missing_fields.len() == 1 {
+                                               ~""
+                                           } else {
+                                               ~"s"
+                                           },
+                                           str::connect(missing_fields,
+                                                        ~", ")));
+                }
+            }
+            Some(base_expr) => {
+                // Just check the base expression.
+                check_expr(fcx, base_expr, Some(struct_type));
+            }
+        }
+
+        // Write in the resulting type.
+        fcx.write_ty(id, struct_type);
+        return bot;
+    }
 
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
@@ -1911,136 +2041,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_struct(path, fields, base_expr) => {
         // Resolve the path.
-        let class_id;
         match tcx.def_map.find(id) {
             Some(ast::def_class(type_def_id)) => {
-                class_id = type_def_id;
+                check_struct_constructor(fcx, id, expr.span, type_def_id,
+                                         fields, base_expr);
             }
             _ => {
                 tcx.sess.span_bug(path.span, ~"structure constructor does \
                                                not name a structure type");
             }
         }
-
-        // Look up the number of type parameters and the raw type, and
-        // determine whether the class is region-parameterized.
-        let type_parameter_count, region_parameterized, raw_type;
-        if class_id.crate == ast::local_crate {
-            region_parameterized =
-                tcx.region_paramd_items.find(class_id.node);
-            match tcx.items.find(class_id.node) {
-                Some(ast_map::node_item(@{
-                        node: ast::item_class(_, type_parameters),
-                        _
-                    }, _)) => {
-
-                    type_parameter_count = type_parameters.len();
-
-                    let self_region =
-                        bound_self_region(region_parameterized);
-
-                    raw_type = ty::mk_class(tcx, class_id, {
-                        self_r: self_region,
-                        self_ty: None,
-                        tps: ty::ty_params_to_tys(tcx, type_parameters)
-                    });
-                }
-                _ => {
-                    tcx.sess.span_bug(expr.span,
-                                      ~"resolve didn't map this to a class");
-                }
-            }
-        } else {
-            let item_type = ty::lookup_item_type(tcx, class_id);
-            type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.region_param;
-            raw_type = item_type.ty;
-        }
-
-        // Generate the struct type.
-        let self_region =
-            fcx.region_var_if_parameterized(region_parameterized,
-                                            expr.span,
-                                            ty::re_scope(expr.id));
-        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = {
-            self_r: self_region,
-            self_ty: None,
-            tps: type_parameters
-        };
-
-        let struct_type = ty::subst(tcx, &substitutions, raw_type);
-
-        // Look up the class fields and build up a map.
-        let class_fields = ty::lookup_class_fields(tcx, class_id);
-        let class_field_map = HashMap();
-        let mut fields_found = 0;
-        for class_fields.each |field| {
-            // XXX: Check visibility here.
-            class_field_map.insert(field.ident, (field.id, false));
-        }
-
-        // Typecheck each field.
-        for fields.each |field| {
-            match class_field_map.find(field.node.ident) {
-                None => {
-                    tcx.sess.span_err(
-                        field.span,
-                        fmt!("structure has no field named field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
-                }
-                Some((_, true)) => {
-                    tcx.sess.span_err(
-                        field.span,
-                        fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
-                }
-                Some((field_id, false)) => {
-                    let expected_field_type =
-                        ty::lookup_field_type(tcx, class_id, field_id,
-                                              &substitutions);
-                    bot |= check_expr(fcx,
-                                      field.node.expr,
-                                      Some(expected_field_type));
-                    fields_found += 1;
-                }
-            }
-        }
-
-        match base_expr {
-            None => {
-                // Make sure the programmer specified all the fields.
-                assert fields_found <= class_fields.len();
-                if fields_found < class_fields.len() {
-                    let mut missing_fields = ~[];
-                    for class_fields.each |class_field| {
-                        let name = class_field.ident;
-                        let (_, seen) = class_field_map.get(name);
-                        if !seen {
-                            missing_fields.push(
-                                ~"`" + tcx.sess.str_of(name) + ~"`");
-                        }
-                    }
-
-                    tcx.sess.span_err(expr.span,
-                                      fmt!("missing field%s: %s",
-                                           if missing_fields.len() == 1 {
-                                               ~""
-                                           } else {
-                                               ~"s"
-                                           },
-                                           str::connect(missing_fields,
-                                                        ~", ")));
-                }
-            }
-            Some(base_expr) => {
-                // Just check the base expression.
-                check_expr(fcx, base_expr, Some(struct_type));
-            }
-        }
-
-        // Write in the resulting type.
-        fcx.write_ty(id, struct_type);
       }
       ast::expr_field(base, field, tys) => {
         bot = check_field(fcx, expr, false, base, field, tys);
