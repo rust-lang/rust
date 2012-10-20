@@ -43,6 +43,7 @@ export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
 export get_provided_trait_methods;
+export get_supertraits;
 export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_item_attrs;
@@ -769,6 +770,16 @@ fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
     }
 
     return move result;
+}
+
+/// Returns the supertraits of the given trait.
+fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
+    let results = dvec::DVec();
+    let item_doc = lookup_item(id, cdata.data);
+    for ebml::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
+        results.push(doc_type(trait_doc, tcx, cdata));
+    }
+    return dvec::unwrap(move results);
 }
 
 // If the item in question is a trait, returns its set of methods and

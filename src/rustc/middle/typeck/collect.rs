@@ -23,7 +23,7 @@ are represented as `ty_param()` instances.
 use astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
 use ast_util::trait_method_to_ty_method;
 use rscope::*;
-use ty::{FnTyBase, FnMeta, FnSig};
+use ty::{FnTyBase, FnMeta, FnSig, InstantiatedTraitRef};
 use util::common::pluralize;
 use util::ppaux::bound_to_str;
 
@@ -237,6 +237,21 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
       }
       _ => { /* Ignore things that aren't traits or classes */ }
     }
+}
+
+fn ensure_supertraits(ccx: @crate_ctxt,
+                      id: ast::node_id,
+                      rp: Option<ty::region_variance>,
+                      trait_refs: &[@ast::trait_ref]) {
+    if ccx.tcx.supertraits.contains_key(local_def(id)) { return; }
+
+    let instantiated = dvec::DVec();
+    for trait_refs.each |trait_ref| {
+        let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp);
+        instantiated.push(InstantiatedTraitRef { def_id: did, tpt: tpt });
+    }
+    ccx.tcx.supertraits.insert(local_def(id),
+                               @dvec::unwrap(move instantiated));
 }
 
 /**
@@ -462,12 +477,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         }
       }
-      ast::item_trait(tps, _, trait_methods) => {
+      ast::item_trait(tps, supertraits, trait_methods) => {
         let tpt = ty_of_item(ccx, it);
         debug!("item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty));
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id, tpt.ty);
+        ensure_supertraits(ccx, it.id, rp, supertraits);
 
         let (_, provided_methods) = split_trait_methods(trait_methods);
         let {bounds, _} = mk_substs(ccx, tps, rp);
