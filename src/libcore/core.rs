@@ -12,7 +12,7 @@ pub use WindowsPath = path::WindowsPath;
 pub use PosixPath = path::PosixPath;
 
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
-pub use str::{StrSlice, UniqueStr};
+pub use str::{StrSlice, Trimmable};
 pub use vec::{ConstVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{MutableVector, MutableCopyableVector};
