@@ -10,7 +10,14 @@ struct Kitty {
     drop {}
 }
 
+#[cfg(target_arch = "x86_64")]
 fn main() {
     assert (size_of::<Cat>() == 8 as uint);
     assert (size_of::<Kitty>() == 16 as uint);
+}
+
+#[cfg(target_arch = "x86")]
+fn main() {
+    assert (size_of::<Cat>() == 4 as uint);
+    assert (size_of::<Kitty>() == 8 as uint);
 }
