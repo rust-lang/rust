@@ -134,6 +134,10 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         stream_handle_ptr: stream_handle_ptr,
         connect_req: uv::ll::connect_t(),
         write_req: uv::ll::write_t(),
+        ipv6: match input_ip {
+            ip::Ipv4(_) => { false }
+            ip::Ipv6(_) => { true }
+        },
         iotask: iotask
     };
     let socket_data_ptr = ptr::addr_of(&(*socket_data));
@@ -475,6 +479,7 @@ pub fn accept(new_conn: TcpNewConnection)
             stream_handle_ptr : stream_handle_ptr,
             connect_req : uv::ll::connect_t(),
             write_req : uv::ll::write_t(),
+            ipv6: (*server_data_ptr).ipv6,
             iotask : iotask
         };
         let client_socket_data_ptr = ptr::addr_of(&(*client_socket_data));
@@ -590,6 +595,10 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
         kill_ch: kill_ch,
         on_connect_cb: move on_connect_cb,
         iotask: iotask,
+        ipv6: match host_ip {
+            ip::Ipv4(_) => { false }
+            ip::Ipv6(_) => { true }
+        },
         mut active: true
     };
     let server_data_ptr = ptr::addr_of(&server_data);
@@ -748,18 +757,17 @@ impl TcpSocket {
     }
     pub fn getpeername() -> ip::IpAddr {
         unsafe {
-            let addr = uv::ll::ip4_addr("", 0);
-            uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
-                                    ptr::addr_of(&addr));
-            ip::Ipv4(move addr)
-        }
-    }
-    pub fn getpeername6() -> ip::IpAddr {
-        unsafe {
-            let addr = uv::ll::ip6_addr("", 0);
-            uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
-                                     ptr::addr_of(&addr));
-            ip::Ipv6(move addr)
+            if self.socket_data.ipv6 {
+                let addr = uv::ll::ip6_addr("", 0);
+                uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
+                                         ptr::addr_of(&addr));
+                ip::Ipv6(move addr)
+            } else {
+                let addr = uv::ll::ip4_addr("", 0);
+                uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
+                                        ptr::addr_of(&addr));
+                ip::Ipv4(move addr)
+            }
         }
     }
 }
@@ -1019,6 +1027,7 @@ type TcpListenFcData = {
     kill_ch: comm::Chan<Option<TcpErrData>>,
     on_connect_cb: fn~(*uv::ll::uv_tcp_t),
     iotask: IoTask,
+    ipv6: bool,
     mut active: bool
 };
 
@@ -1217,6 +1226,7 @@ type TcpSocketData = {
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
+    ipv6: bool,
     iotask: IoTask
 };
 
