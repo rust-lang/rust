@@ -20,6 +20,7 @@ use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 
 export ProvidedMethodSource;
+export InstantiatedTraitRef;
 export TyVid, IntVid, FnVid, RegionVid, vid;
 export br_hashmap;
 export is_instantiable;
@@ -66,6 +67,7 @@ export sequence_element_type;
 export stmt_node_id;
 export sty;
 export subst, subst_tps, substs_is_noop, substs_to_str, substs;
+export subst_substs;
 export t;
 export new_ty_hash;
 export enum_variants, substd_enum_variants, enum_is_univariant;
@@ -73,6 +75,7 @@ export trait_methods, store_trait_methods, impl_traits;
 export enum_variant_with_id;
 export ty_dtor;
 export ty_param_bounds_and_ty;
+export ty_param_substs_and_ty;
 export ty_bool, mk_bool, type_is_bool;
 export ty_bot, mk_bot, type_is_bot;
 export ty_box, mk_box, mk_imm_box, type_is_box, type_is_boxed;
@@ -191,6 +194,7 @@ export region_variance, rv_covariant, rv_invariant, rv_contravariant;
 export opt_region_variance;
 export determine_inherited_purity;
 export provided_trait_methods;
+export trait_supertraits;
 export AutoAdjustment;
 export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
 
@@ -321,6 +325,11 @@ struct ProvidedMethodSource {
     impl_id: ast::def_id
 }
 
+struct InstantiatedTraitRef {
+    def_id: ast::def_id,
+    tpt: ty_param_substs_and_ty
+}
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -364,7 +373,8 @@ type ctxt =
       normalized_cache: HashMap<t, t>,
       lang_items: middle::lang_items::LanguageItems,
       legacy_boxed_traits: HashMap<node_id, ()>,
-      provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>};
+      provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
+      supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>};
 
 enum tbox_flag {
     has_params = 1,
@@ -819,6 +829,8 @@ type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
                                region_param: Option<region_variance>,
                                ty: t};
 
+type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
+
 type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = HashMap<ast::def_id, const_eval::constness>;
@@ -888,7 +900,8 @@ fn mk_ctxt(s: session::Session,
       normalized_cache: new_ty_hash(),
       lang_items: move lang_items,
       legacy_boxed_traits: HashMap(),
-      provided_method_sources: HashMap()}
+      provided_method_sources: HashMap(),
+      supertraits: HashMap()}
 }
 
 
@@ -1483,6 +1496,16 @@ fn subst(cx: ctxt,
                 |t| do_subst(cx, substs, t))
           }
         }
+    }
+}
+
+// Performs substitutions on a set of substitutions (result = super(sub)) to
+// yield a new set of substitutions. This is used in trait inheritance.
+fn subst_substs(cx: ctxt, super: &substs, sub: &substs) -> substs {
+    {
+        self_r: super.self_r,
+        self_ty: super.self_ty.map(|typ| subst(cx, sub, *typ)),
+        tps: super.tps.map(|typ| subst(cx, sub, *typ))
     }
 }
 
@@ -3365,6 +3388,35 @@ fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     }
 }
 
+fn trait_supertraits(cx: ctxt, id: ast::def_id) -> @~[InstantiatedTraitRef] {
+    // Check the cache.
+    match cx.supertraits.find(id) {
+        Some(instantiated_trait_info) => { return instantiated_trait_info; }
+        None => {}  // Continue.
+    }
+
+    // Not in the cache. It had better be in the metadata, which means it
+    // shouldn't be local.
+    assert !is_local(id);
+
+    // Get the supertraits out of the metadata and create the
+    // InstantiatedTraitRef for each.
+    let result = dvec::DVec();
+    for csearch::get_supertraits(cx, id).each |trait_type| {
+        match get(*trait_type).sty {
+            ty_trait(def_id, substs, _) => {
+                result.push(InstantiatedTraitRef {
+                    def_id: def_id,
+                    tpt: { substs: substs, ty: *trait_type }
+                });
+            }
+            _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
+        }
+    }
+
+    // Unwrap and return the result.
+    return @dvec::unwrap(move result);
+}
 
 fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     match cx.trait_method_cache.find(id) {

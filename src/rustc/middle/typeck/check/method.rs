@@ -313,45 +313,73 @@ impl LookupContext {
                 }
             };
 
-            let trait_methods = ty::trait_methods(tcx, trait_id);
-            let pos = {
-                // FIXME #3453 can't use trait_methods.position
-                match vec::position(*trait_methods,
-                                    |m| (m.self_ty != ast::sty_static &&
-                                         m.ident == self.m_name))
-                {
-                    Some(pos) => pos,
-                    None => {
-                        loop; // check next bound
-                    }
+            // Loop over the trait and all of its supertraits.
+            let worklist = dvec::DVec();
+            worklist.push((trait_id, move bound_substs));
+
+            let mut i = 0;
+            while i < worklist.len() {
+                let (trait_id, bound_substs) = worklist[i];
+                i += 1;
+
+                // Replace any appearance of `self` with the type of the
+                // generic parameter itself.  Note that this is the only
+                // case where this replacement is necessary: in all other
+                // cases, we are either invoking a method directly from an
+                // impl or class (where the self type is not permitted),
+                // or from a trait type (in which case methods that refer
+                // to self are not permitted).
+                let rcvr_ty = ty::mk_param(tcx, param_ty.idx,
+                                           param_ty.def_id);
+                let rcvr_substs = {self_ty: Some(rcvr_ty), ..bound_substs};
+
+                // Add all the supertraits of this trait to the worklist.
+                debug!("finding supertraits for %d:%d", trait_id.crate,
+                       trait_id.node);
+                let instantiated_trait_refs = ty::trait_supertraits(
+                    tcx, trait_id);
+                for instantiated_trait_refs.each |instantiated_trait_ref| {
+                    debug!("adding supertrait");
+
+                    let new_substs = ty::subst_substs(
+                        tcx,
+                        &instantiated_trait_ref.tpt.substs,
+                        &rcvr_substs);
+
+                    worklist.push(
+                        (instantiated_trait_ref.def_id, new_substs));
                 }
-            };
-            let method = &trait_methods[pos];
 
-            // Replace any appearance of `self` with the type of the
-            // generic parameter itself.  Note that this is the only
-            // case where this replacement is necessary: in all other
-            // cases, we are either invoking a method directly from an
-            // impl or class (where the self type is not permitted),
-            // or from a trait type (in which case methods that refer
-            // to self are not permitted).
-            let rcvr_ty = ty::mk_param(tcx, param_ty.idx, param_ty.def_id);
-            let rcvr_substs = {self_ty: Some(rcvr_ty), ..bound_substs};
+                let trait_methods = ty::trait_methods(tcx, trait_id);
+                let pos = {
+                    // FIXME #3453 can't use trait_methods.position
+                    match vec::position(*trait_methods,
+                                        |m| (m.self_ty != ast::sty_static &&
+                                             m.ident == self.m_name))
+                    {
+                        Some(pos) => pos,
+                        None => {
+                            loop; // check next trait or bound
+                        }
+                    }
+                };
+                let method = &trait_methods[pos];
 
-            let (rcvr_ty, rcvr_substs) =
-                self.create_rcvr_ty_and_substs_for_method(
-                    method.self_ty, rcvr_ty, move rcvr_substs);
+                let (rcvr_ty, rcvr_substs) =
+                    self.create_rcvr_ty_and_substs_for_method(
+                        method.self_ty, rcvr_ty, move rcvr_substs);
 
-            self.inherent_candidates.push(Candidate {
-                rcvr_ty: rcvr_ty,
-                rcvr_substs: rcvr_substs,
-                num_method_tps: method.tps.len(),
-                self_mode: get_mode_from_self_type(method.self_ty),
-                origin: method_param({trait_id:trait_id,
-                                      method_num:pos,
-                                      param_num:param_ty.idx,
-                                      bound_num:this_bound_idx})
-            });
+                self.inherent_candidates.push(Candidate {
+                    rcvr_ty: rcvr_ty,
+                    rcvr_substs: rcvr_substs,
+                    num_method_tps: method.tps.len(),
+                    self_mode: get_mode_from_self_type(method.self_ty),
+                    origin: method_param({trait_id:trait_id,
+                                          method_num:pos,
+                                          param_num:param_ty.idx,
+                                          bound_num:this_bound_idx})
+                });
+            }
         }
     }
 
