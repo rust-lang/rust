@@ -553,9 +553,13 @@ impl Parser {
         } else { self.fatal(~"expected type"); };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        return @{id: self.get_id(),
-              node: t,
+        return {
+            let node =
+                self.try_convert_ty_to_obsolete_fixed_length_vstore(sp, t);
+            @{id: self.get_id(),
+              node: node,
               span: sp}
+        };
     }
 
     fn parse_arg_mode() -> mode {
@@ -1060,6 +1064,9 @@ impl Parser {
             hi = lit.span.hi;
             ex = expr_lit(@lit);
         }
+
+        let (hi, ex) =
+            self.try_convert_expr_to_obsolete_fixed_length_vstore(lo, hi, ex);
 
         return self.mk_pexpr(lo, hi, ex);
     }
