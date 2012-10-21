@@ -2,11 +2,11 @@
 
 # Introduction
 
-Functions are the primary tool that programmers can use to build
-abstractions. Sometimes, though, programmers want to abstract over
-compile-time, syntactic structures rather than runtime values. For example,
-the following two code fragments both pattern-match on their input and return
-early in one case, doing nothing otherwise:
+Functions are the primary tool that programmers can use to build abstractions.
+Sometimes, however, programmers want to perform abstractions over things that are not
+runtime values. Macros provide a syntactic abstraction. For an example of how this
+can be useful, consider the following two code fragments, which both pattern-match
+on their input and return early in one case, and do nothing otherwise:
 
 ~~~~
 # enum t { special_a(uint), special_b(uint) };
