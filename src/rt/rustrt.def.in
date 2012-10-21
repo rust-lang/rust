@@ -204,3 +204,7 @@ tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_annihilate_box
 rust_gc_metadata
+rust_uv_ip4_port
+rust_uv_ip6_port
+rust_uv_tcp_getpeername
+rust_uv_tcp_getpeername6
