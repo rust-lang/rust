@@ -1387,7 +1387,8 @@ mod test {
             let sock = result::unwrap(move connect_result);
 
             // This is what we are actually testing!
-            assert net::ip::format_addr(&sock.get_peer_addr()) == ~"127.0.0.1";
+            assert net::ip::format_addr(&sock.get_peer_addr()) ==
+                ~"127.0.0.1";
             assert net::ip::get_port(&sock.get_peer_addr()) == 8887;
 
             // Fulfill the protocol the test server expects
