@@ -637,11 +637,11 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
     };
 
     match def {
-        ast::def_fn(did, _) => {
+        ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
             let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
             return fn_data_to_datum(bcx, did, fn_data, lldest);
         }
-        ast::def_static_method(impl_did, trait_did, _) => {
+        ast::def_static_method(impl_did, Some(trait_did), _) => {
             let fn_data = meth::trans_static_method_callee(bcx, impl_did,
                                                            trait_did,
                                                            ref_expr.id);
@@ -793,7 +793,9 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 
             // This cast should not be necessary. We should cast self *once*,
             // but right now this conflicts with default methods.
-            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), self_info.t));
+            let real_self_ty = monomorphize_type(bcx, self_info.t);
+            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), real_self_ty));
+
             let casted_val = PointerCast(bcx, self_info.v, llselfty);
             Datum {
                 val: casted_val,

@@ -125,7 +125,7 @@ fn enc_substs(w: io::Writer, cx: @ctxt, substs: ty::substs) {
     w.write_char(']');
 }
 
-fn enc_region(w: io::Writer, cx: @ctxt, r: ty::region) {
+fn enc_region(w: io::Writer, cx: @ctxt, r: ty::Region) {
     match r {
       ty::re_bound(br) => {
         w.write_char('b');

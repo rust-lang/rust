@@ -12,7 +12,7 @@ export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_stmt_from_source_str;
 export parse_from_source_str;
 
-use parser::parser;
+use parser::Parser;
 use attr::parser_attr;
 use common::parser_common;
 use ast::node_id;
@@ -22,7 +22,7 @@ use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
 
 type parse_sess = @{
-    cm: codemap::codemap,
+    cm: codemap::CodeMap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
     interner: @ident_interner,
@@ -40,7 +40,7 @@ fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
              mut chpos: 0u, mut byte_pos: 0u};
 }
 
-fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
+fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::CodeMap)
     -> parse_sess {
     return @{cm: cm,
              mut next_id: 1,
@@ -142,7 +142,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     return r;
 }
 
-fn parse_from_source_str<T>(f: fn (p: parser) -> T,
+fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
                             name: ~str, ss: codemap::file_substr,
                             source: @~str, cfg: ast::crate_cfg,
                             sess: parse_sess)
@@ -170,19 +170,19 @@ fn next_node_id(sess: parse_sess) -> node_id {
 
 fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                                   +name: ~str, +ss: codemap::file_substr,
-                                  source: @~str) -> (parser, string_reader) {
+                                  source: @~str) -> (Parser, string_reader) {
     let ftype = parser::SOURCE_FILE;
     let filemap = codemap::new_filemap_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
-    return (parser(sess, cfg, srdr as reader, ftype), srdr);
+    return (Parser(sess, cfg, srdr as reader, ftype), srdr);
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               +name: ~str, +ss: codemap::file_substr,
-                              source: @~str) -> parser {
+                              source: @~str) -> Parser {
     let (p, _) = new_parser_etc_from_source_str(sess, cfg, name, ss, source);
     move p
 }
@@ -190,7 +190,7 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
 
 fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
                             path: &Path, ftype: parser::file_type) ->
-   (parser, string_reader) {
+   (Parser, string_reader) {
     let res = io::read_whole_file_str(path);
     match res {
       result::Ok(_) => { /* Continue. */ }
@@ -202,18 +202,18 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
-    return (parser(sess, cfg, srdr as reader, ftype), srdr);
+    return (Parser(sess, cfg, srdr as reader, ftype), srdr);
 }
 
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &Path,
-                        ftype: parser::file_type) -> parser {
+                        ftype: parser::file_type) -> Parser {
     let (p, _) = new_parser_etc_from_file(sess, cfg, path, ftype);
     move p
 }
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
-                      tt: ~[ast::token_tree]) -> parser {
+                      tt: ~[ast::token_tree]) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
                                     None, tt);
-    return parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
+    return Parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

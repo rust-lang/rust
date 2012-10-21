@@ -723,7 +723,7 @@ mod tests {
         let map = map::HashMap::<~str, ~str>();
         assert (option::is_none(&map.find(key)));
         map.insert(key, ~"val");
-        assert (option::get(&map.find(key)) == ~"val");
+        assert (option::get(map.find(key)) == ~"val");
     }
 
     #[test]

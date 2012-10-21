@@ -3,7 +3,7 @@ export unop_prec;
 export token_to_binop;
 
 use token::*;
-use token::token;
+use token::Token;
 use ast::*;
 
 /// Unary operators have higher precedence than binary
@@ -19,7 +19,7 @@ const as_prec: uint = 11u;
  * Maps a token to a record specifying the corresponding binary
  * operator and its precedence
  */
-fn token_to_binop(tok: token) -> Option<ast::binop> {
+fn token_to_binop(tok: Token) -> Option<ast::binop> {
   match tok {
       BINOP(STAR)    => Some(mul),
       BINOP(SLASH)   => Some(div),

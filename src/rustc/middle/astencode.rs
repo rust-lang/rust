@@ -19,7 +19,7 @@ use middle::{ty, typeck};
 use middle::typeck::{method_origin, method_map_entry,
                      vtable_res,
                      vtable_origin};
-use driver::session::session;
+use driver::session::Session;
 use middle::freevars::freevar_entry;
 use c = metadata::common;
 use e = metadata::encoder;
@@ -136,7 +136,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-fn reserve_id_range(sess: session,
+fn reserve_id_range(sess: Session,
                     from_id_range: ast_util::id_range) -> ast_util::id_range {
     // Handle the case of an empty range:
     if ast_util::empty(from_id_range) { return from_id_range; }
@@ -326,8 +326,10 @@ impl ast::def: tr {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
         match self {
           ast::def_fn(did, p) => { ast::def_fn(did.tr(xcx), p) }
-          ast::def_static_method(did, did2, p) => {
-            ast::def_static_method(did.tr(xcx), did2.tr(xcx), p)
+          ast::def_static_method(did, did2_opt, p) => {
+            ast::def_static_method(did.tr(xcx),
+                                   did2_opt.map(|did2| did2.tr(xcx)),
+                                   p)
           }
           ast::def_self(nid) => { ast::def_self(xcx.tr_id(nid)) }
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
@@ -379,8 +381,8 @@ impl ty::AutoRef: tr {
     }
 }
 
-impl ty::region: tr {
-    fn tr(xcx: extended_decode_ctxt) -> ty::region {
+impl ty::Region: tr {
+    fn tr(xcx: extended_decode_ctxt) -> ty::Region {
         match self {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
             ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),

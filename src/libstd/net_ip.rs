@@ -10,8 +10,10 @@ use addrinfo = uv::ll::addrinfo;
 use uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
 use uv_ip4_addr = uv::ll::ip4_addr;
 use uv_ip4_name = uv::ll::ip4_name;
+use uv_ip4_port = uv::ll::ip4_port;
 use uv_ip6_addr = uv::ll::ip6_addr;
 use uv_ip6_name = uv::ll::ip6_name;
+use uv_ip6_port = uv::ll::ip6_port;
 use uv_getaddrinfo = uv::ll::getaddrinfo;
 use uv_freeaddrinfo = uv::ll::freeaddrinfo;
 use create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
@@ -33,11 +35,11 @@ type ParseAddrErr = {
 };
 
 /**
- * Convert a `ip_addr` to a str
+ * Convert a `IpAddr` to a str
  *
  * # Arguments
  *
- * * ip - a `std::net::ip::ip_addr`
+ * * ip - a `std::net::ip::IpAddr`
  */
 pub fn format_addr(ip: &IpAddr) -> ~str {
     match *ip {
@@ -55,6 +57,23 @@ pub fn format_addr(ip: &IpAddr) -> ~str {
         }
         result
       }
+    }
+}
+
+/**
+ * Get the associated port
+ *
+ * # Arguments
+ * * ip - a `std::net::ip::IpAddr`
+ */
+pub fn get_port(ip: &IpAddr) -> uint {
+    match *ip {
+        Ipv4(ref addr) => unsafe {
+            uv_ip4_port(addr)
+        },
+        Ipv6(ref addr) => unsafe {
+            uv_ip6_port(addr)
+        }
     }
 }
 

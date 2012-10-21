@@ -1,5 +1,5 @@
 use driver::session;
-use driver::session::session;
+use driver::session::Session;
 use middle::ty;
 use syntax::{ast, ast_util, visit};
 use syntax::attr;
@@ -244,7 +244,7 @@ fn clone_lint_modes(modes: lint_modes) -> lint_modes {
 type ctxt_ = {dict: lint_dict,
               curr: lint_modes,
               is_default: bool,
-              sess: session};
+              sess: Session};
 
 enum ctxt {
     ctxt_(ctxt_)
@@ -355,7 +355,7 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
     }
 }
 
-fn build_settings_crate(sess: session::session, crate: @ast::crate) {
+fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     let cx = ctxt_({dict: get_lint_dict(),
                     curr: std::smallintmap::mk(),

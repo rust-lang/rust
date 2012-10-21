@@ -2,8 +2,7 @@ use diagnostic::span_handler;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use macro_parser::{named_match, matched_seq, matched_nonterminal};
 use codemap::span;
-use parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
-                      ident_interner};
+use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
 use std::map::HashMap;
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
@@ -19,7 +18,7 @@ type tt_frame = @{
     readme: ~[ast::token_tree],
     mut idx: uint,
     dotdotdoted: bool,
-    sep: Option<token>,
+    sep: Option<Token>,
     up: tt_frame_up,
 };
 
@@ -32,7 +31,7 @@ type tt_reader = @{
     mut repeat_idx: ~[uint],
     mut repeat_len: ~[uint],
     /* cached: */
-    mut cur_tok: token,
+    mut cur_tok: Token,
     mut cur_span: span
 };
 
@@ -134,7 +133,7 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
 }
 
 
-fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
+fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
     let ret_val = { tok: r.cur_tok, sp: r.cur_span };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */

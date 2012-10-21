@@ -1,4 +1,4 @@
-use parser::{parser, SOURCE_FILE};
+use parser::{Parser, SOURCE_FILE};
 use attr::parser_attr;
 
 export eval_crate_directives_to_mod;

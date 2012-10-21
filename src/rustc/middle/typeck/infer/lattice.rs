@@ -1,6 +1,6 @@
 use combine::*;
 use unify::*;
-use to_str::to_str;
+use to_str::ToStr;
 
 // ______________________________________________________________________
 // Lattice operations on variables

@@ -1,5 +1,5 @@
 fn main() {
-    assert [1u, 3u]/_.to_vec() == ~[1u, 3u];
+    assert [1u, 3u].to_vec() == ~[1u, 3u];
     let e: ~[uint] = ~[];
     assert e.to_vec() == ~[];
     assert None::<uint>.to_vec() == ~[];

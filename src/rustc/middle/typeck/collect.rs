@@ -76,7 +76,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
 impl @crate_ctxt {
     fn to_ty<RS: region_scope Copy Owned>(
-        rs: RS, ast_ty: @ast::ty) -> ty::t {
+        rs: RS, ast_ty: @ast::Ty) -> ty::t {
 
         ast_ty_to_ty(self, rs, ast_ty)
     }
@@ -212,9 +212,15 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     match tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
+            let def_id;
+            match *m {
+                ast::required(ty_method) => def_id = local_def(ty_method.id),
+                ast::provided(method) => def_id = local_def(method.id)
+            }
+
             let trait_bounds = ty_param_bounds(ccx, params);
             let ty_m = trait_method_to_ty_method(*m);
-            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd);
+            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd, def_id);
             if ty_m.self_ty.node == ast::sty_static {
                 make_static_method_ty(ccx, ty_m, region_paramd,
                                       method_ty, trait_ty, trait_bounds);
@@ -339,7 +345,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
-                          with_r: ty::region) -> ty::t {
+                          with_r: ty::Region) -> ty::t {
         do ty::fold_regions(tcx, ty) |r, _in_fn| {
             if r == ty::re_bound(ty::br_self) {with_r} else {r}
         }
@@ -373,7 +379,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 
               let provided_methods = ty::provided_trait_methods(tcx, did);
               match vec::find(provided_methods, |provided_method|
-                              provided_method.ident == trait_m.ident) {
+                              *provided_method == trait_m.ident) {
                 Some(_) => {
                     // If there's a provided method with the name we
                     // want, then we're fine; nothing else to do.
@@ -546,19 +552,22 @@ fn ty_of_method(ccx: @crate_ctxt,
                         m.purity, @~[],
                         m.decl, None, m.span),
      self_ty: m.self_ty.node,
-     vis: m.vis}
+     vis: m.vis,
+     def_id: local_def(m.id)}
 }
 
 fn ty_of_ty_method(self: @crate_ctxt,
                    m: ast::ty_method,
-                   rp: Option<ty::region_variance>) -> ty::method {
+                   rp: Option<ty::region_variance>,
+                   id: ast::def_id) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, m.purity,
                         @~[], m.decl, None, m.span),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
-     vis: ast::public}
+     vis: ast::public,
+     def_id: id}
 }
 
 /*

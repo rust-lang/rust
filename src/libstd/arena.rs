@@ -244,7 +244,7 @@ fn test_arena_destructors() {
         do arena.alloc { @i };
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        do arena.alloc { [0u8, 1u8, 2u8]/3 };
+        do arena.alloc { [0u8, 1u8, 2u8] };
     }
 }
 
@@ -258,7 +258,7 @@ fn test_arena_destructors_fail() {
         do arena.alloc { @i };
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        do arena.alloc { [0u8, 1u8, 2u8]/3 };
+        do arena.alloc { [0u8, 1u8, 2u8] };
     }
     // Now, fail while allocating
     do arena.alloc::<@int> {

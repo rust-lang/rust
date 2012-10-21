@@ -32,7 +32,7 @@ pub fn console_off() {
 #[cfg(notest)]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
-    let bytes = do io::with_bytes_writer() |writer| {
+    let bytes = do io::with_bytes_writer |writer| {
         repr::write_repr(writer, object);
     };
     unsafe {
