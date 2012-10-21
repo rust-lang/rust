@@ -1354,7 +1354,7 @@ mod test {
     fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
-        let server_port = 8889u;
+        let server_port = 8887u;
         let expected_resp = ~"pong";
 
         let server_result_po = core::comm::Port::<~str>();
@@ -1388,7 +1388,7 @@ mod test {
 
             // This is what we are actually testing!
             assert net::ip::format_addr(&sock.get_peer_addr()) == ~"127.0.0.1";
-            assert net::ip::get_port(&sock.get_peer_addr()) == 8889;
+            assert net::ip::get_port(&sock.get_peer_addr()) == 8887;
 
             // Fulfill the protocol the test server expects
             let resp_bytes = str::to_bytes(~"ping");
