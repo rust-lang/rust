@@ -1484,7 +1484,7 @@ pub mod test {
     fn impl_uv_tcp_server_and_request() unsafe {
         let bind_ip = ~"0.0.0.0";
         let request_ip = ~"127.0.0.1";
-        let port = 8887;
+        let port = 8886;
         let kill_server_msg = ~"does a dog have buddha nature?";
         let server_resp_msg = ~"mu!";
         let client_port = core::comm::Port::<~str>();
