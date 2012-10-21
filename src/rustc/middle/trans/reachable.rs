@@ -128,7 +128,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
     visit::mk_vt(@{visit_ty: traverse_ty, ..*visit::default_visitor()})
 }
 
-fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
+fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     if cx.rmap.contains_key(ty.id) { return; }
     cx.rmap.insert(ty.id, ());
 

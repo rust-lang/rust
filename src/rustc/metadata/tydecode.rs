@@ -162,7 +162,7 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
     }
 }
 
-fn parse_region(st: @pstate) -> ty::region {
+fn parse_region(st: @pstate) -> ty::Region {
     match next(st) {
       'b' => {
         ty::re_bound(parse_bound_region(st))

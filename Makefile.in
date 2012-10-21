@@ -144,8 +144,9 @@ ifneq ($(wildcard $(CFG_GIT_DIR)),)
 endif
 endif
 
-ifdef CFG_DISABLE_VALGRIND
-  $(info cfg: disabling valgrind (CFG_DISABLE_VALGRIND))
+ifdef CFG_ENABLE_VALGRIND
+  $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
+else
   CFG_VALGRIND :=
 endif
 ifdef CFG_BAD_VALGRIND

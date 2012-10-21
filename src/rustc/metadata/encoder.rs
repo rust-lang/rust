@@ -52,7 +52,7 @@ type encode_parms = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item
 };
 
@@ -77,7 +77,7 @@ enum encode_ctxt = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::cstore,
+    cstore: cstore::CStore,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
@@ -88,6 +88,12 @@ fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
 
 fn encode_name(ecx: @encode_ctxt, ebml_w: ebml::Serializer, name: ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
+}
+
+fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+                             name: ident) {
+    ebml_w.wr_tagged_str(tag_item_impl_type_basename,
+                         ecx.tcx.sess.str_of(name));
 }
 
 fn encode_def_id(ebml_w: ebml::Serializer, id: def_id) {
@@ -388,6 +394,12 @@ fn encode_self_type(ebml_w: ebml::Serializer, self_type: ast::self_ty_) {
     ebml_w.end_tag();
 }
 
+fn encode_method_sort(ebml_w: ebml::Serializer, sort: char) {
+    ebml_w.start_tag(tag_item_trait_method_sort);
+    ebml_w.writer.write(&[ sort as u8 ]);
+    ebml_w.end_tag();
+}
+
 /* Returns an index of items in this class */
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
                          id: node_id, path: ast_map::path,
@@ -478,7 +490,12 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
            ecx.tcx.sess.str_of(m.ident), all_tps.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
-    encode_family(ebml_w, purity_fn_family(m.purity));
+    match m.self_ty.node {
+        ast::sty_static => {
+            encode_family(ebml_w, purity_static_method_family(m.purity));
+        }
+        _ => encode_family(ebml_w, purity_fn_family(m.purity))
+    }
     encode_type_param_bounds(ebml_w, ecx, all_tps);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
     encode_name(ecx, ebml_w, m.ident);
@@ -695,7 +712,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, opt_trait, _, methods) => {
+      item_impl(tps, opt_trait, ty, methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -705,6 +722,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
+        match ty.node {
+            ast::ty_path(path, _) if path.idents.len() == 1 => {
+                encode_impl_type_basename(ecx, ebml_w,
+                                          ast_util::path_to_ident(path));
+            }
+            _ => {}
+        }
         for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
             ebml_w.writer.write(str::to_bytes(def_to_str(local_def(m.id))));
@@ -726,6 +750,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         }
       }
       item_trait(tps, traits, ms) => {
+        let provided_methods = dvec::DVec();
+
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -746,12 +772,21 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
+                encode_method_sort(ebml_w, 'r');
                 ebml_w.end_tag();
               }
               provided(m) => {
-                encode_info_for_method(ecx, ebml_w, path,
-                                       should_inline(m.attrs), item.id,
-                                       m, m.tps);
+                provided_methods.push(m);
+
+                ebml_w.start_tag(tag_item_trait_method);
+                encode_def_id(ebml_w, local_def(m.id));
+                encode_name(ecx, ebml_w, mty.ident);
+                encode_type_param_bounds(ebml_w, ecx, m.tps);
+                encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
+                encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
+                encode_self_type(ebml_w, mty.self_ty);
+                encode_method_sort(ebml_w, 'p');
+                ebml_w.end_tag();
               }
             }
             i += 1u;
@@ -785,7 +820,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
             ebml_w.end_tag();
         }
 
-
+        // Finally, output all the provided methods as items.
+        for provided_methods.each |m| {
+            index.push({val: m.id, pos: ebml_w.writer.tell()});
+            encode_info_for_method(ecx, ebml_w, path, true, item.id, *m,
+                                   m.tps);
+        }
       }
       item_mac(*) => fail ~"item macros unimplemented"
     }
@@ -1013,9 +1053,9 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 }
 
 fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
-                     cstore: cstore::cstore) {
+                     cstore: cstore::CStore) {
 
-    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::cstore)
+    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::CStore)
         -> ~[decoder::crate_dep] {
 
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};
@@ -1140,7 +1180,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     if (parms.tcx.sess.meta_stats()) {
 
-        do wr.buf.borrow |v| {
+        do wr.bytes.borrow |v| {
             do v.each |e| {
                 if *e == 0 {
                     ecx.stats.zero_bytes += 1;
@@ -1173,7 +1213,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(*bytes, 0, 8)
-    }) + flate::deflate_bytes(wr.buf.check_out(|buf| buf))
+    }) + flate::deflate_bytes(wr.bytes.check_out(|buf| buf))
 }
 
 // Get the encoded string for a type

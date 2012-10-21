@@ -1,6 +1,6 @@
 use combine::*;
 use lattice::*;
-use to_str::to_str;
+use to_str::ToStr;
 
 enum Glb = combine_fields;  // "greatest lower bound" (common subtype)
 
@@ -109,7 +109,7 @@ impl Glb: combine {
         }
     }
 
-    fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
                a.to_str(self.infcx),
@@ -120,7 +120,7 @@ impl Glb: combine {
         }
     }
 
-    fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         Lub(*self).regions(a, b)
     }
 

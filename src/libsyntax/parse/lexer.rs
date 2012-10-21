@@ -10,11 +10,11 @@ export string_reader_as_reader, tt_reader_as_reader;
 
 trait reader {
     fn is_eof() -> bool;
-    fn next_token() -> {tok: token::token, sp: span};
+    fn next_token() -> {tok: token::Token, sp: span};
     fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
     pure fn interner() -> @token::ident_interner;
-    fn peek() -> {tok: token::token, sp: span};
+    fn peek() -> {tok: token::Token, sp: span};
     fn dup() -> reader;
 }
 
@@ -28,7 +28,7 @@ type string_reader = @{
     filemap: codemap::filemap,
     interner: @token::ident_interner,
     /* cached: */
-    mut peek_tok: token::token,
+    mut peek_tok: token::Token,
     mut peek_span: span
 };
 
@@ -69,7 +69,7 @@ fn dup_string_reader(&&r: string_reader) -> string_reader {
 
 impl string_reader: reader {
     fn is_eof() -> bool { is_eof(self) }
-    fn next_token() -> {tok: token::token, sp: span} {
+    fn next_token() -> {tok: token::Token, sp: span} {
         let ret_val = {tok: self.peek_tok, sp: self.peek_span};
         string_advance_token(self);
         return ret_val;
@@ -79,7 +79,7 @@ impl string_reader: reader {
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
     pure fn interner() -> @token::ident_interner { self.interner }
-    fn peek() -> {tok: token::token, sp: span} {
+    fn peek() -> {tok: token::Token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
     fn dup() -> reader { dup_string_reader(self) as reader }
@@ -87,7 +87,7 @@ impl string_reader: reader {
 
 impl tt_reader: reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
-    fn next_token() -> {tok: token::token, sp: span} {
+    fn next_token() -> {tok: token::Token, sp: span} {
         /* weird resolve bug: if the following `if`, or any of its
         statements are removed, we get resolution errors */
         if false {
@@ -101,7 +101,7 @@ impl tt_reader: reader {
     }
     fn span_diag() -> span_handler { self.sp_diag }
     pure fn interner() -> @token::ident_interner { self.interner }
-    fn peek() -> {tok: token::token, sp: span} {
+    fn peek() -> {tok: token::Token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
     fn dup() -> reader { dup_tt_reader(self) as reader }
@@ -196,14 +196,14 @@ fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
 // might return a sugared-doc-attr
 fn consume_whitespace_and_comments(rdr: string_reader)
-                                -> Option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::Token, sp: span}> {
     while is_whitespace(rdr.curr) { bump(rdr); }
     return consume_any_line_comment(rdr);
 }
 
 // might return a sugared-doc-attr
 fn consume_any_line_comment(rdr: string_reader)
-                                -> Option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::Token, sp: span}> {
     if rdr.curr == '/' {
         match nextch(rdr) {
           '/' => {
@@ -246,7 +246,7 @@ fn consume_any_line_comment(rdr: string_reader)
 
 // might return a sugared-doc-attr
 fn consume_block_comment(rdr: string_reader)
-                                -> Option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::Token, sp: span}> {
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
@@ -317,7 +317,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
     };
 }
 
-fn scan_number(c: char, rdr: string_reader) -> token::token {
+fn scan_number(c: char, rdr: string_reader) -> token::Token {
     let mut num_str, base = 10u, c = c, n = nextch(rdr);
     if c == '0' && n == 'x' {
         bump(rdr);
@@ -435,7 +435,7 @@ fn scan_numeric_escape(rdr: string_reader, n_hex_digits: uint) -> char {
     return accum_int as char;
 }
 
-fn next_token_inner(rdr: string_reader) -> token::token {
+fn next_token_inner(rdr: string_reader) -> token::Token {
     let mut accum_str = ~"";
     let mut c = rdr.curr;
     if (c >= 'a' && c <= 'z')
@@ -460,7 +460,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
     if is_dec_digit(c) {
         return scan_number(c, rdr);
     }
-    fn binop(rdr: string_reader, op: token::binop) -> token::token {
+    fn binop(rdr: string_reader, op: token::binop) -> token::Token {
         bump(rdr);
         if rdr.curr == '=' {
             bump(rdr);

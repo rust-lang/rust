@@ -37,7 +37,7 @@ pub trait Reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
     // FIXME (#2982): This should probably return an error.
-    fn read(buf: &[mut u8], len: uint) -> uint;
+    fn read(bytes: &[mut u8], len: uint) -> uint;
     fn read_byte() -> int;
     fn unread_byte(int);
     fn eof() -> bool;
@@ -65,32 +65,32 @@ pub trait ReaderUtil {
 
 impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
-        let mut buf = vec::with_capacity(len);
-        unsafe { vec::raw::set_len(&mut buf, len); }
+        let mut bytes = vec::with_capacity(len);
+        unsafe { vec::raw::set_len(&mut bytes, len); }
 
-        let count = self.read(buf, len);
+        let count = self.read(bytes, len);
 
-        unsafe { vec::raw::set_len(&mut buf, count); }
-        move buf
+        unsafe { vec::raw::set_len(&mut bytes, count); }
+        move bytes
     }
     fn read_line() -> ~str {
-        let mut buf = ~[];
+        let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            buf.push(ch as u8);
+            bytes.push(ch as u8);
         }
-        str::from_bytes(buf)
+        str::from_bytes(bytes)
     }
 
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes<T: Reader>(buf: &~[u8], chars: &mut ~[char])
+        fn chars_from_bytes<T: Reader>(bytes: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
             let mut i = 0;
-            let buf_len = buf.len();
-            while i < buf_len {
-                let b0 = buf[i];
+            let bytes_len = bytes.len();
+            while i < bytes_len {
+                let b0 = bytes[i];
                 let w = str::utf8_char_width(b0);
                 let end = i + w;
                 i += 1;
@@ -100,12 +100,12 @@ impl<T: Reader> T : ReaderUtil {
                     loop;
                 }
                 // can't satisfy this char with the existing data
-                if end > buf_len {
-                    return (i - 1, end - buf_len);
+                if end > bytes_len {
+                    return (i - 1, end - bytes_len);
                 }
                 let mut val = 0;
                 while i < end {
-                    let next = buf[i] as int;
+                    let next = bytes[i] as int;
                     i += 1;
                     assert (next > -1);
                     assert (next & 192 == 128);
@@ -119,8 +119,8 @@ impl<T: Reader> T : ReaderUtil {
             }
             return (i, 0);
         }
-        let mut buf: ~[u8] = ~[];
-        let mut chars: ~[char] = ~[];
+        let mut bytes = ~[];
+        let mut chars = ~[];
         // might need more bytes, but reading n will never over-read
         let mut nbread = n;
         while nbread > 0 {
@@ -130,15 +130,15 @@ impl<T: Reader> T : ReaderUtil {
                 // we're split in a unicode char?
                 break;
             }
-            buf.push_all(data);
-            let (offset, nbreq) = chars_from_bytes::<T>(&buf, &mut chars);
+            bytes.push_all(data);
+            let (offset, nbreq) = chars_from_bytes::<T>(&bytes, &mut chars);
             let ncreq = n - chars.len();
             // again we either know we need a certain number of bytes
             // to complete a character, or we make sure we don't
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                buf = vec::slice(buf, offset, buf.len());
+                bytes = vec::slice(bytes, offset, bytes.len());
             }
         }
         move chars
@@ -154,12 +154,12 @@ impl<T: Reader> T : ReaderUtil {
     }
 
     fn read_c_str() -> ~str {
-        let mut buf: ~[u8] = ~[];
+        let mut bytes: ~[u8] = ~[];
         loop {
             let ch = self.read_byte();
-            if ch < 1 { break; } else { buf.push(ch as u8); }
+            if ch < 1 { break; } else { bytes.push(ch as u8); }
         }
-        str::from_bytes(buf)
+        str::from_bytes(bytes)
     }
 
     // FIXME deal with eof? // #2004
@@ -191,9 +191,9 @@ impl<T: Reader> T : ReaderUtil {
     }
 
     fn read_whole_stream() -> ~[u8] {
-        let mut buf: ~[u8] = ~[];
-        while !self.eof() { buf.push_all(self.read_bytes(2048u)); }
-        move buf
+        let mut bytes: ~[u8] = ~[];
+        while !self.eof() { bytes.push_all(self.read_bytes(2048u)); }
+        move bytes
     }
 
     fn each_byte(it: fn(int) -> bool) {
@@ -226,8 +226,8 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 }
 
 impl *libc::FILE: Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint {
-        do vec::as_mut_buf(buf) |buf_p, buf_len| {
+    fn read(bytes: &[mut u8], len: uint) -> uint {
+        do vec::as_mut_buf(bytes) |buf_p, buf_len| {
             assert buf_len <= len;
 
             let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
@@ -250,7 +250,9 @@ impl *libc::FILE: Reader {
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
 impl<T: Reader, C> {base: T, cleanup: C}: Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint { self.base.read(buf, len) }
+    fn read(bytes: &[mut u8], len: uint) -> uint {
+        self.base.read(bytes, len)
+    }
     fn read_byte() -> int { self.base.read_byte() }
     fn unread_byte(byte: int) { self.base.unread_byte(byte); }
     fn eof() -> bool { self.base.eof() }
@@ -297,39 +299,41 @@ pub fn file_reader(path: &Path) -> Result<Reader, ~str> {
 }
 
 
-// Byte buffer readers
+// Byte readers
+pub struct BytesReader {
+    bytes: &[u8],
+    mut pos: uint
+}
 
-pub type ByteBuf = {buf: &[const u8], mut pos: uint};
+impl BytesReader: Reader {
+    fn read(bytes: &[mut u8], len: uint) -> uint {
+        let count = uint::min(len, self.bytes.len() - self.pos);
 
-impl ByteBuf: Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint {
-        let count = uint::min(len, self.buf.len() - self.pos);
-
-        let view = vec::const_view(self.buf, self.pos, self.buf.len());
-        vec::bytes::memcpy(buf, view, count);
+        let view = vec::view(self.bytes, self.pos, self.bytes.len());
+        vec::bytes::memcpy(bytes, view, count);
 
         self.pos += count;
 
         count
     }
     fn read_byte() -> int {
-        if self.pos == self.buf.len() { return -1; }
-        let b = self.buf[self.pos];
+        if self.pos == self.bytes.len() { return -1; }
+        let b = self.bytes[self.pos];
         self.pos += 1u;
         return b as int;
     }
     // FIXME (#2738): implement this
     fn unread_byte(_byte: int) { error!("Unimplemented: unread_byte"); fail; }
-    fn eof() -> bool { self.pos == self.buf.len() }
+    fn eof() -> bool { self.pos == self.bytes.len() }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        self.pos = seek_in_buf(offset, pos, self.buf.len(), whence);
+        self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
     }
     fn tell() -> uint { self.pos }
 }
 
-pub fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
-    f({buf: bytes, mut pos: 0u} as Reader)
+pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
+    f(BytesReader { bytes: bytes, pos: 0u } as Reader)
 }
 
 pub fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
@@ -602,10 +606,10 @@ impl<T: Writer> T : WriterUtil {
         self.write_str(&"\n");
     }
     fn write_int(n: int) {
-        int::to_str_bytes(n, 10u, |buf| self.write(buf))
+        int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
     fn write_uint(n: uint) {
-        uint::to_str_bytes(false, n, 10u, |buf| self.write(buf))
+        uint::to_str_bytes(false, n, 10u, |bytes| self.write(bytes))
     }
     fn write_le_uint(n: uint) {
         u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
@@ -687,34 +691,34 @@ pub fn print(s: &str) { stdout().write_str(s); }
 pub fn println(s: &str) { stdout().write_line(s); }
 
 pub struct BytesWriter {
-    buf: DVec<u8>,
+    bytes: DVec<u8>,
     mut pos: uint,
 }
 
 impl BytesWriter: Writer {
     fn write(v: &[const u8]) {
-        do self.buf.swap |buf| {
-            let mut buf <- buf;
+        do self.bytes.swap |bytes| {
+            let mut bytes <- bytes;
             let v_len = v.len();
-            let buf_len = buf.len();
+            let bytes_len = bytes.len();
 
-            let count = uint::max(buf_len, self.pos + v_len);
-            vec::reserve(&mut buf, count);
-            unsafe { vec::raw::set_len(&mut buf, count); }
+            let count = uint::max(bytes_len, self.pos + v_len);
+            vec::reserve(&mut bytes, count);
+            unsafe { vec::raw::set_len(&mut bytes, count); }
 
             {
-                let view = vec::mut_view(buf, self.pos, count);
+                let view = vec::mut_view(bytes, self.pos, count);
                 vec::bytes::memcpy(view, v, v_len);
             }
 
             self.pos += v_len;
 
-            move buf
+            move bytes
         }
     }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        let len = self.buf.len();
+        let len = self.bytes.len();
         self.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { self.pos }
@@ -730,21 +734,25 @@ impl @BytesWriter : Writer {
     fn get_type() -> WriterType { (*self).get_type() }
 }
 
-pub fn BytesWriter() -> BytesWriter {
-    BytesWriter { buf: DVec(), mut pos: 0u }
+pub pure fn BytesWriter() -> BytesWriter {
+    BytesWriter { bytes: DVec(), mut pos: 0u }
 }
 
-pub fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
+pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
-    wr.buf.check_out(|buf| move buf)
+    // FIXME (#3758): This should not be needed.
+    unsafe { wr.bytes.check_out(|bytes| move bytes) }
 }
 
-pub fn with_str_writer(f: fn(Writer)) -> ~str {
+pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
-    // Make sure the vector has a trailing null and is proper utf8.
-    v.push(0);
+    // FIXME (#3758): This should not be needed.
+    unsafe {
+        // Make sure the vector has a trailing null and is proper utf8.
+        v.push(0);
+    }
     assert str::is_utf8(v);
 
     unsafe { move ::cast::transmute(move v) }
@@ -975,15 +983,17 @@ mod tests {
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
         wr.write(~[0u8, 1u8, 2u8, 3u8]);
-        assert wr.buf.borrow(|buf| buf == ~[0u8, 1u8, 2u8, 3u8]);
+        assert wr.bytes.borrow(|bytes| bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
         wr.write(~[4u8, 5u8, 6u8, 7u8]);
-        assert wr.buf.borrow(|buf| buf == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
+        assert wr.bytes.borrow(|bytes| bytes ==
+            ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
         wr.write(~[8u8]);
         wr.seek(1, SeekSet);
         wr.write(~[9u8]);
-        assert wr.buf.borrow(|buf| buf == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
+        assert wr.bytes.borrow(|bytes| bytes ==
+            ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 }
 

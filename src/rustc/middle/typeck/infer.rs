@@ -258,7 +258,6 @@ use util::ppaux::{ty_to_str, mt_to_str};
 use result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 use ty::{mk_fn, type_is_bot};
 use check::regionmanip::{replace_bound_regions_in_fn_ty};
-use driver::session::session;
 use util::common::{indent, indenter};
 use ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 use ast::{m_const, m_imm, m_mutbl};
@@ -275,7 +274,7 @@ use unify::{vals_and_bindings, root};
 use integral::{int_ty_set, int_ty_set_all};
 use combine::{combine_fields, eq_tys};
 use assignment::Assign;
-use to_str::to_str;
+use to_str::ToStr;
 
 use sub::Sub;
 use lub::Lub;
@@ -385,7 +384,7 @@ fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
 }
 
 fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
-           a: ty::region, b: ty::region) -> ures {
+           a: ty::Region, b: ty::Region) -> ures {
     debug!("mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
@@ -431,8 +430,8 @@ fn resolve_type(cx: infer_ctxt, a: ty::t, modes: uint)
     resolver(cx, modes).resolve_type_chk(a)
 }
 
-fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
-    -> fres<ty::region> {
+fn resolve_region(cx: infer_ctxt, r: ty::Region, modes: uint)
+    -> fres<ty::Region> {
     resolver(cx, modes).resolve_region_chk(r)
 }
 
@@ -628,12 +627,12 @@ impl infer_ctxt {
         ty::mk_int_var(self.tcx, self.next_int_var_id())
     }
 
-    fn next_region_var_nb(span: span) -> ty::region {
+    fn next_region_var_nb(span: span) -> ty::Region {
         ty::re_var(self.region_vars.new_region_var(span))
     }
 
     fn next_region_var_with_lb(span: span,
-                               lb_region: ty::region) -> ty::region {
+                               lb_region: ty::Region) -> ty::Region {
         let region_var = self.next_region_var_nb(span);
 
         // add lb_region as a lower bound on the newly built variable
@@ -644,7 +643,7 @@ impl infer_ctxt {
         return region_var;
     }
 
-    fn next_region_var(span: span, scope_id: ast::node_id) -> ty::region {
+    fn next_region_var(span: span, scope_id: ast::node_id) -> ty::Region {
         self.next_region_var_with_lb(span, ty::re_scope(scope_id))
     }
 

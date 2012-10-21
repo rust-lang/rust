@@ -52,7 +52,7 @@ macro_rules! select (
               -> $next:ident $e:expr),+
         } )+
     } => {
-        let index = pipes::selecti([$(($port).header()),+]/_);
+        let index = pipes::selecti([$(($port).header()),+]);
         select_if!(index, 0 $(, $port => [
             $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { move $e }),+
         ])+)
