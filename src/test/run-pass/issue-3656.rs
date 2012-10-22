@@ -1,3 +1,4 @@
+// xfail-fast Can't redeclare malloc with wrong signature because bugs
 // Issue #3656
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
