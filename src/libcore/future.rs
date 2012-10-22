@@ -67,7 +67,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
     Future {state: Forced(~(move val))}
 }
 
-pub fn from_port<A:Send>(port: future_pipe::client::waiting<A>) ->
+pub fn from_port<A:Send>(port: future_pipe::server::waiting<A>) ->
         Future<A> {
     /*!
      * Create a future from a port
@@ -107,9 +107,15 @@ pub fn spawn<A:Send>(blk: fn~() -> A) -> Future<A> {
      * value of the future.
      */
 
-    from_port(pipes::spawn_service_recv(future_pipe::init, |move blk, ch| {
-        future_pipe::server::completed(move ch, blk());
-    }))
+    let (chan, port) = future_pipe::init();
+
+    let chan = ~mut Some(move chan);
+    do task::spawn |move blk, move chan| {
+        let chan = option::swap_unwrap(&mut *chan);
+        future_pipe::client::completed(move chan, blk());
+    }
+
+    return from_port(move port);
 }
 
 pub fn get_ref<A>(future: &r/Future<A>) -> &r/A {
@@ -163,7 +169,7 @@ pub fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
 }
 
 proto! future_pipe (
-    waiting:recv<T:Send> {
+    waiting:send<T:Send> {
         completed(T) -> !
     }
 )
@@ -178,8 +184,8 @@ pub mod test {
 
     #[test]
     pub fn test_from_port() {
-        let (po, ch) = future_pipe::init();
-        future_pipe::server::completed(move ch, ~"whale");
+        let (ch, po) = future_pipe::init();
+        future_pipe::client::completed(move ch, ~"whale");
         let f = from_port(move po);
         assert get(&f) == ~"whale";
     }
