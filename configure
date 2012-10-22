@@ -595,7 +595,7 @@ then
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git submodule sync
+    "${CFG_GIT}" submodule --quiet foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
     need_ok "git failed"
 
     msg "git: submodule foreach update"
