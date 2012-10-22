@@ -38,7 +38,7 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
         }
     }
 
-    fn visit_message(name: ~str, _span: span, _tys: &[@ast::ty],
+    fn visit_message(name: ~str, _span: span, _tys: &[@ast::Ty],
                      this: state, next: next_state) {
         match next {
           Some({state: next, tys: next_tys}) => {

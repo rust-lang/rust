@@ -30,7 +30,7 @@ use cmp::Eq;
 use to_bytes::IterBytes;
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
 )
 
 trait word_reader {
@@ -90,19 +90,19 @@ impl<T> box<T> {
     fn swap(f: fn(+v: T) -> T) {
         let mut tmp = None;
         self.contents <-> tmp;
-        self.contents = Some(f(option::unwrap(tmp)));
+        self.contents = Some(f(option::unwrap(move tmp)));
     }
 
     fn unwrap() -> T {
         let mut tmp = None;
         self.contents <-> tmp;
-        option::unwrap(tmp)
+        option::unwrap(move tmp)
     }
 }
 
 fn box<T>(+x: T) -> box<T> {
     box {
-        contents: Some(x)
+        contents: Some(move x)
     }
 }
 
@@ -151,13 +151,13 @@ mod map_reduce {
         let mut tasks = ~[];
         for inputs.each |i| {
             let (ctrl, ctrl_server) = ctrl_proto::init();
-            let ctrl = box(ctrl);
+            let ctrl = box(move ctrl);
             let i = copy *i;
             let m = copy *map;
-            tasks.push(spawn_joinable(|move i| map_task(m, &ctrl, i)));
-            ctrls.push(ctrl_server);
+            tasks.push(spawn_joinable(|move ctrl, move i| map_task(m, &ctrl, i)));
+            ctrls.push(move ctrl_server);
         }
-        return tasks;
+        move tasks
     }
 
     fn map_task<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
@@ -177,8 +177,8 @@ mod map_reduce {
               Some(_c) => { c = Some(_c); }
               None => {
                 do ctrl.swap |ctrl| {
-                    let ctrl = ctrl_proto::client::find_reducer(ctrl, *key);
-                    match pipes::recv(ctrl) {
+                    let ctrl = ctrl_proto::client::find_reducer(move ctrl, *key);
+                    match pipes::recv(move ctrl) {
                       ctrl_proto::reducer(c_, ctrl) => {
                         c = Some(c_);
                         move_out!(ctrl)
@@ -250,12 +250,12 @@ mod map_reduce {
         let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
-            let (_ready, message, ctrls) = pipes::select(ctrl);
-            match option::unwrap(message) {
+            let (_ready, message, ctrls) = pipes::select(move ctrl);
+            match option::unwrap(move message) {
               ctrl_proto::mapper_done => {
                 // error!("received mapper terminated.");
                 num_mappers -= 1;
-                ctrl = ctrls;
+                ctrl = move ctrls;
               }
               ctrl_proto::find_reducer(k, cc) => {
                 let c;
@@ -271,13 +271,13 @@ mod map_reduce {
                     let p = Port();
                     let ch = Chan(&p);
                     let r = reduce, kk = k;
-                    tasks.push(spawn_joinable(|| reduce_task(~r, kk, ch) ));
+                    tasks.push(spawn_joinable(|move r| reduce_task(~r, kk, ch) ));
                     c = recv(p);
                     reducers.insert(k, c);
                   }
                 }
                 ctrl = vec::append_one(
-                    ctrls,
+                    move ctrls,
                     ctrl_proto::server::reducer(move_out!(cc), c));
               }
             }

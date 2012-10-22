@@ -33,7 +33,7 @@ trait ast_fold {
     fn fold_pat(&&v: @pat) -> @pat;
     fn fold_decl(&&v: @decl) -> @decl;
     fn fold_expr(&&v: @expr) -> @expr;
-    fn fold_ty(&&v: @ty) -> @ty;
+    fn fold_ty(&&v: @Ty) -> @Ty;
     fn fold_mod(_mod) -> _mod;
     fn fold_foreign_mod(foreign_mod) -> foreign_mod;
     fn fold_variant(variant) -> variant;
@@ -131,10 +131,7 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
 }
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
-    match tpb {
-      bound_copy | bound_send | bound_const | bound_owned => tpb,
-      bound_trait(ty) => bound_trait(fld.fold_ty(ty))
-    }
+    ty_param_bound(fld.fold_ty(*tpb))
 }
 
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
@@ -271,23 +268,6 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
 
 fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                 -> @ast::struct_def {
-    let resulting_optional_constructor;
-    match struct_def.ctor {
-        None => {
-            resulting_optional_constructor = None;
-        }
-        Some(constructor) => {
-            resulting_optional_constructor = Some({
-                node: {
-                    body: fld.fold_block(constructor.node.body),
-                    dec: fold_fn_decl(constructor.node.dec, fld),
-                    id: fld.new_id(constructor.node.id),
-                    .. constructor.node
-                },
-                .. constructor
-            });
-        }
-    }
     let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
@@ -298,7 +278,6 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
         traits: vec::map(struct_def.traits, |p| fold_trait_ref(*p, fld)),
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         methods: vec::map(struct_def.methods, |m| fld.fold_method(*m)),
-        ctor: resulting_optional_constructor,
         dtor: dtor
     };
 }
@@ -585,7 +564,6 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                                  |f| fld.fold_struct_field(*f)),
                 methods: vec::map(struct_def.methods,
                                   |m| fld.fold_method(*m)),
-                ctor: None,
                 dtor: dtor
             })
         }
@@ -747,7 +725,7 @@ impl ast_fold_precursor: ast_fold {
               node: n,
               span: self.new_span(s)};
     }
-    fn fold_ty(&&x: @ty) -> @ty {
+    fn fold_ty(&&x: @Ty) -> @Ty {
         let (n, s) = self.fold_ty(x.node, x.span, self as ast_fold);
         return @{id: self.new_id(x.id), node: n, span: self.new_span(s)};
     }

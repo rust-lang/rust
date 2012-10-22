@@ -15,7 +15,7 @@ use io::WriterUtil;
 use pipes::{Port, PortSet, Chan};
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
 )
 
 enum request {
@@ -46,27 +46,27 @@ fn run(args: &[~str]) {
     let (to_parent, from_child) = pipes::stream();
     let (to_child, from_parent_) = pipes::stream();
     let from_parent = PortSet();
-    from_parent.add(from_parent_);
+    from_parent.add(move from_parent_);
 
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();
     let num_bytes = 100;
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
-    for uint::range(0u, workers) |i| {
+    for uint::range(0, workers) |_i| {
         let (to_child, from_parent_) = pipes::stream();
-        from_parent.add(from_parent_);
+        from_parent.add(move from_parent_);
         do task::task().future_result(|+r| {
-            worker_results.push(r);
-        }).spawn {
-            for uint::range(0u, size / workers) |_i| {
+            worker_results.push(move r);
+        }).spawn |move to_child| {
+            for uint::range(0, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
             //error!("worker %? exiting", i);
         };
     }
-    do task::spawn {
+    do task::spawn |move from_parent, move to_parent| {
         server(from_parent, to_parent);
     }
 

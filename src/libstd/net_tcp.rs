@@ -6,9 +6,7 @@ use ip = net_ip;
 use uv::iotask;
 use uv::iotask::IoTask;
 use future_spawn = future::spawn;
-// FIXME #1935
-// should be able to, but can't atm, replace w/ result::{result, extensions};
-use result::*;
+use result::{Result};
 use libc::size_t;
 use io::{Reader, ReaderUtil, Writer};
 use comm = core::comm;
@@ -136,6 +134,10 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         stream_handle_ptr: stream_handle_ptr,
         connect_req: uv::ll::connect_t(),
         write_req: uv::ll::write_t(),
+        ipv6: match input_ip {
+            ip::Ipv4(_) => { false }
+            ip::Ipv6(_) => { true }
+        },
         iotask: iotask
     };
     let socket_data_ptr = ptr::addr_of(&(*socket_data));
@@ -477,6 +479,7 @@ pub fn accept(new_conn: TcpNewConnection)
             stream_handle_ptr : stream_handle_ptr,
             connect_req : uv::ll::connect_t(),
             write_req : uv::ll::write_t(),
+            ipv6: (*server_data_ptr).ipv6,
             iotask : iotask
         };
         let client_socket_data_ptr = ptr::addr_of(&(*client_socket_data));
@@ -564,7 +567,8 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
           new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
-    do listen_common(move host_ip, port, backlog, iotask, on_establish_cb)
+    do listen_common(move host_ip, port, backlog, iotask,
+                     move on_establish_cb)
         // on_connect_cb
         |move new_connect_cb, handle| unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
@@ -591,6 +595,10 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
         kill_ch: kill_ch,
         on_connect_cb: move on_connect_cb,
         iotask: iotask,
+        ipv6: match host_ip {
+            ip::Ipv4(_) => { false }
+            ip::Ipv6(_) => { true }
+        },
         mut active: true
     };
     let server_data_ptr = ptr::addr_of(&server_data);
@@ -746,6 +754,21 @@ impl TcpSocket {
     pub fn write_future(raw_write_data: ~[u8])
         -> future::Future<result::Result<(), TcpErrData>> {
         write_future(&self, raw_write_data)
+    }
+    pub fn get_peer_addr() -> ip::IpAddr {
+        unsafe {
+            if self.socket_data.ipv6 {
+                let addr = uv::ll::ip6_addr("", 0);
+                uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
+                                         ptr::addr_of(&addr));
+                ip::Ipv6(move addr)
+            } else {
+                let addr = uv::ll::ip4_addr("", 0);
+                uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
+                                        ptr::addr_of(&addr));
+                ip::Ipv4(move addr)
+            }
+        }
     }
 }
 
@@ -1004,6 +1027,7 @@ type TcpListenFcData = {
     kill_ch: comm::Chan<Option<TcpErrData>>,
     on_connect_cb: fn~(*uv::ll::uv_tcp_t),
     iotask: IoTask,
+    ipv6: bool,
     mut active: bool
 };
 
@@ -1093,7 +1117,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         log(debug, fmt!("tcp on_read_cb nread: %d", nread as int));
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
-        let new_bytes = vec::raw::from_buf(buf_base, nread as uint);
+        let new_bytes = vec::from_buf(buf_base, nread as uint);
         core::comm::send(reader_ch, result::Ok(new_bytes));
       }
     }
@@ -1202,6 +1226,7 @@ type TcpSocketData = {
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
+    ipv6: bool,
     iotask: IoTask
 };
 
@@ -1222,6 +1247,10 @@ mod test {
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
                 impl_gl_tcp_ipv4_server_and_client();
+            }
+            #[test]
+            fn test_gl_tcp_get_peer_addr() unsafe {
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             fn test_gl_tcp_ipv4_client_error_connection_refused() unsafe {
@@ -1247,6 +1276,11 @@ mod test {
             #[ignore(cfg(target_os = "linux"))]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
                 impl_gl_tcp_ipv4_server_and_client();
+            }
+            #[test]
+            #[ignore(cfg(target_os = "linux"))]
+            fn test_gl_tcp_get_peer_addr() unsafe {
+                impl_gl_tcp_ipv4_get_peer_addr();
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
@@ -1316,6 +1350,53 @@ mod test {
                        expected_resp, actual_resp));
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
+    }
+    fn impl_gl_tcp_ipv4_get_peer_addr() {
+        let hl_loop = uv::global_loop::get();
+        let server_ip = ~"127.0.0.1";
+        let server_port = 8887u;
+        let expected_resp = ~"pong";
+
+        let server_result_po = core::comm::Port::<~str>();
+        let server_result_ch = core::comm::Chan(&server_result_po);
+
+        let cont_po = core::comm::Port::<()>();
+        let cont_ch = core::comm::Chan(&cont_po);
+        // server
+        do task::spawn_sched(task::ManualThreads(1u)) {
+            let actual_req = do comm::listen |server_ch| {
+                run_tcp_test_server(
+                    server_ip,
+                    server_port,
+                    expected_resp,
+                    server_ch,
+                    cont_ch,
+                    hl_loop)
+            };
+            server_result_ch.send(actual_req);
+        };
+        core::comm::recv(cont_po);
+        // client
+        log(debug, ~"server started, firing up client..");
+        do core::comm::listen |client_ch| {
+            let server_ip_addr = ip::v4::parse_addr(server_ip);
+            let iotask = uv::global_loop::get();
+            let connect_result = connect(move server_ip_addr, server_port,
+                                         iotask);
+
+            let sock = result::unwrap(move connect_result);
+
+            // This is what we are actually testing!
+            assert net::ip::format_addr(&sock.get_peer_addr()) ==
+                ~"127.0.0.1";
+            assert net::ip::get_port(&sock.get_peer_addr()) == 8887;
+
+            // Fulfill the protocol the test server expects
+            let resp_bytes = str::to_bytes(~"ping");
+            tcp_write_single(&sock, resp_bytes);
+            let read_result = sock.read(0u);
+            client_ch.send(str::from_bytes(read_result.get()));
+        };
     }
     fn impl_gl_tcp_ipv4_client_error_connection_refused() {
         let hl_loop = uv::global_loop::get();
@@ -1512,8 +1593,11 @@ mod test {
                             ~"SERVER/WORKER: send on cont ch");
                         cont_ch.send(());
                         let sock = result::unwrap(move accept_result);
+                        let peer_addr = sock.get_peer_addr();
                         log(debug, ~"SERVER: successfully accepted"+
-                            ~"connection!");
+                            fmt!(" connection from %s:%u",
+                                 ip::format_addr(&peer_addr),
+                                 ip::get_port(&peer_addr)));
                         let received_req_bytes = read(&sock, 0u);
                         match move received_req_bytes {
                           result::Ok(move data) => {

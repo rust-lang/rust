@@ -410,16 +410,10 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
 
     match expr.node {
         ast::expr_break(label_opt) => {
-            if label_opt.is_some() {
-                bcx.tcx().sess.span_unimpl(expr.span, ~"labeled break");
-            }
-            return controlflow::trans_break(bcx);
+            return controlflow::trans_break(bcx, label_opt);
         }
         ast::expr_again(label_opt) => {
-            if label_opt.is_some() {
-                bcx.tcx().sess.span_unimpl(expr.span, ~"labeled again");
-            }
-            return controlflow::trans_cont(bcx);
+            return controlflow::trans_cont(bcx, label_opt);
         }
         ast::expr_ret(ex) => {
             return controlflow::trans_ret(bcx, ex);
@@ -436,8 +430,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_while(cond, body) => {
             return controlflow::trans_while(bcx, cond, body);
         }
-        ast::expr_loop(body, _) => {
-            return controlflow::trans_loop(bcx, body);
+        ast::expr_loop(body, opt_label) => {
+            return controlflow::trans_loop(bcx, body, opt_label);
         }
         ast::expr_assign(dst, src) => {
             let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));
@@ -637,14 +631,15 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
     };
 
     match def {
-        ast::def_fn(did, _) => {
+        ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
             let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
             return fn_data_to_datum(bcx, did, fn_data, lldest);
         }
-        ast::def_static_method(did, _) => {
-            let fn_data = meth::trans_static_method_callee(bcx, did,
+        ast::def_static_method(impl_did, Some(trait_did), _) => {
+            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
+                                                           trait_did,
                                                            ref_expr.id);
-            return fn_data_to_datum(bcx, did, fn_data, lldest);
+            return fn_data_to_datum(bcx, impl_did, fn_data, lldest);
         }
         ast::def_variant(tid, vid) => {
             if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
@@ -747,13 +742,13 @@ fn trans_def_lvalue(bcx: block, ref_expr: @ast::expr,
         _ => {
             DatumBlock {
                 bcx: bcx,
-                datum: trans_local_var(bcx, ref_expr.id, def)
+                datum: trans_local_var(bcx, def)
             }
         }
     }
 }
 
-fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
+fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     let _icx = bcx.insn_ctxt("trans_local_var");
 
     return match def {
@@ -775,10 +770,10 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
             }
         }
         ast::def_arg(nid, _) => {
-            take_local(bcx, ref_id, bcx.fcx.llargs, nid)
+            take_local(bcx, bcx.fcx.llargs, nid)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
-            take_local(bcx, ref_id, bcx.fcx.lllocals, nid)
+            take_local(bcx, bcx.fcx.lllocals, nid)
         }
         ast::def_self(nid) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
@@ -792,7 +787,9 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
 
             // This cast should not be necessary. We should cast self *once*,
             // but right now this conflicts with default methods.
-            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), self_info.t));
+            let real_self_ty = monomorphize_type(bcx, self_info.t);
+            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), real_self_ty));
+
             let casted_val = PointerCast(bcx, self_info.v, llselfty);
             Datum {
                 val: casted_val,
@@ -808,15 +805,8 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: block,
-                  ref_id: ast::node_id,
                   table: HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
-        let is_last_use = match bcx.ccx().maps.last_use_map.find(ref_id) {
-            None => false,
-            Some(vars) => (*vars).contains(&nid)
-        };
-
-        let source = if is_last_use {FromLastUseLvalue} else {FromLvalue};
 
         let (v, mode) = match table.find(nid) {
             Some(local_mem(v)) => (v, ByRef),
@@ -828,10 +818,10 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
         };
         let ty = node_id_type(bcx, nid);
 
-        debug!("take_local(nid=%?, last_use=%b, v=%s, mode=%?, ty=%s)",
-               nid, is_last_use, bcx.val_str(v), mode, bcx.ty_to_str(ty));
+        debug!("take_local(nid=%?, v=%s, mode=%?, ty=%s)",
+               nid, bcx.val_str(v), mode, bcx.ty_to_str(ty));
 
-        Datum { val: v, ty: ty, mode: mode, source: source }
+        Datum { val: v, ty: ty, mode: mode, source: FromLvalue }
     }
 }
 
@@ -1465,7 +1455,7 @@ fn trans_assign_op(bcx: block,
 
     // A user-defined operator method
     if bcx.ccx().maps.method_map.find(expr.id).is_some() {
-        // FIXME(#2582) evaluates the receiver twice!!
+        // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
         let bcx = trans_overloaded_op(bcx, expr, dst, ~[src],
                                       SaveIn(scratch.val), DoAutorefArg);

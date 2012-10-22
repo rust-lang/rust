@@ -2,6 +2,6 @@
 fn test(-x: uint) {}
 
 fn main() {
-    let i = 3u;
-    for uint::range(0u, 10u) |_x| {test(i)}
+    let i = 3;
+    for uint::range(0, 10) |_x| {test(move i)}
 }

@@ -1,4 +1,4 @@
-const x : [int]/4 = [1,2,3,4];
+const x : [int * 4] = [1,2,3,4];
 const p : int = x[2];
 const y : &[int] = &[1,2,3,4];
 const q : int = y[2];

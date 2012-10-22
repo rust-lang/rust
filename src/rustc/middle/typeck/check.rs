@@ -166,20 +166,20 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 }
 
 // a list of mapping from in-scope-region-names ("isr") to the
-// corresponding ty::region
-type isr_alist = @List<(ty::bound_region, ty::region)>;
+// corresponding ty::Region
+type isr_alist = @List<(ty::bound_region, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::region;
-    fn find(br: ty::bound_region) -> Option<ty::region>;
+    fn get(br: ty::bound_region) -> ty::Region;
+    fn find(br: ty::bound_region) -> Option<ty::Region>;
 }
 
 impl isr_alist: get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::region {
+    fn get(br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }
 
-    fn find(br: ty::bound_region) -> Option<ty::region> {
+    fn find(br: ty::bound_region) -> Option<ty::Region> {
         for list::each(self) |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
@@ -451,18 +451,6 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let tcx = ccx.tcx;
     let self_ty = ty::node_id_to_type(tcx, id);
 
-    do option::iter(&struct_def.ctor) |ctor| {
-        let class_t = {self_ty: self_ty,
-                       self_id: ctor.node.self_id,
-                       def_id: local_def(id),
-                       explicit_self: {node: ast::sty_by_ref,
-                                       span: ast_util::dummy_sp()}};
-        // typecheck the ctor
-        check_bare_fn(ccx, ctor.node.dec,
-                      ctor.node.body, ctor.node.id,
-                      Some(class_t));
-    }
-
     do option::iter(&struct_def.dtor) |dtor| {
         let class_t = {self_ty: self_ty,
                        self_id: dtor.node.self_id,
@@ -575,7 +563,7 @@ impl @fn_ctxt: ast_conv {
 
 impl @fn_ctxt {
     fn search_in_scope_regions(br: ty::bound_region)
-        -> Result<ty::region, ~str>
+        -> Result<ty::Region, ~str>
     {
         match self.in_scope_regions.find(br) {
             Some(r) => result::Ok(r),
@@ -593,13 +581,13 @@ impl @fn_ctxt {
 }
 
 impl @fn_ctxt: region_scope {
-    fn anon_region(span: span) -> Result<ty::region, ~str> {
+    fn anon_region(span: span) -> Result<ty::Region, ~str> {
         result::Ok(self.infcx().next_region_var_nb(span))
     }
-    fn self_region(_span: span) -> Result<ty::region, ~str> {
+    fn self_region(_span: span) -> Result<ty::Region, ~str> {
         self.search_in_scope_regions(ty::br_self)
     }
-    fn named_region(_span: span, id: ast::ident) -> Result<ty::region, ~str> {
+    fn named_region(_span: span, id: ast::ident) -> Result<ty::Region, ~str> {
         self.search_in_scope_regions(ty::br_named(id))
     }
 }
@@ -612,7 +600,7 @@ impl @fn_ctxt {
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
     }
 
-    fn block_region() -> ty::region {
+    fn block_region() -> ty::Region {
         ty::re_scope(self.region_lb)
     }
 
@@ -657,7 +645,7 @@ impl @fn_ctxt {
         self.write_ty(node_id, ty::mk_bot(self.tcx()));
     }
 
-    fn to_ty(ast_t: @ast::ty) -> ty::t {
+    fn to_ty(ast_t: @ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
     }
 
@@ -748,7 +736,7 @@ impl @fn_ctxt {
     }
 
     fn mk_subr(a_is_expected: bool, span: span,
-               sub: ty::region, sup: ty::region) -> Result<(), ty::type_err> {
+               sub: ty::Region, sup: ty::Region) -> Result<(), ty::type_err> {
         infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
     }
 
@@ -772,8 +760,8 @@ impl @fn_ctxt {
 
     fn region_var_if_parameterized(rp: Option<ty::region_variance>,
                                    span: span,
-                                   lower_bound: ty::region)
-        -> Option<ty::region>
+                                   lower_bound: ty::Region)
+        -> Option<ty::Region>
     {
         rp.map(
             |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
@@ -1031,7 +1019,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // functions. This is so that we have more information about the types
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
-        for [false, true]/_.each |check_blocks| {
+        for [false, true].each |check_blocks| {
             let check_blocks = *check_blocks;
             debug!("check_blocks=%b", check_blocks);
 
@@ -1371,7 +1359,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     // Check field access expressions
     fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
-                   base: @ast::expr, field: ast::ident, tys: ~[@ast::ty])
+                   base: @ast::expr, field: ast::ident, tys: ~[@ast::Ty])
         -> bool
     {
         let tcx = fcx.ccx.tcx;
@@ -1677,7 +1665,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_loop(body, _) => {
         check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
-        bot = !may_break(body);
+        bot = !may_break(tcx, expr.id, body);
       }
       ast::expr_match(discrim, arms) => {
         bot = alt::check_alt(fcx, expr, discrim, arms);
@@ -1925,7 +1913,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Resolve the path.
         let class_id;
         match tcx.def_map.find(id) {
-            Some(ast::def_class(type_def_id, _)) => {
+            Some(ast::def_class(type_def_id)) => {
                 class_id = type_def_id;
             }
             _ => {
@@ -2231,9 +2219,14 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
 fn check_const(ccx: @crate_ctxt, _sp: span, e: @ast::expr, id: ast::node_id) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, rty, e.id);
+    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
+    check_const_with_ty(fcx, _sp, e, declty);
+}
+
+fn check_const_with_ty(fcx: @fn_ctxt, _sp: span, e: @ast::expr,
+                       declty: ty::t) {
     check_expr(fcx, e, None);
     let cty = fcx.expr_ty(e);
-    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
     demand::suptype(fcx, e.span, declty, cty);
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
@@ -2271,28 +2264,31 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 variants: &mut ~[ty::variant_info]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
         for vs.each |v| {
-            match v.node.disr_expr {
-              Some(e) => {
-                let fcx = blank_fn_ctxt(ccx, rty, e.id);
-                check_expr(fcx, e, None);
-                let cty = fcx.expr_ty(e);
+            do v.node.disr_expr.iter |e_ref| {
+                let e = *e_ref;
+                debug!("disr expr, checking %s",
+                       expr_to_str(e, ccx.tcx.sess.intr()));
                 let declty = ty::mk_int(ccx.tcx);
-                demand::suptype(fcx, e.span, declty, cty);
-                // FIXME: issue #1417
-                // Also, check_expr (from check_const pass) doesn't guarantee
+                let fcx = blank_fn_ctxt(ccx, rty, e.id);
+                check_const_with_ty(fcx, e.span, e, declty);
+                // check_expr (from check_const pass) doesn't guarantee
                 // that the expression is in an form that eval_const_expr can
                 // handle, so we may still get an internal compiler error
-                match const_eval::eval_const_expr(ccx.tcx, e) {
-                  const_eval::const_int(val) => {
+
+                match const_eval::eval_const_expr_partial(ccx.tcx, e) {
+                  Ok(const_eval::const_int(val)) => {
                     *disr_val = val as int;
                   }
-                  _ => {
+                  Ok(_) => {
                     ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
                                                     constant");
                   }
+                  Err(err) => {
+                    ccx.tcx.sess.span_err(e.span,
+                     #fmt("expected constant: %s", err));
+
+                  }
                 }
-              }
-              _ => ()
             }
             if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
@@ -2404,15 +2400,15 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
 
       ast::def_fn(id, ast::unsafe_fn) |
-      ast::def_static_method(id, ast::unsafe_fn) => {
+      ast::def_static_method(id, _, ast::unsafe_fn) => {
         // Unsafe functions can only be touched in an unsafe context
         fcx.require_unsafe(sp, ~"access to unsafe function");
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
 
-      ast::def_fn(id, _) | ast::def_static_method(id, _) |
+      ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
       ast::def_const(id) | ast::def_variant(_, id) |
-      ast::def_class(id, _) => {
+      ast::def_class(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_upvar(_, inner, _, _) => {
@@ -2447,7 +2443,7 @@ fn instantiate_path(fcx: @fn_ctxt,
                     tpt: ty_param_bounds_and_ty,
                     span: span,
                     node_id: ast::node_id,
-                    region_lb: ty::region) {
+                    region_lb: ty::Region) {
     let ty_param_count = vec::len(*tpt.bounds);
     let ty_substs_len = vec::len(pth.types);
 
@@ -2548,6 +2544,29 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
     }
 }
 
+// Returns true if b contains a break that can exit from b
+fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
+    // First: is there an unlabeled break immediately
+    // inside the loop?
+    (loop_query(b, |e| {
+        match e {
+            ast::expr_break(_) => true,
+            _ => false
+        }
+    })) ||
+   // Second: is there a labeled break with label
+   // <id> nested anywhere inside the loop?
+    (block_query(b, |e| {
+        match e.node {
+            ast::expr_break(Some(_)) =>
+                match cx.def_map.find(e.id) {
+                    Some(ast::def_label(loop_id)) if id == loop_id => true,
+                    _ => false,
+                },
+            _ => false
+        }}))
+}
+
 fn check_bounds_are_used(ccx: @crate_ctxt,
                          span: span,
                          tps: ~[ast::ty_param],
@@ -2620,7 +2639,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
 
       ~"get_tydesc" => {
-        // FIXME (#2712): return *intrinsic::tydesc, not *()
+        // FIXME (#3730): return *intrinsic::tydesc, not *()
         (1u, ~[], ty::mk_nil_ptr(tcx))
       }
       ~"visit_tydesc" => {

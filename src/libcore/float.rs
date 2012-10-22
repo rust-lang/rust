@@ -91,7 +91,7 @@ pub mod consts {
  * * digits - The number of significant digits
  * * exact - Whether to enforce the exact number of significant digits
  */
-pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
+pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     if is_NaN(num) { return ~"NaN"; }
     if num == infinity { return ~"inf"; }
     if num == neg_infinity { return ~"-inf"; }
@@ -125,7 +125,8 @@ pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
         // store the next digit
         frac *= 10.0;
         let digit = frac as uint;
-        fractionalParts.push(digit);
+        // Bleh: not really unsafe.
+        unsafe { fractionalParts.push(digit); }
 
         // calculate the next frac
         frac -= digit as float;
@@ -140,7 +141,8 @@ pub fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     // turn digits into string
     // using stack of digits
     while fractionalParts.is_not_empty() {
-        let mut adjusted_digit = carry + fractionalParts.pop();
+        // Bleh; shouldn't need to be unsafe
+        let mut adjusted_digit = carry + unsafe { fractionalParts.pop() };
 
         if adjusted_digit == 10 {
             carry = 1;
@@ -196,7 +198,7 @@ pub fn test_to_str_exact_do_decimal() {
  * * num - The float value
  * * digits - The number of significant digits
  */
-pub fn to_str(num: float, digits: uint) -> ~str {
+pub pure fn to_str(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, false)
 }
 
@@ -361,7 +363,7 @@ pub fn from_str(num: &str) -> Option<float> {
  *
  * `NaN` if both `x` and `pow` are `0u`, otherwise `x^pow`
  */
-pub fn pow_with_uint(base: uint, pow: uint) -> float {
+pub pure fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {
             return NaN as float;

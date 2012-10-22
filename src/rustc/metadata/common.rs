@@ -124,5 +124,9 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_legacy_boxed_trait = 0x63
 }
 
+const tag_item_trait_method_sort: uint = 0x70;
+
+const tag_item_impl_type_basename: uint = 0x71;
+
 type link_meta = {name: ~str, vers: ~str, extras_hash: ~str};
 

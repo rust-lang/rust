@@ -54,10 +54,10 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 
 pure fn def_id_of_def(d: def) -> def_id {
     match d {
-      def_fn(id, _) | def_static_method(id, _) | def_mod(id) |
+      def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_class(id, _) => {
+      def_use(id) | def_class(id) => {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
@@ -233,7 +233,6 @@ fn is_exported(i: ident, m: _mod) -> bool {
                     }
                   }
 
-                  // FIXME: glob-exports aren't supported yet. (#2006)
                   _ => ()
                 }
             }
@@ -339,7 +338,6 @@ impl inlined_item: inlined_item_utils {
           ii_item(i) => /* FIXME (#2543) */ copy i.ident,
           ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
           ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
-          ii_ctor(_, nm, _, _) => /* FIXME (#2543) */ copy nm,
           ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
         }
     }
@@ -349,7 +347,6 @@ impl inlined_item: inlined_item_utils {
           ii_item(i) => i.id,
           ii_foreign(i) => i.id,
           ii_method(_, m) => m.id,
-          ii_ctor(ctor, _, _, _) => ctor.node.id,
           ii_dtor(dtor, _, _, _) => dtor.node.id
         }
     }
@@ -359,9 +356,6 @@ impl inlined_item: inlined_item_utils {
           ii_item(i) => v.visit_item(i, e, v),
           ii_foreign(i) => v.visit_foreign_item(i, e, v),
           ii_method(_, m) => visit::visit_method_helper(m, e, v),
-          ii_ctor(ctor, nm, tps, parent_id) => {
-              visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
-          }
           ii_dtor(dtor, _, tps, parent_id) => {
               visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
           }
@@ -407,6 +401,7 @@ fn dtor_dec() -> fn_decl {
 // Enumerating the IDs which appear in an AST
 
 #[auto_serialize]
+#[auto_deserialize]
 type id_range = {min: node_id, max: node_id};
 
 fn empty(range: id_range) -> bool {
@@ -476,7 +471,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_expr_post: fn@(_e: @expr) {
         },
 
-        visit_ty: fn@(t: @ty) {
+        visit_ty: fn@(t: @Ty) {
             match t.node {
               ty_path(_, id) => vfn(id),
               _ => { /* fall through */ }
@@ -494,12 +489,6 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             match fk {
-                visit::fk_ctor(_, _, tps, self_id, parent_id) => {
-                    for vec::each(tps) |tp| { vfn(tp.id); }
-                    vfn(id);
-                    vfn(self_id);
-                    vfn(parent_id.node);
-                }
                 visit::fk_dtor(tps, _, self_id, parent_id) => {
                     for vec::each(tps) |tp| { vfn(tp.id); }
                     vfn(id);

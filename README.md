@@ -6,52 +6,61 @@ documentation.
 
 ## Installation
 
-The Rust compiler is slightly unusual in that it is written in Rust and
-therefore must be built by a precompiled "snapshot" version of itself (made in
-an earlier state of development). As such, source builds require that:
+The Rust compiler currently must be built from a [tarball], unless you
+are on Windows, in which case using the [installer][win-exe] is
+recommended.
 
-* You are connected to the internet, to fetch snapshots.
+Since the Rust compiler is written in Rust, it must be built by
+a precompiled "snapshot" version of itself (made in an earlier state
+of development). As such, source builds require a connection to
+the Internet, to fetch snapshots, and an OS that can execute the
+available snapshot binaries.
 
-* You can at least execute snapshot binaries of one of the forms we offer
-  them in. Currently we build and test snapshots on:
+Snapshot binaries are currently built and tested on several platforms:
 
-  * Windows (7, server 2008 r2) x86 only
-  * Linux 2.6.x (various distributions) x86 and x86-64
-  * OSX 10.6 ("Snow Leopard") or 10.7 ("Lion") x86 and x86-64
+* Windows (7, Server 2008 R2), x86 only
+* Linux (various distributions), x86 and x86-64
+* OSX 10.6 ("Snow Leopard") or greater, x86 and x86-64
 
-You may find other platforms work, but these are our "tier 1" supported build
-environments that are most likely to work. Further platforms will be added to
-the list in the future via cross-compilation.
+You may find that other platforms work, but these are our "tier 1"
+supported build environments that are most likely to work.
 
-To build from source you will also need the following prerequisite packages:
+> ***Note:*** Windows users should read the detailed
+> [getting started][wiki-start] notes on the wiki. Even when using
+> the binary installer the Windows build requires a MinGW installation,
+> the precise details of which are not discussed here.
+
+To build from source you will also need the following prerequisite
+packages:
 
 * g++ 4.4 or clang++ 3.x
-* python 2.6 or later
+* python 2.6 or later (but not 3.x)
 * perl 5.0 or later
 * gnu make 3.81 or later
 * curl
 
-Assuming you're on a relatively modern Linux/OSX system and have met the
-prerequisites, something along these lines should work:
+Assuming you're on a relatively modern *nix system and have met the
+prerequisites, something along these lines should work.
 
+    $ wget http://dl.rust-lang.org/dist/rust-0.4.tar.gz
     $ tar -xzf rust-0.4.tar.gz
     $ cd rust-0.4
     $ ./configure
     $ make && make install
 
-When complete, make install will place the following programs into
-/usr/local/bin:
+You may need to use `sudo make install` if you do not normally have
+permission to modify the destination directory. The install locations
+can be adjusted by passing a `--prefix` argument to
+`configure`. Various other options are also supported, pass `--help`
+for more information on them.
 
-* rustc, the Rust compiler
-* rustdoc, the API-documentation tool
-* cargo, the Rust package manager
+When complete, `make install` will place several programs into
+`/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
+API-documentation tool, and `cargo`, the Rust package manager.
 
-In addition to a manual page under /usr/local/share/man and a set of host and
-target libraries under /usr/local/lib/rustc.
-
-The install locations can be adjusted by passing a --prefix argument to
-configure. Various other options are also supported, pass --help for more
-information on them.
+[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
+[win-exe]: http://dl.rust-lang.org/dist/rust-0.4-install.exe
 
 
 ## License

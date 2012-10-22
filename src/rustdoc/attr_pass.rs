@@ -52,7 +52,7 @@ fn fold_crate(
     {
         topmod: doc::ModDoc_({
             item: {
-                name: option::get_default(&attrs.name, doc.topmod.name()),
+                name: option::get_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
             .. *doc.topmod
@@ -93,7 +93,7 @@ fn parse_item_attrs<T:Send>(
     srv: astsrv::Srv,
     id: doc::AstId,
     +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
-    do astsrv::exec(srv) |ctxt| {
+    do astsrv::exec(srv) |move parse_attrs, ctxt| {
         let attrs = match ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) => item.attrs,
           ast_map::node_foreign_item(item, _, _) => item.attrs,
@@ -151,13 +151,13 @@ fn fold_enum(
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant = option::get(
-                        &vec::find(enum_definition.variants, |v| {
+                        vec::find(enum_definition.variants, |v| {
                             to_str(v.node.name) == variant.name
                         }));
 
                     attr_parser::parse_desc(ast_variant.node.attrs)
                   }
-                  _ => fail #fmt("Enum variant %s has id that's not bound \
+                  _ => fail fmt!("Enum variant %s has id that's not bound \
                          to an enum item", variant.name)
                 }
             };

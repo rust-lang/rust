@@ -208,7 +208,7 @@ impl<T> DList<T> {
     fn push_head_n(data: T) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.add_head(nobe);
-        option::get(&nobe)
+        option::get(nobe)
     }
     /// Add data to the tail of the list. O(1).
     fn push(data: T) {
@@ -221,7 +221,7 @@ impl<T> DList<T> {
     fn push_n(data: T) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.add_tail(nobe);
-        option::get(&nobe)
+        option::get(nobe)
     }
     /**
      * Insert data into the middle of the list, left of the given node.
@@ -245,7 +245,7 @@ impl<T> DList<T> {
     fn insert_before_n(data: T, neighbour: DListNode<T>) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.insert_left(nobe, neighbour);
-        option::get(&nobe)
+        option::get(nobe)
     }
     /**
      * Insert data into the middle of the list, right of the given node.
@@ -269,7 +269,7 @@ impl<T> DList<T> {
     fn insert_after_n(data: T, neighbour: DListNode<T>) -> DListNode<T> {
         let mut nobe = self.new_link(move data);
         self.insert_right(neighbour, nobe);
-        option::get(&nobe)
+        option::get(nobe)
     }
 
     /// Remove a node from the head of the list. O(1).
@@ -385,17 +385,17 @@ impl<T> DList<T> {
         let mut link = self.peek_n();
         let mut rabbit = link;
         while option::is_some(&link) {
-            let nobe = option::get(&link);
+            let nobe = option::get(link);
             assert nobe.linked;
             // check cycle
             if option::is_some(&rabbit) {
-                rabbit = option::get(&rabbit).next;
+                rabbit = option::get(rabbit).next;
             }
             if option::is_some(&rabbit) {
-                rabbit = option::get(&rabbit).next;
+                rabbit = option::get(rabbit).next;
             }
             if option::is_some(&rabbit) {
-                assert !box::ptr_eq(*option::get(&rabbit), *nobe);
+                assert !box::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
             link = nobe.next_link();
@@ -406,17 +406,17 @@ impl<T> DList<T> {
         link = self.peek_tail_n();
         rabbit = link;
         while option::is_some(&link) {
-            let nobe = option::get(&link);
+            let nobe = option::get(link);
             assert nobe.linked;
             // check cycle
             if option::is_some(&rabbit) {
-                rabbit = option::get(&rabbit).prev;
+                rabbit = option::get(rabbit).prev;
             }
             if option::is_some(&rabbit) {
-                rabbit = option::get(&rabbit).prev;
+                rabbit = option::get(rabbit).prev;
             }
             if option::is_some(&rabbit) {
-                assert !box::ptr_eq(*option::get(&rabbit), *nobe);
+                assert !box::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
             link = nobe.prev_link();

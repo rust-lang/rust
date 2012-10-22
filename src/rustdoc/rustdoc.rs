@@ -87,5 +87,5 @@ fn time<T>(what: ~str, f: fn() -> T) -> T {
     let rv = f();
     let end = std::time::precise_time_s();
     info!("time: %3.3f s    %s", end - start, what);
-    return rv;
+    move rv
 }

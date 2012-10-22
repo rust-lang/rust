@@ -65,10 +65,10 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                         str::push_char(&mut out, ch);
                       }
 
-                      _ => out += #fmt("%%%X", ch as uint)
+                      _ => out += fmt!("%%%X", ch as uint)
                     }
                 } else {
-                    out += #fmt("%%%X", ch as uint);
+                    out += fmt!("%%%X", ch as uint);
                 }
               }
             }
@@ -94,6 +94,7 @@ pub fn encode(s: &str) -> ~str {
  *
  * This function is compliant with RFC 3986.
  */
+
 pub fn encode_component(s: &str) -> ~str {
     encode_inner(s, false)
 }
@@ -163,7 +164,7 @@ fn encode_plus(s: &str) -> ~str {
                 str::push_char(&mut out, ch);
               }
               ' ' => str::push_char(&mut out, '+'),
-              _ => out += #fmt("%%%X", ch as uint)
+              _ => out += fmt!("%%%X", ch as uint)
             }
         }
 
@@ -189,7 +190,7 @@ pub fn encode_form_urlencoded(m: HashMap<~str, @DVec<@~str>>) -> ~str {
                 first = false;
             }
 
-            out += #fmt("%s=%s", key, encode_plus(**value));
+            out += fmt!("%s=%s", key, encode_plus(**value));
         }
     }
 
@@ -297,7 +298,7 @@ fn userinfo_from_str(uinfo: &str) -> UserInfo {
     return UserInfo(user, pass);
 }
 
-fn userinfo_to_str(userinfo: UserInfo) -> ~str {
+pure fn userinfo_to_str(userinfo: UserInfo) -> ~str {
     if option::is_some(&userinfo.pass) {
         return str::concat(~[copy userinfo.user, ~":",
                           option::unwrap(copy userinfo.pass),
@@ -325,11 +326,15 @@ fn query_from_str(rawquery: &str) -> Query {
     return query;
 }
 
-pub fn query_to_str(query: Query) -> ~str {
+pub pure fn query_to_str(query: Query) -> ~str {
     let mut strvec = ~[];
     for query.each |kv| {
         let (k, v) = copy *kv;
-        strvec += ~[#fmt("%s=%s", encode_component(k), encode_component(v))];
+        // This is really safe...
+        unsafe {
+          strvec += ~[fmt!("%s=%s",
+                           encode_component(k), encode_component(v))];
+        }
     };
     return str::connect(strvec, ~"&");
 }
@@ -672,7 +677,7 @@ impl Url : FromStr {
  * result in just "http://somehost.com".
  *
  */
-pub fn to_str(url: Url) -> ~str {
+pub pure fn to_str(url: Url) -> ~str {
     let user = if url.user.is_some() {
       userinfo_to_str(option::unwrap(copy url.user))
     } else {
@@ -688,7 +693,8 @@ pub fn to_str(url: Url) -> ~str {
     } else {
         str::concat(~[~"?", query_to_str(url.query)])
     };
-    let fragment = if url.fragment.is_some() {
+    // ugh, this really is safe
+    let fragment = if url.fragment.is_some() unsafe {
         str::concat(~[~"#", encode_component(
             option::unwrap(copy url.fragment))])
     } else {
@@ -704,7 +710,7 @@ pub fn to_str(url: Url) -> ~str {
 }
 
 impl Url: to_str::ToStr {
-    pub fn to_str() -> ~str {
+    pub pure fn to_str() -> ~str {
         to_str(self)
     }
 }
@@ -844,7 +850,7 @@ mod tests {
     fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.host == ~"0.42.42.42";
         assert url.path == ~"/";
     }
@@ -853,7 +859,7 @@ mod tests {
     fn test_url_with_underscores() {
         let urlstr = ~"http://dotcom.com/file_name.html";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.path == ~"/file_name.html";
     }
 
@@ -861,7 +867,7 @@ mod tests {
     fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).get();
-        #debug("url: %?", url);
+        debug!("url: %?", url);
         assert url.path == ~"/file-name.html";
     }
 

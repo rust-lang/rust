@@ -82,7 +82,7 @@ pub type Opt = {name: Name, hasarg: HasArg, occur: Occur};
 
 fn mkname(nm: &str) -> Name {
     let unm = str::from_slice(nm);
-    return if str::len(nm) == 1u {
+    return if nm.len() == 1u {
             Short(str::char_at(unm, 0u))
         } else { Long(unm) };
 }
@@ -112,6 +112,22 @@ impl Occur : Eq {
         (self as uint) == ((*other) as uint)
     }
     pure fn ne(other: &Occur) -> bool { !self.eq(other) }
+}
+
+impl HasArg : Eq {
+    pure fn eq(other: &HasArg) -> bool {
+        (self as uint) == ((*other) as uint)
+    }
+    pure fn ne(other: &HasArg) -> bool { !self.eq(other) }
+}
+
+impl Opt : Eq {
+    pure fn eq(other: &Opt) -> bool {
+        self.name   == (*other).name   &&
+        self.hasarg == (*other).hasarg &&
+        self.occur  == (*other).occur
+    }
+    pure fn ne(other: &Opt) -> bool { !self.eq(other) }
 }
 
 /// Create an option that is required and takes an argument
@@ -150,8 +166,29 @@ enum Optval { Val(~str), Given, }
  */
 pub type Matches = {opts: ~[Opt], vals: ~[~[Optval]], free: ~[~str]};
 
+impl Optval : Eq {
+    pure fn eq(other: &Optval) -> bool {
+        match self {
+            Val(ref s) => match *other { Val (ref os) => s == os,
+                                          Given => false },
+            Given       => match *other { Val(_) => false,
+                                          Given => true }
+        }
+    }
+    pure fn ne(other: &Optval) -> bool { !self.eq(other) }
+}
+
+impl Matches : Eq {
+    pure fn eq(other: &Matches) -> bool {
+        self.opts == (*other).opts &&
+        self.vals == (*other).vals &&
+        self.free == (*other).free
+    }
+    pure fn ne(other: &Matches) -> bool { !self.eq(other) }
+}
+
 fn is_arg(arg: &str) -> bool {
-    return str::len(arg) > 1u && arg[0] == '-' as u8;
+    return arg.len() > 1u && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: &Name) -> ~str {
@@ -175,6 +212,35 @@ pub enum Fail_ {
     OptionMissing(~str),
     OptionDuplicated(~str),
     UnexpectedArgument(~str),
+}
+
+impl Fail_ : Eq {
+    // this whole thing should be easy to infer...
+    pure fn eq(other: &Fail_) -> bool {
+        match self {
+            ArgumentMissing(ref s) => {
+                match *other { ArgumentMissing(ref so)    => s == so,
+                               _                          => false }
+            }
+            UnrecognizedOption(ref s) => {
+                match *other { UnrecognizedOption(ref so) => s == so,
+                               _                          => false }
+            }
+            OptionMissing(ref s) => {
+                match *other { OptionMissing(ref so)      => s == so,
+                               _                          => false }
+            }
+            OptionDuplicated(ref s) => {
+                match *other { OptionDuplicated(ref so)   => s == so,
+                               _                          => false }
+            }
+            UnexpectedArgument(ref s) => {
+                match *other { UnexpectedArgument(ref so) => s == so,
+                               _                          => false }
+            }
+        }
+    }
+    pure fn ne(other: &Fail_) -> bool { !self.eq(other) }
 }
 
 /// Convert a `fail_` enum into an error string
@@ -220,7 +286,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
     let mut i = 0u;
     while i < l {
         let cur = args[i];
-        let curlen = str::len(cur);
+        let curlen = cur.len();
         if !is_arg(cur) {
             free.push(cur);
         } else if cur == ~"--" {
@@ -443,6 +509,194 @@ impl FailType : Eq {
     }
     pure fn ne(other: &FailType) -> bool { !self.eq(other) }
 }
+
+/** A module which provides a way to specify descriptions and
+ *  groups of short and long option names, together.
+ */
+pub mod groups {
+
+    /** one group of options, e.g., both -h and --help, along with
+     * their shared description and properties
+     */
+    pub type OptGroup = {
+        short_name: ~str,
+        long_name: ~str,
+        hint: ~str,
+        desc: ~str,
+        hasarg: HasArg,
+        occur: Occur
+    };
+
+    impl OptGroup : Eq {
+        pure fn eq(other: &OptGroup) -> bool {
+            self.short_name == (*other).short_name &&
+            self.long_name  == (*other).long_name  &&
+            self.hint       == (*other).hint       &&
+            self.desc       == (*other).desc       &&
+            self.hasarg     == (*other).hasarg     &&
+            self.occur      == (*other).occur
+        }
+        pure fn ne(other: &OptGroup) -> bool { !self.eq(other) }
+    }
+
+    /// Create a long option that is required and takes an argument
+    pub fn reqopt(short_name: &str, long_name: &str,
+                  desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert len == 1 || len == 0;
+        return {short_name: str::from_slice(short_name),
+                long_name: str::from_slice(long_name),
+                hint: str::from_slice(hint),
+                desc: str::from_slice(desc),
+                hasarg: Yes,
+                occur: Req};
+    }
+
+    /// Create a long option that is optional and takes an argument
+    pub fn optopt(short_name: &str, long_name: &str,
+                  desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert len == 1 || len == 0;
+        return {short_name: str::from_slice(short_name),
+                long_name: str::from_slice(long_name),
+                hint: str::from_slice(hint),
+                desc: str::from_slice(desc),
+                hasarg: Yes,
+                occur: Optional};
+    }
+
+    /// Create a long option that is optional and does not take an argument
+    pub fn optflag(short_name: &str, long_name: &str,
+                   desc: &str) -> OptGroup {
+        let len = short_name.len();
+        assert len == 1 || len == 0;
+        return {short_name: str::from_slice(short_name),
+                long_name: str::from_slice(long_name),
+                hint: ~"",
+                desc: str::from_slice(desc),
+                hasarg: No,
+                occur: Optional};
+    }
+
+    /// Create a long option that is optional and takes an optional argument
+    pub fn optflagopt(short_name: &str, long_name: &str,
+                      desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert len == 1 || len == 0;
+        return {short_name: str::from_slice(short_name),
+                long_name: str::from_slice(long_name),
+                hint: str::from_slice(hint),
+                desc: str::from_slice(desc),
+                hasarg: Maybe,
+                occur: Optional};
+    }
+
+    /**
+     * Create a long option that is optional, takes an argument, and may occur
+     * multiple times
+     */
+    pub fn optmulti(short_name: &str, long_name: &str,
+                    desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert len == 1 || len == 0;
+        return {short_name: str::from_slice(short_name),
+                long_name: str::from_slice(long_name),
+                hint: str::from_slice(hint),
+                desc: str::from_slice(desc),
+                hasarg: Yes,
+                occur: Multi};
+    }
+
+    // translate OptGroup into Opt
+    // (both short and long names correspond to different Opts)
+    pub fn long_to_short(lopt: &OptGroup) -> ~[Opt] {
+        match ((*lopt).short_name.len(),
+               (*lopt).long_name.len()) {
+
+           (0,0) => fail ~"this long-format option was given no name",
+
+           (0,_) => ~[{name:   Long(((*lopt).long_name)),
+                       hasarg: (*lopt).hasarg,
+                       occur:  (*lopt).occur}],
+
+           (1,0) => ~[{name:  Short(str::char_at((*lopt).short_name, 0)),
+                       hasarg: (*lopt).hasarg,
+                       occur:  (*lopt).occur}],
+
+           (1,_) => ~[{name:   Short(str::char_at((*lopt).short_name, 0)),
+                       hasarg: (*lopt).hasarg,
+                       occur:  (*lopt).occur},
+                      {name:   Long(((*lopt).long_name)),
+                       hasarg: (*lopt).hasarg,
+                       occur:  (*lopt).occur}],
+
+           (_,_) => fail ~"something is wrong with the long-form opt"
+        }
+    }
+
+    /*
+     * Parse command line args with the provided long format options
+     */
+    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> Result {
+        ::getopts::getopts(args, vec::flat_map(opts, long_to_short))
+    }
+
+    /**
+     * Derive a usage message from a set of long options
+     */
+    pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
+
+        let desc_sep = ~"\n" + str::repeat(~" ", 24);
+
+        let rows = vec::map(opts, |optref| {
+            let short_name = (*optref).short_name;
+            let long_name = (*optref).long_name;
+            let hint = (*optref).hint;
+            let desc = (*optref).desc;
+            let hasarg = (*optref).hasarg;
+
+            let mut row = str::repeat(~" ", 4);
+
+            // short option
+            row += match short_name.len() {
+                0 => ~"",
+                1 => ~"-" + short_name + " ",
+                _ => fail ~"the short name should only be 1 char long",
+            };
+
+            // long option
+            row += match long_name.len() {
+                0 => ~"",
+                _ => ~"--" + long_name + " ",
+            };
+
+            // arg
+            row += match hasarg {
+                No    => ~"",
+                Yes   => hint,
+                Maybe => ~"[" + hint + ~"]",
+            };
+
+            // here we just need to indent the start of the description
+            let rowlen = row.len();
+            row += if rowlen < 24 {
+                str::repeat(~" ", 24 - rowlen)
+            } else {
+                desc_sep
+            };
+
+            // wrapped description
+            row += str::connect(str::split_within(desc, 54), desc_sep);
+
+            row
+        });
+
+        return str::from_slice(brief)    +
+               ~"\n\nOptions:\n"         +
+               str::connect(rows, ~"\n") +
+               ~"\n\n";
+    }
+} // end groups module
 
 #[cfg(test)]
 mod tests {
@@ -942,6 +1196,158 @@ mod tests {
         };
         assert opts_present(matches, ~[~"L"]);
         assert opts_str(matches, ~[~"L"]) == ~"foo";
+    }
+
+    #[test]
+    fn test_groups_reqopt() {
+        let opt = groups::reqopt(~"b", ~"banana", ~"some bananas", ~"VAL");
+        assert opt == { short_name: ~"b",
+                        long_name: ~"banana",
+                        hint: ~"VAL",
+                        desc: ~"some bananas",
+                        hasarg: Yes,
+                        occur: Req }
+    }
+
+    #[test]
+    fn test_groups_optopt() {
+        let opt = groups::optopt(~"a", ~"apple", ~"some apples", ~"VAL");
+        assert opt == { short_name: ~"a",
+                        long_name: ~"apple",
+                        hint: ~"VAL",
+                        desc: ~"some apples",
+                        hasarg: Yes,
+                        occur: Optional }
+    }
+
+    #[test]
+    fn test_groups_optflag() {
+        let opt = groups::optflag(~"k", ~"kiwi", ~"some kiwis");
+        assert opt == { short_name: ~"k",
+                        long_name: ~"kiwi",
+                        hint: ~"",
+                        desc: ~"some kiwis",
+                        hasarg: No,
+                        occur: Optional }
+    }
+
+    #[test]
+    fn test_groups_optflagopt() {
+        let opt = groups::optflagopt(~"p", ~"pineapple",
+                                       ~"some pineapples", ~"VAL");
+        assert opt == { short_name: ~"p",
+                        long_name: ~"pineapple",
+                        hint: ~"VAL",
+                        desc: ~"some pineapples",
+                        hasarg: Maybe,
+                        occur: Optional }
+    }
+
+    #[test]
+    fn test_groups_optmulti() {
+        let opt = groups::optmulti(~"l", ~"lime",
+                                     ~"some limes", ~"VAL");
+        assert opt == { short_name: ~"l",
+                        long_name: ~"lime",
+                        hint: ~"VAL",
+                        desc: ~"some limes",
+                        hasarg: Yes,
+                        occur: Multi }
+    }
+
+    #[test]
+    fn test_groups_long_to_short() {
+        let short = ~[reqopt(~"b"), reqopt(~"banana")];
+        let verbose = groups::reqopt(~"b", ~"banana",
+                                       ~"some bananas", ~"VAL");
+
+        assert groups::long_to_short(&verbose) == short;
+    }
+
+    #[test]
+    fn test_groups_getopts() {
+        let short = ~[
+            reqopt(~"b"), reqopt(~"banana"),
+            optopt(~"a"), optopt(~"apple"),
+            optflag(~"k"), optflagopt(~"kiwi"),
+            optflagopt(~"p"),
+            optmulti(~"l")
+        ];
+
+        let verbose = ~[
+            groups::reqopt(~"b", ~"banana", ~"Desc", ~"VAL"),
+            groups::optopt(~"a", ~"apple", ~"Desc", ~"VAL"),
+            groups::optflag(~"k", ~"kiwi", ~"Desc"),
+            groups::optflagopt(~"p", ~"", ~"Desc", ~"VAL"),
+            groups::optmulti(~"l", ~"", ~"Desc", ~"VAL"),
+        ];
+
+        let sample_args = ~[~"-k", ~"15", ~"--apple", ~"1", ~"k",
+                            ~"-p", ~"16", ~"l", ~"35"];
+
+        // NOTE: we should sort before comparing
+        assert getopts(sample_args, short)
+            == groups::getopts(sample_args, verbose);
+    }
+
+    #[test]
+    fn test_groups_usage() {
+        let optgroups = ~[
+            groups::reqopt(~"b", ~"banana", ~"Desc", ~"VAL"),
+            groups::optopt(~"a", ~"012345678901234567890123456789",
+                             ~"Desc", ~"VAL"),
+            groups::optflag(~"k", ~"kiwi", ~"Desc"),
+            groups::optflagopt(~"p", ~"", ~"Desc", ~"VAL"),
+            groups::optmulti(~"l", ~"", ~"Desc", ~"VAL"),
+        ];
+
+        let expected =
+~"Usage: fruits
+
+Options:
+    -b --banana VAL     Desc
+    -a --012345678901234567890123456789 VAL
+                        Desc
+    -k --kiwi           Desc
+    -p [VAL]            Desc
+    -l VAL              Desc
+
+";
+
+        let generated_usage = groups::usage(~"Usage: fruits", optgroups);
+
+        debug!("expected: <<%s>>", expected);
+        debug!("generated: <<%s>>", generated_usage);
+        assert generated_usage == expected;
+    }
+
+    #[test]
+    fn test_groups_usage_description_wrapping() {
+        // indentation should be 24 spaces
+        // lines wrap after 78: or rather descriptions wrap after 54
+
+        let optgroups = ~[
+           groups::optflag(~"k", ~"kiwi",
+           ~"This is a long description which won't be wrapped..+.."), // 54
+           groups::optflag(~"a", ~"apple",
+           ~"This is a long description which _will_ be wrapped..+.."), // 55
+        ];
+
+        let expected =
+~"Usage: fruits
+
+Options:
+    -k --kiwi           This is a long description which won't be wrapped..+..
+    -a --apple          This is a long description which _will_ be
+                        wrapped..+..
+
+";
+
+        let usage = groups::usage(~"Usage: fruits", optgroups);
+
+        debug!("expected: <<%s>>", expected);
+        debug!("generated: <<%s>>", usage);
+        assert usage == expected
     }
 }
 

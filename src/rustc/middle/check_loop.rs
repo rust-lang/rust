@@ -1,6 +1,5 @@
 use syntax::ast::*;
 use syntax::visit;
-use driver::session::session;
 
 type ctx = {in_loop: bool, can_ret: bool};
 

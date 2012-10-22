@@ -9,7 +9,7 @@ struct dtor {
 
 fn unwrap<T>(+o: Option<T>) -> T {
     match move o {
-      Some(move v) => v,
+      Some(move v) => move v,
       None => fail
     }
 }
@@ -19,7 +19,7 @@ fn main() {
 
     {
         let b = Some(dtor { x:x });
-        let c = unwrap(b);
+        let c = unwrap(move b);
     }
 
     assert *x == 0;

@@ -1,9 +1,9 @@
 // error-pattern:fail
-fn f(-a: @int) {
+fn f(-_a: @int) {
     fail;
 }
 
 fn main() {
     let a = @0;
-    f(a);
+    f(move a);
 }

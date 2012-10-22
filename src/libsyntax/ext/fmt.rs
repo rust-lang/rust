@@ -1,7 +1,7 @@
 
 
 /*
- * The compiler code necessary to support the #fmt extension. Eventually this
+ * The compiler code necessary to support the fmt! extension. Eventually this
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
@@ -16,7 +16,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let args = get_mac_args_no_max(cx, sp, arg, 1u, ~"fmt");
     let fmt =
         expr_to_str(cx, args[0],
-                    ~"first argument to #fmt must be a string literal.");
+                    ~"first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
     debug!("Format string:");
     log(debug, fmt);
@@ -76,7 +76,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                 let count_is_args = ~[count_lit];
                 return mk_call(cx, sp, count_is_path, count_is_args);
               }
-              _ => cx.span_unimpl(sp, ~"unimplemented #fmt conversion")
+              _ => cx.span_unimpl(sp, ~"unimplemented fmt! conversion")
             }
         }
         fn make_ty(cx: ext_ctxt, sp: span, t: Ty) -> @ast::expr {
@@ -133,7 +133,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               _ => return false
             }
         }
-        let unsupported = ~"conversion not supported in #fmt string";
+        let unsupported = ~"conversion not supported in fmt! string";
         match cnv.param {
           option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
@@ -145,14 +145,14 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"+ flag only valid in " +
-                                      ~"signed #fmt conversion");
+                                      ~"signed fmt! conversion");
                 }
               }
               FlagSpaceForSign => {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
                                   ~"space flag only valid in " +
-                                      ~"signed #fmt conversions");
+                                      ~"signed fmt! conversions");
                 }
               }
               FlagLeftZeroPad => (),
@@ -252,7 +252,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
-                              ~"not enough arguments to #fmt " +
+                              ~"not enough arguments to fmt! " +
                                   ~"for the given format string");
             }
             debug!("Building conversion:");
@@ -267,7 +267,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
 
     if expected_nargs < nargs {
         cx.span_fatal
-            (sp, fmt!("too many arguments to #fmt. found %u, expected %u",
+            (sp, fmt!("too many arguments to fmt!. found %u, expected %u",
                            nargs, expected_nargs));
     }
 

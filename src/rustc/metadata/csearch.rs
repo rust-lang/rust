@@ -1,6 +1,6 @@
 // Searching for information from the cstore
 
-use std::{ebml};
+use std::ebml;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_map;
@@ -23,7 +23,10 @@ export get_region_param;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_provided_trait_methods;
 export get_method_names_if_trait;
+export get_type_name_if_impl;
+export get_static_methods_if_impl;
 export get_item_attrs;
 export each_path;
 export get_type;
@@ -31,19 +34,32 @@ export get_impl_traits;
 export get_impl_method;
 export get_item_path;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
+export ProvidedTraitMethodInfo;
+export StaticMethodInfo;
 
-fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
+struct ProvidedTraitMethodInfo {
+    ty: ty::method,
+    def_id: ast::def_id
+}
+
+struct StaticMethodInfo {
+    ident: ast::ident,
+    def_id: ast::def_id,
+    purity: ast::purity
+}
+
+fn get_symbol(cstore: cstore::CStore, def: ast::def_id) -> ~str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     return decoder::get_symbol(cdata, def.node);
 }
 
-fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
+fn get_type_param_count(cstore: cstore::CStore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     return decoder::get_type_param_count(cdata, def.node);
 }
 
 /// Iterates over all the paths in the given crate.
-fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
+fn each_path(cstore: cstore::CStore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     decoder::each_path(cstore.intr, crate_data, f);
@@ -84,7 +100,7 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
     return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
 }
 
-fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
+fn get_impls_for_mod(cstore: cstore::CStore, def: ast::def_id,
                      name: Option<ast::ident>)
     -> @~[@decoder::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
@@ -99,14 +115,33 @@ fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     decoder::get_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
-fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
+fn get_provided_trait_methods(tcx: ty::ctxt, def: ast::def_id) ->
+        ~[ProvidedTraitMethodInfo] {
+    let cstore = tcx.cstore;
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
+}
+
+fn get_method_names_if_trait(cstore: cstore::CStore, def: ast::def_id)
     -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
 }
 
-fn get_item_attrs(cstore: cstore::cstore,
+fn get_type_name_if_impl(cstore: cstore::CStore, def: ast::def_id) ->
+        Option<ast::ident> {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_type_name_if_impl(cstore.intr, cdata, def.node)
+}
+
+fn get_static_methods_if_impl(cstore: cstore::CStore, def: ast::def_id) ->
+        Option<~[StaticMethodInfo]> {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_static_methods_if_impl(cstore.intr, cdata, def.node)
+}
+
+fn get_item_attrs(cstore: cstore::CStore,
                   def_id: ast::def_id,
                   f: fn(~[@ast::meta_item])) {
 
@@ -126,7 +161,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     decoder::get_type(cdata, def.node, tcx)
 }
 
-fn get_region_param(cstore: metadata::cstore::cstore,
+fn get_region_param(cstore: metadata::cstore::CStore,
                     def: ast::def_id) -> Option<ty::region_variance> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_region_param(cdata, def.node);
@@ -163,7 +198,7 @@ fn get_impl_traits(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::t] {
     decoder::get_impl_traits(cdata, def.node, tcx)
 }
 
-fn get_impl_method(cstore: cstore::cstore,
+fn get_impl_method(cstore: cstore::CStore,
                    def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
@@ -174,7 +209,7 @@ fn get_impl_method(cstore: cstore::cstore,
    for their methods (so that get_trait_methods can be reused to get
    class methods), classes require a slightly different version of
    get_impl_method. Sigh. */
-fn get_class_method(cstore: cstore::cstore,
+fn get_class_method(cstore: cstore::CStore,
                     def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
@@ -182,7 +217,7 @@ fn get_class_method(cstore: cstore::cstore,
 }
 
 /* If def names a class with a dtor, return it. Otherwise, return none. */
-fn class_dtor(cstore: cstore::cstore, def: ast::def_id)
+fn class_dtor(cstore: cstore::CStore, def: ast::def_id)
     -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::class_dtor(cdata, def.node)

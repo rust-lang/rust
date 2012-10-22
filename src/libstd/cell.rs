@@ -57,7 +57,7 @@ fn test_basic() {
     let value = value_cell.take();
     assert value == ~10;
     assert value_cell.is_empty();
-    value_cell.put_back(value);
+    value_cell.put_back(move value);
     assert !value_cell.is_empty();
 }
 

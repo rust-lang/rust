@@ -1,6 +1,6 @@
 // -*- rust -*-
 use metadata::{creader, cstore, filesearch};
-use session::{session, session_, OptLevel, No, Less, Default, Aggressive};
+use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
 use syntax::parse;
 use syntax::{ast, codemap};
 use syntax::attr;
@@ -10,8 +10,10 @@ use util::ppaux;
 use back::link;
 use result::{Ok, Err};
 use std::getopts;
+use std::getopts::{opt_present};
+use std::getopts::groups;
+use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use io::WriterUtil;
-use getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 use back::{x86, x86_64};
 use std::map::HashMap;
 use lib::llvm::llvm;
@@ -32,7 +34,7 @@ fn source_name(input: input) -> ~str {
     }
 }
 
-fn default_configuration(sess: session, argv0: ~str, input: input) ->
+fn default_configuration(sess: Session, argv0: ~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -70,7 +72,7 @@ fn append_configuration(cfg: ast::crate_cfg, name: ~str) -> ast::crate_cfg {
     }
 }
 
-fn build_configuration(sess: session, argv0: ~str, input: input) ->
+fn build_configuration(sess: Session, argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -106,7 +108,7 @@ enum input {
     str_input(~str)
 }
 
-fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
+fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(file) => {
@@ -145,7 +147,7 @@ impl compile_upto : cmp::Eq {
     pure fn ne(other: &compile_upto) -> bool { !self.eq(other) }
 }
 
-fn compile_upto(sess: session, cfg: ast::crate_cfg,
+fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
                 outputs: Option<output_filenames>)
     -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
@@ -277,7 +279,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: Some(ty_cx)};
 }
 
-fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
+fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
                  outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
@@ -287,7 +289,7 @@ fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
+fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -571,7 +573,7 @@ fn build_session_options(binary: ~str,
 }
 
 fn build_session(sopts: @session::options,
-                 demitter: diagnostic::emitter) -> session {
+                 demitter: diagnostic::emitter) -> Session {
     let codemap = codemap::new_codemap();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -581,11 +583,10 @@ fn build_session(sopts: @session::options,
 }
 
 fn build_session_(sopts: @session::options,
-                  cm: codemap::codemap,
+                  cm: codemap::CodeMap,
                   demitter: diagnostic::emitter,
                   span_diagnostic_handler: diagnostic::span_handler)
-               -> session {
-
+               -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
@@ -595,7 +596,7 @@ fn build_session_(sopts: @session::options,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
-    session_(@{targ_cfg: target_cfg,
+    Session_(@{targ_cfg: target_cfg,
                opts: sopts,
                cstore: cstore,
                parse_sess: p_s,
@@ -609,7 +610,7 @@ fn build_session_(sopts: @session::options,
                lint_settings: lint_settings})
 }
 
-fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
+fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
     match name {
       ~"normal" => ppm_normal,
       ~"expanded" => ppm_expanded,
@@ -624,27 +625,69 @@ fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
     }
 }
 
-fn opts() -> ~[getopts::Opt] {
-    return ~[optflag(~"h"), optflag(~"help"),
-             optflag(~"v"), optflag(~"version"),
-          optflag(~"emit-llvm"), optflagopt(~"pretty"),
-          optflag(~"ls"), optflag(~"parse-only"), optflag(~"no-trans"),
-          optflag(~"O"), optopt(~"opt-level"), optmulti(~"L"), optflag(~"S"),
-          optopt(~"o"), optopt(~"out-dir"), optflag(~"xg"),
-          optflag(~"c"), optflag(~"g"), optflag(~"save-temps"),
-          optopt(~"sysroot"), optopt(~"target"),
-          optflag(~"jit"),
-
-          optmulti(~"W"), optmulti(~"warn"),
-          optmulti(~"A"), optmulti(~"allow"),
-          optmulti(~"D"), optmulti(~"deny"),
-          optmulti(~"F"), optmulti(~"forbid"),
-
-          optmulti(~"Z"),
-
-          optmulti(~"cfg"), optflag(~"test"),
-          optflag(~"lib"), optflag(~"bin"),
-          optflag(~"static"), optflag(~"gc")];
+// rustc command line options
+fn optgroups() -> ~[getopts::groups::OptGroup] {
+ ~[
+  optflag(~"",  ~"bin", ~"Compile an executable crate (default)"),
+  optflag(~"c", ~"",    ~"Compile and assemble, but do not link"),
+  optmulti(~"", ~"cfg", ~"Configure the compilation
+                          environment", ~"SPEC"),
+  optflag(~"",  ~"emit-llvm",
+                        ~"Produce an LLVM bitcode file"),
+  optflag(~"g", ~"",    ~"Produce debug info (experimental)"),
+  optflag(~"",  ~"gc",  ~"Garbage collect shared data (experimental)"),
+  optflag(~"h", ~"help",~"Display this message"),
+  optmulti(~"L", ~"",   ~"Add a directory to the library search path",
+                              ~"PATH"),
+  optflag(~"",  ~"lib", ~"Compile a library crate"),
+  optflag(~"",  ~"ls",  ~"List the symbols defined by a library crate"),
+  optflag(~"",  ~"jit", ~"Execute using JIT (experimental)"),
+  optflag(~"", ~"no-trans",
+                        ~"Run all passes except translation; no output"),
+  optflag(~"O", ~"",    ~"Equivalent to --opt-level=2"),
+  optopt(~"o", ~"",     ~"Write output to <filename>", ~"FILENAME"),
+  optopt(~"", ~"opt-level",
+                        ~"Optimize with possible levels 0-3", ~"LEVEL"),
+  optopt( ~"",  ~"out-dir",
+                        ~"Write output to compiler-chosen filename
+                          in <dir>", ~"DIR"),
+  optflag(~"", ~"parse-only",
+                        ~"Parse only; do not compile, assemble, or link"),
+  optflagopt(~"", ~"pretty",
+                        ~"Pretty-print the input instead of compiling;
+                          valid types are: normal (un-annotated source),
+                          expanded (crates expanded),
+                          typed (crates expanded, with type annotations),
+                          or identified (fully parenthesized,
+                          AST nodes and blocks with IDs)", ~"TYPE"),
+  optflag(~"S", ~"",    ~"Compile only; do not assemble or link"),
+  optflag(~"", ~"xg",   ~"Extra debugging info (experimental)"),
+  optflag(~"", ~"save-temps",
+                        ~"Write intermediate files (.bc, .opt.bc, .o)
+                          in addition to normal output"),
+  optflag(~"", ~"static",
+                        ~"Use or produce static libraries or binaries
+                         (experimental)"),
+  optopt(~"", ~"sysroot",
+                        ~"Override the system root", ~"PATH"),
+  optflag(~"", ~"test", ~"Build a test harness"),
+  optopt(~"", ~"target",
+                        ~"Target triple cpu-manufacturer-kernel[-os]
+                          to compile for (see
+         http://sources.redhat.com/autobook/autobook/autobook_17.html
+                          for detail)", ~"TRIPLE"),
+  optmulti(~"W", ~"warn",
+                        ~"Set lint warnings", ~"OPT"),
+  optmulti(~"A", ~"allow",
+                        ~"Set lint allowed", ~"OPT"),
+  optmulti(~"D", ~"deny",
+                        ~"Set lint denied", ~"OPT"),
+  optmulti(~"F", ~"forbid",
+                        ~"Set lint forbidden", ~"OPT"),
+  optmulti(~"Z", ~"",   ~"Set internal debugging options", "FLAG"),
+  optflag( ~"v", ~"version",
+                        ~"Print version info and exit"),
+ ]
 }
 
 type output_filenames = @{out_filename:Path, obj_filename:Path};
@@ -652,7 +695,7 @@ type output_filenames = @{out_filename:Path, obj_filename:Path};
 fn build_output_filenames(input: input,
                           odir: &Option<Path>,
                           ofile: &Option<Path>,
-                          sess: session)
+                          sess: Session)
         -> output_filenames {
     let obj_path;
     let out_path;
@@ -728,7 +771,7 @@ fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     fail;
 }
 
-fn list_metadata(sess: session, path: &Path, out: io::Writer) {
+fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
     metadata::loader::list_file_metadata(
         sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
@@ -742,7 +785,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            match getopts::getopts(~[~"--test"], opts()) {
+            match getopts(~[~"--test"], optgroups()) {
               Ok(m) => m,
               Err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
@@ -759,7 +802,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            match getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
+            match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(m) => m,
               Err(f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +

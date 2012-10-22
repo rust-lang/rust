@@ -312,8 +312,8 @@ fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
 
     TCB {
         me: me,
-        tasks: tasks,
-        ancestors: ancestors,
+        tasks: move tasks,
+        ancestors: move ancestors,
         is_main: is_main,
         notifier: move notifier
     }
@@ -330,7 +330,7 @@ struct AutoNotify {
 
 fn AutoNotify(chan: Chan<Notification>) -> AutoNotify {
     AutoNotify {
-        notify_chan: chan,
+        notify_chan: move chan,
         failed: true // Un-set above when taskgroup successfully made.
     }
 }
@@ -652,7 +652,7 @@ fn test_spawn_raw_unsupervise() {
         mut notify_chan: None,
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
+    do spawn_raw(move opts) {
         fail;
     }
 }
@@ -667,7 +667,7 @@ fn test_spawn_raw_notify_success() {
         notify_chan: Some(move notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(opts) |move task_ch| {
+    do spawn_raw(move opts) |move task_ch| {
         task_ch.send(get_task());
     }
     let task_ = task_po.recv();
@@ -683,10 +683,10 @@ fn test_spawn_raw_notify_failure() {
 
     let opts = {
         linked: false,
-        notify_chan: Some(notify_ch),
+        notify_chan: Some(move notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
+    do spawn_raw(move opts) |move task_ch| {
         task_ch.send(get_task());
         fail;
     }

@@ -595,8 +595,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 fn strftime(format: &str, tm: Tm) -> ~str {
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
-      let die = || #fmt("strftime: can't understand this format %c ",
-                             ch);
+      let die = || fmt!("strftime: can't understand this format %c ", ch);
         match ch {
           'A' => match tm.tm_wday as int {
             0 => ~"Sunday",

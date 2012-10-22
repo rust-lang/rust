@@ -5,7 +5,7 @@
 
 extern mod core;
 
-fn last<T: Copy>(v: ~[const T]) -> core::Option<T> {
+fn last<T>(v: ~[const &T]) -> core::Option<T> {
     fail;
 }
 

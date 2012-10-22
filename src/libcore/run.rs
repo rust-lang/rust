@@ -226,7 +226,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 
     fn ProgRes(r: ProgRepr) -> ProgRes {
         ProgRes {
-            r: r
+            r: move r
         }
     }
 
@@ -248,12 +248,14 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 }
 
 fn read_all(rd: io::Reader) -> ~str {
-    let mut buf = ~"";
-    while !rd.eof() {
-        let bytes = rd.read_bytes(4096u);
-        buf += str::from_bytes(bytes);
-    }
-    move buf
+    let buf = io::with_bytes_writer(|wr| {
+        let mut bytes = [mut 0, ..4096];
+        while !rd.eof() {
+            let nread = rd.read(bytes, bytes.len());
+            wr.write(bytes.view(0, nread));
+        }
+    });
+    str::from_bytes(buf)
 }
 
 /**
@@ -313,10 +315,10 @@ pub fn program_output(prog: &str, args: &[~str]) ->
         let stream = comm::recv(p);
         match stream {
             (1, copy s) => {
-                outs = s;
+                outs = move s;
             }
             (2, copy s) => {
-                errs = s;
+                errs = move s;
             }
             (n, _) => {
                 fail(fmt!("program_output received an unexpected file \
@@ -341,13 +343,15 @@ fn writeclose(fd: c_int, s: ~str) {
 fn readclose(fd: c_int) -> ~str {
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = ~"";
-    while !reader.eof() {
-        let bytes = reader.read_bytes(4096u);
-        buf += str::from_bytes(bytes);
-    }
+    let buf = io::with_bytes_writer(|writer| {
+        let mut bytes = [mut 0, ..4096];
+        while !reader.eof() {
+            let nread = reader.read(bytes, bytes.len());
+            writer.write(bytes.view(0, nread));
+        }
+    });
     os::fclose(file);
-    move buf
+    str::from_bytes(buf)
 }
 
 /// Waits for a process to exit and returns the exit code

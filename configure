@@ -187,6 +187,7 @@ need_cmd cmp
 need_cmd mkdir
 need_cmd printf
 need_cmd cut
+need_cmd head
 need_cmd grep
 need_cmd xargs
 need_cmd cp
@@ -257,6 +258,16 @@ case $CFG_CPUTYPE in
         err "unknown CPU type: $CFG_CPUTYPE"
 esac
 
+# Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
+if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
+then
+    file -L "$SHELL" | grep -q "x86[_-]64"
+    if [ $? != 0 ]; then
+        CFG_CPUTYPE=i686
+    fi
+fi
+
+
 DEFAULT_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
@@ -283,7 +294,7 @@ else
 fi
 
 opt sharedstd 1 "build libstd as a shared library"
-opt valgrind 1 "run tests with valgrind (memcheck by default)"
+opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
@@ -352,11 +363,16 @@ fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
-    PV=$(pandoc --version | awk '/^pandoc/ {print $2}')
-    if [ "$PV" \< "1.8" ]
+    PANDOC_VER_LINE=$(pandoc --version | grep '^pandoc ')
+    PANDOC_VER=${PANDOC_VER_LINE#pandoc }
+    PV_MAJOR_MINOR=${PANDOC_VER%.[0-9]*}
+    PV_MAJOR=${PV_MAJOR_MINOR%%[.][0-9]*}
+    PV_MINOR=${PV_MAJOR_MINOR#[0-9]*[.]}
+    PV_MINOR=${PV_MINOR%%[.][0-9]*}
+    if [ "$PV_MAJOR" -lt "1" ] || [ "$PV_MINOR" -lt "8" ]
     then
-	step_msg "pandoc $PV is too old. disabling"
-	BAD_PANDOC=1
+		step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. disabling"
+		BAD_PANDOC=1
     fi
 fi
 
@@ -579,7 +595,7 @@ then
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule --quiet foreach --recursive git submodule sync
+    "${CFG_GIT}" submodule --quiet foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
     need_ok "git failed"
 
     msg "git: submodule foreach update"

@@ -1,7 +1,7 @@
 use ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 use parse::parser;
-use parse::parser::parse_from_source_str;
+use parse::parser::{Parser, parse_from_source_str};
 use dvec::DVec;
 use parse::token::ident_interner;
 
@@ -24,7 +24,7 @@ struct gather_item {
 type aq_ctxt = @{lo: uint, gather: DVec<gather_item>};
 enum fragment {
     from_expr(@ast::expr),
-    from_ty(@ast::ty)
+    from_ty(@ast::Ty)
 }
 
 fn ids_ext(cx: ext_ctxt, strs: ~[~str]) -> ~[ast::ident] {
@@ -68,7 +68,7 @@ impl @ast::expr: qq_helper {
     }
     fn get_fold_fn() -> ~str {~"fold_expr"}
 }
-impl @ast::ty: qq_helper {
+impl @ast::Ty: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
     fn extract_mac() -> Option<ast::mac_> {
@@ -186,13 +186,13 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     };
 }
 
-fn parse_crate(p: parser) -> @ast::crate { p.parse_crate_mod(~[]) }
-fn parse_ty(p: parser) -> @ast::ty { p.parse_ty(false) }
-fn parse_stmt(p: parser) -> @ast::stmt { p.parse_stmt(~[]) }
-fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
-fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
+fn parse_crate(p: Parser) -> @ast::crate { p.parse_crate_mod(~[]) }
+fn parse_ty(p: Parser) -> @ast::Ty { p.parse_ty(false) }
+fn parse_stmt(p: Parser) -> @ast::stmt { p.parse_stmt(~[]) }
+fn parse_expr(p: Parser) -> @ast::expr { p.parse_expr() }
+fn parse_pat(p: Parser) -> @ast::pat { p.parse_pat(true) }
 
-fn parse_item(p: parser) -> @ast::item {
+fn parse_item(p: Parser) -> @ast::item {
     match p.parse_item(~[]) {
       Some(item) => item,
       None       => fail ~"parse_item: parsing an item failed"
@@ -200,7 +200,7 @@ fn parse_item(p: parser) -> @ast::item {
 }
 
 fn finish<T: qq_helper>
-    (ecx: ext_ctxt, body: ast::mac_body_, f: fn (p: parser) -> T)
+    (ecx: ext_ctxt, body: ast::mac_body_, f: fn (p: Parser) -> T)
     -> @ast::expr
 {
     let cm = ecx.codemap();
@@ -309,7 +309,7 @@ fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {
     @f.fold_crate(*n)
 }
 fn fold_expr(f: ast_fold, &&n: @ast::expr) -> @ast::expr {f.fold_expr(n)}
-fn fold_ty(f: ast_fold, &&n: @ast::ty) -> @ast::ty {f.fold_ty(n)}
+fn fold_ty(f: ast_fold, &&n: @ast::Ty) -> @ast::Ty {f.fold_ty(n)}
 fn fold_item(f: ast_fold, &&n: @ast::item) -> @ast::item {
     f.fold_item(n).get() //HACK: we know we don't drop items
 }

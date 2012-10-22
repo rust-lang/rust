@@ -30,7 +30,7 @@ fn main() {
     assert indirect(~[10, 20]) == ~"[10, 20]!";
 
     fn indirect2<T: to_str>(x: T) -> ~str {
-        indirect(x)
+        indirect(move x)
     }
     assert indirect2(~[1]) == ~"[1]!";
 }

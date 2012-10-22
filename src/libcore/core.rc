@@ -25,7 +25,7 @@ Implicitly, all crates behave as if they included the following prologue:
 */
 
 #[link(name = "core",
-       vers = "0.4",
+       vers = "0.5",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -200,6 +200,7 @@ pub mod flate;
 pub mod repr;
 pub mod cleanup;
 pub mod reflect;
+pub mod condition;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface

@@ -1,7 +1,7 @@
 Version 0.4 (October 2012)
 --------------------------
 
-   * ~1500 changes, numerous bugfixes
+   * ~2000 changes, numerous bugfixes
 
    * Syntax
       * All keywords are now strict and may not be used as identifiers anywhere

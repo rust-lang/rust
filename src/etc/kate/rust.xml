@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE language SYSTEM "language.dtd">
-<language name="Rust" version="0.3.1" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
+<language name="Rust" version="0.4.0" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
 <highlighting>
 	<list name="fn">
 		<item> fn </item>
@@ -9,59 +9,39 @@
 		<item> type </item>
 	</list>
 	<list name="keywords">
-		<item> alt </item>
-		<item> again </item>
 		<item> as </item>
 		<item> assert </item>
 		<item> break </item>
-		<item> check </item>
-		<item> claim </item>
 		<item> const </item>
 		<item> copy </item>
 		<item> do </item>
 		<item> drop </item>
 		<item> else </item>
+		<item> enum </item>
 		<item> export </item>
 		<item> extern </item>
-		<item> f16 </item>
-		<item> f80 </item>
-		<item> f128 </item>
 		<item> fail </item>
 		<item> for </item>
 		<item> if </item>
 		<item> impl </item>
-		<item> import </item>
-		<item> in </item>
 		<item> let </item>
 		<item> log </item>
 		<item> loop </item>
-		<item> m32 </item>
-		<item> m64 </item>
-		<item> m128 </item>
 		<item> match </item>
 		<item> mod </item>
-		<item> module </item>
 		<item> move </item>
 		<item> mut </item>
-		<item> new </item>
-		<item> of </item>
-		<item> owned </item>
 		<item> priv </item>
 		<item> pub </item>
 		<item> pure </item>
-		<item> ret </item>
+		<item> ref </item>
 		<item> return </item>
-		<item> to </item>
-		<item> unchecked </item>
+		<item> static </item>
+		<item> struct </item>
+		<item> trait </item>
 		<item> unsafe </item>
 		<item> use </item>
 		<item> while </item>
-		<item> with </item>
-		<item> mod </item>
-		<item> trait </item>
-		<item> class </item>
-		<item> struct </item>
-		<item> enum </item>
 	</list>
 	<list name="types">
 		<item> bool </item>
@@ -80,8 +60,9 @@
 		<item> float </item>
 		<item> char </item>
 		<item> str </item>
-		<item> option </item>
-		<item> either </item>
+		<item> Either </item>
+		<item> Option </item>
+		<item> Result </item>
 	</list>
 	<list name="ctypes">
 		<item> c_float </item>
@@ -121,16 +102,16 @@
 	<list name="constants">
 		<item> true </item>
 		<item> false </item>
-		<item> some </item>
-		<item> none </item>
-		<item> left </item>
-		<item> right </item>
-		<item> ok </item>
-		<item> err </item>
-		<item> success </item>
-		<item> failure </item>
-		<item> cons </item>
-		<item> nil </item>
+		<item> Some </item>
+		<item> None </item>
+		<item> Left </item>
+		<item> Right </item>
+		<item> Ok </item>
+		<item> Err </item>
+		<item> Success </item>
+		<item> Failure </item>
+		<item> Cons </item>
+		<item> Nil </item>
 	</list>
 	<list name="cconstants">
 		<item> EXIT_FAILURE </item>

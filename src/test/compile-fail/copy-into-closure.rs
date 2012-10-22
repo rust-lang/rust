@@ -4,7 +4,7 @@ fn closure1(+x: ~str) -> (~str, fn@() -> ~str) {
         //~^ WARNING implicitly copying a non-implicitly-copyable value
         //~^^ NOTE to copy values into a @fn closure, use a capture clause
     };
-    (x,f)
+    (move x,f)
 }
 
 fn closure2(+x: util::NonCopyable) -> (util::NonCopyable,
@@ -15,7 +15,7 @@ fn closure2(+x: util::NonCopyable) -> (util::NonCopyable,
         //~^^ NOTE non-copyable value cannot be copied into a @fn closure
         //~^^^ ERROR copying a noncopyable value
     };
-    (x,f)
+    (move x,f)
 }
 fn closure3(+x: util::NonCopyable) {
     do task::spawn {

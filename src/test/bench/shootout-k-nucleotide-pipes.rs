@@ -124,7 +124,7 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
    };
 
    //comm::send(to_parent, fmt!("yay{%u}", sz));
-    to_parent.send(buffer);
+    to_parent.send(move buffer);
 }
 
 // given a FASTA file on stdin, process sequence THREE
@@ -143,25 +143,25 @@ fn main() {
 
 
    // initialize each sequence sorter
-   let sizes = ~[1u,2u,3u,4u,6u,12u,18u];
+   let sizes = ~[1,2,3,4,6,12,18];
     let streams = vec::map(sizes, |_sz| Some(stream()));
-    let streams = vec::to_mut(streams);
+    let streams = vec::to_mut(move streams);
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
         let sz = *sz;
         let mut stream = None;
         stream <-> streams[ii];
-        let (to_parent_, from_child_) = option::unwrap(stream);
+        let (to_parent_, from_child_) = option::unwrap(move stream);
 
-        from_child.push(from_child_);
+        from_child.push(move from_child_);
 
         let (to_child, from_parent) = pipes::stream();
 
-        do task::spawn_with(from_parent) |from_parent| {
+        do task::spawn_with(move from_parent) |move to_parent_, from_parent| {
             make_sequence_processor(sz, from_parent, to_parent_);
         };
         
-        to_child
+        move to_child
     });
          
    

@@ -46,18 +46,15 @@ const trans_stats: uint = 1 << 4;
 const no_asm_comments: uint = 1 << 5;
 const no_verify: uint = 1 << 6;
 const trace: uint = 1 << 7;
-// FIXME (#2377): This exists to transition to a Rust crate runtime
-// It should be removed
-const no_rt: uint = 1 << 8;
-const coherence: uint = 1 << 9;
-const borrowck_stats: uint = 1 << 10;
-const borrowck_note_pure: uint = 1 << 11;
-const borrowck_note_loan: uint = 1 << 12;
-const no_landing_pads: uint = 1 << 13;
-const debug_llvm: uint = 1 << 14;
-const count_type_sizes: uint = 1 << 15;
-const meta_stats: uint = 1 << 16;
-const no_opt: uint = 1 << 17;
+const coherence: uint = 1 << 8;
+const borrowck_stats: uint = 1 << 9;
+const borrowck_note_pure: uint = 1 << 10;
+const borrowck_note_loan: uint = 1 << 11;
+const no_landing_pads: uint = 1 << 12;
+const debug_llvm: uint = 1 << 13;
+const count_type_sizes: uint = 1 << 14;
+const meta_stats: uint = 1 << 15;
+const no_opt: uint = 1 << 16;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -70,7 +67,6 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-asm-comments", ~"omit comments when using -S", no_asm_comments),
      (~"no-verify", ~"skip LLVM verification", no_verify),
      (~"trace", ~"emit trace logs", trace),
-     (~"no-rt", ~"do not link to the runtime", no_rt),
      (~"coherence", ~"perform coherence checking", coherence),
      (~"borrowck-stats", ~"gather borrowck statistics",  borrowck_stats),
      (~"borrowck-note-pure", ~"note where purity is req'd",
@@ -131,24 +127,24 @@ type options =
 
 type crate_metadata = {name: ~str, data: ~[u8]};
 
-type session_ = {targ_cfg: @config,
+type Session_ = {targ_cfg: @config,
                  opts: @options,
-                 cstore: metadata::cstore::cstore,
+                 cstore: metadata::cstore::CStore,
                  parse_sess: parse_sess,
-                 codemap: codemap::codemap,
+                 codemap: codemap::CodeMap,
                  // For a library crate, this is always none
                  mut main_fn: Option<(node_id, codemap::span)>,
                  span_diagnostic: diagnostic::span_handler,
-                 filesearch: filesearch::filesearch,
+                 filesearch: filesearch::FileSearch,
                  mut building_library: bool,
                  working_dir: Path,
                  lint_settings: lint::lint_settings};
 
-enum session {
-    session_(@session_)
+enum Session {
+    Session_(@Session_)
 }
 
-impl session {
+impl Session {
     fn span_fatal(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
@@ -220,7 +216,7 @@ impl session {
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     fn impossible_case(sp: span, msg: &str) -> ! {
-        self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
+        self.span_bug(sp, fmt!("Impossible case reached: %s", msg));
     }
     fn verbose() -> bool { self.debugging_opt(verbose) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
@@ -274,7 +270,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: Copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
+fn expect<T: Copy>(sess: Session, opt: Option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

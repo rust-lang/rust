@@ -24,7 +24,7 @@ struct Data<T> {
 pub type Mut<T> = Data<T>;
 
 pub fn Mut<T>(t: T) -> Mut<T> {
-    Data {value: t, mode: ReadOnly}
+    Data {value: move t, mode: ReadOnly}
 }
 
 pub fn unwrap<T>(m: Mut<T>) -> T {
@@ -32,7 +32,7 @@ pub fn unwrap<T>(m: Mut<T>) -> T {
     // is in use, as that would be a move from a borrowed value.
     assert (m.mode as uint) == (ReadOnly as uint);
     let Data {value: move value, mode: _} = move m;
-    return value;
+    move value
 }
 
 impl<T> Data<T> {

@@ -6,7 +6,7 @@ mod intrinsic {
 
     pub use rusti::visit_tydesc;
 
-    // FIXME (#2712): remove this when the interface has settled and the
+    // FIXME (#3727): remove this when the interface has settled and the
     // version in sys is no longer present.
     pub fn get_tydesc<T>() -> *TyDesc {
         rusti::get_tydesc::<T>() as *TyDesc

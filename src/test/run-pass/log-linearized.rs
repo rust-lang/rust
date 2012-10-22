@@ -9,7 +9,7 @@ type smallintmap<T> = @{mut v: ~[mut option<T>]};
 
 fn mk<T>() -> smallintmap<T> {
     let v: ~[mut option<T>] = ~[mut];
-    return @{mut v: v};
+    return @{mut v: move v};
 }
 
 fn f<T,U>() {

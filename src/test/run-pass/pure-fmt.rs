@@ -1,4 +1,4 @@
-// Testing that calling #fmt (via #debug) doesn't complain about impure borrows
+// Testing that calling fmt! (via debug!) doesn't complain about impure borrows
 
 pure fn foo() {
     let a = {

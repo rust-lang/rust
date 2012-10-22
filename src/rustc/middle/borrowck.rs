@@ -229,7 +229,6 @@ use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use util::common::indenter;
 use ty::to_str;
-use driver::session::session;
 use dvec::DVec;
 use mem_categorization::*;
 
@@ -319,8 +318,8 @@ enum bckerr_code {
     err_mut_variant,
     err_root_not_permitted,
     err_mutbl(ast::mutability),
-    err_out_of_root_scope(ty::region, ty::region), // superscope, subscope
-    err_out_of_scope(ty::region, ty::region) // superscope, subscope
+    err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
+    err_out_of_scope(ty::Region, ty::Region) // superscope, subscope
 }
 
 impl bckerr_code : cmp::Eq {
@@ -383,7 +382,7 @@ impl bckerr : cmp::Eq {
 type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
-type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
+struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -392,7 +391,7 @@ type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 type req_maps = {
-    req_loan_map: HashMap<ast::node_id, @DVec<@DVec<loan>>>,
+    req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
 };
 
@@ -436,7 +435,7 @@ fn root_map() -> root_map {
 // Misc
 
 impl borrowck_ctxt {
-    fn is_subregion_of(r_sub: ty::region, r_sup: ty::region) -> bool {
+    fn is_subregion_of(r_sub: ty::Region, r_sup: ty::Region) -> bool {
         region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
     }
 
@@ -581,6 +580,11 @@ impl borrowck_ctxt {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,
                                            method_map: self.method_map};
         mc.mut_to_str(mutbl)
+    }
+
+    fn loan_to_repr(loan: &Loan) -> ~str {
+        fmt!("Loan(lp=%?, cmt=%s, mutbl=%?)",
+             loan.lp, self.cmt_to_repr(loan.cmt), loan.mutbl)
     }
 }
 

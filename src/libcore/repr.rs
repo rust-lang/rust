@@ -15,7 +15,8 @@ use to_str::ToStr;
 use cast::transmute;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use reflect::{MovePtr, MovePtrAdaptor};
-use vec::raw::{VecRepr, UnboxedVecRepr, SliceRepr};
+use vec::UnboxedVecRepr;
+use vec::raw::{VecRepr, SliceRepr};
 pub use box::raw::BoxRepr;
 use box::raw::BoxHeaderRepr;
 
@@ -155,7 +156,7 @@ impl ReprVisitor {
     fn visit_ptr_inner(ptr: *c_void, inner: *TyDesc) -> bool {
         let mut u = ReprVisitor(ptr, self.writer);
         let v = reflect::MovePtrAdaptor(move u);
-        visit_tydesc(inner, v as @TyVisitor);
+        visit_tydesc(inner, (move v) as @TyVisitor);
         true
     }
 
@@ -303,7 +304,7 @@ impl ReprVisitor : TyVisitor {
 
 
     fn visit_unboxed_vec(mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<vec::raw::UnboxedVecRepr> |b| {
+        do self.get::<vec::UnboxedVecRepr> |b| {
             self.write_unboxed_vec_repr(mtbl, b, inner);
         }
     }
@@ -452,7 +453,7 @@ pub fn write_repr2<T>(writer: @Writer, object: &T) {
     let tydesc = intrinsic::get_tydesc::<T>();
     let mut u = ReprVisitor(ptr, writer);
     let v = reflect::MovePtrAdaptor(move u);
-    visit_tydesc(tydesc, v as @TyVisitor)
+    visit_tydesc(tydesc, (move v) as @TyVisitor)
 }
 
 #[test]
@@ -558,7 +559,7 @@ impl ReprPrinter {
         unsafe {
             self.align(sys::min_align_of::<T>());
             let value_addr: &T = transmute(copy self.ptr);
-            (*value_addr).write_repr(self.writer);
+            value_addr.write_repr(self.writer);
             self.bump(sys::size_of::<T>());
             true
         }
@@ -991,7 +992,7 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = sys::get_type_desc::<T>();
-        let tydesc = cast::transmute(tydesc);
+        let tydesc = cast::transmute(move tydesc);
 
         let repr_printer = @ReprPrinter {
             ptr: ptr,

@@ -1,7 +1,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use driver::session::{session, arch_x86_64};
+use driver::session::arch_x86_64;
 use syntax::codemap::span;
 use libc::c_uint;
 use syntax::{attr, ast_map};
@@ -112,9 +112,10 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             Float => 4,
             Double => 8,
             Struct => {
-              do vec::foldl(0, struct_tys(ty)) |s, t| {
-                    s + ty_size(*t)
-                }
+              let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
+                  align(s, *t) + ty_size(*t)
+              };
+              align(size, ty)
             }
             Array => {
               let len = llvm::LLVMGetArrayLength(ty) as uint;
@@ -794,7 +795,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
 {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
-    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
+    let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, None,
                                Some(substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match ccx.sess.str_of(item.ident) {
@@ -909,7 +910,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let static_ti = get_tydesc(ccx, tp_ty);
             glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
-            // FIXME (#2712): change this to T_ptr(ccx.tydesc_ty) when the
+            // FIXME (#3727): change this to T_ptr(ccx.tydesc_ty) when the
             // core::sys copy of the get_tydesc interface dies off.
             let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
             Store(bcx, td, fcx.llretptr);
@@ -1025,7 +1026,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             )));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
-        trans_fn(ccx, path, decl, body, llfndecl, no_self, None, id);
+        trans_fn(ccx, path, decl, body, llfndecl, no_self, None, id, None);
         return llfndecl;
     }
 

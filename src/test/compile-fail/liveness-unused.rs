@@ -54,5 +54,5 @@ struct r {
 }
 fn main() {
     let x = r { x: () };
-    fn@() { copy x; }; //~ ERROR copying a noncopyable value
+    fn@(move x) { copy x; }; //~ ERROR copying a noncopyable value
 }

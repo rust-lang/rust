@@ -10,7 +10,7 @@ non-sendableness.
 use std::map::HashMap;
 use rustc::driver::session;
 use session::{basic_options, options};
-use session::session;
+use session::Session;
 use rustc::driver::driver;
 use syntax::diagnostic;
 use syntax::diagnostic::handler;
@@ -35,7 +35,7 @@ type Ctxt = {
 
 type SrvOwner<T> = fn(srv: Srv) -> T;
 type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
-type Parser = fn~(session, ~str) -> @ast::crate;
+type Parser = fn~(Session, ~str) -> @ast::crate;
 
 enum Msg {
     HandleRequest(fn~(Ctxt)),
@@ -57,14 +57,14 @@ fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
     let srv_ = Srv({
-        ch: do task::spawn_listener |po| {
+        ch: do task::spawn_listener |move parse, po| {
             act(po, source, parse);
         }
     });
 
     let res = owner(srv_);
     comm::send(srv_.ch, Exit);
-    return res;
+    move res
 }
 
 fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
@@ -97,11 +97,11 @@ fn exec<T:Send>(
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
         comm::send(ch, f(ctxt))
     });
-    comm::send(srv.ch, msg);
+    comm::send(srv.ch, move msg);
     comm::recv(po)
 }
 
-fn build_ctxt(sess: session,
+fn build_ctxt(sess: Session,
               ast: @ast::crate) -> Ctxt {
 
     use rustc::front::config;
@@ -118,7 +118,7 @@ fn build_ctxt(sess: session,
     }
 }
 
-fn build_session() -> session {
+fn build_session() -> Session {
     let sopts: @options = basic_options();
     let codemap = codemap::new_codemap();
     let error_handlers = build_error_handlers(codemap);
@@ -137,7 +137,7 @@ type ErrorHandlers = {
 // Build a custom error handler that will allow us to ignore non-fatal
 // errors
 fn build_error_handlers(
-    codemap: codemap::codemap
+    codemap: codemap::CodeMap
 ) -> ErrorHandlers {
 
     type DiagnosticHandler = {
@@ -156,13 +156,13 @@ fn build_error_handlers(
         fn note(msg: &str) { self.inner.note(msg) }
         fn bug(msg: &str) -> ! { self.inner.bug(msg) }
         fn unimpl(msg: &str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: Option<(codemap::codemap, codemap::span)>,
+        fn emit(cmsp: Option<(codemap::CodeMap, codemap::span)>,
                 msg: &str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
     }
 
-    let emitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
+    let emitter = fn@(cmsp: Option<(codemap::CodeMap, codemap::span)>,
                        msg: &str, lvl: diagnostic::level) {
         diagnostic::emit(cmsp, msg, lvl);
     };

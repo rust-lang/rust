@@ -1,29 +1,29 @@
 use integral::{int_ty_set};
 use unify::{var_value, redirect, root};
 
-trait to_str {
+trait ToStr {
     fn to_str(cx: infer_ctxt) -> ~str;
 }
 
-impl ty::t: to_str {
+impl ty::t: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         ty_to_str(cx.tcx, self)
     }
 }
 
-impl ty::mt: to_str {
+impl ty::mt: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         mt_to_str(cx.tcx, self)
     }
 }
 
-impl ty::region: to_str {
+impl ty::Region: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         util::ppaux::region_to_str(cx.tcx, self)
     }
 }
 
-impl<V:Copy to_str> bound<V>: to_str {
+impl<V:Copy ToStr> bound<V>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           Some(v) => v.to_str(cx),
@@ -32,7 +32,7 @@ impl<V:Copy to_str> bound<V>: to_str {
     }
 }
 
-impl<T:Copy to_str> bounds<T>: to_str {
+impl<T:Copy ToStr> bounds<T>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         fmt!("{%s <: %s}",
              self.lb.to_str(cx),
@@ -40,7 +40,7 @@ impl<T:Copy to_str> bounds<T>: to_str {
     }
 }
 
-impl int_ty_set: to_str {
+impl int_ty_set: ToStr {
     fn to_str(_cx: infer_ctxt) -> ~str {
         match self {
           int_ty_set(v) => uint::to_str(v, 10u)
@@ -48,7 +48,7 @@ impl int_ty_set: to_str {
     }
 }
 
-impl<V:Copy vid, T:Copy to_str> var_value<V, T>: to_str {
+impl<V:Copy vid, T:Copy ToStr> var_value<V, T>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           redirect(vid) => fmt!("redirect(%s)", vid.to_str()),
