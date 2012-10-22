@@ -203,7 +203,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
-        io::println(fmt!("monomorphic_fn impl_did_opt is %?", impl_did_opt));
+        debug!("monomorphic_fn impl_did_opt is %?", impl_did_opt);
         meth::trans_method(ccx, *pt, mth, psubsts, None, d,
                            impl_did_opt.get());
         d
