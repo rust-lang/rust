@@ -98,11 +98,12 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
                 ~"get_tydesc" | ~"needs_drop" => use_tydesc,
 
-                ~"atomic_xchg"     | ~"atomic_xadd"     |
-                ~"atomic_xsub"     | ~"atomic_xchg_acq" |
-                ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-                ~"atomic_xchg_rel" | ~"atomic_xadd_rel" |
-                ~"atomic_xsub_rel" => 0,
+                ~"atomic_cxchg"    | ~"atomic_cxchg_acq"|
+                ~"atomic_cxchg_rel"| ~"atomic_xchg"     |
+                ~"atomic_xadd"     | ~"atomic_xsub"     |
+                ~"atomic_xchg_acq" | ~"atomic_xadd_acq" |
+                ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |
+                ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => 0,
 
                 ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
                 ~"frame_address" | ~"morestack_addr" => 0,
