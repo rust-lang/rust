@@ -357,7 +357,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 # Rules for the rustdoc test runner
 
 $(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
-		$$(RUSTDOC_CRATE) $$(RUSTDOC_INPUTS)		\
+		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
 		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
@@ -374,7 +374,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 # Rules for the cargo test runner
 
 $(3)/test/cargotest.stage$(1)-$(2)$$(X):					\
-		$$(CARGO_CRATE) $$(CARGO_INPUTS)		\
+		$$(CARGO_LIB) $$(CARGO_INPUTS)		\
 		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
