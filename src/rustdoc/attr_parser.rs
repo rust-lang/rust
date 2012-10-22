@@ -36,27 +36,6 @@ mod test {
     }
 }
 
-fn doc_meta(
-    attrs: ~[ast::attribute]
-) -> Option<@ast::meta_item> {
-
-    /*!
-     * Given a vec of attributes, extract the meta_items contained in the \
-     * doc attribute
-     */
-
-    let doc_metas = doc_metas(attrs);
-    if vec::is_not_empty(doc_metas) {
-        if vec::len(doc_metas) != 1u {
-            warn!("ignoring %u doc attributes", vec::len(doc_metas) - 1u);
-        }
-        Some(doc_metas[0])
-    } else {
-        None
-    }
-
-}
-
 fn doc_metas(
     attrs: ~[ast::attribute]
 ) -> ~[@ast::meta_item] {
@@ -102,11 +81,13 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
 }
 
 fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
-    match doc_meta(attrs) {
-      Some(meta) => {
-        attr::get_meta_item_value_str(meta)
-      }
-      None => None
+    let doc_strs = do doc_metas(attrs).filter_map |meta| {
+        attr::get_meta_item_value_str(*meta)
+    };
+    if doc_strs.is_empty() {
+        None
+    } else {
+        Some(str::connect(doc_strs, "\n"))
     }
 }
 
@@ -158,3 +139,12 @@ fn should_not_parse_non_hidden_attribute() {
     let attrs = test::parse_attributes(source);
     assert parse_hidden(attrs) == false;
 }
+
+#[test]
+fn should_concatenate_multiple_doc_comments() {
+    let source = ~"/// foo\n/// bar";
+    let desc = parse_desc(test::parse_attributes(source));
+    assert desc == Some(~"foo\nbar");
+}
+
+
