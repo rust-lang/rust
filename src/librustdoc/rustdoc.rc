@@ -7,7 +7,7 @@
 
 #[comment = "The Rust documentation generator"];
 #[license = "MIT"];
-#[crate_type = "bin"];
+#[crate_type = "lib"];
 
 #[no_core];
 #[legacy_modes];
