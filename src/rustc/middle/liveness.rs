@@ -617,7 +617,7 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
             vec::to_mut(
                 vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                invalid_users())),
-        loop_scope: @DVec(),
+        loop_scope: DVec(),
         break_ln: HashMap(),
         cont_ln: HashMap()
     }
