@@ -166,7 +166,7 @@ const MIN_MERGE: uint = 64;
 const MIN_GALLOP: uint = 7;
 const INITIAL_TMP_STORAGE: uint = 128;
 
-fn tim_sort<T: Ord>(array: &[mut T]) {
+pub fn tim_sort<T: Ord>(array: &[mut T]) {
     let size = array.len();
     if size < 2 {
         return;
@@ -977,7 +977,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
-    #[legacy_exports];
+    // #[legacy_exports];
     struct CVal {
         val: ~float,
     }
@@ -1046,10 +1046,10 @@ mod test_tim_sort {
 
     struct DVal { val: ~uint }
     impl DVal: Ord {
-        pure fn lt(other: &DVal) -> bool { true }
-        pure fn le(other: &DVal) -> bool { true }
-        pure fn gt(other: &DVal) -> bool { true }
-        pure fn ge(other: &DVal) -> bool { true }
+        pure fn lt(_x: &DVal) -> bool { true }
+        pure fn le(_x: &DVal) -> bool { true }
+        pure fn gt(_x: &DVal) -> bool { true }
+        pure fn ge(_x: &DVal) -> bool { true }
     }
 
     #[test]
@@ -1066,16 +1066,11 @@ mod test_tim_sort {
     }
 }
 
-/*fn f<T: Ord>(array: &[mut T]) { array[0] <-> array[0] }
-
-fn ice_test() {
-    let _s1 = &fn(arr: &[mut ~float]) { tim_sort(arr); };
-}*/
-
-//#[cfg(test)]
+/*
+#[cfg(test)]
 mod big_tests {
 
-    //#[test]
+    #[test]
     fn sorts_test() {
         let low = 5;
         let high = 10;
@@ -1091,9 +1086,9 @@ mod big_tests {
 
         // Run tabulate_unique and tabulate_managed
         // with the other sorts at some point
-        //tabulate_unique(low, high);
-        //tabulate_managed(low, high);
-        //tabulate_linear(low, high);
+        tabulate_unique(low, high);
+        tabulate_managed(low, high);
+        tabulate_linear();
     }
 
     fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[mut T] {
@@ -1111,7 +1106,7 @@ mod big_tests {
         vec::append(two, one)
     }
 
-    /*fn tabulate_unique(lo: uint, hi: uint) {
+    fn tabulate_unique(lo: uint, hi: uint) {
         fn isSorted<T: Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
@@ -1181,9 +1176,9 @@ mod big_tests {
             tim_sort(arr); // !sort
             isSorted(arr);
         }
-    }*/
+    }
 
-    /*fn tabulate_managed(lo: uint, hi: uint) {
+    fn tabulate_managed(lo: uint, hi: uint) {
         fn isSorted<T: Ord>(arr: &[const @T], expected_refcount: uint) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
@@ -1255,8 +1250,7 @@ mod big_tests {
             isSorted(arr, 2);
         }
     }
-*/
-/*
+
     struct LVal {
         val: uint,
         key: fn(@uint),
@@ -1281,8 +1275,8 @@ mod big_tests {
         pure fn ge(other: &LVal) -> bool { self.val >= other.val }
     }
 
-    fn tabulate_linear(lo: uint, hi: uint) {
-        fn key(+_x: @uint) { }
+    fn tabulate_linear() {
+        fn key(_x: @uint) { }
         fn isSorted<T: Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
@@ -1310,8 +1304,8 @@ mod big_tests {
 
         assert n == dropped;
     }
-    */
 }
+*/
 
 // Local Variables:
 // mode: rust;
