@@ -2550,22 +2550,21 @@ fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
     // inside the loop?
     (loop_query(b, |e| {
         match e {
-          ast::expr_break(_) => true,
-          _ => false
+            ast::expr_break(_) => true,
+            _ => false
         }
     })) ||
    // Second: is there a labeled break with label
    // <id> nested anywhere inside the loop?
-   (block_query(b, |e| {
-       match e.node {
-           ast::expr_break(Some(_)) =>
-               match cx.def_map.find(e.id) {
-                 Some(ast::def_label(loop_id)) if id == loop_id => true,
-                 _ => false,
-              },
-           _ => false
-       }
-   }))
+    (block_query(b, |e| {
+        match e.node {
+            ast::expr_break(Some(_)) =>
+                match cx.def_map.find(e.id) {
+                    Some(ast::def_label(loop_id)) if id == loop_id => true,
+                    _ => false,
+                },
+            _ => false
+        }}))
 }
 
 fn check_bounds_are_used(ccx: @crate_ctxt,

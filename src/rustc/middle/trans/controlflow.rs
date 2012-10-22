@@ -113,7 +113,6 @@ fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
     //    |           body_bcx_out --+
     // next_bcx
 
-    // tjc: while should have labels...
     let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"`while`",
                                     body.info());
     let cond_bcx_in = scope_block(loop_bcx, cond.info(), ~"while loop cond");
@@ -214,11 +213,11 @@ fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
         match unwind.kind {
           block_scope({loop_break: Some(brk), loop_label: l, _}) => {
               // If we're looking for a labeled loop, check the label...
-            target = if to_end {
-                brk
-            } else {
-                unwind
-            };
+              target = if to_end {
+                  brk
+              } else {
+                  unwind
+              };
               match opt_label {
                   Some(desired) => match l {
                       Some(actual) if actual == desired => break,
