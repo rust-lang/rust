@@ -502,9 +502,9 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
       }
       expr_fn(_, _, _, cap_clause) |
       expr_fn_block(_, _, cap_clause) => {
-          // Interesting control flow (for loops can contain labeled
-          // breaks or continues)
-          self.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        // Interesting control flow (for loops can contain labeled
+        // breaks or continues)
+        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
 
         // Make a live_node for each captured variable, with the span
         // being the location that the variable is used.  This results
@@ -596,7 +596,7 @@ struct Liveness {
     users: ~[mut users],
     // The list of node IDs for the nested loop scopes
     // we're in.
-    mut loop_scope: @DVec<node_id>,
+    loop_scope: DVec<node_id>,
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
@@ -778,10 +778,10 @@ impl Liveness {
             Some(_) => // Refers to a labeled loop. Use the results of resolve
                       // to find with one
                 match self.tcx.def_map.find(id) {
-                  Some(def_label(loop_id)) => loop_id,
-                  _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
-                                                 doesn't refer to a loop")
-            },
+                    Some(def_label(loop_id)) => loop_id,
+                    _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
+                                                    doesn't refer to a loop")
+                },
             None =>
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
@@ -1024,7 +1024,7 @@ impl Liveness {
     }
 
     fn propagate_through_expr(expr: @expr, succ: LiveNode) -> LiveNode {
-      debug!("propagate_through_expr: %s",
+        debug!("propagate_through_expr: %s",
              expr_to_str(expr, self.tcx.sess.intr()));
 
         match expr.node {
@@ -1039,7 +1039,7 @@ impl Liveness {
           }
 
           expr_fn(_, _, blk, _) | expr_fn_block(_, blk, _) => {
-            debug!("%s is an expr_fn or expr_fn_block",
+              debug!("%s is an expr_fn or expr_fn_block",
                    expr_to_str(expr, self.tcx.sess.intr()));
 
               /*
