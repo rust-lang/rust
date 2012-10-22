@@ -2475,7 +2475,6 @@ assert (i == 3);
 ~~~~
 
 All accessible elements of a vector are always initialized, and access to a vector is always bounds-checked.
-In the case of a definite-
 
 
 ### Structure types
