@@ -155,7 +155,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
             // Get the ID of the impl we're inside.
             let impl_def_id = bcx.fcx.impl_id.get();
 
-            io::println(fmt!("impl_def_id is %?", impl_def_id));
+            debug!("impl_def_id is %?", impl_def_id);
 
             // Get the ID of the method we're calling.
             let method_name =
