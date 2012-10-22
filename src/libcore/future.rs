@@ -17,7 +17,7 @@
  */
 
 use either::Either;
-use pipes::recv;
+use pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
 use cast::copy_lifetime;
 
 #[doc = "The future type"]
@@ -67,7 +67,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
     Future {state: Forced(~(move val))}
 }
 
-pub fn from_port<A:Send>(port: future_pipe::server::waiting<A>) ->
+pub fn from_port<A:Send>(port: PortOne<A>) ->
         Future<A> {
     /*!
      * Create a future from a port
@@ -82,7 +82,7 @@ pub fn from_port<A:Send>(port: future_pipe::server::waiting<A>) ->
         port_ <-> *port;
         let port = option::unwrap(move port_);
         match recv(move port) {
-            future_pipe::completed(move data) => move data
+            oneshot::send(move data) => move data
         }
     }
 }
@@ -107,12 +107,12 @@ pub fn spawn<A:Send>(blk: fn~() -> A) -> Future<A> {
      * value of the future.
      */
 
-    let (chan, port) = future_pipe::init();
+    let (chan, port) = oneshot::init();
 
     let chan = ~mut Some(move chan);
     do task::spawn |move blk, move chan| {
         let chan = option::swap_unwrap(&mut *chan);
-        future_pipe::client::completed(move chan, blk());
+        send_one(move chan, blk());
     }
 
     return from_port(move port);
@@ -168,12 +168,6 @@ pub fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
     blk(get_ref(future))
 }
 
-proto! future_pipe (
-    waiting:send<T:Send> {
-        completed(T) -> !
-    }
-)
-
 #[allow(non_implicitly_copyable_typarams)]
 pub mod test {
     #[test]
@@ -184,8 +178,8 @@ pub mod test {
 
     #[test]
     pub fn test_from_port() {
-        let (ch, po) = future_pipe::init();
-        future_pipe::client::completed(move ch, ~"whale");
+        let (ch, po) = oneshot::init();
+        send_one(move ch, ~"whale");
         let f = from_port(move po);
         assert get(&f) == ~"whale";
     }
