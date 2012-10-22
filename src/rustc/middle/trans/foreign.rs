@@ -799,6 +799,30 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                Some(substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match ccx.sess.str_of(item.ident) {
+        ~"atomic_cxchg" => {
+            let old = AtomicCmpXchg(bcx,
+                                    get_param(decl, first_real_arg),
+                                    get_param(decl, first_real_arg + 1u),
+                                    get_param(decl, first_real_arg + 2u),
+                                    SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_cxchg_acq" => {
+            let old = AtomicCmpXchg(bcx,
+                                    get_param(decl, first_real_arg),
+                                    get_param(decl, first_real_arg + 1u),
+                                    get_param(decl, first_real_arg + 2u),
+                                    Acquire);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_cxchg_rel" => {
+            let old = AtomicCmpXchg(bcx,
+                                    get_param(decl, first_real_arg),
+                                    get_param(decl, first_real_arg + 1u),
+                                    get_param(decl, first_real_arg + 2u),
+                                    Release);
+            Store(bcx, old, fcx.llretptr);
+        }
         ~"atomic_xchg" => {
             let old = AtomicRMW(bcx, Xchg,
                                 get_param(decl, first_real_arg),
