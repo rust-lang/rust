@@ -130,7 +130,7 @@ fn main() {
     let args = os::args();
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
-        // (#571)
+        // (#3733)
         let g = vec::from_fn(10u, |_i| {
             vec::to_mut(vec::from_elem(10u, 0 as u8))
         });

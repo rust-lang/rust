@@ -96,7 +96,7 @@ struct BigBitv {
 }
 
 fn BigBitv(storage: ~[mut uint]) -> BigBitv {
-    BigBitv {storage: storage}
+    BigBitv {storage: move storage}
 }
 
 /**
@@ -223,7 +223,7 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
         let s = to_mut(from_elem(nelems, elem));
         Big(~BigBitv(move s))
     };
-    Bitv {rep: rep, nbits: nbits}
+    Bitv {rep: move rep, nbits: nbits}
 }
 
 priv impl Bitv {
@@ -301,7 +301,7 @@ impl Bitv {
             let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
-            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
+            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}
           }
         }
     }

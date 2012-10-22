@@ -32,7 +32,7 @@ use middle::ty::{vstore_uniq};
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
 
-fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::region {
+fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id) |
@@ -335,7 +335,7 @@ fn constrain_auto_ref(
 
 fn constrain_free_variables(
     rcx: @rcx,
-    region: ty::region,
+    region: ty::Region,
     expr: @ast::expr)
 {
     /*!
@@ -373,7 +373,7 @@ fn constrain_free_variables(
 fn constrain_regions_in_type_of_node(
     rcx: @rcx,
     id: ast::node_id,
-    encl_region: ty::region,
+    encl_region: ty::Region,
     span: span) -> bool
 {
     let tcx = rcx.fcx.tcx();
@@ -395,7 +395,7 @@ fn constrain_regions_in_type_of_node(
 
 fn constrain_regions_in_type(
     rcx: @rcx,
-    encl_region: ty::region,
+    encl_region: ty::Region,
     span: span,
     ty: ty::t) -> bool
 {
@@ -417,9 +417,9 @@ fn constrain_regions_in_type(
     return (e == rcx.errors_reported);
 
     fn constrain_region(rcx: @rcx,
-                        encl_region: ty::region,
+                        encl_region: ty::Region,
                         span: span,
-                        region: ty::region) {
+                        region: ty::Region) {
         let tcx = rcx.fcx.ccx.tcx;
 
         debug!("constrain_region(encl_region=%?, region=%?)",

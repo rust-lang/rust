@@ -9,7 +9,7 @@ CodeMirror.defineMode("rust", function() {
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
     "export": "else-style", "copy": "op", "log": "op",
-    "use": "op", "self": "atom"
+    "use": "op", "self": "atom", "pub": "atom", "priv": "atom"
   };
   var typeKeywords = function() {
     var keywords = {"fn": "fn"};

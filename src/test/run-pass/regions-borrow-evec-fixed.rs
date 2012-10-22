@@ -5,6 +5,6 @@ fn foo(x: &[int]) -> int {
 }
 
 fn main() {
-    let p = [1,2,3,4,5]/_;
+    let p = [1,2,3,4,5];
     assert foo(p) == 1;
 }

@@ -1,6 +1,5 @@
 use std::map::HashMap;
 use syntax::ast;
-use ast::{ty, pat};
 use syntax::codemap::{span};
 use syntax::visit;
 use syntax::print;
@@ -35,9 +34,7 @@ type flag = HashMap<~str, ()>;
 fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
 fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
-    let mut es = ~[];
-    for fields.each |f| { es.push(f.node.expr); }
-    return es;
+    fields.map(|f| f.node.expr)
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
@@ -61,22 +58,19 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     return *rs;
 }
 
-fn has_nonlocal_exits(b: ast::blk) -> bool {
-    do loop_query(b) |e| {
-        match e {
-          ast::expr_break(_) | ast::expr_again(_) => true,
-          _ => false
-        }
-    }
-}
-
-fn may_break(b: ast::blk) -> bool {
-    do loop_query(b) |e| {
-        match e {
-          ast::expr_break(_) => true,
-          _ => false
-        }
-    }
+// Takes a predicate p, returns true iff p is true for any subexpressions
+// of b -- skipping any inner loops (loop, while, loop_body)
+fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
+    let rs = @mut false;
+    let visit_expr =
+        |e: @ast::expr, &&flag: @mut bool, v: visit::vt<@mut bool>| {
+        *flag |= p(e);
+        visit::visit_expr(e, flag, v)
+    };
+    let v = visit::mk_vt(@{visit_expr: visit_expr
+                           ,.. *visit::default_visitor()});
+    visit::visit_block(b, rs, v);
+    return *rs;
 }
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
@@ -87,8 +81,6 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
 }
 
 fn is_main_name(path: syntax::ast_map::path) -> bool {
-    // FIXME (#34): path should be a constrained type, so we know
-    // the call to last doesn't fail.
     vec::last(path) == syntax::ast_map::path_name(
         syntax::parse::token::special_idents::main
     )

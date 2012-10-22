@@ -1,6 +1,6 @@
 use combine::*;
 use lattice::*;
-use to_str::to_str;
+use to_str::ToStr;
 
 enum Lub = combine_fields;  // "subtype", "subregion" etc
 
@@ -88,11 +88,11 @@ impl Lub: combine {
         }
     }
 
-    fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         return Glb(*self).regions(a, b);
     }
 
-    fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
+    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
                a.to_str(self.infcx),

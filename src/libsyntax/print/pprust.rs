@@ -1,5 +1,5 @@
 use parse::{comments, lexer, token};
-use codemap::codemap;
+use codemap::CodeMap;
 use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
 use pp::{consistent, inconsistent, eof};
 use ast::{required, provided};
@@ -24,7 +24,7 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: Option<codemap>,
+      cm: Option<CodeMap>,
       intr: @token::ident_interner,
       comments: Option<~[comments::cmnt]>,
       literals: Option<~[comments::lit]>,
@@ -45,7 +45,7 @@ fn end(s: ps) {
 
 fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
-             cm: None::<codemap>,
+             cm: None::<CodeMap>,
              intr: intr,
              comments: None::<~[comments::cmnt]>,
              literals: None::<~[comments::lit]>,
@@ -63,7 +63,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: codemap, intr: @ident_interner,
+fn print_crate(cm: CodeMap, intr: @ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {
@@ -91,7 +91,7 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty, intr: @ident_interner) -> ~str {
+fn ty_to_str(ty: @ast::Ty, intr: @ident_interner) -> ~str {
     to_str(ty, print_type, intr)
 }
 
@@ -348,11 +348,11 @@ fn print_region(s: ps, region: @ast::region, sep: ~str) {
     word(s.s, sep);
 }
 
-fn print_type(s: ps, &&ty: @ast::ty) {
+fn print_type(s: ps, &&ty: @ast::Ty) {
     print_type_ex(s, ty, false);
 }
 
-fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
+fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
     match ty.node {
@@ -399,9 +399,21 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
       ast::ty_fixed_length(t, v) => {
-        print_type(s, t);
-        word(s.s, ~"/");
+        word(s.s, ~"[");
+        match t.node {
+          ast::ty_vec(mt) => {
+            match mt.mutbl {
+              ast::m_mutbl => word_space(s, ~"mut"),
+              ast::m_const => word_space(s, ~"const"),
+              ast::m_imm => ()
+            }
+            print_type(s, mt.ty);
+          }
+          _ => fail ~"ty_fixed_length can only contain ty_vec as type"
+        }
+        word(s.s, ~" * ");
         print_vstore(s, ast::vstore_fixed(v));
+        word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
           fail ~"print_type doesn't know how to print a ty_mac";
@@ -433,6 +445,7 @@ fn print_foreign_item(s: ps, item: @ast::foreign_item) {
         print_type(s, t);
         word(s.s, ~";");
         end(s); // end the head-ibox
+        end(s); // end the outer cbox
       }
     }
 }
@@ -443,7 +456,6 @@ fn print_item(s: ps, &&item: @ast::item) {
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
     s.ann.pre(ann_node);
-    print_visibility(s, item.vis);
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
@@ -479,10 +491,10 @@ fn print_item(s: ps, &&item: @ast::item) {
             ast::named => {
                 word_nbsp(s, ~"mod");
                 print_ident(s, item.ident);
+                nbsp(s);
             }
             ast::anonymous => {}
         }
-        nbsp(s);
         bopen(s);
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
@@ -490,7 +502,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_ty(ty, params) => {
         ibox(s, indent_unit);
         ibox(s, 0u);
-        word_nbsp(s, ~"type");
+        word_nbsp(s, visibility_qualified(item.vis, ~"type"));
         print_ident(s, item.ident);
         print_type_params(s, params);
         end(s); // end the inner ibox
@@ -502,15 +514,16 @@ fn print_item(s: ps, &&item: @ast::item) {
         end(s); // end the outer ibox
       }
       ast::item_enum(enum_definition, params) => {
-        print_enum_def(s, enum_definition, params, item.ident, item.span);
+        print_enum_def(s, enum_definition, params, item.ident,
+                       item.span, item.vis);
       }
       ast::item_class(struct_def, tps) => {
-          head(s, ~"struct");
+          head(s, visibility_qualified(item.vis, ~"struct"));
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
 
       ast::item_impl(tps, opt_trait, ty, methods) => {
-        head(s, ~"impl");
+        head(s, visibility_qualified(item.vis, ~"impl"));
         if tps.is_not_empty() {
             print_type_params(s, tps);
             space(s.s);
@@ -533,7 +546,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_trait(tps, traits, methods) => {
-        head(s, ~"trait");
+        head(s, visibility_qualified(item.vis, ~"trait"));
         print_ident(s, item.ident);
         print_type_params(s, tps);
         if vec::len(traits) != 0u {
@@ -549,6 +562,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) => {
+        print_visibility(s, item.vis);
         print_path(s, pth, false);
         word(s.s, ~"! ");
         print_ident(s, item.ident);
@@ -569,7 +583,7 @@ fn print_item(s: ps, &&item: @ast::item) {
 
 fn print_enum_def(s: ps, enum_definition: ast::enum_def,
                   params: ~[ast::ty_param], ident: ast::ident,
-                  span: ast::span) {
+                  span: ast::span, visibility: ast::visibility) {
     let mut newtype =
         vec::len(enum_definition.variants) == 1u &&
         ident == enum_definition.variants[0].node.name;
@@ -581,9 +595,9 @@ fn print_enum_def(s: ps, enum_definition: ast::enum_def,
     }
     if newtype {
         ibox(s, indent_unit);
-        word_space(s, ~"enum");
+        word_space(s, visibility_qualified(visibility, ~"enum"));
     } else {
-        head(s, ~"enum");
+        head(s, visibility_qualified(visibility, ~"enum"));
     }
 
     print_ident(s, ident);
@@ -653,18 +667,6 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
     }
     bopen(s);
     hardbreak_if_not_bol(s);
-    do struct_def.ctor.iter |ctor| {
-      maybe_print_comment(s, ctor.span.lo);
-      print_outer_attributes(s, ctor.node.attrs);
-      // Doesn't call head because there shouldn't be a space after new.
-      cbox(s, indent_unit);
-      ibox(s, 4);
-      word(s.s, ~"new(");
-      print_fn_args(s, ctor.node.dec, ~[], None);
-      word(s.s, ~")");
-      space(s.s);
-      print_block(s, ctor.node.body);
-    }
     do struct_def.dtor.iter |dtor| {
       hardbreak_if_not_bol(s);
       maybe_print_comment(s, dtor.span.lo);
@@ -888,7 +890,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
                                   indented: uint, attrs: ~[ast::attribute],
                                   close_box: bool) {
     match blk.node.rules {
-      ast::unsafe_blk => word(s.s, ~"unsafe"),
+      ast::unsafe_blk => word_space(s, ~"unsafe"),
       ast::default_blk => ()
     }
     maybe_print_comment(s, blk.span.lo);
@@ -1178,7 +1180,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
+        opt_ident.iter(|ident| {
+            print_ident(s, *ident);
+            word_space(s, ~":");
+        });
         print_block(s, blk);
       }
       ast::expr_match(expr, arms) => {
@@ -1702,17 +1707,11 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 }
 
 fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
-    if vec::len(*bounds) > 0u {
+    if bounds.is_not_empty() {
         word(s.s, ~":");
         for vec::each(*bounds) |bound| {
             nbsp(s);
-            match *bound {
-              ast::bound_copy => word(s.s, ~"Copy"),
-              ast::bound_send => word(s.s, ~"Send"),
-              ast::bound_const => word(s.s, ~"Const"),
-              ast::bound_owned => word(s.s, ~"Owned"),
-              ast::bound_trait(t) => print_type(s, t)
-            }
+            print_type(s, **bound);
         }
     }
 }

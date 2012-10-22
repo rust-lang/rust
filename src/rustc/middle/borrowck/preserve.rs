@@ -23,7 +23,7 @@ impl preserve_condition {
 
 impl borrowck_ctxt {
     fn preserve(cmt: cmt,
-                scope_region: ty::region,
+                scope_region: ty::Region,
                 item_ub: ast::node_id,
                 root_ub: ast::node_id)
         -> bckres<preserve_condition> {
@@ -41,7 +41,7 @@ enum preserve_ctxt = {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
-    scope_region: ty::region,
+    scope_region: ty::Region,
 
     // the scope for the body of the enclosing fn/method item
     item_ub: ast::node_id,
@@ -277,7 +277,7 @@ priv impl &preserve_ctxt {
     /// Checks that the scope for which the value must be preserved
     /// is a subscope of `scope_ub`; if so, success.
     fn compare_scope(cmt: cmt,
-                     scope_ub: ty::region) -> bckres<preserve_condition> {
+                     scope_ub: ty::Region) -> bckres<preserve_condition> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             Ok(pc_ok)
         } else {
@@ -314,17 +314,17 @@ priv impl &preserve_ctxt {
           // we can only root values if the desired region is some concrete
           // scope within the fn body
           ty::re_scope(scope_id) => {
-            #debug["Considering root map entry for %s: \
+            debug!("Considering root map entry for %s: \
                     node %d:%u -> scope_id %?, root_ub %?",
                    self.bccx.cmt_to_repr(cmt), base.id,
-                   derefs, scope_id, self.root_ub];
+                   derefs, scope_id, self.root_ub);
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
-                #debug["Elected to root"];
+                debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
                 return Ok(pc_ok);
             } else {
-                #debug["Unable to root"];
+                debug!("Unable to root");
                 return Err({cmt:cmt,
                          code:err_out_of_root_scope(root_region,
                                                     self.scope_region)});

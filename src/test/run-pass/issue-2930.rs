@@ -1,11 +1,11 @@
 proto! stream (
-    stream:send<T:Send> {
-        send(T) -> stream<T>
+    Stream:send<T:Send> {
+        send(T) -> Stream<T>
     }
 )
 
 fn main() {
     let (bc, _bp) = stream::init();
 
-    stream::client::send(bc, ~"abc");
+    stream::client::send(move bc, ~"abc");
 }

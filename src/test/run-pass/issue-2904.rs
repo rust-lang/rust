@@ -16,7 +16,7 @@ enum square {
 }
 
 impl square: to_str::ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         match self {
           bot => { ~"R" }
           wall => { ~"#" }
@@ -41,14 +41,14 @@ fn square_from_char(c: char) -> square {
       '.'  => { earth }
       ' '  => { empty }
       _ => {
-        #error("invalid square: %?", c);
+        error!("invalid square: %?", c);
         fail
       }
     }
 }
 
 fn read_board_grid<rdr: Owned io::Reader>(+in: rdr) -> ~[~[square]] {
-    let in = in as io::Reader;
+    let in = (move in) as io::Reader;
     let mut grid = ~[];
     for in.each_line |line| {
         let mut row = ~[];

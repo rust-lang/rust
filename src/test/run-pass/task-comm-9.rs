@@ -18,7 +18,8 @@ fn test00() {
     let ch = p.chan();
 
     let mut result = None;
-    do task::task().future_result(|+r| { result = Some(r); }).spawn {
+    do task::task().future_result(|+r| { result = Some(move r); }).spawn
+          |move ch| {
         test00_start(ch, number_of_messages);
     }
 
@@ -29,7 +30,7 @@ fn test00() {
         i += 1;
     }
 
-    future::get(&option::unwrap(result));
+    future::get(&option::unwrap(move result));
 
     assert (sum == number_of_messages * (number_of_messages - 1) / 2);
 }

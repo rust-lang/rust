@@ -336,9 +336,6 @@ impl Datum {
     // This works like copy_val, except that it deinitializes the source.
     // Since it needs to zero out the source, src also needs to be an lval.
     //
-    // FIXME (#839): We always zero out the source. Ideally we would
-    // detect the case where a variable is always deinitialized by
-    // block exit and thus doesn't need to be dropped.
     fn move_to(bcx: block, action: CopyAction, dst: ValueRef) -> block {
         let _icx = bcx.insn_ctxt("move_to");
         let mut bcx = bcx;

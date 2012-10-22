@@ -10,8 +10,10 @@ use addrinfo = uv::ll::addrinfo;
 use uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
 use uv_ip4_addr = uv::ll::ip4_addr;
 use uv_ip4_name = uv::ll::ip4_name;
+use uv_ip4_port = uv::ll::ip4_port;
 use uv_ip6_addr = uv::ll::ip6_addr;
 use uv_ip6_name = uv::ll::ip6_name;
+use uv_ip6_port = uv::ll::ip6_port;
 use uv_getaddrinfo = uv::ll::getaddrinfo;
 use uv_freeaddrinfo = uv::ll::freeaddrinfo;
 use create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
@@ -33,11 +35,11 @@ type ParseAddrErr = {
 };
 
 /**
- * Convert a `ip_addr` to a str
+ * Convert a `IpAddr` to a str
  *
  * # Arguments
  *
- * * ip - a `std::net::ip::ip_addr`
+ * * ip - a `std::net::ip::IpAddr`
  */
 pub fn format_addr(ip: &IpAddr) -> ~str {
     match *ip {
@@ -55,6 +57,23 @@ pub fn format_addr(ip: &IpAddr) -> ~str {
         }
         result
       }
+    }
+}
+
+/**
+ * Get the associated port
+ *
+ * # Arguments
+ * * ip - a `std::net::ip::IpAddr`
+ */
+pub fn get_port(ip: &IpAddr) -> uint {
+    match *ip {
+        Ipv4(ref addr) => unsafe {
+            uv_ip4_port(addr)
+        },
+        Ipv6(ref addr) => unsafe {
+            uv_ip6_port(addr)
+        }
     }
 }
 
@@ -128,7 +147,7 @@ pub mod v4 {
      */
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(copy addr) => addr,
+          result::Ok(move addr) => move addr,
           result::Err(ref err_data) => fail err_data.err_msg
         }
     }
@@ -214,7 +233,7 @@ pub mod v6 {
      */
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(copy addr) => addr,
+          result::Ok(move addr) => move addr,
           result::Err(copy err_data) => fail err_data.err_msg
         }
     }
@@ -353,7 +372,7 @@ mod test {
         }
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
-        let results = result::unwrap(ga_result);
+        let results = result::unwrap(move ga_result);
         log(debug, fmt!("test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results)));
         for vec::each(results) |r| {
@@ -366,7 +385,7 @@ mod test {
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts
-        assert vec::len(results) > 0;
+        assert !results.is_empty();
     }
     #[test]
     #[ignore(reason = "valgrind says it's leaky")]

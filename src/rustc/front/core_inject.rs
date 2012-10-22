@@ -1,4 +1,4 @@
-use driver::session::session;
+use driver::session::Session;
 use syntax::codemap;
 use syntax::ast;
 use syntax::ast_util::*;
@@ -6,7 +6,7 @@ use syntax::attr;
 
 export maybe_inject_libcore_ref;
 
-fn maybe_inject_libcore_ref(sess: session,
+fn maybe_inject_libcore_ref(sess: Session,
                             crate: @ast::crate) -> @ast::crate {
     if use_core(crate) {
         inject_libcore_ref(sess, crate)
@@ -19,7 +19,7 @@ fn use_core(crate: @ast::crate) -> bool {
     !attr::attrs_contains_name(crate.node.attrs, ~"no_core")
 }
 
-fn inject_libcore_ref(sess: session,
+fn inject_libcore_ref(sess: Session,
                       crate: @ast::crate) -> @ast::crate {
 
     fn spanned<T: Copy>(x: T) -> @ast::spanned<T> {

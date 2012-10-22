@@ -39,7 +39,7 @@ fn main() {
     assert length::<int, &[int]>(x) == vec::len(x);
 
     // Now try it with a type that *needs* to be borrowed
-    let z = [0,1,2,3]/_;
+    let z = [0,1,2,3];
     // Call a method
     for z.iterate() |y| { assert z[*y] == *y; }
     // Call a parameterized function

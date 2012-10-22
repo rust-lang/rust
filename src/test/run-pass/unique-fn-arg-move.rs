@@ -4,5 +4,5 @@ fn f(-i: ~int) {
 
 fn main() {
     let i = ~100;
-    f(i);
+    f(move i);
 }

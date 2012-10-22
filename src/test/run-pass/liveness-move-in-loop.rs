@@ -5,7 +5,7 @@ fn the_loop() {
     loop {
         let x = 5;
         if x > 3 {
-            list += ~[take(x)];
+            list += ~[take(move x)];
         } else {
             break;
         }

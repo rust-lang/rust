@@ -136,17 +136,20 @@ fn readclose(fd: libc::c_int) -> ~str {
     // Copied from run::program_output
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
-    let mut buf = ~"";
-    while !reader.eof() {
-        let bytes = reader.read_bytes(4096u);
-        buf += str::from_bytes(bytes);
-    }
+    let buf = io::with_bytes_writer(|writer| {
+        let mut bytes = [mut 0, ..4096];
+        while !reader.eof() {
+            let nread = reader.read(bytes, bytes.len());
+            writer.write(bytes.view(0, nread));
+        }
+    });
     os::fclose(file);
-    return buf;
+    str::from_bytes(buf)
 }
 
 fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
-    let ch = do task::spawn_listener |po: comm::Port<WriteInstr>| {
+    let ch = do task::spawn_listener
+        |move process, po: comm::Port<WriteInstr>| {
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
@@ -155,7 +158,7 @@ fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
               Done => keep_going = false
             }
         }
-        process(markdown);
+        process(move markdown);
     };
 
     fn~(+instr: WriteInstr) {
@@ -274,22 +277,22 @@ fn future_writer_factory(
         let writer_ch = comm::Chan(&writer_po);
         do task::spawn {
             let (writer, future) = future_writer();
-            comm::send(writer_ch, writer);
+            comm::send(writer_ch, move writer);
             let s = future::get(&future);
             comm::send(markdown_ch, (page, s));
         }
         comm::recv(writer_po)
     };
 
-    (writer_factory, markdown_po)
+    (move writer_factory, markdown_po)
 }
 
 fn future_writer() -> (Writer, future::Future<~str>) {
     let (chan, port) = pipes::stream();
-    let writer = fn~(+instr: WriteInstr) {
+    let writer = fn~(move chan, +instr: WriteInstr) {
         chan.send(copy instr);
     };
-    let future = do future::from_fn {
+    let future = do future::from_fn |move port| {
         let mut res = ~"";
         loop {
             match port.recv() {
@@ -299,5 +302,5 @@ fn future_writer() -> (Writer, future::Future<~str>) {
         }
         res
     };
-    (writer, future)
+    (move writer, move future)
 }

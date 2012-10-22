@@ -99,7 +99,6 @@
  *
  */
 
-use driver::session::session;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, BasicBlockRef};
 use pat_util::*;
@@ -354,7 +353,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
         match p.node {
             ast::pat_enum(_, subpats) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
-                    Some(option::get_default(&subpats,
+                    Some(option::get_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
                 } else {
@@ -1202,7 +1201,7 @@ fn trans_alt_inner(scope_cx: block,
         arm_cxs.push(bcx);
     }
 
-    return controlflow::join_blocks(scope_cx, dvec::unwrap(arm_cxs));
+    return controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
 
     fn mk_fail(bcx: block, sp: span, msg: ~str,
                done: @mut Option<BasicBlockRef>) -> BasicBlockRef {

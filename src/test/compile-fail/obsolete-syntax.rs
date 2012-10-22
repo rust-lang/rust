@@ -56,4 +56,15 @@ fn obsolete_with() {
     //~^ ERROR obsolete syntax: with
 }
 
+fn obsolete_fixed_length_vec() {
+    let foo: [int]/1;
+    //~^ ERROR obsolete syntax: fixed-length vector
+    foo = [1]/_;
+    //~^ ERROR obsolete syntax: fixed-length vector
+    let foo: [int]/1;
+    //~^ ERROR obsolete syntax: fixed-length vector
+    foo = [1]/1;
+    //~^ ERROR obsolete syntax: fixed-length vector
+}
+
 fn main() { }

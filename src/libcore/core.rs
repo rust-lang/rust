@@ -11,8 +11,8 @@ pub use GenericPath = path::GenericPath;
 pub use WindowsPath = path::WindowsPath;
 pub use PosixPath = path::PosixPath;
 
-pub use tuple::{TupleOps, ExtendedTupleOps};
-pub use str::{StrSlice, UniqueStr};
+pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use str::{StrSlice, Trimmable};
 pub use vec::{ConstVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{MutableVector, MutableCopyableVector};
@@ -33,7 +33,7 @@ pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 pub use ops::{Shl, Shr, Index};
 
 #[cfg(test)]
-extern mod coreops(name = "core", vers = "0.4");
+extern mod coreops(name = "core", vers = "0.5");
 
 #[cfg(test)]
 pub use coreops::ops::{Const, Copy, Send, Owned};
@@ -72,6 +72,6 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    extern mod std(vers = "0.4");
+    extern mod std(vers = "0.5");
     pub use std::test;
 }

@@ -341,7 +341,8 @@ pub mod chained {
             wr.write_str(~" }");
         }
 
-        fn to_str() -> ~str {
+        pure fn to_str() -> ~str unsafe {
+            // Meh -- this should be safe
             do io::with_str_writer |wr| { self.to_writer(wr) }
         }
     }
@@ -722,7 +723,7 @@ mod tests {
         let map = map::HashMap::<~str, ~str>();
         assert (option::is_none(&map.find(key)));
         map.insert(key, ~"val");
-        assert (option::get(&map.find(key)) == ~"val");
+        assert (option::get(map.find(key)) == ~"val");
     }
 
     #[test]

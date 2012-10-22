@@ -12,7 +12,7 @@ use libc::c_double;
 
 #[link_name = "m"]
 #[abi = "cdecl"]
-pub extern mod c_double {
+pub extern mod c_double_utils {
 
     // Alpabetically sorted by link_name
 
@@ -87,7 +87,7 @@ pub extern mod c_double {
 
 #[link_name = "m"]
 #[abi = "cdecl"]
-pub extern mod c_float {
+pub extern mod c_float_utils {
 
     // Alpabetically sorted by link_name
 

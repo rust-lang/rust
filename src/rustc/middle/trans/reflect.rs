@@ -1,5 +1,4 @@
 use std::map::HashMap;
-use driver::session::session;
 use lib::llvm::{TypeRef, ValueRef};
 use syntax::ast;
 use back::abi;
@@ -58,7 +57,7 @@ impl reflector {
 
     fn visit(ty_name: ~str, args: ~[ValueRef]) {
         let tcx = self.bcx.tcx();
-        let mth_idx = option::get(&ty::method_idx(
+        let mth_idx = option::get(ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
             *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);

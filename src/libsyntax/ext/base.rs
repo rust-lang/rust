@@ -1,7 +1,7 @@
 use std::map::HashMap;
 use parse::parser;
 use diagnostic::span_handler;
-use codemap::{codemap, span, expn_info, expanded_from};
+use codemap::{CodeMap, span, expn_info, expanded_from};
 
 // obsolete old-style #macro code:
 //
@@ -80,14 +80,12 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
     syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert(~"auto_serialize",
-                            item_decorator(ext::auto_serialize::expand));
     syntax_expanders.insert(
-        ~"auto_serialize2",
-        item_decorator(ext::auto_serialize2::expand_auto_serialize));
+        ~"auto_serialize",
+        item_decorator(ext::auto_serialize::expand_auto_serialize));
     syntax_expanders.insert(
-        ~"auto_deserialize2",
-        item_decorator(ext::auto_serialize2::expand_auto_deserialize));
+        ~"auto_deserialize",
+        item_decorator(ext::auto_serialize::expand_auto_deserialize));
     syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
@@ -122,12 +120,11 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     return syntax_expanders;
 }
 
-
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 trait ext_ctxt {
-    fn codemap() -> codemap;
+    fn codemap() -> CodeMap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
@@ -159,7 +156,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
                       mut mod_path: ~[ast::ident],
                       mut trace_mac: bool};
     impl ctxt_repr: ext_ctxt {
-        fn codemap() -> codemap { self.parse_sess.cm }
+        fn codemap() -> CodeMap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
@@ -234,7 +231,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         mut mod_path: ~[],
         mut trace_mac: false
     };
-    move (imp as ext_ctxt)
+    move ((move imp) as ext_ctxt)
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
@@ -272,21 +269,21 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               match max {
                 Some(max) if ! (min <= elts_len && elts_len <= max) => {
                   cx.span_fatal(sp,
-                                fmt!("#%s takes between %u and %u arguments.",
+                                fmt!("%s! takes between %u and %u arguments.",
                                      name, min, max));
                 }
                 None if ! (min <= elts_len) => {
-                  cx.span_fatal(sp, fmt!("#%s needs at least %u arguments.",
+                  cx.span_fatal(sp, fmt!("%s! needs at least %u arguments.",
                                          name, min));
                 }
                 _ => return elts /* we are good */
               }
           }
         _ => {
-            cx.span_fatal(sp, fmt!("#%s: malformed invocation", name))
+            cx.span_fatal(sp, fmt!("%s!: malformed invocation", name))
         }
       },
-      None => cx.span_fatal(sp, fmt!("#%s: missing arguments", name))
+      None => cx.span_fatal(sp, fmt!("%s!: missing arguments", name))
     }
 }
 

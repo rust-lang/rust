@@ -7,37 +7,39 @@ use result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
-            scope_region: ty::region,
-            mutbl: ast::mutability) -> bckres<@DVec<loan>> {
-        let lc = loan_ctxt_(@{bccx: self,
-                              scope_region: scope_region,
-                              loans: @DVec()});
+            scope_region: ty::Region,
+            mutbl: ast::mutability) -> bckres<~[Loan]> {
+        let lc = LoanContext {
+            bccx: self,
+            scope_region: scope_region,
+            loans: ~[]
+        };
         match lc.loan(cmt, mutbl) {
-          Ok(()) => {Ok(lc.loans)}
-          Err(e) => {Err(e)}
+          Err(e) => Err(e),
+          Ok(()) => {
+              let LoanContext {loans, _} = move lc;
+              Ok(loans)
+          }
         }
     }
 }
 
-type loan_ctxt_ = {
+struct LoanContext {
     bccx: borrowck_ctxt,
 
     // the region scope for which we must preserve the memory
-    scope_region: ty::region,
+    scope_region: ty::Region,
 
     // accumulated list of loans that will be required
-    loans: @DVec<loan>
-};
-
-enum loan_ctxt {
-    loan_ctxt_(@loan_ctxt_)
+    mut loans: ~[Loan]
 }
 
-impl loan_ctxt {
-    fn tcx() -> ty::ctxt { self.bccx.tcx }
+impl LoanContext {
+    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn issue_loan(cmt: cmt,
-                  scope_ub: ty::region,
+    fn issue_loan(&self,
+                  cmt: cmt,
+                  scope_ub: ty::Region,
                   req_mutbl: ast::mutability) -> bckres<()> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             match req_mutbl {
@@ -57,12 +59,13 @@ impl loan_ctxt {
                 }
             }
 
-            (*self.loans).push({
+            self.loans.push(Loan {
                 // Note: cmt.lp must be Some(_) because otherwise this
                 // loan process does not apply at all.
                 lp: cmt.lp.get(),
                 cmt: cmt,
-                mutbl: req_mutbl});
+                mutbl: req_mutbl
+            });
             return Ok(());
         } else {
             // The loan being requested lives longer than the data
@@ -73,7 +76,7 @@ impl loan_ctxt {
         }
     }
 
-    fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
+    fn loan(&self, cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
         debug!("loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl));
@@ -103,23 +106,26 @@ impl loan_ctxt {
           cat_discr(base, _) => {
             self.loan(base, req_mutbl)
           }
-          cat_comp(cmt_base, comp_field(*)) |
-          cat_comp(cmt_base, comp_index(*)) |
-          cat_comp(cmt_base, comp_tuple) => {
+          cat_comp(cmt_base, comp_field(_, m)) |
+          cat_comp(cmt_base, comp_index(_, m)) => {
             // For most components, the type of the embedded data is
             // stable.  Therefore, the base structure need only be
             // const---unless the component must be immutable.  In
             // that case, it must also be embedded in an immutable
             // location, or else the whole structure could be
             // overwritten and the component along with it.
-            self.loan_stable_comp(cmt, cmt_base, req_mutbl)
+            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m)
+          }
+          cat_comp(cmt_base, comp_tuple) => {
+            // As above.
+            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm)
           }
           cat_comp(cmt_base, comp_variant(enum_did)) => {
             // For enums, the memory is unstable if there are multiple
             // variants, because if the enum value is overwritten then
             // the memory changes type.
             if ty::enum_is_univariant(self.bccx.tcx, enum_did) {
-                self.loan_stable_comp(cmt, cmt_base, req_mutbl)
+                self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm)
             } else {
                 self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
             }
@@ -144,12 +150,62 @@ impl loan_ctxt {
     // A "stable component" is one where assigning the base of the
     // component cannot cause the component itself to change types.
     // Example: record fields.
-    fn loan_stable_comp(cmt: cmt,
+    fn loan_stable_comp(&self,
+                        cmt: cmt,
                         cmt_base: cmt,
-                        req_mutbl: ast::mutability) -> bckres<()> {
-        let base_mutbl = match req_mutbl {
-          m_imm => m_imm,
-          m_const | m_mutbl => m_const
+                        req_mutbl: ast::mutability,
+                        comp_mutbl: ast::mutability) -> bckres<()> {
+        // Determine the mutability that the base component must have,
+        // given the required mutability of the pointer (`req_mutbl`)
+        // and the declared mutability of the component (`comp_mutbl`).
+        // This is surprisingly subtle.
+        //
+        // Note that the *declared* mutability of the component is not
+        // necessarily the same as cmt.mutbl, since a component
+        // declared as immutable but embedded in a mutable context
+        // becomes mutable.  It's best to think of comp_mutbl as being
+        // either MUTABLE or DEFAULT, not MUTABLE or IMMUTABLE.  We
+        // should really patch up the AST to reflect this distinction.
+        //
+        // Let's consider the cases below:
+        //
+        // 1. mut required, mut declared: In this case, the base
+        //    component must merely be const.  The reason is that it
+        //    does not matter if the base component is borrowed as
+        //    mutable or immutable, as the mutability of the base
+        //    component is overridden in the field declaration itself
+        //    (see `compile-fail/borrowck-mut-field-imm-base.rs`)
+        //
+        // 2. mut required, imm declared: This would only be legal if
+        //    the component is embeded in a mutable context.  However,
+        //    we detect mismatches between the mutability of the value
+        //    as a whole and the required mutability in `issue_loan()`
+        //    above.  In any case, presuming that the component IS
+        //    embedded in a mutable context, both the component and
+        //    the base must be loaned as MUTABLE.  This is to ensure
+        //    that there is no loan of the base as IMMUTABLE, which
+        //    would imply that the component must be IMMUTABLE too
+        //    (see `compile-fail/borrowck-imm-field-imm-base.rs`).
+        //
+        // 3. mut required, const declared: this shouldn't really be
+        //    possible, since I don't think you can declare a const
+        //    field, but I guess if we DID permit such a declaration
+        //    it would be equivalent to the case above?
+        //
+        // 4. imm required, * declared: In this case, the base must be
+        //    immutable.  This is true regardless of what was declared
+        //    for this subcomponent, this if the base is mutable, the
+        //    subcomponent must be mutable.
+        //    (see `compile-fail/borrowck-imm-field-mut-base.rs`).
+        //
+        // 5. const required, * declared: In this case, the base need
+        //    only be const, since we don't ultimately care whether
+        //    the subcomponent is mutable or not.
+        let base_mutbl = match (req_mutbl, comp_mutbl) {
+            (m_mutbl, m_mutbl) => m_const, // (1)
+            (m_mutbl, _) => m_mutbl,       // (2, 3)
+            (m_imm, _) => m_imm,           // (4)
+            (m_const, _) => m_const        // (5)
         };
 
         do self.loan(cmt_base, base_mutbl).chain |_ok| {
@@ -162,7 +218,8 @@ impl loan_ctxt {
     // An "unstable deref" means a deref of a ptr/comp where, if the
     // base of the deref is assigned to, pointers into the result of the
     // deref would be invalidated. Examples: interior of variants, uniques.
-    fn loan_unstable_deref(cmt: cmt,
+    fn loan_unstable_deref(&self,
+                           cmt: cmt,
                            cmt_base: cmt,
                            req_mutbl: ast::mutability) -> bckres<()> {
         // Variant components: the base must be immutable, because

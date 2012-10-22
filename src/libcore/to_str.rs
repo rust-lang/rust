@@ -8,80 +8,82 @@ The `ToStr` trait for converting to strings
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-pub trait ToStr { fn to_str() -> ~str; }
+pub trait ToStr { pure fn to_str() -> ~str; }
 
 impl int: ToStr {
-    fn to_str() -> ~str { int::str(self) }
+    pure fn to_str() -> ~str { int::str(self) }
 }
 impl i8: ToStr {
-    fn to_str() -> ~str { i8::str(self) }
+    pure fn to_str() -> ~str { i8::str(self) }
 }
 impl i16: ToStr {
-    fn to_str() -> ~str { i16::str(self) }
+    pure fn to_str() -> ~str { i16::str(self) }
 }
 impl i32: ToStr {
-    fn to_str() -> ~str { i32::str(self) }
+    pure fn to_str() -> ~str { i32::str(self) }
 }
 impl i64: ToStr {
-    fn to_str() -> ~str { i64::str(self) }
+    pure fn to_str() -> ~str { i64::str(self) }
 }
 impl uint: ToStr {
-    fn to_str() -> ~str { uint::str(self) }
+    pure fn to_str() -> ~str { uint::str(self) }
 }
 impl u8: ToStr {
-    fn to_str() -> ~str { u8::str(self) }
+    pure fn to_str() -> ~str { u8::str(self) }
 }
 impl u16: ToStr {
-    fn to_str() -> ~str { u16::str(self) }
+    pure fn to_str() -> ~str { u16::str(self) }
 }
 impl u32: ToStr {
-    fn to_str() -> ~str { u32::str(self) }
+    pure fn to_str() -> ~str { u32::str(self) }
 }
 impl u64: ToStr {
-    fn to_str() -> ~str { u64::str(self) }
+    pure fn to_str() -> ~str { u64::str(self) }
 }
 impl float: ToStr {
-    fn to_str() -> ~str { float::to_str(self, 4u) }
+    pure fn to_str() -> ~str { float::to_str(self, 4u) }
 }
 impl f32: ToStr {
-    fn to_str() -> ~str { float::to_str(self as float, 4u) }
+    pure fn to_str() -> ~str { float::to_str(self as float, 4u) }
 }
 impl f64: ToStr {
-    fn to_str() -> ~str { float::to_str(self as float, 4u) }
+    pure fn to_str() -> ~str { float::to_str(self as float, 4u) }
 }
 impl bool: ToStr {
-    fn to_str() -> ~str { bool::to_str(self) }
+    pure fn to_str() -> ~str { bool::to_str(self) }
 }
 impl (): ToStr {
-    fn to_str() -> ~str { ~"()" }
+    pure fn to_str() -> ~str { ~"()" }
 }
 impl ~str: ToStr {
-    fn to_str() -> ~str { copy self }
+    pure fn to_str() -> ~str { copy self }
 }
 impl &str: ToStr {
-    fn to_str() -> ~str { str::from_slice(self) }
+    pure fn to_str() -> ~str { str::from_slice(self) }
 }
 impl @str: ToStr {
-    fn to_str() -> ~str { str::from_slice(self) }
+    pure fn to_str() -> ~str { str::from_slice(self) }
 }
 
 impl<A: ToStr Copy, B: ToStr Copy> (A, B): ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         let (a, b) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~")"
     }
 }
 impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         let (a, b, c) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~", " + c.to_str() + ~")"
     }
 }
 
 impl<A: ToStr> ~[A]: ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str unsafe {
+        // Bleh -- not really unsafe
+        // push_str and push_char
         let mut acc = ~"[", first = true;
-        for vec::each(self) |elt| {
+        for vec::each(self) |elt| unsafe {
             if first { first = false; }
             else { str::push_str(&mut acc, ~", "); }
             str::push_str(&mut acc, elt.to_str());
@@ -92,10 +94,10 @@ impl<A: ToStr> ~[A]: ToStr {
 }
 
 impl<A: ToStr> @A: ToStr {
-    fn to_str() -> ~str { ~"@" + (*self).to_str() }
+    pure fn to_str() -> ~str { ~"@" + (*self).to_str() }
 }
 impl<A: ToStr> ~A: ToStr {
-    fn to_str() -> ~str { ~"~" + (*self).to_str() }
+    pure fn to_str() -> ~str { ~"~" + (*self).to_str() }
 }
 
 #[cfg(test)]

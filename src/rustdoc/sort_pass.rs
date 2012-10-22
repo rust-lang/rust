@@ -10,7 +10,7 @@ type ItemLtEq = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
     {
         name: name,
-        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+        f: fn~(move lteq, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, lteq)
         }
     }

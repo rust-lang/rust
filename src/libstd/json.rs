@@ -51,7 +51,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { str::push_str(&ss, " "); }
+    for n.times { str::push_str(&mut ss, " "); }
     return ss;
 }
 
@@ -63,7 +63,7 @@ pub fn Serializer(wr: io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 
-pub impl Serializer: serialization2::Serializer {
+pub impl Serializer: serialization::Serializer {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -167,7 +167,7 @@ pub fn PrettySerializer(wr: io::Writer) -> PrettySerializer {
     PrettySerializer { wr: wr, indent: 0 }
 }
 
-pub impl PrettySerializer: serialization2::Serializer {
+pub impl PrettySerializer: serialization::Serializer {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -273,8 +273,36 @@ pub impl PrettySerializer: serialization2::Serializer {
     }
 }
 
-pub impl Json: serialization2::Serializable {
-    fn serialize<S: serialization2::Serializer>(&self, s: &S) {
+#[cfg(stage0)]
+pub impl Json: serialization::Serializable {
+    fn serialize<S: serialization::Serializer>(&self, s: &S) {
+        match *self {
+            Number(v) => v.serialize(s),
+            String(ref v) => v.serialize(s),
+            Boolean(v) => v.serialize(s),
+            List(v) => v.serialize(s),
+            Object(ref v) => {
+                do s.emit_rec || {
+                    let mut idx = 0;
+                    for v.each |key, value| {
+                        do s.emit_field(*key, idx) {
+                            value.serialize(s);
+                        }
+                        idx += 1;
+                    }
+                }
+            },
+            Null => s.emit_nil(),
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<
+    S: serialization::Serializer
+> Json: serialization::Serializable<S> {
+    fn serialize(&self, s: &S) {
         match *self {
             Number(v) => v.serialize(s),
             String(ref v) => v.serialize(s),
@@ -302,7 +330,8 @@ pub fn to_writer(wr: io::Writer, json: &Json) {
 }
 
 /// Serializes a json value into a string
-pub fn to_str(json: &Json) -> ~str {
+pub pure fn to_str(json: &Json) -> ~str unsafe {
+    // ugh, should be safe
     io::with_str_writer(|wr| to_writer(wr, json))
 }
 
@@ -328,8 +357,8 @@ pub fn Parser(rdr: io::Reader) -> Parser {
     Parser {
         rdr: rdr,
         ch: rdr.read_char(),
-        line: 1u,
-        col: 1u,
+        line: 1,
+        col: 1,
     }
 }
 
@@ -341,7 +370,7 @@ pub impl Parser {
             self.parse_whitespace();
             // Make sure there is no trailing characters.
             if self.eof() {
-                Ok(value)
+                Ok(move value)
             } else {
                 self.error(~"trailing characters")
             }
@@ -546,14 +575,14 @@ priv impl Parser {
 
             if (escape) {
                 match self.ch {
-                  '"' => str::push_char(&res, '"'),
-                  '\\' => str::push_char(&res, '\\'),
-                  '/' => str::push_char(&res, '/'),
-                  'b' => str::push_char(&res, '\x08'),
-                  'f' => str::push_char(&res, '\x0c'),
-                  'n' => str::push_char(&res, '\n'),
-                  'r' => str::push_char(&res, '\r'),
-                  't' => str::push_char(&res, '\t'),
+                  '"' => str::push_char(&mut res, '"'),
+                  '\\' => str::push_char(&mut res, '\\'),
+                  '/' => str::push_char(&mut res, '/'),
+                  'b' => str::push_char(&mut res, '\x08'),
+                  'f' => str::push_char(&mut res, '\x0c'),
+                  'n' => str::push_char(&mut res, '\n'),
+                  'r' => str::push_char(&mut res, '\r'),
+                  't' => str::push_char(&mut res, '\t'),
                   'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
@@ -582,7 +611,7 @@ priv impl Parser {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      str::push_char(&res, n as char);
+                      str::push_char(&mut res, n as char);
                   }
                   _ => return self.error(~"invalid escape")
                 }
@@ -594,7 +623,7 @@ priv impl Parser {
                     self.bump();
                     return Ok(res);
                 }
-                str::push_char(&res, self.ch);
+                str::push_char(&mut res, self.ch);
             }
         }
 
@@ -609,12 +638,12 @@ priv impl Parser {
 
         if self.ch == ']' {
             self.bump();
-            return Ok(List(values));
+            return Ok(List(move values));
         }
 
         loop {
             match move self.parse_value() {
-              Ok(move v) => values.push(v),
+              Ok(move v) => values.push(move v),
               Err(move e) => return Err(e)
             }
 
@@ -625,7 +654,7 @@ priv impl Parser {
 
             match self.ch {
               ',' => self.bump(),
-              ']' => { self.bump(); return Ok(List(values)); }
+              ']' => { self.bump(); return Ok(List(move values)); }
               _ => return self.error(~"expected `,` or `]`")
             }
         };
@@ -639,7 +668,7 @@ priv impl Parser {
 
         if self.ch == '}' {
           self.bump();
-          return Ok(Object(values));
+          return Ok(Object(move values));
         }
 
         while !self.eof() {
@@ -663,14 +692,14 @@ priv impl Parser {
             self.bump();
 
             match move self.parse_value() {
-              Ok(move value) => { values.insert(key, value); }
+              Ok(move value) => { values.insert(key, move value); }
               Err(move e) => return Err(e)
             }
             self.parse_whitespace();
 
             match self.ch {
               ',' => self.bump(),
-              '}' => { self.bump(); return Ok(Object(values)); }
+              '}' => { self.bump(); return Ok(Object(move values)); }
               _ => {
                   if self.eof() { break; }
                   return self.error(~"expected `,` or `}`");
@@ -702,7 +731,7 @@ pub struct Deserializer {
 pub fn Deserializer(rdr: io::Reader) -> Result<Deserializer, Error> {
     match move from_reader(rdr) {
         Ok(move json) => {
-            let des = Deserializer { json: json, stack: ~[] };
+            let des = Deserializer { json: move json, stack: ~[] };
             Ok(move des)
         }
         Err(move e) => Err(e)
@@ -721,7 +750,7 @@ priv impl Deserializer {
     }
 }
 
-pub impl Deserializer: serialization2::Deserializer {
+pub impl Deserializer: serialization::Deserializer {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {
@@ -818,7 +847,7 @@ pub impl Deserializer: serialization2::Deserializer {
         };
         let res = f(len);
         self.pop();
-        res
+        move res
     }
 
     fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
@@ -829,7 +858,7 @@ pub impl Deserializer: serialization2::Deserializer {
         };
         let res = f(len);
         self.pop();
-        res
+        move res
     }
 
     fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -850,14 +879,14 @@ pub impl Deserializer: serialization2::Deserializer {
         debug!("read_rec()");
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_struct<T>(&self, _name: &str, f: fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
@@ -868,7 +897,7 @@ pub impl Deserializer: serialization2::Deserializer {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&name.to_unique()) {
+                match obj.find_ref(&name.to_owned()) {
                     None => fail fmt!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);
@@ -890,7 +919,7 @@ pub impl Deserializer: serialization2::Deserializer {
         debug!("read_tup(len=%u)", len);
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -1166,11 +1195,11 @@ impl <A: ToJson> Option<A>: ToJson {
 }
 
 impl Json: to_str::ToStr {
-    fn to_str() -> ~str { to_str(&self) }
+    pure fn to_str() -> ~str { to_str(&self) }
 }
 
 impl Error: to_str::ToStr {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }
@@ -1182,11 +1211,11 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (copy key, copy value) => { d.insert(key, value); },
+                (copy key, copy value) => { d.insert(key, move value); },
             }
         };
 
-        Object(d)
+        Object(move d)
     }
 
     #[test]

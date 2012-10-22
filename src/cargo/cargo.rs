@@ -705,7 +705,7 @@ fn configure(opts: Options) -> Cargo {
              ~" or package manager to get it to work correctly");
     }
 
-    c
+    move c
 }
 
 fn for_each_package(c: &Cargo, b: fn(s: @Source, p: &Package)) {
@@ -1162,20 +1162,20 @@ fn sync_one_file(c: &Cargo, dir: &Path, src: @Source) -> bool {
     }
     match (src.key, src.keyfp) {
         (Some(_), Some(f)) => {
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 return false;
             }
 
             if has_src_file {
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s",
-                              name));
+                    error(fmt!("signature verification failed for source %s \
+                                with key %s", name, f));
                     return false;
                 }
             }
@@ -1273,21 +1273,21 @@ fn sync_one_git(c: &Cargo, dir: &Path, src: @Source) -> bool {
     }
     match (src.key, src.keyfp) {
         (Some(_), Some(f)) => {
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 rollback(name, dir, false);
                 return false;
             }
 
             if has_src_file {
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
-                    error(fmt!("signature verification failed for source %s",
-                              name));
+                    error(fmt!("signature verification failed for source %s \
+                                with key %s", name, f));
                     rollback(name, dir, false);
                     return false;
                 }
@@ -1370,11 +1370,11 @@ fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
                 return false;
             }
 
-            let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
+            let r = pgp::verify(&c.root, &pkgfile, &sigfile);
 
             if !r {
-                error(fmt!("signature verification failed for source %s",
-                          name));
+                error(fmt!("signature verification failed for source %s with \
+                            key %s", name, f));
                 return false;
             }
 
@@ -1390,11 +1390,11 @@ fn sync_one_curl(c: &Cargo, dir: &Path, src: @Source) -> bool {
                     return false;
                 }
 
-                let e = pgp::verify(&c.root, &srcfile, &srcsigfile, f);
+                let e = pgp::verify(&c.root, &srcfile, &srcsigfile);
 
                 if !e {
                     error(~"signature verification failed for " +
-                          ~"source " + name);
+                          ~"source " + name + ~" with key " + f);
                     return false;
                 }
             }
@@ -1463,8 +1463,7 @@ fn cmd_init(c: &Cargo) {
         return;
     }
 
-    let r = pgp::verify(&c.root, &srcfile, &sigfile,
-                        pgp::signing_key_fp());
+    let r = pgp::verify(&c.root, &srcfile, &sigfile);
     if !r {
         error(fmt!("signature verification failed for '%s'",
                    srcfile.to_str()));
@@ -1615,10 +1614,10 @@ fn dump_sources(c: &Cargo) {
                     _ => ()
                 }
 
-                hash.insert(copy k, json::Object(chash));
+                hash.insert(copy k, json::Object(move chash));
             }
 
-            json::to_writer(writer, &json::Object(hash))
+            json::to_writer(writer, &json::Object(move hash))
         }
         result::Err(e) => {
             error(fmt!("could not dump sources: %s", e));

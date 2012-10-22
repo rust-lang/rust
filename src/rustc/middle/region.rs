@@ -7,7 +7,7 @@ region parameterized.
 
 */
 
-use driver::session::session;
+use driver::session::Session;
 use middle::ty;
 use syntax::{ast, visit};
 use syntax::codemap::span;
@@ -41,7 +41,7 @@ Encodes the bounding lifetime for a given AST node:
 type region_map = HashMap<ast::node_id, ast::node_id>;
 
 struct ctxt {
-    sess: session,
+    sess: Session,
     def_map: resolve::DefMap,
 
     // Generated maps:
@@ -108,8 +108,8 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
 /// intended to run *after inference* and sadly the logic is somewhat
 /// duplicated with the code in infer.rs.
 fn is_subregion_of(region_map: region_map,
-                   sub_region: ty::region,
-                   super_region: ty::region) -> bool {
+                   sub_region: ty::Region,
+                   super_region: ty::Region) -> bool {
     sub_region == super_region ||
         match (sub_region, super_region) {
           (_, ty::re_static) => {
@@ -305,16 +305,16 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
               visitor: visit::vt<ctxt>) {
 
     let fn_cx = match fk {
-      visit::fk_item_fn(*) | visit::fk_method(*) |
-      visit::fk_ctor(*) | visit::fk_dtor(*) => {
-        // Top-level functions are a root scope.
-        ctxt {parent: Some(id),.. cx}
-      }
+        visit::fk_item_fn(*) | visit::fk_method(*) |
+        visit::fk_dtor(*) => {
+            // Top-level functions are a root scope.
+            ctxt {parent: Some(id),.. cx}
+        }
 
-      visit::fk_anon(*) | visit::fk_fn_block(*) => {
-        // Closures continue with the inherited scope.
-        cx
-      }
+        visit::fk_anon(*) | visit::fk_fn_block(*) => {
+            // Closures continue with the inherited scope.
+            cx
+        }
     };
 
     debug!("visiting fn with body %d. cx.parent: %? \
@@ -328,7 +328,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
-fn resolve_crate(sess: session, def_map: resolve::DefMap,
+fn resolve_crate(sess: Session, def_map: resolve::DefMap,
                  crate: @ast::crate) -> region_map {
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
@@ -382,7 +382,7 @@ impl region_dep : cmp::Eq {
 }
 
 type determine_rp_ctxt_ = {
-    sess: session,
+    sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
     region_paramd_items: region_paramd_items,
@@ -599,7 +599,7 @@ fn determine_rp_in_ty_method(ty_m: ast::ty_method,
     }
 }
 
-fn determine_rp_in_ty(ty: @ast::ty,
+fn determine_rp_in_ty(ty: @ast::Ty,
                       &&cx: determine_rp_ctxt,
                       visitor: visit::vt<determine_rp_ctxt>) {
 
@@ -640,8 +640,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // that as a direct dependency.
     match ty.node {
       ast::ty_path(path, id) => {
-        match cx.def_map.get(id) {
-          ast::def_ty(did) | ast::def_class(did, _) => {
+        match cx.def_map.find(id) {
+          Some(ast::def_ty(did)) | Some(ast::def_class(did)) => {
             if did.crate == ast::local_crate {
                 if cx.opt_region_is_relevant(path.rp) {
                     cx.add_dep(did.node);
@@ -755,7 +755,7 @@ fn determine_rp_in_struct_field(cm: @ast::struct_field,
     }
 }
 
-fn determine_rp_in_crate(sess: session,
+fn determine_rp_in_crate(sess: Session,
                          ast_map: ast_map::map,
                          def_map: resolve::DefMap,
                          crate: @ast::crate) -> region_paramd_items {

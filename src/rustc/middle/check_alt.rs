@@ -7,7 +7,6 @@ use syntax::print::pprust::pat_to_str;
 use util::ppaux::ty_to_str;
 use pat_util::*;
 use syntax::visit;
-use driver::session::session;
 use middle::ty;
 use middle::ty::*;
 use std::map::HashMap;
@@ -33,7 +32,7 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
        if arms.is_empty() {
            if !type_is_empty(tcx, pat_ty) {
                // We know the type is inhabited, so this must be wrong
-               tcx.sess.span_err(ex.span, #fmt("non-exhaustive patterns: \
+               tcx.sess.span_err(ex.span, fmt!("non-exhaustive patterns: \
                              type %s is non-empty", ty_to_str(tcx, pat_ty)));
            }
            // If the type *is* empty, it's vacuously exhaustive

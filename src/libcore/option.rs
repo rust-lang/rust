@@ -42,7 +42,7 @@ pub enum Option<T> {
     Some(T),
 }
 
-pub pure fn get<T: Copy>(opt: &Option<T>) -> T {
+pub pure fn get<T: Copy>(opt: Option<T>) -> T {
     /*!
     Gets the value out of an option
 
@@ -58,7 +58,7 @@ pub pure fn get<T: Copy>(opt: &Option<T>) -> T {
     case explicitly.
     */
 
-    match *opt {
+    match opt {
       Some(copy x) => return x,
       None => fail ~"option::get none"
     }
@@ -85,7 +85,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pub pure fn expect<T: Copy>(opt: &Option<T>, reason: ~str) -> T {
+pub pure fn expect<T: Copy>(opt: Option<T>, reason: ~str) -> T {
     /*!
      * Gets the value out of an option, printing a specified message on
      * failure
@@ -94,7 +94,7 @@ pub pure fn expect<T: Copy>(opt: &Option<T>, reason: ~str) -> T {
      *
      * Fails if the value equals `none`
      */
-    match *opt { Some(copy x) => x, None => fail reason }
+    match opt { Some(copy x) => x, None => fail reason }
 }
 
 pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
@@ -119,11 +119,9 @@ pub pure fn chain<T, U>(opt: Option<T>,
      * function that returns an option.
      */
 
-    // XXX write with move match
-    if opt.is_some() {
-        f(unwrap(opt))
-    } else {
-        None
+    match move opt {
+        Some(move t) => f(move t),
+        None => None
     }
 }
 
@@ -169,10 +167,10 @@ pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     !is_none(opt)
 }
 
-pub pure fn get_default<T: Copy>(opt: &Option<T>, def: T) -> T {
+pub pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
-    match *opt { Some(copy x) => x, None => def }
+    match opt { Some(copy x) => x, None => def }
 }
 
 pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
@@ -227,7 +225,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 
 pub pure fn unwrap_expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
-    if opt.is_none() { fail reason.to_unique(); }
+    if opt.is_none() { fail reason.to_owned(); }
     unwrap(move opt)
 }
 
@@ -286,8 +284,8 @@ impl<T: Copy> Option<T> {
     Instead, prefer to use pattern matching and handle the `None`
     case explicitly.
     */
-    pure fn get() -> T { get(&self) }
-    pure fn get_default(def: T) -> T { get_default(&self, def) }
+    pure fn get() -> T { get(self) }
+    pure fn get_default(def: T) -> T { get_default(self, def) }
     /**
      * Gets the value out of an option, printing a specified message on
      * failure
@@ -296,7 +294,7 @@ impl<T: Copy> Option<T> {
      *
      * Fails if the value equals `none`
      */
-    pure fn expect(reason: ~str) -> T { expect(&self, reason) }
+    pure fn expect(reason: ~str) -> T { expect(self, move reason) }
     /// Applies a function zero or more times until the result is none.
     pure fn while_some(blk: fn(v: T) -> Option<T>) { while_some(self, blk) }
 }
@@ -326,8 +324,8 @@ impl<T: Eq> Option<T> : Eq {
 fn test_unwrap_ptr() {
     let x = ~0;
     let addr_x = ptr::addr_of(&(*x));
-    let opt = Some(x);
-    let y = unwrap(opt);
+    let opt = Some(move x);
+    let y = unwrap(move opt);
     let addr_y = ptr::addr_of(&(*y));
     assert addr_x == addr_y;
 }
@@ -358,8 +356,8 @@ fn test_unwrap_resource() {
     let i = @mut 0;
     {
         let x = R(i);
-        let opt = Some(x);
-        let _y = unwrap(opt);
+        let opt = Some(move x);
+        let _y = unwrap(move opt);
     }
     assert *i == 1;
 }

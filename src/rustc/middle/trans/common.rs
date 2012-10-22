@@ -8,7 +8,7 @@ use vec::raw::to_ptr;
 use std::map::{HashMap,Set};
 use syntax::{ast, ast_map};
 use driver::session;
-use session::session;
+use session::Session;
 use middle::ty;
 use back::{link, abi, upcall};
 use syntax::codemap::span;
@@ -110,7 +110,7 @@ fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
 
 // Crate context.  Every crate we compile has one of these.
 type crate_ctxt = {
-     sess: session::session,
+     sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
@@ -170,11 +170,6 @@ type crate_ctxt = {
      // is not emitted by LLVM's GC pass when no functions use GC.
      mut uses_gc: bool,
      dbg_cx: Option<debuginfo::debug_ctxt>,
-     // Mapping from class constructors to parent class --
-     // used in base::trans_closure
-     // parent_class must be a def_id because ctors can be
-     // inlined, so the parent may be in a different crate
-     class_ctors: HashMap<ast::node_id, ast::def_id>,
      mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.
@@ -186,9 +181,12 @@ struct ValSelfData {
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
+// Here `self_ty` is the real type of the self parameter to this method. It
+// will only be set in the case of default methods.
 type param_substs = {tys: ~[ty::t],
                      vtables: Option<typeck::vtable_res>,
-                     bounds: @~[ty::param_bounds]};
+                     bounds: @~[ty::param_bounds],
+                     self_ty: Option<ty::t>};
 
 fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
     fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
@@ -225,6 +223,10 @@ type fn_ctxt = @{
     mut llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
+    //
+    // NB: This is the type of the self *variable*, not the self *type*. The
+    // self type is set only for default methods, while the self variable is
+    // set for all methods.
     mut llself: Option<ValSelfData>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
@@ -244,6 +246,9 @@ type fn_ctxt = @{
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
     id: ast::node_id,
+
+    // The def_id of the impl we're inside, or None if we aren't inside one.
+    impl_id: Option<ast::def_id>,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
@@ -440,6 +445,7 @@ enum block_kind {
 
 type scope_info = {
     loop_break: Option<block>,
+    loop_label: Option<ident>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
@@ -516,7 +522,7 @@ fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: kind,
+        kind: move kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -600,7 +606,7 @@ fn block_parent(cx: block) -> block {
 impl block {
     pure fn ccx() -> @crate_ctxt { self.fcx.ccx }
     pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess() -> session { self.fcx.ccx.sess }
+    pure fn sess() -> Session { self.fcx.ccx.sess }
 
     fn node_id_to_str(id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
@@ -1115,7 +1121,11 @@ enum mono_param_id {
               datum::DatumMode),
 }
 
-type mono_id_ = {def: ast::def_id, params: ~[mono_param_id]};
+type mono_id_ = {
+    def: ast::def_id,
+    params: ~[mono_param_id],
+    impl_did_opt: Option<ast::def_id>
+};
 
 type mono_id = @mono_id_;
 
@@ -1182,7 +1192,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-fn path_str(sess: session::session, p: path) -> ~str {
+fn path_str(sess: session::Session, p: path) -> ~str {
     let mut r = ~"", first = true;
     for vec::each(p) |e| {
         match *e {
@@ -1198,7 +1208,9 @@ fn path_str(sess: session::session, p: path) -> ~str {
 
 fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
-        Some(substs) => ty::subst_tps(bcx.tcx(), substs.tys, t),
+        Some(substs) => {
+            ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
+        }
         _ => { assert !ty::type_has_params(t); t }
     }
 }
@@ -1218,7 +1230,9 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
     match bcx.fcx.param_substs {
       Some(substs) => {
-        vec::map(params, |t| ty::subst_tps(tcx, substs.tys, *t))
+        do vec::map(params) |t| {
+            ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+        }
       }
       _ => params
     }
@@ -1246,7 +1260,9 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
         typeck::vtable_static(trait_id, tys, sub) => {
             let tys = match fcx.param_substs {
                 Some(substs) => {
-                    vec::map(tys, |t| ty::subst_tps(tcx, substs.tys, *t))
+                    do vec::map(tys) |t| {
+                        ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+                    }
                 }
                 _ => tys
             };
@@ -1295,13 +1311,13 @@ fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
      tps: tps}
 }
 
-fn struct_field(index: uint) -> [uint]/3 {
+fn struct_field(index: uint) -> [uint * 3] {
     //! The GEPi sequence to access a field of a record/struct.
 
     [0, 0, index]
 }
 
-fn struct_dtor() -> [uint]/2 {
+fn struct_dtor() -> [uint * 2] {
     //! The GEPi sequence to access the dtor of a struct.
 
     [0, 1]

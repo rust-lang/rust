@@ -9,7 +9,7 @@ use middle::ty;
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token::ident_interner;
 use codemap::span;
-use ast::ty;
+use ast::Ty;
 use pat_util::*;
 use util::ppaux::ty_to_str;
 use driver::session::session;
@@ -229,7 +229,7 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     return mdval;
 }
 
-fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
+fn line_from_span(cm: codemap::CodeMap, sp: span) -> uint {
     codemap::lookup_char_pos(cm, sp.lo).line
 }
 
@@ -469,7 +469,7 @@ fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
 }
 
 fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
-              vec_ty_span: codemap::span, elem_ty: @ast::ty)
+              vec_ty_span: codemap::span, elem_ty: @ast::Ty)
     -> @metadata<tydesc_md> {
     let fname = filename_from_span(cx, vec_ty_span);
     let file_node = create_file(cx, fname);
@@ -492,7 +492,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     return @{node: llnode, data: {hash: ty::type_id(vec_t)}};
 }
 
-fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
+fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::Ty)
     -> @metadata<tydesc_md> {
     /*let cache = get_cache(cx);
     match cached_metadata::<@metadata<tydesc_md>>(
@@ -731,10 +731,6 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       }
       ast_map::node_method(method, _, _) => {
           (method.ident, method.decl.output, method.id)
-      }
-      ast_map::node_ctor(nm, _, ctor, _, _) => {
-        // FIXME: output type may be wrong (#2194)
-        (nm, ctor.node.dec.output, ctor.node.id)
       }
       ast_map::node_expr(expr) => {
         match expr.node {

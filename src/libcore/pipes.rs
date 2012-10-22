@@ -350,7 +350,8 @@ fn BufferResource<T: Send>(b: ~Buffer<T>) -> BufferResource<T> {
     atomic_add_acq(&mut b.header.ref_count, 1);
 
     BufferResource {
-        buffer: b
+        // tjc: ????
+        buffer: move b
     }
 }
 
@@ -448,7 +449,12 @@ pub fn try_recv<T: Send, Tbuffer: Send>(p: RecvPacketBuffered<T, Tbuffer>)
     let this = rustrt::rust_get_task();
     rustrt::task_clear_event_reject(this);
     rustrt::rust_task_ref(this);
+    debug!("blocked = %x this = %x", p.header.blocked_task as uint,
+           this as uint);
     let old_task = swap_task(&mut p.header.blocked_task, this);
+    debug!("blocked = %x this = %x old_task = %x",
+           p.header.blocked_task as uint,
+           this as uint, old_task as uint);
     assert old_task.is_null();
     let mut first = true;
     let mut count = SPIN_COUNT;
@@ -661,7 +667,7 @@ pub fn select2<A: Send, Ab: Send, B: Send, Bb: Send>(
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
               (RecvPacketBuffered<A, Ab>, Option<B>)>
 {
-    let i = wait_many([a.header(), b.header()]/_);
+    let i = wait_many([a.header(), b.header()]);
 
     match i {
       0 => Left((try_recv(move a), move b)),
@@ -687,7 +693,7 @@ pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
 /// Returns 0 or 1 depending on which endpoint is ready to receive
 pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
         Either<(), ()> {
-    match wait_many([a.header(), b.header()]/_) {
+    match wait_many([a.header(), b.header()]) {
       0 => Left(()),
       1 => Right(()),
       _ => fail ~"wait returned unexpected index"
@@ -1212,7 +1218,7 @@ pub mod test {
 
         c1.send(~"abc");
 
-        match (p1, p2).select() {
+        match (move p1, move p2).select() {
           Right(_) => fail,
           _ => ()
         }
@@ -1224,8 +1230,8 @@ pub mod test {
     pub fn test_oneshot() {
         let (c, p) = oneshot::init();
 
-        oneshot::client::send(c, ());
+        oneshot::client::send(move c, ());
 
-        recv_one(p)
+        recv_one(move p)
     }
 }

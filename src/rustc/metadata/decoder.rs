@@ -1,7 +1,9 @@
 // Decoding metadata from a single crate's metadata
 
-use std::{ebml, map};
+use std::ebml;
+use std::map;
 use std::map::HashMap;
+use std::serialization::deserialize;
 use io::WriterUtil;
 use dvec::DVec;
 use syntax::{ast, ast_util};
@@ -17,6 +19,7 @@ use syntax::diagnostic::span_handler;
 use common::*;
 use syntax::parse::token::ident_interner;
 use hash::{Hash, HashUtil};
+use csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 
 export class_dtor;
 export get_class_fields;
@@ -28,6 +31,7 @@ export get_type_param_count;
 export get_impl_traits;
 export get_class_method;
 export get_impl_method;
+export get_static_methods_if_impl;
 export lookup_def;
 export resolve_path;
 export get_crate_attributes;
@@ -38,7 +42,9 @@ export get_crate_hash;
 export get_crate_vers;
 export get_impls_for_mod;
 export get_trait_methods;
+export get_provided_trait_methods;
 export get_method_names_if_trait;
+export get_type_name_if_impl;
 export get_item_attrs;
 export get_crate_module_paths;
 export def_like;
@@ -69,10 +75,10 @@ fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
     let pos = io::u64_from_be_bytes(*d.data, hash_pos, 4u) as uint;
-    let {tag:_, doc:bucket} = ebml::doc_at(d.data, pos);
+    let tagged_doc = ebml::doc_at(d.data, pos);
 
     let belt = tag_index_buckets_bucket_elt;
-    for ebml::tagged_docs(bucket, belt) |elt| {
+    for ebml::tagged_docs(tagged_doc.doc, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::view(*elt.data, elt.start + 4u, elt.end)) {
             return Some(ebml::doc_at(d.data, pos).doc);
@@ -122,7 +128,6 @@ enum Family {
     Variant,               // v
     Impl,                  // i
     Trait,                 // I
-    Class,                 // C
     Struct,                // S
     PublicField,           // g
     PrivateField,          // j
@@ -155,13 +160,19 @@ fn item_family(item: ebml::Doc) -> Family {
       'v' => Variant,
       'i' => Impl,
       'I' => Trait,
-      'C' => Class,
       'S' => Struct,
       'g' => PublicField,
       'j' => PrivateField,
       'N' => InheritedField,
-       c => fail (#fmt("unexpected family char: %c", c))
+       c => fail (fmt!("unexpected family char: %c", c))
     }
+}
+
+fn item_method_sort(item: ebml::Doc) -> char {
+    for ebml::tagged_docs(item, tag_item_trait_method_sort) |doc| {
+        return str::from_bytes(ebml::doc_data(doc))[0] as char;
+    }
+    return 'r';
 }
 
 fn item_symbol(item: ebml::Doc) -> ~str {
@@ -174,6 +185,18 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
         return Some(ebml::with_doc_data(did, |d| parse_def_id(d)));
     }
     None
+}
+
+fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
+        Option<ast::def_id> {
+    let trait_did_opt = item_parent_item(d);
+    trait_did_opt.map(|trait_did| {crate: cnum, node: trait_did.node})
+}
+
+fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
+                                        d: ebml::Doc) -> ast::def_id {
+    let trait_did = item_parent_item(d).expect(~"item without parent");
+    {crate: cnum, node: trait_did.node}
 }
 
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
@@ -246,8 +269,7 @@ fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     ebml::maybe_get_doc(item, tag_region_param).map(|doc| {
-        let d = ebml::ebml_deserializer(*doc);
-        ty::deserialize_region_variance(d)
+        deserialize(&ebml::Deserializer(*doc))
     })
 }
 
@@ -296,35 +318,38 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
-        -> def_like {
+    -> def_like
+{
     let fam = item_family(item);
     match fam {
-      Const     => dl_def(ast::def_const(did)),
-      Class     => dl_def(ast::def_class(did, true)),
-      Struct    => dl_def(ast::def_class(did, false)),
-      UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
-      Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
-      PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
-      ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
-      UnsafeStaticMethod => dl_def(ast::def_static_method(did,
-                                                          ast::unsafe_fn)),
-      StaticMethod => dl_def(ast::def_static_method(did, ast::impure_fn)),
-      PureStaticMethod => dl_def(ast::def_static_method(did, ast::pure_fn)),
-      Type | ForeignType => dl_def(ast::def_ty(did)),
-      Mod => dl_def(ast::def_mod(did)),
-      ForeignMod => dl_def(ast::def_foreign_mod(did)),
-      Variant => {
-          match item_parent_item(item) {
-              Some(t) => {
-                let tid = {crate: cnum, node: t.node};
-                dl_def(ast::def_variant(tid, did))
-              }
-              None => fail ~"item_to_def_like: enum item has no parent"
-          }
-      }
-      Trait | Enum => dl_def(ast::def_ty(did)),
-      Impl => dl_impl(did),
-      PublicField | PrivateField | InheritedField => dl_field,
+        Const     => dl_def(ast::def_const(did)),
+        Struct    => dl_def(ast::def_class(did)),
+        UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
+        Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
+        PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
+        ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
+        UnsafeStaticMethod => {
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::unsafe_fn))
+        }
+        StaticMethod => {
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::impure_fn))
+        }
+        PureStaticMethod => {
+            let trait_did_opt = translated_parent_item_opt(cnum, item);
+            dl_def(ast::def_static_method(did, trait_did_opt, ast::pure_fn))
+        }
+        Type | ForeignType => dl_def(ast::def_ty(did)),
+        Mod => dl_def(ast::def_mod(did)),
+        ForeignMod => dl_def(ast::def_foreign_mod(did)),
+        Variant => {
+            let enum_did = item_reqd_and_translated_parent_item(cnum, item);
+            dl_def(ast::def_variant(enum_did, did))
+        }
+        Trait | Enum => dl_def(ast::def_ty(did)),
+        Impl => dl_impl(did),
+        PublicField | PrivateField | InheritedField => dl_field,
     }
 }
 
@@ -581,13 +606,12 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
                                 tcx, cdata);
         let name = item_name(intr, item);
-        let mut arg_tys: ~[ty::t] = ~[];
-        match ty::get(ctor_ty).sty {
-          ty::ty_fn(f) => {
-            for f.sig.inputs.each |a| { arg_tys.push(a.ty); }
-          }
-          _ => { /* Nullary enum variant. */ }
-        }
+        let arg_tys = match ty::get(ctor_ty).sty {
+          ty::ty_fn(f) => f.sig.inputs.map(|a| a.ty),
+
+          // Nullary enum variant.
+          _ => ~[],
+        };
         match variant_disr_val(item) {
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }
@@ -646,7 +670,6 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
         let mth_item = lookup_item(m_did.node, cdata.data);
         let self_ty = get_self_ty(mth_item);
         rslt.push(@{did: translate_def_id(cdata, m_did),
-                    /* FIXME (maybe #2323) tjc: take a look at this. */
                    n_tps: item_ty_param_count(mth_item) - base_tps,
                    ident: item_name(intr, mth_item),
                    self_type: self_ty});
@@ -694,6 +717,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
+        let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
           ty::ty_fn(f) => f,
           _ => {
@@ -701,12 +725,50 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                 ~"get_trait_methods: id has non-function type");
         } };
         let self_ty = get_self_ty(mth);
-        result.push({ident: name, tps: bounds, fty: fty,
-                           self_ty: self_ty,
-                           vis: ast::public});
+        result.push({ident: name, tps: bounds, fty: fty, self_ty: self_ty,
+                     vis: ast::public, def_id: def_id});
     }
-    #debug("get_trait_methods: }");
+    debug!("get_trait_methods: }");
     @result
+}
+
+fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
+                              id: ast::node_id, tcx: ty::ctxt) ->
+        ~[ProvidedTraitMethodInfo] {
+    let data = cdata.data;
+    let item = lookup_item(id, data);
+    let mut result = ~[];
+
+    for ebml::tagged_docs(item, tag_item_trait_method) |mth| {
+        if item_method_sort(mth) != 'p' { loop; }
+
+        let did = item_def_id(mth, cdata);
+
+        let bounds = item_ty_param_bounds(mth, tcx, cdata);
+        let name = item_name(intr, mth);
+        let ty = doc_type(mth, tcx, cdata);
+
+        let fty;
+        match ty::get(ty).sty {
+            ty::ty_fn(f) => fty = f,
+            _ => {
+                tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
+                                         has non-function type");
+            }
+        }
+
+        let self_ty = get_self_ty(mth);
+        let ty_method = {ident: name, tps: bounds, fty: fty, self_ty: self_ty,
+                         vis: ast::public, def_id: did};
+        let provided_trait_method_info = ProvidedTraitMethodInfo {
+            ty: ty_method,
+            def_id: did
+        };
+
+        vec::push(&mut result, move provided_trait_method_info);
+    }
+
+    return move result;
 }
 
 // If the item in question is a trait, returns its set of methods and
@@ -727,6 +789,67 @@ fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
             (item_name(intr, method), get_self_ty(method)));
     }
     return Some(resulting_methods);
+}
+
+fn get_type_name_if_impl(intr: @ident_interner,
+                         cdata: cmd,
+                         node_id: ast::node_id) -> Option<ast::ident> {
+    let item = lookup_item(node_id, cdata.data);
+    if item_family(item) != Impl {
+        return None;
+    }
+
+    for ebml::tagged_docs(item, tag_item_impl_type_basename) |doc| {
+        return Some(intr.intern(@str::from_bytes(ebml::doc_data(doc))));
+    }
+
+    return None;
+}
+
+fn get_static_methods_if_impl(intr: @ident_interner,
+                               cdata: cmd,
+                               node_id: ast::node_id) ->
+                               Option<~[StaticMethodInfo]> {
+    let item = lookup_item(node_id, cdata.data);
+    if item_family(item) != Impl {
+        return None;
+    }
+
+    // If this impl has a trait ref, don't consider it.
+    for ebml::tagged_docs(item, tag_impl_trait) |_doc| {
+        return None;
+    }
+
+    let impl_method_ids = DVec();
+    for ebml::tagged_docs(item, tag_item_impl_method) |impl_method_doc| {
+        impl_method_ids.push(parse_def_id(ebml::doc_data(impl_method_doc)));
+    }
+
+    let static_impl_methods = DVec();
+    for impl_method_ids.each |impl_method_id| {
+        let impl_method_doc = lookup_item(impl_method_id.node, cdata.data);
+        let family = item_family(impl_method_doc);
+        match family {
+            StaticMethod | UnsafeStaticMethod | PureStaticMethod => {
+                let purity;
+                match item_family(impl_method_doc) {
+                    StaticMethod => purity = ast::impure_fn,
+                    UnsafeStaticMethod => purity = ast::unsafe_fn,
+                    PureStaticMethod => purity = ast::pure_fn,
+                    _ => fail
+                }
+
+                static_impl_methods.push(StaticMethodInfo {
+                    ident: item_name(intr, impl_method_doc),
+                    def_id: item_def_id(impl_method_doc, cdata),
+                    purity: purity
+                });
+            }
+            _ => {}
+        }
+    }
+
+    return Some(dvec::unwrap(move static_impl_methods));
 }
 
 fn get_item_attrs(cdata: cmd,
@@ -822,7 +945,6 @@ fn item_family_to_str(fam: Family) -> ~str {
       Variant => ~"variant",
       Impl => ~"impl",
       Trait => ~"trait",
-      Class => ~"class",
       Struct => ~"struct",
       PublicField => ~"public field",
       PrivateField => ~"private field",

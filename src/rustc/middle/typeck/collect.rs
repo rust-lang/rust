@@ -76,7 +76,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
 impl @crate_ctxt {
     fn to_ty<RS: region_scope Copy Owned>(
-        rs: RS, ast_ty: @ast::ty) -> ty::t {
+        rs: RS, ast_ty: @ast::Ty) -> ty::t {
 
         ast_ty_to_ty(self, rs, ast_ty)
     }
@@ -212,9 +212,15 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     match tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
+            let def_id;
+            match *m {
+                ast::required(ty_method) => def_id = local_def(ty_method.id),
+                ast::provided(method) => def_id = local_def(method.id)
+            }
+
             let trait_bounds = ty_param_bounds(ccx, params);
             let ty_m = trait_method_to_ty_method(*m);
-            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd);
+            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd, def_id);
             if ty_m.self_ty.node == ast::sty_static {
                 make_static_method_ty(ccx, ty_m, region_paramd,
                                       method_ty, trait_ty, trait_bounds);
@@ -266,7 +272,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     }
 
     if impl_m.tps.len() != trait_m.tps.len() {
-        tcx.sess.span_err(sp, #fmt("method `%s` \
+        tcx.sess.span_err(sp, fmt!("method `%s` \
            has %u type %s, but its trait declaration has %u type %s",
            tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
            pluralize(impl_m.tps.len(), ~"parameter"),
@@ -291,7 +297,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         // Would be nice to use the ty param names in the error message,
         // but we don't have easy access to them here
         if impl_param_bounds.len() != trait_param_bounds.len() {
-           tcx.sess.span_err(sp, #fmt("in method `%s`, \
+           tcx.sess.span_err(sp, fmt!("in method `%s`, \
              type parameter %u has %u %s, but the same type \
              parameter in its trait declaration has %u %s",
              tcx.sess.str_of(trait_m.ident),
@@ -339,7 +345,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
-                          with_r: ty::region) -> ty::t {
+                          with_r: ty::Region) -> ty::t {
         do ty::fold_regions(tcx, ty) |r, _in_fn| {
             if r == ty::re_bound(ty::br_self) {with_r} else {r}
         }
@@ -373,7 +379,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 
               let provided_methods = ty::provided_trait_methods(tcx, did);
               match vec::find(provided_methods, |provided_method|
-                              provided_method.ident == trait_m.ident) {
+                              *provided_method == trait_m.ident) {
                 Some(_) => {
                     // If there's a provided method with the name we
                     // want, then we're fine; nothing else to do.
@@ -497,30 +503,6 @@ fn convert_struct(ccx: @crate_ctxt,
                   tpt: ty::ty_param_bounds_and_ty,
                   id: ast::node_id) {
     let tcx = ccx.tcx;
-    do option::iter(&struct_def.ctor) |ctor| {
-        // Write the ctor type
-        let t_args = ctor.node.dec.inputs.map(
-            |a| ty_of_arg(ccx, type_rscope(rp), *a, None) );
-        let t_res = ty::mk_class(
-            tcx, local_def(id),
-            {self_r: rscope::bound_self_region(rp),
-             self_ty: None,
-             tps: ty::ty_params_to_tys(tcx, tps)});
-        let proto = ty::proto_vstore(ty::vstore_slice(ty::re_static));
-        let t_ctor = ty::mk_fn(tcx, FnTyBase {
-            meta: FnMeta {purity: ast::impure_fn,
-                          proto: proto,
-                          bounds: @~[],
-                          ret_style: ast::return_val},
-            sig: FnSig {inputs: t_args,
-                        output: t_res}
-        });
-        write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
-        tcx.tcache.insert(local_def(ctor.node.id),
-                          {bounds: tpt.bounds,
-                           region_param: rp,
-                           ty: t_ctor});
-    }
 
     do option::iter(&struct_def.dtor) |dtor| {
         // Write the dtor type
@@ -570,19 +552,22 @@ fn ty_of_method(ccx: @crate_ctxt,
                         m.purity, @~[],
                         m.decl, None, m.span),
      self_ty: m.self_ty.node,
-     vis: m.vis}
+     vis: m.vis,
+     def_id: local_def(m.id)}
 }
 
 fn ty_of_ty_method(self: @crate_ctxt,
                    m: ast::ty_method,
-                   rp: Option<ty::region_variance>) -> ty::method {
+                   rp: Option<ty::region_variance>,
+                   id: ast::def_id) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, m.purity,
                         @~[], m.decl, None, m.span),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
-     vis: ast::public}
+     vis: ast::public,
+     def_id: id}
 }
 
 /*
@@ -722,28 +707,41 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     }
 }
 
+// Translate the AST's notion of ty param bounds (which are just newtyped Tys)
+// to ty's notion of ty param bounds, which can either be user-defined traits,
+// or one of the four built-in traits (formerly known as kinds): Const, Copy,
+// Owned, and Send.
 fn compute_bounds(ccx: @crate_ctxt,
                   ast_bounds: @~[ast::ty_param_bound]) -> ty::param_bounds {
     @do vec::flat_map(*ast_bounds) |b| {
-        match *b {
-          ast::bound_send => ~[ty::bound_send],
-          ast::bound_copy => ~[ty::bound_copy],
-          ast::bound_const => ~[ty::bound_const],
-          ast::bound_owned => ~[ty::bound_owned],
-          ast::bound_trait(t) => {
-            let ity = ast_ty_to_ty(ccx, empty_rscope, t);
-            match ty::get(ity).sty {
-              ty::ty_trait(*) => {
-                ~[ty::bound_trait(ity)]
-              }
-              _ => {
-                ccx.tcx.sess.span_err(
-                    t.span, ~"type parameter bounds must be \
-                              trait types");
-                ~[]
-              }
+        let li = &ccx.tcx.lang_items;
+        let ity = ast_ty_to_ty(ccx, empty_rscope, **b);
+        match ty::get(ity).sty {
+            ty::ty_trait(did, _, _) => {
+                let d = Some(did);
+                if d == li.send_trait {
+                    ~[ty::bound_send]
+                }
+                else if d == li.copy_trait {
+                    ~[ty::bound_copy]
+                }
+                else if d == li.const_trait {
+                    ~[ty::bound_const]
+                }
+                else if d == li.owned_trait {
+                    ~[ty::bound_owned]
+                }
+                else {
+                    // Must be a user-defined trait
+                    ~[ty::bound_trait(ity)]
+                }
             }
-          }
+            _ => {
+                ccx.tcx.sess.span_err(
+                    (*b).span, ~"type parameter bounds must be \
+                                 trait types");
+                ~[]
+            }
         }
     }
 }
