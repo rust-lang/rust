@@ -20,12 +20,18 @@ impl<T, U: Copy>  Condition<T,U> {
         }
     }
 
-    fn raise(t:&T) -> U {
+    fn raise(t:&T) -> U  {
+        do self.raise_default(t) {
+            fail ~"Unhandled condition";
+        }
+    }
+
+    fn raise_default(t:&T, default: fn() -> U) -> U {
         unsafe {
             match task::local_data::local_data_pop(self.key) {
                 None => {
                     debug!("Condition.raise: found no handler");
-                    fail
+                    default()
                 }
 
                 Some(handler) => {
@@ -134,7 +140,6 @@ mod test {
             trouble(1);
         }
 
-
         assert outer_trapped;
     }
 
@@ -174,8 +179,25 @@ mod test {
             nested_reraise_trap_test_inner();
         }
 
-
         assert outer_trapped;
+    }
+
+    #[test]
+    fn test_default() {
+        let sadness_condition : Condition<int,int> =
+            Condition { key: sadness_key };
+
+        let mut trapped = false;
+
+        do sadness_condition.trap(|j| {
+            debug!("test_default: in handler");
+            sadness_condition.raise_default(j, || {trapped=true; 5})
+        }).in {
+            debug!("test_default: in protected block");
+            trouble(1);
+        }
+
+        assert trapped;
     }
 
 }
