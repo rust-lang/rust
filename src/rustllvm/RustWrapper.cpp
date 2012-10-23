@@ -482,6 +482,14 @@ extern "C" LLVMTypeRef LLVMMetadataType(void) {
   return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
 }
 
+extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
+                                               LLVMValueRef target,
+                                               LLVMValueRef old,
+                                               LLVMValueRef source,
+                                               AtomicOrdering order) {
+    return wrap(unwrap(B)->CreateAtomicCmpXchg(unwrap(target), unwrap(old),
+                                               unwrap(source), order));
+}
 extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
                                            AtomicRMWInst::BinOp op,
                                            LLVMValueRef target,

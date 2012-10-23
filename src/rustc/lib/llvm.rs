@@ -843,6 +843,9 @@ extern mod llvm {
                         Name: *c_char) -> ValueRef;
 
     /* Atomic Operations */
+    fn LLVMBuildAtomicCmpXchg(B: BuilderRef, LHS: ValueRef,
+                              CMP: ValueRef, RHS: ValueRef,
+                              ++Order: AtomicOrdering) -> ValueRef;
     fn LLVMBuildAtomicRMW(B: BuilderRef, ++Op: AtomicBinOp,
                           LHS: ValueRef, RHS: ValueRef,
                           ++Order: AtomicOrdering) -> ValueRef;
