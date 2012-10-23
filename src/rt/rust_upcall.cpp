@@ -342,41 +342,6 @@ upcall_str_new(const char *cstr, size_t len) {
     return args.retval;
 }
 
-
-
-struct s_str_new_shared_args {
-    rust_task *task;
-    const char *cstr;
-    size_t len;
-    rust_opaque_box *retval;
-};
-
-extern "C" CDECL void
-upcall_s_str_new_shared(s_str_new_shared_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-
-    size_t str_fill = args->len + 1;
-    size_t str_alloc = str_fill;
-    args->retval = (rust_opaque_box *)
-        task->boxed.malloc(&str_body_tydesc,
-                           str_fill + sizeof(rust_vec));
-    rust_str *str = (rust_str *)args->retval;
-    str->body.fill = str_fill;
-    str->body.alloc = str_alloc;
-    memcpy(&str->body.data, args->cstr, args->len);
-    str->body.data[args->len] = '\0';
-}
-
-extern "C" CDECL rust_opaque_box*
-upcall_str_new_shared(const char *cstr, size_t len) {
-    rust_task *task = rust_get_current_task();
-    s_str_new_shared_args args = { task, cstr, len, 0 };
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_shared);
-    return args.retval;
-}
-
-
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
