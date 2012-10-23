@@ -3,11 +3,11 @@
 
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
-use syntax::ast::{expr_field, expr_struct, ident, item_class, item_impl};
-use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
-use syntax::ast::{provided, required};
+use syntax::ast::{def_variant, expr_field, expr_struct, ident, item_class};
+use syntax::ast::{item_impl, item_trait, local_crate, node_id, pat_struct};
+use syntax::ast::{private, provided, required};
 use syntax::ast_map::{node_item, node_method};
-use ty::ty_class;
+use ty::{ty_class, ty_enum};
 use typeck::{method_map, method_origin, method_param, method_self};
 use typeck::{method_static, method_trait};
 
@@ -185,6 +185,30 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                                 field in struct literal");
                                     check_field(expr.span, id,
                                                 field.node.ident);
+                                }
+                            }
+                        }
+                        ty_enum(id, _) => {
+                            if id.crate != local_crate ||
+                                    !privileged_items.contains(&(id.node)) {
+                                match tcx.def_map.get(expr.id) {
+                                    def_variant(_, variant_id) => {
+                                        for fields.each |field| {
+                                                debug!("(privacy checking) \
+                                                        checking field in \
+                                                        struct variant \
+                                                        literal");
+                                            check_field(expr.span, variant_id,
+                                                        field.node.ident);
+                                        }
+                                    }
+                                    _ => {
+                                        tcx.sess.span_bug(expr.span,
+                                                          ~"resolve didn't \
+                                                            map enum struct \
+                                                            constructor to a \
+                                                            variant def");
+                                    }
                                 }
                             }
                         }
