@@ -642,7 +642,7 @@ pub mod tests {
         // Have to get rid of our reference before blocking.
         { let _x = move x; } // FIXME(#3161) util::ignore doesn't work here
         let res = option::swap_unwrap(&mut res);
-        future::get(&res);
+        res.recv();
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -657,7 +657,7 @@ pub mod tests {
         }
         assert unwrap_exclusive(move x) == ~~"hello";
         let res = option::swap_unwrap(&mut res);
-        future::get(&res);
+        res.recv();
     }
 
     #[test] #[ignore(cfg(windows))]

@@ -7,7 +7,7 @@ fn main() {
     task::task().future_result(|+r| { result = Some(move r); }).spawn(child);
     error!("1");
     yield();
-    future::get(&option::unwrap(move result));
+    option::unwrap(move result).recv();
 }
 
 fn child() { error!("2"); }

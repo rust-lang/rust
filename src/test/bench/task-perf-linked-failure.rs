@@ -33,7 +33,7 @@ fn spawn_supervised_blocking(myname: &str, +f: fn~()) {
     let mut res = None;
     task::task().future_result(|+r| res = Some(move r)).supervised().spawn(move f);
     error!("%s group waiting", myname);
-    let x = future::get(&option::unwrap(move res));
+    let x = option::unwrap(move res).recv();
     assert x == task::Success;
 }
 

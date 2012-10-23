@@ -10,7 +10,7 @@ fn main() {
     error!("2");
     yield();
     error!("3");
-    future::get(&option::unwrap(move result));
+    option::unwrap(move result).recv();
 }
 
 fn child() {
