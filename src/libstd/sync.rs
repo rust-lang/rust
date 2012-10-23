@@ -768,7 +768,7 @@ mod tests {
     #[test]
     fn test_mutex_lock() {
         // Unsafely achieve shared state, and do the textbook
-        // "load tmp <- ptr; inc tmp; store ptr <- tmp" dance.
+        // "load tmp = move ptr; inc tmp; store ptr <- tmp" dance.
         let (c,p) = pipes::stream();
         let m = ~Mutex();
         let m2 = ~m.clone();

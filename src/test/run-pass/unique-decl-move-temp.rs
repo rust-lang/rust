@@ -1,4 +1,4 @@
 fn main() {
-    let i <- ~100;
+    let i = move ~100;
     assert *i == 100;
 }

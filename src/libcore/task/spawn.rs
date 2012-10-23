@@ -67,7 +67,7 @@ use rt::rust_task;
 use rt::rust_closure;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
+    { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
 )
 
 type TaskSet = send_map::linear::LinearMap<*rust_task,()>;
@@ -168,10 +168,10 @@ fn each_ancestor(list:        &mut AncestorList,
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
-            *list <- option::unwrap(move coalesce_this);
+            *list = move option::unwrap(move coalesce_this);
         } else {
             // No coalesce; restore from tmp. ("next = old_next;")
-            *list <- tmp_list;
+            *list = move tmp_list;
         }
         return early_break;
     }
@@ -265,7 +265,7 @@ fn each_ancestor(list:        &mut AncestorList,
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
-            *parent_group <- Some(move tmp_arc);
+            *parent_group = move Some(move tmp_arc);
             move result
         }
     }
@@ -480,7 +480,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         if tmp.is_some() {
             let ancestor_arc = option::unwrap(move tmp);
             let result = ancestor_arc.clone();
-            **ancestors <- Some(move ancestor_arc);
+            **ancestors = move Some(move ancestor_arc);
             AncestorList(Some(move result))
         } else {
             AncestorList(None)

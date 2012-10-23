@@ -5,7 +5,7 @@ fn add_int(x: &mut ints, v: int) {
     let mut values = ~[];
     x.values <-> values;
     values.push(v);
-    x.values <- values;
+    x.values <-> values;
 }
 
 fn iter_ints(x: &ints, f: fn(x: &int) -> bool) {

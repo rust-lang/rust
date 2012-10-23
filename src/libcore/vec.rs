@@ -399,10 +399,10 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         let mut rr;
         {
             let vv = raw::to_ptr(vv);
-            rr <- *vv;
+            rr = move *vv;
 
             for uint::range(1, ln) |i| {
-                let r <- *ptr::offset(vv, i);
+                let r = move *ptr::offset(vv, i);
                 v.push(move r);
             }
         }
@@ -424,7 +424,7 @@ pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
 
     do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
-            let x <- *ptr::offset(p, i);
+            let x = move *ptr::offset(p, i);
             f(i, move x);
         }
     }
@@ -515,7 +515,7 @@ pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
     unsafe {
         do as_imm_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                let x <- *ptr::offset(p, i);
+                let x = move *ptr::offset(p, i);
                 push(v, move x);
             }
         }
@@ -530,7 +530,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                let _dropped <- *ptr::offset(p, i);
+                let _dropped = move *ptr::offset(p, i);
             }
             raw::set_len(v, newlen);
         }
@@ -553,12 +553,12 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
             // last_written < next_to_read < ln
             if *ptr::mut_offset(p, next_to_read) ==
                 *ptr::mut_offset(p, last_written) {
-                let _dropped <- *ptr::mut_offset(p, next_to_read);
+                let _dropped = move *ptr::mut_offset(p, next_to_read);
             } else {
                 last_written += 1;
                 // last_written <= next_to_read < ln
                 if next_to_read != last_written {
-                    *ptr::mut_offset(p, last_written) <-
+                    *ptr::mut_offset(p, last_written) = move
                         *ptr::mut_offset(p, next_to_read);
                 }
             }
@@ -575,7 +575,7 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
 // Appending
 #[inline(always)]
 pub pure fn append<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
-    let mut v <- lhs;
+    let mut v = move lhs;
     unsafe {
         v.push_all(rhs);
     }
@@ -584,7 +584,7 @@ pub pure fn append<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
 
 #[inline(always)]
 pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
-    let mut v <- lhs;
+    let mut v = move lhs;
     unsafe { v.push(move x); }
     move v
 }
@@ -1052,9 +1052,9 @@ pub fn swap<T>(v: &[mut T], a: uint, b: uint) {
 
 /// Reverse the order of elements in a vector, in place
 pub fn reverse<T>(v: &[mut T]) {
-    let mut i: uint = 0u;
+    let mut i: uint = 0;
     let ln = len::<T>(v);
-    while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
+    while i < ln / 2 { v[i] <-> v[ln - i - 1]; i += 1; }
 }
 
 /// Returns a vector with the order of elements reversed

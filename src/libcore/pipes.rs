@@ -86,7 +86,7 @@ use option::unwrap;
 const SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of(&($x)); move y } }
+    { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
 )
 
 #[doc(hidden)]
@@ -363,7 +363,7 @@ pub fn send<T: Send, Tbuffer: Send>(p: SendPacketBuffered<T, Tbuffer>,
     let p = unsafe { &*p_ };
     assert ptr::addr_of(&(p.header)) == header;
     assert p.payload.is_none();
-    p.payload <- Some(move payload);
+    p.payload = move Some(move payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
     match old_state {
         Empty => {
@@ -708,7 +708,7 @@ pub fn select<T: Send, Tb: Send>(endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining <- endpoints;
+    let mut remaining = move endpoints;
     let port = remaining.swap_remove(ready);
     let result = try_recv(move port);
     (ready, move result, move remaining)

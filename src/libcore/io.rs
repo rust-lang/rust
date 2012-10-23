@@ -698,7 +698,7 @@ pub struct BytesWriter {
 impl BytesWriter: Writer {
     fn write(v: &[const u8]) {
         do self.bytes.swap |bytes| {
-            let mut bytes <- bytes;
+            let mut bytes = move bytes;
             let v_len = v.len();
             let bytes_len = bytes.len();
 

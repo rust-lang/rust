@@ -2,7 +2,7 @@
 
 Idea: provide functions for 'exhaustive' and 'random' modification of vecs.
 
-  two functions, "return all edits" and "return a random edit" <--
+  two functions, "return all edits" and "return a random edit" = move-
     leaning toward this model or two functions, "return the number of
     possible edits" and "return edit #n"
 

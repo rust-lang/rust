@@ -7,7 +7,7 @@ mod a1 {
         #[legacy_exports];
         //
         use a2::b1::*;
-        //         <-\
+        //         = move\
         export word_traveler; //           |
     }
     //           |
@@ -15,7 +15,7 @@ mod a1 {
         #[legacy_exports];
         //           |
         use a2::b2::*;
-        // <-\  -\   |
+        // = move\  -\   |
         export word_traveler; //   |   |   |
     } //   |   |   |
 }
@@ -30,7 +30,7 @@ mod a2 {
         #[legacy_exports];
         //   |   |   |
         use a1::b2::*;
-        //   | <-/  -/
+        //   | = move/  -/
         export word_traveler; //   |
     }
     //   |

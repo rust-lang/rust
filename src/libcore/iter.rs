@@ -128,7 +128,7 @@ pub pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
 pub pure fn foldl<A,B,IA:BaseIter<A>>(self: &IA, b0: B,
                                       blk: fn(&B, &A) -> B)
     -> B {
-    let mut b <- b0;
+    let mut b = move b0;
     for self.each |a| {
         b = blk(&b, a);
     }

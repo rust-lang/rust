@@ -6,7 +6,7 @@ struct r {
 }
 
 fn main() {
-    let i <- ~r { b: true };
+    let i = move ~r { b: true };
     let j = i;
     log(debug, i);
 }

@@ -51,7 +51,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  */
 #[inline(always)]
 pub fn replace<T>(dest: &mut T, src: T) -> T {
-    let mut tmp <- src;
+    let mut tmp = move src;
     swap(dest, &mut tmp);
     move tmp
 }

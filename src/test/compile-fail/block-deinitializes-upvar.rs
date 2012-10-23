@@ -4,5 +4,5 @@ fn main() {
     let mut x = @{x: 17, y: 2};
     let y = @{x: 5, y: 5};
 
-    force(|| x <- y );
+    force(|| x = move y );
 }

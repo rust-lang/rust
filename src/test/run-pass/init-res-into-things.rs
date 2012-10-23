@@ -15,7 +15,7 @@ fn r(i: @mut int) -> r {
 fn test_box() {
     let i = @mut 0;
     {
-        let a <- @r(i);
+        let a = move @r(i);
     }
     assert *i == 1;
 }
@@ -23,7 +23,7 @@ fn test_box() {
 fn test_rec() {
     let i = @mut 0;
     {
-        let a <- {x: r(i)};
+        let a = move {x: r(i)};
     }
     assert *i == 1;
 }
@@ -35,7 +35,7 @@ fn test_tag() {
 
     let i = @mut 0;
     {
-        let a <- t0(r(i));
+        let a = move t0(r(i));
     }
     assert *i == 1;
 }
@@ -43,7 +43,7 @@ fn test_tag() {
 fn test_tup() {
     let i = @mut 0;
     {
-        let a <- (r(i), 0);
+        let a = move (r(i), 0);
     }
     assert *i == 1;
 }
@@ -51,7 +51,7 @@ fn test_tup() {
 fn test_unique() {
     let i = @mut 0;
     {
-        let a <- ~r(i);
+        let a = move ~r(i);
     }
     assert *i == 1;
 }
@@ -59,7 +59,7 @@ fn test_unique() {
 fn test_box_rec() {
     let i = @mut 0;
     {
-        let a <- @{
+        let a = move @{
             x: r(i)
         };
     }
