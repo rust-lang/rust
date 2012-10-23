@@ -1388,7 +1388,7 @@ declaring a function-local item.
 
 ~~~~~~~~{.ebnf .gram}
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
-init : [ '=' | '<-' ] expr ;
+init : [ '=' ] expr ;
 ~~~~~~~~
 
 A _slot declaration_ introduces a new set of slots, given by a pattern.
@@ -1795,7 +1795,7 @@ as
 == !=
 &&
 ||
-= <- <->
+= <->
 ~~~~
 
 Operators at the same precedence level are evaluated left-to-right.
@@ -2507,7 +2507,7 @@ let a: List<int> = Cons(7, @Cons(13, @Nil));
 
 > **Note:** Records are not nominal types, thus do not directly support recursion, visibility control,
 > out-of-order field initialization, or coherent trait implementation.
-> Records are therefore deprecared and will be removed in future versions of Rust.
+> Records are therefore deprecated and will be removed in future versions of Rust.
 > [Structure types](#structure-types) should be used instead.
 
 The record type-constructor forms a new heterogeneous product of values.
