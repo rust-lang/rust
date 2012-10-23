@@ -394,8 +394,8 @@ fn MergeState<T>() -> MergeState<T> {
     }
 }
 
-impl<T: Ord> &MergeState<T> {
-    fn binarysort(array: &[mut T], start: uint) {
+impl<T: Ord> MergeState<T> {
+    fn binarysort(&self, array: &[mut T], start: uint) {
         let size = array.len();
         let mut start = start;
         assert start <= size;
@@ -434,12 +434,12 @@ impl<T: Ord> &MergeState<T> {
         self.last_bsort = false;
     }
 
-    fn push_run(run_base: uint, run_len: uint) {
+    fn push_run(&self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
     }
 
-    fn merge_at(n: uint, array: &[mut T]) {
+    fn merge_at(&self, n: uint, array: &[mut T]) {
         let mut size = self.runs.len();
         assert size >= 2;
         assert n == size-2 || n == size-3;
@@ -483,7 +483,7 @@ impl<T: Ord> &MergeState<T> {
         self.mergePt = 0;
     }
 
-    fn merge_lo(array: &[mut T], base1: uint, len1: uint,
+    fn merge_lo(&self, array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
@@ -619,7 +619,7 @@ impl<T: Ord> &MergeState<T> {
         unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
-    fn merge_hi(array: &[mut T], base1: uint, len1: uint,
+    fn merge_hi(&self, array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
@@ -762,7 +762,7 @@ impl<T: Ord> &MergeState<T> {
         unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
-    fn merge_collapse(array: &[mut T]) {
+    fn merge_collapse(&self, array: &[mut T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             let chk = do self.runs.borrow |arr| {
@@ -780,7 +780,7 @@ impl<T: Ord> &MergeState<T> {
         }
     }
 
-    fn merge_force_collapse(array: &[mut T]) {
+    fn merge_force_collapse(&self, array: &[mut T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             if n > 0 {
