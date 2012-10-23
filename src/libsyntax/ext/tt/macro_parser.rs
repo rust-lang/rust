@@ -265,13 +265,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     match copy ei.sep {
                       Some(t) if idx == len => { // we need a separator
                         if tok == t { //pass the separator
-                            let ei_t <- ei;
+                            let ei_t = move ei;
                             ei_t.idx += 1;
                             next_eis.push(move ei_t);
                         }
                       }
                       _ => { // we don't need a separator
-                        let ei_t <- ei;
+                        let ei_t = move ei;
                         ei_t.idx = 0;
                         cur_eis.push(move ei_t);
                       }
@@ -297,7 +297,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
                     let matches = vec::map(ei.matches, // fresh, same size:
                                            |_m| DVec::<@named_match>());
-                    let ei_t <- ei;
+                    let ei_t = move ei;
                     cur_eis.push(~{
                         elts: matchers, sep: sep, mut idx: 0u,
                         mut up: matcher_pos_up(Some(move ei_t)),
@@ -308,7 +308,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                   }
                   match_nonterminal(_,_,_) => { bb_eis.push(move ei) }
                   match_tok(t) => {
-                    let ei_t <- ei;
+                    let ei_t = move ei;
                     if t == tok {
                         ei_t.idx += 1;
                         next_eis.push(move ei_t);
