@@ -1205,11 +1205,6 @@ to other tasks. The sending task will give up ownership of the box,
 and won't be able to access it afterwards. The receiving task will
 become the sole owner of the box.
 
-> ***Note:*** This discussion of copying vs. moving does not account
-> for the "last use" rules that automatically promote copy operations
-> to moves. We plan to remove last use from the language in
-> favor of explicit moves.
-
 ## Borrowed pointers
 
 Rust borrowed pointers are a general purpose reference/pointer type,
