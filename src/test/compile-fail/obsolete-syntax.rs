@@ -67,4 +67,12 @@ fn obsolete_fixed_length_vec() {
     //~^ ERROR obsolete syntax: fixed-length vector
 }
 
+fn obsolete_moves() {
+    let mut x = 0;
+    let y <- x;
+    //~^ ERROR obsolete syntax: initializer-by-move
+    y <- x; 
+    //~^ ERROR obsolete syntax: binary move
+}
+
 fn main() { }

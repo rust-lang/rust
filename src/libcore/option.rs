@@ -149,7 +149,7 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
 pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
-    let mut opt <- x;
+    let mut opt = move x;
     while opt.is_some() {
         opt = blk(unwrap(move opt));
     }

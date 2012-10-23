@@ -13,7 +13,7 @@ fn complainer(c: @int) -> complainer {
 }
 
 fn f() {
-    let c <- complainer(@0);
+    let c = move complainer(@0);
     fail;
 }
 

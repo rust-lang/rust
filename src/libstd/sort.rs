@@ -15,7 +15,7 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
 pub fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     type Slice = (uint, uint);
 
-    return merge_sort_(le, v, (0u, len(v)));
+    return merge_sort_(le, v, (0, len(v)));
 
     fn merge_sort_<T: Copy>(le: Le<T>, v: &[const T], slice: Slice)
         -> ~[T] {
@@ -23,10 +23,10 @@ pub fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
         let end = slice.second();
 
         let v_len = end - begin;
-        if v_len == 0u { return ~[]; }
-        if v_len == 1u { return ~[v[begin]]; }
+        if v_len == 0 { return ~[]; }
+        if v_len == 1 { return ~[v[begin]]; }
 
-        let mid = v_len / 2u + begin;
+        let mid = v_len / 2 + begin;
         let a = (begin, mid);
         let b = (mid, end);
         return merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
@@ -35,14 +35,14 @@ pub fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     fn merge<T: Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = vec::with_capacity(len(a) + len(b));
         let a_len = len(a);
-        let mut a_ix = 0u;
+        let mut a_ix = 0;
         let b_len = len(b);
-        let mut b_ix = 0u;
+        let mut b_ix = 0;
         while a_ix < a_len && b_ix < b_len {
             if le(&a[a_ix], &b[b_ix]) {
                 rs.push(a[a_ix]);
-                a_ix += 1u;
-            } else { rs.push(b[b_ix]); b_ix += 1u; }
+                a_ix += 1;
+            } else { rs.push(b[b_ix]); b_ix += 1; }
         }
         rs = vec::append(rs, vec::slice(a, a_ix, a_len));
         rs = vec::append(rs, vec::slice(b, b_ix, b_len));
@@ -59,9 +59,9 @@ fn part<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
     while i < right {
         if compare_func(&arr[i], &pivot_value) {
             arr[i] <-> arr[storage_index];
-            storage_index += 1u;
+            storage_index += 1;
         }
-        i += 1u;
+        i += 1;
     }
     arr[storage_index] <-> arr[right];
     return storage_index;
@@ -70,13 +70,13 @@ fn part<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
 fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
              right: uint) {
     if right > left {
-        let pivot = (left + right) / 2u;
+        let pivot = (left + right) / 2;
         let new_pivot = part::<T>(compare_func, arr, left, right, pivot);
-        if new_pivot != 0u {
+        if new_pivot != 0 {
             // Need to do this check before recursing due to overflow
-            qsort::<T>(compare_func, arr, left, new_pivot - 1u);
+            qsort::<T>(compare_func, arr, left, new_pivot - 1);
         }
-        qsort::<T>(compare_func, arr, new_pivot + 1u, right);
+        qsort::<T>(compare_func, arr, new_pivot + 1, right);
     }
 }
 
@@ -87,8 +87,8 @@ fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
  * This is an unstable sort.
  */
 pub fn quick_sort<T: Copy>(compare_func: Le<T>, arr: &[mut T]) {
-    if len::<T>(arr) == 0u { return; }
-    qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
+    if len::<T>(arr) == 0 { return; }
+    qsort::<T>(compare_func, arr, 0, len::<T>(arr) - 1);
 }
 
 fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
@@ -167,11 +167,11 @@ mod test_qsort3 {
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
-        let mut i = 0u;
+        let mut i = 0;
         while i < len {
             log(debug, v2[i]);
             assert (v2[i] == v1[i]);
-            i += 1u;
+            i += 1;
         }
     }
 
@@ -208,11 +208,11 @@ mod test_qsort {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(leual, v1);
-        let mut i = 0u;
+        let mut i = 0;
         while i < len {
             log(debug, v2[i]);
             assert (v2[i] == v1[i]);
-            i += 1u;
+            i += 1;
         }
     }
 
@@ -270,11 +270,11 @@ mod tests {
         pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(f, v1);
-        let mut i = 0u;
+        let mut i = 0;
         while i < len {
             log(debug, v3[i]);
             assert (v3[i] == v2[i]);
-            i += 1u;
+            i += 1;
         }
     }
 

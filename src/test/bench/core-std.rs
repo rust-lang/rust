@@ -1,3 +1,4 @@
+// xfail-pretty
 // Microbenchmarks for various functions in core and std
 
 extern mod std;

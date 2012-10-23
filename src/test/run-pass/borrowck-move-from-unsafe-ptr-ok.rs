@@ -2,7 +2,7 @@
 
 fn bar(x: *~int) -> ~int {
     unsafe {
-        let y <- *x;
+        let y = move *x;
         return y;
     }
 }

@@ -3,7 +3,7 @@
 fn id(x: bool) -> bool { x }
 
 fn call_id() {
-    let c <- fail;
+    let c = move fail;
     id(c);
 }
 

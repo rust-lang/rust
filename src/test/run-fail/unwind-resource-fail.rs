@@ -8,5 +8,5 @@ class r {
 
 fn main() {
     @0;
-    let r <- r(0);
+    let r = move r(0);
 }

@@ -173,7 +173,7 @@ pub mod chained {
                 entry.next = new_chains[idx];
                 new_chains[idx] = Some(entry);
             }
-            self.chains <- new_chains;
+            self.chains = move new_chains;
         }
 
         pure fn each_entry(blk: fn(@Entry<K,V>) -> bool) {

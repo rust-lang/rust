@@ -99,7 +99,7 @@ pub fn clone<T: Const Send>(rc: &ARC<T>) -> ARC<T> {
  * guaranteed to deadlock.
  */
 fn unwrap<T: Const Send>(rc: ARC<T>) -> T {
-    let ARC { x: x } <- rc;
+    let ARC { x: x } = move rc;
     unsafe { unwrap_shared_mutable_state(move x) }
 }
 
@@ -192,9 +192,9 @@ impl<T: Send> &MutexARC<T> {
  */
 // FIXME(#3724) make this a by-move method on the arc
 pub fn unwrap_mutex_arc<T: Send>(arc: MutexARC<T>) -> T {
-    let MutexARC { x: x } <- arc;
+    let MutexARC { x: x } = move arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
-    let MutexARCInner { failed: failed, data: data, _ } <- inner;
+    let MutexARCInner { failed: failed, data: data, _ } = move inner;
     if failed {
         fail ~"Can't unwrap poisoned MutexARC - another task failed inside!"
     }
@@ -347,7 +347,7 @@ impl<T: Const Send> &RWARC<T> {
     fn downgrade(token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
-        let RWWriteMode((data, t, _poison)) <- token;
+        let RWWriteMode((data, t, _poison)) = move token;
         // Let readers in
         let new_token = (&state.lock).downgrade(move t);
         // Whatever region the input reference had, it will be safe to use
@@ -370,9 +370,9 @@ impl<T: Const Send> &RWARC<T> {
  */
 // FIXME(#3724) make this a by-move method on the arc
 pub fn unwrap_rw_arc<T: Const Send>(arc: RWARC<T>) -> T {
-    let RWARC { x: x, _ } <- arc;
+    let RWARC { x: x, _ } = move arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
-    let RWARCInner { failed: failed, data: data, _ } <- inner;
+    let RWARCInner { failed: failed, data: data, _ } = move inner;
     if failed {
         fail ~"Can't unwrap poisoned RWARC - another task failed inside!"
     }

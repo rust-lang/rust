@@ -16,7 +16,7 @@ fn complainer(c: comm::Chan<bool>) -> complainer {
 }
 
 fn f(c: comm::Chan<bool>) {
-    let _c <- complainer(c);
+    let _c = move complainer(c);
     fail;
 }
 

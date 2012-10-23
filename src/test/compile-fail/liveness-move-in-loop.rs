@@ -7,8 +7,11 @@ fn main() {
         loop {
             loop {
                 loop {
-                    x <- y; //~ ERROR use of moved variable
+// tjc: Not sure why it prints the same error twice
+                    x = move y; //~ ERROR use of moved variable
                     //~^ NOTE move of variable occurred here
+                    //~^^ ERROR use of moved variable
+                    //~^^^ NOTE move of variable occurred here
 
                     copy x;
                 }

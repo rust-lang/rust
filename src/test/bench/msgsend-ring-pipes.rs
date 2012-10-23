@@ -24,7 +24,7 @@ proto! ring (
 fn macros() {
     #macro[
         [#move_out[x],
-         unsafe { let y <- *ptr::addr_of(&x); move y }]
+         unsafe { let y = move *ptr::addr_of(&x); move y }]
     ];
 }
 
@@ -32,8 +32,8 @@ fn thread_ring(i: uint,
                count: uint,
                +num_chan: ring::client::num,
                +num_port: ring::server::num) {
-    let mut num_chan <- Some(move num_chan);
-    let mut num_port <- Some(move num_port);
+    let mut num_chan = move Some(move num_chan);
+    let mut num_port = move Some(move num_port);
     // Send/Receive lots of messages.
     for uint::range(0, count) |j| {
         //error!("task %?, iter %?", i, j);
