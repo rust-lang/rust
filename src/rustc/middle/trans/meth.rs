@@ -306,7 +306,8 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
+          ast_map::node_item(@{node: ast::item_impl(_, _, _, Some(ms)), _},
+                             _) => {
             method_from_methods(ms, name)
           }
           ast_map::node_item(@{node:

@@ -89,6 +89,7 @@ mod middle {
         #[legacy_exports]
         mod reachable;
         mod machine;
+        mod deriving;
     }
     #[legacy_exports]
     mod ty;
@@ -146,6 +147,7 @@ mod middle {
         mod collect;
         #[legacy_exports]
         mod coherence;
+        mod deriving;
     }
     #[legacy_exports]
     mod check_loop;

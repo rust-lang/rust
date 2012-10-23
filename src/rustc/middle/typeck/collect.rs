@@ -463,7 +463,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
                                ty_params, rp);
       }
-      ast::item_impl(tps, trait_ref, selfty, ms) => {
+      ast::item_impl(tps, trait_ref, selfty, ms_opt) => {
         let i_bounds = ty_param_bounds(ccx, tps);
         let selfty = ccx.to_ty(type_rscope(rp), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
@@ -472,9 +472,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            region_param: rp,
                            ty: selfty});
 
-        let cms = convert_methods(ccx, ms, rp, i_bounds);
-        for trait_ref.each |t| {
-            check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
+        for ms_opt.each |ms| {
+            let cms = convert_methods(ccx, *ms, rp, i_bounds);
+            for trait_ref.each |t| {
+                check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
+            }
         }
       }
       ast::item_trait(tps, supertraits, trait_methods) => {

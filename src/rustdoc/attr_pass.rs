@@ -221,11 +221,17 @@ fn merge_method_attrs(
             })
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, methods), _
+            node: ast::item_impl(_, _, _, methods_opt), _
           }, _) => {
-            vec::map(methods, |method| {
-                (to_str(method.ident), attr_parser::parse_desc(method.attrs))
-            })
+            match methods_opt {
+                None => ~[],
+                Some(methods) => {
+                    vec::map(methods, |method| {
+                        (to_str(method.ident),
+                         attr_parser::parse_desc(method.attrs))
+                    })
+                }
+            }
           }
           _ => fail ~"unexpected item"
         }

@@ -90,12 +90,14 @@ fn traverse_public_item(cx: ctx, item: @item) {
             traverse_inline_body(cx, blk);
         }
       }
-      item_impl(tps, _, _, ms) => {
-        for vec::each(ms) |m| {
-            if tps.len() > 0u || m.tps.len() > 0u ||
-               attr::find_inline_attr(m.attrs) != attr::ia_none {
-                cx.rmap.insert(m.id, ());
-                traverse_inline_body(cx, m.body);
+      item_impl(tps, _, _, ms_opt) => {
+        for ms_opt.each |ms| {
+            for vec::each(*ms) |m| {
+                if tps.len() > 0u || m.tps.len() > 0u ||
+                   attr::find_inline_attr(m.attrs) != attr::ia_none {
+                    cx.rmap.insert(m.id, ());
+                    traverse_inline_body(cx, m.body);
+                }
             }
         }
       }

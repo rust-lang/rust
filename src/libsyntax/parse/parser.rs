@@ -2603,13 +2603,20 @@ impl Parser {
             None
         };
 
-        let mut meths = ~[];
-        self.expect(token::LBRACE);
-        while !self.eat(token::RBRACE) {
-            let vis = self.parse_visibility();
-            meths.push(self.parse_method(vis));
+        let meths_opt;
+        if self.eat(token::SEMI) {
+            meths_opt = None;
+        } else {
+            let mut meths = ~[];
+            self.expect(token::LBRACE);
+            while !self.eat(token::RBRACE) {
+                let vis = self.parse_visibility();
+                meths.push(self.parse_method(vis));
+            }
+            meths_opt = Some(move meths);
         }
-        (ident, item_impl(tps, opt_trait, ty, meths), None)
+
+        (ident, item_impl(tps, opt_trait, ty, meths_opt), None)
     }
 
     // Instantiates ident <i> with references to <typarams> as arguments.
