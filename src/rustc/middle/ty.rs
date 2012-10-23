@@ -374,7 +374,9 @@ type ctxt =
       lang_items: middle::lang_items::LanguageItems,
       legacy_boxed_traits: HashMap<node_id, ()>,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
-      supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>};
+      supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
+      deriving_struct_methods: HashMap<ast::def_id,
+                                       @~[typeck::method_origin]>};
 
 enum tbox_flag {
     has_params = 1,
@@ -901,7 +903,8 @@ fn mk_ctxt(s: session::Session,
       lang_items: move lang_items,
       legacy_boxed_traits: HashMap(),
       provided_method_sources: HashMap(),
-      supertraits: HashMap()}
+      supertraits: HashMap(),
+      deriving_struct_methods: HashMap()}
 }
 
 

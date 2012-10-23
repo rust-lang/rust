@@ -591,6 +591,32 @@ impl CoherenceChecker {
         return trait_id;
     }
 
+    fn add_automatically_derived_methods_from_trait(
+        all_methods: &mut ~[@MethodInfo], trait_did: def_id, self_ty: ty::t) {
+        let tcx = self.crate_context.tcx;
+        for (*ty::trait_methods(tcx, trait_did)).each |method| {
+            // Generate a def ID for each node.
+            let new_def_id = local_def(tcx.sess.next_node_id());
+            all_methods.push(@{
+                did: new_def_id,
+                n_tps: method.tps.len(),
+                ident: method.ident,
+                self_type: method.self_ty
+            });
+
+            // Additionally, generate the type for the derived method and add
+            // it to the type cache.
+            //
+            // XXX: Handle generics correctly.
+            let substs = { self_r: None, self_ty: Some(self_ty), tps: ~[] };
+            tcx.tcache.insert(new_def_id, {
+                bounds: @~[],
+                region_param: None,
+                ty: ty::subst(tcx, &substs, ty::mk_fn(tcx, method.fty))
+            });
+        }
+    }
+
     // Converts an implementation in the AST to an Impl structure.
     fn create_impl_from_item(item: @item) -> @Impl {
         fn add_provided_methods(all_methods: &mut ~[@MethodInfo],
@@ -605,11 +631,29 @@ impl CoherenceChecker {
         }
 
         match item.node {
-            item_impl(_, trait_refs, _, ast_methods) => {
+            item_impl(_, trait_refs, _, ast_methods_opt) => {
                 let mut methods = ~[];
 
-                for ast_methods.each |ast_method| {
-                    methods.push(method_to_MethodInfo(*ast_method));
+                match ast_methods_opt {
+                    Some(ast_methods) => {
+                        for ast_methods.each |ast_method| {
+                            methods.push(method_to_MethodInfo(*ast_method));
+                        }
+                    }
+                    None => {
+                        // This is a "deriving" impl. For each trait, collect
+                        // all the "required" methods and add them to the
+                        // Impl structure.
+                        let tcx = self.crate_context.tcx;
+                        let self_ty =
+                            ty::lookup_item_type(tcx, local_def(item.id));
+                        for trait_refs.each |trait_ref| {
+                            let trait_did =
+                                self.trait_ref_to_trait_def_id(*trait_ref);
+                            self.add_automatically_derived_methods_from_trait(
+                                &mut methods, trait_did, self_ty.ty);
+                        }
+                    }
                 }
 
                 // For each trait that the impl implements, see what
@@ -617,7 +661,6 @@ impl CoherenceChecker {
                 // if a method of that name is not inherent to the
                 // impl, use the provided definition in the trait.
                 for trait_refs.each |trait_ref| {
-
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
 

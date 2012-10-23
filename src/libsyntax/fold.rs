@@ -248,11 +248,13 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             let struct_def = fold_struct_def(struct_def, fld);
               item_class(struct_def, /* FIXME (#2543) */ copy typms)
           }
-          item_impl(tps, ifce, ty, methods) => {
+          item_impl(tps, ifce, ty, ref methods_opt) => {
               item_impl(fold_ty_params(tps, fld),
                         ifce.map(|p| fold_trait_ref(*p, fld)),
                         fld.fold_ty(ty),
-                        vec::map(methods, |x| fld.fold_method(*x)))
+                        option::map(methods_opt,
+                                    |methods| vec::map(
+                                        *methods, |x| fld.fold_method(*x))))
           }
           item_trait(tps, traits, methods) => {
             item_trait(fold_ty_params(tps, fld),

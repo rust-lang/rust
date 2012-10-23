@@ -142,14 +142,16 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         visit_enum_def(enum_definition, tps, e, v);
       }
-      item_impl(tps, traits, ty, methods) => {
+      item_impl(tps, traits, ty, methods_opt) => {
         v.visit_ty_params(tps, e, v);
         for traits.each |p| {
             visit_path(p.path, e, v);
         }
         v.visit_ty(ty, e, v);
-        for methods.each |m| {
-            visit_method_helper(*m, e, v)
+        for methods_opt.each |methods| {
+            for methods.each |m| {
+                visit_method_helper(*m, e, v)
+            }
         }
       }
       item_class(struct_def, tps) => {
