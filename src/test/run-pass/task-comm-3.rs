@@ -53,7 +53,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for results.each |r| { future::get(r); }
+    for results.each |r| { r.recv(); }
 
     debug!("Completed: Final number is: ");
     log(error, sum);

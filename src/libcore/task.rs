@@ -314,7 +314,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(blk: fn(v: future::Future<TaskResult>)) -> TaskBuilder {
+    fn future_result(blk: fn(v: Port<TaskResult>)) -> TaskBuilder {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -327,9 +327,7 @@ impl TaskBuilder {
         // Construct the future and give it to the caller.
         let (notify_pipe_ch, notify_pipe_po) = stream::<TaskResult>();
 
-        blk(do future::from_fn |move notify_pipe_po| {
-            notify_pipe_po.recv()
-        });
+        blk(move notify_pipe_po);
 
         // Reconfigure self to use a notify channel.
         TaskBuilder({
@@ -482,7 +480,7 @@ impl TaskBuilder {
         do fr_task_builder.spawn |move f| {
             comm::send(ch, f());
         }
-        match future::get(&option::unwrap(move result)) {
+        match option::unwrap(move result).recv() {
             Success => result::Ok(comm::recv(po)),
             Failure => result::Err(())
         }
@@ -899,14 +897,14 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut result = None;
     do task().future_result(|+r| { result = Some(move r); }).spawn { }
-    assert future::get(&option::unwrap(move result)) == Success;
+    assert option::unwrap(move result).recv() == Success;
 
     result = None;
     do task().future_result(|+r|
         { result = Some(move r); }).unlinked().spawn {
         fail;
     }
-    assert future::get(&option::unwrap(move result)) == Failure;
+    assert option::unwrap(move result).recv() == Failure;
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]

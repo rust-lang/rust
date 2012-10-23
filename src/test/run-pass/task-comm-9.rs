@@ -30,7 +30,7 @@ fn test00() {
         i += 1;
     }
 
-    future::get(&option::unwrap(move result));
+    option::unwrap(move result).recv();
 
     assert (sum == number_of_messages * (number_of_messages - 1) / 2);
 }
