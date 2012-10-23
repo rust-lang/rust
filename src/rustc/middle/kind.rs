@@ -264,7 +264,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         };
         if vec::len(*ts) != vec::len(*bounds) {
             // Fail earlier to make debugging easier
-            fail fmt!("Internal error: in kind::check_expr, length \
+            fail fmt!("internal error: in kind::check_expr, length \
                        mismatch between actual and declared bounds: actual = \
                         %s (%u tys), declared = %? (%u tys)",
                       tys_to_str(cx.tcx, *ts), ts.len(),
@@ -279,29 +279,29 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(Some(ex)) => {
-        maybe_copy(cx, ex, Some(("Returned values must be copyable",
+        maybe_copy(cx, ex, Some(("returned values must be copyable",
                                  try_adding)));
       }
       expr_cast(source, _) => {
-        maybe_copy(cx, source, Some(("Casted values must be copyable",
+        maybe_copy(cx, source, Some(("casted values must be copyable",
                                      try_adding)));
         check_cast_for_escaping_regions(cx, source, e);
       }
       expr_copy(expr) => check_copy_ex(cx, expr, false,
-          Some(("Explicit copy requires a copyable argument", ""))),
+          Some(("explicit copy requires a copyable argument", ""))),
       // Vector add copies, but not "implicitly"
       expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false,
-                                   Some(("Assignment with operation requires \
+                                   Some(("assignment with operation requires \
                                           a copyable argument", ""))),
       expr_binary(add, ls, rs) => {
-        let reason = Some(("Binary operators require copyable arguments",
+        let reason = Some(("binary operators require copyable arguments",
                            ""));
         check_copy_ex(cx, ls, false, reason);
         check_copy_ex(cx, rs, false, reason);
       }
       expr_rec(fields, def) | expr_struct(_, fields, def) => {
         for fields.each |field| { maybe_copy(cx, field.node.expr,
-                                   Some(("Record or struct fields require \
+                                   Some(("record or struct fields require \
                                           copyable arguments", ""))); }
         match def {
           Some(ex) => {
@@ -327,13 +327,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       }
       expr_tup(exprs) | expr_vec(exprs, _) => {
         for exprs.each |expr| { maybe_copy(cx, *expr,
-                    Some(("Tuple or vec elements must be copyable", ""))); }
+                    Some(("tuple or vec elements must be copyable", ""))); }
       }
       expr_call(f, args, _) => {
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).eachi |i, arg_t| {
             match ty::arg_mode(cx.tcx, *arg_t) {
               by_copy => maybe_copy(cx, args[i],
-                     Some(("Callee takes its argument by copy", ""))),
+                     Some(("callee takes its argument by copy", ""))),
               by_ref | by_val | by_move => ()
             }
         }
@@ -345,7 +345,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             Some(ref mme) => {
                 match ty::arg_mode(cx.tcx, mme.self_arg) {
                     by_copy => maybe_copy(cx, lhs,
-                      Some(("Method call takes its self argument by copy",
+                      Some(("method call takes its self argument by copy",
                             ""))),
                     by_ref | by_val | by_move => ()
                 }
@@ -356,12 +356,12 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_repeat(element, count_expr, _) => {
         let count = ty::eval_repeat_count(cx.tcx, count_expr, e.span);
         if count == 1 {
-            maybe_copy(cx, element, Some(("Trivial repeat takes its element \
+            maybe_copy(cx, element, Some(("trivial repeat takes its element \
                                            by copy", "")));
         } else {
             let element_ty = ty::expr_ty(cx.tcx, element);
             check_copy(cx, element.id, element_ty, element.span, true,
-                       Some(("Repeat takes its elements by copy", "")));
+                       Some(("repeat takes its elements by copy", "")));
         }
       }
       _ => { }
@@ -375,7 +375,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
         for locals.each |local| {
             match local.node.init {
               Some({op: init_assign, expr}) =>
-                  maybe_copy(cx, expr, Some(("Initializer statement \
+                  maybe_copy(cx, expr, Some(("initializer statement \
                               takes its right-hand side by copy", ""))),
               _ => {}
             }
