@@ -71,8 +71,12 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X))
+	$(Q)$(call INSTALL,$(HB2),$(PHB),fuzzer$(X))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBFUZZER))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),cargo$(X))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBCARGO))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTDOC))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
@@ -93,6 +97,9 @@ uninstall:
 	$(Q)rm -f $(PHB)/cargo$(X)
 	$(Q)rm -f $(PHB)/rustdoc$(X)
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
+	$(Q)rm -f $(PHL)/$(CFG_FUZZER)
+	$(Q)rm -f $(PHL)/$(CFG_CARGO)
+	$(Q)rm -f $(PHL)/$(CFG_RUSTDOC)
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME)
 	$(Q)for i in \
           $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB)) \
