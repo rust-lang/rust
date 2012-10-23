@@ -489,13 +489,15 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_fn(decl, _, _, body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(_, _, ty, ms) => {
+      ast::item_impl(_, _, ty, ms_opt) => {
         let rp = ccx.tcx.region_paramd_items.find(it.id);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
-        for ms.each |m| {
-            check_method(ccx, *m, self_ty, local_def(it.id));
+        for ms_opt.each |ms| {
+            for ms.each |m| {
+                check_method(ccx, *m, self_ty, local_def(it.id));
+            }
         }
       }
       ast::item_trait(_, _, trait_methods) => {
