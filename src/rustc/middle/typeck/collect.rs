@@ -139,8 +139,17 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                                 output: enum_ty}
                 }));
             }
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
+            ast::tuple_variant_kind(_) => {
                 result_ty = Some(enum_ty);
+            }
+            ast::struct_variant_kind(struct_def) => {
+                result_ty = Some(enum_ty);
+                // XXX: Merge with computation of the the same value below?
+                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
+                           region_param: rp,
+                           ty: enum_ty};
+                convert_struct(
+                    ccx, rp, struct_def, ty_params, tpt, variant.node.id);
             }
             ast::enum_variant_kind(enum_definition) => {
                 get_enum_variant_types(ccx, enum_ty, enum_definition.variants,
