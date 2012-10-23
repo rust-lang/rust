@@ -1310,17 +1310,12 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_copy(e) => { word_space(s, ~"copy"); print_expr(s, e); }
+        // shouldn't parenthesize unless it's needed
       ast::expr_unary_move(e) => {
           popen(s);
           word_space(s, ~"move");
           print_expr(s, e);
           pclose(s);
-      }
-      ast::expr_move(lhs, rhs) => {
-        print_expr(s, lhs);
-        space(s.s);
-        word_space(s, ~"<-");
-        print_expr(s, rhs);
       }
       ast::expr_assign(lhs, rhs) => {
         print_expr(s, lhs);
@@ -1416,8 +1411,7 @@ fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
     let parens = match ex.node {
       ast::expr_fail(_) | ast::expr_ret(_) |
       ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
-      ast::expr_move(_, _) | ast::expr_copy(_) |
-      ast::expr_assign(_, _) |
+      ast::expr_copy(_) | ast::expr_assign(_, _) |
       ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
       ast::expr_log(_, _, _) | ast::expr_assert(_) |
       ast::expr_call(_, _, true) |
@@ -1458,11 +1452,8 @@ fn print_decl(s: ps, decl: @ast::decl) {
             match loc.node.init {
               Some(init) => {
                 nbsp(s);
-                match init.op {
-                  ast::init_assign => word_space(s, ~"="),
-                  ast::init_move => word_space(s, ~"<-")
-                }
-                print_expr(s, init.expr);
+                word_space(s, ~"=");
+                print_expr(s, init);
               }
               _ => ()
             }

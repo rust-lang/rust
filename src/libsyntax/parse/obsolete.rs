@@ -25,6 +25,8 @@ pub enum ObsoleteSyntax {
     ObsoleteModeInFnType,
     ObsoleteByMutRefMode,
     ObsoleteFixedLengthVec,
+    ObsoleteMoveInit,
+    ObsoleteBinaryMove
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -104,6 +106,14 @@ impl Parser : ObsoleteReporter {
                 "fixed-length vector",
                 "Fixed-length types are now written `[T * N]`, and instances \
                  are type-inferred"
+            ),
+            ObsoleteMoveInit => (
+                "initializer-by-move",
+                "Write `let foo = move bar` instead"
+            ),
+            ObsoleteBinaryMove => (
+                "binary move",
+                "Write `foo = move bar` instead"
             )
         };
 

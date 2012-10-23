@@ -116,7 +116,7 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     v.visit_ty(loc.node.ty, e, v);
     match loc.node.init {
       None => (),
-      Some(i) => v.visit_expr(i.expr, e, v)
+      Some(ex) => v.visit_expr(ex, e, v)
     }
 }
 
@@ -442,7 +442,6 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_assign(a, b) => { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_copy(a) => v.visit_expr(a, e, v),
       expr_unary_move(a) => v.visit_expr(a, e, v),
-      expr_move(a, b) => { v.visit_expr(b, e, v); v.visit_expr(a, e, v); }
       expr_swap(a, b) => { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_assign_op(_, a, b) => {
         v.visit_expr(b, e, v);
