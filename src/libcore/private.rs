@@ -581,16 +581,20 @@ pub mod tests {
 
         for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
-            futures.push(future::spawn(|move total| {
+            let (chan, port) = pipes::stream();
+            futures.push(move port);
+
+            do task::spawn |move total, move chan| {
                 for uint::range(0, count) |_i| {
                     do total.with |count| {
                         **count += 1;
                     }
                 }
-            }));
+                chan.send(());
+            }
         };
 
-        for futures.each |f| { f.get() }
+        for futures.each |f| { f.recv() }
 
         do total.with |total| {
             assert **total == num_tasks * count
