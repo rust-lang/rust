@@ -1,6 +1,6 @@
 fn main() {
     let i = ~100;
     let mut j;
-    j <- i;
+    j = move i;
     assert *j == 100;
 }

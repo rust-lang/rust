@@ -72,7 +72,7 @@ pub fn from_vec<A>(v: ~[A]) -> DVec<A> {
 
 /// Consumes the vector and returns its contents
 pub fn unwrap<A>(d: DVec<A>) -> ~[A] {
-    let DVec_({data: v}) <- d;
+    let DVec_({data: v}) = move d;
     move v
 }
 
@@ -150,13 +150,13 @@ impl<A> DVec<A> {
     /// Overwrite the current contents
     fn set(w: ~[A]) {
         self.check_not_borrowed();
-        self.data <- w;
+        self.data = move w;
     }
 
     /// Remove and return the last element
     fn pop() -> A {
         do self.check_out |v| {
-            let mut v <- v;
+            let mut v = move v;
             let result = v.pop();
             self.give_back(move v);
             move result
@@ -171,7 +171,7 @@ impl<A> DVec<A> {
             let data_ptr: *() = cast::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             log(error, ~"a");
-            self.data <- ~[move t];
+            self.data = move ~[move t];
             self.data.push_all_move(move data);
             log(error, ~"b");
         }
@@ -235,7 +235,7 @@ impl<A: Copy> DVec<A> {
     /// Appends elements from `from_idx` to `to_idx` (exclusive)
     fn push_slice(ts: &[const A], from_idx: uint, to_idx: uint) {
         do self.swap |v| {
-            let mut v <- v;
+            let mut v = move v;
             let new_len = vec::len(v) + to_idx - from_idx;
             vec::reserve(&mut v, new_len);
             let mut i = from_idx;
@@ -260,7 +260,7 @@ impl<A: Copy> DVec<A> {
              none { v }
              Some(h) {
                let len = v.len() + h;
-               let mut v <- v;
+               let mut v = move v;
                vec::reserve(v, len);
                v
             }

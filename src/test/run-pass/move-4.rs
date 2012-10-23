@@ -3,9 +3,9 @@ extern mod std;
 
 fn test(foo: @{a: int, b: int, c: int}) -> @{a: int, b: int, c: int} {
     let foo = foo;
-    let bar <- foo;
-    let baz <- bar;
-    let quux <- baz;
+    let bar = move foo;
+    let baz = move bar;
+    let quux = move baz;
     return quux;
 }
 

@@ -562,9 +562,9 @@ impl<T: Send> Exclusive<T> {
 
 // FIXME(#3724) make this a by-move method on the exclusive
 pub fn unwrap_exclusive<T: Send>(arc: Exclusive<T>) -> T {
-    let Exclusive { x: x } <- arc;
+    let Exclusive { x: x } = move arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
-    let ExData { data: data, _ } <- inner;
+    let ExData { data: data, _ } = move inner;
     move data
 }
 

@@ -40,7 +40,7 @@ fn zombiejesus() {
 fn notsure() {
     let mut _x;
     let mut _y = (_x = 0) == (_x = 0);
-    let mut _z = (_x <- 0) < (_x = 0);
+    let mut _z = (_x = move 0) < (_x = 0);
     let _a = (_x += 0) == (_x = 0);
     let _b = (_y <-> _z) == (_y <-> _z);
 }
@@ -63,7 +63,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let evil <- debug!("lincoln"); }
+fn evil_lincoln() { let evil = move debug!("lincoln"); }
 
 fn main() {
     strange();

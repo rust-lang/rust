@@ -16,6 +16,6 @@ fn main() {
     let box = @mut 10;
     fn dec_box(&&i: @mut int) { *i -= 1; }
 
-    { let _i <- finish({val: box, fin: dec_box}); }
+    { let _i = move finish({val: box, fin: dec_box}); }
     assert (*box == 9);
 }

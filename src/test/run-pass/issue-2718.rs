@@ -63,7 +63,7 @@ mod pipes {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         assert (*p).payload.is_none();
-        (*p).payload <- Some(move payload);
+        (*p).payload = move Some(move payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
           empty => {
@@ -205,7 +205,7 @@ mod pingpong {
         let addr : *pipes::send_packet<pong> = match p {
           ping(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
-        let liberated_value <- *addr;
+        let liberated_value = move *addr;
         cast::forget(move p);
         move liberated_value
     }
@@ -214,7 +214,7 @@ mod pingpong {
         let addr : *pipes::send_packet<ping> = match p {
           pong(x) => { cast::transmute(ptr::addr_of(&x)) }
         };
-        let liberated_value <- *addr;
+        let liberated_value = move *addr;
         cast::forget(move p);
         move liberated_value
     }
