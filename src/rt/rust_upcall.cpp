@@ -311,37 +311,6 @@ upcall_validate_box(rust_opaque_box* ptr) {
 
 /**********************************************************************/
 
-struct s_str_new_uniq_args {
-    rust_task *task;
-    const char *cstr;
-    size_t len;
-    rust_str *retval;
-};
-
-extern "C" CDECL void
-upcall_s_str_new_uniq(s_str_new_uniq_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-    args->retval = make_str(task->kernel, args->cstr, args->len,
-                            "str_new_uniq");
-}
-
-extern "C" CDECL rust_str*
-upcall_str_new_uniq(const char *cstr, size_t len) {
-    rust_task *task = rust_get_current_task();
-    s_str_new_uniq_args args = { task, cstr, len, 0 };
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_uniq);
-    return args.retval;
-}
-
-extern "C" CDECL rust_str*
-upcall_str_new(const char *cstr, size_t len) {
-    rust_task *task = rust_get_current_task();
-    s_str_new_uniq_args args = { task, cstr, len, 0 };
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_str_new_uniq);
-    return args.retval;
-}
-
 extern "C" _Unwind_Reason_Code
 __gxx_personality_v0(int version,
                      _Unwind_Action actions,
