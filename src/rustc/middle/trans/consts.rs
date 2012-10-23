@@ -162,7 +162,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           let bt = ty::expr_ty(cx.tcx, base);
           let bv = const_expr(cx, base);
           let (bt, bv) = const_autoderef(cx, bt, bv);
-          do expr::with_field_tys(cx.tcx, bt) |_has_dtor, field_tys| {
+          do expr::with_field_tys(cx.tcx, bt, None) |_has_dtor, field_tys| {
               let ix = ty::field_idx_strict(cx.tcx, field, field_tys);
 
               // Note: ideally, we'd use `struct_field()` here instead
@@ -294,7 +294,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       }
       ast::expr_struct(_, ref fs, _) => {
           let ety = ty::expr_ty(cx.tcx, e);
-          let cs = do expr::with_field_tys(cx.tcx, ety) |_hd, field_tys| {
+          let cs = do expr::with_field_tys(cx.tcx,
+                                           ety,
+                                           None) |_hd, field_tys| {
               field_tys.map(|field_ty| {
                   match fs.find(|f| field_ty.ident == f.node.ident) {
                       Some(f) => const_expr(cx, f.node.expr),

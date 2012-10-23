@@ -1443,6 +1443,78 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         return bot;
     }
 
+    fn check_struct_or_variant_fields(fcx: @fn_ctxt,
+                                      span: span,
+                                      class_id: ast::def_id,
+                                      substitutions: &ty::substs,
+                                      field_types: ~[ty::field_ty],
+                                      ast_fields: ~[ast::field],
+                                      check_completeness: bool) -> bool {
+        let tcx = fcx.ccx.tcx;
+        let mut bot = false;
+
+        let class_field_map = HashMap();
+        let mut fields_found = 0;
+        for field_types.each |field| {
+            // XXX: Check visibility here.
+            class_field_map.insert(field.ident, (field.id, false));
+        }
+
+        // Typecheck each field.
+        for ast_fields.each |field| {
+            match class_field_map.find(field.node.ident) {
+                None => {
+                    tcx.sess.span_err(
+                        field.span,
+                        fmt!("structure has no field named field named `%s`",
+                             tcx.sess.str_of(field.node.ident)));
+                }
+                Some((_, true)) => {
+                    tcx.sess.span_err(
+                        field.span,
+                        fmt!("field `%s` specified more than once",
+                             tcx.sess.str_of(field.node.ident)));
+                }
+                Some((field_id, false)) => {
+                    let expected_field_type =
+                        ty::lookup_field_type(
+                            tcx, class_id, field_id, substitutions);
+                    bot |= check_expr(fcx,
+                                      field.node.expr,
+                                      Some(expected_field_type));
+                    fields_found += 1;
+                }
+            }
+        }
+
+        if check_completeness {
+            // Make sure the programmer specified all the fields.
+            assert fields_found <= ast_fields.len();
+            if fields_found < ast_fields.len() {
+                let mut missing_fields = ~[];
+                for ast_fields.each |class_field| {
+                    let name = class_field.node.ident;
+                    let (_, seen) = class_field_map.get(name);
+                    if !seen {
+                        missing_fields.push(
+                            ~"`" + tcx.sess.str_of(name) + ~"`");
+                    }
+                }
+
+                tcx.sess.span_err(span,
+                                  fmt!("missing field%s: %s",
+                                       if missing_fields.len() == 1 {
+                                           ~""
+                                       } else {
+                                           ~"s"
+                                       },
+                                       str::connect(missing_fields, ~", ")));
+            }
+        }
+
+        return bot;
+    }
+
     fn check_struct_constructor(fcx: @fn_ctxt,
                                 id: ast::node_id,
                                 span: syntax::codemap::span,
@@ -1501,76 +1573,99 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         let struct_type = ty::subst(tcx, &substitutions, raw_type);
 
-        // Look up the class fields and build up a map.
+        // Look up and check the fields.
         let class_fields = ty::lookup_class_fields(tcx, class_id);
-        let class_field_map = HashMap();
-        let mut fields_found = 0;
-        for class_fields.each |field| {
-            // XXX: Check visibility here.
-            class_field_map.insert(field.ident, (field.id, false));
-        }
+        bot = check_struct_or_variant_fields(fcx,
+                                             span,
+                                             class_id,
+                                             &substitutions,
+                                             class_fields,
+                                             fields,
+                                             base_expr.is_none()) || bot;
 
-        // Typecheck each field.
-        for fields.each |field| {
-            match class_field_map.find(field.node.ident) {
-                None => {
-                    tcx.sess.span_err(
-                        field.span,
-                        fmt!("structure has no field named field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
-                }
-                Some((_, true)) => {
-                    tcx.sess.span_err(
-                        field.span,
-                        fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
-                }
-                Some((field_id, false)) => {
-                    let expected_field_type =
-                        ty::lookup_field_type(tcx, class_id, field_id,
-                                              &substitutions);
-                    bot |= check_expr(fcx,
-                                      field.node.expr,
-                                      Some(expected_field_type));
-                    fields_found += 1;
-                }
-            }
-        }
-
+        // Check the base expression if necessary.
         match base_expr {
-            None => {
-                // Make sure the programmer specified all the fields.
-                assert fields_found <= class_fields.len();
-                if fields_found < class_fields.len() {
-                    let mut missing_fields = ~[];
-                    for class_fields.each |class_field| {
-                        let name = class_field.ident;
-                        let (_, seen) = class_field_map.get(name);
-                        if !seen {
-                            missing_fields.push(
-                                ~"`" + tcx.sess.str_of(name) + ~"`");
-                        }
-                    }
-
-                    tcx.sess.span_err(span,
-                                      fmt!("missing field%s: %s",
-                                           if missing_fields.len() == 1 {
-                                               ~""
-                                           } else {
-                                               ~"s"
-                                           },
-                                           str::connect(missing_fields,
-                                                        ~", ")));
-                }
-            }
+            None => {}
             Some(base_expr) => {
-                // Just check the base expression.
-                check_expr(fcx, base_expr, Some(struct_type));
+                bot = check_expr(fcx, base_expr, Some(struct_type)) || bot
             }
         }
 
         // Write in the resulting type.
         fcx.write_ty(id, struct_type);
+        return bot;
+    }
+
+    fn check_struct_enum_variant(fcx: @fn_ctxt,
+                                 id: ast::node_id,
+                                 span: syntax::codemap::span,
+                                 enum_id: ast::def_id,
+                                 variant_id: ast::def_id,
+                                 fields: ~[ast::field]) -> bool {
+        let mut bot = false;
+        let tcx = fcx.ccx.tcx;
+
+        // Look up the number of type parameters and the raw type, and
+        // determine whether the enum is region-parameterized.
+        let type_parameter_count, region_parameterized, raw_type;
+        if enum_id.crate == ast::local_crate {
+            region_parameterized =
+                tcx.region_paramd_items.find(enum_id.node);
+            match tcx.items.find(enum_id.node) {
+                Some(ast_map::node_item(@{
+                        node: ast::item_enum(_, type_parameters),
+                        _
+                    }, _)) => {
+
+                    type_parameter_count = type_parameters.len();
+
+                    let self_region =
+                        bound_self_region(region_parameterized);
+
+                    raw_type = ty::mk_enum(tcx, enum_id, {
+                        self_r: self_region,
+                        self_ty: None,
+                        tps: ty::ty_params_to_tys(tcx, type_parameters)
+                    });
+                }
+                _ => {
+                    tcx.sess.span_bug(span,
+                                      ~"resolve didn't map this to an enum");
+                }
+            }
+        } else {
+            let item_type = ty::lookup_item_type(tcx, enum_id);
+            type_parameter_count = (*item_type.bounds).len();
+            region_parameterized = item_type.region_param;
+            raw_type = item_type.ty;
+        }
+
+        // Generate the enum type.
+        let self_region =
+            fcx.region_var_if_parameterized(region_parameterized,
+                                            span,
+                                            ty::re_scope(id));
+        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
+        let substitutions = {
+            self_r: self_region,
+            self_ty: None,
+            tps: type_parameters
+        };
+
+        let enum_type = ty::subst(tcx, &substitutions, raw_type);
+
+        // Look up and check the enum variant fields.
+        let variant_fields = ty::lookup_class_fields(tcx, variant_id);
+        bot = check_struct_or_variant_fields(fcx,
+                                             span,
+                                             variant_id,
+                                             &substitutions,
+                                             variant_fields,
+                                             fields,
+                                             true) || bot;
+
+        // Write in the resulting type.
+        fcx.write_ty(id, enum_type);
         return bot;
     }
 
@@ -2045,6 +2140,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          fields, base_expr);
             }
+            Some(ast::def_variant(enum_id, variant_id)) => {
+                check_struct_enum_variant(fcx, id, expr.span, enum_id,
+                                          variant_id, fields);
+            }
             _ => {
                 tcx.sess.span_bug(path.span, ~"structure constructor does \
                                                not name a structure type");
@@ -2314,8 +2413,13 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 ast::tuple_variant_kind(args) if args.len() > 0u => {
                     arg_tys = Some(ty::ty_fn_args(ctor_ty).map(|a| a.ty));
                 }
-                ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
+                ast::tuple_variant_kind(_) => {
                     arg_tys = Some(~[]);
+                }
+                ast::struct_variant_kind(_) => {
+                    arg_tys = Some(ty::lookup_class_fields(
+                        ccx.tcx, local_def(v.node.id)).map(|cf|
+                            ty::node_id_to_type(ccx.tcx, cf.id.node)));
                 }
                 ast::enum_variant_kind(_) => {
                     arg_tys = None;

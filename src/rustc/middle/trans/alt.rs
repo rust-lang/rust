@@ -909,7 +909,7 @@ fn compile_submatch(bcx: block,
     let rec_fields = collect_record_or_struct_fields(m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
-        do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
+        do expr::with_field_tys(tcx, pat_ty, None) |_has_dtor, field_tys| {
             let rec_vals = rec_fields.map(|field_name| {
                 let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
                 GEPi(bcx, val, struct_field(ix))
@@ -1257,7 +1257,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         ast::pat_rec(fields, _) | ast::pat_struct(_, fields, _) => {
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
-            do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
+            do expr::with_field_tys(tcx, pat_ty, None) |_hd, field_tys| {
                 for vec::each(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
                     let fldptr = GEPi(bcx, val, struct_field(ix));

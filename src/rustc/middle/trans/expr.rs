@@ -850,7 +850,12 @@ fn fn_data_to_datum(bcx: block,
     return bcx;
 }
 
-fn with_field_tys<R>(tcx: ty::ctxt, ty: ty::t,
+// The optional node ID here is the node ID of the path identifying the enum
+// variant in use. If none, this cannot possibly an enum variant (so, if it
+// is and `node_id_opt` is none, this function fails).
+fn with_field_tys<R>(tcx: ty::ctxt,
+                     ty: ty::t,
+                     node_id_opt: Option<ast::node_id>,
                      op: fn(bool, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_rec(ref fields) => {
@@ -860,6 +865,30 @@ fn with_field_tys<R>(tcx: ty::ctxt, ty: ty::t,
         ty::ty_class(did, ref substs) => {
             let has_dtor = ty::ty_dtor(tcx, did).is_some();
             op(has_dtor, class_items_as_mutable_fields(tcx, did, substs))
+        }
+
+        ty::ty_enum(_, ref substs) => {
+            // We want the *variant* ID here, not the enum ID.
+            match node_id_opt {
+                None => {
+                    tcx.sess.bug(fmt!(
+                        "cannot get field types from the enum type %s \
+                         without a node ID",
+                        ty_to_str(tcx, ty)));
+                }
+                Some(node_id) => {
+                    match tcx.def_map.get(node_id) {
+                        ast::def_variant(_, variant_id) => {
+                            op(false, class_items_as_mutable_fields(
+                                tcx, variant_id, substs))
+                        }
+                        _ => {
+                            tcx.sess.bug(~"resolve didn't map this expr to a \
+                                           variant ID")
+                        }
+                    }
+                }
+            }
         }
 
         _ => {
@@ -877,7 +906,7 @@ fn trans_rec_field(bcx: block,
     let _icx = bcx.insn_ctxt("trans_rec_field");
 
     let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-    do with_field_tys(bcx.tcx(), base_datum.ty) |_has_dtor, field_tys| {
+    do with_field_tys(bcx.tcx(), base_datum.ty, None) |_dtor, field_tys| {
         let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
         DatumBlock {
             datum: base_datum.GEPi(bcx, [0u, 0u, ix], field_tys[ix].mt.ty),
@@ -969,9 +998,45 @@ fn trans_rec_or_struct(bcx: block,
         }
     }
 
+    // If this is a struct-like variant, write in the discriminant if
+    // necessary, position the address at the right location, and cast the
+    // address.
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
-    do with_field_tys(tcx, ty) |has_dtor, field_tys| {
+    let addr = match ty::get(ty).sty {
+        ty::ty_enum(_, ref substs) => {
+            match tcx.def_map.get(id) {
+                ast::def_variant(enum_id, variant_id) => {
+                    let variant_info = ty::enum_variant_with_id(
+                        tcx, enum_id, variant_id);
+                    let addr = if ty::enum_is_univariant(tcx, enum_id) {
+                        addr
+                    } else {
+                        Store(bcx,
+                              C_int(bcx.ccx(), variant_info.disr_val),
+                              GEPi(bcx, addr, [0, 0]));
+                        GEPi(bcx, addr, [0, 1])
+                    };
+                    let fields = ty::class_items_as_mutable_fields(
+                        tcx, variant_id, substs);
+                    let field_lltys = do fields.map |field| {
+                        type_of(bcx.ccx(),
+                                ty::subst_tps(
+                                    tcx, substs.tps, None, field.mt.ty))
+                    };
+                    PointerCast(bcx, addr,
+                                T_ptr(T_struct(~[T_struct(field_lltys)])))
+                }
+                _ => {
+                    tcx.sess.bug(~"resolve didn't write the right def in for \
+                                   this struct-like variant")
+                }
+            }
+        }
+        _ => addr
+    };
+
+    do with_field_tys(tcx, ty, Some(id)) |has_dtor, field_tys| {
         // evaluate each of the fields and store them into their
         // correct locations
         let mut temp_cleanups = ~[];
