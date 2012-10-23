@@ -3721,6 +3721,17 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             _ => cx.sess.bug(~"class ID bound to non-class")
          }
        }
+       Some(ast_map::node_variant(variant, _, _)) => {
+          match variant.node.kind {
+            ast::struct_variant_kind(struct_def) => {
+              class_field_tys(struct_def.fields)
+            }
+            _ => {
+              cx.sess.bug(~"struct ID bound to enum variant that isn't \
+                            struct-like")
+            }
+          }
+       }
        _ => {
            cx.sess.bug(
                fmt!("class ID not bound to an item: %s",
