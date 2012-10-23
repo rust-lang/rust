@@ -44,8 +44,6 @@ struct StackSegment {
 
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_annihilate_box(ptr: *Word);
-
     #[rust_stack]
     fn rust_call_tydesc_glue(root: *Word, tydesc: *Word, field: size_t);
 
@@ -330,7 +328,7 @@ pub fn cleanup_stack_for_failure() {
             roots.insert(*root, ());
 
             if ptr::is_null(tydesc) {
-                rustrt::rust_annihilate_box(*root);
+                // XXX: Destroy this box
             } else {
                 rustrt::rust_call_tydesc_glue(*root, tydesc, 3 as size_t);
             }
