@@ -562,7 +562,7 @@ impl infer_ctxt {
 
         debug!("commit()");
         do indent {
-            let r <- self.try(f);
+            let r = self.try(f);
 
             self.ty_var_bindings.bindings.truncate(0);
             self.int_var_bindings.bindings.truncate(0);

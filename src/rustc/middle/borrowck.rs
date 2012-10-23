@@ -397,7 +397,7 @@ type req_maps = {
 
 fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T, f: fn() -> U) -> U {
     let old_save_and_restore_t = *save_and_restore_t;
-    let u <- f();
+    let u = f();
     *save_and_restore_t = old_save_and_restore_t;
     move u
 }
