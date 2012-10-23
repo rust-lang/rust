@@ -178,8 +178,6 @@ rust_dbg_do_nothing
 rust_dbg_breakpoint
 rust_osmain_sched_id
 rust_compare_and_swap_ptr
-rust_atomic_increment
-rust_atomic_decrement
 rust_global_env_chan_ptr
 rust_port_take
 rust_port_drop

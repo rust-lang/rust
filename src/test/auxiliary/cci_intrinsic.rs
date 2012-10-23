@@ -2,6 +2,10 @@
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
+    fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
+    fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
+    fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
+
     fn atomic_xchg(dst: &mut int, src: int) -> int;
     fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
     fn atomic_xchg_rel(dst: &mut int, src: int) -> int;

@@ -5,7 +5,6 @@
 
 #[doc(hidden)];
 
-use compare_and_swap = rustrt::rust_compare_and_swap_ptr;
 use task::TaskBuilder;
 use task::atomically;
 
@@ -13,14 +12,6 @@ extern mod rustrt {
     #[legacy_exports];
     fn rust_task_weaken(ch: rust_port_id);
     fn rust_task_unweaken(ch: rust_port_id);
-
-    #[rust_stack]
-    fn rust_atomic_increment(p: &mut libc::intptr_t)
-        -> libc::intptr_t;
-
-    #[rust_stack]
-    fn rust_atomic_decrement(p: &mut libc::intptr_t)
-        -> libc::intptr_t;
 
     #[rust_stack]
     fn rust_compare_and_swap_ptr(address: &mut libc::uintptr_t,
@@ -33,10 +24,35 @@ extern mod rustrt {
     fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
+#[abi = "rust-intrinsic"]
+extern mod rusti {
+
+    #[cfg(stage1)] #[cfg(stage2)] #[cfg(stage3)]    
+    fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
+    fn atomic_xadd(dst: &mut int, src: int) -> int;
+    fn atomic_xsub(dst: &mut int, src: int) -> int;
+}
+
 #[allow(non_camel_case_types)] // runtime type
 type rust_port_id = uint;
 
 type GlobalPtr = *libc::uintptr_t;
+
+// TODO: Remove once snapshots have atomic_cxchg
+#[cfg(stage0)]
+fn compare_and_swap(address: &mut libc::uintptr_t,
+                    oldval: libc::uintptr_t,
+                    newval: libc::uintptr_t) -> bool {
+    rustrt::rust_compare_and_swap_ptr(address, oldval, newval)
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
+    let old = rusti::atomic_cxchg(address, oldval, newval);
+    old == oldval
+}
 
 /**
  * Atomically gets a channel from a pointer to a pointer-sized memory location
@@ -85,7 +101,7 @@ pub unsafe fn chan_from_global_ptr<T: Send>(
         log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
             cast::reinterpret_cast(&global),
-            0u, cast::reinterpret_cast(&ch));
+            0, cast::reinterpret_cast(&ch));
         log(debug,fmt!("AFTER .. swapped? %?", swapped));
 
         if swapped {
@@ -305,7 +321,7 @@ struct ArcDestruct<T> {
         }
         do task::unkillable {
             let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
-            let new_count = rustrt::rust_atomic_decrement(&mut data.count);
+            let new_count = rusti::atomic_xsub(&mut data.count, 1) - 1;
             assert new_count >= 0;
             if new_count == 0 {
                 // Were we really last, or should we hand off to an unwrapper?
@@ -373,8 +389,8 @@ pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
             // Got in. Step 0: Tell destructor not to run. We are now it.
             rc.data = ptr::null();
             // Step 1 - drop our own reference.
-            let new_count = rustrt::rust_atomic_decrement(&mut ptr.count);
-        //    assert new_count >= 0;
+            let new_count = rusti::atomic_xsub(&mut ptr.count, 1) - 1;
+            //assert new_count >= 0;
             if new_count == 0 {
                 // We were the last owner. Can unwrap immediately.
                 // Also we have to free the server endpoints.
@@ -452,7 +468,7 @@ pub unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
+        let new_count = rusti::atomic_xadd(&mut ptr.count, 1) + 1;
         assert new_count >= 2;
         cast::forget(move ptr);
     }
