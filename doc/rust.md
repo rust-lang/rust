@@ -1728,38 +1728,6 @@ fn avg(v: &[float]) -> float {
 }
 ~~~~
 
-
-#### Binary move expressions
-
-A _binary move expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a left-pointing
-arrow (`<-`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
-
-Evaluating a move expression causes, as a side effect,
-the rvalue to be *moved* into the lvalue.
-If the rvalue was itself an lvalue, it must be a local variable,
-as it will be de-initialized in the process.
-
-Evaluating a move expression does not change reference counts,
-nor does it cause a deep copy of any owned structure pointed to by the moved rvalue.
-Instead, the move expression represents an indivisible *transfer of ownership*
-from the right-hand-side to the left-hand-side of the expression.
-No allocation or destruction is entailed.
-
-An example of three different move expressions:
-
-~~~~~~~~
-# let mut x = &[mut 0];
-# let a = &[mut 0];
-# let b = 0;
-# let y = {mut z: 0};
-# let c = 0;
-# let i = 0;
-
-x <- a;
-x[i] <- b;
-y.z <- c;
-~~~~~~~~
-
 #### Swap expressions
 
 A _swap expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a bi-directional arrow (`<->`) and another [lvalue](#lvalues-rvalues-and-temporaries).
@@ -1792,20 +1760,14 @@ y.z <-> b.c;
 An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
 equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
-Evaluating an assignment expression is equivalent to evaluating a [binary move
-expression](#binary-move-expressions) applied to a [unary copy
-expression](#unary-copy-expressions). For example, the following two
-expressions have the same effect:
+Evaluating an assignment expression copies the expression on the right-hand side and stores it in the location on the left-hand side.
 
 ~~~~
 # let mut x = 0;
 # let y = 0;
 
 x = y;
-x <- copy y;
 ~~~~
-
-The former is just more terse and familiar.
 
 #### Compound assignment expressions
 
