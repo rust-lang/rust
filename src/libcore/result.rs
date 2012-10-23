@@ -204,6 +204,8 @@ pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
 }
 
 impl<T, E> Result<T, E> {
+    fn get_ref(&self) -> &self/T { get_ref(self) }
+
     fn is_ok() -> bool { is_ok(&self) }
 
     fn is_err() -> bool { is_err(&self) }
@@ -435,5 +437,11 @@ mod tests {
     fn test_impl_map_err() {
         assert Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a");
         assert Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b");
+    }
+
+    #[test]
+    fn test_get_ref_method() {
+        let foo: Result<int, ()> = Ok(100);
+        assert *foo.get_ref() == 100;
     }
 }
