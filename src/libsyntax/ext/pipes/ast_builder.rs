@@ -105,6 +105,13 @@ impl ext_ctxt: ext_ctxt_ast_builder {
           span: self.empty_span()}
     }
 
+    fn move_expr(e: @ast::expr) -> @ast::expr {
+        @{id: self.next_id(),
+          callee_id: self.next_id(),
+          node: ast::expr_unary_move(e),
+          span: e.span}
+    }
+
     fn stmt_expr(e: @ast::expr) -> @ast::stmt {
         @{node: ast::stmt_expr(e, self.next_id()),
           span: self.empty_span()}
@@ -126,8 +133,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                                                       self.empty_span()),
                                                  None),
                             span: self.empty_span()},
-                     init: Some({op: ast::init_move,
-                                 expr: e}),
+                     init: Some(self.move_expr(e)),
                      id: self.next_id()},
               span: self.empty_span()}]),
                                span: self.empty_span()}, self.next_id()),
