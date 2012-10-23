@@ -172,15 +172,15 @@ pub fn tim_sort<T: Ord>(array: &[mut T]) {
         return;
     }
 
-    if size < MIN_MERGE {
-        let init_run_len = count_run_ascending(array);
-        binarysort(array, init_run_len);
-        return;
-    }
-
     let ms = &MergeState();
     ms.array = array;
     let min_run = min_run_length(size);
+
+    if size < MIN_MERGE {
+        let init_run_len = count_run_ascending(array);
+        ms.binarysort(array, init_run_len);
+        return;
+    }
 
     let mut idx = 0;
     let mut remaining = size;
@@ -191,7 +191,7 @@ pub fn tim_sort<T: Ord>(array: &[mut T]) {
         if run_len < min_run {
             let force = if remaining <= min_run {remaining} else {min_run};
             let slice = vec::mut_view(arr, 0, force);
-            binarysort(slice, run_len);
+            ms.binarysort(slice, run_len);
             run_len = force;
         }
 
@@ -206,47 +206,7 @@ pub fn tim_sort<T: Ord>(array: &[mut T]) {
     ms.merge_force_collapse(array);
 }
 
-fn binarysort<T: Ord>(array: &[mut T], start: uint) {
-    let size = array.len();
-    let mut start = start;
-    assert start <= size;
-
-    if start == 0 { start += 1; }
-
-    let mut pivot = ~[];
-    vec::reserve(&mut pivot, 1);
-    unsafe { vec::raw::set_len(&mut pivot, 1); };
-
-    while start < size {
-        unsafe {
-            let tmp_view = vec::mut_view(array, start, start+1);
-            vec::raw::memmove(pivot, tmp_view, 1);
-        }
-        let mut left = 0;
-        let mut right = start;
-        assert left <= right;
-
-        while left < right {
-            let mid = (left + right) >> 1;
-            if pivot[0] < array[mid] {
-                right = mid;
-            } else {
-                left = mid+1;
-            }
-        }
-        assert left == right;
-        let mut n = start-left;
-
-        unsafe {
-            move_vec(array, left+1, array, left, n);
-        }
-        array[left] <-> pivot[0];
-        start += 1;
-    }
-    unsafe { vec::raw::set_len(&mut pivot, 0); } // Forget the boxed element
-}
-
-/// Reverse the order of elements in a slice, in place
+// Reverse the order of elements in a slice, in place
 fn reverse_slice<T>(v: &[mut T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
@@ -395,6 +355,7 @@ struct MergeState<T> {
     mut min_gallop: uint,
     mut tmp: ~[T],
     mut last_hi: bool,
+    mut last_bsort: bool,
     mut mergePt: uint,
     mut tmpPt: uint,
     mut array: &[mut T],
@@ -404,7 +365,9 @@ struct MergeState<T> {
         unsafe {
             let size = self.tmp.len();
             // Move tmp back into invalid part of array
-            if self.last_hi && size > 0 {
+            if self.last_bsort {
+
+            } else if self.last_hi && size > 0 {
                 self.mergePt -= self.tmpPt;
                 move_vec(self.array, self.mergePt, self.tmp, 0, self.tmpPt);
             } else if !self.last_hi && size-self.tmpPt > 0 {
@@ -421,8 +384,9 @@ fn MergeState<T>() -> MergeState<T> {
     vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
     MergeState {
         min_gallop: MIN_GALLOP,
-        tmp: tmp,
+        tmp: move tmp,
         last_hi: false,
+        last_bsort: false,
         mergePt: 0,
         tmpPt: 0,
         array: &[mut],
@@ -431,6 +395,45 @@ fn MergeState<T>() -> MergeState<T> {
 }
 
 impl<T: Ord> &MergeState<T> {
+    fn binarysort(array: &[mut T], start: uint) {
+        let size = array.len();
+        let mut start = start;
+        assert start <= size;
+
+        if start == 0 { start += 1; }
+
+        self.last_bsort = true;
+        unsafe { vec::raw::set_len(&mut self.tmp, 1); };
+
+        while start < size {
+            unsafe {
+                move_vec(self.tmp, 0, array, start, 1);
+            }
+            let mut left = 0;
+            let mut right = start;
+            assert left <= right;
+
+            while left < right {
+                let mid = (left + right) >> 1;
+                if self.tmp[0] < array[mid] {
+                    right = mid;
+                } else {
+                    left = mid+1;
+                }
+            }
+            assert left == right;
+            let mut n = start-left;
+
+            unsafe {
+                move_vec(array, left+1, array, left, n);
+            }
+            array[left] <-> self.tmp[0];
+            start += 1;
+        }
+        unsafe { vec::raw::set_len(&mut self.tmp, 0); } // Forget the boxed element
+        self.last_bsort = false;
+    }
+
     fn push_run(run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
@@ -958,7 +961,7 @@ mod tests {
         // tjc: funny that we have to use parens
         pure fn ile(x: &(&static/str), y: &(&static/str)) -> bool
         {
-            unsafe            // to_lower is not pure...
+            unsafe // to_lower is not pure...
             {
                 let x = x.to_lower();
                 let y = y.to_lower();
@@ -977,7 +980,6 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
-    // #[legacy_exports];
     struct CVal {
         val: ~float,
     }
@@ -1043,51 +1045,27 @@ mod test_tim_sort {
         tim_sort(arr);
         fail ~"Guarantee the fail";
     }
-
-    struct DVal { val: ~uint }
-    impl DVal: Ord {
-        pure fn lt(_x: &DVal) -> bool { true }
-        pure fn le(_x: &DVal) -> bool { true }
-        pure fn gt(_x: &DVal) -> bool { true }
-        pure fn ge(_x: &DVal) -> bool { true }
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_bad_Ord_impl() {
-        let rng = rand::Rng();
-        let mut arr = do vec::from_fn(500) |_i| {
-            let randVal = rng.gen_uint();
-            DVal { val: ~randVal }
-        };
-
-        tim_sort(arr);
-        fail ~"Guarantee the fail";
-    }
 }
 
-/*
 #[cfg(test)]
 mod big_tests {
 
     #[test]
-    fn sorts_test() {
+    fn test_unique() {
         let low = 5;
         let high = 10;
-
-        //pure fn le(a: &~float, b: &~float) -> bool { *a <= *b }
-
-        //let s1 = fn(arr: &[mut ~float]) { tim_sort(arr); };
-        //let s2 = fn(arr: &[mut ~float]) { quick_sort(arr, le); };
-        //let s3 = fn(arr: &[mut ~float]) { quick_sort3(arr); };
-        //let s4 = fn(arr: &[mut ~float]) { let rs = merge_sort(arr, le);
-        //                        for rs.eachi |i, v| {arr[i] = *v}};
-
-
-        // Run tabulate_unique and tabulate_managed
-        // with the other sorts at some point
         tabulate_unique(low, high);
+    }
+
+    #[test]
+    fn test_managed() {
+        let low = 5;
+        let high = 10;
         tabulate_managed(low, high);
+    }
+
+    #[test]
+    fn test_linear() {
         tabulate_linear();
     }
 
@@ -1096,14 +1074,14 @@ mod big_tests {
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        vec::to_mut(res)
+        vec::to_mut(move res)
     }
 
     fn makeRange(n: uint) -> ~[uint] {
         let one = do vec::from_fn(n) |i| { i };
         let mut two = copy one;
         vec::reverse(two);
-        vec::append(two, one)
+        vec::append(move two, one)
     }
 
     fn tabulate_unique(lo: uint, hi: uint) {
@@ -1122,7 +1100,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 ~rng.gen_float()
             };
-            let arr = vec::to_mut(arr);
+            let arr = vec::to_mut(move arr);
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1163,7 +1141,7 @@ mod big_tests {
             let arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { arr };
+            } else { move arr };
             tim_sort(arr); // ~sort
             isSorted(arr);
 
@@ -1195,7 +1173,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let arr = vec::to_mut(arr);
+            let arr = vec::to_mut(move arr);
 
             tim_sort(arr); // *sort
             isSorted(arr, 1);
@@ -1236,7 +1214,7 @@ mod big_tests {
             let arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { arr };
+            } else { move arr };
             tim_sort(arr); // ~sort
             isSorted(arr, n/4+1);
 
@@ -1247,7 +1225,7 @@ mod big_tests {
             let half = n / 2;
             let mut arr = makeRange(half).map(|i| @(*i as float));
             tim_sort(arr); // !sort
-            isSorted(arr, 2);
+            isSorted(arr, 1);
         }
     }
 
@@ -1294,7 +1272,7 @@ mod big_tests {
             let mut arr = do vec::from_fn(n) |i| {
                 LVal { val: i, key: key }
             };
-            //tim_sort(arr);
+            tim_sort(arr);
             isSorted(arr);
         }
 
@@ -1305,7 +1283,6 @@ mod big_tests {
         assert n == dropped;
     }
 }
-*/
 
 // Local Variables:
 // mode: rust;
