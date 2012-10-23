@@ -166,7 +166,7 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
         result.push({name: cdata.name, hash: hash});
     };
     pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
-    let sorted = std::sort::merge_sort(lteq, result);
+    let sorted = std::sort::merge_sort(result, lteq);
     debug!("sorted:");
     for sorted.each |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
