@@ -430,7 +430,8 @@ impl<T: Ord> MergeState<T> {
             array[left] <-> self.tmp[0];
             start += 1;
         }
-        unsafe { vec::raw::set_len(&mut self.tmp, 0); } // Forget the boxed element
+        // Forget the boxed element
+        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
         self.last_bsort = false;
     }
 
