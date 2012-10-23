@@ -374,7 +374,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
-              Some({op: init_assign, expr}) =>
+              Some(expr) =>
                   maybe_copy(cx, expr, Some(("initializer statement \
                               takes its right-hand side by copy", ""))),
               _ => {}

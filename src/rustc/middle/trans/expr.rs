@@ -438,11 +438,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
             return src_datum.store_to_datum(bcx, DROP_EXISTING, dst_datum);
         }
-        ast::expr_move(dst, src) => {
-            let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));
-            let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
-            return src_datum.move_to_datum(bcx, DROP_EXISTING, dst_datum);
-        }
         ast::expr_swap(dst, src) => {
             let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
             let src_datum = unpack_datum!(bcx, trans_lvalue(bcx, src));

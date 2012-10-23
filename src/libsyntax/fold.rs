@@ -460,9 +460,6 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                                  ..**cap_item})})))
           }
           expr_block(blk) => expr_block(fld.fold_block(blk)),
-          expr_move(el, er) => {
-            expr_move(fld.fold_expr(el), fld.fold_expr(er))
-          }
           expr_copy(e) => expr_copy(fld.fold_expr(e)),
           expr_unary_move(e) => expr_unary_move(fld.fold_expr(e)),
           expr_assign(el, er) => {
@@ -610,14 +607,7 @@ fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
     return {is_mutbl: l.is_mutbl,
          ty: fld.fold_ty(l.ty),
          pat: fld.fold_pat(l.pat),
-         init:
-             match l.init {
-               option::None::<initializer> => l.init,
-               option::Some::<initializer>(init) => {
-                 option::Some::<initializer>({op: init.op,
-                                              expr: fld.fold_expr(init.expr)})
-               }
-             },
+         init: l.init.map(|e| fld.fold_expr(*e)),
          id: fld.new_id(l.id)};
 }
 

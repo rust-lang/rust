@@ -755,7 +755,7 @@ impl @fn_ctxt {
     fn with_region_lb<R>(lb: ast::node_id, f: fn() -> R) -> R {
         let old_region_lb = self.region_lb;
         self.region_lb = lb;
-        let v <- f();
+        let v = f();
         self.region_lb = old_region_lb;
         move v
     }
@@ -1776,9 +1776,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
-      ast::expr_move(lhs, rhs) => {
-        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
-      }
       ast::expr_assign(lhs, rhs) => {
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
       }
@@ -2112,9 +2109,9 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 }
 
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
-                          init: ast::initializer) -> bool {
-    let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.expr.span, nid));
-    return check_expr_with(fcx, init.expr, lty);
+                          init: @ast::expr) -> bool {
+    let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
+    return check_expr_with(fcx, init, lty);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
@@ -2128,7 +2125,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     match local.node.init {
         Some(init) => {
             bot = check_decl_initializer(fcx, local.node.id, init);
-            is_lvalue = ty::expr_is_lval(tcx, fcx.ccx.method_map, init.expr);
+            is_lvalue = ty::expr_is_lval(tcx, fcx.ccx.method_map, init);
         }
         _ => {
             is_lvalue = true;

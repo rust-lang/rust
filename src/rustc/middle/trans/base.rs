@@ -960,7 +960,7 @@ fn init_local(bcx: block, local: @ast::local) -> block {
         // Handle let _ = e; just like e;
         match local.node.init {
             Some(init) => {
-              return expr::trans_into(bcx, init.expr, expr::Ignore);
+              return expr::trans_into(bcx, init, expr::Ignore);
             }
             None => { return bcx; }
         }
@@ -977,12 +977,7 @@ fn init_local(bcx: block, local: @ast::local) -> block {
     let mut bcx = bcx;
     match local.node.init {
         Some(init) => {
-            if init.op == ast::init_assign || !bcx.expr_is_lval(init.expr) {
-                bcx = expr::trans_into(bcx, init.expr, expr::SaveIn(llptr));
-            } else { // This is a move from an lval, perform an actual move
-                let init_datumblock = expr::trans_to_datum(bcx, init.expr);
-                bcx = init_datumblock.move_to(datum::INIT, llptr);
-            }
+            bcx = expr::trans_into(bcx, init, expr::SaveIn(llptr));
         }
         _ => {
             zero_mem(bcx, llptr, ty);

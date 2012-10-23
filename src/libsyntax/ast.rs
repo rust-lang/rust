@@ -640,40 +640,12 @@ enum stmt_ {
     stmt_semi(@expr, node_id),
 }
 
-#[auto_serialize]
-#[auto_deserialize]
-enum init_op { init_assign, init_move, }
-
-impl init_op : cmp::Eq {
-    pure fn eq(other: &init_op) -> bool {
-        match self {
-            init_assign => {
-                match (*other) {
-                    init_assign => true,
-                    _ => false
-                }
-            }
-            init_move => {
-                match (*other) {
-                    init_move => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(other: &init_op) -> bool { !self.eq(other) }
-}
-
-#[auto_serialize]
-#[auto_deserialize]
-type initializer = {op: init_op, expr: @expr};
-
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 #[auto_serialize]
 #[auto_deserialize]
 type local_ =  {is_mutbl: bool, ty: @Ty, pat: @pat,
-                init: Option<initializer>, id: node_id};
+                init: Option<@expr>, id: node_id};
 
 type local = spanned<local_>;
 
@@ -749,7 +721,6 @@ enum expr_ {
     expr_block(blk),
 
     expr_copy(@expr),
-    expr_move(@expr, @expr),
     expr_unary_move(@expr),
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
