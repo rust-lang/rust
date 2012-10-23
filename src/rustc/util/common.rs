@@ -8,7 +8,7 @@ fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");
-    let r <- op();
+    let r = op();
     debug!("<< (Result = %?)", r);
     move r
 }
@@ -75,7 +75,7 @@ fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
     match l.node.init {
-      Some(i) => return i.expr.span,
+      Some(i) => return i.span,
       _ => return def
     }
 }

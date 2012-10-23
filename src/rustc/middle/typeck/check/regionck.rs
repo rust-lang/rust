@@ -147,7 +147,7 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
 
     v.visit_ty(l.node.ty, rcx, v);
     for l.node.init.each |i| {
-        v.visit_expr(i.expr, rcx, v);
+        v.visit_expr(*i, rcx, v);
     }
 }
 

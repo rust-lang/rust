@@ -43,7 +43,6 @@ fn need_parens(expr: @ast::expr, outer_prec: uint) -> bool {
       ast::expr_cast(_, _) => parse::prec::as_prec < outer_prec,
       // This may be too conservative in some cases
       ast::expr_assign(_, _) => true,
-      ast::expr_move(_, _) => true,
       ast::expr_swap(_, _) => true,
       ast::expr_assign_op(_, _, _) => true,
       ast::expr_ret(_) => true,
@@ -61,8 +60,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
         _ => false
       },
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
-      ast::expr_move(_, sub) | ast::expr_copy(sub) |
-      ast::expr_assign(_, sub) |
+      ast::expr_copy(sub) | ast::expr_assign(_, sub) |
       ast::expr_assign_op(_, _, sub) | ast::expr_swap(_, sub) |
       ast::expr_log(_, _, sub) | ast::expr_assert(sub) => {
         ends_in_lit_int(sub)

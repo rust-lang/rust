@@ -180,8 +180,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_rec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
       expr_binary(add, _, _) |
-      expr_copy(_) | expr_move(_, _) | expr_unary_move(_) |
-      expr_repeat(*) => {
+      expr_copy(_) | expr_unary_move(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {

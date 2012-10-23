@@ -482,7 +482,7 @@ impl &mem_categorization_ctxt {
           }
 
           ast::expr_addr_of(*) | ast::expr_call(*) |
-          ast::expr_swap(*) | ast::expr_move(*) | ast::expr_assign(*) |
+          ast::expr_swap(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) | ast::expr_fn(*) | ast::expr_fn_block(*) |
           ast::expr_assert(*) | ast::expr_ret(*) |
           ast::expr_loop_body(*) | ast::expr_do_body(*) | ast::expr_unary(*) |
