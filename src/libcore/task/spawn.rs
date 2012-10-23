@@ -320,15 +320,15 @@ fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
 }
 
 struct AutoNotify {
-    notify_chan: Chan<Notification>,
+    notify_chan: Chan<TaskResult>,
     mut failed:  bool,
     drop {
         let result = if self.failed { Failure } else { Success };
-        self.notify_chan.send(Exit(get_task(), result));
+        self.notify_chan.send(result);
     }
 }
 
-fn AutoNotify(chan: Chan<Notification>) -> AutoNotify {
+fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
     AutoNotify {
         notify_chan: move chan,
         failed: true // Un-set above when taskgroup successfully made.
@@ -532,7 +532,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
     // (4) ...and runs the provided body function.
     fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
                           ancestors: AncestorList, is_main: bool,
-                          notify_chan: Option<Chan<Notification>>,
+                          notify_chan: Option<Chan<TaskResult>>,
                           f: fn~()) -> fn~() {
         let child_data = ~mut Some((move child_arc, move ancestors));
         return fn~(move notify_chan, move child_data, move f) {
@@ -660,25 +660,21 @@ fn test_spawn_raw_unsupervise() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify_success() {
-    let (task_ch, task_po) = pipes::stream();
     let (notify_ch, notify_po) = pipes::stream();
 
     let opts = {
         notify_chan: Some(move notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(move opts) |move task_ch| {
-        task_ch.send(get_task());
+    do spawn_raw(move opts) {
     }
-    let task_ = task_po.recv();
-    assert notify_po.recv() == Exit(task_, Success);
+    assert notify_po.recv() == Success;
 }
 
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify_failure() {
     // New bindings for these
-    let (task_ch, task_po) = pipes::stream();
     let (notify_ch, notify_po) = pipes::stream();
 
     let opts = {
@@ -686,10 +682,8 @@ fn test_spawn_raw_notify_failure() {
         notify_chan: Some(move notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(move opts) |move task_ch| {
-        task_ch.send(get_task());
+    do spawn_raw(move opts) {
         fail;
     }
-    let task_ = task_po.recv();
-    assert notify_po.recv() == Exit(task_, Failure);
+    assert notify_po.recv() == Failure;
 }

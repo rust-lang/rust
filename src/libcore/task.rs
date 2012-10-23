@@ -73,25 +73,6 @@ impl TaskResult : Eq {
     pure fn ne(other: &TaskResult) -> bool { !self.eq(other) }
 }
 
-/// A message type for notifying of task lifecycle events
-pub enum Notification {
-    /// Sent when a task exits with the task handle and result
-    Exit(Task, TaskResult)
-}
-
-impl Notification : cmp::Eq {
-    pure fn eq(other: &Notification) -> bool {
-        match self {
-            Exit(e0a, e1a) => {
-                match (*other) {
-                    Exit(e0b, e1b) => e0a == e0b && e1a == e1b
-                }
-            }
-        }
-    }
-    pure fn ne(other: &Notification) -> bool { !self.eq(other) }
-}
-
 /// Scheduler modes
 pub enum SchedMode {
     /// All tasks run in the same OS thread
@@ -201,7 +182,7 @@ pub type SchedOpts = {
 pub type TaskOpts = {
     linked: bool,
     supervised: bool,
-    mut notify_chan: Option<Chan<Notification>>,
+    mut notify_chan: Option<Chan<TaskResult>>,
     sched: Option<SchedOpts>,
 };
 
@@ -344,12 +325,10 @@ impl TaskBuilder {
         }
 
         // Construct the future and give it to the caller.
-        let (notify_pipe_ch, notify_pipe_po) = stream::<Notification>();
+        let (notify_pipe_ch, notify_pipe_po) = stream::<TaskResult>();
 
         blk(do future::from_fn |move notify_pipe_po| {
-            match notify_pipe_po.recv() {
-              Exit(_, result) => result
-            }
+            notify_pipe_po.recv()
         });
 
         // Reconfigure self to use a notify channel.
