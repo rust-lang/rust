@@ -751,7 +751,7 @@ impl<T: Ord> MergeState<T> {
             }
             array[dest] <-> self.tmp[c2];
         } else if len2 == 0 {
-            fail ~"Coparison violates its contract!";
+            fail ~"Comparison violates its contract!";
         } else {
             assert len1 == 0;
             assert len2 != 0;
