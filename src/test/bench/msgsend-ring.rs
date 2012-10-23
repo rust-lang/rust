@@ -5,10 +5,10 @@
 // message path.
 
 use comm::*;
-use future::future;
 
 extern mod std;
 use std::time;
+use std::future;
 
 fn thread_ring(i: uint,
                count: uint,
