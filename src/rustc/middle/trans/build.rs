@@ -813,6 +813,11 @@ fn Resume(cx: block, Exn: ValueRef) -> ValueRef {
 }
 
 // Atomic Operations
+fn AtomicCmpXchg(cx: block, dst: ValueRef,
+                 cmp: ValueRef, src: ValueRef,
+                 order: AtomicOrdering) -> ValueRef {
+    llvm::LLVMBuildAtomicCmpXchg(B(cx), dst, cmp, src, order)
+}
 fn AtomicRMW(cx: block, op: AtomicBinOp,
              dst: ValueRef, src: ValueRef,
              order: AtomicOrdering) -> ValueRef {

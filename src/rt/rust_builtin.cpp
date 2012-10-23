@@ -830,16 +830,6 @@ rust_compare_and_swap_ptr(intptr_t *address,
     return sync::compare_and_swap(address, oldval, newval);
 }
 
-extern "C" CDECL intptr_t
-rust_atomic_increment(intptr_t *address) {
-    return sync::increment(address);
-}
-
-extern "C" CDECL intptr_t
-rust_atomic_decrement(intptr_t *address) {
-    return sync::decrement(address);
-}
-
 extern "C" CDECL void
 rust_task_weaken(rust_port_id chan) {
     rust_task *task = rust_get_current_task();
