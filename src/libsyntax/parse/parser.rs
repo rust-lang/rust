@@ -333,10 +333,10 @@ impl Parser {
             let is_static = p.parse_staticness();
             let static_sty = spanned(lo, p.span.hi, sty_static);
 
+            let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
-            let vis = p.parse_visibility();
             let ident = p.parse_method_name();
 
             let tps = p.parse_ty_params();
@@ -2528,13 +2528,14 @@ impl Parser {
         self.parse_value_ident()
     }
 
-    fn parse_method(pr: visibility) -> @method {
+    fn parse_method() -> @method {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
         let is_static = self.parse_staticness();
         let static_sty = spanned(lo, self.span.hi, sty_static);
 
+        let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
@@ -2549,7 +2550,7 @@ impl Parser {
         @{ident: ident, attrs: attrs,
           tps: tps, self_ty: self_ty, purity: pur, decl: decl,
           body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
-          self_id: self.get_id(), vis: pr}
+          self_id: self.get_id(), vis: visa}
     }
 
     fn parse_item_trait() -> item_info {
@@ -2610,8 +2611,7 @@ impl Parser {
             let mut meths = ~[];
             self.expect(token::LBRACE);
             while !self.eat(token::RBRACE) {
-                let vis = self.parse_visibility();
-                meths.push(self.parse_method(vis));
+                meths.push(self.parse_method());
             }
             meths_opt = Some(move meths);
         }
@@ -2772,7 +2772,7 @@ impl Parser {
             return a_var;
         } else {
             self.obsolete(copy self.span, ObsoleteClassMethod);
-            return @method_member(self.parse_method(vis));
+            return @method_member(self.parse_method());
         }
     }
 
@@ -2878,9 +2878,9 @@ impl Parser {
         (id, item_mod(m), Some(inner_attrs.inner))
     }
 
-    fn parse_item_foreign_fn(vis: ast::visibility,
-                             +attrs: ~[attribute]) -> @foreign_item {
+    fn parse_item_foreign_fn( +attrs: ~[attribute]) -> @foreign_item {
         let lo = self.span.lo;
+        let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
         let t = self.parse_fn_header();
         let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
@@ -2928,7 +2928,7 @@ impl Parser {
         if self.is_keyword(~"const") {
             self.parse_item_foreign_const(vis, move attrs)
         } else {
-            self.parse_item_foreign_fn(vis, move attrs)
+            self.parse_item_foreign_fn( move attrs)
         }
     }
 
@@ -3249,7 +3249,7 @@ impl Parser {
                                           maybe_append(attrs, extra_attrs)));
         } else if foreign_items_allowed &&
             (self.is_keyword(~"fn") || self.is_keyword(~"pure")) {
-                let item = self.parse_item_foreign_fn(visibility, attrs);
+                let item = self.parse_item_foreign_fn(attrs);
                 return iovi_foreign_item(item);
         } else if items_allowed && self.is_keyword(~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
