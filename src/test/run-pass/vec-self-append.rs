@@ -3,7 +3,7 @@ extern mod std;
 fn test_heap_to_heap() {
     // a spills onto the heap
     let mut a = ~[0, 1, 2, 3, 4];
-    a += a;
+    a = a + a; // FIXME(#3387)---can't write a += a
     assert (vec::len(a) == 10u);
     assert (a[0] == 0);
     assert (a[1] == 1);
@@ -21,7 +21,7 @@ fn test_stack_to_heap() {
     // a is entirely on the stack
     let mut a = ~[0, 1, 2];
     // a spills to the heap
-    a += a;
+    a = a + a; // FIXME(#3387)---can't write a += a
     assert (vec::len(a) == 6u);
     assert (a[0] == 0);
     assert (a[1] == 1);
@@ -39,7 +39,7 @@ fn test_loop() {
     while i > 0 {
         log(error, vec::len(a));
         assert (vec::len(a) == expected_len);
-        a += a;
+        a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;
         expected_len *= 2u;
     }
