@@ -1444,6 +1444,31 @@ enum struct_field_kind {
     unnamed_field   // element of a tuple-like struct
 }
 
+impl struct_field_kind : cmp::Eq {
+    pure fn eq(other: &struct_field_kind) -> bool {
+        match self {
+            named_field(ident_a, class_mutability_a, visibility_a) => {
+                match *other {
+                    named_field(ident_b, class_mutability_b, visibility_b)
+                            => {
+                        ident_a == ident_b &&
+                        class_mutability_a == class_mutability_b &&
+                        visibility_a == visibility_b
+                    }
+                    unnamed_field => false
+                }
+            }
+            unnamed_field => {
+                match *other {
+                    named_field(*) => false,
+                    unnamed_field => true
+                }
+            }
+        }
+    }
+    pure fn ne(other: &struct_field_kind) -> bool { !self.eq(other) }
+}
+
 #[auto_serialize]
 #[auto_deserialize]
 type struct_def = {
@@ -1452,7 +1477,10 @@ type struct_def = {
     methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
     /* dtor is optional */
-    dtor: Option<class_dtor>
+    dtor: Option<class_dtor>,
+    /* ID of the constructor. This is only used for tuple- or enum-like
+     * structs. */
+    ctor_id: node_id
 };
 
 /*
