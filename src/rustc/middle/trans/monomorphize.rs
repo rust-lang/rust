@@ -96,6 +96,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       ast_map::node_local(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize a local")
       }
+      ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
     // Look up the impl type if we're translating a default method.
@@ -206,6 +207,18 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         debug!("monomorphic_fn impl_did_opt is %?", impl_did_opt);
         meth::trans_method(ccx, *pt, mth, psubsts, None, d,
                            impl_did_opt.get());
+        d
+      }
+      ast_map::node_struct_ctor(struct_def, _, _) => {
+        let d = mk_lldecl();
+        set_inline_hint(d);
+        base::trans_tuple_struct(ccx,
+                                 struct_def.fields,
+                                 option::expect(struct_def.ctor_id,
+                                                ~"ast-mapped tuple struct \
+                                                  didn't have a ctor id"),
+                                 psubsts,
+                                 d);
         d
       }
 
