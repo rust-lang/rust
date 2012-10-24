@@ -280,7 +280,8 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
         traits: vec::map(struct_def.traits, |p| fold_trait_ref(*p, fld)),
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         methods: vec::map(struct_def.methods, |m| fld.fold_method(*m)),
-        dtor: dtor
+        dtor: dtor,
+        ctor_id: fld.new_id(struct_def.ctor_id)
     };
 }
 
@@ -563,7 +564,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                                  |f| fld.fold_struct_field(*f)),
                 methods: vec::map(struct_def.methods,
                                   |m| fld.fold_method(*m)),
-                dtor: dtor
+                dtor: dtor,
+                ctor_id: fld.new_id(struct_def.ctor_id)
             })
         }
 

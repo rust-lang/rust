@@ -22,6 +22,7 @@ are represented as `ty_param()` instances.
 
 use astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
 use ast_util::trait_method_to_ty_method;
+use middle::ty::{FnMeta, FnSig, FnTyBase};
 use rscope::*;
 use ty::{FnTyBase, FnMeta, FnSig, InstantiatedTraitRef};
 use util::common::pluralize;
@@ -558,6 +559,39 @@ fn convert_struct(ccx: @crate_ctxt,
         // trait_ref.impl_id represents (class, trait) pair
         write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
         tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);
+    }
+
+    // If this struct is enum-like or tuple-like, create the type of its
+    // constructor.
+    if struct_def.fields.len() == 0 {
+        // Enum-like.
+        write_ty_to_tcx(tcx, struct_def.ctor_id, selfty);
+        tcx.tcache.insert(local_def(struct_def.ctor_id), tpt);
+    } else if struct_def.fields[0].node.kind == ast::unnamed_field {
+        // Tuple-like.
+        let ctor_fn_ty = ty::mk_fn(tcx, FnTyBase {
+            meta: FnMeta {
+                purity: ast::pure_fn,
+                proto: ty::proto_bare,
+                bounds: @~[],
+                ret_style: ast::return_val,
+            },
+            sig: FnSig {
+                inputs: do struct_def.fields.map |field| {
+                    {
+                        mode: ast::expl(ast::by_copy),
+                        ty: ccx.tcx.tcache.get(local_def(field.node.id)).ty
+                    }
+                },
+                output: selfty
+            }
+        });
+        write_ty_to_tcx(tcx, struct_def.ctor_id, ctor_fn_ty);
+        tcx.tcache.insert(local_def(struct_def.ctor_id), {
+            bounds: tpt.bounds,
+            region_param: tpt.region_param,
+            ty: ctor_fn_ty
+        });
     }
 }
 

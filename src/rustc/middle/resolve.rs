@@ -9,8 +9,7 @@ use middle::pat_util::{pat_bindings};
 use syntax::ast::{_mod, add, arm};
 use syntax::ast::{bind_by_ref, bind_by_implicit_ref, bind_by_value};
 use syntax::ast::{bitand, bitor, bitxor};
-use syntax::ast::{binding_mode, blk,
-                     capture_clause, class_ctor, class_dtor};
+use syntax::ast::{binding_mode, blk, capture_clause, class_ctor, class_dtor};
 use syntax::ast::{crate, crate_num, decl_item};
 use syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
@@ -39,7 +38,7 @@ use syntax::ast::{trait_ref, tuple_variant_kind, Ty, ty_bool, ty_char};
 use syntax::ast::{ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16, ty_i32};
 use syntax::ast::{ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str, ty_u};
 use syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
-use syntax::ast::{ty_param_bound};
+use syntax::ast::{ty_param_bound, unnamed_field};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named};
@@ -1179,12 +1178,22 @@ impl Resolver {
             }
 
             // These items live in both the type and value namespaces.
-            item_class(*) => {
+            item_class(struct_def, _) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
-                (*name_bindings).define_type
-                    (privacy, def_ty(local_def(item.id)), sp);
+                name_bindings.define_type(
+                    privacy, def_ty(local_def(item.id)), sp);
+
+                // If this struct is tuple-like or enum-like, define a name
+                // in the value namespace.
+                if struct_def.fields.len() == 0 ||
+                        struct_def.fields[0].node.kind == unnamed_field {
+                    name_bindings.define_value(
+                        privacy,
+                        def_class(local_def(struct_def.ctor_id)),
+                        sp);
+                }
 
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id), ());

@@ -2722,12 +2722,14 @@ impl Parser {
                     self_id: self.get_id(),
                     body: d_body},
              span: d_s}};
+        let _ = self.get_id();  // XXX: Workaround for crazy bug.
         (class_name,
          item_class(@{
              traits: traits,
              fields: move fields,
              methods: move methods,
-             dtor: actual_dtor
+             dtor: actual_dtor,
+             ctor_id: self.get_id()
          }, ty_params),
          None)
     }
@@ -3073,7 +3075,8 @@ impl Parser {
             traits: ~[],
             fields: move fields,
             methods: move methods,
-            dtor: actual_dtor
+            dtor: actual_dtor,
+            ctor_id: self.get_id()
         };
     }
 
