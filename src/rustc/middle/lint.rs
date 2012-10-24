@@ -54,6 +54,7 @@ enum lint {
     deprecated_pattern,
     non_camel_case_types,
     structural_records,
+    type_limits,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -185,6 +186,11 @@ fn get_lint_dict() -> lint_dict {
          @{lint: legacy_modes,
            desc: ~"allow legacy modes",
            default: forbid}),
+
+        (~"type_limits",
+         @{lint: type_limits,
+           desc: ~"comparisons made useless by limits of the types involved",
+           default: warn})
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",
@@ -397,6 +403,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_heap(cx, i);
     check_item_structural_records(cx, i);
     check_item_deprecated_modes(cx, i);
+    check_item_type_limits(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -424,6 +431,122 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
              }
              _ => ()
           }
+        },
+        .. *visit::default_simple_visitor()
+    }));
+    visit::visit_item(it, (), visit);
+}
+
+fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
+    pure fn is_valid<T: cmp::Ord>(binop: ast::binop, v: T,
+            min: T, max: T) -> bool {
+        match binop {
+            ast::lt => v <= max,
+            ast::le => v < max,
+            ast::gt => v >= min,
+            ast::ge => v > min,
+            ast::eq | ast::ne => v >= min && v <= max,
+            _ => fail
+        }
+    }
+
+    pure fn rev_binop(binop: ast::binop) -> ast::binop {
+        match binop {
+            ast::lt => ast::gt,
+            ast::le => ast::ge,
+            ast::gt => ast::lt,
+            ast::ge => ast::le,
+            _ => binop
+        }
+    }
+
+    pure fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
+        match int_ty {
+            ast::ty_i =>    (int::min_value as i64, int::max_value as i64),
+            ast::ty_char => (u32::min_value as i64, u32::max_value as i64),
+            ast::ty_i8 =>   (i8::min_value  as i64, i8::max_value  as i64),
+            ast::ty_i16 =>  (i16::min_value as i64, i16::max_value as i64),
+            ast::ty_i32 =>  (i32::min_value as i64, i32::max_value as i64),
+            ast::ty_i64 =>  (i64::min_value,        i64::max_value)
+        }
+    }
+
+    pure fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
+        match uint_ty {
+            ast::ty_u =>   (uint::min_value as u64, uint::max_value as u64),
+            ast::ty_u8 =>  (u8::min_value   as u64, u8::max_value   as u64),
+            ast::ty_u16 => (u16::min_value  as u64, u16::max_value  as u64),
+            ast::ty_u32 => (u32::min_value  as u64, u32::max_value  as u64),
+            ast::ty_u64 => (u64::min_value,         u64::max_value)
+        }
+    }
+
+    fn check_limits(cx: ty::ctxt, binop: ast::binop, l: &ast::expr,
+                    r: &ast::expr) -> bool {
+        let (lit, expr, swap) = match (l.node, r.node) {
+            (ast::expr_lit(_), _) => (l, r, true),
+            (_, ast::expr_lit(_)) => (r, l, false),
+            _ => return true
+        };
+        // Normalize the binop so that the literal is always on the RHS in
+        // the comparison
+        let norm_binop = if (swap) {
+            rev_binop(binop)
+        } else {
+            binop
+        };
+        match ty::get(ty::expr_ty(cx, @*expr)).sty {
+            ty::ty_int(int_ty) => {
+                let (min, max) = int_ty_range(int_ty);
+                let lit_val: i64 = match lit.node {
+                    ast::expr_lit(@li) => match li.node {
+                        ast::lit_int(v, _) => v,
+                        ast::lit_uint(v, _) => v as i64,
+                        ast::lit_int_unsuffixed(v) => v,
+                        _ => return true
+                    },
+                    _ => fail
+                };
+                is_valid(norm_binop, lit_val, min, max)
+            }
+            ty::ty_uint(uint_ty) => {
+                let (min, max): (u64, u64) = uint_ty_range(uint_ty);
+                let lit_val: u64 = match lit.node {
+                    ast::expr_lit(@li) => match li.node {
+                        ast::lit_int(v, _) => v as u64,
+                        ast::lit_uint(v, _) => v,
+                        ast::lit_int_unsuffixed(v) => v as u64,
+                        _ => return true
+                    },
+                    _ => fail
+                };
+                is_valid(norm_binop, lit_val, min, max)
+            }
+            _ => true
+        }
+    }
+
+    pure fn is_comparison(binop: ast::binop) -> bool {
+        match binop {
+            ast::eq | ast::lt | ast::le |
+            ast::ne | ast::ge | ast::gt => true,
+            _ => false
+        }
+    }
+
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
+        visit_expr: fn@(e: @ast::expr) {
+            match e.node {
+                ast::expr_binary(binop, @l, @r) => {
+                    if is_comparison(binop)
+                       && !check_limits(cx, binop, &l, &r) {
+                        cx.sess.span_lint(
+                            type_limits, e.id, it.id, e.span,
+                            ~"comparison is useless due to type limits");
+                    }
+                }
+                _ => ()
+            }
         },
         .. *visit::default_simple_visitor()
     }));
