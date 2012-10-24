@@ -333,11 +333,10 @@ impl Parser {
             let is_static = p.parse_staticness();
             let static_sty = spanned(lo, p.span.hi, sty_static);
 
-			let vis = p.parse_visibility();
+            let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
-            
             let ident = p.parse_method_name();
 
             let tps = p.parse_ty_params();
@@ -2535,8 +2534,8 @@ impl Parser {
 
         let is_static = self.parse_staticness();
         let static_sty = spanned(lo, self.span.hi, sty_static);
-		
-		let visa = self.parse_visibility();
+
+        let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
