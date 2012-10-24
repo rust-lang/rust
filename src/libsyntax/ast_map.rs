@@ -74,6 +74,7 @@ enum ast_node {
     // Destructor for a class
     node_dtor(~[ty_param], @class_dtor, def_id, @path),
     node_block(blk),
+    node_ctor(@struct_def, @item, @path)
 }
 
 type map = std::map::HashMap<node_id, ast_node>;
@@ -284,6 +285,17 @@ fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     for vec::each(struct_def.methods) |m| {
         map_method(d_id, p, *m, cx);
     }
+    // If this is a tuple-like struct, register the constructor.
+    if struct_def.fields.len() == 0 ||
+            struct_def.fields[0].node.kind == ast::unnamed_field {
+        match parent_node {
+            node_item(item, path) => {
+                cx.map.insert(struct_def.ctor_id,
+                              node_ctor(struct_def, item, p));
+            }
+            _ => fail ~"struct def parent wasn't an item"
+        }
+    }
 }
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
@@ -374,6 +386,9 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
       Some(node_block(_)) => {
         fmt!("block")
+      }
+      Some(node_ctor(*)) => {
+        fmt!("ctor")
       }
     }
 }
