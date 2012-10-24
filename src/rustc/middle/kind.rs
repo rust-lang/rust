@@ -580,7 +580,7 @@ fn check_cast_for_escaping_regions(
     match target_substs.self_r {
       Some(ty::re_scope(*)) => { return; /* case (1) */ }
       None | Some(ty::re_static) | Some(ty::re_free(*)) => {}
-      Some(ty::re_bound(*)) | Some(ty::re_var(*)) => {
+      Some(ty::re_bound(*)) | Some(ty::re_infer(*)) => {
         cx.tcx.sess.span_bug(
             source.span,
             fmt!("bad region found in kind: %?", target_substs.self_r));

@@ -136,9 +136,20 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
 #[cfg(notest)]
 pub mod traits {
     #[legacy_exports];
+
+    #[cfg(stage0)]
     pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
         #[inline(always)]
         pure fn add(rhs: & &[const T]) -> @[T] {
+            append(self, (*rhs))
+        }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+        #[inline(always)]
+        pure fn add(rhs: & &self/[const T]) -> @[T] {
             append(self, (*rhs))
         }
     }

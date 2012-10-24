@@ -112,18 +112,18 @@ fn is_subregion_of(region_map: region_map,
                    super_region: ty::Region) -> bool {
     sub_region == super_region ||
         match (sub_region, super_region) {
-          (_, ty::re_static) => {
-            true
-          }
+            (_, ty::re_static) => {
+                true
+            }
 
-          (ty::re_scope(sub_scope), ty::re_scope(super_scope)) |
-          (ty::re_scope(sub_scope), ty::re_free(super_scope, _)) => {
-            scope_contains(region_map, super_scope, sub_scope)
-          }
+            (ty::re_scope(sub_scope), ty::re_scope(super_scope)) |
+            (ty::re_scope(sub_scope), ty::re_free(super_scope, _)) => {
+                scope_contains(region_map, super_scope, sub_scope)
+            }
 
-          _ => {
-            false
-          }
+            _ => {
+                false
+            }
         }
 }
 

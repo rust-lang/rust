@@ -1,6 +1,9 @@
 use combine::*;
 use unify::*;
 use to_str::ToStr;
+use std::list;
+
+fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
 enum Sub = combine_fields;  // "subtype", "subregion" etc
 
@@ -125,10 +128,21 @@ impl Sub: combine {
     }
 
     fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+        debug!("fns(a=%s, b=%s)", a.to_str(self.infcx), b.to_str(self.infcx));
+        let _indenter = indenter();
+
         // Rather than checking the subtype relationship between `a` and `b`
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
-        // (issue #2263).
+        //
+        // A rather detailed discussion of what's going on here can be
+        // found in the region_inference.rs module.
+
+        // Take a snapshot.  We'll never roll this back, but in later
+        // phases we do want to be able to examine "all bindings that
+        // were created as part of this type comparison", and making a
+        // snapshot is a convenient way to do that.
+        let snapshot = self.infcx.region_vars.start_snapshot();
 
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
@@ -140,26 +154,50 @@ impl Sub: combine {
                 // for it.  The only thing we're doing with `br` here is
                 // using it in the debug message.
                 let rvar = self.infcx.next_region_var_nb(self.span);
-                debug!("Bound region %s maps to %s",
+                debug!("Bound region %s maps to %?",
                        bound_region_to_str(self.infcx.tcx, br),
-                       region_to_str(self.infcx.tcx, rvar));
+                       rvar);
                 rvar
             }
         };
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
-        let {fn_ty: b_fn_ty, _} = {
+        let {fn_ty: b_fn_ty, isr: skol_isr, _} = {
             do replace_bound_regions_in_fn_ty(self.infcx.tcx, @Nil,
                                               None, b) |br| {
-                // FIXME: eventually re_skolemized (issue #2263)
-                ty::re_bound(br)
+                let skol = self.infcx.region_vars.new_skolemized(br);
+                debug!("Bound region %s skolemized to %?",
+                       bound_region_to_str(self.infcx.tcx, br),
+                       skol);
+                skol
             }
         };
 
-        // Try to compare the supertype and subtype now that they've been
-        // instantiated.
-        super_fns(&self, &a_fn_ty, &b_fn_ty)
+        debug!("a_fn_ty=%s", a_fn_ty.to_str(self.infcx));
+        debug!("b_fn_ty=%s", b_fn_ty.to_str(self.infcx));
+
+        // Compare types now that bound regions have been replaced.
+        let fn_ty = if_ok!(super_fns(&self, &a_fn_ty, &b_fn_ty));
+
+        // Presuming type comparison succeeds, we need to check
+        // that the skolemized regions do not "leak".
+        for list::each(skol_isr) |pair| {
+            let (skol_br, skol) = *pair;
+            let tainted = self.infcx.region_vars.tainted(snapshot, skol);
+            for tainted.each |tainted_region| {
+                // A is not as polymorphic as B:
+                if self.a_is_expected {
+                    return Err(ty::terr_regions_insufficiently_polymorphic(
+                        skol_br, *tainted_region));
+                } else {
+                    return Err(ty::terr_regions_overly_polymorphic(
+                        skol_br, *tainted_region));
+                }
+            }
+        }
+
+        return Ok(fn_ty)
     }
 
     // Traits please (FIXME: #2794):
