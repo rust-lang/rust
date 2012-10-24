@@ -311,6 +311,7 @@ mod special_idents {
     const static : ident = ident { repr: 31u };
     const intrinsic : ident = ident { repr: 32u };
     const clownshoes_foreign_mod: ident = ident { repr: 33 };
+    const unnamed_field: ident = ident { repr: 34 };
 }
 
 struct ident_interner {

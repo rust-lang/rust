@@ -1187,12 +1187,14 @@ impl Resolver {
 
                 // If this struct is tuple-like or enum-like, define a name
                 // in the value namespace.
-                if struct_def.fields.len() == 0 ||
-                        struct_def.fields[0].node.kind == unnamed_field {
-                    name_bindings.define_value(
-                        privacy,
-                        def_class(local_def(struct_def.ctor_id)),
-                        sp);
+                match struct_def.ctor_id {
+                    None => {}
+                    Some(ctor_id) => {
+                        name_bindings.define_value(
+                            privacy,
+                            def_class(local_def(ctor_id)),
+                            sp);
+                    }
                 }
 
                 // Record the def ID of this struct.
