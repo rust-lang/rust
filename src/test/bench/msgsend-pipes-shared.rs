@@ -74,7 +74,7 @@ fn run(args: &[~str]) {
     }
 
     for vec::each(worker_results) |r| {
-        future::get(r);
+        r.recv();
     }
 
     //error!("sending stop message");

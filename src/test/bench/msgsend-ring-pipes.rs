@@ -8,10 +8,9 @@
 
 // xfail-pretty
 
-use future::future;
-
 extern mod std;
 use std::time;
+use std::future;
 
 use pipes::recv;
 

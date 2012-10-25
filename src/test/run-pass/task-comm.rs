@@ -51,7 +51,7 @@ fn test00() {
         while i < number_of_messages { sum += recv(po); i = i + 1; }
     }
 
-    for results.each |r| { future::get(r); }
+    for results.each |r| { r.recv(); }
 
     debug!("Completed: Final number is: ");
     assert (sum ==
@@ -134,7 +134,7 @@ fn test06() {
     }
 
 
-    for results.each |r| { future::get(r); }
+    for results.each |r| { r.recv(); }
 }
 
 

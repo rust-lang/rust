@@ -45,7 +45,7 @@ fn run(args: ~[~str]) {
         };
     }
     for vec::each(worker_results) |r| {
-        future::get(r);
+        r.recv();
     }
     comm::send(to_child, stop);
     let result = comm::recv(from_child);
