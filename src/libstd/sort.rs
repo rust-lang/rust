@@ -166,7 +166,7 @@ const MIN_MERGE: uint = 64;
 const MIN_GALLOP: uint = 7;
 const INITIAL_TMP_STORAGE: uint = 128;
 
-pub fn tim_sort<T: Ord>(array: &[mut T]) {
+pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
     let size = array.len();
     if size < 2 {
         return;
@@ -210,7 +210,7 @@ pub fn tim_sort<T: Ord>(array: &[mut T]) {
 fn reverse_slice<T>(v: &[mut T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
-        v[i] <-> v[end - i - 1];
+        util::swap(&mut v[i], &mut v[end - i - 1]);
         i += 1;
     }
 }
@@ -226,7 +226,7 @@ pure fn min_run_length(n: uint) -> uint {
     return n + r;
 }
 
-fn count_run_ascending<T: Ord>(array: &[mut T]) -> uint {
+fn count_run_ascending<T: Copy Ord>(array: &[mut T]) -> uint {
     let size = array.len();
     assert size > 0;
     if size == 1 { return 1; }
@@ -246,7 +246,7 @@ fn count_run_ascending<T: Ord>(array: &[mut T]) -> uint {
     return run;
 }
 
-pure fn gallop_left<T: Ord>(key: &const T, array: &[const T],
+pure fn gallop_left<T: Copy Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
@@ -295,7 +295,7 @@ pure fn gallop_left<T: Ord>(key: &const T, array: &[const T],
     return ofs;
 }
 
-pure fn gallop_right<T: Ord>(key: &const T, array: &[const T],
+pure fn gallop_right<T: Copy Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
@@ -353,7 +353,7 @@ struct RunState {
 
 struct MergeState<T> {
     mut min_gallop: uint,
-    mut tmp: ~[T],
+    //mut tmp: ~[T],
     mut last_hi: bool,
     mut last_bsort: bool,
     mut mergePt: uint,
@@ -361,7 +361,7 @@ struct MergeState<T> {
     mut array: &[mut T],
     runs: DVec<RunState>,
 
-    drop {
+    /*drop {
         unsafe {
             let size = self.tmp.len();
             // Move tmp back into invalid part of array
@@ -376,15 +376,15 @@ struct MergeState<T> {
             }
             vec::raw::set_len(&mut self.tmp, 0);
         }
-    }
+    }*/
 }
 
 fn MergeState<T>() -> MergeState<T> {
-    let mut tmp = ~[];
-    vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
+    //let mut tmp = ~[];
+    //vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
     MergeState {
         min_gallop: MIN_GALLOP,
-        tmp: move tmp,
+        //tmp: move tmp,
         last_hi: false,
         last_bsort: false,
         mergePt: 0,
@@ -394,7 +394,7 @@ fn MergeState<T>() -> MergeState<T> {
     }
 }
 
-impl<T: Ord> MergeState<T> {
+impl<T: Copy Ord> MergeState<T> {
     fn binarysort(&self, array: &[mut T], start: uint) {
         let size = array.len();
         let mut start = start;
@@ -403,19 +403,16 @@ impl<T: Ord> MergeState<T> {
         if start == 0 { start += 1; }
 
         self.last_bsort = true;
-        unsafe { vec::raw::set_len(&mut self.tmp, 1); };
 
         while start < size {
-            unsafe {
-                move_vec(self.tmp, 0, array, start, 1);
-            }
+            let pivot = array[start];
             let mut left = 0;
             let mut right = start;
             assert left <= right;
 
             while left < right {
                 let mid = (left + right) >> 1;
-                if self.tmp[0] < array[mid] {
+                if pivot < array[mid] {
                     right = mid;
                 } else {
                     left = mid+1;
@@ -424,14 +421,10 @@ impl<T: Ord> MergeState<T> {
             assert left == right;
             let mut n = start-left;
 
-            unsafe {
-                move_vec(array, left+1, array, left, n);
-            }
-            array[left] <-> self.tmp[0];
+            copy_vec(array, left+1, array, left, n);
+            array[left] = move pivot;
             start += 1;
         }
-        // Forget the boxed element
-        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
         self.last_bsort = false;
     }
 
@@ -488,13 +481,9 @@ impl<T: Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        vec::reserve(&mut self.tmp, len1);
+        //vec::reserve(&mut self.tmp, len1);
         self.last_hi = false;
-
-        unsafe {
-            vec::raw::set_len(&mut self.tmp, len1);
-            move_vec(self.tmp, 0, array, base1, len1);
-        }
+        let tmp = vec::to_mut(vec::slice(array, base1, base1+len1));
         self.tmpPt = 0;
         self.mergePt = base1;
 
@@ -509,18 +498,12 @@ impl<T: Ord> MergeState<T> {
         self.mergePt += 1;
 
         if len2 == 0 {
-            unsafe {
-                move_vec(array, dest, self.tmp, 0, len1);
-                vec::raw::set_len(&mut self.tmp, 0); // Forget the elements
-            }
+            copy_vec(array, dest, tmp, 0, len1);
             return;
         }
         if len1 == 1 {
-            unsafe {
-                move_vec(array, dest, array, c2, len2);
-                array[dest+len2] <-> self.tmp[c1];
-                vec::raw::set_len(&mut self.tmp, 0); // Forget the element
-            }
+            copy_vec(array, dest, array, c2, len2);
+            array[dest+len2] <-> tmp[c1];
             return;
         }
 
@@ -532,7 +515,7 @@ impl<T: Ord> MergeState<T> {
 
             loop {
                 assert len1 > 1 && len2 != 0;
-                if array[c2] < self.tmp[c1] {
+                if array[c2] < tmp[c1] {
                     array[dest] <-> array[c2];
                     dest += 1; c2 += 1; len2 -= 1;
                     self.mergePt += 1;
@@ -541,7 +524,7 @@ impl<T: Ord> MergeState<T> {
                         break_outer = true;
                     }
                 } else {
-                    array[dest] <-> self.tmp[c1];
+                    array[dest] <-> tmp[c1];
                     dest += 1; c1 += 1; len1 -= 1;
                     self.mergePt += 1;
                     self.tmpPt += 1;
@@ -560,13 +543,11 @@ impl<T: Ord> MergeState<T> {
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                //let tmp_view = vec::const_view(self.tmp, c1, c1+len1);
+                //let tmp_view = vec::const_view(tmp, c1, c1+len1);
                 count1 = gallop_right(&const array[c2],
-                    vec::const_view(self.tmp, c1, c1+len1), 0);
+                    vec::const_view(tmp, c1, c1+len1), 0);
                 if count1 != 0 {
-                    unsafe {
-                        move_vec(array, dest, self.tmp, c1, count1);
-                    }
+                    copy_vec(array, dest, tmp, c1, count1);
                     dest += count1; c1 += count1; len1 -= count1;
                     self.mergePt += count1; self.tmpPt += count1;
                     if len1 <= 1 { break_outer = true; break; }
@@ -577,16 +558,14 @@ impl<T: Ord> MergeState<T> {
                 if len2 == 0 { break_outer = true; break; }
 
                 let tmp_view = vec::const_view(array, c2, c2+len2);
-                count2 = gallop_left(&const self.tmp[c1], tmp_view, 0);
+                count2 = gallop_left(&const tmp[c1], tmp_view, 0);
                 if count2 != 0 {
-                    unsafe {
-                        move_vec(array, dest, array, c2, count2);
-                    }
+                    copy_vec(array, dest, array, c2, count2);
                     dest += count2; c2 += count2; len2 -= count2;
                     self.mergePt += count2;
                     if len2 == 0 { break_outer = true; break; }
                 }
-                array[dest] <-> self.tmp[c1];
+                array[dest] <-> tmp[c1];
                 dest += 1; c1 += 1; len1 -= 1;
                 self.mergePt += 1; self.tmpPt += 1;
                 if len1 == 1 { break_outer = true; break; }
@@ -603,34 +582,25 @@ impl<T: Ord> MergeState<T> {
 
         if len1 == 1 {
             assert len2 > 0;
-            unsafe {
-                move_vec(array, dest, array, c2, len2);
-            }
-            array[dest+len2] <-> self.tmp[c1];
+            copy_vec(array, dest, array, c2, len2);
+            array[dest+len2] <-> tmp[c1];
         } else if len1 == 0 {
             fail ~"Comparison violates its contract!";
         } else {
             assert len2 == 0;
             assert len1 > 1;
-            unsafe {
-                move_vec(array, dest, self.tmp, c1, len1);
-            }
+            copy_vec(array, dest, tmp, c1, len1);
         }
         self.tmpPt = 0;
-        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
     fn merge_hi(&self, array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        vec::reserve(&mut self.tmp, len2);
         self.last_hi = true;
 
-        unsafe {
-            vec::raw::set_len(&mut self.tmp, len2);
-            move_vec(self.tmp, 0, array, base2, len2);
-        }
+        let tmp = vec::to_mut(vec::slice(array, base2, base2+len2));
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
@@ -645,20 +615,14 @@ impl<T: Ord> MergeState<T> {
         dest -= 1; c1 -= 1; len1 -= 1;
 
         if len1 == 0 {
-            unsafe {
-                move_vec(array, dest-(len2-1), self.tmp, 0, len2);
-                vec::raw::set_len(&mut self.tmp, 0); // Forget the elements
-            }
+            copy_vec(array, dest-(len2-1), tmp, 0, len2);
             return;
         }
         if len2 == 1 {
             dest -= len1;
             c1 -= len1;
-            unsafe {
-                move_vec(array, dest+1, array, c1+1, len1);
-                array[dest] <-> self.tmp[c2];
-                vec::raw::set_len(&mut self.tmp, 0); // Forget the element
-            }
+            copy_vec(array, dest+1, array, c1+1, len1);
+            array[dest] <-> tmp[c2];
             return;
         }
 
@@ -670,7 +634,7 @@ impl<T: Ord> MergeState<T> {
 
             loop {
                 assert len1 != 0 && len2 > 1;
-                if self.tmp[c2] < array[c1] {
+                if tmp[c2] < array[c1] {
                     array[dest] <-> array[c1];
                     dest -= 1; c1 -= 1; len1 -= 1;
                     self.mergePt -= 1;
@@ -679,7 +643,7 @@ impl<T: Ord> MergeState<T> {
                         break_outer = true;
                     }
                 } else {
-                    array[dest] <-> self.tmp[c2];
+                    array[dest] <-> tmp[c2];
                     dest -= 1; c2 -= 1; len2 -= 1;
                     self.mergePt -= 1; self.tmpPt -= 1;
                     count2 += 1; count1 = 0;
@@ -699,31 +663,27 @@ impl<T: Ord> MergeState<T> {
 
                 let tmp_view = vec::mut_view(array, base1, base1+len1);
                 count1 = len1 - gallop_right(
-                    &const self.tmp[c2], tmp_view, len1-1);
+                    &const tmp[c2], tmp_view, len1-1);
 
                 if count1 != 0 {
                     dest -= count1; c1 -= count1; len1 -= count1;
                     self.mergePt -= count1;
-                    unsafe {
-                        move_vec(array, dest+1, array, c1+1, count1);
-                    }
+                    copy_vec(array, dest+1, array, c1+1, count1);
                     if len1 == 0 { break_outer = true; break; }
                 }
 
-                array[dest] <-> self.tmp[c2];
+                array[dest] <-> tmp[c2];
                 dest -= 1; c2 -= 1; len2 -= 1;
                 self.mergePt -= 1; self.tmpPt -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
-                //let tmp_view = vec::mut_view(self.tmp, 0, len2);
+                //let tmp_view = vec::mut_view(tmp, 0, len2);
                 let count2 = len2 - gallop_left(&const array[c1],
-                            vec::mut_view(self.tmp, 0, len2), len2-1);
+                            vec::mut_view(tmp, 0, len2), len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     self.mergePt -= count2; self.tmpPt -= count2;
-                    unsafe {
-                        move_vec(array, dest+1, self.tmp, c2+1, count2);
-                    }
+                    copy_vec(array, dest+1, tmp, c2+1, count2);
                     if len2 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c1];
@@ -746,21 +706,16 @@ impl<T: Ord> MergeState<T> {
             assert len1 > 0;
             dest -= len1;
             c1 -= len1;
-            unsafe {
-                move_vec(array, dest+1, array, c1+1, len1);
-            }
-            array[dest] <-> self.tmp[c2];
+            copy_vec(array, dest+1, array, c1+1, len1);
+            array[dest] <-> tmp[c2];
         } else if len2 == 0 {
             fail ~"Comparison violates its contract!";
         } else {
             assert len1 == 0;
             assert len2 != 0;
-            unsafe {
-                move_vec(array, dest-(len2-1), self.tmp, 0, len2);
-            }
+            copy_vec(array, dest-(len2-1), tmp, 0, len2);
         }
         self.tmpPt = 0;
-        unsafe { vec::raw::set_len(&mut self.tmp, 0); }
     }
 
     fn merge_collapse(&self, array: &[mut T]) {
@@ -796,21 +751,14 @@ impl<T: Ord> MergeState<T> {
     }
 }
 
-// Moves elements to from dest to from
-// Unsafe as it makes the from parameter invalid between s2 and s2+len
 #[inline(always)]
-unsafe fn move_vec<T>(dest: &[mut T], s1: uint,
+fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
-
-    do vec::as_mut_buf(dest) |p, _len| {
-        let destPtr = ptr::mut_offset(p, s1);
-
-        do vec::as_const_buf(from) |p, _len| {
-            let fromPtr = ptr::const_offset(p, s2);
-
-            ptr::memmove(destPtr, fromPtr, len);
-        }
+    
+    let slice = vec::slice(from, s2, s2+len);
+    for slice.eachi |i, v| {
+        dest[s1+i] = *v;
     }
 }
 
