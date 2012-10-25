@@ -3081,7 +3081,7 @@ impl Parser {
             fields: move fields,
             methods: move methods,
             dtor: actual_dtor,
-            ctor_id: Some(self.get_id())
+            ctor_id: None
         };
     }
 
