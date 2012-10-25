@@ -133,7 +133,7 @@ pub mod at_vec;
 pub mod bool;
 pub mod tuple;
 pub mod unit;
-pub mod uniq;
+pub mod owned;
 
 // Ubiquitous-utility-type modules
 
