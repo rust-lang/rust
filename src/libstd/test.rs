@@ -218,7 +218,7 @@ fn print_failures(st: ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
     let failures = copy st.failures;
     let failures = vec::map(failures, |test| test.name);
-    let failures = sort::merge_sort(|x, y| str::le(*x, *y), failures);
+    let failures = do sort::merge_sort(failures) |x, y| { str::le(*x, *y) };
     for vec::each(failures) |name| {
         st.out.write_line(fmt!("    %s", *name));
     }
@@ -371,7 +371,7 @@ fn filter_tests(opts: &TestOpts,
         pure fn lteq(t1: &TestDesc, t2: &TestDesc) -> bool {
             str::le(t1.name, t2.name)
         }
-        sort::merge_sort(lteq, filtered)
+        sort::merge_sort(filtered, lteq)
     };
 
     move filtered

@@ -127,7 +127,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
         pure fn by_lo(a: &gather_item, b: &gather_item) -> bool {
             a.lo < b.lo
         }
-        std::sort::merge_sort(by_lo, v)
+        std::sort::merge_sort(v, by_lo)
     };
     return cx;
 }
