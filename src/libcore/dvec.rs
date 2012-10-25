@@ -77,6 +77,7 @@ pub fn unwrap<A>(d: DVec<A>) -> ~[A] {
 }
 
 priv impl<A> DVec<A> {
+    #[inline(always)]
     pure fn check_not_borrowed() {
         unsafe {
             let data: *() = cast::reinterpret_cast(&self.data);
@@ -137,17 +138,14 @@ impl<A> DVec<A> {
     }
 
     /// Returns the number of elements currently in the dvec
+    #[inline(always)]
     pure fn len() -> uint {
-        unsafe {
-            do self.check_out |v| {
-                let l = v.len();
-                self.give_back(move v);
-                l
-            }
-        }
+        self.check_not_borrowed();
+        return self.data.len();
     }
 
     /// Overwrite the current contents
+    #[inline(always)]
     fn set(w: ~[A]) {
         self.check_not_borrowed();
         self.data = move w;
@@ -178,6 +176,7 @@ impl<A> DVec<A> {
     }
 
     /// Append a single item to the end of the list
+    #[inline(always)]
     fn push(t: A) {
         self.check_not_borrowed();
         self.data.push(move t);
@@ -354,6 +353,7 @@ impl<A: Copy> DVec<A> {
 }
 
 impl<A:Copy> DVec<A>: Index<uint,A> {
+    #[inline(always)]
     pure fn index(idx: uint) -> A {
         self.get_elt(idx)
     }
