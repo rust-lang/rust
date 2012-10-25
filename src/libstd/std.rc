@@ -53,6 +53,7 @@ pub mod cell;
 pub mod sync;
 pub mod arc;
 pub mod comm;
+pub mod future;
 
 // Collections
 

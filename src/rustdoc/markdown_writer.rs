@@ -1,5 +1,6 @@
 use doc::ItemUtils;
 use io::ReaderUtil;
+use std::future;
 
 export WriteInstr;
 export Writer;

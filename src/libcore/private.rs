@@ -581,16 +581,20 @@ pub mod tests {
 
         for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
-            futures.push(future::spawn(|move total| {
+            let (chan, port) = pipes::stream();
+            futures.push(move port);
+
+            do task::spawn |move total, move chan| {
                 for uint::range(0, count) |_i| {
                     do total.with |count| {
                         **count += 1;
                     }
                 }
-            }));
+                chan.send(());
+            }
         };
 
-        for futures.each |f| { f.get() }
+        for futures.each |f| { f.recv() }
 
         do total.with |total| {
             assert **total == num_tasks * count
@@ -642,7 +646,7 @@ pub mod tests {
         // Have to get rid of our reference before blocking.
         { let _x = move x; } // FIXME(#3161) util::ignore doesn't work here
         let res = option::swap_unwrap(&mut res);
-        future::get(&res);
+        res.recv();
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -657,7 +661,7 @@ pub mod tests {
         }
         assert unwrap_exclusive(move x) == ~~"hello";
         let res = option::swap_unwrap(&mut res);
-        future::get(&res);
+        res.recv();
     }
 
     #[test] #[ignore(cfg(windows))]

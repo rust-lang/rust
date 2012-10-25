@@ -651,7 +651,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for vec::each(children) |r| { future::get(r); }
+        for vec::each(children) |r| { r.recv(); }
 
         // Wait for writer to finish
         p.recv();

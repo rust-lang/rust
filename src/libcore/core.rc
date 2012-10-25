@@ -181,7 +181,6 @@ pub mod task {
     pub mod spawn;
     pub mod rt;
 }
-pub mod future;
 pub mod pipes;
 
 // Runtime and language-primitive support
