@@ -32,6 +32,7 @@ use cmp::Eq;
 use result::Result;
 use pipes::{stream, Chan, Port};
 use local_data_priv::{local_get, local_set};
+use util::replace;
 
 use rt::task_id;
 use rt::rust_task;
@@ -70,25 +71,6 @@ impl TaskResult : Eq {
         }
     }
     pure fn ne(other: &TaskResult) -> bool { !self.eq(other) }
-}
-
-/// A message type for notifying of task lifecycle events
-pub enum Notification {
-    /// Sent when a task exits with the task handle and result
-    Exit(Task, TaskResult)
-}
-
-impl Notification : cmp::Eq {
-    pure fn eq(other: &Notification) -> bool {
-        match self {
-            Exit(e0a, e1a) => {
-                match (*other) {
-                    Exit(e0b, e1b) => e0a == e0b && e1a == e1b
-                }
-            }
-        }
-    }
-    pure fn ne(other: &Notification) -> bool { !self.eq(other) }
 }
 
 /// Scheduler modes
@@ -200,7 +182,7 @@ pub type SchedOpts = {
 pub type TaskOpts = {
     linked: bool,
     supervised: bool,
-    mut notify_chan: Option<Chan<Notification>>,
+    mut notify_chan: Option<Chan<TaskResult>>,
     sched: Option<SchedOpts>,
 };
 
@@ -246,11 +228,7 @@ priv impl TaskBuilder {
             fail ~"Cannot copy a task_builder"; // Fake move mode on self
         }
         self.consumed = true;
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: self.opts.linked,
@@ -271,11 +249,7 @@ impl TaskBuilder {
      * the other will not be killed.
      */
     fn unlinked() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: false,
@@ -293,11 +267,7 @@ impl TaskBuilder {
      * the child.
      */
     fn supervised() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: false,
@@ -314,11 +284,7 @@ impl TaskBuilder {
      * other will be killed.
      */
     fn linked() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: true,
@@ -348,7 +314,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(blk: fn(v: future::Future<TaskResult>)) -> TaskBuilder {
+    fn future_result(blk: fn(v: Port<TaskResult>)) -> TaskBuilder {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -359,13 +325,9 @@ impl TaskBuilder {
         }
 
         // Construct the future and give it to the caller.
-        let (notify_pipe_ch, notify_pipe_po) = stream::<Notification>();
+        let (notify_pipe_ch, notify_pipe_po) = stream::<TaskResult>();
 
-        blk(do future::from_fn |move notify_pipe_po| {
-            match notify_pipe_po.recv() {
-              Exit(_, result) => result
-            }
-        });
+        blk(move notify_pipe_po);
 
         // Reconfigure self to use a notify channel.
         TaskBuilder({
@@ -381,11 +343,7 @@ impl TaskBuilder {
     }
     /// Configure a custom scheduler mode for the task.
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: self.opts.linked,
@@ -412,11 +370,7 @@ impl TaskBuilder {
      */
     fn add_wrapper(wrapper: fn@(v: fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder({
             opts: {
                 linked: self.opts.linked,
@@ -447,13 +401,7 @@ impl TaskBuilder {
      * must be greater than zero.
      */
     fn spawn(f: fn~()) {
-        let notify_chan = if self.opts.notify_chan.is_none() {
-            None
-        } else {
-            let swapped_notify_chan =
-                option::swap_unwrap(&mut self.opts.notify_chan);
-            Some(move swapped_notify_chan)
-        };
+        let notify_chan = replace(&mut self.opts.notify_chan, None);
         let x = self.consume();
         let opts = {
             linked: x.opts.linked,
@@ -532,7 +480,7 @@ impl TaskBuilder {
         do fr_task_builder.spawn |move f| {
             comm::send(ch, f());
         }
-        match future::get(&option::unwrap(move result)) {
+        match option::unwrap(move result).recv() {
             Success => result::Ok(comm::recv(po)),
             Failure => result::Err(())
         }
@@ -949,14 +897,14 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut result = None;
     do task().future_result(|+r| { result = Some(move r); }).spawn { }
-    assert future::get(&option::unwrap(move result)) == Success;
+    assert option::unwrap(move result).recv() == Success;
 
     result = None;
     do task().future_result(|+r|
         { result = Some(move r); }).unlinked().spawn {
         fail;
     }
-    assert future::get(&option::unwrap(move result)) == Failure;
+    assert option::unwrap(move result).recv() == Failure;
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
