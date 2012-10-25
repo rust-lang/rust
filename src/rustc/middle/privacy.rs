@@ -239,6 +239,31 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                 }
                             }
                         }
+                        ty_enum(enum_id, _) => {
+                            if enum_id.crate != local_crate ||
+                                    !privileged_items.contains(
+                                        &enum_id.node) {
+                                match tcx.def_map.find(pattern.id) {
+                                    Some(def_variant(_, variant_id)) => {
+                                        for fields.each |field| {
+                                            debug!("(privacy checking) \
+                                                    checking field in \
+                                                    struct variant pattern");
+                                            check_field(pattern.span,
+                                                        variant_id,
+                                                        field.ident);
+                                        }
+                                    }
+                                    _ => {
+                                        tcx.sess.span_bug(pattern.span,
+                                                          ~"resolve didn't \
+                                                            map enum struct \
+                                                            pattern to a \
+                                                            variant def");
+                                    }
+                                }
+                            }
+                        }
                         _ => {
                             tcx.sess.span_bug(pattern.span,
                                               ~"struct pattern didn't have \
