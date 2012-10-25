@@ -172,15 +172,15 @@ pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
         return;
     }
 
+    if size < MIN_MERGE {
+        let init_run_len = count_run_ascending(array);
+        binarysort(array, init_run_len);
+        return;
+    }
+
     let ms = &MergeState();
     ms.array = array;
     let min_run = min_run_length(size);
-
-    if size < MIN_MERGE {
-        let init_run_len = count_run_ascending(array);
-        ms.binarysort(array, init_run_len);
-        return;
-    }
 
     let mut idx = 0;
     let mut remaining = size;
@@ -191,7 +191,7 @@ pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
         if run_len < min_run {
             let force = if remaining <= min_run {remaining} else {min_run};
             let slice = vec::mut_view(arr, 0, force);
-            ms.binarysort(slice, run_len);
+            binarysort(slice, run_len);
             run_len = force;
         }
 
@@ -204,6 +204,36 @@ pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
     }
 
     ms.merge_force_collapse(array);
+}
+
+fn binarysort<T: Copy Ord>(array: &[mut T], start: uint) {
+    let size = array.len();
+    let mut start = start;
+    assert start <= size;
+
+    if start == 0 { start += 1; }
+
+    while start < size {
+        let pivot = array[start];
+        let mut left = 0;
+        let mut right = start;
+        assert left <= right;
+
+        while left < right {
+            let mid = (left + right) >> 1;
+            if pivot < array[mid] {
+                right = mid;
+            } else {
+                left = mid+1;
+            }
+        }
+        assert left == right;
+        let mut n = start-left;
+
+        copy_vec(array, left+1, array, left, n);
+        array[left] = move pivot;
+        start += 1;
+    }
 }
 
 // Reverse the order of elements in a slice, in place
@@ -366,36 +396,6 @@ fn MergeState<T>() -> MergeState<T> {
 }
 
 impl<T: Copy Ord> MergeState<T> {
-    fn binarysort(&self, array: &[mut T], start: uint) {
-        let size = array.len();
-        let mut start = start;
-        assert start <= size;
-
-        if start == 0 { start += 1; }
-
-        while start < size {
-            let pivot = array[start];
-            let mut left = 0;
-            let mut right = start;
-            assert left <= right;
-
-            while left < right {
-                let mid = (left + right) >> 1;
-                if pivot < array[mid] {
-                    right = mid;
-                } else {
-                    left = mid+1;
-                }
-            }
-            assert left == right;
-            let mut n = start-left;
-
-            copy_vec(array, left+1, array, left, n);
-            array[left] = move pivot;
-            start += 1;
-        }
-    }
-
     fn push_run(&self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
