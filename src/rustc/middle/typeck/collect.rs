@@ -270,9 +270,8 @@ fn ensure_supertraits(ccx: @crate_ctxt,
  *
  * # Parameters
  *
- * - impl_m: the method in the impl
  * - impl_tps: the type params declared on the impl itself (not the method!)
- * - impl_body_id: the id of the method body from the impl
+ * - cm: info about the method we are checking
  * - trait_m: the method in the trait
  * - trait_substs: the substitutions used on the type of the trait
  * - self_ty: the self type of the impl
@@ -357,9 +356,6 @@ fn compare_impl_method(tcx: ty::ctxt,
     // a free region.  So, for example, if the impl type is
     // "&self/str", then this would replace the self type with a free
     // region `self`.
-    //
-    // Note: Ideal would be to use the node-id of the method body here,
-    // not the node id of the method itself.
     let dummy_self_r = ty::re_free(cm.body_id, ty::br_self);
     let self_ty = replace_bound_self(tcx, self_ty, dummy_self_r);
 

@@ -12,9 +12,42 @@
  * match against the current list of values.  If those patterns match, then
  * the arm listed in the match is the correct arm.  A given arm may have
  * multiple corresponding match entries, one for each alternative that
- * remains.  As we proceed these sets of matches are adjusted.  Anyway this
- * part I am pretty vague on.  Perhaps I or someone else can add more
- * documentation when they understand it. :)
+ * remains.  As we proceed these sets of matches are adjusted by the various
+ * `enter_XXX()` functions, each of which adjusts the set of options given
+ * some information about the value which has been matched.
+ *
+ * So, initially, there is one value and N matches, each of which have one
+ * constituent pattern.  N here is usually the number of arms but may be
+ * greater, if some arms have multiple alternatives.  For example, here:
+ *
+ *     enum Foo { A, B(int), C(uint, uint) }
+ *     match foo {
+ *         A => ...,
+ *         B(x) => ...,
+ *         C(1u, 2) => ...,
+ *         C(_) => ...
+ *     }
+ *
+ * The value would be `foo`.  There would be four matches, each of which
+ * contains one pattern (and, in one case, a guard).  We could collect the
+ * various options and then compile the code for the case where `foo` is an
+ * `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
+ * drop the two matches that do not match a `C` and (2) expand the other two
+ * into two patterns each.  In the first case, the two patterns would be `1u`
+ * and `2`, and the in the second case the _ pattern would be expanded into
+ * `_` and `_`.  The two values are of course the arguments to `C`.
+ *
+ * Here is a quick guide to the various functions:
+ *
+ * - `compile_submatch()`: The main workhouse.  It takes a list of values and
+ *   a list of matches and finds the various possibilities that could occur.
+ *
+ * - `enter_XXX()`: modifies the list of matches based on some information about
+ *   the value that has been matched.  For example, `enter_rec_or_struct()`
+ *   adjusts the values given that a record or struct has been matched.  This is
+ *   an infallible pattern, so *all* of the matches must be either wildcards or
+ *   record/struct patterns.  `enter_opt()` handles the fallible cases, and it is
+ *   correspondingly more complex.
  *
  * ## Bindings
  *
