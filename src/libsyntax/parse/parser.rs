@@ -2659,9 +2659,11 @@ impl Parser {
         let mut fields: ~[@struct_field];
         let mut methods: ~[@method] = ~[];
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
+        let is_tuple_like;
 
         if self.eat(token::LBRACE) {
             // It's a record-like struct.
+            is_tuple_like = false;
             fields = ~[];
             while self.token != token::RBRACE {
                 match self.parse_class_item() {
@@ -2694,6 +2696,7 @@ impl Parser {
             self.bump();
         } else if self.token == token::LPAREN {
             // It's a tuple-like struct.
+            is_tuple_like = true;
             fields = do self.parse_unspanned_seq(token::LPAREN, token::RPAREN,
                                                  seq_sep_trailing_allowed
                                                     (token::COMMA)) |p| {
@@ -2708,6 +2711,7 @@ impl Parser {
             self.expect(token::SEMI);
         } else if self.eat(token::SEMI) {
             // It's a unit-like struct.
+            is_tuple_like = true;
             fields = ~[];
         } else {
             self.fatal(fmt!("expected `{`, `(`, or `;` after struct name \
@@ -2723,13 +2727,14 @@ impl Parser {
                     body: d_body},
              span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
+        let new_id = self.get_id();
         (class_name,
          item_class(@{
              traits: traits,
              fields: move fields,
              methods: move methods,
              dtor: actual_dtor,
-             ctor_id: self.get_id()
+             ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, ty_params),
          None)
     }
@@ -3076,7 +3081,7 @@ impl Parser {
             fields: move fields,
             methods: move methods,
             dtor: actual_dtor,
-            ctor_id: self.get_id()
+            ctor_id: Some(self.get_id())
         };
     }
 

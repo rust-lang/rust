@@ -1480,7 +1480,7 @@ type struct_def = {
     dtor: Option<class_dtor>,
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
-    ctor_id: node_id
+    ctor_id: Option<node_id>
 };
 
 /*
