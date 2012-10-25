@@ -617,7 +617,8 @@ fn convert_struct(ccx: @crate_ctxt,
                         inputs: do struct_def.fields.map |field| {
                             {
                                 mode: ast::expl(ast::by_copy),
-                                ty: ccx.tcx.tcache.get(local_def(field.node.id)).ty
+                                ty: ccx.tcx.tcache.get
+                                        (local_def(field.node.id)).ty
                             }
                         },
                         output: selfty
