@@ -186,6 +186,139 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     }
 }
 
+/// `path` is the AST path item naming the type of this struct.
+/// `fields` is the field patterns of the struct pattern.
+/// `class_fields` describes the type of each field of the struct.
+/// `class_id` is the ID of the struct.
+/// `substitutions` are the type substitutions applied to this struct type
+/// (e.g. K,V in HashMap<K,V>).
+/// `etc` is true if the pattern said '...' and false otherwise.
+fn check_struct_pat_fields(pcx: pat_ctxt,
+                           span: span,
+                           path: @ast::path,
+                           fields: ~[ast::field_pat],
+                           class_fields: ~[ty::field_ty],
+                           class_id: ast::def_id,
+                           substitutions: &ty::substs,
+                           etc: bool) {
+    let tcx = pcx.fcx.ccx.tcx;
+
+    // Index the class fields.
+    let field_map = std::map::HashMap();
+    for class_fields.eachi |i, class_field| {
+        field_map.insert(class_field.ident, i);
+    }
+
+    // Typecheck each field.
+    let found_fields = std::map::HashMap();
+    for fields.each |field| {
+        match field_map.find(field.ident) {
+            Some(index) => {
+                let class_field = class_fields[index];
+                let field_type = ty::lookup_field_type(tcx,
+                                                       class_id,
+                                                       class_field.id,
+                                                       substitutions);
+                check_pat(pcx, field.pat, field_type);
+                found_fields.insert(index, ());
+            }
+            None => {
+                let name = pprust::path_to_str(path, tcx.sess.intr());
+                tcx.sess.span_err(span,
+                                  fmt!("struct `%s` does not have a field
+                                        named `%s`", name,
+                                       tcx.sess.str_of(field.ident)));
+            }
+        }
+    }
+
+    // Report an error if not all the fields were specified.
+    if !etc {
+        for class_fields.eachi |i, field| {
+            if found_fields.contains_key(i) {
+                loop;
+            }
+            tcx.sess.span_err(span,
+                              fmt!("pattern does not mention field `%s`",
+                                   tcx.sess.str_of(field.ident)));
+        }
+    }
+}
+
+fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
+                    expected: ty::t, path: @ast::path,
+                    fields: ~[ast::field_pat], etc: bool,
+                    class_id: ast::def_id, substitutions: &ty::substs) {
+    let fcx = pcx.fcx;
+    let tcx = pcx.fcx.ccx.tcx;
+
+    let class_fields = ty::lookup_class_fields(tcx, class_id);
+
+    // Check to ensure that the struct is the one specified.
+    match tcx.def_map.find(pat_id) {
+        Some(ast::def_class(supplied_def_id))
+                if supplied_def_id == class_id => {
+            // OK.
+        }
+        Some(ast::def_class(*)) | Some(ast::def_variant(*)) => {
+            let name = pprust::path_to_str(path, tcx.sess.intr());
+            tcx.sess.span_err(span,
+                              fmt!("mismatched types: expected `%s` but \
+                                    found `%s`",
+                                   fcx.infcx().ty_to_str(expected),
+                                   name));
+        }
+        _ => {
+            tcx.sess.span_bug(span, ~"resolve didn't write in class");
+        }
+    }
+
+    // Forbid pattern-matching structs with destructors.
+    if ty::has_dtor(tcx, class_id) {
+        tcx.sess.span_err(span, ~"deconstructing struct not allowed in \
+                                  pattern (it has a destructor)");
+    }
+
+    check_struct_pat_fields(pcx, span, path, fields, class_fields, class_id,
+                            substitutions, etc);
+}
+
+fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
+                                      pat_id: ast::node_id,
+                                      span: span,
+                                      expected: ty::t,
+                                      path: @ast::path,
+                                      fields: ~[ast::field_pat],
+                                      etc: bool,
+                                      enum_id: ast::def_id,
+                                      substitutions: &ty::substs) {
+    let fcx = pcx.fcx;
+    let tcx = pcx.fcx.ccx.tcx;
+
+    // Find the variant that was specified.
+    match tcx.def_map.find(pat_id) {
+        Some(ast::def_variant(found_enum_id, variant_id))
+                if found_enum_id == enum_id => {
+            // Get the struct fields from this struct-like enum variant.
+            let class_fields = ty::lookup_class_fields(tcx, variant_id);
+
+            check_struct_pat_fields(pcx, span, path, fields, class_fields,
+                                    variant_id, substitutions, etc);
+        }
+        Some(ast::def_class(*)) | Some(ast::def_variant(*)) => {
+            let name = pprust::path_to_str(path, tcx.sess.intr());
+            tcx.sess.span_err(span,
+                              fmt!("mismatched types: expected `%s` but \
+                                    found `%s`",
+                                   fcx.infcx().ty_to_str(expected),
+                                   name));
+        }
+        _ => {
+            tcx.sess.span_bug(span, ~"resolve didn't write in variant");
+        }
+    }
+}
+
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
 fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
@@ -306,13 +439,16 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
       ast::pat_struct(path, fields, etc) => {
         // Grab the class data that we care about.
-        let class_fields, class_id, substitutions;
         let structure = structure_of(fcx, pat.span, expected);
         match structure {
             ty::ty_class(cid, ref substs) => {
-                class_id = cid;
-                substitutions = substs;
-                class_fields = ty::lookup_class_fields(tcx, class_id);
+                check_struct_pat(pcx, pat.id, pat.span, expected, path,
+                                 fields, etc, cid, substs);
+            }
+            ty::ty_enum(eid, ref substs) => {
+                check_struct_like_enum_variant_pat(
+                    pcx, pat.id, pat.span, expected, path, fields, etc, eid,
+                    substs);
             }
             _ => {
                 // XXX: This should not be fatal.
@@ -320,72 +456,6 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                                     fmt!("mismatched types: expected `%s` \
                                           but found struct",
                                          fcx.infcx().ty_to_str(expected)));
-            }
-        }
-
-        // Check to ensure that the struct is the one specified.
-        match tcx.def_map.get(pat.id) {
-            ast::def_class(supplied_def_id)
-                    if supplied_def_id == class_id => {
-                // OK.
-            }
-            ast::def_class(*) => {
-                let name = pprust::path_to_str(path, tcx.sess.intr());
-                tcx.sess.span_err(pat.span,
-                                  fmt!("mismatched types: expected `%s` but \
-                                        found `%s`",
-                                       fcx.infcx().ty_to_str(expected),
-                                       name));
-            }
-            _ => {
-                tcx.sess.span_bug(pat.span, ~"resolve didn't write in class");
-            }
-        }
-
-        // Forbid pattern-matching structs with destructors.
-        if ty::has_dtor(tcx, class_id) {
-            tcx.sess.span_err(pat.span, ~"deconstructing struct not allowed \
-                                          in pattern (it has a destructor)");
-        }
-
-        // Index the class fields.
-        let field_map = std::map::HashMap();
-        for class_fields.eachi |i, class_field| {
-            field_map.insert(class_field.ident, i);
-        }
-
-        // Typecheck each field.
-        let found_fields = std::map::HashMap();
-        for fields.each |field| {
-            match field_map.find(field.ident) {
-                Some(index) => {
-                    let class_field = class_fields[index];
-                    let field_type = ty::lookup_field_type(tcx,
-                                                           class_id,
-                                                           class_field.id,
-                                                           substitutions);
-                    check_pat(pcx, field.pat, field_type);
-                    found_fields.insert(index, ());
-                }
-                None => {
-                    let name = pprust::path_to_str(path, tcx.sess.intr());
-                    tcx.sess.span_err(pat.span,
-                                      fmt!("struct `%s` does not have a field
-                                            named `%s`", name,
-                                           tcx.sess.str_of(field.ident)));
-                }
-            }
-        }
-
-        // Report an error if not all the fields were specified.
-        if !etc {
-            for class_fields.eachi |i, field| {
-                if found_fields.contains_key(i) {
-                    loop;
-                }
-                tcx.sess.span_err(pat.span,
-                                  fmt!("pattern does not mention field `%s`",
-                                       tcx.sess.str_of(field.ident)));
             }
         }
 
