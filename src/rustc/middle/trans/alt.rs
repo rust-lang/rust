@@ -42,12 +42,12 @@
  * - `compile_submatch()`: The main workhouse.  It takes a list of values and
  *   a list of matches and finds the various possibilities that could occur.
  *
- * - `enter_XXX()`: modifies the list of matches based on some information about
- *   the value that has been matched.  For example, `enter_rec_or_struct()`
- *   adjusts the values given that a record or struct has been matched.  This is
- *   an infallible pattern, so *all* of the matches must be either wildcards or
- *   record/struct patterns.  `enter_opt()` handles the fallible cases, and it is
- *   correspondingly more complex.
+ * - `enter_XXX()`: modifies the list of matches based on some information
+ *   about the value that has been matched.  For example,
+ *   `enter_rec_or_struct()` adjusts the values given that a record or struct
+ *   has been matched.  This is an infallible pattern, so *all* of the matches
+ *   must be either wildcards or record/struct patterns.  `enter_opt()`
+ *   handles the fallible cases, and it is correspondingly more complex.
  *
  * ## Bindings
  *
