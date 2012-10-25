@@ -369,6 +369,30 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
+// <pcwalton> nmatsakis: what does enter_opt do?
+// <pcwalton> in trans/alt
+// <pcwalton> trans/alt.rs is like stumbling around in a dark cave
+// <nmatsakis> pcwalton: the enter family of functions adjust the set of
+//             patterns as needed
+// <nmatsakis> yeah, at some point I kind of achieved some level of
+//             understanding
+// <nmatsakis> anyhow, they adjust the patterns given that something of that
+//             kind has been found
+// <nmatsakis> pcwalton: ok, right, so enter_XXX() adjusts the patterns, as I
+//             said
+// <nmatsakis> enter_match() kind of embodies the generic code
+// <nmatsakis> it is provided with a function that tests each pattern to see
+//             if it might possibly apply and so forth
+// <nmatsakis> so, if you have a pattern like {a: _, b: _, _} and one like _
+// <nmatsakis> then _ would be expanded to (_, _)
+// <nmatsakis> one spot for each of the sub-patterns
+// <nmatsakis> enter_opt() is one of the more complex; it covers the fallible
+//             cases
+// <nmatsakis> enter_rec_or_struct() or enter_tuple() are simpler, since they
+//             are infallible patterns
+// <nmatsakis> so all patterns must either be records (resp. tuples) or
+//             wildcards
+
 fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
              variant_size: uint, val: ValueRef)
     -> ~[@Match/&r]
@@ -405,6 +429,35 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             }
             ast::pat_range(l1, l2) => {
                 if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
+            }
+            ast::pat_struct(_, field_pats, _) => {
+                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
+                    // Look up the struct variant ID.
+                    let struct_id;
+                    match tcx.def_map.get(p.id) {
+                        ast::def_variant(_, found_struct_id) => {
+                            struct_id = found_struct_id;
+                        }
+                        _ => {
+                            tcx.sess.span_bug(p.span, ~"expected enum \
+                                                        variant def");
+                        }
+                    }
+
+                    // Reorder the patterns into the same order they were
+                    // specified in the struct definition. Also fill in
+                    // unspecified fields with dummy.
+                    let reordered_patterns = dvec::DVec();
+                    for ty::lookup_class_fields(tcx, struct_id).each |field| {
+                        match field_pats.find(|p| p.ident == field.ident) {
+                            None => reordered_patterns.push(dummy),
+                            Some(fp) => reordered_patterns.push(fp.pat)
+                        }
+                    }
+                    Some(dvec::unwrap(move reordered_patterns))
+                } else {
+                    None
+                }
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -599,12 +652,19 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     return {vals: args, bcx: bcx};
 }
 
-fn collect_record_or_struct_fields(m: &[@Match], col: uint) -> ~[ast::ident] {
+// NB: This function does not collect fields from struct-like enum variants.
+fn collect_record_or_struct_fields(bcx: block, m: &[@Match], col: uint) ->
+                                   ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
     for vec::each(m) |br| {
         match br.pats[col].node {
           ast::pat_rec(fs, _) => extend(&mut fields, fs),
-          ast::pat_struct(_, fs, _) => extend(&mut fields, fs),
+          ast::pat_struct(_, fs, _) => {
+            match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
+              ty::ty_class(*) => extend(&mut fields, fs),
+              _ => ()
+            }
+          }
           _ => ()
         }
     }
@@ -939,7 +999,7 @@ fn compile_submatch(bcx: block,
 
     root_pats_as_necessary(bcx, m, col, val);
 
-    let rec_fields = collect_record_or_struct_fields(m, col);
+    let rec_fields = collect_record_or_struct_fields(bcx, m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
         do expr::with_field_tys(tcx, pat_ty, None) |_has_dtor, field_tys| {
