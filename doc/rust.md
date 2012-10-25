@@ -2150,9 +2150,21 @@ match x {
 ~~~~
 
 Records and structures can also be pattern-matched and their fields bound to variables.
-When matching fields of a record, the fields being matched are specified
-first, then a placeholder (`_`) represents the remaining fields.
+When matching fields of a record,
+the fields being matched are specified first,
+then a placeholder (`_`) represents the remaining fields.
 
+A pattern that's just a variable binding,
+like `Nil` in the previous answer,
+could either refer to an enum variant that's in scope,
+or bind a new variable.
+The compiler resolves this ambiguity by forbidding variable bindings that occur in ```match``` patterns from shadowing names of variants that are in scope.
+For example, wherever ```List``` is in scope,
+a ```match``` pattern would not be able to bind ```Nil``` as a new name.
+The compiler interprets a variable pattern `x` as a binding _only_ if there is no variant named `x` in scope.
+A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
+and local variables with lower-case letters.
+ 
 ~~~~
 # type options = {choose: bool, size: ~str};
 # type player = {player: ~str, stats: (), options: options};
