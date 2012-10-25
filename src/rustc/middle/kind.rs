@@ -333,7 +333,9 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).eachi |i, arg_t| {
             match ty::arg_mode(cx.tcx, *arg_t) {
               by_copy => maybe_copy(cx, args[i],
-                     Some(("callee takes its argument by copy", ""))),
+                     Some(("function arguments must be copyable",
+                           "try changing the function to take a reference \
+                            instead"))),
               by_ref | by_val | by_move => ()
             }
         }
