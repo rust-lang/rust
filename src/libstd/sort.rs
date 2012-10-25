@@ -353,8 +353,6 @@ struct RunState {
 
 struct MergeState<T> {
     mut min_gallop: uint,
-    //mut mergePt: uint,
-    //mut tmpPt: uint,
     mut array: &[mut T],
     runs: DVec<RunState>,
 }
@@ -362,8 +360,6 @@ struct MergeState<T> {
 fn MergeState<T>() -> MergeState<T> {
     MergeState {
         min_gallop: MIN_GALLOP,
-        //mergePt: 0,
-        //tmpPt: 0,
         array: &[mut],
         runs: DVec(),
     }
@@ -427,13 +423,11 @@ impl<T: Copy Ord> MergeState<T> {
             }
 
             let slice = vec::mut_view(array, b1, b1+l1);
-            //self.mergePt = b1;
             let k = gallop_right(&const array[b2], slice, 0);
             b1 += k;
             l1 -= k;
             if l1 != 0 {
                 let slice = vec::mut_view(array, b2, b2+l2);
-                //self.mergePt = b2;
                 let l2 = gallop_left(
                     &const array[b1+l1-1],slice,l2-1);
                 if l2 > 0 {
@@ -446,7 +440,6 @@ impl<T: Copy Ord> MergeState<T> {
             }
         }
         self.runs.pop();
-        //self.mergePt = 0;
     }
 
     fn merge_lo(&self, array: &[mut T], base1: uint, len1: uint,
@@ -454,8 +447,6 @@ impl<T: Copy Ord> MergeState<T> {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
         let tmp = vec::to_mut(vec::slice(array, base1, base1+len1));
-        //self.tmpPt = 0;
-        //self.mergePt = base1;
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -465,7 +456,6 @@ impl<T: Copy Ord> MergeState<T> {
 
         array[dest] <-> array[c2];
         dest += 1; c2 += 1; len2 -= 1;
-        //self.mergePt += 1;
 
         if len2 == 0 {
             copy_vec(array, dest, tmp, 0, len1);
@@ -488,7 +478,6 @@ impl<T: Copy Ord> MergeState<T> {
                 if array[c2] < tmp[c1] {
                     array[dest] <-> array[c2];
                     dest += 1; c2 += 1; len2 -= 1;
-                    //self.mergePt += 1;
                     count2 += 1; count1 = 0;
                     if len2 == 0 {
                         break_outer = true;
@@ -496,8 +485,6 @@ impl<T: Copy Ord> MergeState<T> {
                 } else {
                     array[dest] <-> tmp[c1];
                     dest += 1; c1 += 1; len1 -= 1;
-                    //self.mergePt += 1;
-                    //self.tmpPt += 1;
                     count1 += 1; count2 = 0;
                     if len1 == 1 {
                         break_outer = true;
@@ -519,12 +506,10 @@ impl<T: Copy Ord> MergeState<T> {
                 if count1 != 0 {
                     copy_vec(array, dest, tmp, c1, count1);
                     dest += count1; c1 += count1; len1 -= count1;
-                    //self.mergePt += count1; self.tmpPt += count1;
                     if len1 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c2];
                 dest += 1; c2 += 1; len2 -= 1;
-                //self.mergePt += 1;
                 if len2 == 0 { break_outer = true; break; }
 
                 let tmp_view = vec::const_view(array, c2, c2+len2);
@@ -532,12 +517,10 @@ impl<T: Copy Ord> MergeState<T> {
                 if count2 != 0 {
                     copy_vec(array, dest, array, c2, count2);
                     dest += count2; c2 += count2; len2 -= count2;
-                    //self.mergePt += count2;
                     if len2 == 0 { break_outer = true; break; }
                 }
                 array[dest] <-> tmp[c1];
                 dest += 1; c1 += 1; len1 -= 1;
-                //self.mergePt += 1; self.tmpPt += 1;
                 if len1 == 1 { break_outer = true; break; }
                 min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
@@ -561,7 +544,6 @@ impl<T: Copy Ord> MergeState<T> {
             assert len1 > 1;
             copy_vec(array, dest, tmp, c1, len1);
         }
-        //self.tmpPt = 0;
     }
 
     fn merge_hi(&self, array: &[mut T], base1: uint, len1: uint,
@@ -575,9 +557,6 @@ impl<T: Copy Ord> MergeState<T> {
         let mut dest = base2 + len2 - 1;
         let mut len1 = len1;
         let mut len2 = len2;
-
-        //self.mergePt = dest;
-        //self.tmpPt = len2 - 1;
 
         array[dest] <-> array[c1];
         dest -= 1; c1 -= 1; len1 -= 1;
@@ -605,7 +584,6 @@ impl<T: Copy Ord> MergeState<T> {
                 if tmp[c2] < array[c1] {
                     array[dest] <-> array[c1];
                     dest -= 1; c1 -= 1; len1 -= 1;
-                    //self.mergePt -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 0 {
                         break_outer = true;
@@ -613,7 +591,6 @@ impl<T: Copy Ord> MergeState<T> {
                 } else {
                     array[dest] <-> tmp[c2];
                     dest -= 1; c2 -= 1; len2 -= 1;
-                    //self.mergePt -= 1; self.tmpPt -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 1 {
                         break_outer = true;
@@ -635,14 +612,12 @@ impl<T: Copy Ord> MergeState<T> {
 
                 if count1 != 0 {
                     dest -= count1; c1 -= count1; len1 -= count1;
-                    //self.mergePt -= count1;
                     copy_vec(array, dest+1, array, c1+1, count1);
                     if len1 == 0 { break_outer = true; break; }
                 }
 
                 array[dest] <-> tmp[c2];
                 dest -= 1; c2 -= 1; len2 -= 1;
-                //self.mergePt -= 1; self.tmpPt -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
                 //let tmp_view = vec::mut_view(tmp, 0, len2);
@@ -650,13 +625,11 @@ impl<T: Copy Ord> MergeState<T> {
                             vec::mut_view(tmp, 0, len2), len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
-                    //self.mergePt -= count2; self.tmpPt -= count2;
                     copy_vec(array, dest+1, tmp, c2+1, count2);
                     if len2 <= 1 { break_outer = true; break; }
                 }
                 array[dest] <-> array[c1];
                 dest -= 1; c1 -= 1; len1 -= 1;
-                //self.mergePt -= 1;
                 if len1 == 0 { break_outer = true; break; }
                 min_gallop -= 1;
                 if !(count1 >= MIN_GALLOP || count2 >= MIN_GALLOP) {
@@ -683,7 +656,6 @@ impl<T: Copy Ord> MergeState<T> {
             assert len2 != 0;
             copy_vec(array, dest-(len2-1), tmp, 0, len2);
         }
-        //self.tmpPt = 0;
     }
 
     fn merge_collapse(&self, array: &[mut T]) {
