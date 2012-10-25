@@ -1079,7 +1079,7 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         pure fn lteq(kv1: &numdep, kv2: &numdep) -> bool {
             kv1.cnum <= kv2.cnum
         }
-        std::sort::quick_sort(lteq, deps);
+        std::sort::quick_sort(deps, lteq);
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
