@@ -353,40 +353,15 @@ struct RunState {
 
 struct MergeState<T> {
     mut min_gallop: uint,
-    //mut tmp: ~[T],
-    mut last_hi: bool,
-    mut last_bsort: bool,
     mut mergePt: uint,
     mut tmpPt: uint,
     mut array: &[mut T],
     runs: DVec<RunState>,
-
-    /*drop {
-        unsafe {
-            let size = self.tmp.len();
-            // Move tmp back into invalid part of array
-            if self.last_bsort {
-
-            } else if self.last_hi && size > 0 {
-                self.mergePt -= self.tmpPt;
-                move_vec(self.array, self.mergePt, self.tmp, 0, self.tmpPt);
-            } else if !self.last_hi && size-self.tmpPt > 0 {
-                move_vec(self.array, self.mergePt,
-                        self.tmp, self.tmpPt, size-self.tmpPt);
-            }
-            vec::raw::set_len(&mut self.tmp, 0);
-        }
-    }*/
 }
 
 fn MergeState<T>() -> MergeState<T> {
-    //let mut tmp = ~[];
-    //vec::reserve(&mut tmp, INITIAL_TMP_STORAGE);
     MergeState {
         min_gallop: MIN_GALLOP,
-        //tmp: move tmp,
-        last_hi: false,
-        last_bsort: false,
         mergePt: 0,
         tmpPt: 0,
         array: &[mut],
@@ -401,8 +376,6 @@ impl<T: Copy Ord> MergeState<T> {
         assert start <= size;
 
         if start == 0 { start += 1; }
-
-        self.last_bsort = true;
 
         while start < size {
             let pivot = array[start];
@@ -425,7 +398,6 @@ impl<T: Copy Ord> MergeState<T> {
             array[left] = move pivot;
             start += 1;
         }
-        self.last_bsort = false;
     }
 
     fn push_run(&self, run_base: uint, run_len: uint) {
@@ -481,8 +453,6 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        //vec::reserve(&mut self.tmp, len1);
-        self.last_hi = false;
         let tmp = vec::to_mut(vec::slice(array, base1, base1+len1));
         self.tmpPt = 0;
         self.mergePt = base1;
@@ -597,8 +567,6 @@ impl<T: Copy Ord> MergeState<T> {
     fn merge_hi(&self, array: &[mut T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
-
-        self.last_hi = true;
 
         let tmp = vec::to_mut(vec::slice(array, base2, base2+len2));
 
@@ -755,7 +723,7 @@ impl<T: Copy Ord> MergeState<T> {
 fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
-    
+
     let slice = vec::slice(from, s2, s2+len);
     for slice.eachi |i, v| {
         dest[s1+i] = *v;
