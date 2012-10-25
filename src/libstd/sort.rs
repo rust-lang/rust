@@ -1146,10 +1146,10 @@ mod big_tests {
     }
 
     impl LVal: Ord {
-        pure fn lt(other: &LVal) -> bool { self.val < other.val }
-        pure fn le(other: &LVal) -> bool { self.val <= other.val }
-        pure fn gt(other: &LVal) -> bool { self.val > other.val }
-        pure fn ge(other: &LVal) -> bool { self.val >= other.val }
+        pure fn lt(other: &a/LVal/&self) -> bool { self.val < other.val }
+        pure fn le(other: &a/LVal/&self) -> bool { self.val <= other.val }
+        pure fn gt(other: &a/LVal/&self) -> bool { self.val > other.val }
+        pure fn ge(other: &a/LVal/&self) -> bool { self.val >= other.val }
     }
 }
 
