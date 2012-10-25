@@ -234,8 +234,14 @@ fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> Option<ctor> {
       pat_range(lo, hi) => {
         Some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) | pat_region(*) |
       pat_struct(*) => {
+        match tcx.def_map.find(pat.id) {
+          Some(def_variant(_, id)) => Some(variant(id)),
+          _ => Some(single)
+        }
+      }
+      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
+      pat_region(*) => {
         Some(single)
       }
     }
@@ -366,25 +372,44 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         Some(vec::append(args, vec::tail(r)))
       }
       pat_struct(_, flds, _) => {
-        // Grab the class data that we care about.
-        let class_fields, class_id;
-        match ty::get(left_ty).sty {
-            ty::ty_class(cid, _) => {
-                class_id = cid;
-                class_fields = ty::lookup_class_fields(tcx, class_id);
+        // Is this a struct or an enum variant?
+        match tcx.def_map.get(r0.id) {
+            def_variant(_, variant_id) => {
+                if variant(variant_id) == ctor_id {
+                    // XXX: Is this right? --pcw
+                    let args = flds.map(|ty_f| {
+                        match vec::find(flds, |f| f.ident == ty_f.ident) {
+                            Some(f) => f.pat,
+                            _ => wild()
+                        }
+                    });
+                    Some(vec::append(args, vec::tail(r)))
+                } else {
+                    None
+                }
             }
             _ => {
-                tcx.sess.span_bug(r0.span, ~"struct pattern didn't resolve \
-                                             to a struct");
+                // Grab the class data that we care about.
+                let class_fields, class_id;
+                match ty::get(left_ty).sty {
+                    ty::ty_class(cid, _) => {
+                        class_id = cid;
+                        class_fields = ty::lookup_class_fields(tcx, class_id);
+                    }
+                    _ => {
+                        tcx.sess.span_bug(r0.span, ~"struct pattern didn't \
+                                                     resolve to a struct");
+                    }
+                }
+                let args = vec::map(class_fields, |class_field| {
+                    match vec::find(flds, |f| f.ident == class_field.ident ) {
+                      Some(f) => f.pat,
+                      _ => wild()
+                    }
+                });
+                Some(vec::append(args, vec::tail(r)))
             }
         }
-        let args = vec::map(class_fields, |class_field| {
-            match vec::find(flds, |f| f.ident == class_field.ident ) {
-              Some(f) => f.pat,
-              _ => wild()
-            }
-        });
-        Some(vec::append(args, vec::tail(r)))
       }
       pat_tup(args) => Some(vec::append(args, vec::tail(r))),
       pat_box(a) | pat_uniq(a) | pat_region(a) =>
