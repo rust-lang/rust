@@ -179,7 +179,6 @@ pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
     }
 
     let ms = &MergeState();
-    ms.array = array;
     let min_run = min_run_length(size);
 
     let mut idx = 0;
@@ -383,14 +382,13 @@ struct RunState {
 
 struct MergeState<T> {
     mut min_gallop: uint,
-    mut array: &[mut T],
     runs: DVec<RunState>,
 }
 
+// Fixme (#3853) Move into MergeState
 fn MergeState<T>() -> MergeState<T> {
     MergeState {
         min_gallop: MIN_GALLOP,
-        array: &[mut],
         runs: DVec(),
     }
 }
@@ -500,9 +498,8 @@ impl<T: Copy Ord> MergeState<T> {
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                //let tmp_view = vec::const_view(tmp, c1, c1+len1);
-                count1 = gallop_right(&const array[c2],
-                    vec::const_view(tmp, c1, c1+len1), 0);
+                let tmp_view = vec::const_view(tmp, c1, c1+len1);
+                count1 = gallop_right(&const array[c2], tmp_view, 0);
                 if count1 != 0 {
                     copy_vec(array, dest, tmp, c1, count1);
                     dest += count1; c1 += count1; len1 -= count1;
@@ -620,9 +617,9 @@ impl<T: Copy Ord> MergeState<T> {
                 dest -= 1; c2 -= 1; len2 -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
-                //let tmp_view = vec::mut_view(tmp, 0, len2);
+                let tmp_view = vec::mut_view(tmp, 0, len2);
                 let count2 = len2 - gallop_left(&const array[c1],
-                            vec::mut_view(tmp, 0, len2), len2-1);
+                                                tmp_view, len2-1);
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     copy_vec(array, dest+1, tmp, c2+1, count2);
