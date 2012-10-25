@@ -1648,7 +1648,8 @@ fn trans_enum_variant(ccx: @crate_ctxt,
                       enum_id: ast::node_id,
                       variant: ast::variant,
                       args: ~[ast::variant_arg],
-                      disr: int, is_degen: bool,
+                      disr: int,
+                      is_degen: bool,
                       param_substs: Option<param_substs>,
                       llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_enum_variant");
@@ -1694,6 +1695,51 @@ fn trans_enum_variant(ccx: @crate_ctxt,
         let arg_ty = arg_tys[i].ty;
         memmove_ty(bcx, lldestptr, llarg, arg_ty);
     }
+    build_return(bcx);
+    finish_fn(fcx, lltop);
+}
+
+// NB: In theory this should be merged with the function above. But the AST
+// structures are completely different, so very little code would be shared.
+fn trans_tuple_struct(ccx: @crate_ctxt,
+                      fields: ~[@ast::struct_field],
+                      ctor_id: ast::node_id,
+                      param_substs: Option<param_substs>,
+                      llfndecl: ValueRef) {
+    let _icx = ccx.insn_ctxt("trans_tuple_struct");
+
+    // Translate struct fields to function arguments.
+    let fn_args = do fields.map |field| {
+        {
+            mode: ast::expl(ast::by_copy),
+            ty: field.node.ty,
+            ident: special_idents::arg,
+            id: field.node.id
+        }
+    };
+
+    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, ctor_id, None,
+                               param_substs, None);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+
+    let bcx = top_scope_block(fcx, None);
+    let lltop = bcx.llbb;
+    let arg_tys = ty::ty_fn_args(node_id_type(bcx, ctor_id));
+    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
+
+    for fields.eachi |i, field| {
+        let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
+        let llarg = match fcx.llargs.get(field.node.id) {
+            local_mem(x) => x,
+            _ => {
+                ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
+                                   local_mem")
+            }
+        };
+        let arg_ty = arg_tys[i].ty;
+        memmove_ty(bcx, lldestptr, llarg, arg_ty);
+    }
+
     build_return(bcx);
     finish_fn(fcx, lltop);
 }
@@ -1835,15 +1881,27 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
 fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                     tps: ~[ast::ty_param], path: @ast_map::path,
                     ident: ast::ident, id: ast::node_id) {
+    // If there are type parameters, the destructor and constructor will be
+    // monomorphized, so we don't translate them here.
     if tps.len() == 0u {
-      do option::iter(&struct_def.dtor) |dtor| {
-         trans_class_dtor(ccx, *path, dtor.node.body,
-           dtor.node.id, None, None, local_def(id));
-      };
-    }
-    // If there are ty params, the ctor will get monomorphized
+        // Translate the destructor.
+        do option::iter(&struct_def.dtor) |dtor| {
+            trans_class_dtor(ccx, *path, dtor.node.body,
+                             dtor.node.id, None, None, local_def(id));
+        };
 
-    // Translate methods
+        // If this is a tuple-like struct, translate the constructor.
+        match struct_def.ctor_id {
+            None => {}
+            Some(ctor_id) => {
+                let llfndecl = get_item_val(ccx, ctor_id);
+                trans_tuple_struct(ccx, struct_def.fields, ctor_id, None,
+                                   llfndecl);
+            }
+        }
+    }
+
+    // Translate methods.
     meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None, id);
 }
 
@@ -2128,8 +2186,25 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             set_inline_hint(llfn);
             llfn
           }
+
+          ast_map::node_struct_ctor(struct_def, struct_item, struct_path) => {
+            // Only register the constructor if this is a tuple-like struct.
+            match struct_def.ctor_id {
+                None => {
+                    ccx.tcx.sess.bug(~"attempt to register a constructor of \
+                                       a non-tuple-like struct")
+                }
+                Some(ctor_id) => {
+                    let llfn = register_fn(ccx, struct_item.span,
+                                           *struct_path, ctor_id);
+                    set_inline_hint(llfn);
+                    llfn
+                }
+            }
+          }
+
           _ => {
-            ccx.sess.bug(~"get_item_val(): unexpected variant");
+            ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
         if !(exprt || ccx.reachable.contains_key(id)) {

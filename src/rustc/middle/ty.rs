@@ -3630,6 +3630,10 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                 syntax::parse::token::special_idents::literally_dtor))
           }
 
+          ast_map::node_struct_ctor(_, item, path) => {
+            vec::append_one(*path, ast_map::path_name(item.ident))
+          }
+
           ast_map::node_stmt(*) | ast_map::node_expr(*) |
           ast_map::node_arg(*) | ast_map::node_local(*) |
           ast_map::node_export(*) | ast_map::node_block(*) => {
@@ -3874,7 +3878,13 @@ fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
                            vis: visibility,
                            mutability: mutability});
             }
-            unnamed_field => {}
+            unnamed_field => {
+                rslt.push({ident:
+                    syntax::parse::token::special_idents::unnamed_field,
+                           id: ast_util::local_def(field.node.id),
+                           vis: ast::public,
+                           mutability: ast::class_immutable});
+            }
        }
     }
     rslt

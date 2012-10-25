@@ -589,6 +589,12 @@ fn view_path_id(p: @view_path) -> node_id {
     }
 }
 
+/// Returns true if the given struct def is tuple-like; i.e. that its fields
+/// are unnamed.
+fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
+    struct_def.ctor_id.is_some()
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
