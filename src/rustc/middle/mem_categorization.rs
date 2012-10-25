@@ -464,7 +464,7 @@ impl &mem_categorization_ctxt {
             }
 
             let base_cmt = self.cat_expr(base);
-            self.cat_field(expr, base_cmt, f_name)
+            self.cat_field(expr, base_cmt, f_name, expr.id)
           }
 
           ast::expr_index(base, _) => {
@@ -632,9 +632,14 @@ impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
-                             f_name: ast::ident) -> cmt {
-        let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty, f_name) {
+    /// The `field_id` parameter is the ID of the enclosing expression or
+    /// pattern. It is used to determine which variant of an enum is in use.
+    fn cat_field<N:ast_node>(node: N,
+                             base_cmt: cmt,
+                             f_name: ast::ident,
+                             field_id: ast::node_id) -> cmt {
+        let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty, f_name,
+                                        field_id) {
           Some(f_mutbl) => f_mutbl,
           None => {
             self.tcx.sess.span_bug(
@@ -851,7 +856,7 @@ impl &mem_categorization_ctxt {
           ast::pat_rec(field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
-                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident);
+                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident, pat.id);
                 self.cat_pattern(cmt_field, fp.pat, op);
             }
           }
@@ -859,7 +864,7 @@ impl &mem_categorization_ctxt {
           ast::pat_struct(_, field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
-                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident);
+                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident, pat.id);
                 self.cat_pattern(cmt_field, fp.pat, op);
             }
           }
@@ -998,9 +1003,13 @@ impl &mem_categorization_ctxt {
     }
 }
 
+/// The node_id here is the node of the expression that references the field.
+/// This function looks it up in the def map in case the type happens to be
+/// an enum to determine which variant is in use.
 fn field_mutbl(tcx: ty::ctxt,
                base_ty: ty::t,
-               f_name: ast::ident) -> Option<ast::mutability> {
+               f_name: ast::ident,
+               node_id: ast::node_id) -> Option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
     match ty::get(base_ty).sty {
       ty::ty_rec(fields) => {
@@ -1019,6 +1028,22 @@ fn field_mutbl(tcx: ty::ctxt,
                 };
                 return Some(m);
             }
+        }
+      }
+      ty::ty_enum(*) => {
+        match tcx.def_map.get(node_id) {
+          ast::def_variant(_, variant_id) => {
+            for ty::lookup_class_fields(tcx, variant_id).each |fld| {
+                if fld.ident == f_name {
+                    let m = match fld.mutability {
+                      ast::class_mutable => ast::m_mutbl,
+                      ast::class_immutable => ast::m_imm
+                    };
+                    return Some(m);
+                }
+            }
+          }
+          _ => {}
         }
       }
       _ => { }
