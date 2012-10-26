@@ -1951,32 +1951,47 @@ while i < 10 {
 
 ### Infinite loops
 
-A `loop` expression denotes an infinite loop:
+The keyword `loop` in Rust appears in two different forms.
+The first one denotes an infinite loop,
+while the second one is described in [Loop expressions](#loop-expressions):
 
 ~~~~~~~~{.ebnf .gram}
-loop_expr : "loop" '{' block '}';
+loop_expr : "loop" [ ident ':' ] '{' block '}';
 ~~~~~~~~
+
+A `loop` expression may optionally have a _label_.
+If a label is present, then labeled `break` and `loop` expressions nested within this loop may exit to the top level.
+See [Break expressions](#break-expressions).
 
 ### Break expressions
 
 ~~~~~~~~{.ebnf .gram}
-break_expr : "break" ;
+break_expr : "break" [ ident ];
 ~~~~~~~~
 
-Executing a `break` expression immediately terminates the innermost loop
-enclosing it. It is only permitted in the body of a loop.
+A `break` expression has an optional `label`.
+If the label is absent, then executing a `break` expression immediately terminates the innermost loop enclosing it.
+It is only permitted in the body of a loop.
+If the label is present, then `break foo` terminates the loop with label `foo`,
+which need not be the innermost label enclosing the `break` expression,
+but must enclose it.
 
 ### Loop expressions
 
 ~~~~~~~~{.ebnf .gram}
-loop_expr : "loop" ;
+loop_expr : "loop" [ ident ];
 ~~~~~~~~
 
-Evaluating a `loop` expression immediately terminates the current iteration of
-the innermost loop enclosing it, returning control to the loop *head*. In the
-case of a `while` loop, the head is the conditional expression controlling the
-loop. In the case of a `for` loop, the head is the call-expression controlling
-the loop.
+A `loop` expression (the second form of the `loop` keyword) also has an optional `label`.
+If the label is absent,
+then executing a `loop` expression immediately terminates the current iteration of the innermost loop enclosing it,
+returning control to the loop *head*.
+In the case of a `while` loop,
+the head is the conditional expression controlling the loop.
+In the case of a `for` loop, the head is the call-expression controlling the loop.
+If the label is present, then `loop foo` returns control to the head of the loop with label `foo`,
+which need not be the innermost label enclosing the `break` expression,
+but must enclose it.
 
 A `loop` expression is only permitted in the body of a loop.
 
