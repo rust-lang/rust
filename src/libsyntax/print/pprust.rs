@@ -672,36 +672,61 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
         commasep(s, inconsistent, struct_def.traits, |s, p|
             print_path(s, p.path, false));
     }
-    bopen(s);
-    hardbreak_if_not_bol(s);
-    do struct_def.dtor.iter |dtor| {
-      hardbreak_if_not_bol(s);
-      maybe_print_comment(s, dtor.span.lo);
-      print_outer_attributes(s, dtor.node.attrs);
-      head(s, ~"drop");
-      print_block(s, dtor.node.body);
-    }
-    for struct_def.fields.each |field| {
-        match field.node.kind {
-            ast::unnamed_field => {} // We don't print here.
-            ast::named_field(ident, mutability, visibility) => {
-                hardbreak_if_not_bol(s);
-                maybe_print_comment(s, field.span.lo);
-                print_visibility(s, visibility);
-                if mutability == ast::class_mutable {
-                    word_nbsp(s, ~"mut");
+    if ast_util::struct_def_is_tuple_like(struct_def) {
+        popen(s);
+        let mut first = true;
+        for struct_def.fields.each |field| {
+            if first {
+                first = false;
+            } else {
+                word_space(s, ~",");
+            }
+
+            match field.node.kind {
+                ast::named_field(*) => fail ~"unexpected named field",
+                ast::unnamed_field => {
+                    maybe_print_comment(s, field.span.lo);
+                    print_type(s, field.node.ty);
                 }
-                print_ident(s, ident);
-                word_nbsp(s, ~":");
-                print_type(s, field.node.ty);
-                word(s.s, ~",");
             }
         }
+        pclose(s);
+        word(s.s, ~";");
+        end(s); // close the outer-box
+    } else {
+        bopen(s);
+        hardbreak_if_not_bol(s);
+        do struct_def.dtor.iter |dtor| {
+          hardbreak_if_not_bol(s);
+          maybe_print_comment(s, dtor.span.lo);
+          print_outer_attributes(s, dtor.node.attrs);
+          head(s, ~"drop");
+          print_block(s, dtor.node.body);
+        }
+
+        for struct_def.fields.each |field| {
+            match field.node.kind {
+                ast::unnamed_field => fail ~"unexpected unnamed field",
+                ast::named_field(ident, mutability, visibility) => {
+                    hardbreak_if_not_bol(s);
+                    maybe_print_comment(s, field.span.lo);
+                    print_visibility(s, visibility);
+                    if mutability == ast::class_mutable {
+                        word_nbsp(s, ~"mut");
+                    }
+                    print_ident(s, ident);
+                    word_nbsp(s, ~":");
+                    print_type(s, field.node.ty);
+                    word(s.s, ~",");
+                }
+            }
+        }
+
+        for struct_def.methods.each |method| {
+            print_method(s, *method);
+        }
+        bclose(s, span);
     }
-    for struct_def.methods.each |method| {
-        print_method(s, *method);
-    }
-    bclose(s, span);
 }
 
 /// This doesn't deserve to be called "pretty" printing, but it should be
