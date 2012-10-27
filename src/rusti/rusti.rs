@@ -246,7 +246,7 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
             rl::clear();
         }
         ~"help" => {
-            io::println(~":clear - clear the screen\n" + 
+            io::println(~":clear - clear the screen\n" +
                         ~":exit - exit from the repl\n" +
                         ~":help - show this message");
         }
@@ -294,7 +294,7 @@ fn main() {
         if line.starts_with(~":") {
             let full = line.substr(1, line.len() - 1);
             let split = full.split_char(' ');
-            let len = split.len(); 
+            let len = split.len();
 
             if len > 0 {
                 let cmd = split[0];
