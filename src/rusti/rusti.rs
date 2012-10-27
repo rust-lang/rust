@@ -82,6 +82,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     let options: @session::options = @{
         crate_type: session::unknown_crate,
         binary: repl.binary,
+        addl_lib_search_paths: ~[os::getcwd()],
         .. *session::basic_options()
     };
 
