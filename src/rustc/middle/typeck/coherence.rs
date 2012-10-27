@@ -9,10 +9,10 @@ use metadata::csearch::{get_impls_for_mod};
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{ProvidedMethodSource, get, lookup_item_type, subst, t};
-use middle::ty::{ty_box, ty_uniq, ty_ptr, ty_rptr, ty_enum};
-use middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};
-use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
+use middle::ty::{DerivedMethodInfo, ProvidedMethodSource, get};
+use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_class};
+use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
+use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec, ty_uniq};
 use middle::ty::{ty_fn, ty_trait, ty_tup, ty_infer};
 use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_ty_var};
@@ -592,17 +592,33 @@ impl CoherenceChecker {
     }
 
     fn add_automatically_derived_methods_from_trait(
-        all_methods: &mut ~[@MethodInfo], trait_did: def_id, self_ty: ty::t) {
+            all_methods: &mut ~[@MethodInfo],
+            trait_did: def_id,
+            self_ty: ty::t,
+            impl_did: def_id) {
         let tcx = self.crate_context.tcx;
+        let new_method_dids = dvec::DVec();
         for (*ty::trait_methods(tcx, trait_did)).each |method| {
             // Generate a def ID for each node.
             let new_def_id = local_def(tcx.sess.next_node_id());
-            all_methods.push(@{
+            let method_info = @{
                 did: new_def_id,
                 n_tps: method.tps.len(),
                 ident: method.ident,
                 self_type: method.self_ty
-            });
+            };
+            all_methods.push(method_info);
+
+            // Note that this method was automatically derived so that trans
+            // can handle it differently.
+            let derived_method_info = DerivedMethodInfo {
+                method_info: method_info,
+                containing_impl: impl_did
+            };
+            tcx.automatically_derived_methods.insert(new_def_id,
+                                                     derived_method_info);
+
+            new_method_dids.push(new_def_id);
 
             // Additionally, generate the type for the derived method and add
             // it to the type cache.
@@ -615,6 +631,10 @@ impl CoherenceChecker {
                 ty: ty::subst(tcx, &substs, ty::mk_fn(tcx, method.fty))
             });
         }
+
+        let new_method_dids = @dvec::unwrap(move new_method_dids);
+        tcx.automatically_derived_methods_for_impl.insert(impl_did,
+                                                          new_method_dids);
     }
 
     // Converts an implementation in the AST to an Impl structure.
@@ -651,7 +671,8 @@ impl CoherenceChecker {
                             let trait_did =
                                 self.trait_ref_to_trait_def_id(*trait_ref);
                             self.add_automatically_derived_methods_from_trait(
-                                &mut methods, trait_did, self_ty.ty);
+                                &mut methods, trait_did, self_ty.ty,
+                                local_def(item.id));
                         }
                     }
                 }

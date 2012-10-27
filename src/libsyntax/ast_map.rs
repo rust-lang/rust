@@ -74,7 +74,7 @@ enum ast_node {
     // Destructor for a class
     node_dtor(~[ty_param], @class_dtor, def_id, @path),
     node_block(blk),
-    node_struct_ctor(@struct_def, @item, @path)
+    node_struct_ctor(@struct_def, @item, @path),
 }
 
 type map = std::map::HashMap<node_id, ast_node>;
