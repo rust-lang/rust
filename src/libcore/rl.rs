@@ -17,43 +17,43 @@ extern mod linenoise {
 
 /// Add a line to history
 pub fn add_history(line: ~str) -> bool {
-	do str::as_c_str(line) |buf| {
-		linenoise::linenoiseHistoryAdd(buf) == 1 as c_int
-	}
+    do str::as_c_str(line) |buf| {
+        linenoise::linenoiseHistoryAdd(buf) == 1 as c_int
+    }
 }
 
 /// Set the maximum amount of lines stored
 pub fn set_history_max_len(len: int) -> bool {
-	linenoise::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
+    linenoise::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
 }
 
 /// Save line history to a file
 pub fn save_history(file: ~str) -> bool {
-	do str::as_c_str(file) |buf| {
-		linenoise::linenoiseHistorySave(buf) == 1 as c_int
-	}
+    do str::as_c_str(file) |buf| {
+        linenoise::linenoiseHistorySave(buf) == 1 as c_int
+    }
 }
 
 /// Load line history from a file
 pub fn load_history(file: ~str) -> bool {
-	do str::as_c_str(file) |buf| {
-		linenoise::linenoiseHistoryLoad(buf) == 1 as c_int
-	}
+    do str::as_c_str(file) |buf| {
+        linenoise::linenoiseHistoryLoad(buf) == 1 as c_int
+    }
 }
 
 /// Print out a prompt and then wait for input and return it
 pub fn read(prompt: ~str) -> Option<~str> {
-	do str::as_c_str(prompt) |buf| unsafe {
-		let line = linenoise::linenoise(buf);
+    do str::as_c_str(prompt) |buf| unsafe {
+        let line = linenoise::linenoise(buf);
 
-		if line.is_null() { None }
-		else { Some(str::raw::from_c_str(line)) }
-	}
+        if line.is_null() { None }
+        else { Some(str::raw::from_c_str(line)) }
+    }
 }
 
 /// Clear the screen
 pub fn clear() {
-	linenoise::linenoiseClearScreen();
+    linenoise::linenoiseClearScreen();
 }
 
 pub type CompletionCb = fn~(~str, fn(~str));
@@ -62,17 +62,17 @@ fn complete_key(_v: @CompletionCb) {}
 
 /// Bind to the main completion callback
 pub fn complete(cb: CompletionCb) unsafe {
-	task::local_data::local_data_set(complete_key, @(move cb));
+    task::local_data::local_data_set(complete_key, @(move cb));
 
-	extern fn callback(line: *c_char, completions: *()) unsafe {
-		let cb: CompletionCb = copy *task::local_data::local_data_get(complete_key).get();
+    extern fn callback(line: *c_char, completions: *()) unsafe {
+        let cb = copy *task::local_data::local_data_get(complete_key).get();
 
-		do cb(str::raw::from_c_str(line)) |suggestion| {
-			do str::as_c_str(suggestion) |buf| {
-				linenoise::linenoiseAddCompletion(completions, buf);
-			}
-		}
-	}
+        do cb(str::raw::from_c_str(line)) |suggestion| {
+            do str::as_c_str(suggestion) |buf| {
+                linenoise::linenoiseAddCompletion(completions, buf);
+            }
+        }
+    }
 
-	linenoise::linenoiseSetCompletionCallback(callback);
+    linenoise::linenoiseSetCompletionCallback(callback);
 }
