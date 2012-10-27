@@ -288,15 +288,10 @@ fn compare_impl_method(tcx: ty::ctxt,
 
     let impl_m = &cm.mty;
 
-    if impl_m.fty.meta.purity != trait_m.fty.meta.purity {
-        tcx.sess.span_err(
-            cm.span,
-            fmt!("method `%s`'s purity does \
-                  not match the trait method's \
-                  purity", tcx.sess.str_of(impl_m.ident)));
-    }
-
-    // is this check right?
+    // FIXME(#2687)---this check is too strict.  For example, a trait
+    // method with self type `&self` or `&mut self` should be
+    // implementable by an `&const self` method (the impl assumes less
+    // than the trait provides).
     if impl_m.self_ty != trait_m.self_ty {
         tcx.sess.span_err(
             cm.span,
@@ -328,6 +323,9 @@ fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
+    // FIXME(#2687)---we should be checking that the bounds of the
+    // trait imply the bounds of the subtype, but it appears
+    // we are...not checking this.
     for trait_m.tps.eachi() |i, trait_param_bounds| {
         // For each of the corresponding impl ty param's bounds...
         let impl_param_bounds = impl_m.tps[i];
@@ -389,11 +387,19 @@ fn compare_impl_method(tcx: ty::ctxt,
         debug!("trait_fty (pre-subst): %s", ty_to_str(tcx, trait_fty));
         ty::subst(tcx, &substs, trait_fty)
     };
-    debug!("trait_fty: %s", ty_to_str(tcx, trait_fty));
-    require_same_types(
-        tcx, None, false, cm.span, impl_fty, trait_fty,
-        || fmt!("method `%s` has an incompatible type",
-                tcx.sess.str_of(trait_m.ident)));
+
+    let infcx = infer::new_infer_ctxt(tcx);
+    match infer::mk_subty(infcx, false, cm.span, impl_fty, trait_fty) {
+        result::Ok(()) => {}
+        result::Err(ref terr) => {
+            tcx.sess.span_err(
+                cm.span,
+                fmt!("method `%s` has an incompatible type: %s",
+                     tcx.sess.str_of(trait_m.ident),
+                     ty::type_err_to_str(tcx, terr)));
+            ty::note_and_explain_type_err(tcx, terr);
+        }
+    }
     return;
 
     // Replaces bound references to the self region with `with_r`.
