@@ -42,6 +42,7 @@ use util::ppaux;
 use util::ppaux::{ty_to_str, ty_to_short_str};
 use syntax::diagnostic::expect;
 use util::common::indenter;
+use ty::DerivedMethodInfo;
 
 use build::*;
 use shape::*;
@@ -1843,7 +1844,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         match ms_opt {
             None => {
                 deriving::trans_deriving_impl(ccx, *path, item.ident, tps,
-                                              None, item.id);
+                                              item.id);
             }
             Some(ms) => {
                 meth::trans_impl(ccx, *path, item.ident, ms, tps, None,
@@ -2079,6 +2080,20 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     match ccx.item_vals.find(id) {
       Some(v) => v,
       None => {
+        // First, check whether we need to automatically generate a method
+        // via the deriving mechanism.
+        match ccx.tcx.automatically_derived_methods.find(local_def(id)) {
+            None => {}  // Continue.
+            Some(ref derived_method_info) => {
+                // XXX: Mark as internal if necessary.
+                let llfn = register_deriving_method(
+                    ccx, id, derived_method_info);
+                ccx.item_vals.insert(id, llfn);
+                return llfn;
+            }
+        }
+
+        // Failing that, look for an item.
         let mut exprt = false;
         let val = match ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) => {
@@ -2223,6 +2238,32 @@ fn register_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
+    llfn
+}
+
+fn register_deriving_method(ccx: @crate_ctxt,
+                            id: ast::node_id,
+                            derived_method_info: &DerivedMethodInfo) ->
+                            ValueRef {
+    // Find the path of the item.
+    let path, span;
+    match ccx.tcx.items.get(derived_method_info.containing_impl.node) {
+        ast_map::node_item(item, found_path) => {
+            path = found_path;
+            span = item.span;
+        }
+        _ => {
+            ccx.tcx.sess.bug(~"derived method info containing impl didn't \
+                               refer to an item");
+        }
+    }
+
+    let path = vec::append(*path, ~[
+        ast_map::path_name(derived_method_info.method_info.ident)
+    ]);
+    let mty = ty::lookup_item_type(ccx.tcx, local_def(id)).ty;
+    let llfn = register_fn_full(ccx, span, path, id, mty);
+    // XXX: Inline hint.
     llfn
 }
 
