@@ -337,7 +337,8 @@ HSREQ$(1)_H_$(3) = \
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
+	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/liblinenoise.a
 
 # Prerequisites for complete stageN targets
 SREQ$(1)_T_$(2)_H_$(3) = \
@@ -491,6 +492,7 @@ include $(CFG_SRC_DIR)mk/host.mk
 include $(CFG_SRC_DIR)mk/stage0.mk
 include $(CFG_SRC_DIR)mk/rt.mk
 include $(CFG_SRC_DIR)mk/rustllvm.mk
+include $(CFG_SRC_DIR)mk/linenoise.mk
 include $(CFG_SRC_DIR)mk/tools.mk
 include $(CFG_SRC_DIR)mk/docs.mk
 include $(CFG_SRC_DIR)mk/llvm.mk
