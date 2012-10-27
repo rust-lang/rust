@@ -55,6 +55,7 @@ version.texi
 config.mk
 /rt/
 /rustllvm/
+/linenoise
 /test/
 /build/
 /inst/
