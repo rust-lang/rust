@@ -2872,24 +2872,6 @@ fn is_pred_ty(fty: t) -> bool {
     is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
 }
 
-/*
-fn ty_var_id(typ: t) -> TyVid {
-    match get(typ).sty {
-      ty_infer(TyVar(vid)) => return vid,
-      _ => { error!("ty_var_id called on non-var ty"); fail; }
-    }
-}
-
-fn int_var_id(typ: t) -> IntVid {
-    match get(typ).sty {
-      ty_infer(IntVar(vid)) => return vid,
-      _ => { error!("ty_var_integral_id called on ty other than \
-                  ty_var_integral");
-         fail; }
-    }
-}
-*/
-
 // Type accessors for AST nodes
 fn block_ty(cx: ctxt, b: &ast::blk) -> t {
     return node_id_to_type(cx, b.node.id);
@@ -3093,6 +3075,8 @@ fn expr_kind(tcx: ctxt,
         ast::expr_vstore(_, ast::expr_vstore_uniq) => {
             RvalueDatumExpr
         }
+
+        ast::expr_paren(e) => expr_kind(tcx, method_map, e),
 
         ast::expr_mac(*) => {
             tcx.sess.span_bug(

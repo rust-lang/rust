@@ -494,7 +494,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_struct(fld.fold_path(path),
                         vec::map(fields, |x| fold_field(*x)),
                         option::map(&maybe_expr, |x| fld.fold_expr(*x)))
-          }
+          },
+          expr_paren(ex) => expr_paren(fld.fold_expr(ex))
         }
 }
 

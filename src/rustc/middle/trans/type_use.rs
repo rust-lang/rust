@@ -267,6 +267,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
               }
           }
       }
+      expr_paren(e) => mark_for_expr(cx, e),
       expr_match(*) | expr_block(_) | expr_if(*) |
       expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
