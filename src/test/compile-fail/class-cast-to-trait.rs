@@ -7,7 +7,7 @@ struct cat {
   priv mut meows : uint,
 
   mut how_hungry : int,
-  name : str,
+  name : ~str,
 }
 
 impl cat {
@@ -33,14 +33,14 @@ impl cat : noisy {
 priv impl cat {
     fn meow() {
       error!("Meow");
-      self.meows += 1u;
-      if self.meows % 5u == 0u {
+      self.meows += 1;
+      if self.meows % 5 == 0 {
           self.how_hungry += 1;
       }
     }
 }
 
-fn cat(in_x : uint, in_y : int, in_name: str) -> cat {
+fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,
@@ -49,6 +49,6 @@ fn cat(in_x : uint, in_y : int, in_name: str) -> cat {
 }
 
 fn main() {
-  let nyan : noisy  = cat(0u, 2, "nyan") as noisy;
+  let nyan : noisy  = cat(0, 2, ~"nyan") as noisy;
   nyan.eat();
 }
