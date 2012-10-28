@@ -361,6 +361,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           _ => cx.sess.span_bug(e.span, ~"expected to find a const def")
         }
       }
+        ast::expr_paren(e) => { return const_expr(cx, e); }
       _ => cx.sess.span_bug(e.span,
             ~"bad constant expression type in consts::const_expr")
     };

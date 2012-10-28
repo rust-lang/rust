@@ -36,11 +36,11 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_call, expr_cast, expr_copy, expr_do_body, expr_fail,
              expr_field, expr_fn, expr_fn_block, expr_if, expr_index,
              expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac,
-             expr_path, expr_rec, expr_repeat, expr_ret, expr_swap,
-             expr_struct, expr_tup, expr_unary, expr_unary_move, expr_vec,
-             expr_vstore, expr_while, extern_fn, field, fn_decl, foreign_item,
-             foreign_item_const, foreign_item_fn, foreign_mod, ident,
-             impure_fn, infer, inherited,
+             expr_paren, expr_path, expr_rec, expr_repeat, expr_ret,
+             expr_swap, expr_struct, expr_tup, expr_unary, expr_unary_move,
+             expr_vec, expr_vstore, expr_while, extern_fn, field, fn_decl,
+             foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
+             ident, impure_fn, infer, inherited,
              item, item_, item_class, item_const, item_enum, item_fn,
              item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
              item_ty, lit, lit_, lit_bool, lit_float, lit_int,
@@ -94,18 +94,6 @@ enum restriction {
 
 enum file_type { CRATE_FILE, SOURCE_FILE, }
 
-
-// We don't allow single-entry tuples in the true AST; that indicates a
-// parenthesized expression.  However, we preserve them temporarily while
-// parsing because `(while{...})+3` parses differently from `while{...}+3`.
-//
-// To reflect the fact that the @expr is not a true expr that should be
-// part of the AST, we wrap such expressions in the pexpr enum.  They
-// can then be converted to true expressions by a call to `to_expr()`.
-enum pexpr {
-    pexpr(@expr),
-}
-
 enum class_member {
     field_member(@struct_field),
     method_member(@method)
@@ -141,11 +129,11 @@ macro_rules! maybe_whole_expr (
     ($p:expr) => { match copy $p.token {
       INTERPOLATED(token::nt_expr(e)) => {
         $p.bump();
-        return pexpr(e);
+        return e;
       }
       INTERPOLATED(token::nt_path(pt)) => {
         $p.bump();
-        return $p.mk_pexpr($p.span.lo, $p.span.lo,
+        return $p.mk_expr($p.span.lo, $p.span.lo,
                        expr_path(pt));
       }
       _ => ()
@@ -850,18 +838,7 @@ impl Parser {
               node: expr_lit(lv_lit), span: span};
     }
 
-    fn mk_pexpr(lo: uint, hi: uint, node: expr_) -> pexpr {
-        return pexpr(self.mk_expr(lo, hi, node));
-    }
-
-    fn to_expr(e: pexpr) -> @expr {
-        match e.node {
-          expr_tup(es) if vec::len(es) == 1u => es[0u],
-          _ => *e
-        }
-    }
-
-    fn parse_bottom_expr() -> pexpr {
+    fn parse_bottom_expr() -> @expr {
         maybe_whole_expr!(self);
         let lo = self.span.lo;
         let mut hi = self.span.hi;
@@ -869,7 +846,7 @@ impl Parser {
         let mut ex: expr_;
 
         match self.maybe_parse_dollar_mac() {
-          Some(x) => return pexpr(self.mk_mac_expr(lo, self.span.hi, x)),
+          Some(x) => return self.mk_mac_expr(lo, self.span.hi, x),
           _ => ()
         }
 
@@ -879,7 +856,7 @@ impl Parser {
                 hi = self.span.hi;
                 self.bump();
                 let lit = @spanned(lo, hi, lit_nil);
-                return self.mk_pexpr(lo, hi, expr_lit(lit));
+                return self.mk_expr(lo, hi, expr_lit(lit));
             }
             let mut es = ~[self.parse_expr()];
             while self.token == token::COMMA {
@@ -888,12 +865,12 @@ impl Parser {
             hi = self.span.hi;
             self.expect(token::RPAREN);
 
-            // Note: we retain the expr_tup() even for simple
-            // parenthesized expressions, but only for a "little while".
-            // This is so that wrappers around parse_bottom_expr()
-            // can tell whether the expression was parenthesized or not,
-            // which affects expr_is_complete().
-            return self.mk_pexpr(lo, hi, expr_tup(es));
+            return if es.len() == 1 {
+                self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
+            }
+            else {
+                self.mk_expr(lo, hi, expr_tup(es))
+            }
         } else if self.token == token::LBRACE {
             if self.looking_at_record_literal() {
                 ex = self.parse_record_literal();
@@ -901,32 +878,32 @@ impl Parser {
             } else {
                 self.bump();
                 let blk = self.parse_block_tail(lo, default_blk);
-                return self.mk_pexpr(blk.span.lo, blk.span.hi,
+                return self.mk_expr(blk.span.lo, blk.span.hi,
                                      expr_block(blk));
             }
         } else if token::is_bar(self.token) {
-            return pexpr(self.parse_lambda_expr());
+            return self.parse_lambda_expr();
         } else if self.eat_keyword(~"if") {
-            return pexpr(self.parse_if_expr());
+            return self.parse_if_expr();
         } else if self.eat_keyword(~"for") {
-            return pexpr(self.parse_sugary_call_expr(~"for", expr_loop_body));
+            return self.parse_sugary_call_expr(~"for", expr_loop_body);
         } else if self.eat_keyword(~"do") {
-            return pexpr(self.parse_sugary_call_expr(~"do", expr_do_body));
+            return self.parse_sugary_call_expr(~"do", expr_do_body);
         } else if self.eat_keyword(~"while") {
-            return pexpr(self.parse_while_expr());
+            return self.parse_while_expr();
         } else if self.eat_keyword(~"loop") {
-            return pexpr(self.parse_loop_expr());
+            return self.parse_loop_expr();
         } else if self.eat_keyword(~"match") {
-            return pexpr(self.parse_alt_expr());
+            return self.parse_alt_expr();
         } else if self.eat_keyword(~"fn") {
             let proto = self.parse_fn_ty_proto();
             match proto {
               proto_bare => self.fatal(~"fn expr are deprecated, use fn@"),
               _ => { /* fallthrough */ }
             }
-            return pexpr(self.parse_fn_expr(proto));
+            return self.parse_fn_expr(proto);
         } else if self.eat_keyword(~"unsafe") {
-            return pexpr(self.parse_block_expr(lo, unsafe_blk));
+            return self.parse_block_expr(lo, unsafe_blk);
         } else if self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
@@ -962,7 +939,7 @@ impl Parser {
             hi = self.span.hi;
         } else if self.token == token::ELLIPSIS {
             self.bump();
-            return pexpr(self.mk_mac_expr(lo, self.span.hi, mac_ellipsis));
+            return self.mk_mac_expr(lo, self.span.hi, mac_ellipsis);
         } else if self.token == token::POUND {
             let ex_ext = self.parse_syntax_ext();
             hi = ex_ext.span.hi;
@@ -1020,8 +997,8 @@ impl Parser {
 
                 let hi = self.span.hi;
 
-                return pexpr(self.mk_mac_expr(
-                    lo, hi, mac_invoc_tt(pth, tts)));
+                return self.mk_mac_expr(
+                    lo, hi, mac_invoc_tt(pth, tts));
             } else if self.token == token::LBRACE {
                 // This might be a struct literal.
                 if self.looking_at_record_literal() {
@@ -1053,7 +1030,7 @@ impl Parser {
                     hi = pth.span.hi;
                     self.expect(token::RBRACE);
                     ex = expr_struct(pth, fields, base);
-                    return self.mk_pexpr(lo, hi, ex);
+                    return self.mk_expr(lo, hi, ex);
                 }
             }
 
@@ -1068,7 +1045,7 @@ impl Parser {
         let (hi, ex) =
             self.try_convert_expr_to_obsolete_fixed_length_vstore(lo, hi, ex);
 
-        return self.mk_pexpr(lo, hi, ex);
+        return self.mk_expr(lo, hi, ex);
     }
 
     fn parse_block_expr(lo: uint, blk_mode: blk_check_mode) -> @expr {
@@ -1125,7 +1102,7 @@ impl Parser {
         return self.mk_mac_expr(lo, self.span.hi, mac_invoc(pth, e, b));
     }
 
-    fn parse_dot_or_call_expr() -> pexpr {
+    fn parse_dot_or_call_expr() -> @expr {
         let b = self.parse_bottom_expr();
         self.parse_dot_or_call_expr_with(b)
     }
@@ -1134,7 +1111,7 @@ impl Parser {
         return self.restriction != RESTRICT_NO_CALL_EXPRS;
     }
 
-    fn parse_dot_or_call_expr_with(e0: pexpr) -> pexpr {
+    fn parse_dot_or_call_expr_with(e0: @expr) -> @expr {
         let mut e = e0;
         let lo = e.span.lo;
         let mut hi;
@@ -1150,8 +1127,7 @@ impl Parser {
                         self.parse_seq_to_gt(Some(token::COMMA),
                                              |p| p.parse_ty(false))
                     } else { ~[] };
-                    e = self.mk_pexpr(lo, hi, expr_field(self.to_expr(e), i,
-                                                         tys));
+                    e = self.mk_expr(lo, hi, expr_field(e, i, tys));
                   }
                   _ => self.unexpected()
                 }
@@ -1167,8 +1143,8 @@ impl Parser {
                     |p| p.parse_expr());
                 hi = self.span.hi;
 
-                let nd = expr_call(self.to_expr(e), es, false);
-                e = self.mk_pexpr(lo, hi, nd);
+                let nd = expr_call(e, es, false);
+                e = self.mk_expr(lo, hi, nd);
               }
 
               // expr[...]
@@ -1177,7 +1153,7 @@ impl Parser {
                 let ix = self.parse_expr();
                 hi = ix.span.hi;
                 self.expect(token::RBRACKET);
-                e = self.mk_pexpr(lo, hi, expr_index(self.to_expr(e), ix));
+                e = self.mk_expr(lo, hi, expr_index(e, ix));
               }
 
               _ => return e
@@ -1326,7 +1302,7 @@ impl Parser {
     }
 
 
-    fn parse_prefix_expr() -> pexpr {
+    fn parse_prefix_expr() -> @expr {
         let lo = self.span.lo;
         let mut hi;
 
@@ -1334,7 +1310,7 @@ impl Parser {
         match copy self.token {
           token::NOT => {
             self.bump();
-            let e = self.to_expr(self.parse_prefix_expr());
+            let e = self.parse_prefix_expr();
             hi = e.span.hi;
             self.get_id(); // see ast_util::op_expr_callee_id
             ex = expr_unary(not, e);
@@ -1343,21 +1319,21 @@ impl Parser {
             match b {
               token::MINUS => {
                 self.bump();
-                let e = self.to_expr(self.parse_prefix_expr());
+                let e = self.parse_prefix_expr();
                 hi = e.span.hi;
                 self.get_id(); // see ast_util::op_expr_callee_id
                 ex = expr_unary(neg, e);
               }
               token::STAR => {
                 self.bump();
-                let e = self.to_expr(self.parse_prefix_expr());
+                let e = self.parse_prefix_expr();
                 hi = e.span.hi;
                 ex = expr_unary(deref, e);
               }
               token::AND => {
                 self.bump();
                 let m = self.parse_mutability();
-                let e = self.to_expr(self.parse_prefix_expr());
+                let e = self.parse_prefix_expr();
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
@@ -1374,7 +1350,7 @@ impl Parser {
           token::AT => {
             self.bump();
             let m = self.parse_mutability();
-            let e = self.to_expr(self.parse_prefix_expr());
+            let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
@@ -1386,7 +1362,7 @@ impl Parser {
           token::TILDE => {
             self.bump();
             let m = self.parse_mutability();
-            let e = self.to_expr(self.parse_prefix_expr());
+            let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
@@ -1397,18 +1373,17 @@ impl Parser {
           }
           _ => return self.parse_dot_or_call_expr()
         }
-        return self.mk_pexpr(lo, hi, ex);
+        return self.mk_expr(lo, hi, ex);
     }
 
 
     fn parse_binops() -> @expr {
-        return self.parse_more_binops(self.parse_prefix_expr(), 0u);
+        return self.parse_more_binops(self.parse_prefix_expr(), 0);
     }
 
-    fn parse_more_binops(plhs: pexpr, min_prec: uint) ->
+    fn parse_more_binops(lhs: @expr, min_prec: uint) ->
         @expr {
-        let lhs = self.to_expr(plhs);
-        if self.expr_is_complete(plhs) { return lhs; }
+        if self.expr_is_complete(lhs) { return lhs; }
         let peeked = self.token;
         if peeked == token::BINOP(token::OR) &&
             (self.restriction == RESTRICT_NO_BAR_OP ||
@@ -1428,7 +1403,7 @@ impl Parser {
                 let expr = self.parse_prefix_expr();
                 let rhs = self.parse_more_binops(expr, cur_prec);
                 self.get_id(); // see ast_util::op_expr_callee_id
-                let bin = self.mk_pexpr(lhs.span.lo, rhs.span.hi,
+                let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
                                         expr_binary(cur_op, lhs, rhs));
                 return self.parse_more_binops(bin, min_prec);
             }
@@ -1438,7 +1413,7 @@ impl Parser {
         if as_prec > min_prec && self.eat_keyword(~"as") {
             let rhs = self.parse_ty(true);
             let _as =
-                self.mk_pexpr(lhs.span.lo, rhs.span.hi, expr_cast(lhs, rhs));
+                self.mk_expr(lhs.span.lo, rhs.span.hi, expr_cast(lhs, rhs));
             return self.parse_more_binops(_as, min_prec);
         }
         return lhs;
@@ -2173,9 +2148,9 @@ impl Parser {
         }
     }
 
-    fn expr_is_complete(e: pexpr) -> bool {
+    fn expr_is_complete(e: @expr) -> bool {
         return self.restriction == RESTRICT_STMT_EXPR &&
-            !classify::expr_requires_semi_to_be_stmt(*e);
+            !classify::expr_requires_semi_to_be_stmt(e);
     }
 
     fn parse_block() -> blk {

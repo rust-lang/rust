@@ -98,6 +98,8 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
               }
             }
           }
+          expr_paren(e) => { check_expr(sess, def_map, method_map,
+                                         tcx, e, is_const, v); }
           expr_vstore(_, expr_vstore_slice) |
           expr_vstore(_, expr_vstore_fixed(_)) |
           expr_vec(_, m_imm) |

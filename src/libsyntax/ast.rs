@@ -744,7 +744,10 @@ enum expr_ {
     expr_struct(@path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
-    expr_repeat(@expr /* element */, @expr /* count */, mutability)
+    expr_repeat(@expr /* element */, @expr /* count */, mutability),
+
+    // No-op: used solely so we can pretty-print faithfully
+    expr_paren(@expr)
 }
 
 #[auto_serialize]

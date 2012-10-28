@@ -11,10 +11,10 @@ mod m1 {
 }
 
 fn main() {
-    assert(line!() == 14u);
-    assert(col!() == 11u);
+    assert(line!() == 14);
+    assert(col!() == 11);
     assert(file!().ends_with(~"syntax-extension-source-utils.rs"));
-    assert(stringify!((2*3) + 5) == ~"2 * 3 + 5");
+    assert(stringify!((2*3) + 5) == ~"(2 * 3) + 5");
     assert(include!("syntax-extension-source-utils-files/includeme.fragment")
            == ~"victory robot 6");
 

@@ -990,11 +990,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         debug!("check_call_inner: after universal quant., fty=%s",
                fcx.infcx().ty_to_str(fty));
 
-        let supplied_arg_count = vec::len(args);
+        let supplied_arg_count = args.len();
 
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
-        let expected_arg_count = vec::len(fn_ty.sig.inputs);
+        let expected_arg_count = fn_ty.sig.inputs.len();
         let formal_tys = if expected_arg_count == supplied_arg_count {
             fn_ty.sig.inputs.map(|a| a.ty)
         } else {
@@ -1058,8 +1058,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
                     bot |= check_expr_with_unifier(
                         fcx, *arg, Some(formal_ty),
-                        || demand::assign(fcx, arg.span, formal_ty, *arg)
+                        || demand::assign(fcx, arg.span,
+                                           formal_ty, *arg)
                     );
+                    fcx.write_ty(arg.id, fcx.expr_ty(*arg));
+
                 }
             }
         }
@@ -1369,12 +1372,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
-        let n_tys = vec::len(tys);
+        let n_tys = tys.len();
+
         match structure_of(fcx, expr.span, base_t) {
             ty::ty_rec(fields) => {
                 match ty::field_idx(field, fields) {
                     Some(ix) => {
-                        if n_tys > 0u {
+                        if n_tys > 0 {
                             tcx.sess.span_err(
                                 expr.span,
                                 ~"can't provide type parameters \
@@ -1680,7 +1684,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             ty::mk_estr(tcx, tt)
           }
           ast::expr_vec(args, mutbl) => {
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, vec::len(args), vst);
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
             let t: ty::t = fcx.infcx().next_ty_var();
             for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
@@ -1870,6 +1874,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_copy(a) | ast::expr_unary_move(a) => {
         bot = check_expr(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
+      }
+      ast::expr_paren(a) => {
+        bot = check_expr_with_unifier(fcx, a, expected, || ());
+        fcx.write_ty(id, fcx.expr_ty(a));
+        do expected.iter |i| {
+            demand::assign(fcx, expr.span, *i, expr);
+            demand::assign(fcx, a.span, *i, a);
+        };
       }
       ast::expr_assign(lhs, rhs) => {
         bot = check_assignment(fcx, expr.span, lhs, rhs, id);
@@ -2583,9 +2595,9 @@ fn instantiate_path(fcx: @fn_ctxt,
 
     // determine values for type parameters, using the values given by
     // the user (if any) and otherwise using fresh type variables
-    let tps = if ty_substs_len == 0u {
+    let tps = if ty_substs_len == 0 {
         fcx.infcx().next_ty_vars(ty_param_count)
-    } else if ty_param_count == 0u {
+    } else if ty_param_count == 0 {
         fcx.ccx.tcx.sess.span_err
             (span, ~"this item does not take type parameters");
         fcx.infcx().next_ty_vars(ty_param_count)
