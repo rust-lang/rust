@@ -72,7 +72,8 @@ fn classify(e: @expr,
               }
 
               ast::expr_copy(inner) |
-              ast::expr_unary(_, inner) => {
+              ast::expr_unary(_, inner) |
+              ast::expr_paren(inner) => {
                 classify(inner, def_map, tcx)
               }
 
@@ -376,6 +377,7 @@ fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
       expr_lit(lit) => Ok(lit_to_const(lit)),
       // If we have a vstore, just keep going; it has to be a string
       expr_vstore(e, _) => eval_const_expr_partial(tcx, e),
+      expr_paren(e)     => eval_const_expr_partial(tcx, e),
       _ => Err(~"Unsupported constant expr")
     }
 }

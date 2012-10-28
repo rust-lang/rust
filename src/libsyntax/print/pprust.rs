@@ -773,7 +773,7 @@ fn print_variant(s: ps, v: ast::variant) {
     match v.node.kind {
         ast::tuple_variant_kind(args) => {
             print_ident(s, v.node.name);
-            if vec::len(args) > 0u {
+            if args.is_not_empty() {
                 popen(s);
                 fn print_variant_arg(s: ps, arg: ast::variant_arg) {
                     print_type(s, arg.ty);
@@ -951,25 +951,11 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
     s.ann.post(ann_node);
 }
 
-// return and fail, without arguments cannot appear is the discriminant of if,
-// alt, do, & while unambiguously without being parenthesized
-fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
-    let disambig = match e.node {
-      ast::expr_ret(None)
-      | ast::expr_fail(None)
-      | ast::expr_again(*) => true,
-      _ => false
-    };
-    if disambig { popen(s); }
-    print_expr(s, e);
-    if disambig { pclose(s); }
-}
-
 fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
             elseopt: Option<@ast::expr>, chk: bool) {
     head(s, ~"if");
     if chk { word_nbsp(s, ~"check"); }
-    print_maybe_parens_discrim(s, test);
+    print_expr(s, test);
     space(s.s);
     print_block(s, blk);
     fn do_else(s: ps, els: Option<@ast::expr>) {
@@ -981,7 +967,7 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
                 cbox(s, indent_unit - 1u);
                 ibox(s, 0u);
                 word(s.s, ~" else if ");
-                print_maybe_parens_discrim(s, i);
+                print_expr(s, i);
                 space(s.s);
                 print_block(s, t);
                 do_else(s, e);
@@ -1154,8 +1140,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             }
             Some(blk_arg)
         } else { None };
-        print_expr_parens_if_not_bot(s, func);
-        if !has_block || vec::len(base_args) > 0u {
+        print_expr(s, func);
+        if !has_block || base_args.is_not_empty() {
             popen(s);
             commasep_exprs(s, inconsistent, base_args);
             pclose(s);
@@ -1178,15 +1164,14 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_binary(op, lhs, rhs) => {
-        let prec = operator_prec(op);
-        print_op_maybe_parens(s, lhs, prec);
+        print_expr(s, lhs);
         space(s.s);
         word_space(s, ast_util::binop_to_str(op));
-        print_op_maybe_parens(s, rhs, prec + 1u);
+        print_expr(s, rhs);
       }
       ast::expr_unary(op, expr) => {
         word(s.s, ast_util::unop_to_str(op));
-        print_op_maybe_parens(s, expr, parse::prec::unop_prec);
+        print_expr(s, expr);
       }
       ast::expr_addr_of(m, expr) => {
         word(s.s, ~"&");
@@ -1195,7 +1180,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_lit(lit) => print_literal(s, lit),
       ast::expr_cast(expr, ty) => {
-        print_op_maybe_parens(s, expr, parse::prec::as_prec);
+        print_expr(s, expr);
         space(s.s);
         word_space(s, ~"as");
         print_type_ex(s, ty, true);
@@ -1205,7 +1190,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_while(test, blk) => {
         head(s, ~"while");
-        print_maybe_parens_discrim(s, test);
+        print_expr(s, test);
         space(s.s);
         print_block(s, blk);
       }
@@ -1220,9 +1205,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       }
       ast::expr_match(expr, arms) => {
         cbox(s, alt_indent_unit);
-        ibox(s, 4u);
+        ibox(s, 4);
         word_nbsp(s, ~"match");
-        print_maybe_parens_discrim(s, expr);
+        print_expr(s, expr);
         space(s.s);
         bopen(s);
         let len = arms.len();
@@ -1335,12 +1320,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_copy(e) => { word_space(s, ~"copy"); print_expr(s, e); }
-        // shouldn't parenthesize unless it's needed
       ast::expr_unary_move(e) => {
-          popen(s);
           word_space(s, ~"move");
           print_expr(s, e);
-          pclose(s);
       }
       ast::expr_assign(lhs, rhs) => {
         print_expr(s, lhs);
@@ -1362,12 +1344,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_expr(s, rhs);
       }
       ast::expr_field(expr, id, tys) => {
-        // Deal with '10.x'
-        if ends_in_lit_int(expr) {
-            popen(s); print_expr(s, expr); pclose(s);
-        } else {
-            print_expr_parens_if_not_bot(s, expr);
-        }
+        print_expr(s, expr);
         word(s.s, ~".");
         print_ident(s, id);
         if vec::len(tys) > 0u {
@@ -1377,7 +1354,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_index(expr, index) => {
-        print_expr_parens_if_not_bot(s, expr);
+        print_expr(s, expr);
         word(s.s, ~"[");
         print_expr(s, index);
         word(s.s, ~"]");
@@ -1427,25 +1404,14 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_expr(s, expr);
       }
       ast::expr_mac(m) => print_mac(s, m),
+      ast::expr_paren(e) => {
+          popen(s);
+          print_expr(s, e);
+          pclose(s);
+      }
     }
     s.ann.post(ann_node);
     end(s);
-}
-
-fn print_expr_parens_if_not_bot(s: ps, ex: @ast::expr) {
-    let parens = match ex.node {
-      ast::expr_fail(_) | ast::expr_ret(_) |
-      ast::expr_binary(_, _, _) | ast::expr_unary(_, _) |
-      ast::expr_copy(_) | ast::expr_assign(_, _) |
-      ast::expr_assign_op(_, _, _) | ast::expr_swap(_, _) |
-      ast::expr_log(_, _, _) | ast::expr_assert(_) |
-      ast::expr_call(_, _, true) |
-      ast::expr_vstore(_, _) => true,
-      _ => false
-    };
-    if parens { popen(s); }
-    print_expr(s, ex);
-    if parens { pclose(s); }
 }
 
 fn print_local_decl(s: ps, loc: @ast::local) {
@@ -1557,7 +1523,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         match args_ {
           None => word(s.s, ~"(*)"),
           Some(args) => {
-            if vec::len(args) > 0u {
+            if args.is_not_empty() {
               popen(s);
               commasep(s, inconsistent, args, print_pat);
               pclose(s);
@@ -1813,7 +1779,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       ast::view_item_use(id, mta, _) => {
         head(s, ~"extern mod");
         print_ident(s, id);
-        if vec::len(mta) > 0u {
+        if mta.is_not_empty() {
             popen(s);
             commasep(s, consistent, mta, print_meta_item);
             pclose(s);
@@ -1833,13 +1799,6 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     word(s.s, ~";");
     end(s); // end inner head-block
     end(s); // end outer head-block
-}
-
-fn print_op_maybe_parens(s: ps, expr: @ast::expr, outer_prec: uint) {
-    let add_them = need_parens(expr, outer_prec);
-    if add_them { popen(s); }
-    print_expr(s, expr);
-    if add_them { pclose(s); }
 }
 
 fn print_mutability(s: ps, mutbl: ast::mutability) {

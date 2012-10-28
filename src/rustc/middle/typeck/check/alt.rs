@@ -132,6 +132,10 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
                      pcx.block_region);
 
+    // structure_of requires type variables to be resolved.
+    // So when we pass in <expected>, it's an error if it
+    // contains type variables.
+
     // Take the enum type params out of `expected`.
     match structure_of(pcx.fcx, pat.span, expected) {
       ty::ty_enum(_, ref expected_substs) => {
@@ -151,7 +155,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             None => arg_len,
             Some(ps) => ps.len()
         };
-        if arg_len > 0u {
+        if arg_len > 0 {
             // N-ary variant.
             if arg_len != subpats_len {
                 let s = fmt!("this pattern has %u field%s, but the \
@@ -168,7 +172,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                   check_pat(pcx, *subpat, *arg_ty);
                 }
             };
-        } else if subpats_len > 0u {
+        } else if subpats_len > 0 {
             tcx.sess.span_fatal
                 (pat.span, fmt!("this pattern has %u field%s, \
                                  but the corresponding variant has no fields",

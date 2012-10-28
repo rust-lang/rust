@@ -161,7 +161,6 @@ impl Dest : cmp::Eq {
 
 fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_to_datum(expr=%s)", bcx.expr_to_str(expr));
-
     return match bcx.tcx().adjustments.find(expr.id) {
         None => {
             trans_to_datum_unadjusted(bcx, expr)
@@ -392,6 +391,9 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         ast::expr_cast(val, _) => {
             return trans_imm_cast(bcx, val, expr.id);
         }
+        ast::expr_paren(e) => {
+            return trans_rvalue_datum_unadjusted(bcx, e);
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -450,6 +452,9 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
         }
+        ast::expr_paren(a) => {
+            return trans_rvalue_stmt_unadjusted(bcx, a);
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -469,6 +474,9 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
+        ast::expr_paren(e) => {
+            return trans_rvalue_dps_unadjusted(bcx, e, dest);
+        }
         ast::expr_path(_) => {
             return trans_def_dps_unadjusted(bcx, expr,
                                             bcx.def(expr.id), dest);
@@ -690,6 +698,9 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let mut bcx = bcx;
 
         match expr.node {
+            ast::expr_paren(e) => {
+                return unrooted(bcx, e);
+            }
             ast::expr_path(_) => {
                 return trans_def_lvalue(bcx, expr, bcx.def(expr.id));
             }

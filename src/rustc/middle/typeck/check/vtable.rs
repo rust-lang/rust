@@ -486,6 +486,11 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
           _ => ()
         }
       }
+
+      ast::expr_paren(e) => {
+          early_resolve_expr(e, fcx, is_early);
+      }
+
       // Must resolve bounds on methods with bounded params
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
