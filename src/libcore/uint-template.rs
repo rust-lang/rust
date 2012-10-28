@@ -88,19 +88,6 @@ impl T: iter::Times {
     }
 }
 
-impl T: iter::TimesIx {
-    #[inline(always)]
-    /// Like `times`, but with an index, `eachi`-style.
-    pure fn timesi(it: fn(uint) -> bool) {
-        let slf = self as uint;
-        let mut i = 0u;
-        while i < slf {
-            if !it(i) { break }
-            i += 1u;
-        }
-    }
-}
-
 /**
  * Parse a buffer of bytes
  *
