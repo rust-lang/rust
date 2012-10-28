@@ -1,6 +1,5 @@
 // An example to make sure the protocol parsing syntax extension works.
 
-// xfail-pretty
 
 proto! pingpong (
     ping:send {

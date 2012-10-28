@@ -1,5 +1,4 @@
 // tjc: I don't know why
-// xfail-pretty
 mod pipes {
     #[legacy_exports];
     use cast::{forget, transmute};

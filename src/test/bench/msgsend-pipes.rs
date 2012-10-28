@@ -4,8 +4,6 @@
 //
 // I *think* it's the same, more or less.
 
-// xfail-pretty
-
 #[legacy_modes];
 
 extern mod std;

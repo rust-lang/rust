@@ -1,4 +1,3 @@
-// xfail-pretty
 
 fn id(x: bool) -> bool { x }
 

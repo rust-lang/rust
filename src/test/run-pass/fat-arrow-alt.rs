@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-pretty
 
 enum color {
     red,

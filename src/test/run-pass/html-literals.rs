@@ -1,6 +1,5 @@
 // A test of the macro system. Can we do HTML literals?
 
-// xfail-pretty
 
 /*
 

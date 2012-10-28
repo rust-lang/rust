@@ -5,8 +5,6 @@
 
 // This also serves as a pipes test, because ARCs are implemented with pipes.
 
-// xfail-pretty
-
 extern mod std;
 use std::time;
 use std::arc;

@@ -1,6 +1,5 @@
 // Make sure that we can detect when one end of the pipe is closed.
 
-// xfail-pretty
 // xfail-win32
 
 extern mod std;
