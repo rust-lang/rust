@@ -8,8 +8,6 @@
 // different scalability characteristics compared to the select
 // version.
 
-// xfail-pretty
-
 #[legacy_modes];
 
 extern mod std;

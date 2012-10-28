@@ -1,6 +1,5 @@
 // compile-flags: --test --cfg ignorecfg
 // xfail-fast
-// xfail-pretty
 
 extern mod std;
 

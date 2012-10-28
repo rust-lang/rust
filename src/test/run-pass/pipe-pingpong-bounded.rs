@@ -2,7 +2,6 @@
 // experiment with what code the compiler should generate for bounded
 // protocols.
 
-// xfail-pretty
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.

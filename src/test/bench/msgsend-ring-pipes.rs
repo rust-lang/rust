@@ -6,8 +6,6 @@
 
 // This version uses automatically compiled channel contracts.
 
-// xfail-pretty
-
 extern mod std;
 use std::time;
 use std::future;

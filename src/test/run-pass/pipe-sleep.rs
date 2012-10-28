@@ -1,4 +1,3 @@
-// xfail-pretty
 
 extern mod std;
 use std::timer::sleep;
