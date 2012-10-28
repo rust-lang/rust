@@ -620,7 +620,7 @@ impl Datum {
             ty::ty_enum(did, ref substs) => {
                 // Check whether this enum is a newtype enum:
                 let variants = ty::enum_variants(ccx.tcx, did);
-                if (*variants).len() != 1u || variants[0].args.len() != 1u {
+                if (*variants).len() != 1 || variants[0].args.len() != 1 {
                     return None;
                 }
 
