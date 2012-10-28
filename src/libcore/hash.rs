@@ -505,7 +505,7 @@ pub fn test_hash_no_bytes_dropped_64() {
     assert val.hash() != zero_byte(val, 7).hash();
 
     fn zero_byte(val: u64, byte: uint) -> u64 {
-        assert 0 <= byte; assert byte < 8;
+        assert byte < 8;
         val & !(0xff << (byte * 8))
     }
 }
@@ -520,7 +520,7 @@ pub fn test_hash_no_bytes_dropped_32() {
     assert val.hash() != zero_byte(val, 3).hash();
 
     fn zero_byte(val: u32, byte: uint) -> u32 {
-        assert 0 <= byte; assert byte < 4;
+        assert byte < 4;
         val & !(0xff << (byte * 8))
     }
 }
