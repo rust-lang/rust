@@ -1,4 +1,3 @@
-// xfail-pretty
 // Issue #2303
 
 #[abi = "rust-intrinsic"]

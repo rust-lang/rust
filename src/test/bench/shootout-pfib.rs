@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-pretty
 
 /*
   A parallel version of fibonacci numbers.

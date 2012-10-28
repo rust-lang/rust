@@ -1,4 +1,3 @@
-// xfail-pretty
 
 // An example of the bank protocol from eholk's blog post.
 //

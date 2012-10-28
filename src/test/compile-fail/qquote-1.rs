@@ -1,4 +1,3 @@
-// xfail-pretty
 
 extern mod std;
 extern mod syntax;

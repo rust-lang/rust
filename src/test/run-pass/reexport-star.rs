@@ -1,4 +1,3 @@
-// xfail-pretty
 // FIXME #3654
 
 mod a {

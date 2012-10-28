@@ -1,7 +1,5 @@
 // Compare bounded and unbounded protocol performance.
 
-// xfail-pretty
-
 extern mod std;
 
 use pipes::{spawn_service, recv};
