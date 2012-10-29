@@ -141,13 +141,13 @@ tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
 		| grep '^$(S)src/test' -v \
-		| xargs -n 10 python $(S)src/etc/tidy.py
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
-		| xargs -n 10 python $(S)src/etc/tidy.py
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_CS) \
-	  	| xargs -n 10 python $(S)src/etc/tidy.py
+	  	| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
-	  	| xargs -n 10 python $(S)src/etc/tidy.py
+	  	| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 
 endif
 
