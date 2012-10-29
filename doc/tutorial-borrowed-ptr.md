@@ -698,7 +698,7 @@ is B, the function body. Both of the second two parameters `a` and `b`
 share the same lifetime, `r`, which is a lifetime parameter of
 `select_based_on_unit_circle()`. The caller will infer the
 intersection of these two lifetimes as the lifetime of the returned
-value, and hence the return value of `shape()` will be assigned a
+value, and hence the return value of `select()` will be assigned a
 lifetime of B. This will in turn lead to a compilation error, because
 `select_based_on_unit_circle()` is supposed to return a value with the
 lifetime `r`.
