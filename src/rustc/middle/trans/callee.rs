@@ -210,23 +210,30 @@ fn trans_fn_ref_with_vtables(
     // intrinsic, or is a default method.  In particular, if we see an
     // intrinsic that is inlined from a different crate, we want to reemit the
     // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise = type_params.len() > 0 ||
-        opt_impl_did.is_some() || {
-        if def_id.crate == ast::local_crate {
-            let map_node = session::expect(
-                ccx.sess,
-                ccx.tcx.items.find(def_id.node),
-                || fmt!("local item should be in ast map"));
+    let must_monomorphise;
+    if type_params.len() > 0 || opt_impl_did.is_some() {
+        must_monomorphise = true;
+    } else if ccx.tcx.automatically_derived_methods.contains_key(def_id) {
+        must_monomorphise = false;
+    } else if def_id.crate == ast::local_crate {
+        let map_node = session::expect(
+            ccx.sess,
+            ccx.tcx.items.find(def_id.node),
+            || fmt!("local item should be in ast map"));
 
-            match map_node {
-              ast_map::node_foreign_item(
-                  _, ast::foreign_abi_rust_intrinsic, _) => true,
-              _ => false
+        match map_node {
+            ast_map::node_foreign_item(_,
+                                       ast::foreign_abi_rust_intrinsic,
+                                       _) => {
+                must_monomorphise = true;
             }
-        } else {
-            false
+            _ => {
+                must_monomorphise = false;
+            }
         }
-    };
+    } else {
+        must_monomorphise = false;
+    }
 
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
@@ -433,6 +440,15 @@ fn trans_call_inner(
             }
             _ => {}
         }
+
+        // Uncomment this to debug calls.
+        /*
+        io::println(fmt!("calling: %s", bcx.val_str(llfn)));
+        for llargs.each |llarg| {
+            io::println(fmt!("arg: %s", bcx.val_str(*llarg)));
+        }
+        io::println("---");
+        */
 
         // If the block is terminated, then one or more of the args
         // has type _|_. Since that means it diverges, the code for
