@@ -387,6 +387,11 @@ type ctxt =
       deriving_struct_methods: HashMap<ast::def_id,
                                        @~[typeck::method_origin]>,
 
+      // The outer vector here describes each enum variant, while the inner
+      // nested vector describes each enum variant argument.
+      deriving_enum_methods: HashMap<ast::def_id,
+                                     @~[@~[typeck::method_origin]]>,
+
       // A mapping from the def ID of a method that was automatically derived
       // to information about it.
       automatically_derived_methods: HashMap<ast::def_id, DerivedMethodInfo>,
@@ -959,6 +964,7 @@ fn mk_ctxt(s: session::Session,
       provided_method_sources: HashMap(),
       supertraits: HashMap(),
       deriving_struct_methods: HashMap(),
+      deriving_enum_methods: HashMap(),
       automatically_derived_methods: HashMap(),
       automatically_derived_methods_for_impl: HashMap()}
 }
