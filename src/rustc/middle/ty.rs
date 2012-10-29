@@ -200,6 +200,7 @@ export provided_trait_methods;
 export trait_supertraits;
 export AutoAdjustment;
 export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
+export DerivedMethodInfo;
 
 // Data types
 
@@ -333,6 +334,11 @@ struct InstantiatedTraitRef {
     tpt: ty_param_substs_and_ty
 }
 
+struct DerivedMethodInfo {
+    method_info: @middle::resolve::MethodInfo,
+    containing_impl: ast::def_id
+}
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -379,7 +385,17 @@ type ctxt =
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
       deriving_struct_methods: HashMap<ast::def_id,
-                                       @~[typeck::method_origin]>};
+                                       @~[typeck::method_origin]>,
+
+      // A mapping from the def ID of a method that was automatically derived
+      // to information about it.
+      automatically_derived_methods: HashMap<ast::def_id, DerivedMethodInfo>,
+
+      // A mapping from the def ID of an impl to the IDs of the derived
+      // methods within it.
+      automatically_derived_methods_for_impl:
+            HashMap<ast::def_id, @~[ast::def_id]>
+      };
 
 enum tbox_flag {
     has_params = 1,
@@ -942,7 +958,9 @@ fn mk_ctxt(s: session::Session,
       legacy_boxed_traits: HashMap(),
       provided_method_sources: HashMap(),
       supertraits: HashMap(),
-      deriving_struct_methods: HashMap()}
+      deriving_struct_methods: HashMap(),
+      automatically_derived_methods: HashMap(),
+      automatically_derived_methods_for_impl: HashMap()}
 }
 
 
