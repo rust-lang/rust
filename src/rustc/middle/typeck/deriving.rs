@@ -113,6 +113,48 @@ impl DerivingChecker {
         tcx.deriving_struct_methods.insert(local_def(impl_id), field_info);
     }
 
+    fn check_deriving_for_enum(enum_def_id: def_id,
+                               enum_substs: &substs,
+                               trait_ref: @trait_ref,
+                               impl_id: node_id,
+                               impl_span: span) {
+        let tcx = self.crate_context.tcx;
+        let enum_methods = dvec::DVec();
+        let variants = ty::substd_enum_variants(
+            tcx, enum_def_id, enum_substs);
+        for variants.each |enum_variant_info| {
+            let variant_methods = dvec::DVec();
+            for enum_variant_info.args.eachi |i, variant_arg_type| {
+                match self.check_deriving_for_substructure_type(
+                        *variant_arg_type, trait_ref, impl_span) {
+                    Some(method_target_def_id) => {
+                        variant_methods.push(method_static(
+                            method_target_def_id));
+                    }
+                    None => {
+                        let trait_str = pprust::path_to_str(
+                            trait_ref.path, tcx.sess.parse_sess.interner);
+                        tcx.sess.span_err(impl_span,
+                                          fmt!("cannot automatically derive \
+                                                an implementation for `%s`: \
+                                                argument %u of variant `%s` \
+                                                does not implement the trait \
+                                                `%s`",
+                                               trait_str,
+                                               i + 1,
+                                               tcx.sess.str_of(
+                                                    enum_variant_info.name),
+                                               trait_str));
+                    }
+                }
+            }
+            enum_methods.push(@dvec::unwrap(move variant_methods));
+        }
+
+        let enum_methods = @dvec::unwrap(move enum_methods);
+        tcx.deriving_enum_methods.insert(local_def(impl_id), enum_methods);
+    }
+
     fn check_deriving(crate: @crate) {
         let tcx = self.crate_context.tcx;
         visit_crate(*crate, (), mk_simple_visitor(@{
@@ -123,8 +165,13 @@ impl DerivingChecker {
                         let superty = ty::lookup_item_type(
                             tcx, local_def(item.id)).ty;
                         match ty::get(superty).sty {
-                            ty_enum(_def_id, _substs) => {
-                                // XXX: Handle enums.
+                            ty_enum(def_id, ref substs) => {
+                                self.check_deriving_for_enum(
+                                    def_id,
+                                    substs,
+                                    trait_ref,
+                                    item.id,
+                                    item.span);
                             }
                             ty_class(def_id, ref substs) => {
                                 self.check_deriving_for_struct(
