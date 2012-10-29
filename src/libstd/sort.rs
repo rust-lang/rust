@@ -921,6 +921,7 @@ mod test_tim_sort {
 
     #[test]
     #[should_fail]
+    #[cfg(unix)]
     fn crash_test() {
         let rng = rand::Rng();
         let mut arr = do vec::from_fn(1000) |_i| {
