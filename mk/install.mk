@@ -72,6 +72,7 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),cargo$(X))
+	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
@@ -91,6 +92,7 @@ HOST_LIB_FROM_HL_GLOB = \
 uninstall:
 	$(Q)rm -f $(PHB)/rustc$(X)
 	$(Q)rm -f $(PHB)/cargo$(X)
+	$(Q)rm -f $(PHB)/rusti$(X)
 	$(Q)rm -f $(PHB)/rustdoc$(X)
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME)

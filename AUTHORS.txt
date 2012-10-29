@@ -23,6 +23,7 @@ Benjamin Peterson <benjamin@python.org>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
+Brian Leibig <brian.leibig@gmail.com>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
 Damian Gryski <damian@gryski.com>

@@ -19,6 +19,11 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
+$$(TLIB$(1)_T_$(2)_H_$(3))/liblinenoise.a: \
+		linenoise/$(2)/liblinenoise.a
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM): \
 		rustllvm/$(2)/$$(CFG_RUSTLLVM)
 	@$$(call E, cp: $$@)
