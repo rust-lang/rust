@@ -93,22 +93,22 @@ cleantestlibs:
          | xargs rm -rf
 
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
-	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-notidy: cleantestlibs cleantmptestlogs all check-stage2
-	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-full: cleantestlibs cleantmptestlogs tidy \
             all check-stage1 check-stage2 check-stage3
-	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
-	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-lite: cleantestlibs cleantmptestlogs rustc-stage2 \
 	check-stage2-core check-stage2-std check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail
-	$(Q)$(S)src/etc/check-summary.py tmp/*.log
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
 ifdef CFG_NOTIDY
