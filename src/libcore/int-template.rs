@@ -98,23 +98,6 @@ impl T: iter::Times {
     }
 }
 
-impl T: iter::TimesIx {
-    #[inline(always)]
-    /// Like `times`, but provides an index
-    pure fn timesi(it: fn(uint) -> bool) {
-        let slf = self as uint;
-        if slf < 0u {
-            fail fmt!("The .timesi method expects a nonnegative number, \
-                       but found %?", self);
-        }
-        let mut i = 0u;
-        while i < slf {
-            if !it(i) { break }
-            i += 1u;
-        }
-    }
-}
-
 /**
  * Parse a buffer of bytes
  *
