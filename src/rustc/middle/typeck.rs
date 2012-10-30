@@ -48,7 +48,7 @@ use syntax::visit;
 use metadata::csearch;
 use util::common::{block_query, loop_query};
 use syntax::codemap::span;
-use pat_util::{pat_is_variant, pat_id_map, PatIdMap};
+use pat_util::{pat_id_map, PatIdMap};
 use middle::ty;
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};

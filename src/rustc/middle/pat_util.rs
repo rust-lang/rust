@@ -7,7 +7,7 @@ use syntax::codemap::span;
 use std::map::HashMap;
 
 export pat_binding_ids, pat_bindings, pat_id_map, PatIdMap;
-export pat_is_variant, pat_is_binding_or_wild;
+export pat_is_variant_or_struct, pat_is_binding_or_wild;
 
 type PatIdMap = std::map::HashMap<ident, node_id>;
 
@@ -21,20 +21,21 @@ fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
     return map;
 }
 
-fn pat_is_variant(dm: resolve::DefMap, pat: @pat) -> bool {
+fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {
     match pat.node {
-      pat_enum(_, _) => true,
-      pat_ident(_, _, None) | pat_struct(*) => match dm.find(pat.id) {
-        Some(def_variant(_, _)) => true,
+        pat_enum(_, _) | pat_ident(_, _, None) | pat_struct(*) => {
+            match dm.find(pat.id) {
+                Some(def_variant(*)) | Some(def_class(*)) => true,
+                _ => false
+            }
+        }
         _ => false
-      },
-      _ => false
     }
 }
 
 fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @pat) -> bool {
     match pat.node {
-        pat_ident(*) => !pat_is_variant(dm, pat),
+        pat_ident(*) => !pat_is_variant_or_struct(dm, pat),
         pat_wild => true,
         _ => false
     }
@@ -44,7 +45,8 @@ fn pat_bindings(dm: resolve::DefMap, pat: @pat,
                 it: fn(binding_mode, node_id, span, @path)) {
     do walk_pat(pat) |p| {
         match p.node {
-          pat_ident(binding_mode, pth, _) if !pat_is_variant(dm, p) => {
+          pat_ident(binding_mode, pth, _)
+                if !pat_is_variant_or_struct(dm, p) => {
             it(binding_mode, p.id, p.span, pth);
           }
           _ => {}

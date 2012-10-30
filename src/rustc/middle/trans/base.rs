@@ -1893,12 +1893,14 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 
         // If this is a tuple-like struct, translate the constructor.
         match struct_def.ctor_id {
-            None => {}
-            Some(ctor_id) => {
+            // We only need to translate a constructor if there are fields;
+            // otherwise this is a unit-like struct.
+            Some(ctor_id) if struct_def.fields.len() > 0 => {
                 let llfndecl = get_item_val(ccx, ctor_id);
                 trans_tuple_struct(ccx, struct_def.fields, ctor_id, None,
                                    llfndecl);
             }
+            Some(_) | None => {}
         }
     }
 
