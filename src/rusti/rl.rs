@@ -1,9 +1,6 @@
 use libc::{c_char, c_int};
 
-#[link_args = "-Llinenoise"]
-#[link_name = "linenoise"]
-#[abi = "cdecl"]
-extern mod linenoise {
+extern mod rustrt {
     #[legacy_exports];
     fn linenoise(prompt: *c_char) -> *c_char;
     fn linenoiseHistoryAdd(line: *c_char) -> c_int;
@@ -18,33 +15,33 @@ extern mod linenoise {
 /// Add a line to history
 pub fn add_history(line: ~str) -> bool {
     do str::as_c_str(line) |buf| {
-        linenoise::linenoiseHistoryAdd(buf) == 1 as c_int
+        rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
     }
 }
 
 /// Set the maximum amount of lines stored
 pub fn set_history_max_len(len: int) -> bool {
-    linenoise::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
+    rustrt::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
 }
 
 /// Save line history to a file
 pub fn save_history(file: ~str) -> bool {
     do str::as_c_str(file) |buf| {
-        linenoise::linenoiseHistorySave(buf) == 1 as c_int
+        rustrt::linenoiseHistorySave(buf) == 1 as c_int
     }
 }
 
 /// Load line history from a file
 pub fn load_history(file: ~str) -> bool {
     do str::as_c_str(file) |buf| {
-        linenoise::linenoiseHistoryLoad(buf) == 1 as c_int
+        rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
     }
 }
 
 /// Print out a prompt and then wait for input and return it
 pub fn read(prompt: ~str) -> Option<~str> {
     do str::as_c_str(prompt) |buf| unsafe {
-        let line = linenoise::linenoise(buf);
+        let line = rustrt::linenoise(buf);
 
         if line.is_null() { None }
         else { Some(str::raw::from_c_str(line)) }
@@ -53,7 +50,7 @@ pub fn read(prompt: ~str) -> Option<~str> {
 
 /// Clear the screen
 pub fn clear() {
-    linenoise::linenoiseClearScreen();
+    rustrt::linenoiseClearScreen();
 }
 
 pub type CompletionCb = fn~(~str, fn(~str));
@@ -69,10 +66,10 @@ pub fn complete(cb: CompletionCb) unsafe {
 
         do cb(str::raw::from_c_str(line)) |suggestion| {
             do str::as_c_str(suggestion) |buf| {
-                linenoise::linenoiseAddCompletion(completions, buf);
+                rustrt::linenoiseAddCompletion(completions, buf);
             }
         }
     }
 
-    linenoise::linenoiseSetCompletionCallback(callback);
+    rustrt::linenoiseSetCompletionCallback(callback);
 }

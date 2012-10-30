@@ -229,7 +229,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty        \
     check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
-    check-stage$(1)-T-$(2)-H-$(3)-rusti         \
+    check-stage$(1)-T-$(2)-H-$(3)-rusti       \
     check-stage$(1)-T-$(2)-H-$(3)-cargo       \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-ffi  \
@@ -391,6 +391,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy:		\
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rusti.log
+
 
 # Rules for the cargo test runner
 
@@ -870,9 +871,6 @@ check-stage$(1)-H-all-pretty-pretty: \
 check-stage$(1)-H-all-rustdoc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustdoc)
-check-stage$(1)-H-all-rusti: \
-	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
-	 check-stage$(1)-H-$$(target)-rusti)
 check-stage$(1)-H-all-cargo: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-cargo)
@@ -907,7 +905,6 @@ check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
 check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
 check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
-check-stage$(1)-rusti: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rusti
 check-stage$(1)-cargo: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cargo
 check-stage$(1)-doc-tutorial: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial
 check-stage$(1)-doc-tutorial-ffi: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-ffi

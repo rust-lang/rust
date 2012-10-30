@@ -8,7 +8,7 @@ else
               $(wildcard $(S)src/test/*/*.rs    \
                          $(S)src/test/*/*/*.rs) \
               $(wildcard $(S)src/fuzzer/*.rs)   \
-              $(wildcard $(S)src/cargo/*.rs)
+              $(wildcard $(S)src/cargo/*.rs) \
               $(wildcard $(S)src/rusti/*.rs)
 
   PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L \
