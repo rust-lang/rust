@@ -1576,7 +1576,7 @@ impl Parser {
             @{node: expr_call(f, args, true),
               .. *e}
           }
-          expr_path(*) | expr_field(*) | expr_call(*) => {
+          expr_path(*) | expr_field(*) | expr_call(*) | expr_paren(*) => {
             let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
