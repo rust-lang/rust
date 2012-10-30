@@ -556,6 +556,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     }
     let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
 
+    debug!("encoding info for item at %s",
+           syntax::codemap::span_to_str(item.span, ecx.tcx.sess.codemap));
+
     match item.node {
       item_const(_, _) => {
         add_to_index();
@@ -738,7 +741,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
             }
         }
         do opt_trait.iter() |associated_trait| {
-           encode_trait_ref(ebml_w, ecx, *associated_trait)
+           encode_trait_ref(ebml_w, ecx, *associated_trait);
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
