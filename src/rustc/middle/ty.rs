@@ -2980,7 +2980,7 @@ fn expr_kind(tcx: ctxt,
         ast::expr_path(*) => {
             match resolve_expr(tcx, expr) {
                 ast::def_fn(*) | ast::def_static_method(*) |
-                ast::def_variant(*) => RvalueDpsExpr,
+                ast::def_variant(*) | ast::def_class(*) => RvalueDpsExpr,
 
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to

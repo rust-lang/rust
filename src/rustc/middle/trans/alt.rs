@@ -154,16 +154,25 @@ use util::common::indenter;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
+// An option identifying a literal: either a unit-like struct or an
+// expression.
+enum Lit {
+    UnitLikeStructLit(ast::node_id),    // the node ID of the pattern
+    ExprLit(@ast::expr)
+}
+
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
 enum Opt {
-    lit(@ast::expr),
+    lit(Lit),
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
 fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (*a, *b) {
-      (lit(a), lit(b)) => const_eval::compare_lit_exprs(tcx, a, b) == 0,
+      (lit(ExprLit(a)), lit(ExprLit(b))) =>
+            const_eval::compare_lit_exprs(tcx, a, b) == 0,
+      (lit(UnitLikeStructLit(a)), lit(UnitLikeStructLit(b))) => a == b,
       (range(a1, a2), range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
         const_eval::compare_lit_exprs(tcx, a2, b2) == 0
@@ -182,9 +191,14 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     match *o {
-        lit(lit_expr) => {
+        lit(ExprLit(lit_expr)) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
             return single_result(datumblock.to_result());
+        }
+        lit(UnitLikeStructLit(pat_id)) => {
+            let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
+            let datumblock = datum::scratch_datum(bcx, struct_ty, true);
+            return single_result(datumblock.to_result(bcx));
         }
         var(disr_val, _) => {
             return single_result(rslt(bcx, C_int(ccx, disr_val)));
@@ -197,12 +211,23 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
 }
 
 fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
-    let vdef = ast_util::variant_def_ids(tcx.def_map.get(pat_id));
-    let variants = ty::enum_variants(tcx, vdef.enm);
-    for vec::each(*variants) |v| {
-        if vdef.var == v.id { return var(v.disr_val, vdef); }
+    match tcx.def_map.get(pat_id) {
+        ast::def_variant(enum_id, var_id) => {
+            let variants = ty::enum_variants(tcx, enum_id);
+            for vec::each(*variants) |v| {
+                if var_id == v.id {
+                    return var(v.disr_val, {enm: enum_id, var: var_id});
+                }
+            }
+            core::util::unreachable();
+        }
+        ast::def_class(_) => {
+            return lit(UnitLikeStructLit(pat_id));
+        }
+        _ => {
+            tcx.sess.bug(~"non-variant or struct in variant_opt()");
+        }
     }
-    core::util::unreachable();
 }
 
 enum TransBindingMode {
@@ -328,7 +353,7 @@ fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
                 let self = br.pats[col];
                 match self.node {
                     ast::pat_ident(_, path, None) => {
-                        if !pat_is_variant(dm, self) {
+                        if !pat_is_variant_or_struct(dm, self) {
                             let binding_info =
                                 br.data.bindings_map.get(path_to_ident(path));
                             Store(bcx, val, binding_info.llmatch);
@@ -363,7 +388,8 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
         match p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) |
           ast::pat_struct(*) => Some(~[]),
-          ast::pat_ident(_, _, None) if !pat_is_variant(dm, p) => Some(~[]),
+          ast::pat_ident(_, _, None)
+                if !pat_is_variant_or_struct(dm, p) => Some(~[]),
           _ => None
         }
     }
@@ -417,7 +443,8 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     None
                 }
             }
-            ast::pat_ident(_, _, None) if pat_is_variant(tcx.def_map, p) => {
+            ast::pat_ident(_, _, None)
+                    if pat_is_variant_or_struct(tcx.def_map, p) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
                     Some(~[])
                 } else {
@@ -425,7 +452,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                 }
             }
             ast::pat_lit(l) => {
-                if opt_eq(tcx, &lit(l), opt) {Some(~[])} else {None}
+                if opt_eq(tcx, &lit(ExprLit(l)), opt) {Some(~[])} else {None}
             }
             ast::pat_range(l1, l2) => {
                 if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
@@ -522,6 +549,29 @@ fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
+fn enter_tuple_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
+                      val: ValueRef, n_elts: uint)
+    -> ~[@Match/&r]
+{
+    debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%?)",
+           bcx.to_str(),
+           matches_to_str(bcx, m),
+           col,
+           bcx.val_str(val));
+    let _indenter = indenter();
+
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    do enter_match(bcx, dm, m, col, val) |p| {
+        match p.node {
+            ast::pat_enum(_, Some(elts)) => Some(elts),
+            _ => {
+                assert_is_binding_or_wild(bcx, p);
+                Some(vec::from_elem(n_elts, dummy))
+            }
+        }
+    }
+}
+
 fn enter_box(bcx: block, dm: DefMap, m: &[@Match/&r],
              col: uint, val: ValueRef)
     -> ~[@Match/&r]
@@ -597,6 +647,9 @@ fn enter_region(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
+// Returns the options in one column of matches. An option is something that
+// needs to be conditionally matched at runtime; for example, the discriminant
+// on a set of enum variants or a literal.
 fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
@@ -606,18 +659,40 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     let found = DVec();
     for vec::each(m) |br| {
         let cur = br.pats[col];
-        if pat_is_variant(ccx.tcx.def_map, cur) {
-            add_to_set(ccx.tcx, &found, variant_opt(ccx.tcx, cur.id));
-        } else {
-            match cur.node {
-                ast::pat_lit(l) => {
-                    add_to_set(ccx.tcx, &found, lit(l));
-                }
-                ast::pat_range(l1, l2) => {
-                    add_to_set(ccx.tcx, &found, range(l1, l2));
-                }
-                _ => ()
+        match cur.node {
+            ast::pat_lit(l) => {
+                add_to_set(ccx.tcx, &found, lit(ExprLit(l)));
             }
+            ast::pat_ident(*) => {
+                // This is one of: an enum variant, a unit-like struct, or a
+                // variable binding.
+                match ccx.tcx.def_map.find(cur.id) {
+                    Some(ast::def_variant(*)) => {
+                        add_to_set(ccx.tcx, &found,
+                                   variant_opt(ccx.tcx, cur.id));
+                    }
+                    Some(ast::def_class(*)) => {
+                        add_to_set(ccx.tcx, &found,
+                                   lit(UnitLikeStructLit(cur.id)));
+                    }
+                    _ => {}
+                }
+            }
+            ast::pat_enum(*) | ast::pat_struct(*) => {
+                // This could be one of: a tuple-like enum variant, a
+                // struct-like enum variant, or a struct.
+                match ccx.tcx.def_map.find(cur.id) {
+                    Some(ast::def_variant(*)) => {
+                        add_to_set(ccx.tcx, &found,
+                                   variant_opt(ccx.tcx, cur.id));
+                    }
+                    _ => {}
+                }
+            }
+            ast::pat_range(l1, l2) => {
+                add_to_set(ccx.tcx, &found, range(l1, l2));
+            }
+            _ => {}
         }
     }
     return dvec::unwrap(move found);
@@ -731,6 +806,21 @@ fn any_region_pat(m: &[@Match], col: uint) -> bool {
 
 fn any_tup_pat(m: &[@Match], col: uint) -> bool {
     any_pat!(m, ast::pat_tup(_))
+}
+
+fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
+    vec::any(m, |br| {
+        let pat = br.pats[col];
+        match pat.node {
+            ast::pat_enum(_, Some(_)) => {
+                match bcx.tcx().def_map.find(pat.id) {
+                    Some(ast::def_class(*)) => true,
+                    _ => false
+                }
+            }
+            _ => false
+        }
+    })
 }
 
 type mk_fail = fn@() -> BasicBlockRef;
@@ -1028,6 +1118,29 @@ fn compile_submatch(bcx: block,
         return;
     }
 
+    if any_tuple_struct_pat(bcx, m, col) {
+        let struct_ty = node_id_type(bcx, pat_id);
+        let struct_element_count;
+        match ty::get(struct_ty).sty {
+            ty::ty_class(struct_id, _) => {
+                struct_element_count =
+                    ty::lookup_class_fields(tcx, struct_id).len();
+            }
+            _ => {
+                ccx.sess.bug(~"non-struct type in tuple struct pattern");
+            }
+        }
+
+        let llstructvals = vec::from_fn(
+            struct_element_count, |i| GEPi(bcx, val, struct_field(i)));
+        compile_submatch(bcx,
+                         enter_tuple_struct(bcx, dm, m, col, val,
+                                            struct_element_count),
+                         vec::append(llstructvals, vals_left),
+                         chk);
+        return;
+    }
+
     // Unbox in case of a box field
     if any_box_pat(m, col) {
         let llbox = Load(bcx, val);
@@ -1316,7 +1429,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
     // Necessary since bind_irrefutable_pat is called outside trans_alt
     match pat.node {
         ast::pat_ident(_, _,inner) => {
-            if pat_is_variant(bcx.tcx().def_map, pat) {
+            if pat_is_variant_or_struct(bcx.tcx().def_map, pat) {
                 return bcx;
             }
 
@@ -1335,15 +1448,39 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             for inner.each |inner_pat| {
                 bcx = bind_irrefutable_pat(bcx, *inner_pat, val, true);
             }
-      }
+        }
         ast::pat_enum(_, sub_pats) => {
-            let pat_def = ccx.tcx.def_map.get(pat.id);
-            let vdefs = ast_util::variant_def_ids(pat_def);
-            let args = extract_variant_args(bcx, pat.id, vdefs, val);
-            for sub_pats.each |sub_pat| {
-                for vec::eachi(args.vals) |i, argval| {
-                    bcx = bind_irrefutable_pat(bcx, sub_pat[i],
-                                               *argval, make_copy);
+            match bcx.tcx().def_map.find(pat.id) {
+                Some(ast::def_variant(*)) => {
+                    let pat_def = ccx.tcx.def_map.get(pat.id);
+                    let vdefs = ast_util::variant_def_ids(pat_def);
+                    let args = extract_variant_args(bcx, pat.id, vdefs, val);
+                    for sub_pats.each |sub_pat| {
+                        for vec::eachi(args.vals) |i, argval| {
+                            bcx = bind_irrefutable_pat(bcx,
+                                                       sub_pat[i],
+                                                       *argval,
+                                                       make_copy);
+                        }
+                    }
+                }
+                Some(ast::def_class(*)) => {
+                    match sub_pats {
+                        None => {
+                            // This is a unit-like struct. Nothing to do here.
+                        }
+                        Some(elems) => {
+                            // This is the tuple variant case.
+                            for vec::eachi(elems) |i, elem| {
+                                let fldptr = GEPi(bcx, val, struct_field(i));
+                                bcx = bind_irrefutable_pat(bcx, *elem, fldptr,
+                                                           make_copy);
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    // Nothing to do here.
                 }
             }
         }

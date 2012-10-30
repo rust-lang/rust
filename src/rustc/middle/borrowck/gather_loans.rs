@@ -441,7 +441,8 @@ impl gather_loan_ctxt {
                   alt_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
-              ast::pat_ident(bm, _, _) if !self.pat_is_variant(pat) => {
+              ast::pat_ident(bm, _, _)
+                    if !self.pat_is_variant_or_struct(pat) => {
                 match bm {
                   ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check
@@ -492,8 +493,8 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn pat_is_variant(&self, pat: @ast::pat) -> bool {
-        pat_util::pat_is_variant(self.bccx.tcx.def_map, pat)
+    fn pat_is_variant_or_struct(&self, pat: @ast::pat) -> bool {
+        pat_util::pat_is_variant_or_struct(self.bccx.tcx.def_map, pat)
     }
 }
 
