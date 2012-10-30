@@ -119,7 +119,8 @@ priv impl &preserve_ctxt {
           }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
-          cat_comp(cmt_base, comp_tuple) => {
+          cat_comp(cmt_base, comp_tuple) |
+          cat_comp(cmt_base, comp_anon_field) => {
             // Most embedded components: if the base is stable, the
             // type never changes.
             self.preserve(cmt_base)

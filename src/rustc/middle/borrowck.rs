@@ -594,7 +594,7 @@ impl borrowck_ctxt {
 // mutable structure.
 fn inherent_mutability(ck: comp_kind) -> mutability {
     match ck {
-      comp_tuple | comp_variant(_)        => m_imm,
-      comp_field(_, m) | comp_index(_, m) => m
+      comp_tuple | comp_anon_field | comp_variant(_) => m_imm,
+      comp_field(_, m) | comp_index(_, m)            => m
     }
 }
