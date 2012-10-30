@@ -42,7 +42,7 @@ define DEF_RUNTIME_TARGETS
 # Runtime (C++) library variables
 ######################################################################
 
-RUNTIME_CS_$(1) := \
+RUNTIME_CXXS_$(1) := \
               rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
@@ -78,6 +78,8 @@ RUNTIME_CS_$(1) := \
               rt/arch/$$(HOST_$(1))/context.cpp \
               rt/arch/$$(HOST_$(1))/gpr.cpp
 
+RUNTIME_CS_$(1) := rt/linenoise/linenoise.c
+
 RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
                   rt/arch/$$(HOST_$(1))/record_sp.S
@@ -104,9 +106,11 @@ endif
 
 RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
 RUNTIME_INCS_$(1) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
-                -I $$(S)src/rt/arch/$$(HOST_$(1)) \
-				-I $$(S)src/libuv/include
-RUNTIME_OBJS_$(1) := $$(RUNTIME_CS_$(1):rt/%.cpp=rt/$(1)/%.o) \
+                     -I $$(S)src/rt/arch/$$(HOST_$(1)) \
+                     -I $$(S)src/rt/linenoise \
+                     -I $$(S)src/libuv/include
+RUNTIME_OBJS_$(1) := $$(RUNTIME_CXXS_$(1):rt/%.cpp=rt/$(1)/%.o) \
+                     $$(RUNTIME_CS_$(1):rt/%.c=rt/$(1)/%.o) \
                      $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
 ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1))
 
@@ -118,6 +122,11 @@ RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
 rt/$(1)/%.o: rt/%.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
+                 $$(SNAP_DEFINES)) $$<
+
+rt/$(1)/%.o: rt/%.c $$(MKFILE_DEPS)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
                  $$(SNAP_DEFINES)) $$<
 
 rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \

@@ -2,8 +2,6 @@
 #[legacy_exports];
 
 #[allow(ctypes)];
-#[allow(deprecated_mode)];
-#[allow(deprecated_pattern)];
 #[allow(heap_memory)];
 #[allow(implicit_copies)];
 #[allow(managed_heap_memory)];
@@ -19,6 +17,6 @@
 
 extern mod std;
 
-fn print<T>(result: T) {
+fn print<T>(+result: T) {
     io::println(fmt!("%?", result));
 }

@@ -204,3 +204,11 @@ tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_annihilate_box
 rust_gc_metadata
+linenoise
+linenoiseSetCompletionCallback
+linenoiseAddCompletion
+linenoiseHistoryAdd
+linenoiseHistorySetMaxLen
+linenoiseHistorySave
+linenoiseHistoryLoad
+linenoiseClearScreen

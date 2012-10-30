@@ -4,6 +4,3 @@
 [submodule "src/libuv"]
 	path = src/libuv
 	url = git://github.com/graydon/libuv.git
-[submodule "src/linenoise"]
-	path = src/linenoise
-	url = git://github.com/antirez/linenoise.git

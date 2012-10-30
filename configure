@@ -508,18 +508,12 @@ do
     make_dir rustllvm/$t
 done
 
-make_dir linenoise
-for t in $CFG_TARGET_TRIPLES
-do
-    make_dir linenoise/$t
-done
-
 make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
   make_dir rt/$t
   for i in                                          \
-    isaac bigint sync test arch/i386 arch/x86_64    \
+    isaac linenoise bigint sync test arch/i386 arch/x86_64    \
     libuv libuv/src/ares libuv/src/eio libuv/src/ev
   do
     make_dir rt/$t/$i

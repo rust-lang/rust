@@ -74,7 +74,6 @@ endif
 
 CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
-CFG_GCCISH_CXXFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
 ifdef CFG_DISABLE_OPTIMIZE
@@ -337,8 +336,7 @@ HSREQ$(1)_H_$(3) = \
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a \
-  $$(TLIB$(1)_T_$(2)_H_$(3))/liblinenoise.a
+	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
 # Prerequisites for complete stageN targets
 SREQ$(1)_T_$(2)_H_$(3) = \
@@ -451,8 +449,8 @@ TSREQS :=											\
 		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
 FUZZ := $(HBIN2_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN2_H_$(CFG_HOST_TRIPLE))/cargo$(X)
-RUSTI := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rusti$(X)
 RUSTDOC := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+RUSTI := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rusti$(X)
 
 all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) $(RUSTI)
 
@@ -492,7 +490,6 @@ include $(CFG_SRC_DIR)mk/host.mk
 include $(CFG_SRC_DIR)mk/stage0.mk
 include $(CFG_SRC_DIR)mk/rt.mk
 include $(CFG_SRC_DIR)mk/rustllvm.mk
-include $(CFG_SRC_DIR)mk/linenoise.mk
 include $(CFG_SRC_DIR)mk/tools.mk
 include $(CFG_SRC_DIR)mk/docs.mk
 include $(CFG_SRC_DIR)mk/llvm.mk

@@ -30,7 +30,6 @@ PKG_FILES := \
       libcore                                  \
       libsyntax                                \
       libstd                                   \
-      linenoise                                \
       rt                                       \
       rustdoc                                  \
       rustllvm                                 \

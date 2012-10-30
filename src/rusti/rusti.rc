@@ -11,9 +11,6 @@
 
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
-#[allow(non_camel_case_types)];
-#[allow(deprecated_mode)];
-#[allow(deprecated_pattern)];
 
 extern mod core(vers = "0.4");
 extern mod std(vers = "0.4");
@@ -22,7 +19,6 @@ extern mod syntax(vers = "0.4");
 
 use core::*;
 use io::{ReaderUtil, WriterUtil};
-use std::c_vec;
 use rustc::back;
 use rustc::driver::{driver, session};
 use rustc::front;
@@ -34,3 +30,5 @@ use syntax::{ast, ast_util, codemap, diagnostic, fold, parse, print, visit};
 use syntax::ast_util::*;
 use parse::token;
 use print::{pp, pprust};
+
+mod rl;

@@ -23,7 +23,7 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find linenoise rustllvm rt $(CFG_HOST_TRIPLE)/test \
+	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -31,12 +31,11 @@ clean-misc:
          -name '*.def' -o     \
          -name '*.bc'         \
          | xargs rm -f
-	$(Q)find linenoise rustllvm rt $(CFG_HOST_TRIPLE)\
+	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)\
          -name '*.dSYM'       \
          | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
-	$(Q)rm -f $(LINENOISE_OBJS)
 	$(Q)rm -Rf $(DOCS)
 	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -f tmp/*.log tmp/*.rc tmp/*.rs
@@ -56,7 +55,6 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/cargo$(X)
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rusti$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME)
@@ -83,7 +81,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/cargo$(X)
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rusti$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/serializer$(X)
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME)
@@ -98,7 +95,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/liblinenoise.a
 endef
 
 $(foreach host, $(CFG_TARGET_TRIPLES), \
