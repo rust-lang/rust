@@ -376,7 +376,8 @@ fn check_fn(ccx: @crate_ctxt,
         let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
             match p.node {
               ast::pat_ident(_, path, _)
-                  if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
+                  if !pat_util::pat_is_variant_or_struct(fcx.ccx.tcx.def_map,
+                                                         p) => {
                 assign(p.span, p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
                        tcx.sess.str_of(path.idents[0]),
@@ -466,10 +467,6 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // typecheck the methods
     for struct_def.methods.each |m| {
         check_method(ccx, *m, self_ty, local_def(id));
-    }
-    // Check that there's at least one field
-    if struct_def.fields.len() < 1u {
-        ccx.tcx.sess.span_err(span, ~"a struct must have at least one field");
     }
     // Check that the class is instantiable
     check_instantiable(ccx.tcx, span, id);

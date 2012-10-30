@@ -288,10 +288,10 @@ impl AllowCapturingSelfFlag : cmp::Eq {
     pure fn ne(other: &AllowCapturingSelfFlag) -> bool { !self.eq(other) }
 }
 
-enum EnumVariantOrConstResolution {
-    FoundEnumVariant(def),
+enum BareIdentifierPatternResolution {
+    FoundStructOrEnumVariant(def),
     FoundConst,
-    EnumVariantOrConstNotFound
+    BareIdentifierPatternUnresolved
 }
 
 // Specifies how duplicates should be handled when adding a child item if
@@ -4187,28 +4187,31 @@ impl Resolver {
                         if !path.global && path.idents.len() == 1u => {
 
                     // The meaning of pat_ident with no type parameters
-                    // depends on whether an enum variant with that name is in
-                    // scope. The probing lookup has to be careful not to emit
-                    // spurious errors. Only matching patterns (match) can
-                    // match nullary variants. For binding patterns (let),
-                    // matching such a variant is simply disallowed (since
-                    // it's rarely what you want).
+                    // depends on whether an enum variant or unit-like struct
+                    // with that name is in scope. The probing lookup has to
+                    // be careful not to emit spurious errors. Only matching
+                    // patterns (match) can match nullary variants or
+                    // unit-like structs. For binding patterns (let), matching
+                    // such a value is simply disallowed (since it's rarely
+                    // what you want).
 
                     let ident = path.idents[0];
 
-                    match self.resolve_enum_variant_or_const(ident) {
-                        FoundEnumVariant(def) if mode == RefutableMode => {
+                    match self.resolve_bare_identifier_pattern(ident) {
+                        FoundStructOrEnumVariant(def)
+                                if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
-                                    enum variant",
+                                    struct or enum variant",
                                     self.session.str_of(ident));
 
                             self.record_def(pattern.id, def);
                         }
-                        FoundEnumVariant(_) => {
+                        FoundStructOrEnumVariant(_) => {
                             self.session.span_err(pattern.span,
                                                   fmt!("declaration of `%s` \
                                                         shadows an enum \
-                                                        that's in scope",
+                                                        variant or unit-like \
+                                                        struct in scope",
                                                         self.session
                                                         .str_of(ident)));
                         }
@@ -4218,7 +4221,7 @@ impl Resolver {
                                                    conflicts with a constant \
                                                    in scope");
                         }
-                        EnumVariantOrConstNotFound => {
+                        BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
                                    self.session.str_of(ident));
 
@@ -4349,13 +4352,11 @@ impl Resolver {
         }
     }
 
-    fn resolve_enum_variant_or_const(name: ident)
-                                  -> EnumVariantOrConstResolution {
-
+    fn resolve_bare_identifier_pattern(name: ident)
+                                    -> BareIdentifierPatternResolution {
         match self.resolve_item_in_lexical_scope(self.current_module,
-                                               name,
-                                               ValueNS) {
-
+                                                 name,
+                                                 ValueNS) {
             Success(target) => {
                 match target.bindings.value_def {
                     None => {
@@ -4364,14 +4365,14 @@ impl Resolver {
                     }
                     Some(def) => {
                         match def.def {
-                            def @ def_variant(*) => {
-                                return FoundEnumVariant(def);
+                            def @ def_variant(*) | def @ def_class(*) => {
+                                return FoundStructOrEnumVariant(def);
                             }
                             def_const(*) => {
                                 return FoundConst;
                             }
                             _ => {
-                                return EnumVariantOrConstNotFound;
+                                return BareIdentifierPatternUnresolved;
                             }
                         }
                     }
@@ -4383,7 +4384,7 @@ impl Resolver {
             }
 
             Failed => {
-                return EnumVariantOrConstNotFound;
+                return BareIdentifierPatternUnresolved;
             }
         }
     }

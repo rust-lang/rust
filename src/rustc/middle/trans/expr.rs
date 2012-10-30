@@ -664,6 +664,11 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 return bcx;
             }
         }
+        ast::def_class(*) => {
+            // Nothing to do here.
+            // XXX: May not be true in the case of classes with destructors.
+            return bcx;
+        }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, fmt!(
                 "Non-DPS def %? referened by %s",
