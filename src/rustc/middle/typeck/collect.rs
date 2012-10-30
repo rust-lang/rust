@@ -522,10 +522,20 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            region_param: rp,
                            ty: selfty});
 
-        for ms_opt.each |ms| {
-            let cms = convert_methods(ccx, *ms, rp, i_bounds);
-            for trait_ref.each |t| {
-                check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
+        match ms_opt {
+            Some(ref ms) => {
+                let cms = convert_methods(ccx, *ms, rp, i_bounds);
+                for trait_ref.each |t| {
+                    check_methods_against_trait(ccx, tps, rp, selfty, *t,
+                                                cms);
+                }
+            }
+            None => {
+                // We still need to instantiate the trait ref here so that
+                // metadata encoding will find the type.
+                for trait_ref.each |trait_ref| {
+                    let _ = instantiate_trait_ref(ccx, *trait_ref, rp);
+                }
             }
         }
       }
