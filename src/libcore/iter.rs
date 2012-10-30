@@ -34,10 +34,6 @@ pub trait Times {
     pure fn times(it: fn() -> bool);
 }
 
-pub trait TimesIx{
-    pure fn timesi(it: fn(uint) -> bool);
-}
-
 pub trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(pred: fn(a: A) -> bool) -> ~[A];
     pure fn map_to_vec<B>(op: fn(v: A) -> B) -> ~[B];
