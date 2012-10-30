@@ -573,7 +573,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             if bcx.expr_is_lval(a) {
                 let datum = unpack_datum!(bcx, trans_to_datum(bcx, a));
                 return match dest {
-                    Ignore => datum.drop_val(bcx),
+                    Ignore => datum.dropnzero_val(bcx),
                     SaveIn(addr) => datum.move_to(bcx, INIT, addr)
                 };
             } else {

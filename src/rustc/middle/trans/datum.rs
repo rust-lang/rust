@@ -542,6 +542,25 @@ impl Datum {
         };
     }
 
+    fn dropnzero_val(bcx: block) -> block {
+        if !ty::type_needs_drop(bcx.tcx(), self.ty) {
+            return bcx;
+        }
+
+        return match self.mode {
+            ByRef => {
+                glue::drop_ty(bcx, self.val, self.ty);
+                zero_mem(bcx, self.val, self.ty);
+                return bcx;
+            }
+            ByValue => {
+                glue::drop_ty_immediate(bcx, self.val, self.ty);
+                zero_mem(bcx, self.val, self.ty);
+                return bcx;
+            }
+        };
+    }
+
     fn box_body(bcx: block) -> Datum {
         /*!
          *
