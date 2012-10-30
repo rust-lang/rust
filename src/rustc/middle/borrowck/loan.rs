@@ -116,7 +116,8 @@ impl LoanContext {
             // overwritten and the component along with it.
             self.loan_stable_comp(cmt, cmt_base, req_mutbl, m)
           }
-          cat_comp(cmt_base, comp_tuple) => {
+          cat_comp(cmt_base, comp_tuple) |
+          cat_comp(cmt_base, comp_anon_field) => {
             // As above.
             self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm)
           }
