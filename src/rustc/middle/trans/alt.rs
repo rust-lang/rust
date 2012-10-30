@@ -363,7 +363,8 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
         match p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) |
           ast::pat_struct(*) => Some(~[]),
-          ast::pat_ident(_, _, None) if !pat_is_variant(dm, p) => Some(~[]),
+          ast::pat_enum(*) | ast::pat_ident(_, _, None)
+            if !pat_is_variant(dm, p) => Some(~[]),
           _ => None
         }
     }
@@ -514,6 +515,29 @@ fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
             ast::pat_tup(elts) => {
                 Some(elts)
             }
+            _ => {
+                assert_is_binding_or_wild(bcx, p);
+                Some(vec::from_elem(n_elts, dummy))
+            }
+        }
+    }
+}
+
+fn enter_tuple_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
+                      val: ValueRef, n_elts: uint)
+    -> ~[@Match/&r]
+{
+    debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%?)",
+           bcx.to_str(),
+           matches_to_str(bcx, m),
+           col,
+           bcx.val_str(val));
+    let _indenter = indenter();
+
+    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    do enter_match(bcx, dm, m, col, val) |p| {
+        match p.node {
+            ast::pat_enum(_, Some(elts)) => Some(elts),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -731,6 +755,16 @@ fn any_region_pat(m: &[@Match], col: uint) -> bool {
 
 fn any_tup_pat(m: &[@Match], col: uint) -> bool {
     any_pat!(m, ast::pat_tup(_))
+}
+
+fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
+    vec::any(m, |br| {
+        let pat = br.pats[col];
+        match pat.node {
+            ast::pat_enum(*) => !pat_is_variant(bcx.tcx().def_map, pat),
+            _ => false
+        }
+    })
 }
 
 type mk_fail = fn@() -> BasicBlockRef;
@@ -1025,6 +1059,30 @@ fn compile_submatch(bcx: block,
         let tup_vals = vec::from_fn(n_tup_elts, |i| GEPi(bcx, val, [0u, i]));
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
                          vec::append(tup_vals, vals_left), chk);
+        return;
+    }
+
+    if any_tuple_struct_pat(bcx, m, col) {
+        let struct_ty = node_id_type(bcx, pat_id);
+        let struct_element_count;
+        match ty::get(struct_ty).sty {
+            ty::ty_class(struct_id, _) => {
+                struct_element_count =
+                    ty::lookup_class_fields(tcx, struct_id).len();
+            }
+            _ => {
+                ccx.sess.bug(~"non-struct type in tuple struct pattern");
+            }
+        }
+
+        // XXX: Structs with destructors won't work here.
+        let llstructvals = vec::from_fn(struct_element_count,
+                                        |i| GEPi(bcx, val, [0, 0, i]));
+        compile_submatch(bcx,
+                         enter_tuple_struct(bcx, dm, m, col, val,
+                                            struct_element_count),
+                         vec::append(llstructvals, vals_left),
+                         chk);
         return;
     }
 
@@ -1335,15 +1393,32 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             for inner.each |inner_pat| {
                 bcx = bind_irrefutable_pat(bcx, *inner_pat, val, true);
             }
-      }
+        }
         ast::pat_enum(_, sub_pats) => {
-            let pat_def = ccx.tcx.def_map.get(pat.id);
-            let vdefs = ast_util::variant_def_ids(pat_def);
-            let args = extract_variant_args(bcx, pat.id, vdefs, val);
-            for sub_pats.each |sub_pat| {
-                for vec::eachi(args.vals) |i, argval| {
-                    bcx = bind_irrefutable_pat(bcx, sub_pat[i],
-                                               *argval, make_copy);
+            if pat_is_variant(bcx.tcx().def_map, pat) {
+                let pat_def = ccx.tcx.def_map.get(pat.id);
+                let vdefs = ast_util::variant_def_ids(pat_def);
+                let args = extract_variant_args(bcx, pat.id, vdefs, val);
+                for sub_pats.each |sub_pat| {
+                    for vec::eachi(args.vals) |i, argval| {
+                        bcx = bind_irrefutable_pat(bcx, sub_pat[i],
+                                                   *argval, make_copy);
+                    }
+                }
+            } else {
+                match sub_pats {
+                    None => {
+                        // This is a unit-like struct. Nothing to do here.
+                    }
+                    Some(elems) => {
+                        // This is the tuple variant case.
+                        // XXX: This won't work for structs with destructors.
+                        for vec::eachi(elems) |i, elem| {
+                            let fldptr = GEPi(bcx, val, [0, 0, i]);
+                            bcx = bind_irrefutable_pat(bcx, *elem, fldptr,
+                                                       make_copy);
+                        }
+                    }
                 }
             }
         }
