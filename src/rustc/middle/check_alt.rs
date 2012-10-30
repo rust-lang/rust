@@ -355,6 +355,15 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             Some(vec::append(args, vec::tail(r)))
           }
           def_variant(_, _) => None,
+          def_class(*) => {
+            // XXX: Is this right? --pcw
+            let new_args;
+            match args {
+              Some(args) => new_args = args,
+              None => new_args = vec::from_elem(arity, wild())
+            }
+            Some(vec::append(new_args, vec::tail(r)))
+          }
           _ => None
         }
       }

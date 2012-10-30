@@ -4286,9 +4286,10 @@ impl Resolver {
                 }
 
                 pat_ident(_, path, _) | pat_enum(path, _) => {
-                    // These two must be enum variants.
+                    // These two must be enum variants or structs.
                     match self.resolve_path(path, ValueNS, false, visitor) {
-                        Some(def @ def_variant(*)) => {
+                        Some(def @ def_variant(*)) |
+                                Some(def @ def_class(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
