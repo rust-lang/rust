@@ -2597,6 +2597,16 @@ fn deref_sty(cx: ctxt, sty: &sty, expl: bool) -> Option<mt> {
         }
       }
 
+      ty_class(did, ref substs) => {
+        let fields = class_items_as_fields(cx, did, substs);
+        if fields.len() == 1 && fields[0].ident ==
+                syntax::parse::token::special_idents::unnamed_field {
+            Some({ty: fields[0].mt.ty, mutbl: ast::m_imm})
+        } else {
+            None
+        }
+      }
+
       _ => None
     }
 }

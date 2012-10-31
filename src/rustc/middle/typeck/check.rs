@@ -1768,6 +1768,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                          with a single variant which has a \
                          single argument");
                   }
+                  ty::ty_class(*) => {
+                    tcx.sess.span_err(
+                        expr.span,
+                        ~"can only dereference structs with one anonymous \
+                          field");
+                  }
                   _ => {
                     tcx.sess.span_err(
                         expr.span,
