@@ -17,7 +17,7 @@ pub use vec::{ConstVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{MutableVector, MutableCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-pub use iter::{CopyableOrderedIter, Times};
+pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
 pub use num::Num;
 pub use ptr::Ptr;
 pub use to_str::ToStr;
