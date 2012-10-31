@@ -190,13 +190,14 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
                 match ty::get(result.ty).sty {
                     ty::ty_trait(trait_def_id, substs, _) => {
                         match vst {
-                            ty::vstore_box | ty::vstore_slice(*) => {}
+                            ty::vstore_box | ty::vstore_slice(*) |
+                            ty::vstore_uniq => {}
                             _ => {
-                                tcx.sess.span_unimpl(path.span,
-                                                     ~"`~trait` is \
-                                                       unimplemented; use \
-                                                       `@trait` instead for \
-                                                       now");
+                                tcx.sess.span_err(path.span,
+                                                  ~"@trait, ~trait or &trait \
+                                                    are the only supported \
+                                                    forms of casting-to-\
+                                                    trait");
                             }
                         }
                         return ty::mk_trait(tcx, trait_def_id, substs, vst);

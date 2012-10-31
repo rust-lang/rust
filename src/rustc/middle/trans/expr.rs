@@ -614,7 +614,16 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                        DontAutorefArg);
         }
         ast::expr_cast(val, _) => {
-            return meth::trans_trait_cast(bcx, val, expr.id, dest);
+            match ty::get(node_id_type(bcx, expr.id)).sty {
+                ty::ty_trait(_, _, vstore) => {
+                    return meth::trans_trait_cast(bcx, val, expr.id, dest,
+                                                  vstore);
+                }
+                _ => {
+                    bcx.tcx().sess.span_bug(expr.span,
+                                            ~"expr_cast of non-trait");
+                }
+            }
         }
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
