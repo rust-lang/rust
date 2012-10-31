@@ -14,6 +14,6 @@
 
 extern mod std;
 
-fn print<T>(+result: T) {
+fn print<T>(result: T) {
     io::println(fmt!("%?", result));
 }
