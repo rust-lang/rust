@@ -650,7 +650,8 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 fn trans_trait_cast(bcx: block,
                     val: @ast::expr,
                     id: ast::node_id,
-                    dest: expr::Dest)
+                    dest: expr::Dest,
+                    vstore: ty::vstore)
     -> block
 {
     let mut bcx = bcx;
@@ -666,25 +667,54 @@ fn trans_trait_cast(bcx: block,
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
 
-    let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-    if bcx.tcx().legacy_boxed_traits.contains_key(id) {
-        // Allocate an @ box and store the value into it
-        let {bcx: new_bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);
-        bcx = new_bcx;
-        add_clean_free(bcx, llbox, heap_shared);
-        bcx = expr::trans_into(bcx, val, SaveIn(body));
-        revoke_clean(bcx, llbox);
+    match vstore {
+        ty::vstore_slice(*) | ty::vstore_box => {
+            let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
+            if bcx.tcx().legacy_boxed_traits.contains_key(id) {
+                // Allocate an @ box and store the value into it
+                let {bcx: new_bcx, box: llbox, body: body} =
+                    malloc_boxed(bcx, v_ty);
+                bcx = new_bcx;
+                add_clean_free(bcx, llbox, heap_shared);
+                bcx = expr::trans_into(bcx, val, SaveIn(body));
+                revoke_clean(bcx, llbox);
 
-        // Store the @ box into the pair
-        Store(bcx, llbox, PointerCast(bcx, llboxdest, T_ptr(val_ty(llbox))));
-    } else {
-        // Just store the @ box into the pair.
-        llboxdest = PointerCast(bcx, llboxdest,
-                                T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
-        bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+                // Store the @ box into the pair
+                Store(bcx, llbox, PointerCast(bcx,
+                                              llboxdest,
+                                              T_ptr(val_ty(llbox))));
+            } else {
+                // Just store the pointer into the pair.
+                llboxdest = PointerCast(bcx,
+                                        llboxdest,
+                                        T_ptr(type_of::type_of(bcx.ccx(),
+                                                               v_ty)));
+                bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+            }
+        }
+        ty::vstore_uniq => {
+            // Translate the uniquely-owned value into the second element of
+            // the triple. (The first element is the vtable.)
+            let mut llvaldest = GEPi(bcx, lldest, [0, 1]);
+            llvaldest = PointerCast(bcx,
+                                    llvaldest,
+                                    T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
+            bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
+
+            // Get the type descriptor of the wrapped value and store it into
+            // the third element of the triple as well.
+            let tydesc = get_tydesc(bcx.ccx(), v_ty);
+            glue::lazily_emit_all_tydesc_glue(bcx.ccx(), tydesc);
+            let lltydescdest = GEPi(bcx, lldest, [0, 2]);
+            Store(bcx, tydesc.tydesc, lltydescdest);
+        }
+        _ => {
+            bcx.tcx().sess.span_bug(val.span, ~"unexpected vstore in \
+                                                trans_trait_cast");
+        }
     }
 
-    // Store the vtable into the pair
+    // Store the vtable into the pair or triple.
     let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);

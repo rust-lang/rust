@@ -540,14 +540,18 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                 None => {
                     // Try the new-style boxed trait; "@int as @Trait".
                     // Or the new-style region trait; "&int as &Trait".
+                    // Or the new-style uniquely-owned trait; "~int as
+                    // ~Trait".
                     let mut err = false;
                     let ty = structurally_resolved_type(fcx, ex.span, ty);
                     match ty::get(ty).sty {
-                        ty::ty_box(mt) | ty::ty_rptr(_, mt) => {
+                        ty::ty_box(mt) | ty::ty_rptr(_, mt) |
+                        ty::ty_uniq(mt) => {
                             // Ensure that the trait vstore and the pointer
                             // type match.
                             match (ty::get(ty).sty, vstore) {
                                 (ty::ty_box(_), ty::vstore_box) |
+                                (ty::ty_uniq(_), ty::vstore_uniq) |
                                 (ty::ty_rptr(*), ty::vstore_slice(*)) => {
                                     let vtable_opt =
                                         lookup_vtable_invariant(fcx,
@@ -599,6 +603,14 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                                                 pointer to \
                                                                 a borrowed \
                                                                 trait");
+                                }
+                                (ty::ty_uniq(*), _) => {
+                                    fcx.ccx.tcx.sess.span_err(ex.span,
+                                                              ~"must cast \
+                                                                a unique \
+                                                                pointer to \
+                                                                a uniquely-\
+                                                                owned trait");
                                 }
                                 _ => {
                                     fcx.ccx.tcx.sess.impossible_case(
