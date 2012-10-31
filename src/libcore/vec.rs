@@ -2020,6 +2020,37 @@ impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {
     pure fn min() -> A { iter::min(&self) }
     pure fn max() -> A { iter::max(&self) }
 }
+
+impl<A:Copy> &[A] : iter::CopyableNonstrictIter<A> {
+    pure fn each_val(&const self, f: fn(A) -> bool) {
+        let mut i = 0;
+        while i < self.len() {
+            if !f(copy self[i]) { break; }
+            i += 1;
+        }
+    }
+}
+
+impl<A:Copy> ~[A] : iter::CopyableNonstrictIter<A> {
+    pure fn each_val(&const self, f: fn(A) -> bool) {
+        let mut i = 0;
+        while i < self.len() {
+            if !f(copy self[i]) { break; }
+            i += 1;
+        }
+    }
+}
+
+impl<A:Copy> @[A] : iter::CopyableNonstrictIter<A> {
+    pure fn each_val(&const self, f: fn(A) -> bool) {
+        let mut i = 0;
+        while i < self.len() {
+            if !f(copy self[i]) { break; }
+            i += 1;
+        }
+    }
+}
+
 // ___________________________________________________________________________
 
 #[cfg(test)]
