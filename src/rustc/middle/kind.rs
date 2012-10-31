@@ -286,6 +286,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         maybe_copy(cx, source, Some(("casted values must be copyable",
                                      try_adding)));
         check_cast_for_escaping_regions(cx, source, e);
+        check_kind_bounds_of_cast(cx, source, e);
       }
       expr_copy(expr) => check_copy_ex(cx, expr, false,
           Some(("explicit copy requires a copyable argument", ""))),
@@ -604,6 +605,26 @@ fn check_cast_for_escaping_regions(
           }
           _ => {}
         }
+    }
+}
+
+/// Ensures that values placed into a ~Trait are copyable and sendable.
+fn check_kind_bounds_of_cast(cx: ctx, source: @expr, target: @expr) {
+    let target_ty = ty::expr_ty(cx.tcx, target);
+    match ty::get(target_ty).sty {
+        ty::ty_trait(_, _, ty::vstore_uniq) => {
+            let source_ty = ty::expr_ty(cx.tcx, source);
+            let source_kind = ty::type_kind(cx.tcx, source_ty);
+            if !ty::kind_can_be_copied(source_kind) {
+                cx.tcx.sess.span_err(target.span,
+                    ~"uniquely-owned trait objects must be copyable");
+            }
+            if !ty::kind_can_be_sent(source_kind) {
+                cx.tcx.sess.span_err(target.span,
+                    ~"uniquely-owned trait objects must be sendable");
+            }
+        }
+        _ => {} // Nothing to do.
     }
 }
 
