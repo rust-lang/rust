@@ -1457,6 +1457,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let tcx = fcx.ccx.tcx;
         let mut bot = false;
 
+        error!("%? %?", ast_fields.len(), field_types.len());
+
         let class_field_map = HashMap();
         let mut fields_found = 0;
         for field_types.each |field| {
@@ -1470,7 +1472,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 None => {
                     tcx.sess.span_err(
                         field.span,
-                        fmt!("structure has no field named field named `%s`",
+                        fmt!("structure has no field named `%s`",
                              tcx.sess.str_of(field.node.ident)));
                 }
                 Some((_, true)) => {
@@ -1486,6 +1488,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     bot |= check_expr(fcx,
                                       field.node.expr,
                                       Some(expected_field_type));
+                    class_field_map.insert(
+                        field.node.ident, (field_id, true));
                     fields_found += 1;
                 }
             }
@@ -1493,11 +1497,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         if check_completeness {
             // Make sure the programmer specified all the fields.
-            assert fields_found <= ast_fields.len();
-            if fields_found < ast_fields.len() {
+            assert fields_found <= field_types.len();
+            if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
-                for ast_fields.each |class_field| {
-                    let name = class_field.node.ident;
+                for field_types.each |class_field| {
+                    let name = class_field.ident;
                     let (_, seen) = class_field_map.get(name);
                     if !seen {
                         missing_fields.push(
