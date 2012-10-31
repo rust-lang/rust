@@ -1,6 +1,3 @@
-#[legacy_modes];
-#[legacy_exports];
-
 #[allow(ctypes)];
 #[allow(heap_memory)];
 #[allow(implicit_copies)];
