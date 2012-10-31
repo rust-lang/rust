@@ -159,7 +159,7 @@ impl Dest : cmp::Eq {
     pure fn ne(other: &Dest) -> bool { !self.eq(other) }
 }
 
-fn drop_and_cancel_clean(dat: Datum, bcx: block) -> block {
+fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
     let bcx = dat.drop_val(bcx);
     dat.cancel_clean(bcx);
     return bcx;
@@ -587,7 +587,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             if bcx.expr_is_lval(a) {
                 let datum = unpack_datum!(bcx, trans_to_datum(bcx, a));
                 return match dest {
-                    Ignore => drop_and_cancel_clean(datum, bcx),
+                    Ignore => drop_and_cancel_clean(bcx, datum),
                     SaveIn(addr) => datum.move_to(bcx, INIT, addr)
                 };
             } else {
