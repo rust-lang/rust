@@ -154,16 +154,25 @@ use util::common::indenter;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
+// An option identifying a literal: either a unit-like struct or an
+// expression.
+enum Lit {
+    UnitLikeStructLit(ast::node_id),    // the node ID of the pattern
+    ExprLit(@ast::expr)
+}
+
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
 enum Opt {
-    lit(@ast::expr),
+    lit(Lit),
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
 fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (*a, *b) {
-      (lit(a), lit(b)) => const_eval::compare_lit_exprs(tcx, a, b) == 0,
+      (lit(ExprLit(a)), lit(ExprLit(b))) =>
+            const_eval::compare_lit_exprs(tcx, a, b) == 0,
+      (lit(UnitLikeStructLit(a)), lit(UnitLikeStructLit(b))) => a == b,
       (range(a1, a2), range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
         const_eval::compare_lit_exprs(tcx, a2, b2) == 0
@@ -182,9 +191,14 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     match *o {
-        lit(lit_expr) => {
+        lit(ExprLit(lit_expr)) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
             return single_result(datumblock.to_result());
+        }
+        lit(UnitLikeStructLit(pat_id)) => {
+            let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
+            let datumblock = datum::scratch_datum(bcx, struct_ty, true);
+            return single_result(datumblock.to_result(bcx));
         }
         var(disr_val, _) => {
             return single_result(rslt(bcx, C_int(ccx, disr_val)));
@@ -197,12 +211,23 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
 }
 
 fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
-    let vdef = ast_util::variant_def_ids(tcx.def_map.get(pat_id));
-    let variants = ty::enum_variants(tcx, vdef.enm);
-    for vec::each(*variants) |v| {
-        if vdef.var == v.id { return var(v.disr_val, vdef); }
+    match tcx.def_map.get(pat_id) {
+        ast::def_variant(enum_id, var_id) => {
+            let variants = ty::enum_variants(tcx, enum_id);
+            for vec::each(*variants) |v| {
+                if var_id == v.id {
+                    return var(v.disr_val, {enm: enum_id, var: var_id});
+                }
+            }
+            core::util::unreachable();
+        }
+        ast::def_class(_) => {
+            return lit(UnitLikeStructLit(pat_id));
+        }
+        _ => {
+            tcx.sess.bug(~"non-variant or struct in variant_opt()");
+        }
     }
-    core::util::unreachable();
 }
 
 enum TransBindingMode {
@@ -426,7 +451,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                 }
             }
             ast::pat_lit(l) => {
-                if opt_eq(tcx, &lit(l), opt) {Some(~[])} else {None}
+                if opt_eq(tcx, &lit(ExprLit(l)), opt) {Some(~[])} else {None}
             }
             ast::pat_range(l1, l2) => {
                 if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
@@ -635,7 +660,7 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
         } else {
             match cur.node {
                 ast::pat_lit(l) => {
-                    add_to_set(ccx.tcx, &found, lit(l));
+                    add_to_set(ccx.tcx, &found, lit(ExprLit(l)));
                 }
                 ast::pat_range(l1, l2) => {
                     add_to_set(ccx.tcx, &found, range(l1, l2));
