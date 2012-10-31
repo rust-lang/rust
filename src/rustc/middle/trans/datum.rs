@@ -651,6 +651,41 @@ impl Datum {
                     }
                 };
             }
+            ty::ty_class(did, ref substs) => {
+                // Check whether this struct is a newtype struct.
+                let fields = ty::class_items_as_fields(ccx.tcx, did, substs);
+                if fields.len() != 1 || fields[0].ident !=
+                    syntax::parse::token::special_idents::unnamed_field {
+                    return None;
+                }
+
+                let ty = fields[0].mt.ty;
+                return match self.mode {
+                    ByRef => {
+                        // Recast lv.val as a pointer to the newtype rather
+                        // than a pointer to the struct type.
+                        // XXX: This isn't correct for structs with
+                        // destructors.
+                        Some(Datum {
+                            val: GEPi(bcx, self.val, [0, 0, 0]),
+                            ty: ty,
+                            mode: ByRef,
+                            source: FromLvalue
+                        })
+                    }
+                    ByValue => {
+                        // Actually, this case cannot happen right now,
+                        // because structs are never immediate. But in
+                        // principle, newtype'd immediate values should be
+                        // immediate, and in that case the * would be a no-op
+                        // except for changing the type, so I am putting this
+                        // code in place here to do the right thing if this
+                        // change ever goes through.
+                        assert ty::type_is_immediate(ty);
+                        Some(Datum {ty: ty, ..self})
+                    }
+                }
+            }
             _ => { // not derefable.
                 return None;
             }
