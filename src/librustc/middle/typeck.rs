@@ -251,6 +251,29 @@ fn require_same_types(
     }
 }
 
+// a list of mapping from in-scope-region-names ("isr") to the
+// corresponding ty::Region
+type isr_alist = @List<(ty::bound_region, ty::Region)>;
+
+trait get_and_find_region {
+    fn get(br: ty::bound_region) -> ty::Region;
+    fn find(br: ty::bound_region) -> Option<ty::Region>;
+}
+
+impl isr_alist: get_and_find_region {
+    fn get(br: ty::bound_region) -> ty::Region {
+        self.find(br).get()
+    }
+
+    fn find(br: ty::bound_region) -> Option<ty::Region> {
+        for list::each(self) |isr| {
+            let (isr_br, isr_r) = *isr;
+            if isr_br == br { return Some(isr_r); }
+        }
+        return None;
+    }
+}
+
 fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
     match ty::resolved_mode(tcx, a.mode) {
         ast::by_val => { /*ok*/ }

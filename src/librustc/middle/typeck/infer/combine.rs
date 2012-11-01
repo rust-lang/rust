@@ -290,7 +290,9 @@ fn super_args<C:combine>(
 
 fn super_vstores<C:combine>(
     self: &C, vk: ty::terr_vstore_kind,
-    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
+    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>
+{
+    debug!("%s.super_vstores(a=%?, b=%?)", self.tag(), a, b);
 
     match (a, b) {
       (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
@@ -517,4 +519,3 @@ fn super_tys<C:combine>(
       _ => Err(ty::terr_sorts(expected_found(self, a, b)))
     }
 }
-

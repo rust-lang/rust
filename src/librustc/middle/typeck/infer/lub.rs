@@ -3,6 +3,8 @@ use lattice::*;
 use to_str::ToStr;
 use syntax::ast::{Many, Once};
 
+fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+
 enum Lub = combine_fields;  // "subtype", "subregion" etc
 
 impl Lub: combine {
@@ -102,6 +104,100 @@ impl Lub: combine {
         }
     }
 
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+        // Note: this is a subtle algorithm.  For a full explanation,
+        // please see the large comment in `region_inference.rs`.
+
+        // Take a snapshot.  We'll never roll this back, but in later
+        // phases we do want to be able to examine "all bindings that
+        // were created as part of this type comparison", and making a
+        // snapshot is a convenient way to do that.
+        let snapshot = self.infcx.region_vars.start_snapshot();
+
+        // Instantiate each bound region with a fresh region variable.
+        let (a_with_fresh, a_isr) =
+            self.infcx.replace_bound_regions_with_fresh_regions(
+                self.span, a);
+        let (b_with_fresh, _) =
+            self.infcx.replace_bound_regions_with_fresh_regions(
+                self.span, b);
+
+        // Collect constraints.
+        let fn_ty0 = if_ok!(super_fns(&self, &a_with_fresh, &b_with_fresh));
+        debug!("fn_ty0 = %s", fn_ty0.to_str(self.infcx));
+
+        // Generalize the regions appearing in fn_ty0 if possible
+        let new_vars =
+            self.infcx.region_vars.vars_created_since_snapshot(snapshot);
+        let fn_ty1 =
+            ty::apply_op_on_t_to_ty_fn(
+                self.infcx.tcx, &fn_ty0,
+                |t| ty::fold_regions(
+                    self.infcx.tcx, t,
+                    |r, _in_fn| generalize_region(&self, snapshot,
+                                                  new_vars, a_isr, r)));
+        return Ok(move fn_ty1);
+
+        fn generalize_region(self: &Lub,
+                             snapshot: uint,
+                             new_vars: &[RegionVid],
+                             a_isr: isr_alist,
+                             r0: ty::Region) -> ty::Region {
+            // Regions that pre-dated the LUB computation stay as they are.
+            if !is_new_var(new_vars, r0) {
+                debug!("generalize_region(r0=%?): not new variable", r0);
+                return r0;
+            }
+
+            let tainted = self.infcx.region_vars.tainted(snapshot, r0);
+
+            // Variables created during LUB computation which are
+            // *related* to regions that pre-date the LUB computation
+            // stay as they are.
+            if !tainted.all(|r| is_new_var(new_vars, *r)) {
+                debug!("generalize_region(r0=%?): \
+                        non-new-variables found in %?",
+                       r0, tainted);
+                return r0;
+            }
+
+            // Otherwise, the variable must be associated with at
+            // least one of the variables representing bound regions
+            // in both A and B.  Replace the variable with the "first"
+            // bound region from A that we find it to be associated
+            // with.
+            for list::each(a_isr) |pair| {
+                let (a_br, a_r) = *pair;
+                if tainted.contains(&a_r) {
+                    debug!("generalize_region(r0=%?): \
+                            replacing with %?, tainted=%?",
+                           r0, a_br, tainted);
+                    return ty::re_bound(a_br);
+                }
+            }
+
+            self.infcx.tcx.sess.span_bug(
+                self.span,
+                fmt!("Region %? is not associated with \
+                      any bound region from A!", r0));
+        }
+
+        fn is_new_var(new_vars: &[RegionVid], r: ty::Region) -> bool {
+            match r {
+                ty::re_infer(ty::ReVar(ref v)) => new_vars.contains(v),
+                _ => false
+            }
+        }
+    }
+
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
+        super_fn_metas(&self, a, b)
+    }
+
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        super_fn_sigs(&self, a, b)
+    }
+
     // Traits please (FIXME: #2794):
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
@@ -123,18 +219,6 @@ impl Lub: combine {
 
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
         super_args(&self, a, b)
-    }
-
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
-        super_fns(&self, a, b)
-    }
-
-    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
-        super_fn_metas(&self, a, b)
-    }
-
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        super_fn_sigs(&self, a, b)
     }
 
     fn substs(did: ast::def_id,

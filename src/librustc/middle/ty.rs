@@ -41,6 +41,7 @@ export expr_is_lval, expr_kind;
 export ExprKind, LvalueExpr, RvalueDatumExpr, RvalueDpsExpr, RvalueStmtExpr;
 export field_ty;
 export fold_ty, fold_sty_to_ty, fold_region, fold_regions;
+export apply_op_on_t_to_ty_fn;
 export fold_regions_and_ty, walk_regions_and_ty;
 export field;
 export field_idx, field_idx_strict;
@@ -1479,6 +1480,30 @@ fn fold_regions_and_ty(
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
       }
+    }
+}
+
+/* A little utility: it often happens that I have a `fn_ty`,
+ * but I want to use some function like `fold_regions_and_ty()`
+ * that is defined over all types.  This utility converts to
+ * a full type and back.  It's not the best way to do this (somewhat
+ * inefficient to do the conversion), it would be better to refactor
+ * all this folding business.  However, I've been waiting on that
+ * until trait support is improved. */
+fn apply_op_on_t_to_ty_fn(
+    cx: ctxt,
+    f: &FnTy,
+    t_op: fn(t) -> t) -> FnTy
+{
+    let t0 = ty::mk_fn(cx, *f);
+    let t1 = t_op(t0);
+    match ty::get(t1).sty {
+        ty::ty_fn(copy f) => {
+            move f
+        }
+        _ => {
+            cx.sess.bug(~"`t_op` did not return a function type");
+        }
     }
 }
 
