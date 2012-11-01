@@ -27,6 +27,7 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
         @{fold_mod: |a,b| fold_mod(ctxt, a, b),
           fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
+          fold_item_underscore: |a,b| fold_item_underscore(ctxt, a, b),
           .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -79,6 +80,22 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
     };
 }
 
+fn fold_item_underscore(cx: ctxt, item: ast::item_, fld: fold::ast_fold) -> ast::item_ {
+    let item = match item {
+        ast::item_impl(a, b, c, Some(methods)) => {
+            let methods = methods.filter(|m| method_in_cfg(cx, *m) );
+            ast::item_impl(a, b, c, Some(methods))
+        }
+        ast::item_trait(a, b, ref methods) => {
+            let methods = methods.filter(|m| trait_method_in_cfg(cx, m) );
+            ast::item_trait(a, b, methods)
+        }
+        _ => item
+    };
+
+    fold::noop_fold_item_underscore(item, fld)
+}
+
 fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
    Option<@ast::stmt> {
     match stmt.node {
@@ -116,6 +133,17 @@ fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
 
 fn view_item_in_cfg(cx: ctxt, item: @ast::view_item) -> bool {
     return cx.in_cfg(item.attrs);
+}
+
+fn method_in_cfg(cx: ctxt, meth: @ast::method) -> bool {
+    return cx.in_cfg(meth.attrs);
+}
+
+fn trait_method_in_cfg(cx: ctxt, meth: &ast::trait_method) -> bool {
+    match *meth {
+        ast::required(ref meth) => cx.in_cfg(meth.attrs),
+        ast::provided(@ref meth) => cx.in_cfg(meth.attrs)
+    }
 }
 
 // Determine if an item should be translated in the current crate

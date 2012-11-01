@@ -1,3 +1,7 @@
+// Crate use statements
+#[cfg(bogus)]
+use flippity;
+
 #[cfg(bogus)]
 const b: bool = false;
 
@@ -114,5 +118,35 @@ mod test_use_statements {
         #[legacy_exports];
         #[cfg(bogus)]
         use flippity_foo;
+    }
+}
+
+mod test_methods {
+    struct Foo {
+        bar: uint
+    }
+
+    impl Foo: Fooable {
+        #[cfg(bogus)]
+        static fn what() { }
+
+        static fn what() { }
+
+        #[cfg(bogus)]
+        fn the() { }
+
+        fn the() { }
+    }
+
+    trait Fooable {
+        #[cfg(bogus)]
+        static fn what();
+
+        static fn what();
+
+        #[cfg(bogus)]
+        fn the();
+
+        fn the();
     }
 }

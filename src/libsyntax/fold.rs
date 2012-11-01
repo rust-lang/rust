@@ -12,6 +12,7 @@ export noop_fold_pat;
 export noop_fold_mod;
 export noop_fold_ty;
 export noop_fold_block;
+export noop_fold_item_underscore;
 export wrap;
 export fold_ty_param;
 export fold_ty_params;
