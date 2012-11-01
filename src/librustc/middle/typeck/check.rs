@@ -166,29 +166,6 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
     }
 }
 
-// a list of mapping from in-scope-region-names ("isr") to the
-// corresponding ty::Region
-type isr_alist = @List<(ty::bound_region, ty::Region)>;
-
-trait get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::Region;
-    fn find(br: ty::bound_region) -> Option<ty::Region>;
-}
-
-impl isr_alist: get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::Region {
-        self.find(br).get()
-    }
-
-    fn find(br: ty::bound_region) -> Option<ty::Region> {
-        for list::each(self) |isr| {
-            let (isr_br, isr_r) = *isr;
-            if isr_br == br { return Some(isr_r); }
-        }
-        return None;
-    }
-}
-
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     let visit = visit::mk_simple_visitor(@{
         visit_item: |a| check_item(ccx, a),

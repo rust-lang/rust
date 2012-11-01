@@ -143,6 +143,9 @@ mod middle {
             mod to_str;
             #[legacy_exports]
             mod unify;
+            #[cfg(test)]
+            #[legacy_exports]
+            mod test;
         }
         #[legacy_exports]
         mod collect;

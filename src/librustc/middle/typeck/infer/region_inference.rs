@@ -320,6 +320,124 @@ set of all things reachable from a skolemized variable `x`.
 step at which the skolemization was performed.  So this case here
 would fail because `&x` was created alone, but is relatable to `&A`.
 
+## Computing the LUB and GLB
+
+The paper I pointed you at is written for Haskell.  It does not
+therefore considering subtyping and in particular does not consider
+LUB or GLB computation.  We have to consider this.  Here is the
+algorithm I implemented.
+
+### LUB
+
+The LUB algorithm proceeds in three steps:
+
+1. Replace all bound regions (on both sides) with fresh region
+   inference variables.
+2. Compute the LUB "as normal", meaning compute the GLB of each
+   pair of argument types and the LUB of the return types and
+   so forth.  Combine those to a new function type F.
+3. Map the regions appearing in `F` using the procedure described below.
+
+For each region `R` that appears in `F`, we may need to replace it
+with a bound region.  Let `V` be the set of fresh variables created as
+part of the LUB procedure (either in step 1 or step 2).  You may be
+wondering how variables can be created in step 2.  The answer is that
+when we are asked to compute the LUB or GLB of two region variables,
+we do so by producing a new region variable that is related to those
+two variables.  i.e., The LUB of two variables `$x` and `$y` is a
+fresh variable `$z` that is constrained such that `$x <= $z` and `$y
+<= $z`.
+
+To decide how to replace a region `R`, we must examine `Tainted(R)`.
+This function searches through the constraints which were generated
+when computing the bounds of all the argument and return types and
+produces a list of all regions to which `R` is related, directly or
+indirectly.
+
+If `R` is not in `V` or `Tainted(R)` contains any region that is not
+in `V`, then `R` is not replaced (that is, `R` is mapped to itself).
+Otherwise, if `Tainted(R)` is a subset of `V`, then we select the
+earliest variable in `Tainted(R)` that originates from the left-hand
+side and replace `R` with a bound version of that variable.
+
+So, let's work through the simplest example: `fn(&A)` and `fn(&a)`.
+In this case, `&a` will be replaced with `$a` (the $ indicates an
+inference variable) which will be linked to the free region `&A`, and
+hence `V = { $a }` and `Tainted($a) = { &A }`.  Since `$a` is not a
+member of `V`, we leave `$a` as is.  When region inference happens,
+`$a` will be resolved to `&A`, as we wanted.
+
+So, let's work through the simplest example: `fn(&A)` and `fn(&a)`.
+In this case, `&a` will be replaced with `$a` (the $ indicates an
+inference variable) which will be linked to the free region `&A`, and
+hence `V = { $a }` and `Tainted($a) = { $a, &A }`.  Since `&A` is not a
+member of `V`, we leave `$a` as is.  When region inference happens,
+`$a` will be resolved to `&A`, as we wanted.
+
+Let's look at a more complex one: `fn(&a, &b)` and `fn(&x, &x)`.
+In this case, we'll end up with a graph that looks like:
+
+```
+     $a        $b     *--$x
+       \        \    /  /
+        \        $h-*  /
+         $g-----------*
+```
+
+Here `$g` and `$h` are fresh variables that are created to represent
+the LUB/GLB of things requiring inference.  This means that `V` and
+`Tainted` will look like:
+
+```
+V = {$a, $b, $x}
+Tainted($g) = Tainted($h) = { $a, $b, $h, $x }
+```
+
+Therefore we replace both `$g` and `$h` with `$a`, and end up
+with the type `fn(&a, &a)`.
+
+### GLB
+
+The procedure for computing the GLB is similar.  The difference lies
+in computing the replacements for the various variables. For each
+region `R` that appears in the type `F`, we again compute `Tainted(R)`
+and examine the results:
+
+1. If `Tainted(R) = {R}` is a singleton set, replace `R` with itself.
+2. Else, if `Tainted(R)` contains only variables in `V`, and it
+   contains exactly one variable from the LHS and one variable from
+   the RHS, then `R` can be mapped to the bound version of the
+   variable from the LHS.
+3. Else, `R` is mapped to a fresh bound variable.
+
+These rules are pretty complex.  Let's look at some examples to see
+how they play out.
+
+Out first example was `fn(&a)` and `fn(&X)`---in
+this case, the LUB will be a variable `$g`, and `Tainted($g) =
+{$g,$a,$x}`.  By these rules, we'll replace `$g` with a fresh bound
+variable, so the result is `fn(&z)`, which is fine.
+
+The next example is `fn(&A)` and `fn(&Z)`. XXX
+
+The next example is `fn(&a, &b)` and `fn(&x, &x)`. In this case, as
+before, we'll end up with `F=fn(&g, &h)` where `Tainted($g) =
+Tainted($h) = {$g, $a, $b, $x}`.  This means that we'll select fresh
+bound varibales `g` and `h` and wind up with `fn(&g, &h)`.
+
+For the last example, let's consider what may seem trivial, but is
+not: `fn(&a, &a)` and `fn(&x, &x)`.  In this case, we'll get `F=fn(&g,
+&h)` where `Tainted($g) = {$g, $a, $x}` and `Tainted($h) = {$h, $a,
+$x}`.  Both of these sets contain exactly one bound variable from each
+side, so we'll map them both to `&a`, resulting in `fn(&a, &a)`.
+Horray!
+
+### Why are these correct?
+
+You may be wondering whether this algorithm is correct.  So am I.  But
+I believe it is.  (Justification forthcoming, haven't had time to
+write it)
+
 */
 
 #[warn(deprecated_mode)];
@@ -448,7 +566,6 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
-    values: Cell<~[Region]>,
     constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
@@ -462,7 +579,12 @@ struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    mut undo_log: ~[UndoLogEntry]
+    mut undo_log: ~[UndoLogEntry],
+
+    // This contains the results of inference.  It begins as an empty
+    // cell and only acquires a value after inference is complete.
+    // We use a cell vs a mutable option to circumvent borrowck errors.
+    values: Cell<~[GraphNodeValue]>,
 }
 
 fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
@@ -646,7 +768,37 @@ impl RegionVarBindings {
                       been computed!"));
         }
 
-        self.values.with_ref(|values| values[*rid])
+        let v = self.values.with_ref(|values| values[*rid]);
+        match v {
+            Value(r) => r,
+
+            NoValue => {
+                // No constraints, report an error.  It is plausible
+                // that we could select an arbitrary region here
+                // instead.  At the moment I am not doing this because
+                // this generally masks bugs in the inference
+                // algorithm, and given our syntax one cannot create
+                // generally create a lifetime variable that isn't
+                // used in some type, and hence all lifetime variables
+                // should ultimately have some bounds.
+
+                self.tcx.sess.span_err(
+                    self.var_spans[*rid],
+                    fmt!("Unconstrained region variable #%u", *rid));
+
+                // Touch of a hack: to suppress duplicate messages,
+                // replace the NoValue entry with ErrorValue.
+                let mut values = self.values.take();
+                values[*rid] = ErrorValue;
+                self.values.put_back(move values);
+                re_static
+            }
+
+            ErrorValue => {
+                // An error that has previously been reported.
+                re_static
+            }
+        }
     }
 
     fn combine_vars(&self,
@@ -676,30 +828,31 @@ impl RegionVarBindings {
         }
     }
 
+    fn vars_created_since_snapshot(&self, snapshot: uint) -> ~[RegionVid] {
+        do vec::build |push| {
+            for uint::range(snapshot, self.undo_log.len()) |i| {
+                match self.undo_log[i] {
+                    AddVar(vid) => push(vid),
+                    _ => ()
+                }
+            }
+        }
+    }
+
     fn tainted(&self, snapshot: uint, r0: Region) -> ~[Region] {
         /*!
          *
          * Computes all regions that have been related to `r0` in any
-         * way since the snapshot `snapshot` was taken---excluding
-         * `r0` itself and any region variables added as part of the
-         * snapshot.  This is used when checking whether skolemized
-         * regions are being improperly related to other regions.
+         * way since the snapshot `snapshot` was taken---`r0` itself
+         * will be the first entry. This is used when checking whether
+         * skolemized regions are being improperly related to other
+         * regions.
          */
 
         debug!("tainted(snapshot=%u, r0=%?)", snapshot, r0);
         let _indenter = indenter();
 
         let undo_len = self.undo_log.len();
-
-        // collect variables added since the snapshot was taken
-        let new_vars = do vec::build |push| {
-            for uint::range(snapshot, undo_len) |i| {
-                match self.undo_log[i] {
-                    AddVar(vid) => push(vid),
-                    _ => ()
-                }
-            }
-        };
 
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
@@ -745,15 +898,6 @@ impl RegionVarBindings {
 
             result_index += 1;
         }
-
-        // Drop `r0` itself and any region variables that were created
-        // since the snapshot.
-        result_set.retain(|r| {
-            match *r {
-                re_infer(ReVar(ref vid)) => !new_vars.contains(vid),
-                _ => *r != r0
-            }
-        });
 
         return result_set;
 
@@ -991,11 +1135,11 @@ fn TwoRegionsMap() -> TwoRegionsMap {
 }
 
 impl RegionVarBindings {
-    fn infer_variable_values(&self) -> ~[Region] {
+    fn infer_variable_values(&self) -> ~[GraphNodeValue] {
         let graph = self.construct_graph();
         self.expansion(&graph);
         self.contraction(&graph);
-        self.extract_regions_and_report_errors(&graph)
+        self.extract_values_and_report_conflicts(&graph)
     }
 
     fn construct_graph(&self) -> Graph {
@@ -1231,34 +1375,60 @@ impl RegionVarBindings {
         debug!("---- %s Complete after %u iteration(s)", tag, iteration);
     }
 
-    fn extract_regions_and_report_errors(&self, graph: &Graph) -> ~[Region] {
+    fn extract_values_and_report_conflicts(
+        &self,
+        graph: &Graph) -> ~[GraphNodeValue]
+    {
         let dup_map = TwoRegionsMap();
         graph.nodes.mapi(|idx, node| {
             match node.value {
-              Value(v) => v,
-
-              NoValue => {
-                self.tcx.sess.span_err(
-                    node.span,
-                    fmt!("Unconstrained region variable #%u", idx));
-                re_static
-              }
-
-              ErrorValue => {
-                let node_vid = RegionVid(idx);
-                match node.classification {
-                  Expanding => {
-                    self.report_error_for_expanding_node(
-                        graph, dup_map, node_vid);
-                  }
-                  Contracting => {
-                    self.report_error_for_contracting_node(
-                        graph, dup_map, node_vid);
-                  }
+                Value(_) => {
+                    /* Inference successful */
                 }
-                re_static
-              }
+                NoValue => {
+                    /* Unconstrained inference: do not report an error
+                       until the value of this variable is requested.
+                       After all, sometimes we make region variables but never
+                       really use their values. */
+                }
+                ErrorValue => {
+                    /* Inference impossible, this value contains
+                       inconsistent constraints.
+
+                       I think that in this case we should report an
+                       error now---unlike the case above, we can't
+                       wait to see whether the user needs the result
+                       of this variable.  The reason is that the mere
+                       existence of this variable implies that the
+                       region graph is inconsistent, whether or not it
+                       is used.
+
+                       For example, we may have created a region
+                       variable that is the GLB of two other regions
+                       which do not have a GLB.  Even if that variable
+                       is not used, it implies that those two regions
+                       *should* have a GLB.
+
+                       At least I think this is true. It may be that
+                       the mere existence of a conflict in a region variable
+                       that is not used is not a problem, so if this rule
+                       starts to create problems we'll have to revisit
+                       this portion of the code and think hard about it. =) */
+                    let node_vid = RegionVid(idx);
+                    match node.classification {
+                        Expanding => {
+                            self.report_error_for_expanding_node(
+                                graph, dup_map, node_vid);
+                        }
+                        Contracting => {
+                            self.report_error_for_contracting_node(
+                                graph, dup_map, node_vid);
+                        }
+                    }
+                }
             }
+
+            node.value
         })
     }
 

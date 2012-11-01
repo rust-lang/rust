@@ -722,5 +722,24 @@ impl infer_ctxt {
         self.type_error_message(sp, mk_msg, a, Some(err));
     }
 
+    fn replace_bound_regions_with_fresh_regions(
+        &self, span: span,
+        fty: &ty::FnTy) -> (ty::FnTy, isr_alist)
+    {
+        let {fn_ty, isr, _} =
+            replace_bound_regions_in_fn_ty(self.tcx, @Nil, None, fty, |br| {
+                // N.B.: The name of the bound region doesn't have anything to
+                // do with the region variable that's created for it.  The
+                // only thing we're doing with `br` here is using it in the
+                // debug message.
+                let rvar = self.next_region_var_nb(span);
+                debug!("Bound region %s maps to %?",
+                       bound_region_to_str(self.tcx, br),
+                       rvar);
+                rvar
+            });
+        (fn_ty, isr)
+    }
+
 }
 
