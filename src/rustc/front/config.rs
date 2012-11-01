@@ -80,7 +80,8 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
     };
 }
 
-fn fold_item_underscore(cx: ctxt, item: ast::item_, fld: fold::ast_fold) -> ast::item_ {
+fn fold_item_underscore(cx: ctxt, item: ast::item_,
+                        fld: fold::ast_fold) -> ast::item_ {
     let item = match item {
         ast::item_impl(a, b, c, Some(methods)) => {
             let methods = methods.filter(|m| method_in_cfg(cx, *m) );
