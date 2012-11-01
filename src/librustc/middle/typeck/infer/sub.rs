@@ -125,8 +125,8 @@ impl Sub: combine {
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
         //
-        // A rather detailed discussion of what's going on here can be
-        // found in the region_inference.rs module.
+        // Note: this is a subtle algorithm.  For a full explanation,
+        // please see the large comment in `region_inference.rs`.
 
         // Take a snapshot.  We'll never roll this back, but in later
         // phases we do want to be able to examine "all bindings that
@@ -136,20 +136,9 @@ impl Sub: combine {
 
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
-        let {fn_ty: a_fn_ty, _} = {
-            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @Nil,
-                                              None, a) |br| {
-                // N.B.: The name of the bound region doesn't have
-                // anything to do with the region variable that's created
-                // for it.  The only thing we're doing with `br` here is
-                // using it in the debug message.
-                let rvar = self.infcx.next_region_var_nb(self.span);
-                debug!("Bound region %s maps to %?",
-                       bound_region_to_str(self.infcx.tcx, br),
-                       rvar);
-                rvar
-            }
-        };
+        let (a_fn_ty, _) =
+            self.infcx.replace_bound_regions_with_fresh_regions(
+                self.span, a);
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
@@ -172,10 +161,23 @@ impl Sub: combine {
 
         // Presuming type comparison succeeds, we need to check
         // that the skolemized regions do not "leak".
+        let new_vars =
+            self.infcx.region_vars.vars_created_since_snapshot(snapshot);
         for list::each(skol_isr) |pair| {
             let (skol_br, skol) = *pair;
             let tainted = self.infcx.region_vars.tainted(snapshot, skol);
             for tainted.each |tainted_region| {
+                // Each skolemized should only be relatable to itself
+                // or new variables:
+                match *tainted_region {
+                    ty::re_infer(ty::ReVar(ref vid)) => {
+                        if new_vars.contains(vid) { loop; }
+                    }
+                    _ => {
+                        if *tainted_region == skol { loop; }
+                    }
+                };
+
                 // A is not as polymorphic as B:
                 if self.a_is_expected {
                     return Err(ty::terr_regions_insufficiently_polymorphic(
