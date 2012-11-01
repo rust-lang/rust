@@ -100,6 +100,10 @@ fn lookup_vtable_covariant(fcx: @fn_ctxt,
                            allow_unsafe: bool,
                            is_early: bool)
                         -> Option<vtable_origin> {
+	debug!("lookup_vtable_covariant(ty: %s, trait_ty=%s)",
+		   fcx.infcx().ty_to_str(ty),
+		   fcx.infcx().ty_to_str(trait_ty));
+
     let worklist = dvec::DVec();
     worklist.push(trait_ty);
     while worklist.len() > 0 {
@@ -475,9 +479,16 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       ast::expr_path(*) => {
         match fcx.opt_node_ty_substs(ex.id) {
           Some(ref substs) => {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
+		  	let def = cx.tcx.def_map.get(ex.id);
+            let did = ast_util::def_id_of_def(def);
+			debug!("early resolve expr: def %?", def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
+				for item_ty.bounds.each |bounds| {
+					debug!("early_resolve_expr: looking up vtables for bound \
+							%s",
+						   ty::param_bounds_to_str(fcx.tcx(), *bounds));
+				}
                 let vtbls = lookup_vtables(fcx, ex, item_ty.bounds,
                                            substs, false, is_early);
                 if !is_early { cx.vtable_map.insert(ex.id, vtbls); }
