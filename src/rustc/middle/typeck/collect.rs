@@ -231,11 +231,11 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
             let trait_bounds = ty_param_bounds(ccx, params);
             let ty_m = trait_method_to_ty_method(*m);
             let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd, def_id);
-			if ty_m.self_ty.node == ast::sty_static {
-				make_static_method_ty(ccx, ty_m, region_paramd,
-									  method_ty, trait_ty,
-									  trait_bounds);
-			}
+            if ty_m.self_ty.node == ast::sty_static {
+                make_static_method_ty(ccx, ty_m, region_paramd,
+                                      method_ty, trait_ty,
+                                      trait_bounds);
+            }
             method_ty
         });
       }
@@ -423,21 +423,21 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
 
     if did.crate == ast::local_crate {
-		// NB: This is subtle. We need to do this on the type of the trait
-		// item *itself*, not on the type that includes the parameter
-		// substitutions provided by the programmer at this particular
-		// trait ref. Otherwise, we will potentially overwrite the types of
-		// the methods within the trait with bogus results. (See issue #3903.)
+        // NB: This is subtle. We need to do this on the type of the trait
+        // item *itself*, not on the type that includes the parameter
+        // substitutions provided by the programmer at this particular
+        // trait ref. Otherwise, we will potentially overwrite the types of
+        // the methods within the trait with bogus results. (See issue #3903.)
 
-		match tcx.items.find(did.node) {
-			Some(ast_map::node_item(item, _)) => {
-				let tpt = ty_of_item(ccx, item);
-				ensure_trait_methods(ccx, did.node, tpt.ty);
-			}
-			_ => {
-				tcx.sess.bug(~"trait ref didn't resolve to trait");
-			}
-		}
+        match tcx.items.find(did.node) {
+            Some(ast_map::node_item(item, _)) => {
+                let tpt = ty_of_item(ccx, item);
+                ensure_trait_methods(ccx, did.node, tpt.ty);
+            }
+            _ => {
+                tcx.sess.bug(~"trait ref didn't resolve to trait");
+            }
+        }
     }
 
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
