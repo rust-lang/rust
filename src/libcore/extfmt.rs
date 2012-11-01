@@ -65,16 +65,34 @@ pub mod ct {
         FlagSignAlways,
         FlagAlternate,
     }
+    #[cfg(stage0)]
     pub enum Count {
         CountIs(int),
         CountIsParam(int),
         CountIsNextParam,
         CountImplied,
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pub enum Count {
+        CountIs(uint),
+        CountIsParam(uint),
+        CountIsNextParam,
+        CountImplied,
+    }
 
-    // A formatted conversion from an expression to a string
+    #[cfg(stage0)]
     pub type Conv =
         {param: Option<int>,
+         flags: ~[Flag],
+         width: Count,
+         precision: Count,
+         ty: Ty};
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    // A formatted conversion from an expression to a string
+    pub type Conv =
+        {param: Option<uint>,
          flags: ~[Flag],
          width: Count,
          precision: Count,
@@ -158,8 +176,26 @@ pub mod ct {
                              ty: ty.ty}),
              next: ty.next};
     }
+    #[cfg(stage0)]
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
        {param: Option<int>, next: uint} {
+        if i >= lim { return {param: None, next: i}; }
+        let num = peek_num(s, i, lim);
+        return match num {
+              None => {param: None, next: i},
+              Some(t) => {
+                let n = t.num as int;
+                let j = t.next;
+                if j < lim && s[j] == '$' as u8 {
+                    {param: Some(n), next: j + 1}
+                } else { {param: None, next: i} }
+              }
+            };
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
+       {param: Option<uint>, next: uint} {
         if i >= lim { return {param: None, next: i}; }
         let num = peek_num(s, i, lim);
         return match num {
@@ -168,7 +204,7 @@ pub mod ct {
                 let n = t.num;
                 let j = t.next;
                 if j < lim && s[j] == '$' as u8 {
-                    {param: Some(n as int), next: j + 1u}
+                    {param: Some(n), next: j + 1}
                 } else { {param: None, next: i} }
               }
             };
@@ -201,12 +237,13 @@ pub mod ct {
                 more(FlagAlternate, s, i, lim)
             } else { {flags: move noflags, next: i} };
     }
+    #[cfg(stage0)]
     pub fn parse_count(s: &str, i: uint, lim: uint)
         -> {count: Count, next: uint} {
         return if i >= lim {
                 {count: CountImplied, next: i}
             } else if s[i] == '*' as u8 {
-                let param = parse_parameter(s, i + 1u, lim);
+                let param = parse_parameter(s, i + 1, lim);
                 let j = param.next;
                 match param.param {
                   None => {count: CountIsNextParam, next: j},
@@ -218,6 +255,30 @@ pub mod ct {
                   None => {count: CountImplied, next: i},
                   Some(num) => {
                     count: CountIs(num.num as int),
+                    next: num.next
+                  }
+                }
+            };
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+        pub fn parse_count(s: &str, i: uint, lim: uint)
+        -> {count: Count, next: uint} {
+        return if i >= lim {
+                {count: CountImplied, next: i}
+            } else if s[i] == '*' as u8 {
+                let param = parse_parameter(s, i + 1, lim);
+                let j = param.next;
+                match param.param {
+                  None => {count: CountIsNextParam, next: j},
+                  Some(n) => {count: CountIsParam(n), next: j}
+                }
+            } else {
+                let num = peek_num(s, i, lim);
+                match num {
+                  None => {count: CountImplied, next: i},
+                  Some(num) => {
+                    count: CountIs(num.num),
                     next: num.next
                   }
                 }
@@ -285,7 +346,12 @@ pub mod rt {
     pub const flag_sign_always    : u32 = 0b00000000001000u32;
     pub const flag_alternate      : u32 = 0b00000000010000u32;
 
+    #[cfg(stage0)]
     pub enum Count { CountIs(int), CountImplied, }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pub enum Count { CountIs(uint), CountImplied, }
+
     pub enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
     pub type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
@@ -307,11 +373,11 @@ pub mod rt {
         let prec = get_int_precision(cv);
         let mut rs =
             match cv.ty {
-              TyDefault => uint_to_str_prec(u, 10u, prec),
-              TyHexLower => uint_to_str_prec(u, 16u, prec),
-              TyHexUpper => str::to_upper(uint_to_str_prec(u, 16u, prec)),
-              TyBits => uint_to_str_prec(u, 2u, prec),
-              TyOctal => uint_to_str_prec(u, 8u, prec)
+              TyDefault => uint_to_str_prec(u, 10, prec),
+              TyHexLower => uint_to_str_prec(u, 16, prec),
+              TyHexUpper => str::to_upper(uint_to_str_prec(u, 16, prec)),
+              TyBits => uint_to_str_prec(u, 2, prec),
+              TyOctal => uint_to_str_prec(u, 8, prec)
             };
         return unsafe { pad(cv, move rs, PadUnsigned) };
     }
@@ -331,7 +397,7 @@ pub mod rt {
         let mut unpadded = match cv.precision {
           CountImplied => s.to_owned(),
           CountIs(max) => if max as uint < str::char_len(s) {
-            str::substr(s, 0u, max as uint)
+            str::substr(s, 0, max as uint)
           } else {
             s.to_owned()
           }
@@ -412,10 +478,7 @@ pub mod rt {
         let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
           CountImplied => return (move s),
-          CountIs(width) => {
-              // FIXME: width should probably be uint (see Issue #1996)
-              width as uint
-          }
+          CountIs(width) => { width as uint }
         };
         let strlen = str::char_len(s);
         if uwidth <= strlen { return (move s); }

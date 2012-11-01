@@ -71,7 +71,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                 return make_rt_path_expr(cx, sp, @~"CountImplied");
               }
               CountIs(c) => {
-                let count_lit = mk_int(cx, sp, c);
+                let count_lit = mk_uint(cx, sp, c as uint);
                 let count_is_path = make_path_vec(cx, @~"CountIs");
                 let count_is_args = ~[count_lit];
                 return mk_call(cx, sp, count_is_path, count_is_args);
@@ -193,7 +193,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
     fn log_conv(c: Conv) {
         match c.param {
-          Some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
+          Some(p) => { log(debug, ~"param: " + p.to_str()); }
           _ => debug!("param: none")
         }
         for c.flags.each |f| {
@@ -207,17 +207,17 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
         match c.width {
           CountIs(i) => log(
-              debug, ~"width: count is " + int::to_str(i, 10u)),
+              debug, ~"width: count is " + i.to_str()),
           CountIsParam(i) => log(
-              debug, ~"width: count is param " + int::to_str(i, 10u)),
+              debug, ~"width: count is param " + i.to_str()),
           CountIsNextParam => debug!("width: count is next param"),
           CountImplied => debug!("width: count is implied")
         }
         match c.precision {
           CountIs(i) => log(
-              debug, ~"prec: count is " + int::to_str(i, 10u)),
+              debug, ~"prec: count is " + i.to_str()),
           CountIsParam(i) => log(
-              debug, ~"prec: count is param " + int::to_str(i, 10u)),
+              debug, ~"prec: count is param " + i.to_str()),
           CountIsNextParam => debug!("prec: count is next param"),
           CountImplied => debug!("prec: count is implied")
         }
