@@ -394,8 +394,9 @@ fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
         commasep(s, inconsistent, elts, print_type);
         pclose(s);
       }
-      ast::ty_fn(proto, purity, bounds, d) => {
-        print_ty_fn(s, Some(proto), purity, bounds, d, None, None, None);
+      ast::ty_fn(proto, purity, onceness, bounds, d) => {
+        print_ty_fn(s, Some(proto), purity, onceness, bounds, d, None, None,
+                    None);
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
       ast::ty_fixed_length(t, v) => {
@@ -804,7 +805,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, m.purity,
+    print_ty_fn(s, None, m.purity, ast::Many,
                 @~[], m.decl, Some(m.ident), Some(m.tps),
                 Some(m.self_ty.node));
     word(s.s, ~";");
@@ -1273,7 +1274,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
-        word(s.s, fn_header_info_to_str(None, None, Some(proto),
+        word(s.s, fn_header_info_to_str(None, None, Some(proto), ast::Many,
                                         ast::inherited));
         print_fn_args_and_ret(s, decl, *cap_clause, None);
         space(s.s);
@@ -1606,12 +1607,15 @@ fn print_self_ty(s: ps, self_ty: ast::self_ty_) -> bool {
     return true;
 }
 
-fn print_fn(s: ps, decl: ast::fn_decl, purity: Option<ast::purity>,
+fn print_fn(s: ps,
+            decl: ast::fn_decl,
+            purity: Option<ast::purity>,
             name: ast::ident,
             typarams: ~[ast::ty_param],
             opt_self_ty: Option<ast::self_ty_>,
             vis: ast::visibility) {
-    head(s, fn_header_info_to_str(opt_self_ty, purity, None, vis));
+    head(s, fn_header_info_to_str(opt_self_ty, purity, None, ast::Many,
+                                  vis));
     print_ident(s, name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
@@ -1831,14 +1835,17 @@ fn print_arg(s: ps, input: ast::arg) {
     end(s);
 }
 
-fn print_ty_fn(s: ps, opt_proto: Option<ast::proto>, purity: ast::purity,
+fn print_ty_fn(s: ps,
+               opt_proto: Option<ast::proto>,
+               purity: ast::purity,
+               onceness: ast::Onceness,
                bounds: @~[ast::ty_param_bound],
                decl: ast::fn_decl, id: Option<ast::ident>,
                tps: Option<~[ast::ty_param]>,
                opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);
     word(s.s, fn_header_info_to_str(opt_self_ty, Some(purity), opt_proto,
-                                    ast::inherited));
+                                    onceness, ast::inherited));
     print_bounds(s, bounds);
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
     match tps { Some(tps) => print_type_params(s, tps), _ => () }
@@ -2062,6 +2069,7 @@ fn next_comment(s: ps) -> Option<comments::cmnt> {
 fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
                          opt_purity: Option<ast::purity>,
                          opt_p: Option<ast::proto>,
+                         onceness: ast::Onceness,
                          vis: ast::visibility) -> ~str {
 
     let mut s = visibility_qualified(vis, ~"");
@@ -2082,6 +2090,11 @@ fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
 
     str::push_str(&mut s, opt_proto_to_str(opt_p));
 
+    match onceness {
+        ast::Once => str::push_str(&mut s, ~"once "),
+        ast::Many => {}
+    }
+
     return s;
 }
 
@@ -2098,6 +2111,13 @@ pure fn purity_to_str(p: ast::purity) -> ~str {
       ast::unsafe_fn => ~"unsafe",
       ast::pure_fn => ~"pure",
       ast::extern_fn => ~"extern"
+    }
+}
+
+pure fn onceness_to_str(o: ast::Onceness) -> ~str {
+    match o {
+        ast::Once => ~"once",
+        ast::Many => ~"many"
     }
 }
 

@@ -93,6 +93,12 @@ impl Sub: combine {
         })
     }
 
+    fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness> {
+        self.lub().oncenesses(a, b).compare(b, || {
+            ty::terr_onceness_mismatch(expected_found(&self, a, b))
+        })
+    }
+
     fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
         self.lub().ret_styles(a, b).compare(b, || {
             ty::terr_ret_style_mismatch(expected_found(&self, a, b))

@@ -1310,7 +1310,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // block syntax lambdas; that is, lambdas without explicit
         // protos.
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
-        let (expected_tys, expected_purity, expected_proto) =
+        let (expected_tys,
+             expected_purity,
+             expected_proto,
+             expected_onceness) =
             match expected_sty {
               Some(ty::ty_fn(ref fn_ty)) => {
                 let {fn_ty, _} =
@@ -1320,10 +1323,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 (Some({inputs: fn_ty.sig.inputs,
                        output: fn_ty.sig.output}),
                  fn_ty.meta.purity,
-                 fn_ty.meta.proto)
+                 fn_ty.meta.proto,
+                 fn_ty.meta.onceness)
               }
               _ => {
-                (None, ast::impure_fn, ty::proto_vstore(ty::vstore_box))
+                (None,
+                 ast::impure_fn,
+                 ty::proto_vstore(ty::vstore_box),
+                 ast::Many)
               }
             };
 
@@ -1334,17 +1341,25 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // XXX: This is a hack.
         let ast_proto = ast_proto_opt.get_default(ast::proto_box);
         let ast_purity = ast::impure_fn;
+        let ast_onceness = ast::Many;
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx,
-                                               ast_proto, ast_purity, @~[],
-                                               decl, expected_tys, expr.span);
+        let mut fn_ty = astconv::ty_of_fn_decl(fcx,
+                                               fcx,
+                                               ast_proto,
+                                               ast_purity,
+                                               ast_onceness,
+                                               @~[],
+                                               decl,
+                                               expected_tys,
+                                               expr.span);
 
         // Patch up the function declaration, if necessary.
         match ast_proto_opt {
           None => {
             fn_ty.meta.purity = expected_purity;
             fn_ty.meta.proto = expected_proto;
+            fn_ty.meta.onceness = expected_onceness;
           }
           Some(_) => { }
         }
@@ -2802,6 +2817,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
             meta: FnMeta {purity: ast::impure_fn,
                           proto: ty::proto_vstore(ty::vstore_slice(
                               ty::re_bound(ty::br_anon(0)))),
+                          onceness: ast::Many,
                           bounds: @~[],
                           ret_style: ast::return_val},
             sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
@@ -2825,6 +2841,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     let fty = ty::mk_fn(tcx, FnTyBase {
         meta: FnMeta {purity: ast::impure_fn,
                       proto: ty::proto_bare,
+                      onceness: ast::Many,
                       bounds: @~[],
                       ret_style: ast::return_val},
         sig: FnSig {inputs: inputs,
