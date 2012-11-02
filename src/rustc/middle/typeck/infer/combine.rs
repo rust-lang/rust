@@ -46,6 +46,7 @@
 
 use to_str::ToStr;
 use ty::{FnTyBase, FnMeta, FnSig};
+use syntax::ast::Onceness;
 
 trait combine {
     fn infcx() -> infer_ctxt;
@@ -72,6 +73,7 @@ trait combine {
     fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto>;
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn purities(a: purity, b: purity) -> cres<purity>;
+    fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness>;
     fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
     fn vstores(vk: ty::terr_vstore_kind,
@@ -311,10 +313,14 @@ fn super_fn_metas<C:combine>(
     do self.protos(a_f.proto, b_f.proto).chain |p| {
         do self.ret_styles(a_f.ret_style, b_f.ret_style).chain |rs| {
             do self.purities(a_f.purity, b_f.purity).chain |purity| {
-                Ok(FnMeta {purity: purity,
-                           proto: p,
-                           bounds: a_f.bounds, // XXX: This is wrong!
-                           ret_style: rs})
+                do self.oncenesses(a_f.onceness, b_f.onceness).chain
+                        |onceness| {
+                    Ok(FnMeta {purity: purity,
+                               proto: p,
+                               onceness: onceness,
+                               bounds: a_f.bounds, // XXX: This is wrong!
+                               ret_style: rs})
+                }
             }
         }
     }

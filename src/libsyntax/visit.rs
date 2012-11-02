@@ -203,7 +203,7 @@ fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(*tt, e, v);
       },
-      ty_fn(_, _, bounds, decl) => {
+      ty_fn(_, _, _, bounds, decl) => {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
         visit_ty_param_bounds(bounds, e, v);
         v.visit_ty(decl.output, e, v);

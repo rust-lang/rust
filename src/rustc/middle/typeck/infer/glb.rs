@@ -1,6 +1,7 @@
 use combine::*;
 use lattice::*;
 use to_str::ToStr;
+use syntax::ast::{Many, Once};
 
 enum Glb = combine_fields;  // "greatest lower bound" (common subtype)
 
@@ -94,6 +95,13 @@ impl Glb: combine {
           (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
           (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
           (unsafe_fn, unsafe_fn) => Ok(unsafe_fn)
+        }
+    }
+
+    fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness> {
+        match (a, b) {
+            (Many, _) | (_, Many) => Ok(Many),
+            (Once, Once) => Ok(Once)
         }
     }
 

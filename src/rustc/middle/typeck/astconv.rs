@@ -208,7 +208,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
               _ => ()
             }
           }
-          ast::ty_fn(ast::proto_block, purity, ast_bounds, ast_fn_decl) => {
+          ast::ty_fn(ast::proto_block, purity, onceness, ast_bounds,
+                     ast_fn_decl) => {
             let new_proto;
             match vst {
                 ty::vstore_fixed(_) => {
@@ -223,9 +224,15 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
 
             // Run through the normal function type conversion process.
             let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, purity,
+            let fn_decl = ty_of_fn_decl(self,
+                                        rscope,
+                                        new_proto,
+                                        purity,
+                                        onceness,
                                         bounds,
-                                        ast_fn_decl, None, span);
+                                        ast_fn_decl,
+                                        None,
+                                        span);
             return ty::mk_fn(tcx, fn_decl);
           }
           _ => ()
@@ -309,10 +316,10 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, purity, ast_bounds, decl) => {
+      ast::ty_fn(proto, purity, onceness, ast_bounds, decl) => {
         let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
         let fn_decl = ty_of_fn_decl(self, rscope, proto, purity,
-                                    bounds, decl, None,
+                                    onceness, bounds, decl, None,
                                     ast_ty.span);
         ty::mk_fn(tcx, fn_decl)
       }
@@ -476,6 +483,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS,
     ast_proto: ast::proto,
     purity: ast::purity,
+    onceness: ast::Onceness,
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys,
@@ -508,6 +516,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
         FnTyBase {
             meta: FnMeta {purity: purity,
                           proto: proto,
+                          onceness: onceness,
                           bounds: bounds,
                           ret_style: decl.cf},
             sig: FnSig {inputs: input_tys,

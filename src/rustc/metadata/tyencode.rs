@@ -349,9 +349,17 @@ fn enc_purity(w: io::Writer, p: purity) {
     }
 }
 
+fn enc_onceness(w: io::Writer, o: Onceness) {
+    match o {
+        Once => w.write_char('o'),
+        Many => w.write_char('m')
+    }
+}
+
 fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
     enc_proto(w, cx, ft.meta.proto);
     enc_purity(w, ft.meta.purity);
+    enc_onceness(w, ft.meta.onceness);
     enc_bounds(w, cx, ft.meta.bounds);
     w.write_char('[');
     for ft.sig.inputs.each |arg| {
