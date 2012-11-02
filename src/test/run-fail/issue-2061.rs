@@ -1,3 +1,4 @@
+// xfail-test
 // error-pattern: ran out of stack
 struct R {
     b: int,
