@@ -287,7 +287,7 @@ impl Parser {
 
     pure fn id_to_str(id: ident) -> @~str { self.sess.interner.get(id) }
 
-    fn parse_ty_fn(purity: ast::purity) -> ty_ {
+    fn parse_ty_fn(purity: ast::purity, onceness: ast::Onceness) -> ty_ {
         let proto, bounds;
         if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
@@ -298,7 +298,17 @@ impl Parser {
             proto = self.parse_fn_ty_proto();
             bounds = self.parse_optional_ty_param_bounds();
         };
-        ty_fn(proto, purity, bounds, self.parse_ty_fn_decl())
+        ty_fn(proto, purity, onceness, bounds, self.parse_ty_fn_decl())
+    }
+
+    fn parse_ty_fn_with_onceness(purity: ast::purity) -> ty_ {
+        let onceness = self.parse_optional_onceness();
+        self.parse_ty_fn(purity, onceness)
+    }
+
+    fn parse_ty_fn_with_purity_and_onceness() -> ty_ {
+        let purity = self.parse_optional_purity();
+        self.parse_ty_fn_with_onceness(purity)
     }
 
     fn parse_ty_fn_decl() -> fn_decl {
@@ -526,15 +536,18 @@ impl Parser {
             let region = self.parse_region_with_sep();
             let mt = self.parse_mt();
             ty_rptr(region, mt)
+        } else if self.eat_keyword(~"once") {
+            self.parse_ty_fn(ast::impure_fn, ast::Once)
         } else if self.eat_keyword(~"pure") {
-            self.parse_ty_fn(ast::pure_fn)
+            self.parse_ty_fn_with_onceness(ast::pure_fn)
         } else if self.eat_keyword(~"unsafe") {
-            self.parse_ty_fn(ast::unsafe_fn)
+            self.parse_ty_fn_with_onceness(ast::unsafe_fn)
         } else if self.is_keyword(~"fn") {
-            self.parse_ty_fn(ast::impure_fn)
+            self.parse_ty_fn_with_onceness(ast::impure_fn)
         } else if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
-            ty_fn(proto_bare, ast::impure_fn, @~[], self.parse_ty_fn_decl())
+            ty_fn(proto_bare, ast::impure_fn, ast::Many, @~[],
+                  self.parse_ty_fn_decl())
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
@@ -2273,6 +2286,20 @@ impl Parser {
         @{id: self.get_id(), node: ty_path(
             ident_to_path(copy self.last_span, i),
             self.get_id()), span: self.last_span}
+    }
+
+    fn parse_optional_purity() -> ast::purity {
+        if self.eat_keyword(~"pure") {
+            ast::pure_fn
+        } else if self.eat_keyword(~"unsafe") {
+            ast::unsafe_fn
+        } else {
+            ast::impure_fn
+        }
+    }
+
+    fn parse_optional_onceness() -> ast::Onceness {
+        if self.eat_keyword(~"once") { ast::Once } else { ast::Many }
     }
 
     fn parse_optional_ty_param_bounds() -> @~[ty_param_bound] {

@@ -427,6 +427,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"if", ~"impl",
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",
+        ~"once",
         ~"priv", ~"pub", ~"pure",
         ~"ref", ~"return",
         ~"struct",

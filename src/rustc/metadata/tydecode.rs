@@ -387,6 +387,14 @@ fn parse_purity(c: char) -> purity {
     }
 }
 
+fn parse_onceness(c: char) -> ast::Onceness {
+    match c {
+        'o' => ast::Once,
+        'm' => ast::Many,
+        _ => fail ~"parse_onceness: bad onceness"
+    }
+}
+
 fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
     {mode: parse_mode(st),
      ty: parse_ty(st, conv)}
@@ -406,6 +414,7 @@ fn parse_mode(st: @pstate) -> ast::mode {
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     let proto = parse_proto(st);
     let purity = parse_purity(next(st));
+    let onceness = parse_onceness(next(st));
     let bounds = parse_bounds(st, conv);
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
@@ -418,6 +427,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     return FnTyBase {
         meta: FnMeta {purity: purity,
                       proto: proto,
+                      onceness: onceness,
                       bounds: bounds,
                       ret_style: ret_style},
         sig: FnSig {inputs: inputs,

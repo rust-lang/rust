@@ -19,7 +19,8 @@ use syntax::codemap;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::print::pprust::{path_to_str, proto_to_str,
-                            mode_to_str, purity_to_str};
+                            mode_to_str, purity_to_str,
+                            onceness_to_str};
 use syntax::{ast, ast_util};
 use syntax::ast_map;
 
@@ -266,14 +267,24 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         };
         modestr + ty_to_str(cx, ty)
     }
-    fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ty::fn_proto,
+    fn fn_to_str(cx: ctxt,
+                 purity: ast::purity,
+                 proto: ty::fn_proto,
+                 onceness: ast::Onceness,
                  ident: Option<ast::ident>,
-                 inputs: ~[arg], output: t, cf: ast::ret_style) -> ~str {
+                 inputs: ~[arg],
+                 output: t,
+                 cf: ast::ret_style) -> ~str {
         let mut s;
 
         s = match purity {
-          ast::impure_fn => ~"",
-          _ => purity_to_str(purity) + ~" "
+            ast::impure_fn => ~"",
+            _ => purity_to_str(purity) + ~" "
+        };
+
+        s += match onceness {
+            ast::Many => ~"",
+            ast::Once => onceness_to_str(onceness) + ~" "
         };
 
         s += ~"fn";
@@ -298,8 +309,13 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         return fn_to_str(
-            cx, m.fty.meta.purity, m.fty.meta.proto, Some(m.ident),
-            m.fty.sig.inputs, m.fty.sig.output,
+            cx,
+            m.fty.meta.purity,
+            m.fty.meta.proto,
+            m.fty.meta.onceness,
+            Some(m.ident),
+            m.fty.sig.inputs,
+            m.fty.sig.output,
             m.fty.meta.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
@@ -347,8 +363,14 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         ~"(" + str::connect(strs, ~",") + ~")"
       }
       ty_fn(ref f) => {
-        fn_to_str(cx, f.meta.purity, f.meta.proto, None, f.sig.inputs,
-                  f.sig.output, f.meta.ret_style)
+        fn_to_str(cx,
+                  f.meta.purity,
+                  f.meta.proto,
+                  f.meta.onceness,
+                  None,
+                  f.sig.inputs,
+                  f.sig.output,
+                  f.meta.ret_style)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_param({idx: id, _}) => {
