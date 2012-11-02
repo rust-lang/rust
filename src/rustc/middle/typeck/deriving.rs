@@ -11,47 +11,112 @@ use syntax::ast::item_impl;
 use syntax::ast::node_id;
 use syntax::ast::self_ty_;
 use syntax::ast::trait_ref;
-use syntax::ast_util::def_id_of_def;
+use syntax::ast_util::{def_id_of_def, dummy_sp};
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, visit_crate};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty;
-use middle::ty::{substs, ty_class, ty_enum, ty_param_bounds_and_ty};
+use middle::ty::{DerivedFieldInfo, substs, ty_class, ty_enum};
+use middle::ty::{ty_param_bounds_and_ty};
 use /*middle::typeck::*/check::method;
+use /*middle::typeck::*/check::vtable;
 use /*middle::typeck::*/infer::infer_ctxt;
+use /*middle::typeck::*/vtable::{LocationInfo, VtableContext};
+use util::ppaux;
+
+struct MethodMatch {
+    method_def_id: def_id,
+    type_parameter_substitutions: @~[ty::t],
+    vtable_result: Option<vtable_res>
+}
 
 struct DerivingChecker {
-    crate_context: @crate_ctxt,
-    inference_context: infer_ctxt
+    crate_context: @crate_ctxt
 }
 
 fn DerivingChecker_new(crate_context: @crate_ctxt) -> DerivingChecker {
     DerivingChecker {
         crate_context: crate_context,
-        inference_context: infer::new_infer_ctxt(crate_context.tcx)
     }
+}
+
+struct TyParamSubstsAndVtableResult {
+    type_parameter_substitutions: @~[ty::t],
+    vtable_result: Option<vtable_res>
 }
 
 impl DerivingChecker {
     /// Matches one substructure type against an implementation.
     fn match_impl_method(impl_info: @Impl,
                          substructure_type: ty::t,
-                         method_info: @MethodInfo) -> bool {
-        // XXX: Generics and regions are not handled properly.
+                         method_info: @MethodInfo,
+                         span: span) ->
+                         Option<TyParamSubstsAndVtableResult> {
         let tcx = self.crate_context.tcx;
-        let impl_self_ty = ty::lookup_item_type(tcx, impl_info.did).ty;
+
+        let impl_self_tpbt = ty::lookup_item_type(tcx, impl_info.did);
         let transformed_type = method::transform_self_type_for_method(
-            tcx, None, impl_self_ty, method_info.self_type);
-        return infer::can_mk_subty(self.inference_context,
-                                   substructure_type,
-                                   transformed_type).is_ok();
+            tcx, None, impl_self_tpbt.ty, method_info.self_type);
+
+        let inference_context = infer::new_infer_ctxt(self.crate_context.tcx);
+        let substs = {
+            self_r: None,
+            self_ty: None,
+            tps: inference_context.next_ty_vars(impl_self_tpbt.bounds.len())
+        };
+        let transformed_type = ty::subst(
+            self.crate_context.tcx, &substs, transformed_type);
+
+        debug!("(matching impl method) substructure type %s, transformed \
+                type %s, subst tps %u",
+               ppaux::ty_to_str(self.crate_context.tcx, substructure_type),
+               ppaux::ty_to_str(self.crate_context.tcx, transformed_type),
+               substs.tps.len());
+
+        if !infer::mk_subty(inference_context,
+                            true,
+                            ast_util::dummy_sp(),
+                            substructure_type,
+                            transformed_type).is_ok() {
+            return None;
+        }
+
+        // Get the vtables.
+        let vtable_result;
+        if substs.tps.len() == 0 {
+            vtable_result = None;
+        } else {
+            let vcx = VtableContext {
+                ccx: self.crate_context,
+                infcx: inference_context
+            };
+            let location_info = LocationInfo {
+                span: span,
+                id: impl_info.did.node
+            };
+            vtable_result = Some(vtable::lookup_vtables(&vcx,
+                                                        &location_info,
+                                                        impl_self_tpbt.bounds,
+                                                        &substs,
+                                                        false,
+                                                        false));
+        }
+
+        // Extract the type parameter substitutions.
+        let type_parameter_substitutions = @substs.tps.map(|ty_var|
+            inference_context.resolve_type_vars_if_possible(*ty_var));
+
+        Some(TyParamSubstsAndVtableResult {
+            type_parameter_substitutions: type_parameter_substitutions,
+            vtable_result: vtable_result
+        })
     }
 
     fn check_deriving_for_substructure_type(substructure_type: ty::t,
                                             trait_ref: @trait_ref,
                                             impl_span: span) ->
-                                            Option<def_id> {
+                                            Option<MethodMatch> {
         let tcx = self.crate_context.tcx;
         let sess = tcx.sess;
         let coherence_info = self.crate_context.coherence_info;
@@ -64,12 +129,25 @@ impl DerivingChecker {
             Some(impls) => {
                 // Try to unify each of these impls with the substructure
                 // type.
-                for impls.each |impl_info| {
-                    for impl_info.methods.each |method_info| {
-                        if self.match_impl_method(*impl_info,
-                                                  substructure_type,
-                                                  *method_info) {
-                            return Some(method_info.did);
+                //
+                // NB: Using range to avoid a recursive-use-of-dvec error.
+                for uint::range(0, impls.len()) |i| {
+                    let impl_info = impls[i];
+                    for uint::range(0, impl_info.methods.len()) |j| {
+                        let method_info = impl_info.methods[j];
+                        match self.match_impl_method(impl_info,
+                                                     substructure_type,
+                                                     method_info,
+                                                     trait_ref.path.span) {
+                            Some(move result) => {
+                                return Some(MethodMatch {
+                                    method_def_id: method_info.did,
+                                    type_parameter_substitutions:
+                                        result.type_parameter_substitutions,
+                                    vtable_result: result.vtable_result
+                                });
+                            }
+                            None => {}  // Continue.
                         }
                     }
                 }
@@ -91,8 +169,15 @@ impl DerivingChecker {
             match self.check_deriving_for_substructure_type(field_type,
                                                             trait_ref,
                                                             impl_span) {
-                Some(method_target_def_id) => {
-                    field_info.push(method_static(method_target_def_id));
+                Some(method_match) => {
+                    field_info.push(DerivedFieldInfo {
+                        method_origin:
+                            method_static(method_match.method_def_id),
+                        type_parameter_substitutions:
+                            method_match.type_parameter_substitutions,
+                        vtable_result:
+                            method_match.vtable_result
+                    });
                 }
                 None => {
                     let trait_str = pprust::path_to_str(
@@ -127,9 +212,15 @@ impl DerivingChecker {
             for enum_variant_info.args.eachi |i, variant_arg_type| {
                 match self.check_deriving_for_substructure_type(
                         *variant_arg_type, trait_ref, impl_span) {
-                    Some(method_target_def_id) => {
-                        variant_methods.push(method_static(
-                            method_target_def_id));
+                    Some(method_match) => {
+                        variant_methods.push(DerivedFieldInfo {
+                            method_origin:
+                                method_static(method_match.method_def_id),
+                            type_parameter_substitutions:
+                                method_match.type_parameter_substitutions,
+                            vtable_result:
+                                method_match.vtable_result
+                        });
                     }
                     None => {
                         let trait_str = pprust::path_to_str(

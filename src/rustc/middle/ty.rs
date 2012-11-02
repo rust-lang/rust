@@ -203,6 +203,7 @@ export trait_supertraits;
 export AutoAdjustment;
 export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
 export DerivedMethodInfo;
+export DerivedFieldInfo;
 
 // Data types
 
@@ -341,6 +342,12 @@ struct DerivedMethodInfo {
     containing_impl: ast::def_id
 }
 
+struct DerivedFieldInfo {
+    method_origin: typeck::method_origin,
+    type_parameter_substitutions: @~[ty::t],
+    vtable_result: Option<typeck::vtable_res>
+}
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -386,13 +393,11 @@ type ctxt =
       legacy_boxed_traits: HashMap<node_id, ()>,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
-      deriving_struct_methods: HashMap<ast::def_id,
-                                       @~[typeck::method_origin]>,
+      deriving_struct_methods: HashMap<ast::def_id, @~[DerivedFieldInfo]>,
 
       // The outer vector here describes each enum variant, while the inner
       // nested vector describes each enum variant argument.
-      deriving_enum_methods: HashMap<ast::def_id,
-                                     @~[@~[typeck::method_origin]]>,
+      deriving_enum_methods: HashMap<ast::def_id, @~[@~[DerivedFieldInfo]]>,
 
       // A mapping from the def ID of a method that was automatically derived
       // to information about it.

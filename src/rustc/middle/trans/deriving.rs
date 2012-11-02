@@ -13,7 +13,8 @@ use middle::trans::common;
 use middle::trans::common::{C_bool, C_int, T_ptr, block, crate_ctxt};
 use middle::trans::expr::SaveIn;
 use middle::trans::type_of::type_of;
-use middle::typeck::{method_origin, method_static};
+use middle::ty::DerivedFieldInfo;
+use middle::typeck::method_static;
 use syntax::ast;
 use syntax::ast::{def_id, ident, node_id, ty_param};
 use syntax::ast_map::path;
@@ -229,7 +230,7 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
 }
 
 fn call_substructure_method(bcx: block,
-                            derived_method_info: &method_origin,
+                            derived_field_info: &DerivedFieldInfo,
                             self_ty: ty::t,
                             llselfval: ValueRef,
                             llotherval: ValueRef) -> block {
@@ -237,15 +238,29 @@ fn call_substructure_method(bcx: block,
     let ccx = fcx.ccx;
 
     let target_method_def_id;
-    match *derived_method_info {
+    match derived_field_info.method_origin {
         method_static(did) => target_method_def_id = did,
         _ => fail ~"derived method didn't resolve to a static method"
     }
 
-    let fn_expr_ty = ty::lookup_item_type(ccx.tcx, target_method_def_id).ty;
+    let fn_expr_tpbt = ty::lookup_item_type(ccx.tcx, target_method_def_id);
+    debug!("(calling substructure method) substructure method has %u \
+            parameter(s), vtable result is %?",
+           fn_expr_tpbt.bounds.len(),
+           derived_field_info.vtable_result);
 
-    // XXX: Cross-crate won't work!
-    let llfn = get_item_val(ccx, target_method_def_id.node);
+    // Get the substructure method we need to call. This may involve
+    // code generation in the case of generics, default methods, or cross-
+    // crate inlining.
+    let fn_data = callee::trans_fn_ref_with_vtables(bcx,
+                                                    target_method_def_id,
+                                                    0,     // ref id
+                                                    *derived_field_info.
+                                                 type_parameter_substitutions,
+                                                    derived_field_info.
+                                                        vtable_result);
+    let llfn = fn_data.llfn;
+
     let cb: &fn(block) -> Callee = |block| {
         Callee {
             bcx: block,
@@ -260,7 +275,7 @@ fn call_substructure_method(bcx: block,
 
     callee::trans_call_inner(bcx,
                              None,
-                             fn_expr_ty,
+                             fn_expr_tpbt.ty,
                              ty::mk_bool(ccx.tcx),
                              cb,
                              ArgVals(~[llotherval]),
