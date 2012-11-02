@@ -48,11 +48,13 @@ pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  */
 struct TcpSocketBuf {
     data: @TcpBufferedSocketData,
+    mut end_of_stream: bool,
 }
 
 pub fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
     TcpSocketBuf {
-        data: data
+        data: data,
+        end_of_stream: false
     }
 }
 
@@ -782,6 +784,7 @@ impl TcpSocketBuf: io::Reader {
                 let err_data = read_result.get_err();
 
                 if err_data.err_name == ~"EOF" {
+                    self.end_of_stream = true;
                     break;
                 } else {
                     debug!("ERROR sock_buf as io::reader.read err %? %?",
@@ -808,13 +811,21 @@ impl TcpSocketBuf: io::Reader {
     }
     fn read_byte() -> int {
         let mut bytes = ~[0];
-        if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
+        if self.read(bytes, 1u) == 0 { 
+            if self.end_of_stream {
+                -1 
+            } else {
+                fail
+            }
+        } else { 
+            bytes[0] as int 
+        }
     }
     fn unread_byte(amt: int) {
         self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
-        false // noop
+        self.end_of_stream
     }
     fn seek(dist: int, seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
@@ -871,7 +882,8 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) unsafe {
         uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
     };
     core::comm::recv(closed_po);
-    log(debug, fmt!("about to free socket_data at %?", socket_data));
+    //the line below will most likely crash
+    //log(debug, fmt!("about to free socket_data at %?", socket_data));
     rustrt::rust_uv_current_kernel_free(stream_handle_ptr
                                        as *libc::c_void);
     log(debug, ~"exiting dtor for tcp_socket");
