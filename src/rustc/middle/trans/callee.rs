@@ -153,7 +153,7 @@ fn trans_fn_ref_with_vtables_to_callee(bcx: block,
 fn trans_fn_ref_with_vtables(
     bcx: block,            //
     def_id: ast::def_id,   // def id of fn
-    ref_id: ast::node_id,  // node id of use of fn
+    ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
     type_params: ~[ty::t], // values for fn's ty params
     vtables: Option<typeck::vtable_res>)
     -> FnData
