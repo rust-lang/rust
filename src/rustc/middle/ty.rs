@@ -3554,6 +3554,29 @@ fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     }
 }
 
+/// Returns the def ID of the constructor for the given tuple-like struct, or
+/// None if the struct is not tuple-like. Fails if the given def ID does not
+/// refer to a struct at all.
+fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
+    if struct_did.crate != ast::local_crate {
+        // XXX: Cross-crate functionality.
+        cx.sess.unimpl(~"constructor ID of cross-crate tuple structs");
+    }
+
+    match cx.items.find(struct_did.node) {
+        Some(ast_map::node_item(item, _)) => {
+            match item.node {
+                ast::item_class(struct_def, _) => {
+                    struct_def.ctor_id.map(|ctor_id|
+                        ast_util::local_def(*ctor_id))
+                }
+                _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+            }
+        }
+        _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+    }
+}
+
 // Enum information
 type variant_info = @{args: ~[t], ctor_ty: t, name: ast::ident,
                       id: ast::def_id, disr_val: int};
