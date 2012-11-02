@@ -511,9 +511,9 @@ pub fn try_recv<T: Send, Tbuffer: Send>(p: RecvPacketBuffered<T, Tbuffer>)
 /// Returns true if messages are available.
 pub pure fn peek<T: Send, Tb: Send>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
-      Empty => false,
+      Empty | Terminated => false,
       Blocked => fail ~"peeking on blocked packet",
-      Full | Terminated => true
+      Full => true
     }
 }
 
@@ -1233,5 +1233,17 @@ pub mod test {
         oneshot::client::send(move c, ());
 
         recv_one(move p)
+    }
+
+    #[test]
+    fn test_peek_terminated() {
+        let (chan, port): (Chan<int>, Port<int>) = stream();
+
+        {
+            // Destroy the channel
+            let _chan = move chan;
+        }
+
+        assert !port.peek();
     }
 }
