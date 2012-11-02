@@ -123,70 +123,102 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    // Lookup the enum and variant def ids:
-    let v_def = lookup_def(pcx.fcx, path.span, pat.id);
-    let v_def_ids = ast_util::variant_def_ids(v_def);
-
-    // Assign the pattern the type of the *enum*, not the variant.
-    let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
-    instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
-                     pcx.block_region);
+    let arg_types, kind_name;
 
     // structure_of requires type variables to be resolved.
     // So when we pass in <expected>, it's an error if it
     // contains type variables.
 
-    // Take the enum type params out of `expected`.
+    // Check to see whether this is an enum or a struct.
     match structure_of(pcx.fcx, pat.span, expected) {
-      ty::ty_enum(_, ref expected_substs) => {
-        // check that the type of the value being matched is a subtype
-        // of the type of the pattern:
-        let pat_ty = fcx.node_ty(pat.id);
-        demand::suptype(fcx, pat.span, pat_ty, expected);
+        ty::ty_enum(_, ref expected_substs) => {
+            // Lookup the enum and variant def ids:
+            let v_def = lookup_def(pcx.fcx, path.span, pat.id);
+            let v_def_ids = ast_util::variant_def_ids(v_def);
 
-        // Get the expected types of the arguments.
-        let arg_types = {
-            let vinfo =
-                ty::enum_variant_with_id(
-                    tcx, v_def_ids.enm, v_def_ids.var);
-            vinfo.args.map(|t| { ty::subst(tcx, expected_substs, *t) })
-        };
-        let arg_len = arg_types.len(), subpats_len = match subpats {
-            None => arg_len,
-            Some(ps) => ps.len()
-        };
-        if arg_len > 0 {
-            // N-ary variant.
-            if arg_len != subpats_len {
-                let s = fmt!("this pattern has %u field%s, but the \
-                              corresponding variant has %u field%s",
-                             subpats_len,
-                             if subpats_len == 1u { ~"" } else { ~"s" },
-                             arg_len,
-                             if arg_len == 1u { ~"" } else { ~"s" });
-                tcx.sess.span_fatal(pat.span, s);
-            }
+            // Assign the pattern the type of the *enum*, not the variant.
+            let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
+            instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
+                             pcx.block_region);
 
-            do subpats.iter() |pats| {
-                for vec::each2(*pats, arg_types) |subpat, arg_ty| {
-                  check_pat(pcx, *subpat, *arg_ty);
-                }
+            // check that the type of the value being matched is a subtype
+            // of the type of the pattern:
+            let pat_ty = fcx.node_ty(pat.id);
+            demand::suptype(fcx, pat.span, pat_ty, expected);
+
+            // Get the expected types of the arguments.
+            arg_types = {
+                let vinfo =
+                    ty::enum_variant_with_id(
+                        tcx, v_def_ids.enm, v_def_ids.var);
+                vinfo.args.map(|t| { ty::subst(tcx, expected_substs, *t) })
             };
-        } else if subpats_len > 0 {
-            tcx.sess.span_fatal
-                (pat.span, fmt!("this pattern has %u field%s, \
-                                 but the corresponding variant has no fields",
-                                subpats_len,
-                                if subpats_len == 1u { ~"" }
-                                else { ~"s" }));
+
+            kind_name = "variant";
         }
-      }
-      _ => {
+        ty::ty_class(struct_def_id, ref expected_substs) => {
+            // Assign the pattern the type of the struct.
+            let struct_tpt = ty::lookup_item_type(tcx, struct_def_id);
+            instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id,
+                             pcx.block_region);
+
+            // Check that the type of the value being matched is a subtype of
+            // the type of the pattern.
+            let pat_ty = fcx.node_ty(pat.id);
+            demand::suptype(fcx, pat.span, pat_ty, expected);
+
+            // Get the expected types of the arguments.
+            let class_fields = ty::class_items_as_fields(
+                tcx, struct_def_id, expected_substs);
+            arg_types = class_fields.map(|field| field.mt.ty);
+
+            kind_name = "structure";
+        }
+        _ => {
+            tcx.sess.span_fatal(
+                pat.span,
+                fmt!("mismatched types: expected enum or structure but \
+                      found `%s`",
+                     fcx.infcx().ty_to_str(expected)));
+        }
+    }
+
+    let arg_len = arg_types.len();
+
+    // Count the number of subpatterns.
+    let subpats_len;
+    match subpats {
+        None => subpats_len = arg_len,
+        Some(subpats) => subpats_len = subpats.len()
+    }
+
+    if arg_len > 0u {
+        // N-ary variant.
+        if arg_len != subpats_len {
+            let s = fmt!("this pattern has %u field%s, but the corresponding \
+                          %s has %u field%s",
+                         subpats_len,
+                         if subpats_len == 1u { ~"" } else { ~"s" },
+                         kind_name,
+                         arg_len,
+                         if arg_len == 1u { ~"" } else { ~"s" });
+            // XXX: This should not be fatal.
+            tcx.sess.span_fatal(pat.span, s);
+        }
+
+        do subpats.iter() |pats| {
+            for vec::each2(*pats, arg_types) |subpat, arg_ty| {
+              check_pat(pcx, *subpat, *arg_ty);
+            }
+        };
+    } else if subpats_len > 0u {
         tcx.sess.span_fatal
-            (pat.span,
-             fmt!("mismatched types: expected enum but found `%s`",
-                  fcx.infcx().ty_to_str(expected)));
-      }
+            (pat.span, fmt!("this pattern has %u field%s, but the \
+                             corresponding %s has no fields",
+                            subpats_len,
+                            if subpats_len == 1u { ~"" }
+                            else { ~"s" },
+                            kind_name));
     }
 }
 

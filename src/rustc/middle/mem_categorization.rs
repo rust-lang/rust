@@ -162,6 +162,8 @@ impl ptr_kind : cmp::Eq {
 // structure accessible without a dereference":
 enum comp_kind {
     comp_tuple,                  // elt in a tuple
+    comp_anon_field,             // anonymous field (in e.g.
+                                 // struct Foo(int, int);
     comp_variant(ast::def_id),   // internals to a variant of given enum
     comp_field(ast::ident,       // name of field
                ast::mutability), // declared mutability of field
@@ -175,6 +177,12 @@ impl comp_kind : cmp::Eq {
             comp_tuple => {
                 match (*other) {
                     comp_tuple => true,
+                    _ => false
+                }
+            }
+            comp_anon_field => {
+                match (*other) {
+                    comp_anon_field => true,
                     _ => false
                 }
             }
@@ -775,6 +783,14 @@ impl &mem_categorization_ctxt {
           ty: self.tcx.ty(elt)}
     }
 
+    fn cat_anon_struct_field<N: ast_node>(elt: N, cmt: cmt) -> cmt {
+        @{id: elt.id(), span: elt.span(),
+          cat: cat_comp(cmt, comp_anon_field),
+          lp: cmt.lp.map(|l| @lp_comp(*l, comp_anon_field)),
+          mutbl: cmt.mutbl, // imm iff in an immutable context
+          ty: self.tcx.ty(elt)}
+    }
+
     fn cat_method_ref(expr: @ast::expr, expr_ty: ty::t) -> cmt {
         @{id:expr.id, span:expr.span,
           cat:cat_special(sk_method), lp:None,
@@ -834,16 +850,26 @@ impl &mem_categorization_ctxt {
             // variant(*)
           }
           ast::pat_enum(_, Some(subpats)) => {
-            // variant(x, y, z)
-            let enum_did = match self.tcx.def_map.find(pat.id) {
-              Some(ast::def_variant(enum_did, _)) => enum_did,
-              e => tcx.sess.span_bug(pat.span,
-                                     fmt!("resolved to %?, not variant", e))
-            };
-
-            for subpats.each |subpat| {
-                let subcmt = self.cat_variant(*subpat, enum_did, cmt);
-                self.cat_pattern(subcmt, *subpat, op);
+            match self.tcx.def_map.find(pat.id) {
+                Some(ast::def_variant(enum_did, _)) => {
+                    // variant(x, y, z)
+                    for subpats.each |subpat| {
+                        let subcmt = self.cat_variant(*subpat, enum_did, cmt);
+                        self.cat_pattern(subcmt, *subpat, op);
+                    }
+                }
+                Some(ast::def_class(*)) => {
+                    for subpats.each |subpat| {
+                        let cmt_field = self.cat_anon_struct_field(*subpat,
+                                                                   cmt);
+                        self.cat_pattern(cmt_field, *subpat, op);
+                    }
+                }
+                _ => {
+                    self.tcx.sess.span_bug(
+                        pat.span,
+                        ~"enum pattern didn't resolve to enum or struct");
+                }
             }
           }
 
@@ -934,6 +960,7 @@ impl &mem_categorization_ctxt {
           comp_field(fld, _) => self.tcx.sess.str_of(fld),
           comp_index(*) => ~"[]",
           comp_tuple => ~"()",
+          comp_anon_field => ~"<anonymous field>",
           comp_variant(_) => ~"<enum>"
         }
     }
@@ -986,6 +1013,7 @@ impl &mem_categorization_ctxt {
           }
           cat_comp(_, comp_field(*)) => mut_str + ~" field",
           cat_comp(_, comp_tuple) => ~"tuple content",
+          cat_comp(_, comp_anon_field) => ~"anonymous field",
           cat_comp(_, comp_variant(_)) => ~"enum content",
           cat_comp(_, comp_index(t, _)) => {
             match ty::get(t).sty {
