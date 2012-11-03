@@ -78,7 +78,7 @@ use typeck::infer::{resolve_type, force_tvar};
 use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use syntax::parse::token::special_idents;
-use vtable::LocationInfo;
+use vtable::{LocationInfo, VtableContext};
 
 use std::map::HashMap;
 
@@ -865,20 +865,20 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-fn impl_self_ty(fcx: @fn_ctxt,
+fn impl_self_ty(vcx: &VtableContext,
                 location_info: &LocationInfo, // (potential) receiver for
                                               // this impl
                 did: ast::def_id) -> ty_param_substs_and_ty {
-    let tcx = fcx.ccx.tcx;
+    let tcx = vcx.tcx();
 
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
-        let region_param = fcx.tcx().region_paramd_items.find(did.node);
+        let region_param = tcx.region_paramd_items.find(did.node);
         match tcx.items.find(did.node) {
           Some(ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                   _}, _)) => {
             {n_tps: ts.len(),
              region_param: region_param,
-             raw_ty: fcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
+             raw_ty: vcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
           }
           Some(ast_map::node_item(@{node: ast::item_class(_, ts),
                                     id: class_id, _},_)) => {
@@ -904,12 +904,12 @@ fn impl_self_ty(fcx: @fn_ctxt,
     };
 
     let self_r = if region_param.is_some() {
-        Some(fcx.infcx().next_region_var(location_info.span,
+        Some(vcx.infcx.next_region_var(location_info.span,
                                          location_info.id))
     } else {
         None
     };
-    let tps = fcx.infcx().next_ty_vars(n_tps);
+    let tps = vcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: None, tps: tps};
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
