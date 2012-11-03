@@ -491,8 +491,9 @@ impl LookupContext {
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
+        let location_info = &vtable::location_info_for_expr(self.self_expr);
         let {substs: impl_substs, ty: impl_ty} =
-            impl_self_ty(self.fcx, self.self_expr, impl_info.did);
+            impl_self_ty(self.fcx, location_info, impl_info.did);
 
         let (impl_ty, impl_substs) =
             self.create_rcvr_ty_and_substs_for_method(

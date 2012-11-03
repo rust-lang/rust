@@ -78,6 +78,7 @@ use typeck::infer::{resolve_type, force_tvar};
 use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use syntax::parse::token::special_idents;
+use vtable::LocationInfo;
 
 use std::map::HashMap;
 
@@ -865,7 +866,8 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
 fn impl_self_ty(fcx: @fn_ctxt,
-                expr: @ast::expr, // (potential) receiver for this impl
+                location_info: &LocationInfo, // (potential) receiver for
+                                              // this impl
                 did: ast::def_id) -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
@@ -902,7 +904,8 @@ fn impl_self_ty(fcx: @fn_ctxt,
     };
 
     let self_r = if region_param.is_some() {
-        Some(fcx.infcx().next_region_var(expr.span, expr.id))
+        Some(fcx.infcx().next_region_var(location_info.span,
+                                         location_info.id))
     } else {
         None
     };
