@@ -258,9 +258,15 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                                         *methods, |x| fld.fold_method(*x))))
           }
           item_trait(tps, traits, methods) => {
+              let methods = do methods.map |method| {
+                  match *method {
+                      required(*) => copy *method,
+                      provided(method) => provided(fld.fold_method(method))
+                  }
+              };
             item_trait(fold_ty_params(tps, fld),
                        vec::map(traits, |p| fold_trait_ref(*p, fld)),
-                       /* FIXME (#2543) */ copy methods)
+                       move methods)
           }
       item_mac(m) => {
         // FIXME #2888: we might actually want to do something here.
