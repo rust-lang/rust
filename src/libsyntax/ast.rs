@@ -23,36 +23,6 @@ macro_rules! interner_key (
 // implemented.
 struct ident { repr: uint }
 
-#[cfg(stage0)]
-impl ident: Serializable {
-    fn serialize<S: Serializer>(&self, s: &S) {
-        let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
-        } {
-            None => fail ~"serialization: TLS interner not set up",
-            Some(intr) => intr
-        };
-
-        s.emit_owned_str(*(*intr).get(*self));
-    }
-}
-
-#[cfg(stage0)]
-impl ident: Deserializable {
-    static fn deserialize<D: Deserializer>(d: &D) -> ident {
-        let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
-        } {
-            None => fail ~"deserialization: TLS interner not set up",
-            Some(intr) => intr
-        };
-
-        (*intr).intern(@d.read_owned_str())
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<S: Serializer> ident: Serializable<S> {
     fn serialize(&self, s: &S) {
         let intr = match unsafe {
@@ -66,8 +36,6 @@ impl<S: Serializer> ident: Serializable<S> {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<D: Deserializer> ident: Deserializable<D> {
     static fn deserialize(d: &D) -> ident {
         let intr = match unsafe {

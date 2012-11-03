@@ -27,7 +27,6 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
 
-    #[cfg(stage1)] #[cfg(stage2)] #[cfg(stage3)]
     fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     fn atomic_xadd(dst: &mut int, src: int) -> int;
     fn atomic_xsub(dst: &mut int, src: int) -> int;
@@ -38,17 +37,6 @@ type rust_port_id = uint;
 
 type GlobalPtr = *libc::uintptr_t;
 
-// FIXME #3527: Remove once snapshots have atomic_cxchg
-#[cfg(stage0)]
-fn compare_and_swap(address: &mut libc::uintptr_t,
-                    oldval: libc::uintptr_t,
-                    newval: libc::uintptr_t) -> bool {
-    rustrt::rust_compare_and_swap_ptr(address, oldval, newval)
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
     let old = rusti::atomic_cxchg(address, oldval, newval);
     old == oldval

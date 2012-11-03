@@ -735,18 +735,6 @@ pure fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
-#[cfg(stage0)]
-impl &str : Eq {
-    #[inline(always)]
-    pure fn eq(other: & &str) -> bool {
-        eq_slice(self, (*other))
-    }
-    #[inline(always)]
-    pure fn ne(other: & &str) -> bool { !self.eq(other) }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl &str : Eq {
     #[inline(always)]
     pure fn eq(other: & &self/str) -> bool {
@@ -785,20 +773,6 @@ impl ~str : Ord {
     pure fn gt(other: &~str) -> bool { gt(self, (*other)) }
 }
 
-#[cfg(stage0)]
-impl &str : Ord {
-    #[inline(always)]
-    pure fn lt(other: & &str) -> bool { lt(self, (*other)) }
-    #[inline(always)]
-    pure fn le(other: & &str) -> bool { le(self, (*other)) }
-    #[inline(always)]
-    pure fn ge(other: & &str) -> bool { ge(self, (*other)) }
-    #[inline(always)]
-    pure fn gt(other: & &str) -> bool { gt(self, (*other)) }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl &str : Ord {
     #[inline(always)]
     pure fn lt(other: & &self/str) -> bool { lt(self, (*other)) }
@@ -2122,16 +2096,6 @@ impl ~str: Trimmable {
 
 #[cfg(notest)]
 pub mod traits {
-    #[cfg(stage0)]
-    impl ~str : Add<&str,~str> {
-        #[inline(always)]
-        pure fn add(rhs: & &str) -> ~str {
-            append(copy self, (*rhs))
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl ~str : Add<&str,~str> {
         #[inline(always)]
         pure fn add(rhs: & &self/str) -> ~str {
