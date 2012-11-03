@@ -1,6 +1,7 @@
 use check::{fn_ctxt, impl_self_ty};
 use infer::{resolve_type, resolve_and_force_all_but_regions,
                fixup_err_to_str};
+use syntax::codemap::span;
 use syntax::print::pprust;
 use result::{Result, Ok, Err};
 use util::common::indenter;
@@ -21,6 +22,14 @@ use util::common::indenter;
 // would require much more care, and this seems to work decently in
 // practice.)
 
+/// Location info records the span and ID of the expression or item that is
+/// responsible for this vtable instantiation. (This may not be an expression
+/// if the vtable instantiation is being performed as part of "deriving".)
+struct LocationInfo {
+    span: span,
+    id: ast::node_id
+}
+
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
         bs.any(|b| {
@@ -30,16 +39,16 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
 }
 
 fn lookup_vtables(fcx: @fn_ctxt,
-                  expr: @ast::expr,
+                  location_info: &LocationInfo,
                   bounds: @~[ty::param_bounds],
                   substs: &ty::substs,
                   allow_unsafe: bool,
                   is_early: bool) -> vtable_res
 {
-    debug!("lookup_vtables(expr=%?/%s, \
+    debug!("lookup_vtables(location_info=%?,
             # bounds=%?, \
             substs=%s",
-           expr.id, fcx.expr_to_str(expr),
+           location_info,
            bounds.len(),
            ty::substs_to_str(fcx.tcx(), substs));
     let _i = indenter();
@@ -51,12 +60,12 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                match lookup_vtable_covariant(fcx, expr, *ty, i_ty,
+                match lookup_vtable_covariant(fcx, location_info, *ty, i_ty,
                                               allow_unsafe, is_early) {
                     Some(vtable) => result.push(vtable),
                     None => {
                         fcx.tcx().sess.span_fatal(
-                            expr.span,
+                            location_info.span,
                             fmt!("failed to find an implementation of trait \
                                   %s for %s",
                                  ty_to_str(fcx.tcx(), i_ty),
@@ -72,13 +81,13 @@ fn lookup_vtables(fcx: @fn_ctxt,
     @result
 }
 
-fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
+fn fixup_substs(fcx: @fn_ctxt, location_info: &LocationInfo,
                 id: ast::def_id, substs: ty::substs,
                 is_early: bool) -> Option<ty::substs> {
     let tcx = fcx.ccx.tcx;
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
-    do fixup_ty(fcx, expr, t, is_early).map |t_f| {
+    do fixup_ty(fcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
           ty::ty_trait(_, substs_f, _) => substs_f,
           _ => fail ~"t_f should be a trait"
@@ -86,15 +95,15 @@ fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
     }
 }
 
-fn relate_trait_tys(fcx: @fn_ctxt, expr: @ast::expr,
+fn relate_trait_tys(fcx: @fn_ctxt, location_info: &LocationInfo,
                     exp_trait_ty: ty::t, act_trait_ty: ty::t) {
-    demand::suptype(fcx, expr.span, exp_trait_ty, act_trait_ty)
+    demand::suptype(fcx, location_info.span, exp_trait_ty, act_trait_ty)
 }
 
 // Look up the vtable to use when treating an item of type `t` as if it has
 // type `trait_ty`. This does allow subtraits.
 fn lookup_vtable_covariant(fcx: @fn_ctxt,
-                           expr: @ast::expr,
+                           location_info: &LocationInfo,
                            ty: ty::t,
                            trait_ty: ty::t,
                            allow_unsafe: bool,
@@ -108,7 +117,7 @@ fn lookup_vtable_covariant(fcx: @fn_ctxt,
     worklist.push(trait_ty);
     while worklist.len() > 0 {
         let trait_ty = worklist.pop();
-        let result = lookup_vtable_invariant(fcx, expr, ty, trait_ty,
+        let result = lookup_vtable_invariant(fcx, location_info, ty, trait_ty,
                                              allow_unsafe, is_early);
         if result.is_some() {
             return result;
@@ -136,7 +145,7 @@ fn lookup_vtable_covariant(fcx: @fn_ctxt,
                 }
             }
             _ => {
-                fcx.ccx.tcx.sess.impossible_case(expr.span,
+                fcx.ccx.tcx.sess.impossible_case(location_info.span,
                                                  "lookup_vtable_covariant: \
                                                   non-trait in worklist");
             }
@@ -149,7 +158,7 @@ fn lookup_vtable_covariant(fcx: @fn_ctxt,
 // Look up the vtable to use when treating an item of type `t` as if it has
 // type `trait_ty`. This does not allow subtraits.
 fn lookup_vtable_invariant(fcx: @fn_ctxt,
-                           expr: @ast::expr,
+                           location_info: &LocationInfo,
                            ty: ty::t,
                            trait_ty: ty::t,
                            allow_unsafe: bool,
@@ -162,11 +171,11 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
     let tcx = fcx.ccx.tcx;
     let (trait_id, trait_substs, trait_vstore) = match ty::get(trait_ty).sty {
         ty::ty_trait(did, substs, vstore) => (did, substs, vstore),
-        _ => tcx.sess.impossible_case(expr.span,
+        _ => tcx.sess.impossible_case(location_info.span,
                                       "lookup_vtable_invariant: \
                                        don't know how to handle a non-trait")
     };
-    let ty = match fixup_ty(fcx, expr, ty, is_early) {
+    let ty = match fixup_ty(fcx, location_info, ty, is_early) {
         Some(ty) => ty,
         None => {
             // fixup_ty can only fail if this is early resolution
@@ -194,13 +203,13 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                                     debug!("(checking vtable) @0 relating \
                                             ty to trait ty with did %?",
                                            idid);
-                                    relate_trait_tys(fcx, expr,
+                                    relate_trait_tys(fcx, location_info,
                                                      trait_ty, ity);
                                     return Some(vtable_param(n, n_bound));
                                 }
                             }
                             _ => tcx.sess.impossible_case(
-                                expr.span,
+                                location_info.span,
                                 "lookup_vtable_invariant: in loop, \
                                  don't know how to handle a non-trait ity")
                         }
@@ -214,17 +223,17 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
             debug!("(checking vtable) @1 relating ty to trait ty with did %?",
                    did);
 
-            relate_trait_tys(fcx, expr, trait_ty, ty);
+            relate_trait_tys(fcx, location_info, trait_ty, ty);
             if !allow_unsafe && !is_early {
                 for vec::each(*ty::trait_methods(tcx, did)) |m| {
                     if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                         tcx.sess.span_err(
-                            expr.span,
+                            location_info.span,
                             ~"a boxed trait with self types may not be \
                               passed as a bounded type");
                     } else if (*m.tps).len() > 0u {
                         tcx.sess.span_err(
-                            expr.span,
+                            location_info.span,
                             ~"a boxed trait with generic methods may not \
                               be passed as a bounded type");
 
@@ -300,10 +309,11 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                             // to some_trait.  If not, then we try the next
                             // impl.
                             let {substs: substs, ty: for_ty} =
-                                impl_self_ty(fcx, expr, im.did);
+                                impl_self_ty(fcx, location_info, im.did);
                             let im_bs = ty::lookup_item_type(tcx,
                                                              im.did).bounds;
-                            match fcx.mk_subty(false, expr.span, ty, for_ty) {
+                            match fcx.mk_subty(false, location_info.span, ty,
+                                               for_ty) {
                                 result::Err(_) => loop,
                                 result::Ok(()) => ()
                             }
@@ -334,7 +344,8 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                                    fcx.infcx().ty_to_str(trait_ty),
                                    fcx.infcx().ty_to_str(*of_ty));
                             let of_ty = ty::subst(tcx, &substs, *of_ty);
-                            relate_trait_tys(fcx, expr, trait_ty, of_ty);
+                            relate_trait_tys(fcx, location_info, trait_ty,
+                                             of_ty);
 
                             // Recall that trait_ty -- the trait type
                             // we're casting to -- is the trait with
@@ -357,7 +368,7 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                             // resolve them.
 
                             let substs_f = match fixup_substs(fcx,
-                                                              expr,
+                                                              location_info,
                                                               trait_id,
                                                               substs,
                                                               is_early) {
@@ -382,11 +393,14 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                             // to. connect_trait_tps requires these
                             // lists of types to unify pairwise.
 
-                            connect_trait_tps(fcx, expr, substs_f.tps,
-                                              trait_tps, im.did,
+                            connect_trait_tps(fcx,
+                                              location_info,
+                                              substs_f.tps,
+                                              trait_tps,
+                                              im.did,
                                               trait_vstore);
                             let subres = lookup_vtables(
-                                fcx, expr, im_bs, &substs_f,
+                                fcx, location_info, im_bs, &substs_f,
                                 false, is_early);
 
                             // Finally, we register that we found a
@@ -408,7 +422,7 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
                 _ => {
                     if !is_early {
                         fcx.ccx.tcx.sess.span_err(
-                            expr.span,
+                            location_info.span,
                             ~"multiple applicable methods in scope");
                     }
                     return Some(found[0]);
@@ -421,7 +435,7 @@ fn lookup_vtable_invariant(fcx: @fn_ctxt,
 }
 
 fn fixup_ty(fcx: @fn_ctxt,
-            expr: @ast::expr,
+            location_info: &LocationInfo,
             ty: ty::t,
             is_early: bool) -> Option<ty::t>
 {
@@ -430,7 +444,7 @@ fn fixup_ty(fcx: @fn_ctxt,
         Ok(new_type) => Some(new_type),
         Err(e) if !is_early => {
             tcx.sess.span_fatal(
-                expr.span,
+                location_info.span,
                 fmt!("cannot determine a type \
                       for this bounded type parameter: %s",
                      fixup_err_to_str(e)))
@@ -441,8 +455,11 @@ fn fixup_ty(fcx: @fn_ctxt,
     }
 }
 
-fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
-                     trait_tys: ~[ty::t], impl_did: ast::def_id,
+fn connect_trait_tps(fcx: @fn_ctxt,
+                     location_info: &LocationInfo,
+                     impl_tys: ~[ty::t],
+                     trait_tys: ~[ty::t],
+                     impl_did: ast::def_id,
                      vstore: ty::vstore) {
     let tcx = fcx.ccx.tcx;
 
@@ -454,10 +471,10 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     match ty::get(trait_ty).sty {
      ty::ty_trait(_, substs, _) => {
          for vec::each2(substs.tps, trait_tys) |a, b| {
-             demand::suptype(fcx, expr.span, *a, *b)
+             demand::suptype(fcx, location_info.span, *a, *b)
          }
       }
-     _ => tcx.sess.impossible_case(expr.span, "connect_trait_tps: \
+     _ => tcx.sess.impossible_case(location_info.span, "connect_trait_tps: \
             don't know how to handle a non-trait ty")
     }
 }
@@ -467,6 +484,13 @@ fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
            callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
     ccx.vtable_map.insert(callee_id, vtables);
+}
+
+fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
+    LocationInfo {
+        span: expr.span,
+        id: expr.id
+    }
 }
 
 fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
@@ -489,8 +513,9 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                             %s",
                            ty::param_bounds_to_str(fcx.tcx(), *bounds));
                 }
-                let vtbls = lookup_vtables(fcx, ex, item_ty.bounds,
-                                           substs, false, is_early);
+                let vtbls = lookup_vtables(fcx, &location_info_for_expr(ex),
+                                           item_ty.bounds, substs, false,
+                                           is_early);
                 if !is_early { cx.vtable_map.insert(ex.id, vtbls); }
             }
           }
@@ -514,8 +539,8 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                   _ => ex.callee_id
                 };
                 let substs = fcx.node_ty_substs(callee_id);
-                let vtbls = lookup_vtables(fcx, ex, bounds,
-                                           &substs, false, is_early);
+                let vtbls = lookup_vtables(fcx, &location_info_for_expr(ex),
+                                           bounds, &substs, false, is_early);
                 if !is_early {
                     insert_vtables(cx, callee_id, vtbls);
                 }
@@ -534,8 +559,13 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
             // XXX: This is invariant and shouldn't be. --pcw
 
             let ty = fcx.expr_ty(src);
-            let vtable_opt = lookup_vtable_invariant(fcx, ex, ty, target_ty,
-                                                     true, is_early);
+            let vtable_opt =
+                lookup_vtable_invariant(fcx,
+                                        &location_info_for_expr(ex),
+                                        ty,
+                                        target_ty,
+                                        true,
+                                        is_early);
             match vtable_opt {
                 None => {
                     // Try the new-style boxed trait; "@int as @Trait".
@@ -553,9 +583,11 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                 (ty::ty_box(_), ty::vstore_box) |
                                 (ty::ty_uniq(_), ty::vstore_uniq) |
                                 (ty::ty_rptr(*), ty::vstore_slice(*)) => {
+                                    let location_info =
+                                        &location_info_for_expr(ex);
                                     let vtable_opt =
                                         lookup_vtable_invariant(fcx,
-                                                                ex,
+                                                                location_info,
                                                                 mt.ty,
                                                                 target_ty,
                                                                 true,
