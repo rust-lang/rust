@@ -377,9 +377,8 @@ impl<T: Writer, C> {base: T, cleanup: C}: Writer {
 impl *libc::FILE: Writer {
     fn write(v: &[const u8]) {
         do vec::as_const_buf(v) |vbuf, len| {
-            let nout = libc::fwrite(vbuf as *c_void, len as size_t,
-                                    1u as size_t, self);
-            if nout < 1 as size_t {
+            let nout = libc::fwrite(vbuf as *c_void, 1, len as size_t, self);
+            if nout != len as size_t {
                 error!("error writing buffer");
                 log(error, os::last_os_error());
                 fail;
@@ -957,6 +956,13 @@ mod tests {
           }
           result::Ok(_) => fail
         }
+    }
+
+    #[test]
+    fn test_write_empty() {
+        let file = io::file_writer(&Path("tmp/lib-io-test-write-empty.tmp"),
+                                   [io::Create]).get();
+        file.write([]);
     }
 
     #[test]
