@@ -13,11 +13,6 @@ extern mod rustrt {
     fn rust_task_weaken(ch: rust_port_id);
     fn rust_task_unweaken(ch: rust_port_id);
 
-    #[rust_stack]
-    fn rust_compare_and_swap_ptr(address: &mut libc::uintptr_t,
-                                 oldval: libc::uintptr_t,
-                                 newval: libc::uintptr_t) -> bool;
-
     fn rust_create_little_lock() -> rust_little_lock;
     fn rust_destroy_little_lock(lock: rust_little_lock);
     fn rust_lock_little_lock(lock: rust_little_lock);
@@ -291,11 +286,11 @@ pub fn test_weaken_task_fail() {
 // An unwrapper uses this protocol to communicate with the "other" task that
 // drops the last refcount on an arc. Unfortunately this can't be a proper
 // pipe protocol because the unwrapper has to access both stages at once.
-type UnwrapProto = ~mut Option<(pipes::ChanOne<()>, pipes::PortOne<bool>)>;
+type UnwrapProto = ~mut Option<(pipes::ChanOne<()>,  pipes::PortOne<bool>)>;
 
 struct ArcData<T> {
     mut count:     libc::intptr_t,
-    mut unwrapper: libc::uintptr_t, // either a UnwrapProto or 0
+    mut unwrapper: int, // either a UnwrapProto or 0
     // FIXME(#3224) should be able to make this non-option to save memory, and
     // in unwrap() use "let ~ArcData { data: result, _ } = thing" to unwrap it
     mut data:      Option<T>,
@@ -371,9 +366,9 @@ pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((move c1,move p2));
-        let serverp: libc::uintptr_t = cast::transmute(move server);
+        let serverp: int = cast::transmute(move server);
         // Try to put our server end in the unwrapper slot.
-        if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
+        if compare_and_swap(&mut ptr.unwrapper, 0, serverp) {
             // Got in. Step 0: Tell destructor not to run. We are now it.
             rc.data = ptr::null();
             // Step 1 - drop our own reference.
