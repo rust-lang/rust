@@ -65,15 +65,6 @@ pub mod ct {
         FlagSignAlways,
         FlagAlternate,
     }
-    #[cfg(stage0)]
-    pub enum Count {
-        CountIs(int),
-        CountIsParam(int),
-        CountIsNextParam,
-        CountImplied,
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub enum Count {
         CountIs(uint),
         CountIsParam(uint),
@@ -81,15 +72,6 @@ pub mod ct {
         CountImplied,
     }
 
-    #[cfg(stage0)]
-    pub type Conv =
-        {param: Option<int>,
-         flags: ~[Flag],
-         width: Count,
-         precision: Count,
-         ty: Ty};
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     // A formatted conversion from an expression to a string
     pub type Conv =
         {param: Option<uint>,
@@ -176,24 +158,6 @@ pub mod ct {
                              ty: ty.ty}),
              next: ty.next};
     }
-    #[cfg(stage0)]
-    pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
-       {param: Option<int>, next: uint} {
-        if i >= lim { return {param: None, next: i}; }
-        let num = peek_num(s, i, lim);
-        return match num {
-              None => {param: None, next: i},
-              Some(t) => {
-                let n = t.num as int;
-                let j = t.next;
-                if j < lim && s[j] == '$' as u8 {
-                    {param: Some(n), next: j + 1}
-                } else { {param: None, next: i} }
-              }
-            };
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
        {param: Option<uint>, next: uint} {
         if i >= lim { return {param: None, next: i}; }
@@ -237,31 +201,6 @@ pub mod ct {
                 more(FlagAlternate, s, i, lim)
             } else { {flags: move noflags, next: i} };
     }
-    #[cfg(stage0)]
-    pub fn parse_count(s: &str, i: uint, lim: uint)
-        -> {count: Count, next: uint} {
-        return if i >= lim {
-                {count: CountImplied, next: i}
-            } else if s[i] == '*' as u8 {
-                let param = parse_parameter(s, i + 1, lim);
-                let j = param.next;
-                match param.param {
-                  None => {count: CountIsNextParam, next: j},
-                  Some(n) => {count: CountIsParam(n), next: j}
-                }
-            } else {
-                let num = peek_num(s, i, lim);
-                match num {
-                  None => {count: CountImplied, next: i},
-                  Some(num) => {
-                    count: CountIs(num.num as int),
-                    next: num.next
-                  }
-                }
-            };
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
         pub fn parse_count(s: &str, i: uint, lim: uint)
         -> {count: Count, next: uint} {
         return if i >= lim {
@@ -346,10 +285,6 @@ pub mod rt {
     pub const flag_sign_always    : u32 = 0b00000000001000u32;
     pub const flag_alternate      : u32 = 0b00000000010000u32;
 
-    #[cfg(stage0)]
-    pub enum Count { CountIs(int), CountImplied, }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub enum Count { CountIs(uint), CountImplied, }
 
     pub enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
