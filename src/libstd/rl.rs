@@ -9,7 +9,6 @@ extern mod rustrt {
     fn linenoiseHistoryLoad(file: *c_char) -> c_int;
     fn linenoiseSetCompletionCallback(callback: *u8);
     fn linenoiseAddCompletion(completions: *(), line: *c_char);
-    fn linenoiseClearScreen();
 }
 
 /// Add a line to history
@@ -46,11 +45,6 @@ pub fn read(prompt: ~str) -> Option<~str> {
         if line.is_null() { None }
         else { Some(str::raw::from_c_str(line)) }
     }
-}
-
-/// Clear the screen
-pub fn clear() {
-    rustrt::linenoiseClearScreen();
 }
 
 pub type CompletionCb = fn~(~str, fn(~str));

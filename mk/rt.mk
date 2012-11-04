@@ -78,7 +78,7 @@ RUNTIME_CXXS_$(1) := \
               rt/arch/$$(HOST_$(1))/context.cpp \
               rt/arch/$$(HOST_$(1))/gpr.cpp
 
-RUNTIME_CS_$(1) := rt/linenoise/linenoise.c
+RUNTIME_CS_$(1) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
 
 RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
