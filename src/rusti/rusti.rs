@@ -243,7 +243,7 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
             repl.view_items = ~"";
             repl.stmts = ~"";
 
-            // FIXME: Win32 version of linenoise doesn't have the required function
+            // XXX: Win32 version of linenoise can't do this
             //rl::clear();
         }
         ~"help" => {
