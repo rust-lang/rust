@@ -460,8 +460,9 @@ TSREQS :=											\
 FUZZ := $(HBIN2_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
 CARGO := $(HBIN2_H_$(CFG_HOST_TRIPLE))/cargo$(X)
 RUSTDOC := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+RUSTI := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rusti$(X)
 
-all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC)
+all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) $(RUSTI)
 
 endif
 

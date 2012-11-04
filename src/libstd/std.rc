@@ -83,6 +83,7 @@ pub mod arena;
 pub mod par;
 pub mod cmp;
 pub mod base64;
+pub mod rl;
 
 #[cfg(unicode)]
 mod unicode;

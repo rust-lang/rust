@@ -30,6 +30,8 @@ compiletest/       The test runner
 
 cargo/             The package manager
 
+rusti/             The JIT REPL
+
 rustdoc/           The Rust API documentation tool
 
 llvm/              The LLVM submodule

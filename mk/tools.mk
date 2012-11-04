@@ -18,6 +18,10 @@ CARGO_INPUTS := $(wildcard $(S)src/cargo/*rs)
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rc
 RUSTDOC_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
 
+# Rusti, the JIT REPL
+RUSTI_CRATE := $(S)src/rusti/rusti.rc
+RUSTI_INPUTS := $(wildcard $(S)src/rusti/*.rs)
+
 # FIXME: These are only built for the host arch. Eventually we'll
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N
@@ -122,6 +126,21 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTDOC):					\
 $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X)	\
 		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTDOC)	\
+		$$(HSREQ$(2)_H_$(4))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
+		$$(RUSTI_CRATE) $$(RUSTI_INPUTS)		\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)  \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)   \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
+
+$$(HBIN$(2)_H_$(4))/rusti$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@

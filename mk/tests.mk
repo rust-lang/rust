@@ -122,6 +122,7 @@ ALL_CS := $(wildcard $(S)src/rt/*.cpp \
 ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
                        $(S)src/rt/bigint/bigint_int.cpp \
                        $(S)src/rt/miniz.cpp \
+                       $(S)src/rt/linenoise/linenoise.c \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
@@ -135,6 +136,7 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/msvc/stdint.h \
                        $(S)src/rt/msvc/inttypes.h \
                        $(S)src/rt/bigint/bigint.h \
+                       $(S)src/rt/linenoise/linenoise.h \
 	,$(ALL_HS))
 
 tidy:
@@ -229,6 +231,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty        \
     check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
+    check-stage$(1)-T-$(2)-H-$(3)-rusti       \
     check-stage$(1)-T-$(2)-H-$(3)-cargo       \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-ffi  \
@@ -288,6 +291,9 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-rusti:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-cargo:				\
 	check-stage$(1)-T-$(2)-H-$(3)-cargo-dummy
@@ -370,6 +376,24 @@ check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rustdoc.log
+
+# Rules for the rusti test runner
+
+$(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
+		$$(RUSTI_CRATE) $$(RUSTI_INPUTS)		\
+		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy:		\
+		$(3)/test/rustitest.stage$(1)-$(2)$$(X)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rusti.log
+
 
 # Rules for the cargo test runner
 
@@ -756,6 +780,9 @@ check-stage$(1)-H-$(2)-pretty-pretty:				\
 check-stage$(1)-H-$(2)-rustdoc:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rustdoc)
+check-stage$(1)-H-$(2)-rusti:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-rusti)
 check-stage$(1)-H-$(2)-cargo:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-cargo)
