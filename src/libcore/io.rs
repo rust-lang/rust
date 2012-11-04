@@ -32,96 +32,126 @@ extern mod rustrt {
 pub enum SeekStyle { SeekSet, SeekEnd, SeekCur, }
 
 
-// The raw underlying reader trait. All readers must implement this.
+/// The raw underlying reader trait. All readers must implement this.
 pub trait Reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
+    /// Read up to len bytes (or EOF) and put them into bytes (which
+    /// must be at least len bytes long). Return number of bytes read.
     // FIXME (#2982): This should probably return an error.
     fn read(bytes: &[mut u8], len: uint) -> uint;
+
+    /// Read a single byte, returning a negative value for EOF or read error.
     fn read_byte() -> int;
+
+    /// Behaves like the libc function ungetc.
     fn unread_byte(int);
+
+    /// Return whether the stream is currently at EOF position.
     fn eof() -> bool;
-    fn seek(int, SeekStyle);
+
+    /// Move the current position within the stream. The second parameter
+    /// determines the position that the first parameter is relative to.
+    fn seek(position: int, style: SeekStyle);
+
+    /// Return the current position within the stream.
     fn tell() -> uint;
 }
 
-// Generic utility functions defined on readers
+/// Generic utility functions defined on readers.
 pub trait ReaderUtil {
+
+    /// Read len bytes into a new vec.
     fn read_bytes(len: uint) -> ~[u8];
+
+    /// Read up until the first '\n' char (which is not returned), or EOF.
     fn read_line() -> ~str;
 
+    /// Read n utf-8 encoded chars.
     fn read_chars(n: uint) -> ~[char];
-    fn read_char() -> char;
-    fn read_c_str() -> ~str;
-    fn read_whole_stream() -> ~[u8];
-    fn each_byte(it: fn(int) -> bool);
-    fn each_char(it: fn(char) -> bool);
-    fn each_line(it: fn((&str)) -> bool);
 
-    /// read n (between 1 and 8) little-endian unsigned integer bytes
+    /// Read a single utf-8 encoded char.
+    fn read_char() -> char;
+
+    /// Read up until the first null byte (which is not returned), or EOF.
+    fn read_c_str() -> ~str;
+
+    /// Read all the data remaining in the stream in one go.
+    fn read_whole_stream() -> ~[u8];
+
+    /// Iterate over every byte until the iterator breaks or EOF.
+    fn each_byte(it: fn(int) -> bool);
+
+    /// Iterate over every char until the iterator breaks or EOF.
+    fn each_char(it: fn(char) -> bool);
+
+    /// Iterate over every line until the iterator breaks or EOF.
+    fn each_line(it: fn(&str) -> bool);
+
+    /// Read n (between 1 and 8) little-endian unsigned integer bytes.
     fn read_le_uint_n(nbytes: uint) -> u64;
 
-    /// read n (between 1 and 8) little-endian signed integer bytes
+    /// Read n (between 1 and 8) little-endian signed integer bytes.
     fn read_le_int_n(nbytes: uint) -> i64;
 
-    /// read n (between 1 and 8) big-endian unsigned integer bytes
+    /// Read n (between 1 and 8) big-endian unsigned integer bytes.
     fn read_be_uint_n(nbytes: uint) -> u64;
 
-    /// read n (between 1 and 8) big-endian signed integer bytes
+    /// Read n (between 1 and 8) big-endian signed integer bytes.
     fn read_be_int_n(nbytes: uint) -> i64;
 
-    /// read a little-endian uint (number of bytes read depends on system)
+    /// Read a little-endian uint (number of bytes depends on system).
     fn read_le_uint() -> uint;
 
-    /// read a little-endian int (number of bytes read depends on system)
+    /// Read a little-endian int (number of bytes depends on system).
     fn read_le_int() -> int;
 
-    /// read a big-endian uint (number of bytes read depends on system)
+    /// Read a big-endian uint (number of bytes depends on system).
     fn read_be_uint() -> uint;
 
-    /// read a big-endian int (number of bytes read depends on system)
+    /// Read a big-endian int (number of bytes depends on system).
     fn read_be_int() -> int;
 
-    /// read a big-endian u64 (8 bytes)
+    /// Read a big-endian u64 (8 bytes).
     fn read_be_u64() -> u64;
 
-    /// read a big-endian u32 (4 bytes)
+    /// Read a big-endian u32 (4 bytes).
     fn read_be_u32() -> u32;
 
-    /// read a big-endian u16 (2 bytes)
+    /// Read a big-endian u16 (2 bytes).
     fn read_be_u16() -> u16;
 
-    /// read a big-endian i64 (8 bytes)
+    /// Read a big-endian i64 (8 bytes).
     fn read_be_i64() -> i64;
 
-    /// read a big-endian i32 (4 bytes)
+    /// Read a big-endian i32 (4 bytes).
     fn read_be_i32() -> i32;
 
-    /// read a big-endian i16 (2 bytes)
+    /// Read a big-endian i16 (2 bytes).
     fn read_be_i16() -> i16;
 
-    /// read a little-endian u64 (8 bytes)
+    /// Read a little-endian u64 (8 bytes).
     fn read_le_u64() -> u64;
 
-    /// read a little-endian u32 (4 bytes)
+    /// Read a little-endian u32 (4 bytes).
     fn read_le_u32() -> u32;
 
-    /// read a little-endian u16 (2 bytes)
+    /// Read a little-endian u16 (2 bytes).
     fn read_le_u16() -> u16;
 
-    /// read a litle-endian i64 (8 bytes)
+    /// Read a litle-endian i64 (8 bytes).
     fn read_le_i64() -> i64;
 
-    /// read a litle-endian i32 (4 bytes)
+    /// Read a litle-endian i32 (4 bytes).
     fn read_le_i32() -> i32;
 
-    /// read a litle-endian i16 (2 bytes)
+    /// Read a litle-endian i16 (2 bytes).
     fn read_le_i16() -> i16;
 
-    /// read a u8 (1 byte)
+    /// Read a u8 (1 byte).
     fn read_u8() -> u8;
 
-    /// read a i8 (1 byte)
+    /// Read a i8 (1 byte).
     fn read_i8() -> i8;
 }
 
@@ -504,11 +534,23 @@ pub impl WriterType : Eq {
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
+/// The raw underlying writer trait. All writers must implement this.
 pub trait Writer {
+
+    /// Write all of the given bytes.
     fn write(v: &[const u8]);
+
+    /// Move the current position within the stream. The second parameter
+    /// determines the position that the first parameter is relative to.
     fn seek(int, SeekStyle);
+
+    /// Return the current position within the stream.
     fn tell() -> uint;
+
+    /// Flush the output buffer for this stream (if there is one).
     fn flush() -> int;
+
+    /// Determine if this Writer is writing to a file or not.
     fn get_type() -> WriterType;
 }
 
@@ -712,29 +754,76 @@ pub fn u64_from_be_bytes(data: &[const u8],
 
 // FIXME: #3048 combine trait+impl (or just move these to
 // default methods on writer)
+/// Generic utility functions defined on writers.
 pub trait WriterUtil {
+
+    /// Write a single utf-8 encoded char.
     fn write_char(ch: char);
+
+    /// Write every char in the given str, encoded as utf-8.
     fn write_str(s: &str);
+
+    /// Write the given str, as utf-8, followed by '\n'.
     fn write_line(s: &str);
+
+    /// Write the result of passing n through `int::to_str_bytes`.
     fn write_int(n: int);
+
+    /// Write the result of passing n through `uint::to_str_bytes`.
     fn write_uint(n: uint);
+
+    /// Write a little-endian uint (number of bytes depends on system).
     fn write_le_uint(n: uint);
+
+    /// Write a little-endian int (number of bytes depends on system).
     fn write_le_int(n: int);
+
+    /// Write a big-endian uint (number of bytes depends on system).
     fn write_be_uint(n: uint);
+
+    /// Write a big-endian int (number of bytes depends on system).
     fn write_be_int(n: int);
+
+    /// Write a big-endian u64 (8 bytes).
     fn write_be_u64(n: u64);
+
+    /// Write a big-endian u32 (4 bytes).
     fn write_be_u32(n: u32);
+
+    /// Write a big-endian u16 (2 bytes).
     fn write_be_u16(n: u16);
+
+    /// Write a big-endian i64 (8 bytes).
     fn write_be_i64(n: i64);
+
+    /// Write a big-endian i32 (4 bytes).
     fn write_be_i32(n: i32);
+
+    /// Write a big-endian i16 (2 bytes).
     fn write_be_i16(n: i16);
+
+    /// Write a little-endian u64 (8 bytes).
     fn write_le_u64(n: u64);
+
+    /// Write a little-endian u32 (4 bytes).
     fn write_le_u32(n: u32);
+
+    /// Write a little-endian u16 (2 bytes).
     fn write_le_u16(n: u16);
+
+    /// Write a little-endian i64 (8 bytes).
     fn write_le_i64(n: i64);
+
+    /// Write a little-endian i32 (4 bytes).
     fn write_le_i32(n: i32);
+
+    /// Write a little-endian i16 (2 bytes).
     fn write_le_i16(n: i16);
+
+    /// Write a u8 (1 byte).
     fn write_u8(n: u8);
+
+    /// Write a i8 (1 byte).
     fn write_i8(n: i8);
 }
 
