@@ -123,6 +123,7 @@ ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
                        $(S)src/rt/bigint/bigint_int.cpp \
                        $(S)src/rt/miniz.cpp \
                        $(S)src/rt/linenoise/linenoise.c \
+                       $(S)src/rt/linenoise/utf8.c \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
@@ -137,6 +138,7 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/msvc/inttypes.h \
                        $(S)src/rt/bigint/bigint.h \
                        $(S)src/rt/linenoise/linenoise.h \
+                       $(S)src/rt/linenoise/utf8.h \
 	,$(ALL_HS))
 
 tidy:
