@@ -22,6 +22,7 @@ PKG_FILES := \
     $(addprefix $(S)src/,                      \
       README.txt                               \
       cargo                                    \
+      rusti                                    \
       rustc                                    \
       compiletest                              \
       etc                                      \

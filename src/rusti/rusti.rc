@@ -1,0 +1,33 @@
+// rusti - REPL using the JIT backend
+
+#[link(name = "rusti",
+       vers = "0.4",
+       uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
+       url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
+
+#[crate_type = "bin"];
+
+#[no_core];
+
+#[allow(vecs_implicitly_copyable,
+        non_implicitly_copyable_typarams)];
+
+extern mod core(vers = "0.4");
+extern mod std(vers = "0.4");
+extern mod rustc(vers = "0.4");
+extern mod syntax(vers = "0.4");
+
+use core::*;
+use io::{ReaderUtil, WriterUtil};
+use rustc::back;
+use rustc::driver::{driver, session};
+use rustc::front;
+use rustc::lib::llvm::llvm;
+use rustc::metadata::{creader, filesearch};
+use rustc::middle::{freevars, kind, lint, trans, ty, typeck};
+use rustc::middle;
+use syntax::{ast, ast_util, codemap, diagnostic, fold, parse, print, visit};
+use syntax::ast_util::*;
+use parse::token;
+use print::{pp, pprust};
+use std::rl;

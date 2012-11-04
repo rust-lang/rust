@@ -203,3 +203,10 @@ rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
 rust_uv_tcp_getpeername6
+linenoise
+linenoiseSetCompletionCallback
+linenoiseAddCompletion
+linenoiseHistoryAdd
+linenoiseHistorySetMaxLen
+linenoiseHistorySave
+linenoiseHistoryLoad
