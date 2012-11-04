@@ -46,7 +46,6 @@ pub trait Reader {
 }
 
 // Generic utility functions defined on readers
-
 pub trait ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8];
     fn read_line() -> ~str;
@@ -54,16 +53,80 @@ pub trait ReaderUtil {
     fn read_chars(n: uint) -> ~[char];
     fn read_char() -> char;
     fn read_c_str() -> ~str;
-    fn read_le_uint(size: uint) -> uint;
-    fn read_le_int(size: uint) -> int;
-    fn read_be_uint(size: uint) -> uint;
     fn read_whole_stream() -> ~[u8];
     fn each_byte(it: fn(int) -> bool);
     fn each_char(it: fn(char) -> bool);
     fn each_line(it: fn((&str)) -> bool);
+
+    /// read n (between 1 and 8) little-endian unsigned integer bytes
+    fn read_le_uint_n(nbytes: uint) -> u64;
+
+    /// read n (between 1 and 8) little-endian signed integer bytes
+    fn read_le_int_n(nbytes: uint) -> i64;
+
+    /// read n (between 1 and 8) big-endian unsigned integer bytes
+    fn read_be_uint_n(nbytes: uint) -> u64;
+
+    /// read n (between 1 and 8) big-endian signed integer bytes
+    fn read_be_int_n(nbytes: uint) -> i64;
+
+    /// read a little-endian uint (number of bytes read depends on system)
+    fn read_le_uint() -> uint;
+
+    /// read a little-endian int (number of bytes read depends on system)
+    fn read_le_int() -> int;
+
+    /// read a big-endian uint (number of bytes read depends on system)
+    fn read_be_uint() -> uint;
+
+    /// read a big-endian int (number of bytes read depends on system)
+    fn read_be_int() -> int;
+
+    /// read a big-endian u64 (8 bytes)
+    fn read_be_u64() -> u64;
+
+    /// read a big-endian u32 (4 bytes)
+    fn read_be_u32() -> u32;
+
+    /// read a big-endian u16 (2 bytes)
+    fn read_be_u16() -> u16;
+
+    /// read a big-endian i64 (8 bytes)
+    fn read_be_i64() -> i64;
+
+    /// read a big-endian i32 (4 bytes)
+    fn read_be_i32() -> i32;
+
+    /// read a big-endian i16 (2 bytes)
+    fn read_be_i16() -> i16;
+
+    /// read a little-endian u64 (8 bytes)
+    fn read_le_u64() -> u64;
+
+    /// read a little-endian u32 (4 bytes)
+    fn read_le_u32() -> u32;
+
+    /// read a little-endian u16 (2 bytes)
+    fn read_le_u16() -> u16;
+
+    /// read a litle-endian i64 (8 bytes)
+    fn read_le_i64() -> i64;
+
+    /// read a litle-endian i32 (4 bytes)
+    fn read_le_i32() -> i32;
+
+    /// read a litle-endian i16 (2 bytes)
+    fn read_le_i16() -> i16;
+
+    /// read a u8 (1 byte)
+    fn read_u8() -> u8;
+
+    /// read a i8 (1 byte)
+    fn read_i8() -> i8;
 }
 
 impl<T: Reader> T : ReaderUtil {
+
     fn read_bytes(len: uint) -> ~[u8] {
         let mut bytes = vec::with_capacity(len);
         unsafe { vec::raw::set_len(&mut bytes, len); }
@@ -73,6 +136,7 @@ impl<T: Reader> T : ReaderUtil {
         unsafe { vec::raw::set_len(&mut bytes, count); }
         move bytes
     }
+
     fn read_line() -> ~str {
         let mut bytes = ~[];
         loop {
@@ -162,34 +226,6 @@ impl<T: Reader> T : ReaderUtil {
         str::from_bytes(bytes)
     }
 
-    // FIXME deal with eof? // #2004
-    fn read_le_uint(size: uint) -> uint {
-        let mut val = 0u, pos = 0u, i = size;
-        while i > 0u {
-            val += (self.read_byte() as uint) << pos;
-            pos += 8u;
-            i -= 1u;
-        }
-        val
-    }
-    fn read_le_int(size: uint) -> int {
-        let mut val = 0u, pos = 0u, i = size;
-        while i > 0u {
-            val += (self.read_byte() as uint) << pos;
-            pos += 8u;
-            i -= 1u;
-        }
-        val as int
-    }
-    fn read_be_uint(size: uint) -> uint {
-        let mut val = 0u, i = size;
-        while i > 0u {
-            i -= 1u;
-            val += (self.read_byte() as uint) << i * 8u;
-        }
-        val
-    }
-
     fn read_whole_stream() -> ~[u8] {
         let mut bytes: ~[u8] = ~[];
         while !self.eof() { bytes.push_all(self.read_bytes(2048u)); }
@@ -213,6 +249,116 @@ impl<T: Reader> T : ReaderUtil {
             if !it(self.read_line()) { break; }
         }
     }
+
+    // FIXME int reading methods need to deal with eof - issue #2004
+
+    fn read_le_uint_n(nbytes: uint) -> u64 {
+        assert nbytes > 0 && nbytes <= 8;
+
+        let mut val = 0u64, pos = 0, i = nbytes;
+        while i > 0 {
+            val += (self.read_u8() as u64) << pos;
+            pos += 8;
+            i -= 1;
+        }
+        val
+    }
+
+    fn read_le_int_n(nbytes: uint) -> i64 {
+        extend_sign(self.read_le_uint_n(nbytes), nbytes)
+    }
+
+    fn read_be_uint_n(nbytes: uint) -> u64 {
+        assert nbytes > 0 && nbytes <= 8;
+
+        let mut val = 0u64, i = nbytes;
+        while i > 0 {
+            i -= 1;
+            val += (self.read_u8() as u64) << i * 8;
+        }
+        val
+    }
+
+    fn read_be_int_n(nbytes: uint) -> i64 {
+        extend_sign(self.read_be_uint_n(nbytes), nbytes)
+    }
+
+    fn read_le_uint() -> uint {
+        self.read_le_uint_n(uint::bytes) as uint
+    }
+
+    fn read_le_int() -> int {
+        self.read_le_int_n(int::bytes) as int
+    }
+
+    fn read_be_uint() -> uint {
+        self.read_be_uint_n(uint::bytes) as uint
+    }
+
+    fn read_be_int() -> int {
+        self.read_be_int_n(int::bytes) as int
+    }
+
+    fn read_be_u64() -> u64 {
+        self.read_be_uint_n(8) as u64
+    }
+
+    fn read_be_u32() -> u32 {
+        self.read_be_uint_n(4) as u32
+    }
+
+    fn read_be_u16() -> u16 {
+        self.read_be_uint_n(2) as u16
+    }
+
+    fn read_be_i64() -> i64 {
+        self.read_be_int_n(8) as i64
+    }
+
+    fn read_be_i32() -> i32 {
+        self.read_be_int_n(4) as i32
+    }
+
+    fn read_be_i16() -> i16 {
+        self.read_be_int_n(2) as i16
+    }
+
+    fn read_le_u64() -> u64 {
+        self.read_le_uint_n(8) as u64
+    }
+
+    fn read_le_u32() -> u32 {
+        self.read_le_uint_n(4) as u32
+    }
+
+    fn read_le_u16() -> u16 {
+        self.read_le_uint_n(2) as u16
+    }
+
+    fn read_le_i64() -> i64 {
+        self.read_le_int_n(8) as i64
+    }
+
+    fn read_le_i32() -> i32 {
+        self.read_le_int_n(4) as i32
+    }
+
+    fn read_le_i16() -> i16 {
+        self.read_le_int_n(2) as i16
+    }
+
+    fn read_u8() -> u8 {
+        self.read_byte() as u8
+    }
+
+    fn read_i8() -> i8 {
+        self.read_byte() as i8
+    }
+}
+
+fn extend_sign(val: u64, nbytes: uint) -> i64 {
+    let shift = (8 - nbytes) * 8;
+    (val << shift) as i64 >> shift
 }
 
 // Reader implementations
@@ -589,6 +735,7 @@ pub trait WriterUtil {
     fn write_le_i32(n: i32);
     fn write_le_i16(n: i16);
     fn write_u8(n: u8);
+    fn write_i8(n: i8);
 }
 
 impl<T: Writer> T : WriterUtil {
@@ -659,7 +806,8 @@ impl<T: Writer> T : WriterUtil {
         u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
-    fn write_u8(n: u8) { self.write(&[n]) }
+    fn write_u8(n: u8) { self.write([n]) }
+    fn write_i8(n: i8) { self.write([n as u8]) }
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -1001,6 +1149,75 @@ mod tests {
         assert wr.bytes.borrow(|bytes| bytes ==
             ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
+
+    #[test]
+    fn test_read_write_le() {
+        let path = Path("tmp/lib-io-test-read-write-le.tmp");
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+        // write the ints to the file
+        {
+            let file = io::file_writer(&path, [io::Create]).get();
+            for uints.each |i| {
+                file.write_le_u64(*i);
+            }
+        }
+
+        // then read them back and check that they are the same
+        {
+            let file = io::file_reader(&path).get();
+            for uints.each |i| {
+                assert file.read_le_u64() == *i;
+            }
+        }
+    }
+
+    #[test]
+    fn test_read_write_be() {
+        let path = Path("tmp/lib-io-test-read-write-be.tmp");
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+        // write the ints to the file
+        {
+            let file = io::file_writer(&path, [io::Create]).get();
+            for uints.each |i| {
+                file.write_be_u64(*i);
+            }
+        }
+
+        // then read them back and check that they are the same
+        {
+            let file = io::file_reader(&path).get();
+            for uints.each |i| {
+                assert file.read_be_u64() == *i;
+            }
+        }
+    }
+
+    #[test]
+    fn test_read_be_int_n() {
+        let path = Path("tmp/lib-io-test-read-be-int-n.tmp");
+        let ints = [i32::min_value, -123456, -42, -5, 0, 1, i32::max_value];
+
+        // write the ints to the file
+        {
+            let file = io::file_writer(&path, [io::Create]).get();
+            for ints.each |i| {
+                file.write_be_i32(*i);
+            }
+        }
+
+        // then read them back and check that they are the same
+        {
+            let file = io::file_reader(&path).get();
+            for ints.each |i| {
+                // this tests that the sign extension is working
+                // (comparing the values as i32 would not test this)
+                assert file.read_be_int_n(4) == *i as i64;
+            }
+        }
+    }
+
 }
 
 //
