@@ -1,18 +1,8 @@
 #include "rust_type.h"
-#include "rust_shape.h"
 
 
 // A hardcoded type descriptor for strings, since the runtime needs to
 // be able to create them.
-
-struct rust_shape_tables empty_shape_tables;
-
-uint8_t str_body_shape[] = {
-    shape::SHAPE_UNBOXED_VEC,
-    0x1, // is_pod
-    0x1, 0x0, // size field: 1
-    shape::SHAPE_U8
-};
 
 struct type_desc str_body_tydesc = {
     1, // size
@@ -21,8 +11,8 @@ struct type_desc str_body_tydesc = {
     NULL, // drop_glue
     NULL, // free_glue
     NULL, // visit_glue
-    str_body_shape, // shape
-    &empty_shape_tables, // shape_tables
+    NULL, // shape
+    NULL, // shape_tables
 };
 
 //

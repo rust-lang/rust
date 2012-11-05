@@ -17,11 +17,6 @@ struct type_desc;
 
 typedef void CDECL (glue_fn)(void *, void *, const type_desc **, void *);
 
-struct rust_shape_tables {
-    uint8_t *tags;
-    uint8_t *resources;
-};
-
 // Corresponds to the boxed data in the @ region.  The body follows the
 // header; you can obtain a ptr via box_body() below.
 struct rust_opaque_box {
@@ -52,8 +47,8 @@ struct type_desc {
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *visit_glue;
-    const uint8_t *shape;
-    const rust_shape_tables *shape_tables;
+    const uint8_t *unused;
+    const uint8_t *unused2;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);
