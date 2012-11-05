@@ -625,7 +625,7 @@ impl LookupContext {
             ty_evec(mt, vstore_uniq) |
             ty_evec(mt, vstore_fixed(_)) => {
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoSlice, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoBorrowVec, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| ty::mk_evec(tcx,
                                       {ty:mt.ty, mutbl:m},
                                       vstore_slice(r)))
@@ -635,7 +635,7 @@ impl LookupContext {
             ty_estr(vstore_uniq) |
             ty_estr(vstore_fixed(_)) => {
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoSlice, autoderefs, [m_imm],
+                    AutoBorrowVec, autoderefs, [m_imm],
                     |_m,r| ty::mk_estr(tcx, vstore_slice(r)))
             }
 

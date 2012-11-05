@@ -58,7 +58,7 @@ fn check_capture_clause(tcx: ty::ctxt,
 
 fn compute_capture_vars(tcx: ty::ctxt,
                         fn_expr_id: ast::node_id,
-                        fn_proto: ty::fn_proto,
+                        fn_proto: ast::Proto,
                         cap_clause: ast::capture_clause) -> ~[capture_var] {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let cap_map = map::HashMap();
@@ -101,7 +101,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
     // named and add that
 
     let implicit_mode;
-    if ty::is_blockish(fn_proto) {
+    if fn_proto == ast::ProtoBorrowed {
         implicit_mode = cap_ref;
     } else {
         implicit_mode = cap_copy;

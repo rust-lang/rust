@@ -109,7 +109,7 @@ use base::*;
 use syntax::print::pprust::{expr_to_str};
 use util::ppaux::ty_to_str;
 use util::common::indenter;
-use ty::{AutoPtr, AutoSlice};
+use ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
 
 // The primary two functions for translating expressions:
@@ -188,8 +188,14 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                         AutoPtr => {
                             unpack_datum!(bcx, auto_ref(bcx, datum))
                         }
-                        AutoSlice => {
+                        AutoBorrowVec => {
                             unpack_datum!(bcx, auto_slice(bcx, datum))
+                        }
+                        AutoBorrowFn => {
+                            // currently, all closure types are
+                            // represented precisely the same, so no
+                            // runtime adjustment is required:
+                            datum
                         }
                     }
                 }
@@ -520,20 +526,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_fn(proto, decl, body, cap_clause) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
-            fn ast_proto_to_proto_simple(ast_proto: ast::proto)
-                -> ty::fn_proto {
-                match ast_proto {
-                    ast::proto_bare => ty::proto_bare,
-                    ast::proto_uniq => ty::proto_vstore(ty::vstore_uniq),
-                    ast::proto_box => ty::proto_vstore(ty::vstore_box),
-                    ast::proto_block => {
-                        ty::proto_vstore(ty::vstore_slice(ty::re_static))
-                    }
-                }
-            }
-
-            return closure::trans_expr_fn(bcx,
-                                          ast_proto_to_proto_simple(proto),
+            return closure::trans_expr_fn(bcx, proto,
                                           decl, body, expr.id, cap_clause,
                                           None, dest);
         }

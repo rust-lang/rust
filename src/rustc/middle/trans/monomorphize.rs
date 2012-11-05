@@ -251,18 +251,19 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
                 FnTyBase {meta: FnMeta {purity: ast::impure_fn,
                                         proto: fty.meta.proto,
                                         onceness: ast::Many,
+                                        region: ty::re_static,
                                         bounds: @~[],
                                         ret_style: ast::return_val},
                           sig: FnSig {inputs: ~[],
                                       output: ty::mk_nil(tcx)}}))
         }
         ty::ty_trait(_, _, _) => {
-            let box_proto = ty::proto_vstore(ty::vstore_box);
             Some(ty::mk_fn(
                 tcx,
                 FnTyBase {meta: FnMeta {purity: ast::impure_fn,
-                                        proto: box_proto,
+                                        proto: ast::ProtoBox,
                                         onceness: ast::Many,
+                                        region: ty::re_static,
                                         bounds: @~[],
                                         ret_style: ast::return_val},
                           sig: FnSig {inputs: ~[],

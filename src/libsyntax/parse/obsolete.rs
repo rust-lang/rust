@@ -24,7 +24,6 @@ pub enum ObsoleteSyntax {
     ObsoletePrivSection,
     ObsoleteModeInFnType,
     ObsoleteByMutRefMode,
-    ObsoleteFixedLengthVec,
     ObsoleteMoveInit,
     ObsoleteBinaryMove
 }
@@ -101,11 +100,6 @@ impl Parser : ObsoleteReporter {
             ObsoleteByMutRefMode => (
                 "by-mutable-reference mode",
                 "Declare an argument of type &mut T instead"
-            ),
-            ObsoleteFixedLengthVec => (
-                "fixed-length vector",
-                "Fixed-length types are now written `[T * N]`, and instances \
-                 are type-inferred"
             ),
             ObsoleteMoveInit => (
                 "initializer-by-move",
@@ -198,66 +192,6 @@ impl Parser : ObsoleteReporter {
         } else {
             false
         }
-    }
-
-    fn try_parse_obsolete_fixed_vstore() -> Option<Option<uint>> {
-        if self.token == token::BINOP(token::SLASH) {
-            self.bump();
-            match copy self.token {
-                token::UNDERSCORE => {
-                    self.obsolete(copy self.last_span,
-                                  ObsoleteFixedLengthVec);
-                    self.bump(); Some(None)
-                }
-                token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
-                    self.obsolete(copy self.last_span,
-                                  ObsoleteFixedLengthVec);
-                    self.bump(); Some(Some(i as uint))
-                }
-                _ => None
-            }
-        } else {
-            None
-        }
-    }
-
-    fn try_convert_ty_to_obsolete_fixed_length_vstore(sp: span, t: ast::ty_)
-        -> ast::ty_ {
-        match self.try_parse_obsolete_fixed_vstore() {
-            // Consider a fixed length vstore suffix (/N or /_)
-            None => t,
-            Some(v) => {
-                ast::ty_fixed_length(
-                    @{id: self.get_id(), node: t, span: sp}, v)
-            }
-        }
-    }
-
-    fn try_convert_expr_to_obsolete_fixed_length_vstore(
-        lo: uint, hi: uint, ex: ast::expr_
-    ) -> (uint, ast::expr_) {
-
-        let mut hi = hi;
-        let mut ex = ex;
-
-        // Vstore is legal following expr_lit(lit_str(...)) and expr_vec(...)
-        // only.
-        match ex {
-            ast::expr_lit(@{node: ast::lit_str(_), span: _}) |
-            ast::expr_vec(_, _)  => {
-                match self.try_parse_obsolete_fixed_vstore() {
-                    None => (),
-                    Some(v) => {
-                        hi = self.span.hi;
-                        ex = ast::expr_vstore(self.mk_expr(lo, hi, ex),
-                                              ast::expr_vstore_fixed(v));
-                    }
-                }
-            }
-            _ => ()
-        }
-
-        return (hi, ex);
     }
 
 }

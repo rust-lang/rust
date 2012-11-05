@@ -213,16 +213,13 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       }
       expr_fn(*) | expr_fn_block(*) => {
         match ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
-          ty::proto_bare | ty::proto_vstore(ty::vstore_uniq) => {}
-          ty::proto_vstore(ty::vstore_box) |
-          ty::proto_vstore(ty::vstore_slice(_)) => {
+          ast::ProtoBare | ast::ProtoUniq => {}
+          ast::ProtoBox | ast::ProtoBorrowed => {
             for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
                 let node_id = ast_util::def_id_of_def(fv.def).node;
                 node_type_needs(cx, use_repr, node_id);
             }
           }
-          ty::proto_vstore(ty::vstore_fixed(_)) =>
-            fail ~"vstore_fixed not allowed here"
         }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |

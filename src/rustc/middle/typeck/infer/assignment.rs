@@ -126,6 +126,14 @@ priv impl Assign {
             }
         }
 
+        fn borrowable_protos(a_p: ast::Proto, b_p: ast::Proto) -> bool {
+            match (a_p, b_p) {
+                (ast::ProtoBox, ast::ProtoBorrowed) => true,
+                (ast::ProtoUniq, ast::ProtoBorrowed) => true,
+                _ => false
+            }
+        }
+
         match (a_bnd, b_bnd) {
             (Some(a_bnd), Some(b_bnd)) => {
                 // check for a case where a non-region pointer (@, ~) is
@@ -149,7 +157,7 @@ priv impl Assign {
                      ty::ty_estr(ty::vstore_slice(r_b)))
                     if is_borrowable(vs_a) => {
                         let nr_b = ty::mk_estr(self.infcx.tcx, vs_a);
-                        self.try_assign(0, ty::AutoSlice,
+                        self.try_assign(0, ty::AutoBorrowVec,
                                         a, nr_b,
                                         m_imm, r_b)
                     }
@@ -160,9 +168,20 @@ priv impl Assign {
                         let nr_b = ty::mk_evec(self.infcx.tcx,
                                                {ty: mt_b.ty, mutbl: m_const},
                                                vs_a);
-                        self.try_assign(0, ty::AutoSlice,
+                        self.try_assign(0, ty::AutoBorrowVec,
                                         a, nr_b,
                                         mt_b.mutbl, r_b)
+                    }
+
+                    (ty::ty_fn(ref a_f), ty::ty_fn(ref b_f))
+                    if borrowable_protos(a_f.meta.proto, b_f.meta.proto) => {
+                        let nr_b = ty::mk_fn(self.infcx.tcx, ty::FnTyBase {
+                            meta: ty::FnMeta {proto: a_f.meta.proto,
+                                              ..b_f.meta},
+                            sig: b_f.sig
+                        });
+                        self.try_assign(0, ty::AutoBorrowFn,
+                                        a, nr_b, m_imm, b_f.meta.region)
                     }
 
                     _ => {

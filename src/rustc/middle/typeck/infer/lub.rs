@@ -54,21 +54,12 @@ impl Lub: combine {
         Glb(*self).tys(a, b)
     }
 
-    // XXX: Wrong.
-    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto> {
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
         match (p1, p2) {
-            (ty::proto_bare, _) => Ok(p2),
-            (_, ty::proto_bare) => Ok(p1),
-            (ty::proto_vstore(v1), ty::proto_vstore(v2)) => {
-                self.infcx.try(|| {
-                    do self.vstores(terr_fn, v1, v2).chain |vs| {
-                        Ok(ty::proto_vstore(vs))
-                    }
-                }).chain_err(|_err| {
-                    // XXX: Totally unsound, but fixed up later.
-                    Ok(ty::proto_vstore(ty::vstore_slice(ty::re_static)))
-                })
-            }
+            (ast::ProtoBare, _) => Ok(p2),
+            (_, ast::ProtoBare) => Ok(p1),
+            _ if p1 == p2 => Ok(p1),
+            _ => Err(ty::terr_proto_mismatch(expected_found(&self, p1, p2)))
         }
     }
 

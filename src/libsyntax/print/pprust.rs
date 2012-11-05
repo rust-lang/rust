@@ -7,6 +7,7 @@ use ast_util::{operator_prec};
 use dvec::DVec;
 use parse::classify::*;
 use parse::token::ident_interner;
+use str::{push_str, push_char};
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -211,7 +212,9 @@ fn head(s: ps, w: ~str) {
     // head-box is inconsistent
     ibox(s, str::len(w) + 1);
     // keyword that starts the head
-    word_nbsp(s, w);
+    if !w.is_empty() {
+        word_nbsp(s, w);
+    }
 }
 
 fn bopen(s: ps) {
@@ -328,20 +331,19 @@ fn print_foreign_mod(s: ps, nmod: ast::foreign_mod,
     for nmod.items.each |item| { print_foreign_item(s, *item); }
 }
 
-fn print_region(s: ps, region: @ast::region, sep: ~str) {
+fn print_region(s: ps, prefix: ~str, region: @ast::region, sep: ~str) {
+    word(s.s, prefix);
     match region.node {
         ast::re_anon => {
-            word_space(s, ~"&");
             return;
         }
         ast::re_static => {
-            word_space(s, ~"&static")
+            word_space(s, ~"static")
         }
         ast::re_self => {
-            word_space(s, ~"&self")
+            word_space(s, ~"self")
         }
         ast::re_named(name) => {
-            word(s.s, ~"&");
             print_ident(s, name);
         }
     }
@@ -372,7 +374,7 @@ fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
       }
       ast::ty_ptr(mt) => { word(s.s, ~"*"); print_mt(s, mt); }
       ast::ty_rptr(region, mt) => {
-          print_region(s, region, ~"/");
+          print_region(s, ~"&", region, ~"/");
           print_mt(s, mt);
       }
       ast::ty_rec(fields) => {
@@ -394,26 +396,21 @@ fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
         commasep(s, inconsistent, elts, print_type);
         pclose(s);
       }
-      ast::ty_fn(proto, purity, onceness, bounds, d) => {
-        print_ty_fn(s, Some(proto), purity, onceness, bounds, d, None, None,
-                    None);
+      ast::ty_fn(f) => {
+        print_ty_fn(s, Some(f.proto), f.region, f.purity,
+                    f.onceness, f.bounds, f.decl, None, None, None);
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
-      ast::ty_fixed_length(t, v) => {
+      ast::ty_fixed_length_vec(mt, v) => {
         word(s.s, ~"[");
-        match t.node {
-          ast::ty_vec(mt) => {
-            match mt.mutbl {
-              ast::m_mutbl => word_space(s, ~"mut"),
-              ast::m_const => word_space(s, ~"const"),
-              ast::m_imm => ()
-            }
-            print_type(s, mt.ty);
-          }
-          _ => fail ~"ty_fixed_length can only contain ty_vec as type"
+        match mt.mutbl {
+            ast::m_mutbl => word_space(s, ~"mut"),
+            ast::m_const => word_space(s, ~"const"),
+            ast::m_imm => ()
         }
+        print_type(s, mt.ty);
         word(s.s, ~" * ");
-        print_vstore(s, ast::vstore_fixed(v));
+        word(s.s, fmt!("%u", v));
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
@@ -805,7 +802,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, m.purity, ast::Many,
+    print_ty_fn(s, None, None, m.purity, ast::Many,
                 @~[], m.decl, Some(m.ident), Some(m.tps),
                 Some(m.self_ty.node));
     word(s.s, ~";");
@@ -1023,7 +1020,7 @@ fn print_vstore(s: ps, t: ast::vstore) {
         ast::vstore_fixed(None) => word(s.s, ~"_"),
         ast::vstore_uniq => word(s.s, ~"~"),
         ast::vstore_box => word(s.s, ~"@"),
-        ast::vstore_slice(r) => print_region(s, r, ~"/")
+        ast::vstore_slice(r) => print_region(s, ~"&", r, ~"/")
     }
 }
 
@@ -1274,8 +1271,8 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
-        word(s.s, fn_header_info_to_str(None, None, Some(proto), ast::Many,
-                                        ast::inherited));
+        print_fn_header_info(s, None, None, ast::Many,
+                             Some(proto), ast::inherited);
         print_fn_args_and_ret(s, decl, *cap_clause, None);
         space(s.s);
         print_block(s, body);
@@ -1481,7 +1478,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
           None => { /* ok */ }
           Some(r) => {
             word(s.s, ~"/");
-            print_region(s, r, ~"");
+            print_region(s, ~"&", r, ~"");
           }
         }
 
@@ -1614,8 +1611,9 @@ fn print_fn(s: ps,
             typarams: ~[ast::ty_param],
             opt_self_ty: Option<ast::self_ty_>,
             vis: ast::visibility) {
-    head(s, fn_header_info_to_str(opt_self_ty, purity, None, ast::Many,
-                                  vis));
+    head(s, ~"");
+    print_fn_header_info(s, opt_self_ty, purity, ast::Many, None, vis);
+    nbsp(s);
     print_ident(s, name);
     print_type_params(s, typarams);
     print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
@@ -1836,7 +1834,8 @@ fn print_arg(s: ps, input: ast::arg) {
 }
 
 fn print_ty_fn(s: ps,
-               opt_proto: Option<ast::proto>,
+               opt_proto: Option<ast::Proto>,
+               opt_region: Option<@ast::region>,
                purity: ast::purity,
                onceness: ast::Onceness,
                bounds: @~[ast::ty_param_bound],
@@ -1844,8 +1843,15 @@ fn print_ty_fn(s: ps,
                tps: Option<~[ast::ty_param]>,
                opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);
-    word(s.s, fn_header_info_to_str(opt_self_ty, Some(purity), opt_proto,
-                                    onceness, ast::inherited));
+
+    // Duplicates the logic in `print_fn_header_info()`.  This is because that
+    // function prints the proto in the wrong place.  That should be fixed.
+    print_self_ty_if_static(s, opt_self_ty);
+    print_opt_proto(s, opt_proto);
+    for opt_region.each |r| { print_region(s, ~"", *r, ~"/"); }
+    print_purity(s, purity);
+    print_onceness(s, onceness);
+    word(s.s, ~"fn");
     print_bounds(s, bounds);
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
     match tps { Some(tps) => print_type_params(s, tps), _ => () }
@@ -2066,39 +2072,50 @@ fn next_comment(s: ps) -> Option<comments::cmnt> {
     }
 }
 
-fn fn_header_info_to_str(opt_sty: Option<ast::self_ty_>,
-                         opt_purity: Option<ast::purity>,
-                         opt_p: Option<ast::proto>,
-                         onceness: ast::Onceness,
-                         vis: ast::visibility) -> ~str {
-
-    let mut s = visibility_qualified(vis, ~"");
-
-    match opt_sty {
-        Some(ast::sty_static) => str::push_str(&mut s, ~"static "),
-        _ => ()
-    };
-
-    match opt_purity {
-      Some(ast::impure_fn) => { }
-      Some(purity) => {
-        str::push_str(&mut s, purity_to_str(purity));
-        str::push_char(&mut s, ' ');
-      }
-      None => {}
+fn print_self_ty_if_static(s: ps,
+                           opt_self_ty: Option<ast::self_ty_>) {
+    match opt_self_ty {
+        Some(ast::sty_static) => { word(s.s, ~"static "); }
+        _ => {}
     }
-
-    str::push_str(&mut s, opt_proto_to_str(opt_p));
-
-    match onceness {
-        ast::Once => str::push_str(&mut s, ~"once "),
-        ast::Many => {}
-    }
-
-    return s;
 }
 
-fn opt_proto_to_str(opt_p: Option<ast::proto>) -> ~str {
+fn print_opt_purity(s: ps, opt_purity: Option<ast::purity>) {
+    match opt_purity {
+        Some(ast::impure_fn) => { }
+        Some(purity) => {
+            word_nbsp(s, purity_to_str(purity));
+        }
+        None => {}
+    }
+}
+
+fn print_opt_proto(s: ps, opt_proto: Option<ast::Proto>) {
+    match opt_proto {
+        Some(ast::ProtoBare) => { word(s.s, ~"extern "); }
+        Some(ast::ProtoBorrowed) => { word(s.s, ~"&"); }
+        Some(ast::ProtoUniq) => { word(s.s, ~"~"); }
+        Some(ast::ProtoBox) => { word(s.s, ~"@"); }
+        None => {}
+    };
+}
+
+fn print_fn_header_info(s: ps,
+                        opt_sty: Option<ast::self_ty_>,
+                        opt_purity: Option<ast::purity>,
+                        onceness: ast::Onceness,
+                        opt_proto: Option<ast::Proto>,
+                        vis: ast::visibility)
+{
+    word(s.s, visibility_qualified(vis, ~""));
+    print_self_ty_if_static(s, opt_sty);
+    print_opt_purity(s, opt_purity);
+    print_onceness(s, onceness);
+    word(s.s, ~"fn");
+    print_opt_proto(s, opt_proto);
+}
+
+fn opt_proto_to_str(opt_p: Option<ast::Proto>) -> ~str {
     match opt_p {
       None => ~"fn",
       Some(p) => proto_to_str(p)
@@ -2128,12 +2145,19 @@ fn print_purity(s: ps, p: ast::purity) {
     }
 }
 
-fn proto_to_str(p: ast::proto) -> ~str {
+fn print_onceness(s: ps, o: ast::Onceness) {
+    match o {
+        ast::Once => { word_nbsp(s, ~"once"); }
+        ast::Many => {}
+    }
+}
+
+fn proto_to_str(p: ast::Proto) -> ~str {
     return match p {
-      ast::proto_bare => ~"extern fn",
-      ast::proto_block => ~"fn&",
-      ast::proto_uniq => ~"fn~",
-      ast::proto_box => ~"fn@"
+      ast::ProtoBare => ~"extern fn",
+      ast::ProtoBorrowed => ~"fn&",
+      ast::ProtoUniq => ~"fn~",
+      ast::ProtoBox => ~"fn@"
     };
 }
 

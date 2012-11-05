@@ -4,7 +4,7 @@ use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
         bound_trait};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
-use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
+use middle::ty::{ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
@@ -111,22 +111,19 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
 }
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
+    bound_region_to_str_adorned(cx, ~"&", br, ~"")
+}
+
+fn bound_region_to_str_adorned(cx: ctxt, prefix: ~str,
+                               br: bound_region, sep: ~str) -> ~str {
+    if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, sep); }
+
     match br {
-      br_named(id)                   => fmt!("&%s", cx.sess.str_of(id)),
-      br_self if cx.sess.verbose() => ~"&<self>",
-      br_self                        => ~"&self",
-
-      br_anon(idx) => {
-        if cx.sess.verbose() {fmt!("&%u", idx)} else {~"&"}
-      }
-
-      br_cap_avoid(id, br) => {
-        if cx.sess.verbose() {
-            fmt!("br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br))
-        } else {
-            bound_region_to_str(cx, *br)
-        }
-      }
+      br_named(id)         => fmt!("%s%s%s", prefix, cx.sess.str_of(id), sep),
+      br_self              => fmt!("%sself%s", prefix, sep),
+      br_anon(_)           => prefix,
+      br_cap_avoid(_, br)  => bound_region_to_str_adorned(cx, prefix,
+                                                          *br, sep)
     }
 }
 
@@ -174,8 +171,13 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
 fn region_to_str(cx: ctxt, region: Region) -> ~str {
+    region_to_str_adorned(cx, ~"&", region, ~"")
+}
+
+fn region_to_str_adorned(cx: ctxt, prefix: ~str,
+                         region: Region, sep: ~str) -> ~str {
     if cx.sess.verbose() {
-        return fmt!("&%?", region);
+        return fmt!("%s%?%s", prefix, region, sep);
     }
 
     // These printouts are concise.  They do not contain all the information
@@ -183,12 +185,14 @@ fn region_to_str(cx: ctxt, region: Region) -> ~str {
     // to fit that into a short string.  Hence the recommendation to use
     // `explain_region()` or `note_and_explain_region()`.
     match region {
-      re_scope(_) => ~"&",
-      re_bound(br) => bound_region_to_str(cx, br),
-      re_free(_, br) => bound_region_to_str(cx, br),
-      re_infer(ReSkolemized(_, br)) => bound_region_to_str(cx, br),
-      re_infer(ReVar(_)) => ~"&",
-      re_static => ~"&static"
+        re_scope(_) => prefix,
+        re_bound(br) => bound_region_to_str_adorned(cx, prefix, br, sep),
+        re_free(_, br) => bound_region_to_str_adorned(cx, prefix, br, sep),
+        re_infer(ReSkolemized(_, br)) => {
+            bound_region_to_str_adorned(cx, prefix, br, sep)
+        }
+        re_infer(ReVar(_)) => prefix,
+        re_static => fmt!("%sstatic%s", prefix, sep)
     }
 }
 
@@ -222,10 +226,12 @@ fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
-fn proto_ty_to_str(cx: ctxt, proto: ty::fn_proto) -> ~str {
+fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto) -> ~str {
     match proto {
-      ty::proto_bare => ~"",
-      ty::proto_vstore(vstore) => vstore_to_str(cx, vstore)
+        ast::ProtoBare => ~"",
+        ast::ProtoBox => ~"@",
+        ast::ProtoBorrowed => ~"&",
+        ast::ProtoUniq => ~"~",
     }
 }
 
@@ -268,8 +274,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         modestr + ty_to_str(cx, ty)
     }
     fn fn_to_str(cx: ctxt,
+                 proto: ast::Proto,
+                 region: ty::Region,
                  purity: ast::purity,
-                 proto: ty::fn_proto,
                  onceness: ast::Onceness,
                  ident: Option<ast::ident>,
                  inputs: ~[arg],
@@ -287,9 +294,21 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             ast::Once => onceness_to_str(onceness) + ~" "
         };
 
+        s += proto_ty_to_str(cx, proto);
+
+        match (proto, region) {
+            (ast::ProtoBox, ty::re_static) |
+            (ast::ProtoUniq, ty::re_static) |
+            (ast::ProtoBare, ty::re_static) => {
+            }
+
+            (_, region) => {
+                s += region_to_str_adorned(cx, ~"", region, ~"/");
+            }
+        }
+
         s += ~"fn";
 
-        s += proto_ty_to_str(cx, proto);
         match ident {
           Some(i) => { s += ~" "; s += cx.sess.str_of(i); }
           _ => { }
@@ -310,8 +329,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         return fn_to_str(
             cx,
-            m.fty.meta.purity,
             m.fty.meta.proto,
+            m.fty.meta.region,
+            m.fty.meta.purity,
             m.fty.meta.onceness,
             Some(m.ident),
             m.fty.sig.inputs,
@@ -345,12 +365,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uniq(tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, tm) => {
-        let rs = region_to_str(cx, r);
-        if rs == ~"&" {
-            rs + mt_to_str(cx, tm)
-        } else {
-            rs + ~"/" + mt_to_str(cx, tm)
-        }
+        region_to_str_adorned(cx, ~"&", r, ~"/") + mt_to_str(cx, tm)
       }
       ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
@@ -364,8 +379,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_fn(ref f) => {
         fn_to_str(cx,
-                  f.meta.purity,
                   f.meta.proto,
+                  f.meta.region,
+                  f.meta.purity,
                   f.meta.onceness,
                   None,
                   f.sig.inputs,
@@ -393,9 +409,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
       ty_opaque_box => ~"@?",
-      ty_opaque_closure_ptr(ck_block) => ~"closure&",
-      ty_opaque_closure_ptr(ck_box) => ~"closure@",
-      ty_opaque_closure_ptr(ck_uniq) => ~"closure~"
+      ty_opaque_closure_ptr(ast::ProtoBorrowed) => ~"closure&",
+      ty_opaque_closure_ptr(ast::ProtoBox) => ~"closure@",
+      ty_opaque_closure_ptr(ast::ProtoUniq) => ~"closure~",
+      ty_opaque_closure_ptr(ast::ProtoBare) => ~"closure"
     }
 }
 

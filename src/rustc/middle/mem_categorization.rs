@@ -305,15 +305,27 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(uniq_ptr))
       }
 
+      ty::ty_fn(f) if f.meta.proto == ast::ProtoUniq => {
+        Some(deref_ptr(uniq_ptr))
+      }
+
       ty::ty_rptr(r, _) |
       ty::ty_evec(_, ty::vstore_slice(r)) |
       ty::ty_estr(ty::vstore_slice(r)) => {
         Some(deref_ptr(region_ptr(r)))
       }
 
+      ty::ty_fn(f) if f.meta.proto == ast::ProtoBorrowed => {
+        Some(deref_ptr(region_ptr(f.meta.region)))
+      }
+
       ty::ty_box(*) |
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) => {
+        Some(deref_ptr(gc_ptr))
+      }
+
+      ty::ty_fn(f) if f.meta.proto == ast::ProtoBox => {
         Some(deref_ptr(gc_ptr))
       }
 
@@ -563,22 +575,23 @@ impl &mem_categorization_ctxt {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             match proto {
-              ty::proto_vstore(ty::vstore_slice(_)) => {
-                let upcmt = self.cat_def(id, span, expr_ty, *inner);
-                @{id:id, span:span,
-                  cat:cat_stack_upvar(upcmt), lp:upcmt.lp,
-                  mutbl:upcmt.mutbl, ty:upcmt.ty}
-              }
-              ty::proto_bare |
-              ty::proto_vstore(ty::vstore_uniq) |
-              ty::proto_vstore(ty::vstore_box) => {
-                // FIXME #2152 allow mutation of moved upvars
-                @{id:id, span:span,
-                  cat:cat_special(sk_heap_upvar), lp:None,
-                  mutbl:m_imm, ty:expr_ty}
-              }
-              ty::proto_vstore(ty::vstore_fixed(_)) =>
-                fail ~"fixed vstore not allowed here"
+                ast::ProtoBorrowed => {
+                    let upcmt = self.cat_def(id, span, expr_ty, *inner);
+                    @{id:id, span:span,
+                      cat:cat_stack_upvar(upcmt), lp:upcmt.lp,
+                      mutbl:upcmt.mutbl, ty:upcmt.ty}
+                }
+                ast::ProtoUniq | ast::ProtoBox => {
+                    // FIXME #2152 allow mutation of moved upvars
+                    @{id:id, span:span,
+                      cat:cat_special(sk_heap_upvar), lp:None,
+                      mutbl:m_imm, ty:expr_ty}
+                }
+                ast::ProtoBare => {
+                    self.tcx.sess.span_bug(
+                        span,
+                        fmt!("Upvar in a bare closure?"));
+                }
             }
           }
 
@@ -648,16 +661,16 @@ impl &mem_categorization_ctxt {
                              base_cmt: cmt,
                              f_name: ast::ident,
                              field_id: ast::node_id) -> cmt {
-        let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty, f_name,
-                                        field_id) {
-          Some(f_mutbl) => f_mutbl,
-          None => {
-            self.tcx.sess.span_bug(
-                node.span(),
-                fmt!("Cannot find field `%s` in type `%s`",
-                     self.tcx.sess.str_of(f_name),
-                     ty_to_str(self.tcx, base_cmt.ty)));
-          }
+        let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty,
+                                        f_name, field_id) {
+            Some(f_mutbl) => f_mutbl,
+            None => {
+                self.tcx.sess.span_bug(
+                    node.span(),
+                    fmt!("Cannot find field `%s` in type `%s`",
+                         self.tcx.sess.str_of(f_name),
+                         ty_to_str(self.tcx, base_cmt.ty)));
+            }
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
         let f_comp = comp_field(f_name, f_mutbl);
@@ -667,9 +680,24 @@ impl &mem_categorization_ctxt {
           mutbl: m, ty: self.tcx.ty(node)}
     }
 
+    fn cat_deref_fn<N:ast_node>(node: N,
+                                base_cmt: cmt,
+                                deref_cnt: uint) -> cmt
+    {
+        // Bit of a hack: the "dereference" of a function pointer like
+        // `@fn()` is a mere logical concept. We interpret it as
+        // dereferencing the environment pointer; of course, we don't
+        // know what type lies at the other end, so we just call it
+        // `()` (the empty tuple).
+
+        let mt = {ty: ty::mk_tup(self.tcx, ~[]), mutbl: m_imm};
+        return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
+    }
+
     fn cat_deref<N:ast_node>(node: N,
                              base_cmt: cmt,
-                             deref_cnt: uint) -> cmt {
+                             deref_cnt: uint) -> cmt
+    {
         let mt = match ty::deref(self.tcx, base_cmt.ty, true) {
             Some(mt) => mt,
             None => {
@@ -680,6 +708,14 @@ impl &mem_categorization_ctxt {
             }
         };
 
+        return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
+    }
+
+    fn cat_deref_common<N:ast_node>(node: N,
+                                    base_cmt: cmt,
+                                    deref_cnt: uint,
+                                    mt: ty::mt) -> cmt
+    {
         match deref_kind(self.tcx, base_cmt.ty) {
             deref_ptr(ptr) => {
                 let lp = do base_cmt.lp.chain_ref |l| {

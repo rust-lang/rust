@@ -186,14 +186,7 @@ impl reflector {
               ast::impure_fn => 2u,
               ast::extern_fn => 3u
             };
-            let protoval = match fty.meta.proto {
-              ty::proto_bare => 0u,
-              ty::proto_vstore(ty::vstore_uniq) => 2u,
-              ty::proto_vstore(ty::vstore_box) => 3u,
-              ty::proto_vstore(ty::vstore_slice(_)) => 4u,
-              ty::proto_vstore(ty::vstore_fixed(_)) =>
-                fail ~"fixed unexpected"
-            };
+            let protoval = ast_proto_constant(fty.meta.proto);
             let retval = match fty.meta.ret_style {
               ast::noreturn => 0u,
               ast::return_val => 1u
@@ -278,11 +271,7 @@ impl reflector {
           ty::ty_type => self.leaf(~"type"),
           ty::ty_opaque_box => self.leaf(~"opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
-            let ckval = match ck {
-              ty::ck_block => 0u,
-              ty::ck_box => 1u,
-              ty::ck_uniq => 2u
-            };
+            let ckval = ast_proto_constant(ck);
             self.visit(~"closure_ptr", ~[self.c_uint(ckval)])
           }
         }
@@ -308,4 +297,13 @@ fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
     r.visit_ty(t);
     Br(r.bcx, final.llbb);
     return final;
+}
+
+fn ast_proto_constant(proto: ast::Proto) -> uint {
+    match proto {
+        ast::ProtoBare => 0u,
+        ast::ProtoUniq => 2u,
+        ast::ProtoBox => 3u,
+        ast::ProtoBorrowed => 4u,
+    }
 }
