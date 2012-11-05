@@ -101,10 +101,10 @@ uninstall:
 	$(Q)rm -f $(PHB)/rusti$(X)
 	$(Q)rm -f $(PHB)/rustdoc$(X)
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
-	$(Q)rm -f $(PHL)/$(CFG_FUZZER)
-	$(Q)rm -f $(PHL)/$(CFG_CARGO)
-	$(Q)rm -f $(PHL)/$(CFG_RUSTDOC)
-	$(Q)rm -f $(PHL)/$(CFG_RUSTI)
+	$(Q)rm -f $(PHL)/$(CFG_LIBFUZZER)
+	$(Q)rm -f $(PHL)/$(CFG_LIBCARGO)
+	$(Q)rm -f $(PHL)/$(CFG_LIBRUSTDOC)
+	$(Q)rm -f $(PHL)/$(CFG_LIBRUSTI)
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME)
 	$(Q)for i in \
           $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB)) \
