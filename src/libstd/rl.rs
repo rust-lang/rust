@@ -1,3 +1,6 @@
+// FIXME #3921. This is unsafe because linenoise uses global mutable
+// state without mutexes.
+
 use libc::{c_char, c_int};
 
 extern mod rustrt {
@@ -12,33 +15,33 @@ extern mod rustrt {
 }
 
 /// Add a line to history
-pub fn add_history(line: ~str) -> bool {
+pub unsafe fn add_history(line: ~str) -> bool {
     do str::as_c_str(line) |buf| {
         rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
     }
 }
 
 /// Set the maximum amount of lines stored
-pub fn set_history_max_len(len: int) -> bool {
+pub unsafe fn set_history_max_len(len: int) -> bool {
     rustrt::linenoiseHistorySetMaxLen(len as c_int) == 1 as c_int
 }
 
 /// Save line history to a file
-pub fn save_history(file: ~str) -> bool {
+pub unsafe fn save_history(file: ~str) -> bool {
     do str::as_c_str(file) |buf| {
         rustrt::linenoiseHistorySave(buf) == 1 as c_int
     }
 }
 
 /// Load line history from a file
-pub fn load_history(file: ~str) -> bool {
+pub unsafe fn load_history(file: ~str) -> bool {
     do str::as_c_str(file) |buf| {
         rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
     }
 }
 
 /// Print out a prompt and then wait for input and return it
-pub fn read(prompt: ~str) -> Option<~str> {
+pub unsafe fn read(prompt: ~str) -> Option<~str> {
     do str::as_c_str(prompt) |buf| unsafe {
         let line = rustrt::linenoise(buf);
 
@@ -52,7 +55,7 @@ pub type CompletionCb = fn~(~str, fn(~str));
 fn complete_key(_v: @CompletionCb) {}
 
 /// Bind to the main completion callback
-pub fn complete(cb: CompletionCb) unsafe {
+pub unsafe fn complete(cb: CompletionCb) unsafe {
     task::local_data::local_data_set(complete_key, @(move cb));
 
     extern fn callback(line: *c_char, completions: *()) unsafe {
