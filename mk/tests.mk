@@ -382,7 +382,7 @@ check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 # Rules for the rusti test runner
 
 $(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
-		$$(RUSTI_CRATE) $$(RUSTI_INPUTS)		\
+		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
 		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
