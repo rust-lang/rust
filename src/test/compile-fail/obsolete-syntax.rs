@@ -56,22 +56,11 @@ fn obsolete_with() {
     //~^ ERROR obsolete syntax: with
 }
 
-fn obsolete_fixed_length_vec() {
-    let foo: [int]/1;
-    //~^ ERROR obsolete syntax: fixed-length vector
-    foo = [1]/_;
-    //~^ ERROR obsolete syntax: fixed-length vector
-    let foo: [int]/1;
-    //~^ ERROR obsolete syntax: fixed-length vector
-    foo = [1]/1;
-    //~^ ERROR obsolete syntax: fixed-length vector
-}
-
 fn obsolete_moves() {
     let mut x = 0;
     let y <- x;
     //~^ ERROR obsolete syntax: initializer-by-move
-    y <- x; 
+    y <- x;
     //~^ ERROR obsolete syntax: binary move
 }
 

@@ -157,10 +157,6 @@ export set_default_mode;
 export variant_info;
 export walk_ty, maybe_walk_ty;
 export occurs_check;
-export closure_kind;
-export ck_block;
-export ck_box;
-export ck_uniq;
 export param_ty;
 export param_bound, param_bounds, bound_copy, bound_owned;
 export param_bounds_to_str, param_bound_to_str;
@@ -190,9 +186,7 @@ export purity_to_str;
 export onceness_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
-export fn_proto, proto_bare, proto_vstore;
 export ast_proto_to_proto;
-export is_blockish;
 export method_call_bounds;
 export hash_region;
 export region_variance, rv_covariant, rv_invariant, rv_contravariant;
@@ -200,10 +194,11 @@ export opt_region_variance;
 export determine_inherited_purity;
 export provided_trait_methods;
 export trait_supertraits;
-export AutoAdjustment;
-export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
 export DerivedMethodInfo;
 export DerivedFieldInfo;
+export AutoAdjustment;
+export AutoRef;
+export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowFn;
 
 // Data types
 
@@ -304,14 +299,14 @@ impl region_variance : cmp::Eq {
 
 #[auto_serialize]
 #[auto_deserialize]
-type AutoAdjustment = {
+pub type AutoAdjustment = {
     autoderefs: uint,
     autoref: Option<AutoRef>
 };
 
 #[auto_serialize]
 #[auto_deserialize]
-type AutoRef = {
+pub type AutoRef = {
     kind: AutoRefKind,
     region: Region,
     mutbl: ast::mutability
@@ -320,11 +315,14 @@ type AutoRef = {
 #[auto_serialize]
 #[auto_deserialize]
 enum AutoRefKind {
-    /// Convert from @[]/~[] to &[] (or str)
-    AutoSlice,
-
     /// Convert from T to &T
-    AutoPtr
+    AutoPtr,
+
+    /// Convert from @[]/~[] to &[] (or str)
+    AutoBorrowVec,
+
+    /// Convert from @fn()/~fn() to &fn()
+    AutoBorrowFn,
 }
 
 struct ProvidedMethodSource {
@@ -450,62 +448,6 @@ pure fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
 pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pure fn type_id(t: t) -> uint { get(t).id }
 
-enum closure_kind {
-    ck_block,
-    ck_box,
-    ck_uniq,
-}
-
-impl closure_kind : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-impl closure_kind : cmp::Eq {
-    pure fn eq(other: &closure_kind) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    pure fn ne(other: &closure_kind) -> bool { !self.eq(other) }
-}
-
-enum fn_proto {
-    proto_bare,             // supertype of all other protocols
-    proto_vstore(vstore)
-}
-
-impl fn_proto : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          proto_bare =>
-          0u8.iter_bytes(lsb0, f),
-
-          proto_vstore(ref v) =>
-          to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
-        }
-    }
-}
-
-impl fn_proto : cmp::Eq {
-    pure fn eq(other: &fn_proto) -> bool {
-        match self {
-            proto_bare => {
-                match (*other) {
-                    proto_bare => true,
-                    _ => false
-                }
-            }
-            proto_vstore(e0a) => {
-                match (*other) {
-                    proto_vstore(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(other: &fn_proto) -> bool { !self.eq(other) }
-}
-
 /**
  * Meta information about a closure.
  *
@@ -513,12 +455,14 @@ impl fn_proto : cmp::Eq {
  * - `proto` is the protocol (fn@, fn~, etc).
  * - `onceness` indicates whether the function can be called one time or many
  *   times.
+ * - `region` is the region bound on the function's upvars (often &static).
  * - `bounds` is the parameter bounds on the function's upvars.
  * - `ret_style` indicates whether the function returns a value or fails. */
 struct FnMeta {
     purity: ast::purity,
-    proto: fn_proto,
+    proto: ast::Proto,
     onceness: ast::Onceness,
+    region: Region,
     bounds: @~[param_bound],
     ret_style: ret_style
 }
@@ -671,7 +615,7 @@ enum sty {
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(closure_kind), // ptr to env for fn, fn@, fn~
+    ty_opaque_closure_ptr(ast::Proto), // ptr to env for fn, fn@, fn~
     ty_unboxed_vec(mt),
 }
 
@@ -691,7 +635,7 @@ enum type_err {
     terr_purity_mismatch(expected_found<purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_mutability,
-    terr_proto_mismatch(expected_found<ty::fn_proto>),
+    terr_proto_mismatch(expected_found<ast::Proto>),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -1036,10 +980,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
       ty_tup(ts) => for ts.each |tt| { flags |= get(*tt).flags; },
       ty_fn(ref f) => {
-        match f.meta.proto {
-            ty::proto_vstore(vstore_slice(r)) => flags |= rflags(r),
-            ty::proto_bare | ty::proto_vstore(_) => {}
-        }
+        flags |= rflags(f.meta.region);
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.sig.output).flags;
       }
@@ -1172,8 +1113,8 @@ fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
 
 fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
 
-fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
-    mk_t(cx, ty_opaque_closure_ptr(ck))
+fn mk_opaque_closure_ptr(cx: ctxt, proto: ast::Proto) -> t {
+    mk_t(cx, ty_opaque_closure_ptr(proto))
 }
 
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
@@ -1197,8 +1138,10 @@ fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
         // memory leak that otherwise results when @fn is upcast to &fn.
     if type_is_fn(ty) {
         match ty_fn_proto(ty) {
-           proto_vstore(vstore_slice(_)) => return ast::by_ref,
-            _ => ()
+            ast::ProtoBorrowed => {
+                return ast::by_ref;
+            }
+            _ => {}
         }
     }
     return if tcx.legacy_modes {
@@ -1409,25 +1352,18 @@ fn fold_regions_and_ty(
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
       ty_fn(ref f) => {
-        let new_proto;
-        match f.meta.proto {
-            proto_bare =>
-                new_proto = proto_bare,
-            proto_vstore(vstore_slice(r)) =>
-                new_proto = proto_vstore(vstore_slice(fldr(r))),
-            proto_vstore(old_vstore) =>
-                new_proto = proto_vstore(old_vstore)
-        }
-        let new_args = vec::map(f.sig.inputs, |a| {
-            let new_ty = fldfnt(a.ty);
-            {mode: a.mode, ty: new_ty}
-        });
-        let new_output = fldfnt(f.sig.output);
-        ty::mk_fn(cx, FnTyBase {
-            meta: FnMeta {proto: new_proto, ..f.meta},
-            sig: FnSig {inputs: new_args,
-                        output: new_output}
-        })
+          let new_region = fldr(f.meta.region);
+          let new_args = vec::map(f.sig.inputs, |a| {
+              let new_ty = fldfnt(a.ty);
+              {mode: a.mode, ty: new_ty}
+          });
+          let new_output = fldfnt(f.sig.output);
+          ty::mk_fn(cx, FnTyBase {
+              meta: FnMeta {region: new_region,
+                            ..f.meta},
+              sig: FnSig {inputs: new_args,
+                          output: new_output}
+          })
       }
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
@@ -1789,8 +1725,8 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_fn(ref fty) => {
         match fty.meta.proto {
-          proto_bare | proto_vstore(vstore_slice(_)) => false,
-          _ => true
+          ast::ProtoBare | ast::ProtoBorrowed => false,
+          ast::ProtoBox | ast::ProtoUniq => true,
         }
       }
     };
@@ -2016,16 +1952,18 @@ pure fn kind_is_owned(k: Kind) -> bool {
 
 fn meta_kind(p: FnMeta) -> Kind {
     match p.proto { // XXX consider the kind bounds!
-      proto_vstore(vstore_slice(_)) =>
-        kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE),
-      proto_vstore(vstore_box) =>
-        kind_safe_for_default_mode() | kind_owned(),
-      proto_vstore(vstore_uniq) =>
-        kind_send_copy() | kind_owned(),
-      proto_vstore(vstore_fixed(_)) =>
-        fail ~"fixed vstore protos are not allowed",
-      proto_bare =>
-        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+        ast::ProtoBare => {
+            kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+        }
+        ast::ProtoBorrowed => {
+            kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE)
+        }
+        ast::ProtoBox => {
+            kind_safe_for_default_mode() | kind_owned()
+        }
+        ast::ProtoUniq => {
+            kind_send_copy() | kind_owned()
+        }
     }
 }
 
@@ -2721,8 +2659,27 @@ impl field : to_bytes::IterBytes {
 
 impl arg : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_2(&self.mode,
-                                 &self.ty, lsb0, f)
+        to_bytes::iter_bytes_2(&self.mode,
+                               &self.ty, lsb0, f)
+    }
+}
+
+impl FnMeta : to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_5(&self.purity,
+                               &self.proto,
+                               &self.region,
+                               &self.bounds,
+                               &self.ret_style,
+                               lsb0, f);
+    }
+}
+
+impl FnSig : to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.inputs,
+                               &self.output,
+                               lsb0, f);
     }
 }
 
@@ -2763,13 +2720,9 @@ impl sty : to_bytes::IterBytes {
           to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
 
           ty_fn(ref ft) =>
-          to_bytes::iter_bytes_7(&12u8,
-                                 &ft.meta.purity,
-                                 &ft.meta.proto,
-                                 &ft.meta.bounds,
-                                 &ft.sig.inputs,
-                                 &ft.sig.output,
-                                 &ft.meta.ret_style,
+          to_bytes::iter_bytes_3(&12u8,
+                                 &ft.meta,
+                                 &ft.sig,
                                  lsb0, f),
 
           ty_self => 13u8.iter_bytes(lsb0, f),
@@ -2840,7 +2793,7 @@ fn ty_fn_args(fty: t) -> ~[arg] {
     }
 }
 
-fn ty_fn_proto(fty: t) -> fn_proto {
+fn ty_fn_proto(fty: t) -> Proto {
     match get(fty).sty {
       ty_fn(ref f) => f.meta.proto,
       _ => fail ~"ty_fn_proto() called on non-fn type"
@@ -4091,12 +4044,11 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             mk_rptr(cx, re_static, normalize_mt(cx, mt)),
 
         ty_fn(ref fn_ty) => {
-            let proto = match fn_ty.meta.proto {
-                proto_bare => proto_bare,
-                proto_vstore(vstore) => proto_vstore(normalize_vstore(vstore))
-            };
             mk_fn(cx, FnTyBase {
-                meta: FnMeta {proto: proto, ..fn_ty.meta},
+                meta: FnMeta {
+                    region: ty::re_static,
+                    ..fn_ty.meta
+                },
                 sig: fn_ty.sig
             })
         }
@@ -4160,27 +4112,17 @@ fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr, span: span) -> uint {
     }
 }
 
-pure fn is_blockish(proto: fn_proto) -> bool {
-    match proto {
-        proto_vstore(vstore_slice(_)) =>
-            true,
-        proto_vstore(vstore_box) | proto_vstore(vstore_uniq) | proto_bare =>
-            false,
-        proto_vstore(vstore_fixed(_)) =>
-            fail ~"fixed vstore not allowed here"
-    }
-}
-
 // Determine what purity to check a nested function under
 pure fn determine_inherited_purity(parent_purity: ast::purity,
                                    child_purity: ast::purity,
-                                   child_proto: ty::fn_proto) -> ast::purity {
+                                   child_proto: ast::Proto) -> ast::purity {
     // If the closure is a stack closure and hasn't had some non-standard
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own
-    if ty::is_blockish(child_proto) && child_purity == ast::impure_fn {
-        parent_purity
-    } else { child_purity }
+    match child_proto {
+        ast::ProtoBorrowed if child_purity == ast::impure_fn => parent_purity,
+        _ => child_purity
+    }
 }
 
 impl mt : cmp::Eq {

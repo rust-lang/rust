@@ -133,9 +133,10 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 });
                 result_ty = Some(ty::mk_fn(tcx, FnTyBase {
                     meta: FnMeta {purity: ast::pure_fn,
-                                  proto: ty::proto_vstore(ty::vstore_box),
+                                  proto: ast::ProtoBare,
                                   onceness: ast::Many,
                                   bounds: @~[],
+                                  region: ty::re_static,
                                   ret_style: ast::return_val},
                     sig: FnSig {inputs: args,
                                 output: enum_ty}
@@ -604,9 +605,11 @@ fn convert_struct(ccx: @crate_ctxt,
         // Write the dtor type
         let t_dtor = ty::mk_fn(
             tcx,
-            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
-                          ast::impure_fn, ast::Many, @~[],
-                          ast_util::dtor_dec(), None, dtor.span));
+            ty_of_fn_decl(
+                ccx, type_rscope(rp), ast::ProtoBare,
+                ast::impure_fn, ast::Many,
+                /*bounds:*/ @~[], /*opt_region:*/ None,
+                ast_util::dtor_dec(), None, dtor.span));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
                           {bounds: tpt.bounds,
@@ -643,9 +646,10 @@ fn convert_struct(ccx: @crate_ctxt,
                 let ctor_fn_ty = ty::mk_fn(tcx, FnTyBase {
                     meta: FnMeta {
                         purity: ast::pure_fn,
-                        proto: ty::proto_bare,
+                        proto: ast::ProtoBare,
                         onceness: ast::Many,
                         bounds: @~[],
+                        region: ty::re_static,
                         ret_style: ast::return_val,
                     },
                     sig: FnSig {
@@ -684,15 +688,10 @@ fn ty_of_method(ccx: @crate_ctxt,
                 rp: Option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
-     fty: ty_of_fn_decl(ccx,
-                        type_rscope(rp),
-                        ast::proto_bare,
-                        m.purity,
-                        ast::Many,
-                        @~[],
-                        m.decl,
-                        None,
-                        m.span),
+     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::ProtoBare,
+                        m.purity, ast::Many,
+                        /*bounds:*/ @~[], /*opt_region:*/ None,
+                        m.decl, None, m.span),
      self_ty: m.self_ty.node,
      vis: m.vis,
      def_id: local_def(m.id)}
@@ -704,15 +703,10 @@ fn ty_of_ty_method(self: @crate_ctxt,
                    id: ast::def_id) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
-     fty: ty_of_fn_decl(self,
-                        type_rscope(rp),
-                        ast::proto_bare,
-                        m.purity,
-                        ast::Many,
-                        @~[],
-                        m.decl,
-                        None,
-                        m.span),
+     fty: ty_of_fn_decl(self, type_rscope(rp), ast::ProtoBare,
+                        m.purity, ast::Many,
+                        /*bounds:*/ @~[], /*opt_region:*/ None,
+                        m.decl, None, m.span),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
      vis: ast::public,
@@ -767,15 +761,10 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_fn(decl, purity, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx,
-                                 empty_rscope,
-                                 ast::proto_bare,
-                                 purity,
-                                 ast::Many,
-                                 @~[],
-                                 decl,
-                                 None,
-                                 it.span);
+        let tofd = ty_of_fn_decl(ccx, empty_rscope,
+                                 ast::ProtoBare, purity, ast::Many,
+                                 /*bounds:*/ @~[], /*opt_region:*/ None,
+                                 decl, None, it.span);
         let tpt = {bounds: bounds,
                    region_param: None,
                    ty: ty::mk_fn(ccx.tcx, tofd)};
@@ -930,9 +919,10 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
 
     let t_fn = ty::mk_fn(ccx.tcx, FnTyBase {
         meta: FnMeta {purity: purity,
-                      proto: ty::proto_bare,
                       onceness: ast::Many,
+                      proto: ast::ProtoBare,
                       bounds: @~[],
+                      region: ty::re_static,
                       ret_style: ast::return_val},
         sig: FnSig {inputs: input_tys,
                     output: output_ty}

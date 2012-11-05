@@ -296,9 +296,10 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
         w.write_char('s');
       }
       ty::ty_type => w.write_char('Y'),
-      ty::ty_opaque_closure_ptr(ty::ck_block) => w.write_str(&"C&"),
-      ty::ty_opaque_closure_ptr(ty::ck_box) => w.write_str(&"C@"),
-      ty::ty_opaque_closure_ptr(ty::ck_uniq) => w.write_str(&"C~"),
+      ty::ty_opaque_closure_ptr(p) => {
+          w.write_str(&"C&");
+          enc_proto(w, p);
+      }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_class(def, substs) => {
           debug!("~~~~ %s", ~"a[");
@@ -315,14 +316,13 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
     }
 }
 
-fn enc_proto(w: io::Writer, cx: @ctxt, proto: ty::fn_proto) {
+fn enc_proto(w: io::Writer, proto: Proto) {
     w.write_str(&"f");
     match proto {
-        ty::proto_bare => w.write_str(&"n"),
-        ty::proto_vstore(vstore) => {
-            w.write_str(&"v");
-            enc_vstore(w, cx, vstore);
-        }
+        ProtoBare => w.write_str(&"_"),
+        ProtoBox => w.write_str(&"@"),
+        ProtoUniq => w.write_str(&"~"),
+        ProtoBorrowed => w.write_str(&"&"),
     }
 }
 
@@ -357,9 +357,10 @@ fn enc_onceness(w: io::Writer, o: Onceness) {
 }
 
 fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
-    enc_proto(w, cx, ft.meta.proto);
+    enc_proto(w, ft.meta.proto);
     enc_purity(w, ft.meta.purity);
     enc_onceness(w, ft.meta.onceness);
+    enc_region(w, cx, ft.meta.region);
     enc_bounds(w, cx, ft.meta.bounds);
     w.write_char('[');
     for ft.sig.inputs.each |arg| {

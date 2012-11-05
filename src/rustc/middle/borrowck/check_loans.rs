@@ -234,7 +234,7 @@ impl check_loan_ctxt {
     fn is_stack_closure(id: ast::node_id) -> bool {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
         let proto = ty::ty_fn_proto(fn_ty);
-        return ty::is_blockish(proto);
+        return proto == ast::ProtoBorrowed;
     }
 
     fn is_allowed_pure_arg(expr: @ast::expr) -> bool {

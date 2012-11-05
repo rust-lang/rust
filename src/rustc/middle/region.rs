@@ -615,23 +615,35 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     // region is expected (and hence is a supertype of those
     // locations)
     match ty.node {
-      ast::ty_rptr(r, _) => {
-        debug!("referenced rptr type %s",
-               pprust::ty_to_str(ty, cx.sess.intr()));
+        ast::ty_rptr(r, _) => {
+            debug!("referenced rptr type %s",
+                   pprust::ty_to_str(ty, cx.sess.intr()));
 
-        if cx.region_is_relevant(r) {
-            cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant))
+            if cx.region_is_relevant(r) {
+                cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant))
+            }
         }
-      }
 
-      ast::ty_fn(ast::proto_bare, _, _, _, _) |
-      ast::ty_fn(ast::proto_block, _, _, _, _) if cx.anon_implies_rp => {
-        debug!("referenced bare fn type with regions %s",
-               pprust::ty_to_str(ty, cx.sess.intr()));
-        cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant));
-      }
+        ast::ty_fn(f) => {
+            debug!("referenced fn type: %s",
+                   pprust::ty_to_str(ty, cx.sess.intr()));
+            match f.region {
+                Some(r) => {
+                    if cx.region_is_relevant(r) {
+                        cx.add_rp(cx.item_id,
+                                  cx.add_variance(rv_contravariant))
+                    }
+                }
+                None => {
+                    if f.proto == ast::ProtoBorrowed && cx.anon_implies_rp {
+                        cx.add_rp(cx.item_id,
+                                  cx.add_variance(rv_contravariant));
+                    }
+                }
+            }
+        }
 
-      _ => {}
+        _ => {}
     }
 
     // if this references another named type, add the dependency
@@ -666,25 +678,6 @@ fn determine_rp_in_ty(ty: @ast::Ty,
       _ => {}
     }
 
-    // temporary hack: right now, fn() is short for &fn(), but @(fn())
-    // is `@fn()`, so catch this and set anon_implies_rp to none in
-    // that case
-    match ty.node {
-      ast::ty_box(mt) | ast::ty_uniq(mt) => {
-        match mt.ty.node {
-          ast::ty_fn(ast::proto_bare, _, _, _, _) |
-          ast::ty_fn(ast::proto_block, _, _, _, _) => {
-            do cx.with(cx.item_id, false) {
-                visit_mt(mt, cx, visitor);
-            }
-            return;
-          }
-          _ => {}
-        }
-      }
-      _ => {}
-    }
-
     match ty.node {
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
@@ -706,18 +699,18 @@ fn determine_rp_in_ty(ty: @ast::Ty,
         }
       }
 
-      ast::ty_fn(_, _, _, bounds, decl) => {
+      ast::ty_fn(f) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
         do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
-                for decl.inputs.each |a| {
+                for f.decl.inputs.each |a| {
                     visitor.visit_ty(a.ty, cx, visitor);
                 }
             }
-            visit::visit_ty_param_bounds(bounds, cx, visitor);
-            visitor.visit_ty(decl.output, cx, visitor);
+            visit::visit_ty_param_bounds(f.bounds, cx, visitor);
+            visitor.visit_ty(f.decl.output, cx, visitor);
         }
       }
 

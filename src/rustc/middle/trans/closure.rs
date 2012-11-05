@@ -144,9 +144,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-fn allocate_cbox(bcx: block,
-                 ck: ty::closure_kind,
-                 cdata_ty: ty::t)
+fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
     -> Result
 {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
@@ -163,15 +161,23 @@ fn allocate_cbox(bcx: block,
     }
 
     // Allocate and initialize the box:
-    match ck {
-      ty::ck_box => malloc_raw(bcx, cdata_ty, heap_shared),
-      ty::ck_uniq => malloc_raw(bcx, cdata_ty, heap_exchange),
-      ty::ck_block => {
-          let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-          let llbox = base::alloc_ty(bcx, cbox_ty);
-          nuke_ref_count(bcx, llbox);
-          rslt(bcx, llbox)
-      }
+    match proto {
+        ast::ProtoBox => {
+            malloc_raw(bcx, cdata_ty, heap_shared)
+        }
+        ast::ProtoUniq => {
+            malloc_raw(bcx, cdata_ty, heap_exchange)
+        }
+        ast::ProtoBorrowed => {
+            let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
+            let llbox = base::alloc_ty(bcx, cbox_ty);
+            nuke_ref_count(bcx, llbox);
+            rslt(bcx, llbox)
+        }
+        ast::ProtoBare => {
+            let cdata_llty = type_of(bcx.ccx(), cdata_ty);
+            rslt(bcx, C_null(cdata_llty))
+        }
     }
 }
 
@@ -187,7 +193,7 @@ type closure_result = {
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 fn store_environment(bcx: block,
                      bound_values: ~[EnvValue],
-                     ck: ty::closure_kind) -> closure_result {
+                     proto: ast::Proto) -> closure_result {
     let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -195,7 +201,7 @@ fn store_environment(bcx: block,
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, ck, cdata_ty);
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, proto, cdata_ty);
     let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -243,7 +249,7 @@ fn store_environment(bcx: block,
 // collects the upvars and packages them up for store_environment.
 fn build_closure(bcx0: block,
                  cap_vars: ~[capture::capture_var],
-                 ck: ty::closure_kind,
+                 proto: ast::Proto,
                  include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
@@ -257,7 +263,7 @@ fn build_closure(bcx0: block,
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             capture::cap_ref => {
-                assert ck == ty::ck_block;
+                assert proto == ast::ProtoBorrowed;
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
@@ -298,7 +304,7 @@ fn build_closure(bcx0: block,
                                 datum: ret_datum});
     }
 
-    return store_environment(bcx, env_vals, ck);
+    return store_environment(bcx, env_vals, proto);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -308,7 +314,7 @@ fn load_environment(fcx: fn_ctxt,
                     cdata_ty: ty::t,
                     cap_vars: ~[capture::capture_var],
                     load_ret_handle: bool,
-                    ck: ty::closure_kind) {
+                    proto: ast::Proto) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
     let bcx = raw_block(fcx, false, fcx.llloadenv);
 
@@ -322,9 +328,9 @@ fn load_environment(fcx: fn_ctxt,
           capture::cap_drop => { /* ignore */ }
           _ => {
             let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-            match ck {
-              ty::ck_block => { upvarptr = Load(bcx, upvarptr); }
-              ty::ck_uniq | ty::ck_box => ()
+            match proto {
+                ast::ProtoBorrowed => { upvarptr = Load(bcx, upvarptr); }
+                ast::ProtoBox | ast::ProtoUniq | ast::ProtoBare => {}
             }
             let def_id = ast_util::def_id_of_def(cap_var.def);
             fcx.llupvars.insert(def_id.node, upvarptr);
@@ -341,7 +347,7 @@ fn load_environment(fcx: fn_ctxt,
 }
 
 fn trans_expr_fn(bcx: block,
-                 proto: ty::fn_proto,
+                 proto: ast::Proto,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  id: ast::node_id,
@@ -365,16 +371,16 @@ fn trans_expr_fn(bcx: block,
     let s = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let trans_closure_env = fn@(ck: ty::closure_kind) -> Result {
+    let trans_closure_env = fn@(proto: ast::Proto) -> Result {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck,
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
                       bcx.fcx.param_substs, id, None, |fcx| {
             load_environment(fcx, cdata_ty, cap_vars,
-                             ret_handle.is_some(), ck);
+                             ret_handle.is_some(), proto);
                       }, |bcx| {
             if is_loop_body.is_some() {
                 Store(bcx, C_bool(true), bcx.fcx.llretptr);
@@ -384,22 +390,13 @@ fn trans_expr_fn(bcx: block,
     };
 
     let Result {bcx: bcx, val: closure} = match proto {
-        ty::proto_vstore(ty::vstore_slice(_)) => {
-            trans_closure_env(ty::ck_block)
+        ast::ProtoBorrowed | ast::ProtoBox | ast::ProtoUniq => {
+            trans_closure_env(proto)
         }
-        ty::proto_vstore(ty::vstore_box) => {
-            trans_closure_env(ty::ck_box)
-        }
-        ty::proto_vstore(ty::vstore_uniq) => {
-            trans_closure_env(ty::ck_uniq)
-        }
-        ty::proto_bare => {
+        ast::ProtoBare => {
             trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
                           id, None, |_fcx| { }, |_bcx| { });
             rslt(bcx, C_null(T_opaque_box_ptr(ccx)))
-        }
-        ty::proto_vstore(ty::vstore_fixed(_)) => {
-            fail ~"vstore_fixed unexpected"
         }
     };
     fill_fn_pair(bcx, dest_addr, llfn, closure);
@@ -412,48 +409,48 @@ fn make_fn_glue(
     v: ValueRef,
     t: ty::t,
     glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
-    -> block {
+    -> block
+{
     let _icx = cx.insn_ctxt("closure::make_fn_glue");
     let bcx = cx;
     let tcx = cx.tcx();
 
-    let fn_env = fn@(ck: ty::closure_kind) -> block {
-        let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
-        let box_ptr_v = Load(cx, box_cell_v);
-        do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
-            let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
-            glue_fn(bcx, box_cell_v, closure_ty)
-        }
-    };
-
     let proto = ty::ty_fn_proto(t);
     match proto {
-        ty::proto_bare | ty::proto_vstore(ty::vstore_slice(_)) => bcx,
-        ty::proto_vstore(ty::vstore_uniq) => fn_env(ty::ck_uniq),
-        ty::proto_vstore(ty::vstore_box) => fn_env(ty::ck_box),
-        ty::proto_vstore(ty::vstore_fixed(_)) => {
-            cx.sess().bug(~"Closure with fixed vstore");
+        ast::ProtoBare | ast::ProtoBorrowed => bcx,
+        ast::ProtoUniq | ast::ProtoBox => {
+            let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
+            let box_ptr_v = Load(cx, box_cell_v);
+            do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
+                let closure_ty = ty::mk_opaque_closure_ptr(tcx, proto);
+                glue_fn(bcx, box_cell_v, closure_ty)
+            }
         }
     }
 }
 
 fn make_opaque_cbox_take_glue(
     bcx: block,
-    ck: ty::closure_kind,
+    proto: ast::Proto,
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
-    -> block {
+    -> block
+{
     // Easy cases:
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
-    match ck {
-        ty::ck_block => return bcx,
-        ty::ck_box => {
+    match proto {
+        ast::ProtoBare | ast::ProtoBorrowed => {
+            return bcx;
+        }
+        ast::ProtoBox => {
             glue::incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
             return bcx;
         }
-        ty::ck_uniq => { /* hard case: */ }
+        ast::ProtoUniq => {
+            /* hard case: fallthrough to code below */
+        }
     }
 
-    // Hard case, a deep copy:
+    // fn~ requires a deep copy.
     let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
@@ -492,34 +489,38 @@ fn make_opaque_cbox_take_glue(
 
 fn make_opaque_cbox_drop_glue(
     bcx: block,
-    ck: ty::closure_kind,
+    proto: ast::Proto,
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
-    match ck {
-        ty::ck_block => bcx,
-        ty::ck_box => {
+    match proto {
+        ast::ProtoBare | ast::ProtoBorrowed => bcx,
+        ast::ProtoBox => {
             glue::decr_refcnt_maybe_free(
                 bcx, Load(bcx, cboxptr),
-                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), proto))
         }
-        ty::ck_uniq => {
+        ast::ProtoUniq => {
             glue::free_ty(
                 bcx, cboxptr,
-                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), proto))
         }
     }
 }
 
 fn make_opaque_cbox_free_glue(
     bcx: block,
-    ck: ty::closure_kind,
+    proto: ast::Proto,
     cbox: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_free_glue");
-    match ck {
-      ty::ck_block => return bcx,
-      ty::ck_box | ty::ck_uniq => { /* hard cases: */ }
+    match proto {
+        ast::ProtoBare | ast::ProtoBorrowed => {
+            return bcx;
+        }
+        ast::ProtoBox | ast::ProtoUniq => {
+            /* hard cases: fallthrough to code below */
+        }
     }
 
     let ccx = bcx.ccx();
@@ -537,10 +538,12 @@ fn make_opaque_cbox_free_glue(
                                     abi::tydesc_field_drop_glue, None);
 
         // Free the ty descr (if necc) and the box itself
-        match ck {
-            ty::ck_block => fail ~"Impossible",
-            ty::ck_box => glue::trans_free(bcx, cbox),
-            ty::ck_uniq => glue::trans_unique_free(bcx, cbox)
+        match proto {
+            ast::ProtoBox => glue::trans_free(bcx, cbox),
+            ast::ProtoUniq => glue::trans_unique_free(bcx, cbox),
+            ast::ProtoBare | ast::ProtoBorrowed => {
+                bcx.sess().bug(~"impossible")
+            }
         }
     }
 }

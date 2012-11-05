@@ -50,8 +50,8 @@ use ast::{_mod, add, arg, arm, attribute,
              match_tok, method, mode, module_ns, mt, mul, mutability,
              named_field, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct,
-             pat_tup, pat_uniq, pat_wild, path, private, proto, proto_bare,
-             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
+             pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare,
+             ProtoBorrowed, ProtoBox, ProtoUniq, provided, public, pure_fn,
              purity, re_static, re_self, re_anon, re_named, region,
              rem, required, ret_style,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
@@ -61,14 +61,14 @@ use ast::{_mod, add, arg, arm, attribute,
              tt_tok, tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
              ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
              ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
-             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, type_value_ns,
-             uniq, unnamed_field, unsafe_blk, unsafe_fn,
+             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length_vec,
+             type_value_ns, uniq, unnamed_field, unsafe_blk, unsafe_fn,
              variant, view_item, view_item_, view_item_export,
              view_item_import, view_item_use, view_path, view_path_glob,
              view_path_list, view_path_simple, visibility, vstore, vstore_box,
              vstore_fixed, vstore_slice, vstore_uniq,
              expr_vstore_fixed, expr_vstore_slice, expr_vstore_box,
-             expr_vstore_uniq};
+             expr_vstore_uniq, TyFn, Onceness, Once, Many};
 
 export file_type;
 export Parser;
@@ -287,29 +287,89 @@ impl Parser {
 
     pure fn id_to_str(id: ident) -> @~str { self.sess.interner.get(id) }
 
-    fn parse_ty_fn(purity: ast::purity, onceness: ast::Onceness) -> ty_ {
-        let proto, bounds;
+    fn token_is_fn_keyword(+tok: token::Token) -> bool {
+        self.token_is_keyword(~"pure", tok) ||
+            self.token_is_keyword(~"unsafe", tok) ||
+            self.token_is_keyword(~"once", tok) ||
+            self.token_is_keyword(~"fn", tok) ||
+            self.token_is_keyword(~"extern", tok)
+    }
+
+    fn parse_ty_fn(pre_proto: Option<ast::Proto>,
+                       pre_region_name: Option<ident>) -> ty_
+    {
+        /*
+
+        (&|~|@) [r/] [pure|unsafe] [once] fn [:K] (S) -> T
+        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~^ ^~^    ^
+           |     |     |             |        |    |     |
+           |     |     |             |        |    |   Return type
+           |     |     |             |        |  Argument types
+           |     |     |             |    Environment bounds
+           |     |     |          Once-ness (a.k.a., affine)
+           |     |   Purity
+           | Lifetime bound
+        Allocation type
+
+        */
+
+        // At this point, the allocation type and lifetime bound have been
+        // parsed.
+
+        let purity = parse_purity(&self);
+        let onceness = parse_onceness(&self);
+
+        let bounds, post_proto;
         if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
-            proto = ast::proto_bare;
+            post_proto = Some(ast::ProtoBare);
             bounds = @~[];
         } else {
             self.expect_keyword(~"fn");
-            proto = self.parse_fn_ty_proto();
+            post_proto = self.parse_fn_ty_proto();
             bounds = self.parse_optional_ty_param_bounds();
         };
-        ty_fn(proto, purity, onceness, bounds, self.parse_ty_fn_decl())
+
+        let proto = match (pre_proto, post_proto) {
+            (None, None) => ast::ProtoBorrowed,
+            (Some(p), None) | (None, Some(p)) => p,
+            (Some(_), Some(_)) => {
+                self.fatal(~"cannot combine prefix and postfix \
+                             syntax for closure kind; note that \
+                             postfix syntax is obsolete");
+            }
+        };
+
+        let region = if pre_region_name.is_some() {
+            Some(self.region_from_name(pre_region_name))
+        } else {
+            None
+        };
+
+        return ty_fn(@TyFn {
+            proto: proto,
+            region: region,
+            purity: purity,
+            onceness: onceness,
+            bounds: bounds,
+            decl: self.parse_ty_fn_decl()
+        });
+
+        fn parse_purity(self: &Parser) -> purity {
+            if self.eat_keyword(~"pure") {
+                return pure_fn;
+            } else if self.eat_keyword(~"unsafe") {
+                return unsafe_fn;
+            } else {
+                return impure_fn;
+            }
+        }
+
+        fn parse_onceness(self: &Parser) -> Onceness {
+            if self.eat_keyword(~"once") {Once} else {Many}
+        }
     }
 
-    fn parse_ty_fn_with_onceness(purity: ast::purity) -> ty_ {
-        let onceness = self.parse_optional_onceness();
-        self.parse_ty_fn(purity, onceness)
-    }
-
-    fn parse_ty_fn_with_purity_and_onceness() -> ty_ {
-        let purity = self.parse_optional_purity();
-        self.parse_ty_fn_with_onceness(purity)
-    }
 
     fn parse_ty_fn_decl() -> fn_decl {
         let inputs = do self.parse_unspanned_seq(
@@ -449,23 +509,6 @@ impl Parser {
         }
     }
 
-    // Parses something like "&x/" (note the trailing slash)
-    fn parse_region_with_sep() -> @region {
-        let name =
-            match copy self.token {
-              token::IDENT(sid, _) => {
-                if self.look_ahead(1u) == token::BINOP(token::SLASH) {
-                    self.bump(); self.bump();
-                    Some(sid)
-                } else {
-                    None
-                }
-              }
-              _ => { None }
-            };
-        self.region_from_name(name)
-    }
-
     fn parse_ty(colons_before_params: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
@@ -498,10 +541,10 @@ impl Parser {
             }
         } else if self.token == token::AT {
             self.bump();
-            ty_box(self.parse_mt())
+            self.parse_box_or_uniq_pointee(ast::ProtoBox, ty_box)
         } else if self.token == token::TILDE {
             self.bump();
-            ty_uniq(self.parse_mt())
+            self.parse_box_or_uniq_pointee(ast::ProtoUniq, ty_uniq)
         } else if self.token == token::BINOP(token::STAR) {
             self.bump();
             ty_ptr(self.parse_mt())
@@ -516,51 +559,77 @@ impl Parser {
             ty_rec(elems)
         } else if self.token == token::LBRACKET {
             self.expect(token::LBRACKET);
-            let mut t = ty_vec(self.parse_mt());
+            let mt = self.parse_mt();
 
             // Parse the `* 3` in `[ int * 3 ]`
-            match self.maybe_parse_fixed_vstore_with_star() {
-                None => {}
-                Some(suffix) => {
-                    t = ty_fixed_length(@{
-                        id: self.get_id(),
-                        node: t,
-                        span: mk_sp(lo, self.last_span.hi)
-                    }, suffix)
-                }
-            }
+            let t = match self.maybe_parse_fixed_vstore_with_star() {
+                None => ty_vec(mt),
+                Some(suffix) => ty_fixed_length_vec(mt, suffix)
+            };
             self.expect(token::RBRACKET);
             t
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
-            let region = self.parse_region_with_sep();
-            let mt = self.parse_mt();
-            ty_rptr(region, mt)
-        } else if self.eat_keyword(~"once") {
-            self.parse_ty_fn(ast::impure_fn, ast::Once)
-        } else if self.eat_keyword(~"pure") {
-            self.parse_ty_fn_with_onceness(ast::pure_fn)
-        } else if self.eat_keyword(~"unsafe") {
-            self.parse_ty_fn_with_onceness(ast::unsafe_fn)
-        } else if self.is_keyword(~"fn") {
-            self.parse_ty_fn_with_onceness(ast::impure_fn)
-        } else if self.eat_keyword(~"extern") {
-            self.expect_keyword(~"fn");
-            ty_fn(proto_bare, ast::impure_fn, ast::Many, @~[],
-                  self.parse_ty_fn_decl())
+            self.parse_borrowed_pointee()
+        } else if self.token_is_fn_keyword(self.token) {
+            self.parse_ty_fn(None, None)
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
         } else { self.fatal(~"expected type"); };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        return {
-            let node =
-                self.try_convert_ty_to_obsolete_fixed_length_vstore(sp, t);
-            @{id: self.get_id(),
-              node: node,
-              span: sp}
+        return @{id: self.get_id(), node: t, span: sp};
+    }
+
+    fn parse_box_or_uniq_pointee(
+        proto: ast::Proto,
+        ctor: &fn(+v: mt) -> ty_) -> ty_
+    {
+        // @foo/fn() or @fn() are parsed directly as fn types:
+        match copy self.token {
+            token::IDENT(rname, _) => {
+                if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
+                    self.token_is_fn_keyword(self.look_ahead(2u))
+                {
+                    self.bump(); self.bump();
+                    return self.parse_ty_fn(Some(proto), Some(rname));
+                } else if self.token_is_fn_keyword(self.token) {
+                    return self.parse_ty_fn(Some(proto), None);
+                }
+            }
+            _ => {}
+        }
+
+        // other things are parsed as @ + a type.  Note that constructs like
+        // @[] and @str will be resolved during typeck to slices and so forth,
+        // rather than boxed ptrs.  But the special casing of str/vec is not
+        // reflected in the AST type.
+        let mt = self.parse_mt();
+        ctor(mt)
+    }
+
+    fn parse_borrowed_pointee() -> ty_ {
+        // look for `&foo/` and interpret `foo` as the region name:
+        let rname = match copy self.token {
+            token::IDENT(sid, _) => {
+                if self.look_ahead(1u) == token::BINOP(token::SLASH) {
+                    self.bump(); self.bump();
+                    Some(sid)
+                } else {
+                    None
+                }
+            }
+            _ => { None }
         };
+
+        if self.token_is_fn_keyword(self.token) {
+            return self.parse_ty_fn(Some(ProtoBorrowed), rname);
+        }
+
+        let r = self.region_from_name(rname);
+        let mt = self.parse_mt();
+        return ty_rptr(r, mt);
     }
 
     fn parse_arg_mode() -> mode {
@@ -691,16 +760,19 @@ impl Parser {
         }
     }
 
-    fn maybe_parse_fixed_vstore_with_star() -> Option<Option<uint>> {
+    fn maybe_parse_fixed_vstore_with_star() -> Option<uint> {
         if self.eat(token::BINOP(token::STAR)) {
             match copy self.token {
-              token::UNDERSCORE => {
-                self.bump(); Some(None)
-              }
-              token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
-                self.bump(); Some(Some(i as uint))
-              }
-              _ => None
+                token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
+                    self.bump();
+                    Some(i as uint)
+                }
+                _ => {
+                    self.fatal(
+                        fmt!("expected integral vector length \
+                              but found `%s`",
+                             token_to_str(self.reader, self.token)));
+                }
             }
         } else {
             None
@@ -909,11 +981,13 @@ impl Parser {
         } else if self.eat_keyword(~"match") {
             return self.parse_alt_expr();
         } else if self.eat_keyword(~"fn") {
-            let proto = self.parse_fn_ty_proto();
-            match proto {
-              proto_bare => self.fatal(~"fn expr are deprecated, use fn@"),
-              _ => { /* fallthrough */ }
-            }
+            let opt_proto = self.parse_fn_ty_proto();
+            let proto = match opt_proto {
+                None | Some(ast::ProtoBare) => {
+                    self.fatal(~"fn expr are deprecated, use fn@")
+                }
+                Some(p) => { p }
+            };
             return self.parse_fn_expr(proto);
         } else if self.eat_keyword(~"unsafe") {
             return self.parse_block_expr(lo, unsafe_blk);
@@ -1054,9 +1128,6 @@ impl Parser {
             hi = lit.span.hi;
             ex = expr_lit(@lit);
         }
-
-        let (hi, ex) =
-            self.try_convert_expr_to_obsolete_fixed_length_vstore(lo, hi, ex);
 
         return self.mk_expr(lo, hi, ex);
     }
@@ -1495,7 +1566,7 @@ impl Parser {
         return self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els));
     }
 
-    fn parse_fn_expr(proto: proto) -> @expr {
+    fn parse_fn_expr(proto: Proto) -> @expr {
         let lo = self.last_span.lo;
 
         // if we want to allow fn expression argument types to be inferred in
@@ -3188,23 +3259,23 @@ impl Parser {
         (id, item_enum(enum_definition, ty_params), None)
     }
 
-    fn parse_fn_ty_proto() -> proto {
+    fn parse_fn_ty_proto() -> Option<Proto> {
         match self.token {
-          token::AT => {
-            self.bump();
-            proto_box
-          }
-          token::TILDE => {
-            self.bump();
-            proto_uniq
-          }
-          token::BINOP(token::AND) => {
-            self.bump();
-            proto_block
-          }
-          _ => {
-            proto_block
-          }
+            token::AT => {
+                self.bump();
+                Some(ProtoBox)
+            }
+            token::TILDE => {
+                self.bump();
+                Some(ProtoUniq)
+            }
+            token::BINOP(token::AND) => {
+                self.bump();
+                Some(ProtoBorrowed)
+            }
+            _ => {
+                None
+            }
         }
     }
 

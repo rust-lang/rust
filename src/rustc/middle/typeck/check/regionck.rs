@@ -22,10 +22,11 @@ use ppaux::{note_and_explain_region, ty_to_str};
 use syntax::print::pprust;
 use infer::{resolve_and_force_all_but_regions, fres};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use middle::freevars::get_freevars;
 use middle::kind::check_owned;
 use middle::pat_util::pat_bindings;
-use middle::ty::{encl_region, proto_bare, proto_vstore, re_scope};
+use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
 
@@ -40,14 +41,9 @@ fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
             return encl_region(tcx, node_id),
         def_upvar(_, subdef, closure_id, body_id) => {
             match ty_fn_proto(fcx.node_ty(closure_id)) {
-                proto_bare =>
-                    tcx.sess.bug(~"proto_bare in encl_region_of_def?!"),
-                proto_vstore(vstore_fixed(_)) =>
-                    tcx.sess.bug(~"vstore_fixed in encl_region_of_def?!"),
-                proto_vstore(vstore_slice(_)) =>
-                    encl_region_of_def(fcx, *subdef),
-                proto_vstore(vstore_uniq) | proto_vstore(vstore_box) =>
-                    re_scope(body_id)
+                ProtoBare => tcx.sess.bug(~"ProtoBare with upvars?!"),
+                ProtoBorrowed => encl_region_of_def(fcx, *subdef),
+                ProtoBox | ProtoUniq => re_scope(body_id)
             }
         }
         _ => {
@@ -244,12 +240,9 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
                 result::Ok(function_type) => {
                     match ty::get(function_type).sty {
                         ty::ty_fn(ref fn_ty) => {
-                            match fn_ty.meta.proto {
-                                proto_vstore(vstore_slice(region)) => {
-                                    constrain_free_variables(rcx, region,
-                                                             expr);
-                                }
-                                _ => {}
+                            if fn_ty.meta.proto == ast::ProtoBorrowed {
+                                constrain_free_variables(
+                                    rcx, fn_ty.meta.region, expr);
                             }
                         }
                         _ => ()

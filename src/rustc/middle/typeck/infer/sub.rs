@@ -63,27 +63,11 @@ impl Sub: combine {
         }
     }
 
-    fn protos(a: ty::fn_proto, b: ty::fn_proto) -> cres<ty::fn_proto> {
-        match (a, b) {
-            (ty::proto_bare, _) =>
-                Ok(ty::proto_bare),
-
-            (ty::proto_vstore(ty::vstore_box),
-             ty::proto_vstore(ty::vstore_slice(_))) =>
-                Ok(ty::proto_vstore(ty::vstore_box)),
-
-            (ty::proto_vstore(ty::vstore_uniq),
-             ty::proto_vstore(ty::vstore_slice(_))) =>
-                Ok(ty::proto_vstore(ty::vstore_uniq)),
-
-            (_, ty::proto_bare) =>
-                Err(ty::terr_proto_mismatch(expected_found(&self, a, b))),
-
-            (ty::proto_vstore(vs_a), ty::proto_vstore(vs_b)) => {
-                do self.vstores(ty::terr_fn, vs_a, vs_b).chain |vs_c| {
-                    Ok(ty::proto_vstore(vs_c))
-                }
-            }
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        match (p1, p2) {
+            (ast::ProtoBare, _) => Ok(p1),
+            _ if p1 == p2 => Ok(p1),
+            _ => Err(ty::terr_proto_mismatch(expected_found(&self, p1, p2)))
         }
     }
 
