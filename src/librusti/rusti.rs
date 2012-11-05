@@ -255,7 +255,7 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
     }
 }
 
-fn main() {
+pub fn main() {
     let args = os::args();
     let in = io::stdin();
     let out = io::stdout();
