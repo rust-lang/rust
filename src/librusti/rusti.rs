@@ -267,16 +267,18 @@ pub fn main() {
         stmts: ~""
     };
 
-    do rl::complete |line, suggest| {
-        if line.starts_with(":") {
-            suggest(~":clear");
-            suggest(~":exit");
-            suggest(~":help");
+    unsafe {
+        do rl::complete |line, suggest| {
+            if line.starts_with(":") {
+                suggest(~":clear");
+                suggest(~":exit");
+                suggest(~":help");
+            }
         }
     }
 
     while repl.running {
-        let result = rl::read(repl.prompt);
+        let result = unsafe { rl::read(repl.prompt) };
 
         if result.is_none() {
             break;
@@ -290,7 +292,7 @@ pub fn main() {
             loop;
         }
 
-        rl::add_history(line);
+        unsafe { rl::add_history(line) };
 
         if line.starts_with(~":") {
             let full = line.substr(1, line.len() - 1);
