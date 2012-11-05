@@ -64,14 +64,12 @@ rust_get_stack_segment
 rust_task_weaken
 rust_task_unweaken
 rust_log_str
-shape_log_str
 start_task
 vec_reserve_shared_actual
 vec_reserve_shared
 task_clear_event_reject
 task_wait_event
 task_signal_event
-upcall_cmp_type
 upcall_fail
 upcall_trace
 upcall_free

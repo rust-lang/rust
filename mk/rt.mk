@@ -69,7 +69,6 @@ RUNTIME_CXXS_$(1) := \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
               rt/rust_kernel.cpp \
-              rt/rust_shape.cpp \
               rt/rust_abi.cpp \
               rt/rust_debug.cpp \
               rt/memory_region.cpp \
