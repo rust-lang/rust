@@ -410,18 +410,24 @@ impl mutability : cmp::Eq {
 
 #[auto_serialize]
 #[auto_deserialize]
-enum proto {
-    proto_bare,    // foreign fn
-    proto_uniq,    // fn~
-    proto_box,     // fn@
-    proto_block,   // fn&
+pub enum Proto {
+    ProtoBare,     // bare functions (deprecated)
+    ProtoUniq,     // ~fn
+    ProtoBox,      // @fn
+    ProtoBorrowed, // &fn
 }
 
-impl proto : cmp::Eq {
-    pure fn eq(other: &proto) -> bool {
+impl Proto : cmp::Eq {
+    pure fn eq(other: &Proto) -> bool {
         (self as uint) == ((*other) as uint)
     }
-    pure fn ne(other: &proto) -> bool { !self.eq(other) }
+    pure fn ne(other: &Proto) -> bool { !self.eq(other) }
+}
+
+impl Proto : to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        (self as uint).iter_bytes(lsb0, f);
+    }
 }
 
 #[auto_serialize]
@@ -444,10 +450,10 @@ enum expr_vstore {
     expr_vstore_slice                  // &[1,2,3,4]
 }
 
-pure fn is_blockish(p: ast::proto) -> bool {
+pure fn is_blockish(p: ast::Proto) -> bool {
     match p {
-      proto_block => true,
-      proto_bare | proto_uniq | proto_box => false
+        ProtoBorrowed => true,
+        ProtoBare | ProtoUniq | ProtoBox => false
     }
 }
 
@@ -678,7 +684,7 @@ enum expr_ {
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
     expr_match(@expr, ~[arm]),
-    expr_fn(proto, fn_decl, blk, capture_clause),
+    expr_fn(Proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // easily type this (a function returning nil on the inside but bool on
@@ -1080,19 +1086,30 @@ impl Onceness : cmp::Eq {
 
 #[auto_serialize]
 #[auto_deserialize]
+struct TyFn {
+    proto: Proto,
+    region: Option<@region>,
+    purity: purity,
+    onceness: Onceness,
+    bounds: @~[ty_param_bound],
+    decl: fn_decl
+}
+
+#[auto_serialize]
+#[auto_deserialize]
 enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
     ty_box(mt),
     ty_uniq(mt),
     ty_vec(mt),
+    ty_fixed_length_vec(mt, uint),
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(proto, purity, Onceness, @~[ty_param_bound], fn_decl),
+    ty_fn(@TyFn),
     ty_tup(~[@Ty]),
     ty_path(@path, node_id),
-    ty_fixed_length(@Ty, Option<uint>),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

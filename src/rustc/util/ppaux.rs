@@ -4,7 +4,7 @@ use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
         bound_trait};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
-use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
+use middle::ty::{ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
@@ -222,10 +222,12 @@ fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
-fn proto_ty_to_str(cx: ctxt, proto: ty::fn_proto) -> ~str {
+fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto) -> ~str {
     match proto {
-      ty::proto_bare => ~"",
-      ty::proto_vstore(vstore) => vstore_to_str(cx, vstore)
+        ast::ProtoBare => ~"",
+        ast::ProtoBox => ~"@",
+        ast::ProtoBorrowed => ~"&",
+        ast::ProtoUniq => ~"~",
     }
 }
 
@@ -268,8 +270,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         modestr + ty_to_str(cx, ty)
     }
     fn fn_to_str(cx: ctxt,
+                 proto: ast::Proto,
                  purity: ast::purity,
-                 proto: ty::fn_proto,
                  onceness: ast::Onceness,
                  ident: Option<ast::ident>,
                  inputs: ~[arg],
@@ -287,9 +289,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             ast::Once => onceness_to_str(onceness) + ~" "
         };
 
+        s += proto_ty_to_str(cx, proto);
         s += ~"fn";
 
-        s += proto_ty_to_str(cx, proto);
         match ident {
           Some(i) => { s += ~" "; s += cx.sess.str_of(i); }
           _ => { }
@@ -310,8 +312,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         return fn_to_str(
             cx,
-            m.fty.meta.purity,
             m.fty.meta.proto,
+            m.fty.meta.purity,
             m.fty.meta.onceness,
             Some(m.ident),
             m.fty.sig.inputs,
@@ -364,8 +366,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_fn(ref f) => {
         fn_to_str(cx,
-                  f.meta.purity,
                   f.meta.proto,
+                  f.meta.purity,
                   f.meta.onceness,
                   None,
                   f.sig.inputs,
@@ -393,9 +395,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
       ty_opaque_box => ~"@?",
-      ty_opaque_closure_ptr(ck_block) => ~"closure&",
-      ty_opaque_closure_ptr(ck_box) => ~"closure@",
-      ty_opaque_closure_ptr(ck_uniq) => ~"closure~"
+      ty_opaque_closure_ptr(ast::ProtoBorrowed) => ~"closure&",
+      ty_opaque_closure_ptr(ast::ProtoBox) => ~"closure@",
+      ty_opaque_closure_ptr(ast::ProtoUniq) => ~"closure~",
+      ty_opaque_closure_ptr(ast::ProtoBare) => ~"closure"
     }
 }
 

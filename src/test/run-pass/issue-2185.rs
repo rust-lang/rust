@@ -1,3 +1,4 @@
+// xfail-test FIXME #2263
 // xfail-fast
 // This test had to do with an outdated version of the iterable trait.
 // However, the condition it was testing seemed complex enough to

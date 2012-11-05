@@ -48,6 +48,8 @@ use to_str::ToStr;
 use ty::{FnTyBase, FnMeta, FnSig};
 use syntax::ast::Onceness;
 
+fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+
 trait combine {
     fn infcx() -> infer_ctxt;
     fn tag() -> ~str;
@@ -70,7 +72,7 @@ trait combine {
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
-    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto>;
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto>;
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn purities(a: purity, b: purity) -> cres<purity>;
     fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness>;
@@ -310,20 +312,17 @@ fn super_vstores<C:combine>(
 fn super_fn_metas<C:combine>(
     self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta>
 {
-    do self.protos(a_f.proto, b_f.proto).chain |p| {
-        do self.ret_styles(a_f.ret_style, b_f.ret_style).chain |rs| {
-            do self.purities(a_f.purity, b_f.purity).chain |purity| {
-                do self.oncenesses(a_f.onceness, b_f.onceness).chain
-                        |onceness| {
-                    Ok(FnMeta {purity: purity,
-                               proto: p,
-                               onceness: onceness,
-                               bounds: a_f.bounds, // XXX: This is wrong!
-                               ret_style: rs})
-                }
-            }
-        }
-    }
+    let p = if_ok!(self.protos(a_f.proto, b_f.proto));
+    let r = if_ok!(self.contraregions(a_f.region, b_f.region));
+    let rs = if_ok!(self.ret_styles(a_f.ret_style, b_f.ret_style));
+    let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
+    let onceness = if_ok!(self.oncenesses(a_f.onceness, b_f.onceness));
+    Ok(FnMeta {purity: purity,
+               proto: p,
+               region: r,
+               onceness: onceness,
+               bounds: a_f.bounds, // XXX: This is wrong!
+               ret_style: rs})
 }
 
 fn super_fn_sigs<C:combine>(

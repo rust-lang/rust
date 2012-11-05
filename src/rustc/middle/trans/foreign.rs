@@ -997,10 +997,9 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                 ty::mk_mach_uint(bcx.tcx(), ast::ty_u8));
             let fty = ty::mk_fn(bcx.tcx(), FnTyBase {
                 meta: FnMeta {purity: ast::impure_fn,
-                              proto:
-                                  ty::proto_vstore(ty::vstore_slice(
-                                      ty::re_bound(ty::br_anon(0)))),
+                              proto: ast::ProtoBorrowed,
                               onceness: ast::Many,
+                              region: ty::re_bound(ty::br_anon(0)),
                               bounds: @~[],
                               ret_style: ast::return_val},
                 sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),

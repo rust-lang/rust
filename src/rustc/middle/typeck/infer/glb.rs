@@ -71,22 +71,8 @@ impl Glb: combine {
         Lub(*self).tys(a, b)
     }
 
-    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto> {
-        match (p1, p2) {
-            (ty::proto_vstore(ty::vstore_slice(_)), _) => Ok(p2),
-            (_, ty::proto_vstore(ty::vstore_slice(_))) => Ok(p1),
-            (ty::proto_vstore(v1), ty::proto_vstore(v2)) => {
-                self.infcx.try(|| {
-                    do self.vstores(terr_fn, v1, v2).chain |vs| {
-                        Ok(ty::proto_vstore(vs))
-                    }
-                }).chain_err(|_err| {
-                    // XXX: Totally unsound, but fixed up later.
-                    Ok(ty::proto_bare)
-                })
-            }
-            _ => Ok(ty::proto_bare)
-        }
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        if p1 == p2 {Ok(p1)} else {Ok(ast::ProtoBare)}
     }
 
     fn purities(a: purity, b: purity) -> cres<purity> {

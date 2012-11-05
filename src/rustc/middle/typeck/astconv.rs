@@ -166,76 +166,57 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
-    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope Copy Owned>(
-        self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
-        span: span, constr: fn(ty::mt) -> ty::t) -> ty::t {
-
+    fn mk_pointer<AC: ast_conv, RS: region_scope Copy Owned>(
+        self: AC,
+        rscope: RS,
+        a_seq_ty: ast::mt,
+        vst: ty::vstore,
+        constr: fn(ty::mt) -> ty::t) -> ty::t
+    {
         let tcx = self.tcx();
 
         match a_seq_ty.ty.node {
-          // to convert to an e{vec,str}, there can't be a mutability argument
-          _ if a_seq_ty.mutbl != ast::m_imm => (),
-          ast::ty_vec(mt) => {
-            return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
-          }
-          ast::ty_path(path, id) => {
-            match tcx.def_map.find(id) {
-              Some(ast::def_prim_ty(ast::ty_str)) => {
-                check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                return ty::mk_estr(tcx, vst);
-              }
-              Some(ast::def_ty(type_def_id)) => {
-                let result = ast_path_to_substs_and_ty(self, rscope,
-                                                       type_def_id, path);
-                match ty::get(result.ty).sty {
-                    ty::ty_trait(trait_def_id, substs, _) => {
-                        match vst {
-                            ty::vstore_box | ty::vstore_slice(*) |
-                            ty::vstore_uniq => {}
-                            _ => {
-                                tcx.sess.span_err(path.span,
-                                                  ~"@trait, ~trait or &trait \
-                                                    are the only supported \
-                                                    forms of casting-to-\
-                                                    trait");
+            // to convert to an e{vec,str}, there can't be a
+            // mutability argument
+            _ if a_seq_ty.mutbl != ast::m_imm => (),
+            ast::ty_vec(mt) => {
+                return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
+            }
+            ast::ty_path(path, id) => {
+                match tcx.def_map.find(id) {
+                    Some(ast::def_prim_ty(ast::ty_str)) => {
+                        check_path_args(tcx, path, NO_TPS | NO_REGIONS);
+                        return ty::mk_estr(tcx, vst);
+                    }
+                    Some(ast::def_ty(type_def_id)) => {
+                        let result = ast_path_to_substs_and_ty(
+                            self, rscope,
+                            type_def_id, path);
+                        match ty::get(result.ty).sty {
+                            ty::ty_trait(trait_def_id, substs, _) => {
+                                match vst {
+                                    ty::vstore_box | ty::vstore_slice(*) |
+                                    ty::vstore_uniq => {}
+                                    _ => {
+                                        tcx.sess.span_err(
+                                            path.span,
+                                            ~"@trait, ~trait or &trait \
+                                              are the only supported \
+                                              forms of casting-to-\
+                                              trait");
+                                    }
+                                }
+                                return ty::mk_trait(tcx, trait_def_id,
+                                                    substs, vst);
+
                             }
+                            _ => {}
                         }
-                        return ty::mk_trait(tcx, trait_def_id, substs, vst);
                     }
                     _ => {}
                 }
-              }
-              _ => ()
             }
-          }
-          ast::ty_fn(ast::proto_block, purity, onceness, ast_bounds,
-                     ast_fn_decl) => {
-            let new_proto;
-            match vst {
-                ty::vstore_fixed(_) => {
-                    tcx.sess.span_err(span, ~"fixed-length functions are not \
-                                              allowed");
-                    new_proto = ast::proto_block;
-                }
-                ty::vstore_uniq => new_proto = ast::proto_uniq,
-                ty::vstore_box => new_proto = ast::proto_box,
-                ty::vstore_slice(_) => new_proto = ast::proto_block
-            }
-
-            // Run through the normal function type conversion process.
-            let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-            let fn_decl = ty_of_fn_decl(self,
-                                        rscope,
-                                        new_proto,
-                                        purity,
-                                        onceness,
-                                        bounds,
-                                        ast_fn_decl,
-                                        None,
-                                        span);
-            return ty::mk_fn(tcx, fn_decl);
-          }
-          _ => ()
+            _ => {}
         }
 
         let seq_ty = ast_mt_to_mt(self, rscope, a_seq_ty);
@@ -279,12 +260,12 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
       ast::ty_nil => ty::mk_nil(tcx),
       ast::ty_bot => ty::mk_bot(tcx),
       ast::ty_box(mt) => {
-        mk_maybe_vstore(self, rscope, mt, ty::vstore_box, ast_ty.span,
-                        |tmt| ty::mk_box(tcx, tmt))
+        mk_pointer(self, rscope, mt, ty::vstore_box,
+                   |tmt| ty::mk_box(tcx, tmt))
       }
       ast::ty_uniq(mt) => {
-        mk_maybe_vstore(self, rscope, mt, ty::vstore_uniq, ast_ty.span,
-                        |tmt| ty::mk_uniq(tcx, tmt))
+        mk_pointer(self, rscope, mt, ty::vstore_uniq,
+                   |tmt| ty::mk_uniq(tcx, tmt))
       }
       ast::ty_vec(mt) => {
         tcx.sess.span_err(ast_ty.span,
@@ -298,12 +279,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
       }
       ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        mk_maybe_vstore(self,
-                        in_anon_rscope(rscope, r),
-                        mt,
-                        ty::vstore_slice(r),
-                        ast_ty.span,
-                        |tmt| ty::mk_rptr(tcx, r, tmt))
+        mk_pointer(self, in_anon_rscope(rscope, r), mt, ty::vstore_slice(r),
+                   |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {
         let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, *t));
@@ -316,10 +293,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, purity, onceness, ast_bounds, decl) => {
-        let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-        let fn_decl = ty_of_fn_decl(self, rscope, proto, purity,
-                                    onceness, bounds, decl, None,
+      ast::ty_fn(f) => {
+        let bounds = collect::compute_bounds(self.ccx(), f.bounds);
+        let fn_decl = ty_of_fn_decl(self, rscope, f.proto,
+                                    f.purity, f.onceness,
+                                    bounds, f.region, f.decl, None,
                                     ast_ty.span);
         ty::mk_fn(tcx, fn_decl)
       }
@@ -377,22 +355,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
           }
         }
       }
-      ast::ty_fixed_length(a_t, Some(u)) => {
-        mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
-                        ty::vstore_fixed(u),
-                        ast_ty.span,
-                        |ty| {
-                            tcx.sess.span_err(
-                                a_t.span,
-                                fmt!("bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)));
-                            ty.ty
-                        })
-      }
-      ast::ty_fixed_length(_, None) => {
-        tcx.sess.span_bug(
-            ast_ty.span,
-            ~"implied fixed length for bound");
+      ast::ty_fixed_length_vec(a_mt, u) => {
+        ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
+                    ty::vstore_fixed(u))
       }
       ast::ty_infer => {
         // ty_infer should only appear as the type of arguments or return
@@ -459,38 +424,44 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
     {mode: mode, ty: ty}
 }
 
-fn ast_proto_to_proto<AC: ast_conv, RS: region_scope Copy Owned>(
-    self: AC, rscope: RS, span: span, ast_proto: ast::proto) -> ty::fn_proto {
-    match ast_proto {
-        ast::proto_bare =>
-            ty::proto_bare,
-        ast::proto_uniq =>
-            ty::proto_vstore(ty::vstore_uniq),
-        ast::proto_box =>
-            ty::proto_vstore(ty::vstore_box),
-        ast::proto_block => {
-            let result = rscope.anon_region(span);
-            let region = get_region_reporting_err(self.tcx(), span, result);
-            ty::proto_vstore(ty::vstore_slice(region))
-        }
-    }
-}
-
 type expected_tys = Option<{inputs: ~[ty::arg],
                             output: ty::t}>;
 
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS,
-    ast_proto: ast::proto,
+    ast_proto: ast::Proto,
     purity: ast::purity,
     onceness: ast::Onceness,
     bounds: @~[ty::param_bound],
+    opt_region: Option<@ast::region>,
     decl: ast::fn_decl,
     expected_tys: expected_tys,
-    span: span) -> ty::FnTy {
-
+    span: span) -> ty::FnTy
+{
     debug!("ty_of_fn_decl");
     do indent {
+        // resolve the function bound region in the original region
+        // scope `rscope`, not the scope of the function parameters
+        let bound_region = match opt_region {
+            Some(region) => {
+                ast_region_to_region(self, rscope, span, region)
+            }
+            None => {
+                match ast_proto {
+                    ast::ProtoBare | ast::ProtoUniq | ast::ProtoBox => {
+                        // @fn(), ~fn() default to static as the bound
+                        // on their upvars:
+                        ty::re_static
+                    }
+                    ast::ProtoBorrowed => {
+                        // &fn() defaults to an anonymous region:
+                        let r_result = rscope.anon_region(span);
+                        get_region_reporting_err(self.tcx(), span, r_result)
+                    }
+                }
+            }
+        };
+
         // new region names that appear inside of the fn decl are bound to
         // that function type
         let rb = in_binding_rscope(rscope);
@@ -511,12 +482,11 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
           _ => ast_ty_to_ty(self, rb, decl.output)
         };
 
-        let proto = ast_proto_to_proto(self, rscope, span, ast_proto);
-
         FnTyBase {
             meta: FnMeta {purity: purity,
-                          proto: proto,
+                          proto: ast_proto,
                           onceness: onceness,
+                          region: bound_region,
                           bounds: bounds,
                           ret_style: decl.cf},
             sig: FnSig {inputs: input_tys,
@@ -524,5 +494,3 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
         }
     }
 }
-
-
