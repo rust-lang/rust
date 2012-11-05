@@ -126,6 +126,7 @@ export kind_is_owned;
 export meta_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
+export terr_onceness_mismatch;
 export type_err_to_str, note_and_explain_type_err;
 export expected_found;
 export type_needs_drop;
@@ -186,6 +187,7 @@ export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 export terr_fn, terr_trait;
 export purity_to_str;
+export onceness_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
 export fn_proto, proto_bare, proto_vstore;
@@ -201,6 +203,7 @@ export trait_supertraits;
 export AutoAdjustment;
 export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
 export DerivedMethodInfo;
+export DerivedFieldInfo;
 
 // Data types
 
@@ -339,6 +342,12 @@ struct DerivedMethodInfo {
     containing_impl: ast::def_id
 }
 
+struct DerivedFieldInfo {
+    method_origin: typeck::method_origin,
+    type_parameter_substitutions: @~[ty::t],
+    vtable_result: Option<typeck::vtable_res>
+}
+
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -384,13 +393,11 @@ type ctxt =
       legacy_boxed_traits: HashMap<node_id, ()>,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
-      deriving_struct_methods: HashMap<ast::def_id,
-                                       @~[typeck::method_origin]>,
+      deriving_struct_methods: HashMap<ast::def_id, @~[DerivedFieldInfo]>,
 
       // The outer vector here describes each enum variant, while the inner
       // nested vector describes each enum variant argument.
-      deriving_enum_methods: HashMap<ast::def_id,
-                                     @~[@~[typeck::method_origin]]>,
+      deriving_enum_methods: HashMap<ast::def_id, @~[@~[DerivedFieldInfo]]>,
 
       // A mapping from the def ID of a method that was automatically derived
       // to information about it.
@@ -504,11 +511,14 @@ impl fn_proto : cmp::Eq {
  *
  * - `purity` is the function's effect (pure, impure, unsafe).
  * - `proto` is the protocol (fn@, fn~, etc).
+ * - `onceness` indicates whether the function can be called one time or many
+ *   times.
  * - `bounds` is the parameter bounds on the function's upvars.
  * - `ret_style` indicates whether the function returns a value or fails. */
 struct FnMeta {
     purity: ast::purity,
     proto: fn_proto,
+    onceness: ast::onceness,
     bounds: @~[param_bound],
     ret_style: ret_style
 }
@@ -679,6 +689,7 @@ enum type_err {
     terr_mismatch,
     terr_ret_style_mismatch(expected_found<ast::ret_style>),
     terr_purity_mismatch(expected_found<purity>),
+    terr_onceness_mismatch(expected_found<onceness>),
     terr_mutability,
     terr_proto_mismatch(expected_found<ty::fn_proto>),
     terr_box_mutability,
@@ -3325,6 +3336,11 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             fmt!("expected %s fn but found %s fn",
                  purity_to_str(values.expected),
                  purity_to_str(values.found))
+        }
+        terr_onceness_mismatch(values) => {
+            fmt!("expected %s fn but found %s fn",
+                 onceness_to_str(values.expected),
+                 onceness_to_str(values.found))
         }
         terr_proto_mismatch(values) => {
             fmt!("expected %s closure, found %s closure",

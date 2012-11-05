@@ -1061,6 +1061,25 @@ enum region_ {
 
 #[auto_serialize]
 #[auto_deserialize]
+enum onceness {
+    on_once,
+    on_many
+}
+
+impl onceness : cmp::Eq {
+    pure fn eq(other: &onceness) -> bool {
+        match (self, *other) {
+            (on_once, on_once) | (on_many, on_many) => true,
+            _ => false
+        }
+    }
+    pure fn ne(other: &onceness) -> bool {
+        !self.eq(other)
+    }
+}
+
+#[auto_serialize]
+#[auto_deserialize]
 enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
@@ -1070,7 +1089,7 @@ enum ty_ {
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(proto, purity, @~[ty_param_bound], fn_decl),
+    ty_fn(proto, purity, onceness, @~[ty_param_bound], fn_decl),
     ty_tup(~[@Ty]),
     ty_path(@path, node_id),
     ty_fixed_length(@Ty, Option<uint>),

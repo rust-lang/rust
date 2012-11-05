@@ -1,6 +1,7 @@
 use combine::*;
 use lattice::*;
 use to_str::ToStr;
+use syntax::ast::{on_many, on_once};
 
 enum Lub = combine_fields;  // "subtype", "subregion" etc
 
@@ -77,6 +78,13 @@ impl Lub: combine {
           (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
           (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
           (pure_fn, pure_fn) => Ok(pure_fn)
+        }
+    }
+
+    fn oncenesses(a: onceness, b: onceness) -> cres<onceness> {
+        match (a, b) {
+            (on_many, _) | (_, on_many) => Ok(on_many),
+            (on_once, on_once) => Ok(on_once)
         }
     }
 
