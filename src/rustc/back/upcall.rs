@@ -9,20 +9,12 @@ use lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
 type upcalls =
     {trace: ValueRef,
-     malloc: ValueRef,
-     free: ValueRef,
-     exchange_malloc: ValueRef,
-     exchange_free: ValueRef,
-     validate_box: ValueRef,
-     log_type: ValueRef,
      call_shim_on_c_stack: ValueRef,
      call_shim_on_rust_stack: ValueRef,
      rust_personality: ValueRef,
      reset_stack_limit: ValueRef};
 
 fn declare_upcalls(targ_cfg: @session::config,
-                   _tn: type_names,
-                   tydesc_type: TypeRef,
                    llmod: ModuleRef) -> @upcalls {
     fn decl(llmod: ModuleRef, prefix: ~str, name: ~str,
             tys: ~[TypeRef], rv: TypeRef) ->
@@ -42,23 +34,6 @@ fn declare_upcalls(targ_cfg: @session::config,
     return @{trace: dv(~"trace", ~[T_ptr(T_i8()),
                               T_ptr(T_i8()),
                               int_t]),
-          malloc:
-              nothrow(d(~"malloc",
-                        ~[T_ptr(tydesc_type), int_t],
-                        T_ptr(T_i8()))),
-          free:
-              nothrow(dv(~"free", ~[T_ptr(T_i8())])),
-          exchange_malloc:
-              nothrow(d(~"exchange_malloc",
-                        ~[T_ptr(tydesc_type), int_t],
-                        T_ptr(T_i8()))),
-          exchange_free:
-              nothrow(dv(~"exchange_free", ~[T_ptr(T_i8())])),
-          validate_box:
-              nothrow(dv(~"validate_box", ~[T_ptr(T_i8())])),
-          log_type:
-              dv(~"log_type", ~[T_ptr(tydesc_type),
-                              T_ptr(T_i8()), T_i32()]),
           call_shim_on_c_stack:
               d(~"call_shim_on_c_stack",
                 // arguments: void *args, void *fn_ptr
