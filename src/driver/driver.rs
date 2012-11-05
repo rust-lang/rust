@@ -10,4 +10,7 @@ extern mod self(name = "fuzzer", vers = "0.5");
 #[cfg(rustdoc)]
 extern mod self(name = "rustdoc", vers = "0.5");
 
+#[cfg(rusti)]
+extern mod self(name = "rusti", vers = "0.5");
+
 fn main() { self::main() }

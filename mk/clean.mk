@@ -57,6 +57,7 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/cargo$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X)
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X)
+	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rusti$(X)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBFUZZER)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBCARGO)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC)
@@ -65,6 +66,7 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTC)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBSYNTAX)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTI)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CORELIB_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB)
@@ -72,6 +74,7 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBFUZZER_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBCARGO_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB)
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTI_GLOB)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 

@@ -19,8 +19,8 @@ RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rc
 RUSTDOC_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
 
 # Rusti, the JIT REPL
-RUSTI_CRATE := $(S)src/rusti/rusti.rc
-RUSTI_INPUTS := $(wildcard $(S)src/rusti/*.rs)
+RUSTI_LIB := $(S)src/librusti/rusti.rc
+RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
 
 # FIXME: These are only built for the host arch. Eventually we'll
 # have tools that need to built for other targets.
@@ -130,20 +130,35 @@ $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
-		$$(RUSTI_CRATE) $$(RUSTI_INPUTS)		\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI):		\
+		$$(RUSTI_LIB) $$(RUSTI_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)  \
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)   \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
-$$(HBIN$(2)_H_$(4))/rusti$$(X):				\
-		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\
+$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
+		$$(TOOL_DRIVER) 							\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rusti -o $$@ $$<
+
+$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+
+$$(HBIN$(2)_H_$(4))/rusti$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI)	\
+		$$(HSREQ$(2)_H_$(4))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 
 endef
 
