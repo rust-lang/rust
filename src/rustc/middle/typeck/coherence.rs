@@ -228,6 +228,11 @@ impl CoherenceChecker {
         // coherence checks, because we ensure by construction that no errors
         // can happen at link time.
         self.add_external_crates();
+
+        // Populate the table of destructors. It might seem a bit strange to
+        // do this here, but it's actually the most convenient place, since
+        // the coherence tables contain the trait -> type mappings.
+        self.populate_destructor_table();
     }
 
     fn check_implementation(item: @item, associated_traits: ~[@trait_ref]) {
@@ -908,6 +913,58 @@ impl CoherenceChecker {
                     dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
                         loop;
+                    }
+                }
+            }
+        }
+    }
+
+    //
+    // Destructors
+    //
+
+    fn populate_destructor_table() {
+        let coherence_info = &self.crate_context.coherence_info;
+        let tcx = self.crate_context.tcx;
+        let drop_trait = tcx.lang_items.drop_trait.get();
+        let impls_opt = coherence_info.extension_methods.find(drop_trait);
+
+        let impls;
+        match impls_opt {
+            None => return, // No types with (new-style) destructors present.
+            Some(found_impls) => impls = found_impls
+        }
+
+        for impls.each |impl_info| {
+            if impl_info.methods.len() < 1 {
+                // We'll error out later. For now, just don't ICE.
+                loop;
+            }
+            let method_def_id = impl_info.methods[0].did;
+
+            let self_type = self.get_self_type_for_implementation(*impl_info);
+            match ty::get(self_type.ty).sty {
+                ty::ty_class(type_def_id, _) => {
+                    tcx.destructor_for_type.insert(type_def_id, method_def_id);
+                    tcx.destructors.insert(method_def_id, ());
+                }
+                _ => {
+                    // Destructors only work on nominal types.
+                    if impl_info.did.crate == ast::local_crate {
+                        match tcx.items.find(impl_info.did.node) {
+                            Some(ast_map::node_item(@item, _)) => {
+                                tcx.sess.span_err(item.span,
+                                                  ~"the Drop trait may only \
+                                                    be implemented on \
+                                                    structures");
+                            }
+                            _ => {
+                                tcx.sess.bug(~"didn't find impl in ast map");
+                            }
+                        }
+                    } else {
+                        tcx.sess.bug(~"found external impl of Drop trait on \
+                                       something other than a struct");
                     }
                 }
             }

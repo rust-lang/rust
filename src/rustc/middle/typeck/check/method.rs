@@ -774,6 +774,7 @@ impl LookupContext {
         let fty = self.fn_ty_from_origin(&candidate.origin);
 
         self.enforce_trait_instance_limitations(fty, candidate);
+        self.enforce_drop_trait_limitations(candidate);
 
         // before we only checked whether self_ty could be a subtype
         // of rcvr_ty; now we actually make it so (this may cause
@@ -855,6 +856,25 @@ impl LookupContext {
             self.tcx().sess.span_err(
                 self.expr.span,
                 ~"cannot call a generic method through a boxed trait");
+        }
+    }
+
+    fn enforce_drop_trait_limitations(&self, candidate: &Candidate) {
+        // No code can call the finalize method explicitly.
+        let bad;
+        match candidate.origin {
+            method_static(method_id) | method_self(method_id, _) => {
+                bad = self.tcx().destructors.contains_key(method_id);
+            }
+            method_param({trait_id: trait_id, _}) |
+            method_trait(trait_id, _, _) => {
+                bad = self.tcx().destructor_for_type.contains_key(trait_id);
+            }
+        }
+
+        if bad {
+            self.tcx().sess.span_err(self.expr.span,
+                                     ~"explicit call to destructor");
         }
     }
 

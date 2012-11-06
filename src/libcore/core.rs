@@ -28,6 +28,8 @@ pub use to_str::ToStr;
 #[cfg(notest)]
 pub use ops::{Const, Copy, Send, Owned};
 #[cfg(notest)]
+pub use ops::{Drop};
+#[cfg(notest)]
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(notest)]
 pub use ops::{Shl, Shr, Index};
@@ -37,6 +39,8 @@ extern mod coreops(name = "core", vers = "0.5");
 
 #[cfg(test)]
 pub use coreops::ops::{Const, Copy, Send, Owned};
+#[cfg(test)]
+pub use coreops::ops::{Drop};
 #[cfg(test)]
 pub use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr};
 #[cfg(test)]
