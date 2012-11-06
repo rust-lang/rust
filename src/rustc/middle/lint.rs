@@ -841,28 +841,14 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                         let span = arg_ast.ty.span;
                         // Recurse to check fn-type argument
                         match arg_ast.ty.node {
-                            ast::ty_fn(_, _, _, _, decl) => {
+                            ast::ty_fn(f) => {
                                 check_fn_deprecated_modes(tcx, arg_ty.ty,
-                                                          decl, span, id);
+                                                          f.decl, span, id);
                             }
                             ast::ty_path(*) => {
                                 // This is probably a typedef, so we can't
                                 // see the actual fn decl
                                 // e.g. fn foo(f: InitOp<T>)
-                            }
-                            ast::ty_rptr(_, mt)
-                            | ast::ty_box(mt)
-                            | ast::ty_uniq(mt) => {
-                                // Functions with preceding sigil are parsed
-                                // as pointers of functions
-                                match mt.ty.node {
-                                    ast::ty_fn(_, _, _, _, decl) => {
-                                        check_fn_deprecated_modes(
-                                            tcx, arg_ty.ty,
-                                            decl, span, id);
-                                    }
-                                    _ => fail
-                                }
                             }
                             _ => {
                                 tcx.sess.span_warn(span, ~"what");
@@ -889,10 +875,10 @@ fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
     match it.node {
         ast::item_ty(ty, _) => {
             match ty.node {
-                ast::ty_fn(_, _, _, _, decl) => {
+                ast::ty_fn(f) => {
                     let fn_ty = ty::node_id_to_type(tcx, it.id);
                     check_fn_deprecated_modes(
-                        tcx, fn_ty, decl, ty.span, it.id)
+                        tcx, fn_ty, f.decl, ty.span, it.id)
                 }
                 _ => ()
             }

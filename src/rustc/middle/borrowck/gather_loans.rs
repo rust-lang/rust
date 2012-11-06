@@ -241,9 +241,15 @@ impl gather_loan_ctxt {
                                              autoref.mutbl,
                                              autoref.region)
                     }
-                    ty::AutoSlice => {
+                    ty::AutoBorrowVec => {
                         let cmt_index = mcx.cat_index(expr, cmt);
                         self.guarantee_valid(cmt_index,
+                                             autoref.mutbl,
+                                             autoref.region)
+                    }
+                    ty::AutoBorrowFn => {
+                        let cmt_deref = mcx.cat_deref_fn(expr, cmt, 0);
+                        self.guarantee_valid(cmt_deref,
                                              autoref.mutbl,
                                              autoref.region)
                     }

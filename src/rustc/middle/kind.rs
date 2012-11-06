@@ -159,12 +159,10 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::ty_fn_proto(fty) {
-      ty::proto_vstore(ty::vstore_uniq) => b(check_for_uniq),
-      ty::proto_vstore(ty::vstore_box) => b(check_for_box),
-      ty::proto_bare => b(check_for_bare),
-      ty::proto_vstore(ty::vstore_slice(_)) => b(check_for_block),
-      ty::proto_vstore(ty::vstore_fixed(_)) =>
-        fail ~"fixed vstore not allowed here"
+        ProtoUniq => b(check_for_uniq),
+        ProtoBox => b(check_for_box),
+        ProtoBare => b(check_for_bare),
+        ProtoBorrowed => b(check_for_block),
     }
 }
 

@@ -1,7 +1,7 @@
 type boxedFn = { theFn: fn () -> uint };
 
 fn createClosure (closedUint: uint) -> boxedFn {
-    { theFn: fn@ () -> uint { closedUint } }
+    { theFn: fn@ () -> uint { closedUint } } //~ ERROR mismatched types
 }
 
 fn main () {

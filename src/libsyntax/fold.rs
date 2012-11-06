@@ -524,15 +524,19 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_ptr(mt) => ty_ptr(fold_mt(mt, fld)),
       ty_rptr(region, mt) => ty_rptr(region, fold_mt(mt, fld)),
       ty_rec(fields) => ty_rec(vec::map(fields, |f| fold_field(*f, fld))),
-      ty_fn(proto, purity, onceness, bounds, decl) =>
-        ty_fn(proto,
-              purity,
-              onceness,
-              @vec::map(*bounds, |x| fold_ty_param_bound(*x, fld)),
-              fold_fn_decl(decl, fld)),
+      ty_fn(f) =>
+        ty_fn(@TyFn {
+            proto: f.proto,
+            purity: f.purity,
+            region: f.region,
+            onceness: f.onceness,
+            bounds: @vec::map(*f.bounds, |x| fold_ty_param_bound(*x, fld)),
+            decl: fold_fn_decl(f.decl, fld)
+        }),
       ty_tup(tys) => ty_tup(vec::map(tys, |ty| fld.fold_ty(*ty))),
       ty_path(path, id) => ty_path(fld.fold_path(path), fld.new_id(id)),
-      ty_fixed_length(t, vs) => ty_fixed_length(fld.fold_ty(t), vs),
+      ty_fixed_length_vec(mt, vs) =>
+        ty_fixed_length_vec(fold_mt(mt, fld), vs),
       ty_mac(mac) => ty_mac(fold_mac(mac))
     }
 }

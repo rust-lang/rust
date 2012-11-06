@@ -103,11 +103,13 @@ fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
     return ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
 }
 
-fn parse_proto(st: @pstate) -> ty::fn_proto {
+fn parse_proto(st: @pstate) -> ast::Proto {
     match next(st) {
-        'n' => ty::proto_bare,
-        'v' => ty::proto_vstore(parse_vstore(st)),
-        c => fail ~"illegal proto type kind " + str::from_char(c)
+        '_' => ast::ProtoBare,
+        '@' => ast::ProtoBox,
+        '~' => ast::ProtoUniq,
+        '&' => ast::ProtoBorrowed,
+        _ => fail ~"parse_proto(): bad input"
     }
 }
 
@@ -293,13 +295,8 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {
-        let ck = match next(st) {
-          '&' => ty::ck_block,
-          '@' => ty::ck_box,
-          '~' => ty::ck_uniq,
-          _ => fail ~"parse_ty: bad closure kind"
-        };
-        return ty::mk_opaque_closure_ptr(st.tcx, ck);
+        let proto = parse_proto(st);
+        return ty::mk_opaque_closure_ptr(st.tcx, proto);
       }
       '#' => {
         let pos = parse_hex(st);
@@ -415,6 +412,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     let proto = parse_proto(st);
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
+    let region = parse_region(st);
     let bounds = parse_bounds(st, conv);
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
@@ -429,6 +427,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
                       proto: proto,
                       onceness: onceness,
                       bounds: bounds,
+                      region: region,
                       ret_style: ret_style},
         sig: FnSig {inputs: inputs,
                     output: ret_ty}

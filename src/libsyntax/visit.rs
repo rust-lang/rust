@@ -15,7 +15,7 @@ enum vt<E> { mk_vt(visitor<E>), }
 enum fn_kind {
     fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
     fk_method(ident, ~[ty_param], @method),
-    fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
+    fk_anon(Proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
     fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
@@ -203,13 +203,13 @@ fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(*tt, e, v);
       },
-      ty_fn(_, _, _, bounds, decl) => {
-        for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
-        visit_ty_param_bounds(bounds, e, v);
-        v.visit_ty(decl.output, e, v);
+      ty_fn(f) => {
+        for f.decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
+        visit_ty_param_bounds(f.bounds, e, v);
+        v.visit_ty(f.decl.output, e, v);
       }
       ty_path(p, _) => visit_path(p, e, v),
-      ty_fixed_length(t, _) => v.visit_ty(t, e, v),
+      ty_fixed_length_vec(mt, _) => v.visit_ty(mt.ty, e, v),
       ty_nil |
       ty_bot |
       ty_mac(_) |
