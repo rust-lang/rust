@@ -404,7 +404,16 @@ type ctxt =
       // A mapping from the def ID of an impl to the IDs of the derived
       // methods within it.
       automatically_derived_methods_for_impl:
-            HashMap<ast::def_id, @~[ast::def_id]>
+            HashMap<ast::def_id, @~[ast::def_id]>,
+
+      // A mapping from the def ID of an enum or struct type to the def ID
+      // of the method that implements its destructor. If the type is not
+      // present in this map, it does not have a destructor. This map is
+      // populated during the coherence phase of typechecking.
+      destructor_for_type: HashMap<ast::def_id, ast::def_id>,
+
+      // A method will be in this list if and only if it is a destructor.
+      destructors: HashMap<ast::def_id, ()>
       };
 
 enum tbox_flag {
@@ -921,7 +930,9 @@ fn mk_ctxt(s: session::Session,
       deriving_struct_methods: HashMap(),
       deriving_enum_methods: HashMap(),
       automatically_derived_methods: HashMap(),
-      automatically_derived_methods_for_impl: HashMap()}
+      automatically_derived_methods_for_impl: HashMap(),
+      destructor_for_type: HashMap(),
+      destructors: HashMap()}
 }
 
 
@@ -3580,6 +3591,11 @@ fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 /* If class_id names a class with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 fn ty_dtor(cx: ctxt, class_id: def_id) -> Option<def_id> {
+    match cx.destructor_for_type.find(class_id) {
+        Some(method_def_id) => return Some(method_def_id),
+        None => {}  // Continue.
+    }
+
     if is_local(class_id) {
        match cx.items.find(class_id.node) {
            Some(ast_map::node_item(@{
