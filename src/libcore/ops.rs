@@ -23,6 +23,11 @@ pub trait Owned {
     // Empty.
 }
 
+#[lang="drop"]
+pub trait Drop {
+    fn finalize();  // XXX: Rename to "drop"? --pcwalton
+}
+
 #[lang="add"]
 pub trait Add<RHS,Result> {
     pure fn add(rhs: &RHS) -> Result;

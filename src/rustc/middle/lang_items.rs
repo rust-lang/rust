@@ -28,6 +28,8 @@ struct LanguageItems {
     mut send_trait: Option<def_id>,
     mut owned_trait: Option<def_id>,
 
+    mut drop_trait: Option<def_id>,
+
     mut add_trait: Option<def_id>,
     mut sub_trait: Option<def_id>,
     mut mul_trait: Option<def_id>,
@@ -58,6 +60,8 @@ mod language_items {
             copy_trait: None,
             send_trait: None,
             owned_trait: None,
+
+            drop_trait: None,
 
             add_trait: None,
             sub_trait: None,
@@ -93,6 +97,8 @@ fn LanguageItemCollector(crate: @crate, session: Session,
     item_refs.insert(~"copy", &mut items.copy_trait);
     item_refs.insert(~"send", &mut items.send_trait);
     item_refs.insert(~"owned", &mut items.owned_trait);
+
+    item_refs.insert(~"drop", &mut items.drop_trait);
 
     item_refs.insert(~"add", &mut items.add_trait);
     item_refs.insert(~"sub", &mut items.sub_trait);

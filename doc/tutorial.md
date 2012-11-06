@@ -751,25 +751,6 @@ match mypoint {
 }
 ~~~
 
-Structs are the only type in Rust that may have user-defined
-destructors, defined with `drop` blocks. Inside a `drop`, the name
-`self` refers to the struct's value.
-
-~~~
-struct TimeBomb {
-    explosivity: uint,
-
-    drop {
-        for iter::repeat(self.explosivity) {
-            io::println(fmt!("blam!"));
-        }
-    }
-}
-~~~
-
-> ***Note***: This destructor syntax is temporary. Eventually destructors
-> will be defined for any type using [traits](#traits).
-
 ## Enums
 
 Enums are datatypes that have several alternate representations. For
@@ -1909,8 +1890,8 @@ traits are automatically derived and implemented for all applicable
 types by the compiler, and may not be overridden:
 
 * `Copy` - Types that can be copied: either implicitly, or explicitly with the
-  `copy` operator. All types are copyable unless they are classes
-  with destructors or otherwise contain classes with destructors.
+  `copy` operator. All types are copyable unless they have destructors or
+  contain types with destructors.
 
 * `Send` - Sendable (owned) types. All types are sendable unless they
   contain managed boxes, managed closures, or otherwise managed
@@ -1921,6 +1902,28 @@ types by the compiler, and may not be overridden:
 
 > ***Note:*** These three traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
+
+There is also a special trait known as `Drop`. This trait defines one method
+called `finalize`, which is automatically called when value of the a type that
+implements this trait is destroyed, either because the value went out of scope
+or because the garbage collector reclaimed it.
+
+~~~
+struct TimeBomb {
+    explosivity: uint,
+}
+
+impl TimeBomb : Drop {
+    fn finalize() {
+        for iter::repeat(self.explosivity) {
+            io::println("blam!");
+        }
+    }
+}
+~~~
+
+It is illegal to call `finalize` directly. Only code inserted by the compiler
+may call it.
 
 ## Declaring and implementing traits
 
