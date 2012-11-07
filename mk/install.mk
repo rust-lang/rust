@@ -84,7 +84,6 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTI_GLOB))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
@@ -111,7 +110,6 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTI_GLOB)) \
         ; \
         do rm -f $$i ; \
         done
