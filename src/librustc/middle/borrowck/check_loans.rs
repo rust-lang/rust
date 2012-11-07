@@ -570,7 +570,15 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 visit::fk_anon(*) | visit::fk_fn_block(*) |
                 visit::fk_method(*) | visit::fk_item_fn(*) |
                 visit::fk_dtor(*) => {
-                    self.fn_args = @decl.inputs.map(|i| i.id );
+                    let mut fn_args = ~[];
+                    for decl.inputs.each |input| {
+                        do pat_util::pat_bindings(self.tcx().def_map,
+                                                  input.pat)
+                                |_a, pat_id, _b, _c| {
+                            fn_args.push(pat_id);
+                        }
+                    }
+                    self.fn_args = @move fn_args;
                 }
             }
 

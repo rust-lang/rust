@@ -320,9 +320,9 @@ impl cleantype : cmp::Eq {
 type cleanup_path = {target: Option<BasicBlockRef>,
                      dest: BasicBlockRef};
 
-fn scope_clean_changed(info: scope_info) {
-    if info.cleanup_paths.len() > 0u { info.cleanup_paths = ~[]; }
-    info.landing_pad = None;
+fn scope_clean_changed(scope_info: scope_info) {
+    if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
+    scope_info.landing_pad = None;
 }
 
 fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
@@ -361,11 +361,11 @@ fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
            ty_to_str(bcx.ccx().tcx, t));
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |info| {
-        info.cleanups.push(
+    do in_scope_cx(bcx) |scope_info| {
+        scope_info.cleanups.push(
             clean(|a| glue::drop_ty_root(a, root, rooted, t),
                   cleanup_type));
-        scope_clean_changed(info);
+        scope_clean_changed(scope_info);
     }
 }
 
@@ -375,11 +375,11 @@ fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) |info| {
-        info.cleanups.push(
+    do in_scope_cx(cx) |scope_info| {
+        scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
                        cleanup_type));
-        scope_clean_changed(info);
+        scope_clean_changed(scope_info);
     }
 }
 fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
@@ -389,11 +389,11 @@ fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
            ty_to_str(bcx.ccx().tcx, t));
     let {root, rooted} = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
-    do in_scope_cx(bcx) |info| {
-        info.cleanups.push(
+    do in_scope_cx(bcx) |scope_info| {
+        scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
                        cleanup_type));
-        scope_clean_changed(info);
+        scope_clean_changed(scope_info);
     }
 }
 fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
@@ -401,10 +401,10 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
       heap_shared => |a| glue::trans_free(a, ptr),
       heap_exchange => |a| glue::trans_unique_free(a, ptr)
     };
-    do in_scope_cx(cx) |info| {
-        info.cleanups.push(clean_temp(ptr, free_fn,
+    do in_scope_cx(cx) |scope_info| {
+        scope_info.cleanups.push(clean_temp(ptr, free_fn,
                                       normal_exit_and_unwind));
-        scope_clean_changed(info);
+        scope_clean_changed(scope_info);
     }
 }
 
@@ -413,20 +413,20 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
 fn revoke_clean(cx: block, val: ValueRef) {
-    do in_scope_cx(cx) |info| {
+    do in_scope_cx(cx) |scope_info| {
         let cleanup_pos = vec::position(
-            info.cleanups,
+            scope_info.cleanups,
             |cu| match *cu {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
         for cleanup_pos.each |i| {
-            info.cleanups =
-                vec::append(vec::slice(info.cleanups, 0u, *i),
-                            vec::view(info.cleanups,
+            scope_info.cleanups =
+                vec::append(vec::slice(scope_info.cleanups, 0u, *i),
+                            vec::view(scope_info.cleanups,
                                       *i + 1u,
-                                      info.cleanups.len()));
-            scope_clean_changed(info);
+                                      scope_info.cleanups.len()));
+            scope_clean_changed(scope_info);
         }
     }
 }

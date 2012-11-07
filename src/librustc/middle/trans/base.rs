@@ -991,7 +991,11 @@ fn init_local(bcx: block, local: @ast::local) -> block {
            bcx.to_str());
     add_clean(bcx, llptr, ty);
 
-    return alt::bind_irrefutable_pat(bcx, local.node.pat, llptr, false);
+    return alt::bind_irrefutable_pat(bcx,
+                                     local.node.pat,
+                                     llptr,
+                                     false,
+                                     alt::BindLocal);
 }
 
 fn trans_stmt(cx: block, s: ast::stmt) -> block {
@@ -1529,6 +1533,12 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
             }
         }
 
+        bcx = alt::bind_irrefutable_pat(bcx,
+                                        args[arg_n].pat,
+                                        llarg,
+                                        false,
+                                        alt::BindArgument);
+
         fcx.llargs.insert(arg_id, local_mem(llarg));
 
         if fcx.ccx.sess.opts.extra_debuginfo {
@@ -1658,7 +1668,9 @@ fn trans_enum_variant(ccx: @crate_ctxt,
     let fn_args = vec::map(args, |varg|
         {mode: ast::expl(ast::by_copy),
          ty: varg.ty,
-         ident: special_idents::arg,
+         pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
+                                     ast_util::dummy_sp(),
+                                     special_idents::arg),
          id: varg.id});
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
                                param_substs, None);
@@ -1714,7 +1726,9 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
         {
             mode: ast::expl(ast::by_copy),
             ty: field.node.ty,
-            ident: special_idents::arg,
+            pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
+                                        ast_util::dummy_sp(),
+                                        special_idents::arg),
             id: field.node.id
         }
     };

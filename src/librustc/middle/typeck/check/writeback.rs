@@ -234,7 +234,10 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
                                    self_info.self_id);
     }
     for decl.inputs.each |arg| {
-        resolve_type_vars_for_node(wbcx, arg.ty.span, arg.id);
+        do pat_util::pat_bindings(fcx.tcx().def_map, arg.pat)
+                |_bm, pat_id, span, _path| {
+            resolve_type_vars_for_node(wbcx, span, pat_id);
+        }
     }
     return wbcx.success;
 }

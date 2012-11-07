@@ -28,8 +28,8 @@ use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 use syntax::ast::{gt, ident, impure_fn, inherited, item, item_class};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-use syntax::ast::{local, local_crate, lt, method, module_ns, mul, ne, neg};
-use syntax::ast::{node_id, pat, pat_enum, pat_ident, path, prim_ty};
+use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul, ne};
+use syntax::ast::{neg, node_id, pat, pat_enum, pat_ident, path, prim_ty};
 use syntax::ast::{pat_box, pat_lit, pat_range, pat_rec, pat_struct};
 use syntax::ast::{pat_tup, pat_uniq, pat_wild, private, provided, public};
 use syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl};
@@ -103,12 +103,32 @@ struct Export2 {
 
 enum PatternBindingMode {
     RefutableMode,
-    IrrefutableMode
+    LocalIrrefutableMode,
+    ArgumentIrrefutableMode(mode)
 }
 
 impl PatternBindingMode : cmp::Eq {
     pure fn eq(other: &PatternBindingMode) -> bool {
-        (self as uint) == ((*other) as uint)
+        match self {
+            RefutableMode => {
+                match *other {
+                    RefutableMode => true,
+                    _ => false
+                }
+            }
+            LocalIrrefutableMode => {
+                match *other {
+                    LocalIrrefutableMode => true,
+                    _ => false
+                }
+            }
+            ArgumentIrrefutableMode(mode_a) => {
+                match *other {
+                    ArgumentIrrefutableMode(mode_b) => mode_a == mode_b,
+                    _ => false
+                }
+            }
+        }
     }
     pure fn ne(other: &PatternBindingMode) -> bool { !self.eq(other) }
 }
@@ -3770,15 +3790,17 @@ impl Resolver {
                 }
                 Some(declaration) => {
                     for declaration.inputs.each |argument| {
-                        let name = argument.ident;
-                        let def_like = dl_def(def_arg(argument.id,
-                                                      argument.mode));
-                        (*function_value_rib).bindings.insert(name, def_like);
+                        let binding_mode =
+                            ArgumentIrrefutableMode(argument.mode);
+                        self.resolve_pattern(argument.pat,
+                                             binding_mode,
+                                             Immutable,
+                                             None,
+                                             visitor);
 
                         self.resolve_type(argument.ty, visitor);
 
-                        debug!("(resolving function) recorded argument `%s`",
-                               self.session.str_of(name));
+                        debug!("(resolving function) recorded argument");
                     }
 
                     self.resolve_type(declaration.output, visitor);
@@ -4013,7 +4035,7 @@ impl Resolver {
         }
 
         // Resolve the pattern.
-        self.resolve_pattern(local.node.pat, IrrefutableMode, mutability,
+        self.resolve_pattern(local.node.pat, LocalIrrefutableMode, mutability,
                              None, visitor);
     }
 
@@ -4249,9 +4271,13 @@ impl Resolver {
 
                                     def_binding(pattern.id, binding_mode)
                                 }
-                                IrrefutableMode => {
+                                LocalIrrefutableMode => {
                                     // But for locals, we use `def_local`.
                                     def_local(pattern.id, is_mutable)
+                                }
+                                ArgumentIrrefutableMode(argument_mode) => {
+                                    // And for function arguments, `def_arg`.
+                                    def_arg(pattern.id, argument_mode)
                                 }
                             };
 

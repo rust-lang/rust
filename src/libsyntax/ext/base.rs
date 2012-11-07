@@ -234,24 +234,27 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     move ((move imp) as ext_ctxt)
 }
 
-fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
+fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => return *s,
-        _ => cx.span_fatal(l.span, error)
+        _ => cx.span_fatal(l.span, err_msg)
       },
-      _ => cx.span_fatal(expr.span, error)
+      _ => cx.span_fatal(expr.span, err_msg)
     }
 }
 
-fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
+fn expr_to_ident(cx: ext_ctxt,
+                 expr: @ast::expr,
+                 err_msg: ~str) -> ast::ident {
     match expr.node {
       ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
-            cx.span_fatal(expr.span, error);
-        } else { return p.idents[0]; }
+            cx.span_fatal(expr.span, err_msg);
+        }
+        return p.idents[0];
       }
-      _ => cx.span_fatal(expr.span, error)
+      _ => cx.span_fatal(expr.span, err_msg)
     }
 }
 

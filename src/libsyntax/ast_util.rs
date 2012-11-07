@@ -274,6 +274,12 @@ fn ident_to_path(s: span, +i: ident) -> @path {
       rp: None, types: ~[]}
 }
 
+fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
+    @{id: id,
+      node: pat_ident(bind_by_value, ident_to_path(s, i), None),
+      span: s}
+}
+
 pure fn is_unguarded(a: &arm) -> bool {
     match a.guard {
       None => true,

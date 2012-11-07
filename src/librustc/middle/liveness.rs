@@ -414,9 +414,13 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
     for decl.inputs.each |arg| {
-        debug!("adding argument %d", arg.id);
         let mode = ty::resolved_mode(self.tcx, arg.mode);
-        (*fn_maps).add_variable(Arg(arg.id, arg.ident, mode));
+        do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
+                |_bm, arg_id, _x, path| {
+            debug!("adding argument %d", arg_id);
+            let ident = ast_util::path_to_ident(path);
+            (*fn_maps).add_variable(Arg(arg_id, ident, mode));
+        }
     };
 
     // gather up the various local variables, significant expressions,
@@ -447,7 +451,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     });
     check_vt.visit_block(body, lsets, check_vt);
     lsets.check_ret(id, sp, fk, entry_ln);
-    lsets.warn_about_unused_args(sp, decl, entry_ln);
+    lsets.warn_about_unused_args(decl, entry_ln);
 }
 
 fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
@@ -937,8 +941,11 @@ impl Liveness {
                 // the end.  This will prevent us from moving out of
                 // such variables but also prevent us from registering
                 // last uses and so forth.
-                let var = self.variable(arg.id, blk.span);
-                self.acc(self.s.exit_ln, var, ACC_READ);
+                do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
+                        |_bm, arg_id, _sp, _path| {
+                    let var = self.variable(arg_id, blk.span);
+                    self.acc(self.s.exit_ln, var, ACC_READ);
+                }
               }
               by_move | by_copy => {
                 // These are owned modes.  If we don't use the
@@ -1791,10 +1798,13 @@ impl @Liveness {
         if name[0] == ('_' as u8) {None} else {Some(name)}
     }
 
-    fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: LiveNode) {
+    fn warn_about_unused_args(decl: fn_decl, entry_ln: LiveNode) {
         for decl.inputs.each |arg| {
-            let var = self.variable(arg.id, arg.ty.span);
-            self.warn_about_unused(sp, entry_ln, var);
+            do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
+                    |_bm, p_id, sp, _n| {
+                let var = self.variable(p_id, sp);
+                self.warn_about_unused(sp, entry_ln, var);
+            }
         }
     }
 
