@@ -2430,7 +2430,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                   }
                   Err(err) => {
                     ccx.tcx.sess.span_err(e.span,
-                     #fmt("expected constant: %s", err));
+                     fmt!("expected constant: %s", err));
 
                   }
                 }

@@ -71,7 +71,7 @@ mod test {
 
     #[test]
     fn read_simple_board() {
-        let s = #include_str("./maps/contest1.map");
+        let s = include_str!("./maps/contest1.map");
         io::with_str_reader(s, read_board_grid)
     }
 }

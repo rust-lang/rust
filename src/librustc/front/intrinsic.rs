@@ -1,4 +1,4 @@
-// NB: this file is #include_str'ed into the compiler, re-parsed
+// NB: this file is include_str!'ed into the compiler, re-parsed
 // and injected into each crate the compiler builds. Keep it small.
 
 mod intrinsic {

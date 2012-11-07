@@ -57,7 +57,7 @@ fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
 fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                   _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::Some(1u), ~"include");
-    let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
+    let file = expr_to_str(cx, args[0], ~"include_str! requires a string");
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
                                         &res_rel_file(cx, sp, &Path(file)),
                                         parse::parser::SOURCE_FILE);
@@ -68,7 +68,7 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                       _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx,sp,arg,1u,option::Some(1u),~"include_str");
 
-    let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
+    let file = expr_to_str(cx, args[0], ~"include_str! requires a string");
 
     let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path(file)));
     match res {
@@ -85,7 +85,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
                       _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx,sp,arg,1u,option::Some(1u),~"include_bin");
 
-    let file = expr_to_str(cx, args[0], ~"#include_bin requires a string");
+    let file = expr_to_str(cx, args[0], ~"include_bin! requires a string");
 
     match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {
       result::Ok(src) => {
