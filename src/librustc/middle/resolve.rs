@@ -1738,15 +1738,30 @@ impl Resolver {
                 match child_name_bindings.type_def {
                     None => {
                         debug!("(building reduced graph for external crate) \
-                                autovivifying %s", *ident_str);
+                                autovivifying missing type def %s",
+                                *ident_str);
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         (*child_name_bindings).define_module(Public,
                                                              parent_link,
-                                                             None, false,
+                                                             None,
+                                                             false,
                                                              dummy_sp());
                     }
-                    Some(_) => { /* Fall through. */ }
+                    Some(copy type_ns_def)
+                            if type_ns_def.module_def.is_none() => {
+                        debug!("(building reduced graph for external crate) \
+                                autovivifying missing module def %s",
+                                *ident_str);
+                        let parent_link = self.get_parent_link(new_parent,
+                                                               ident);
+                        (*child_name_bindings).define_module(Public,
+                                                             parent_link,
+                                                             None,
+                                                             false,
+                                                             dummy_sp());
+                    }
+                    _ => {} // Fall through.
                 }
 
                 current_module = (*child_name_bindings).get_module();
