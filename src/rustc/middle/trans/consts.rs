@@ -28,10 +28,6 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     }
 }
 
-// FIXME (#2530): this should do some structural hash-consing to avoid
-// duplicate constants. I think. Maybe LLVM has a magical mode that does so
-// later on?
-
 fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
     let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
     assert cx.const_globals.insert(b as int, a);
@@ -341,24 +337,29 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                 ~"bad const-slice expr")
         }
       }
-      ast::expr_path(_) => {
+      ast::expr_path(pth) => {
+        assert pth.types.len() == 0;
         match cx.tcx.def_map.find(e.id) {
-          Some(ast::def_const(def_id)) => {
-            // Don't know how to handle external consts
-            assert ast_util::is_local(def_id);
-            match cx.tcx.items.get(def_id.node) {
-              ast_map::node_item(@{
-                node: ast::item_const(_, subexpr), _
-              }, _) => {
-                // FIXME (#2530): Instead of recursing here to regenerate
-                // the values for other constants, we should just look up
-                // the already-defined value.
-                const_expr(cx, subexpr)
-              }
-              _ => cx.sess.span_bug(e.span, ~"expected item")
-            }
+          Some(ast::def_fn(def_id, _)) => {
+              assert ast_util::is_local(def_id);
+              let f = base::get_item_val(cx, def_id.node);
+              C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
           }
-          _ => cx.sess.span_bug(e.span, ~"expected to find a const def")
+          Some(ast::def_const(def_id)) => {
+            assert ast_util::is_local(def_id);
+            if ! cx.const_values.contains_key(def_id.node) {
+                match cx.tcx.items.get(def_id.node) {
+                    ast_map::node_item(@{
+                        node: ast::item_const(_, subexpr), _
+                    }, _) => {
+                        trans_const(cx, subexpr, def_id.node);
+                    }
+                    _ => cx.sess.span_bug(e.span, ~"expected item")
+                }
+            }
+            cx.const_values.get(def_id.node)
+          }
+          _ => cx.sess.span_bug(e.span, ~"expected a const or fn def")
         }
       }
         ast::expr_paren(e) => { return const_expr(cx, e); }
@@ -369,11 +370,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
 fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("trans_const");
-    let v = const_expr(ccx, e);
-
-    // The scalars come back as 1st class LLVM vals
-    // which we have to stick into global constants.
     let g = base::get_item_val(ccx, id);
+    let v = const_expr(ccx, e);
+    ccx.const_values.insert(id, v);
     llvm::LLVMSetInitializer(g, v);
     llvm::LLVMSetGlobalConstant(g, True);
 }

@@ -140,10 +140,19 @@ type crate_ctxt = {
      vtables: HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
      const_cstr_cache: HashMap<~str, ValueRef>,
-     // Reverse-direction for const ptrs cast from globals,
-     // since the ptr -> init association is lost any
-     // time a GlobalValue is cast.
+
+     // Reverse-direction for const ptrs cast from globals.
+     // Key is an int, cast from a ValueRef holding a *T,
+     // Val is a ValueRef holding a *[T].
+     //
+     // Needed because LLVM loses pointer->pointee association
+     // when we ptrcast, and we have to ptrcast during translation
+     // of a [T] const because we form a slice, a [*T,int] pair, not
+     // a pointer to an LLVM array type.
      const_globals: HashMap<int, ValueRef>,
+
+     // Cache of emitted const values
+     const_values: HashMap<ast::node_id, ValueRef>,
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
      names: namegen,
