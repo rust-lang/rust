@@ -1,8 +1,6 @@
 # Rules for non-core tools built with the compiler, both for target
 # and host architectures
 
-TOOL_DRIVER := $(S)src/driver/driver.rs
-
 FUZZER_LIB := $(S)src/libfuzzer/fuzzer.rc
 FUZZER_INPUTS := $(wildcard $(addprefix $(S)src/libfuzzer/, *.rs))
 
@@ -36,7 +34,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER):          \
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X):				\
-		$$(TOOL_DRIVER)								\
+		$$(DRIVER_CRATE)								\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg fuzzer -o $$@ $$<
@@ -82,7 +80,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO):		\
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X):				\
-		$$(TOOL_DRIVER) 							\
+		$$(DRIVER_CRATE) 							\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg cargo -o $$@ $$<
@@ -111,7 +109,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC):		\
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X):			\
-		$$(TOOL_DRIVER) 							\
+		$$(DRIVER_CRATE) 							\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc -o $$@ $$<
@@ -140,7 +138,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI):		\
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
-		$$(TOOL_DRIVER) 							\
+		$$(DRIVER_CRATE) 							\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rusti -o $$@ $$<

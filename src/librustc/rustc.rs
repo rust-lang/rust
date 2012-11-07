@@ -1,15 +1,3 @@
-#[no_core];
-#[allow(vecs_implicitly_copyable)];
-#[allow(non_camel_case_types)];
-#[legacy_modes];
-
-extern mod core(vers = "0.5");
-extern mod std(vers = "0.5");
-extern mod rustc(vers = "0.5");
-extern mod syntax(vers = "0.5");
-
-use core::*;
-
 // -*- rust -*-
 use result::{Ok, Err};
 use io::ReaderUtil;
@@ -17,11 +5,15 @@ use std::getopts;
 use std::map::HashMap;
 use getopts::{opt_present};
 use getopts::groups;
-use rustc::driver::driver::*;
 use syntax::codemap;
 use syntax::diagnostic;
-use rustc::driver::session;
-use rustc::middle::lint;
+use driver::driver::{host_triple, optgroups, early_error,
+                     str_input, file_input, build_session_options,
+                     build_session, build_configuration, parse_pretty,
+                     pp_mode, pretty_print_input, list_metadata,
+                     compile_input};
+use driver::session;
+use middle::lint;
 
 fn version(argv0: &str) {
     let mut vers = ~"unknown version";
