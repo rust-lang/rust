@@ -29,7 +29,13 @@ type test_ctxt =
 fn modify_for_testing(sess: session::Session,
                       crate: @ast::crate) -> @ast::crate {
 
-    if sess.opts.test {
+    // We generate the test harness when building in the 'test'
+    // configuration, either with the '--test' or '--cfg test'
+    // command line options.
+    let should_test = attr::contains(crate.node.config,
+                                     attr::mk_word_item(~"test"));
+
+    if should_test {
         generate_test_harness(sess, crate)
     } else {
         strip_test_functions(crate)
