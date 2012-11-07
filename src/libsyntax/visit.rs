@@ -277,7 +277,10 @@ fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
 }
 
 fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
-    for fd.inputs.each |a| { v.visit_ty(a.ty, e, v); }
+    for fd.inputs.each |a| {
+        v.visit_pat(a.pat, e, v);
+        v.visit_ty(a.ty, e, v);
+    }
     v.visit_ty(fd.output, e, v);
 }
 

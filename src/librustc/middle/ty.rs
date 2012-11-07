@@ -2532,18 +2532,19 @@ fn type_param(ty: t) -> Option<uint> {
 
 // Returns the type and mutability of *t.
 //
-// The parameter `expl` indicates if this is an *explicit* dereference.  Some
-// types---notably unsafe ptrs---can only be dereferenced explicitly.
-fn deref(cx: ctxt, t: t, expl: bool) -> Option<mt> {
-    deref_sty(cx, &get(t).sty, expl)
+// The parameter `explicit` indicates if this is an *explicit* dereference.
+// Some types---notably unsafe ptrs---can only be dereferenced explicitly.
+fn deref(cx: ctxt, t: t, explicit: bool) -> Option<mt> {
+    deref_sty(cx, &get(t).sty, explicit)
 }
-fn deref_sty(cx: ctxt, sty: &sty, expl: bool) -> Option<mt> {
+
+fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
     match *sty {
       ty_rptr(_, mt) | ty_box(mt) | ty_uniq(mt) => {
         Some(mt)
       }
 
-      ty_ptr(mt) if expl => {
+      ty_ptr(mt) if explicit => {
         Some(mt)
       }
 
@@ -3443,7 +3444,7 @@ fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
                                   id))
         }
     } else {
-        csearch::get_provided_trait_methods(cx, id).map(|info| info.ty.ident)
+        csearch::get_provided_trait_methods(cx, id).map(|ifo| ifo.ty.ident)
     }
 }
 

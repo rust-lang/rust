@@ -1410,18 +1410,29 @@ fn trans_alt_inner(scope_cx: block,
     return controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
 
     fn mk_fail(bcx: block, sp: span, msg: ~str,
-               done: @mut Option<BasicBlockRef>) -> BasicBlockRef {
-        match *done { Some(bb) => return bb, _ => () }
+               finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {
+        match *finished { Some(bb) => return bb, _ => () }
         let fail_cx = sub_block(bcx, ~"case_fallthrough");
         controlflow::trans_fail(fail_cx, Some(sp), msg);
-        *done = Some(fail_cx.llbb);
+        *finished = Some(fail_cx.llbb);
         return fail_cx.llbb;
     }
 }
 
+enum IrrefutablePatternBindingMode {
+    // Stores the association between node ID and LLVM value in `lllocals`.
+    BindLocal,
+    // Stores the association between node ID and LLVM value in `llargs`.
+    BindArgument
+}
+
 // Not alt-related, but similar to the pattern-munging code above
-fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
-                        make_copy: bool) -> block {
+fn bind_irrefutable_pat(bcx: block,
+                        pat: @ast::pat,
+                        val: ValueRef,
+                        make_copy: bool,
+                        binding_mode: IrrefutablePatternBindingMode)
+                     -> block {
     let _icx = bcx.insn_ctxt("alt::bind_irrefutable_pat");
     let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
@@ -1439,14 +1450,31 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                                    mode: ByRef, source: FromRvalue};
                 let scratch = scratch_datum(bcx, binding_ty, false);
                 datum.copy_to_datum(bcx, INIT, scratch);
-                bcx.fcx.lllocals.insert(pat.id, local_mem(scratch.val));
+                match binding_mode {
+                    BindLocal => {
+                        bcx.fcx.lllocals.insert(pat.id,
+                                                local_mem(scratch.val));
+                    }
+                    BindArgument => {
+                        bcx.fcx.llargs.insert(pat.id,
+                                              local_mem(scratch.val));
+                    }
+                }
                 add_clean(bcx, scratch.val, binding_ty);
             } else {
-                bcx.fcx.lllocals.insert(pat.id, local_mem(val));
+                match binding_mode {
+                    BindLocal => {
+                        bcx.fcx.lllocals.insert(pat.id, local_mem(val));
+                    }
+                    BindArgument => {
+                        bcx.fcx.llargs.insert(pat.id, local_mem(val));
+                    }
+                }
             }
 
             for inner.each |inner_pat| {
-                bcx = bind_irrefutable_pat(bcx, *inner_pat, val, true);
+                bcx = bind_irrefutable_pat(
+                    bcx, *inner_pat, val, true, binding_mode);
             }
         }
         ast::pat_enum(_, sub_pats) => {
@@ -1460,7 +1488,8 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                             bcx = bind_irrefutable_pat(bcx,
                                                        sub_pat[i],
                                                        *argval,
-                                                       make_copy);
+                                                       make_copy,
+                                                       binding_mode);
                         }
                     }
                 }
@@ -1473,8 +1502,11 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                             // This is the tuple variant case.
                             for vec::eachi(elems) |i, elem| {
                                 let fldptr = GEPi(bcx, val, struct_field(i));
-                                bcx = bind_irrefutable_pat(bcx, *elem, fldptr,
-                                                           make_copy);
+                                bcx = bind_irrefutable_pat(bcx,
+                                                           *elem,
+                                                           fldptr,
+                                                           make_copy,
+                                                           binding_mode);
                             }
                         }
                     }
@@ -1491,24 +1523,40 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                 for vec::each(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
                     let fldptr = GEPi(bcx, val, struct_field(ix));
-                    bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
+                    bcx = bind_irrefutable_pat(bcx,
+                                               f.pat,
+                                               fldptr,
+                                               make_copy,
+                                               binding_mode);
                 }
             }
         }
         ast::pat_tup(elems) => {
             for vec::eachi(elems) |i, elem| {
                 let fldptr = GEPi(bcx, val, [0u, i]);
-                bcx = bind_irrefutable_pat(bcx, *elem, fldptr, make_copy);
+                bcx = bind_irrefutable_pat(bcx,
+                                           *elem,
+                                           fldptr,
+                                           make_copy,
+                                           binding_mode);
             }
         }
         ast::pat_box(inner) | ast::pat_uniq(inner) => {
             let llbox = Load(bcx, val);
             let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
-            bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
+            bcx = bind_irrefutable_pat(bcx,
+                                       inner,
+                                       unboxed,
+                                       true,
+                                       binding_mode);
         }
         ast::pat_region(inner) => {
             let loaded_val = Load(bcx, val);
-            bcx = bind_irrefutable_pat(bcx, inner, loaded_val, true);
+            bcx = bind_irrefutable_pat(bcx,
+                                       inner,
+                                       loaded_val,
+                                       true,
+                                       binding_mode);
         }
         ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()
     }
