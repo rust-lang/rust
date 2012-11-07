@@ -945,7 +945,8 @@ impl CoherenceChecker {
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
                 ty::ty_class(type_def_id, _) => {
-                    tcx.destructor_for_type.insert(type_def_id, method_def_id);
+                    tcx.destructor_for_type.insert(type_def_id,
+                                                   method_def_id);
                     tcx.destructors.insert(method_def_id, ());
                 }
                 _ => {
