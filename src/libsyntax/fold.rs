@@ -105,9 +105,9 @@ fn fold_attribute_(at: attribute, fld: ast_fold) ->
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
     return {mode: a.mode,
-         ty: fld.fold_ty(a.ty),
-         ident: fld.fold_ident(a.ident),
-         id: fld.new_id(a.id)};
+            ty: fld.fold_ty(a.ty),
+            pat: fld.fold_pat(a.pat),
+            id: fld.new_id(a.id)};
 }
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: mac, fld: ast_fold) -> mac {

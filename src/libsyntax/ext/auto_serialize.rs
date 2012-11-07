@@ -515,7 +515,12 @@ fn mk_ser_method(
     let ser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
         ty: ty_s,
-        ident: cx.ident_of(~"__s"),
+        pat: @{id: cx.next_id(),
+               node: ast::pat_ident(
+                    ast::bind_by_value,
+                    ast_util::ident_to_path(span, cx.ident_of(~"__s")),
+                    None),
+               span: span},
         id: cx.next_id(),
     }];
 
@@ -570,7 +575,12 @@ fn mk_deser_method(
     let deser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
         ty: ty_d,
-        ident: cx.ident_of(~"__d"),
+        pat: @{id: cx.next_id(),
+               node: ast::pat_ident(
+                    ast::bind_by_value,
+                    ast_util::ident_to_path(span, cx.ident_of(~"__d")),
+                    None),
+               span: span},
         id: cx.next_id(),
     }];
 
@@ -1087,7 +1097,13 @@ fn mk_enum_deser_body(
                         node: ast::ty_infer,
                         span: span
                     },
-                    ident: cx.ident_of(~"i"),
+                    pat: @{id: cx.next_id(),
+                           node: ast::pat_ident(
+                                ast::bind_by_value,
+                                ast_util::ident_to_path(span,
+                                                        cx.ident_of(~"i")),
+                                None),
+                           span: span},
                     id: cx.next_id(),
                 }],
                 output: @{

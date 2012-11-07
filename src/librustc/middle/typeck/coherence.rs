@@ -856,8 +856,8 @@ impl CoherenceChecker {
 
         debug!("(adding default methods for trait) processing trait");
 
-        for csearch::get_provided_trait_methods(tcx,
-                                                trait_def_id).each |info| {
+        for csearch::get_provided_trait_methods(tcx, trait_def_id).each
+                                                |trait_method_info| {
             debug!("(adding default methods for trait) found default method");
 
             // Create a new def ID for this provided method.
@@ -868,11 +868,11 @@ impl CoherenceChecker {
                 @ProvidedMethodInfo {
                     method_info: @{
                         did: new_did,
-                        n_tps: info.ty.tps.len(),
-                        ident: info.ty.ident,
-                        self_type: info.ty.self_ty
+                        n_tps: trait_method_info.ty.tps.len(),
+                        ident: trait_method_info.ty.ident,
+                        self_type: trait_method_info.ty.self_ty
                     },
-                    trait_method_def_id: info.def_id
+                    trait_method_def_id: trait_method_info.def_id
                 };
 
             let method_infos = @DVec();

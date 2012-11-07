@@ -35,7 +35,7 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 pub mod linear {
-    const initial_capacity: uint = 32u; // 2^5
+    const INITIAL_CAPACITY: uint = 32u; // 2^5
 
     struct Bucket<K:Eq Hash,V> {
         hash: uint,
@@ -62,7 +62,7 @@ pub mod linear {
     }
 
     pub fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
-        linear_map_with_capacity(32)
+        linear_map_with_capacity(INITIAL_CAPACITY)
     }
 
     pub fn linear_map_with_capacity<K:Eq Hash,V>(

@@ -1,4 +1,4 @@
-//error-pattern:is an expr, expected an identifier
+//error-pattern:is an expr, expected a path
 fn main() {
     #macro[[#mylambda[x, body],
             {

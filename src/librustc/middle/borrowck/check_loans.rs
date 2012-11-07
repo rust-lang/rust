@@ -570,7 +570,20 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 visit::fk_anon(*) | visit::fk_fn_block(*) |
                 visit::fk_method(*) | visit::fk_item_fn(*) |
                 visit::fk_dtor(*) => {
-                    self.fn_args = @decl.inputs.map(|i| i.id );
+                    let mut fn_args = ~[];
+                    for decl.inputs.each |input| {
+                        // For the purposes of purity, only consider function-
+                        // typed bindings in trivial patterns to be function
+                        // arguments. For example, do not allow `f` and `g` in
+                        // (f, g): (&fn(), &fn()) to be called.
+                        match input.pat.node {
+                            ast::pat_ident(_, _, None) => {
+                                fn_args.push(input.pat.id);
+                            }
+                            _ => {} // Ignore this argument.
+                        }
+                    }
+                    self.fn_args = @move fn_args;
                 }
             }
 

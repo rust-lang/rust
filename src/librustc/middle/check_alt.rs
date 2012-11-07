@@ -15,6 +15,8 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{
         visit_expr: |a,b,c| check_expr(tcx, a, b, c),
         visit_local: |a,b,c| check_local(tcx, a, b, c),
+        visit_fn: |kind, decl, body, sp, id, e, v|
+            check_fn(tcx, kind, decl, body, sp, id, e, v),
         .. *visit::default_visitor::<()>()
     }));
     tcx.sess.abort_if_errors();
@@ -372,8 +374,8 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             ty::ty_rec(flds) => flds,
             _ => fail ~"bad type for pat_rec"
         };
-        let args = vec::map(ty_flds, |ty_f| {
-            match vec::find(flds, |f| f.ident == ty_f.ident ) {
+        let args = vec::map(ty_flds, |ty_fld| {
+            match vec::find(flds, |f| f.ident == ty_fld.ident ) {
               Some(f) => f.pat,
               _ => wild()
             }
@@ -386,8 +388,8 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             def_variant(_, variant_id) => {
                 if variant(variant_id) == ctor_id {
                     // XXX: Is this right? --pcw
-                    let args = flds.map(|ty_f| {
-                        match vec::find(flds, |f| f.ident == ty_f.ident) {
+                    let args = flds.map(|ty_field| {
+                        match vec::find(flds, |f| f.ident == ty_field.ident) {
                             Some(f) => f.pat,
                             _ => wild()
                         }
@@ -462,6 +464,23 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
     if is_refutable(tcx, loc.node.pat) {
         tcx.sess.span_err(loc.node.pat.span,
                           ~"refutable pattern in local binding");
+    }
+}
+
+fn check_fn(tcx: ty::ctxt,
+            kind: visit::fn_kind,
+            decl: fn_decl,
+            body: blk,
+            sp: span,
+            id: node_id,
+            &&s: (),
+            v: visit::vt<()>) {
+    visit::visit_fn(kind, decl, body, sp, id, s, v);
+    for decl.inputs.each |input| {
+        if is_refutable(tcx, input.pat) {
+            tcx.sess.span_err(input.pat.span,
+                              ~"refutable pattern in function argument");
+        }
     }
 }
 
