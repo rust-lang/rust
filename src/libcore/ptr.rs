@@ -176,7 +176,7 @@ pub trait Ptr<T> {
     pure fn offset(count: uint) -> self;
 }
 
-/// Extension methods for pointers
+/// Extension methods for immutable pointers
 impl<T> *T: Ptr<T> {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
@@ -189,6 +189,21 @@ impl<T> *T: Ptr<T> {
     /// Calculates the offset from a pointer.
     #[inline(always)]
     pure fn offset(count: uint) -> *T { offset(self, count) }
+}
+
+/// Extension methods for mutable pointers
+impl<T> *mut T: Ptr<T> {
+    /// Returns true if the pointer is equal to the null pointer.
+    #[inline(always)]
+    pure fn is_null() -> bool { is_null(self) }
+
+    /// Returns true if the pointer is not equal to the null pointer.
+    #[inline(always)]
+    pure fn is_not_null() -> bool { is_not_null(self) }
+
+    /// Calculates the offset from a mutable pointer.
+    #[inline(always)]
+    pure fn offset(count: uint) -> *mut T { mut_offset(self, count) }
 }
 
 // Equality for pointers
@@ -311,4 +326,12 @@ pub fn test_is_null() {
    let q = ptr::offset(p, 1u);
    assert !q.is_null();
    assert q.is_not_null();
+
+   let mp: *mut int = ptr::mut_null();
+   assert mp.is_null();
+   assert !mp.is_not_null();
+
+   let mq = mp.offset(1u);
+   assert !mq.is_null();
+   assert mq.is_not_null();
 }
