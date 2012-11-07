@@ -1083,7 +1083,7 @@ impl Parser {
             if self.token == token::NOT {
                 self.bump();
                 let tts = match self.token {
-                  token::LPAREN | token::LBRACE | token::LBRACKET => {
+                  token::LPAREN | token::LBRACE => {
                     let ket = token::flip_delimiter(self.token);
                     self.parse_unspanned_seq(copy self.token, ket,
                                              seq_sep_none(),
@@ -3418,7 +3418,7 @@ impl Parser {
             self.expect(token::NOT);
             let id = self.parse_ident();
             let tts = match self.token {
-              token::LPAREN | token::LBRACE | token::LBRACKET => {
+              token::LPAREN | token::LBRACE => {
                 let ket = token::flip_delimiter(self.token);
                 self.parse_unspanned_seq(copy self.token, ket,
                                          seq_sep_none(),
