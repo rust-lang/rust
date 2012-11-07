@@ -48,6 +48,9 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBFUZZER):					\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/fuzzer$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X)	\
@@ -91,6 +94,9 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBCARGO):				\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCARGO_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCARGO_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/cargo$$(X):					\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X)	\
@@ -120,6 +126,9 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTDOC):					\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X)	\
@@ -149,6 +158,9 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI):					\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rusti$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\

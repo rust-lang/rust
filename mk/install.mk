@@ -44,6 +44,8 @@ install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBSYNTAX_GLOB))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTI_GLOB))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
@@ -72,19 +74,20 @@ install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),fuzzer$(X))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBFUZZER))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),cargo$(X))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBCARGO))
-	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X))
+	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTC))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBFUZZER))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBCARGO))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTDOC))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTI))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTI_GLOB))
+	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM))
 	$(Q)$(call INSTALL,$(S)/man, \
 	     $(PREFIX_ROOT)/share/man/man1,rustc.1)
@@ -111,6 +114,9 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBCARGO_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBFUZZER_GLOB)) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTDOC_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTI_GLOB)) \
         ; \
         do rm -f $$i ; \
