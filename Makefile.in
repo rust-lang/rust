@@ -355,7 +355,12 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBFUZZER) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCARGO) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)  \
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
