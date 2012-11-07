@@ -71,14 +71,15 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
 fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
     // Remove any defined main function from the AST so it doesn't clash with
-    // the one we're going to add.
+    // the one we're going to add. Only if compiling an executable.
 
     // FIXME (#2403): This is sloppy. Instead we should have some mechanism to
     // indicate to the translation pass which function we want to be main.
     fn nomain(cx: test_ctxt, item: @ast::item) -> Option<@ast::item> {
         match item.node {
           ast::item_fn(*) => {
-            if item.ident == cx.sess.ident_of(~"main") {
+            if item.ident == cx.sess.ident_of(~"main")
+                && !cx.sess.building_library {
                 option::None
             } else { option::Some(item) }
           }
