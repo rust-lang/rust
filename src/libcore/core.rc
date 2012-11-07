@@ -211,7 +211,9 @@ pub mod extfmt;
 pub mod rt;
 
 // Ideally not exported, but currently is.
-pub mod private;
+pub mod private {
+    pub mod test;
+}
 
 // For internal use, not exported.
 mod unicode;
