@@ -813,12 +813,12 @@ impl TcpSocketBuf: io::Reader {
         let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 { 
             if self.end_of_stream {
-                -1 
+                -1
             } else {
                 fail
             }
-        } else { 
-            bytes[0] as int 
+        } else {
+            bytes[0] as int
         }
     }
     fn unread_byte(amt: int) {
