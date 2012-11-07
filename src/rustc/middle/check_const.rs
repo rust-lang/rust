@@ -82,19 +82,30 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
                               ~"` in a constant expression");
             }
           }
-          expr_path(_) => {
+          expr_path(pth) => {
+            // NB: In the future you might wish to relax this slightly
+            // to handle on-demand instantiation of functions via
+            // foo::<bar> in a const. Currently that is only done on
+            // a path in trans::callee that only works in block contexts.
+            if pth.types.len() != 0 {
+                sess.span_err(
+                    e.span, ~"paths in constants may only refer to \
+                              items without type parameters");
+            }
             match def_map.find(e.id) {
-              Some(def_const(def_id)) => {
+              Some(def_const(def_id)) |
+                Some(def_fn(def_id, _)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
-                                 crate-local constants");
+                                 crate-local constants or functions");
                 }
               }
               _ => {
                 sess.span_err(
                     e.span,
-                    ~"paths in constants may only refer to constants");
+                    ~"paths in constants may only refer to \
+                      constants or functions");
               }
             }
           }

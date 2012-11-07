@@ -96,18 +96,16 @@ struct Guard<T, U:Copy> {
 mod test {
 
     fn sadness_key(_x: @Handler<int,int>) { }
+    const sadness_condition : Condition<int,int> =
+        Condition { key: sadness_key };
+
     fn trouble(i: int) {
-        // Condition should work as a const, just limitations in consts.
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
         debug!("trouble: raising conition");
         let j = sadness_condition.raise(&i);
         debug!("trouble: handler recovered with %d", j);
     }
 
     fn nested_trap_test_inner() {
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
 
         let mut inner_trapped = false;
 
@@ -126,9 +124,6 @@ mod test {
     #[test]
     fn nested_trap_test_outer() {
 
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
-
         let mut outer_trapped = false;
 
         do sadness_condition.trap(|_j| {
@@ -144,8 +139,6 @@ mod test {
     }
 
     fn nested_reraise_trap_test_inner() {
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
 
         let mut inner_trapped = false;
 
@@ -166,9 +159,6 @@ mod test {
     #[test]
     fn nested_reraise_trap_test_outer() {
 
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
-
         let mut outer_trapped = false;
 
         do sadness_condition.trap(|_j| {
@@ -184,8 +174,6 @@ mod test {
 
     #[test]
     fn test_default() {
-        let sadness_condition : Condition<int,int> =
-            Condition { key: sadness_key };
 
         let mut trapped = false;
 
