@@ -1536,7 +1536,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
                         // Probably a bad error message (what's an rvalue?)
                         // but I can't think of anything better
                         self.tcx.sess.span_err(arg_expr.span,
-                          #fmt("Move mode argument must be an rvalue: try \
+                          fmt!("Move mode argument must be an rvalue: try \
                           (move %s) instead", expr_to_str(*arg_expr,
                                                 self.tcx.sess.intr())));
                     }
