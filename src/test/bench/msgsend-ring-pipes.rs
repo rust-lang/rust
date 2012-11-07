@@ -18,12 +18,9 @@ proto! ring (
     }
 )
 
-fn macros() {
-    #macro[
-        [#move_out[x],
-         unsafe { let y = move *ptr::addr_of(&x); move y }]
-    ];
-}
+macro_rules! move_out (
+    ($x:expr) => { unsafe { let y = move *ptr::addr_of(&$x); move y } }
+)
 
 fn thread_ring(i: uint,
                count: uint,

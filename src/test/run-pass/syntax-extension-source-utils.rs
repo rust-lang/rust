@@ -1,5 +1,5 @@
 // This test is brittle!
-// xfail-pretty - the pretty tests lose path information, breaking #include
+// xfail-pretty - the pretty tests lose path information, breaking include!
 #[legacy_exports];
 
 mod m1 {

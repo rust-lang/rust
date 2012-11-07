@@ -1533,7 +1533,7 @@ fn subst(cx: ctxt,
                 cx, typ,
                 |r| match r {
                     re_bound(br_self) => substs.self_r.expect(
-                        #fmt("ty::subst: \
+                        fmt!("ty::subst: \
                       Reference to self region when given substs with no \
                       self region, ty = %s", ty_to_str(cx, typ))),
                     _ => r

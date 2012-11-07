@@ -8,14 +8,12 @@ use std::map::{Map, HashMap};
 
 use io::{Reader, ReaderUtil};
 
+macro_rules! bench (
+    ($id:ident) => (maybe_run_test(argv, stringify!($id), $id))
+)
+
 fn main() {
     let argv = os::args();
-    #macro[
-        [#bench[id],
-         maybe_run_test(argv, #stringify(id), id)
-        ]
-    ];
-
     let tests = vec::view(argv, 1, argv.len());
 
     bench!(shift_push);
