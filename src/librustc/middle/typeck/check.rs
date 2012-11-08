@@ -850,6 +850,11 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
         ty::mk_int_var(tcx, fcx.infcx().next_int_var_id())
       }
       ast::lit_float(_, t) => ty::mk_mach_float(tcx, t),
+      ast::lit_float_unsuffixed(_) => {
+        // An unsuffixed floating point literal could have any floating point
+        // type, so we create a floating point type variable for it.
+        ty::mk_float_var(tcx, fcx.infcx().next_float_var_id())
+      }
       ast::lit_nil => ty::mk_nil(tcx),
       ast::lit_bool(_) => ty::mk_bool(tcx)
     }

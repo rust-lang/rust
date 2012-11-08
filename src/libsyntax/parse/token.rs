@@ -62,6 +62,7 @@ enum Token {
     LIT_UINT(u64, ast::uint_ty),
     LIT_INT_UNSUFFIXED(i64),
     LIT_FLOAT(ast::ident, ast::float_ty),
+    LIT_FLOAT_UNSUFFIXED(ast::ident),
     LIT_STR(ast::ident),
 
     /* Name components */
@@ -164,6 +165,13 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
         }
         body + ast_util::float_ty_to_str(t)
       }
+      LIT_FLOAT_UNSUFFIXED(s) => {
+        let mut body = *in.get(s);
+        if body.ends_with(~".") {
+            body = body + ~"0";  // `10.f` is not a float literal
+        }
+        body
+      }
       LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + ~"\"" }
 
       /* Name components */
@@ -204,6 +212,7 @@ pure fn can_begin_expr(t: Token) -> bool {
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
       LIT_FLOAT(_, _) => true,
+      LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
       POUND => true,
       AT => true,
@@ -243,6 +252,7 @@ fn is_lit(t: Token) -> bool {
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
       LIT_FLOAT(_, _) => true,
+      LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
       _ => false
     }
@@ -681,6 +691,12 @@ impl Token : cmp::Eq {
             LIT_FLOAT(e0a, e1a) => {
                 match (*other) {
                     LIT_FLOAT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            LIT_FLOAT_UNSUFFIXED(e0a) => {
+                match (*other) {
+                    LIT_FLOAT_UNSUFFIXED(e0b) => e0a == e0b,
                     _ => false
                 }
             }

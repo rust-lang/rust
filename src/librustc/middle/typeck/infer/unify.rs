@@ -1,5 +1,6 @@
 use combine::combine;
 use integral::*;
+use floating::*;
 use to_str::ToStr;
 use std::smallintmap::SmallIntMap;
 
@@ -294,28 +295,12 @@ fn bnds<C: combine>(
 // Integral variables
 
 impl infer_ctxt {
-    fn int_vars(a_id: ty::IntVid, b_id: ty::IntVid) -> ures {
-        let vb = &self.int_var_bindings;
-
-        let nde_a = self.get(vb, a_id);
-        let nde_b = self.get(vb, b_id);
-        let a_id = nde_a.root;
-        let b_id = nde_b.root;
-        let a_pt = nde_a.possible_types;
-        let b_pt = nde_b.possible_types;
-
-        // If we're already dealing with the same two variables,
-        // there's nothing to do.
-        if a_id == b_id { return uok(); }
-
-        // Otherwise, take the intersection of the two sets of
-        // possible types.
-        let intersection = intersection(a_pt, b_pt);
-        if *intersection == INT_TY_SET_EMPTY {
-            return Err(ty::terr_no_integral_type);
-        }
-
-        // Rank optimization
+    fn optimize_ranks<V:Copy vid Eq,T:Copy ToStr>(vb: &vals_and_bindings<V,T>,
+                                                  nde_a: node<V,T>,
+                                                  nde_b: node<V,T>,
+                                                  a_id: V,
+                                                  b_id: V,
+                                                  intersection: T) {
         if nde_a.rank > nde_b.rank {
             debug!("int_vars(): a has smaller rank");
             // a has greater rank, so a should become b's parent,
@@ -336,6 +321,31 @@ impl infer_ctxt {
             self.set(vb, a_id, root(intersection, nde_a.rank + 1u));
             self.set(vb, b_id, redirect(a_id));
         };
+    }
+
+    fn int_vars(a_id: ty::IntVid, b_id: ty::IntVid) -> ures {
+        let vb = &self.int_var_bindings;
+
+        let nde_a = self.get(vb, a_id);
+        let nde_b = self.get(vb, b_id);
+        let a_id = nde_a.root;
+        let b_id = nde_b.root;
+        let a_pt = nde_a.possible_types;
+        let b_pt = nde_b.possible_types;
+
+        // If we're already dealing with the same two variables,
+        // there's nothing to do.
+        if a_id == b_id { return uok(); }
+
+        // Otherwise, take the intersection of the two sets of
+        // possible types.
+        let intersection = integral::intersection(a_pt, b_pt);
+        if *intersection == INT_TY_SET_EMPTY {
+            return Err(ty::terr_no_integral_type);
+        }
+
+        // Rank optimization
+        self.optimize_ranks(vb, nde_a, nde_b, a_id, b_id, intersection);
 
         uok()
     }
@@ -349,7 +359,7 @@ impl infer_ctxt {
         let a_pt = nde_a.possible_types;
 
         let intersection =
-            intersection(a_pt,
+            integral::intersection(a_pt,
                          convert_integral_ty_to_int_ty_set(self.tcx, b));
         if *intersection == INT_TY_SET_EMPTY {
             return Err(ty::terr_no_integral_type);
@@ -367,7 +377,7 @@ impl infer_ctxt {
         let b_pt = nde_b.possible_types;
 
         let intersection =
-            intersection(b_pt,
+            integral::intersection(b_pt,
                          convert_integral_ty_to_int_ty_set(self.tcx, a));
         if *intersection == INT_TY_SET_EMPTY {
             return Err(ty::terr_no_integral_type);
@@ -378,3 +388,74 @@ impl infer_ctxt {
 
 
 }
+
+// ______________________________________________________________________
+// Floating point variables
+
+impl infer_ctxt {
+    fn float_vars(a_id: ty::FloatVid, b_id: ty::FloatVid) -> ures {
+        let vb = &self.float_var_bindings;
+
+        let nde_a = self.get(vb, a_id);
+        let nde_b = self.get(vb, b_id);
+        let a_id = nde_a.root;
+        let b_id = nde_b.root;
+        let a_pt = nde_a.possible_types;
+        let b_pt = nde_b.possible_types;
+
+        // If we're already dealing with the same two variables,
+        // there's nothing to do.
+        if a_id == b_id { return uok(); }
+
+        // Otherwise, take the intersection of the two sets of
+        // possible types.
+        let intersection = floating::intersection(a_pt, b_pt);
+        if *intersection == FLOAT_TY_SET_EMPTY {
+            return Err(ty::terr_no_floating_point_type);
+        }
+
+        // Rank optimization
+        self.optimize_ranks(vb, nde_a, nde_b, a_id, b_id, intersection);
+
+        uok()
+    }
+
+    fn float_var_sub_t(a_id: ty::FloatVid, b: ty::t) -> ures {
+        assert ty::type_is_fp(b);
+
+        let vb = &self.float_var_bindings;
+        let nde_a = self.get(vb, a_id);
+        let a_id = nde_a.root;
+        let a_pt = nde_a.possible_types;
+
+        let intersection =
+            floating::intersection(
+                a_pt,
+                convert_floating_point_ty_to_float_ty_set(self.tcx, b));
+        if *intersection == FLOAT_TY_SET_EMPTY {
+            return Err(ty::terr_no_floating_point_type);
+        }
+        self.set(vb, a_id, root(intersection, nde_a.rank));
+        uok()
+    }
+
+    fn t_sub_float_var(a: ty::t, b_id: ty::FloatVid) -> ures {
+        assert ty::type_is_fp(a);
+        let vb = &self.float_var_bindings;
+
+        let nde_b = self.get(vb, b_id);
+        let b_id = nde_b.root;
+        let b_pt = nde_b.possible_types;
+
+        let intersection =
+            floating::intersection(
+                b_pt,
+                convert_floating_point_ty_to_float_ty_set(self.tcx, a));
+        if *intersection == FLOAT_TY_SET_EMPTY {
+            return Err(ty::terr_no_floating_point_type);
+        }
+        self.set(vb, b_id, root(intersection, nde_b.rank));
+        uok()
+    }
+}
+

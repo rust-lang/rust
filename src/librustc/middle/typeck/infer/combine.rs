@@ -385,6 +385,17 @@ fn super_tys<C:combine>(
         self.infcx().t_sub_int_var(a, b_id).then(|| Ok(a) )
       }
 
+      // Relate floating-point variables to other types
+      (ty::ty_infer(FloatVar(a_id)), ty::ty_infer(FloatVar(b_id))) => {
+        self.infcx().float_vars(a_id, b_id).then(|| Ok(a) )
+      }
+      (ty::ty_infer(FloatVar(a_id)), ty::ty_float(_)) => {
+        self.infcx().float_var_sub_t(a_id, b).then(|| Ok(a) )
+      }
+      (ty::ty_float(_), ty::ty_infer(FloatVar(b_id))) => {
+        self.infcx().t_sub_float_var(a, b_id).then(|| Ok(a) )
+      }
+
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {

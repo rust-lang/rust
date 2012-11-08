@@ -385,6 +385,8 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
       }
       None => ()
     }
+
+    let mut is_machine_float = false;
     if rdr.curr == 'f' {
         bump(rdr);
         c = rdr.curr;
@@ -404,10 +406,14 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
             back-end.  */
         } else {
             is_float = true;
+            is_machine_float = true;
         }
     }
     if is_float {
-        return token::LIT_FLOAT(rdr.interner.intern(@num_str), ast::ty_f);
+        if is_machine_float {
+            return token::LIT_FLOAT(rdr.interner.intern(@num_str), ast::ty_f);
+        }
+        return token::LIT_FLOAT_UNSUFFIXED(rdr.interner.intern(@num_str));
     } else {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
