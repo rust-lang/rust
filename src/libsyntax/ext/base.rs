@@ -44,6 +44,7 @@ type syntax_expander_tt_item_
 enum mac_result {
     mr_expr(@ast::expr),
     mr_item(@ast::item),
+    mr_expr_or_item(fn@()-> @ast::expr, fn@()-> Option<@ast::item>),
     mr_def(macro_def)
 }
 
