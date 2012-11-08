@@ -22,6 +22,19 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
         }
       }
       ast::lit_float(fs, t) => C_floating(*fs, T_float_ty(cx, t)),
+      ast::lit_float_unsuffixed(fs) => {
+        let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
+        match ty::get(lit_float_ty).sty {
+          ty::ty_float(t) => {
+            C_floating(*fs, T_float_ty(cx, t))
+          }
+          _ => {
+            cx.sess.span_bug(lit.span,
+                             ~"floating point literal doesn't have the right \
+                               type");
+          }
+        }
+      }
       ast::lit_bool(b) => C_bool(b),
       ast::lit_nil => C_nil(),
       ast::lit_str(s) => C_estr_slice(cx, *s)

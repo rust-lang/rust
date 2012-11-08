@@ -662,8 +662,8 @@ type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
 
 #[auto_serialize]
 #[auto_deserialize]
-enum log_level { error, debug, other }
-// 0 = error, 1 = debug, 2 = other
+enum log_level { error, debug, log_other }
+// 0 = error, 1 = debug, 2 = log_other
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -862,6 +862,7 @@ enum lit_ {
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64),
     lit_float(@~str, float_ty),
+    lit_float_unsuffixed(@~str),
     lit_nil,
     lit_bool(bool),
 }
@@ -880,6 +881,7 @@ impl ast::lit_: cmp::Eq {
             (lit_float(val_a, ty_a), lit_float(val_b, ty_b)) => {
                 val_a == val_b && ty_a == ty_b
             }
+            (lit_float_unsuffixed(a), lit_float_unsuffixed(b)) => a == b,
             (lit_nil, lit_nil) => true,
             (lit_bool(a), lit_bool(b)) => a == b,
             (lit_str(_), _) => false,
@@ -887,6 +889,7 @@ impl ast::lit_: cmp::Eq {
             (lit_uint(*), _) => false,
             (lit_int_unsuffixed(*), _) => false,
             (lit_float(*), _) => false,
+            (lit_float_unsuffixed(*), _) => false,
             (lit_nil, _) => false,
             (lit_bool(_), _) => false
         }
@@ -1137,7 +1140,7 @@ impl Ty : to_bytes::IterBytes {
 
 #[auto_serialize]
 #[auto_deserialize]
-type arg = {mode: mode, ty: @Ty, ident: ident, id: node_id};
+type arg = {mode: mode, ty: @Ty, pat: @pat, id: node_id};
 
 #[auto_serialize]
 #[auto_deserialize]

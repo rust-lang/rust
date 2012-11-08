@@ -85,7 +85,7 @@ pub mod ct {
     pub enum Piece { PieceString(~str), PieceConv(Conv), }
     pub type ErrorFn = fn@(&str) -> ! ;
 
-    pub fn parse_fmt_string(s: &str, error: ErrorFn) -> ~[Piece] {
+    pub fn parse_fmt_string(s: &str, err: ErrorFn) -> ~[Piece] {
         let mut pieces: ~[Piece] = ~[];
         let lim = str::len(s);
         let mut buf = ~"";
@@ -103,7 +103,7 @@ pub mod ct {
             if curr == ~"%" {
                 i += 1;
                 if i >= lim {
-                    error(~"unterminated conversion at end of string");
+                    err(~"unterminated conversion at end of string");
                 }
                 let curr2 = str::slice(s, i, i+1);
                 if curr2 == ~"%" {
@@ -111,7 +111,7 @@ pub mod ct {
                     i += 1;
                 } else {
                     buf = flush_buf(move buf, &mut pieces);
-                    let rs = parse_conversion(s, i, lim, error);
+                    let rs = parse_conversion(s, i, lim, err);
                     pieces.push(copy rs.piece);
                     i = rs.next;
                 }
@@ -143,13 +143,13 @@ pub mod ct {
         }
     }
     pub fn parse_conversion(s: &str, i: uint, lim: uint,
-                            error: ErrorFn) ->
+                            err: ErrorFn) ->
        {piece: Piece, next: uint} {
         let parm = parse_parameter(s, i, lim);
         let flags = parse_flags(s, parm.next, lim);
         let width = parse_count(s, flags.next, lim);
         let prec = parse_precision(s, width.next, lim);
-        let ty = parse_type(s, prec.next, lim, error);
+        let ty = parse_type(s, prec.next, lim, err);
         return {piece:
                  PieceConv({param: parm.param,
                              flags: copy flags.flags,
@@ -239,9 +239,9 @@ pub mod ct {
                 }
             } else { {count: CountImplied, next: i} };
     }
-    pub fn parse_type(s: &str, i: uint, lim: uint, error: ErrorFn) ->
+    pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
        {ty: Ty, next: uint} {
-        if i >= lim { error(~"missing type in conversion"); }
+        if i >= lim { err(~"missing type in conversion"); }
         let tstr = str::slice(s, i, i+1u);
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
@@ -268,7 +268,7 @@ pub mod ct {
                 TyFloat
             } else if tstr == ~"?" {
                 TyPoly
-            } else { error(~"unknown type in conversion: " + tstr) };
+            } else { err(~"unknown type in conversion: " + tstr) };
         return {ty: t, next: i + 1u};
     }
 }
