@@ -20,3 +20,10 @@ pub type TestDesc = {
     ignore: bool,
     should_fail: bool
 };
+
+// This exists to satisfy linkage. rustc's test pass generates a call to it,
+// but we'll never use it. Instead driver.rs will call std::test::test_main
+// directly.
+pub fn test_main(_args: &[~str], _tests: &[TestDesc]) {
+    fail
+}

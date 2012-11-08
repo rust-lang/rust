@@ -135,19 +135,6 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
     }
 }
 
-#[test]
-fn test_fun_to_str() {
-    let decl: ast::fn_decl = {
-        inputs: ~[],
-        output: @{id: 0,
-                  node: ast::ty_nil,
-                  span: ast_util::dummy_sp()},
-        purity: ast::impure_fn,
-        cf: ast::return_val
-    };
-    assert fun_to_str(decl, "a", ~[]) == "fn a()";
-}
-
 fn block_to_str(blk: ast::blk, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
@@ -170,20 +157,6 @@ fn attribute_to_str(attr: ast::attribute, intr: @ident_interner) -> ~str {
 
 fn variant_to_str(var: ast::variant, intr: @ident_interner) -> ~str {
     to_str(var, print_variant, intr)
-}
-
-#[test]
-fn test_variant_to_str() {
-    let var = ast_util::respan(ast_util::dummy_sp(), {
-        name: "principle_skinner",
-        attrs: ~[],
-        args: ~[],
-        id: 0,
-        disr_expr: none
-    });
-
-    let varstr = variant_to_str(var);
-    assert varstr == "principle_skinner";
 }
 
 fn cbox(s: ps, u: uint) {

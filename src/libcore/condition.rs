@@ -92,7 +92,11 @@ struct Guard<T, U:Copy> {
 }
 
 
-#[cfg(test)]
+// XXX: Remove after snapshot and uncommond cfg(test)
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+//#[cfg(test)]
 mod test {
 
     fn sadness_key(_x: @Handler<int,int>) { }

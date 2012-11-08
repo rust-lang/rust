@@ -31,7 +31,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER):          \
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X):				\
 		$$(DRIVER_CRATE)								\
@@ -77,7 +77,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO):		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X):				\
 		$$(DRIVER_CRATE) 							\
@@ -106,7 +106,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC):		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X):			\
 		$$(DRIVER_CRATE) 							\
@@ -135,7 +135,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI):		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
 		$$(DRIVER_CRATE) 							\

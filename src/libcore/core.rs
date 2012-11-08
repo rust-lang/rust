@@ -25,29 +25,10 @@ pub use to_str::ToStr;
 // The following exports are the core operators and kinds
 // The compiler has special knowlege of these so we must not duplicate them
 // when compiling for testing
-#[cfg(notest)]
 pub use ops::{Const, Copy, Send, Owned};
-#[cfg(notest)]
 pub use ops::{Drop};
-#[cfg(notest)]
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
-#[cfg(notest)]
 pub use ops::{Shl, Shr, Index};
-
-#[cfg(test)]
-extern mod coreops(name = "core", vers = "0.5");
-
-#[cfg(test)]
-pub use coreops::ops::{Const, Copy, Send, Owned};
-#[cfg(test)]
-pub use coreops::ops::{Drop};
-#[cfg(test)]
-pub use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr};
-#[cfg(test)]
-pub use coreops::ops::{BitXor};
-#[cfg(test)]
-pub use coreops::ops::{Shl, Shr, Index};
-
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
@@ -74,8 +55,6 @@ mod core {
 }
 
 // Similar to above. Some magic to make core testable.
-#[cfg(test)]
-mod std {
-    extern mod std(vers = "0.5");
-    pub use std::test;
+priv mod std {
+    pub use private::test;
 }

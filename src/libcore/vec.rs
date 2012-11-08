@@ -1393,25 +1393,19 @@ impl<T: Ord> @[T] : Ord {
     pure fn gt(other: &@[T]) -> bool { gt(self, (*other)) }
 }
 
-#[cfg(notest)]
-pub mod traits {
-    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
-        #[inline(always)]
-        pure fn add(rhs: & &self/[const T]) -> ~[T] {
-            append(copy self, (*rhs))
-        }
-    }
-
-    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
-        #[inline(always)]
-        pure fn add(rhs: & &self/[const T]) -> ~[mut T] {
-            append_mut(copy self, (*rhs))
-        }
+impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
+    #[inline(always)]
+    pure fn add(rhs: & &self/[const T]) -> ~[T] {
+        append(copy self, (*rhs))
     }
 }
 
-#[cfg(test)]
-pub mod traits {}
+impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
+    #[inline(always)]
+    pure fn add(rhs: & &self/[const T]) -> ~[mut T] {
+        append_mut(copy self, (*rhs))
+    }
+}
 
 pub trait ConstVector {
     pure fn is_empty() -> bool;
