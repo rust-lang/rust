@@ -81,6 +81,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                   Some(expr_tt({expander: exp, span: exp_sp})) => {
                     let expanded = match exp(cx, mac.span, tts) {
                       mr_expr(e) => e,
+                      mr_expr_or_item(expr_maker,_) => expr_maker(),
                       _ => cx.span_fatal(
                           pth.span, fmt!("non-expr macro in expr pos: %s",
                                          *extname))
@@ -214,6 +215,8 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
               mr_expr(_) => cx.span_fatal(pth.span,
                                          ~"expr macro in item position: " +
                                          *extname),
+              mr_expr_or_item(_, item_maker) =>
+                option::chain(item_maker(), |i| {fld.fold_item(i)}),
               mr_def(mdef) => {
                 exts.insert(mdef.name, mdef.ext);
                 None
