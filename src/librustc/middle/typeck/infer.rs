@@ -209,6 +209,8 @@ overconstrains the type, it's a type error; if we reach the point at
 which type variables must be resolved and an integral type variable is
 still underconstrained, it defaults to `int` as a last resort.
 
+Floating point types are handled similarly to integral types.
+
 ## GLB/LUB
 
 Computing the greatest-lower-bound and least-upper-bound of two
@@ -250,8 +252,8 @@ use std::smallintmap;
 use std::smallintmap::smallintmap;
 use std::map::HashMap;
 use middle::ty;
-use middle::ty::{TyVid, IntVid, RegionVid, vid,
-                 ty_int, ty_uint, get, terr_fn, TyVar, IntVar};
+use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, vid,
+                 ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
 use syntax::{ast, ast_util};
 use syntax::ast::{ret_style, purity};
 use util::ppaux::{ty_to_str, mt_to_str};
@@ -272,6 +274,7 @@ use resolve::{resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all,
                  resolve_and_force_all_but_regions, resolver};
 use unify::{vals_and_bindings, root};
 use integral::{int_ty_set, int_ty_set_all};
+use floating::{float_ty_set, float_ty_set_all};
 use combine::{combine_fields, eq_tys};
 use assignment::Assign;
 use to_str::ToStr;
@@ -318,12 +321,17 @@ enum infer_ctxt = @{
     // represented by an int_ty_set.
     int_var_bindings: vals_and_bindings<ty::IntVid, int_ty_set>,
 
+    // The types that might instantiate a floating-point type variable are
+    // represented by an float_ty_set.
+    float_var_bindings: vals_and_bindings<ty::FloatVid, float_ty_set>,
+
     // For region variables.
     region_vars: RegionVarBindings,
 
     // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
     int_var_counter: @mut uint,
+    float_var_counter: @mut uint,
     region_var_counter: @mut uint
 };
 
@@ -359,9 +367,11 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
                  ty_var_bindings: new_vals_and_bindings(),
                  int_var_bindings: new_vals_and_bindings(),
+                 float_var_bindings: new_vals_and_bindings(),
                  region_vars: RegionVarBindings(tcx),
                  ty_var_counter: @mut 0u,
                  int_var_counter: @mut 0u,
+                 float_var_counter: @mut 0u,
                  region_var_counter: @mut 0u})}
 
 fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
@@ -625,6 +635,18 @@ impl infer_ctxt {
 
     fn next_int_var() -> ty::t {
         ty::mk_int_var(self.tcx, self.next_int_var_id())
+    }
+
+    fn next_float_var_id() -> FloatVid {
+        let id = *self.float_var_counter;
+        *self.float_var_counter += 1;
+
+        self.float_var_bindings.vals.insert(id, root(float_ty_set_all(), 0));
+        return FloatVid(id);
+    }
+
+    fn next_float_var() -> ty::t {
+        ty::mk_float_var(self.tcx, self.next_float_var_id())
     }
 
     fn next_region_var_nb(span: span) -> ty::Region {

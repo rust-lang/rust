@@ -15,8 +15,10 @@
 // `resolve_nested_tvar` is passed, we will then go and recursively
 // resolve `<T1>`.
 //
-// The options `resolve_rvar` and `resolve_ivar` control whether we
-// resolve region and integral variables, respectively.
+// The options `resolve_rvar` controls whether we resolve region
+// variables. The options `resolve_fvar` and `resolve_ivar` control
+// whether we resolve floating point and integral variables,
+// respectively.
 //
 // # What do if things are unconstrained
 //
@@ -35,16 +37,19 @@
 // probably better off writing `resolve_all - resolve_ivar`.
 
 use integral::*;
+use floating::*;
 use to_str::ToStr;
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;
 const resolve_ivar: uint        = 0b00000100;
-const resolve_all: uint         = 0b00000111;
+const resolve_fvar: uint        = 0b00001000;
+const resolve_all: uint         = 0b00001111;
 const force_tvar: uint          = 0b00010000;
 const force_rvar: uint          = 0b00100000;
 const force_ivar: uint          = 0b01000000;
-const force_all: uint           = 0b01110000;
+const force_fvar: uint          = 0b11000000;
+const force_all: uint           = 0b11110000;
 
 const not_regions: uint         = !(force_rvar | resolve_rvar);
 
@@ -118,6 +123,9 @@ impl resolve_state {
               }
               ty::ty_infer(IntVar(vid)) => {
                 self.resolve_int_var(vid)
+              }
+              ty::ty_infer(FloatVar(vid)) => {
+                self.resolve_float_var(vid)
               }
               _ => {
                 if !self.should(resolve_rvar) &&
@@ -212,7 +220,7 @@ impl resolve_state {
 
         // If there's only one type in the set of possible types, then
         // that's the answer.
-        match single_type_contained_in(self.infcx.tcx, pt) {
+        match integral::single_type_contained_in(self.infcx.tcx, pt) {
           Some(t) => t,
           None => {
             if self.should(force_ivar) {
@@ -226,6 +234,37 @@ impl resolve_state {
                 ty
             } else {
                 ty::mk_int_var(self.infcx.tcx, vid)
+            }
+          }
+        }
+    }
+
+    fn resolve_float_var(vid: FloatVid) -> ty::t {
+        if !self.should(resolve_fvar) {
+            return ty::mk_float_var(self.infcx.tcx, vid);
+        }
+
+        let nde = self.infcx.get(&self.infcx.float_var_bindings, vid);
+        let pt = nde.possible_types;
+
+        // If there's only one type in the set of possible types, then
+        // that's the answer.
+        match floating::single_type_contained_in(self.infcx.tcx, pt) {
+          Some(t) => t,
+          None => {
+            if self.should(force_fvar) {
+                // As a last resort, default to float.
+                let ty = ty::mk_float(self.infcx.tcx);
+                self.infcx.set(
+                    &self.infcx.float_var_bindings,
+                    vid,
+                    root(
+                        convert_floating_point_ty_to_float_ty_set(
+                            self.infcx.tcx, ty),
+                        nde.rank));
+                ty
+            } else {
+                ty::mk_float_var(self.infcx.tcx, vid)
             }
           }
         }
