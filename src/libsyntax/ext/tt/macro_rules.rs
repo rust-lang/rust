@@ -1,4 +1,4 @@
-use base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
+use base::{ext_ctxt, mac_result, mr_expr_or_item, mr_def, expr_tt};
 use codemap::span;
 use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
@@ -87,10 +87,13 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
                                                ~[rhs]);
-                    let p = Parser(cx.parse_sess(), cx.cfg(),
-                                   trncbr as reader);
-                    let e = p.parse_expr();
-                    return mr_expr(e);
+                    let p = @Parser(cx.parse_sess(), cx.cfg(),
+                                    trncbr as reader);
+
+                    // Let the context choose how to interpret the result.
+                    // Weird, but useful for X-macros.
+                    return mr_expr_or_item(|| p.parse_expr(),
+                                           || p.parse_item(~[/* no attrs*/]));
                   }
                   failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
