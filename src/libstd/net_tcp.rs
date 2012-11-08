@@ -48,11 +48,13 @@ pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  */
 struct TcpSocketBuf {
     data: @TcpBufferedSocketData,
+    mut end_of_stream: bool,
 }
 
 pub fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
     TcpSocketBuf {
-        data: data
+        data: data,
+        end_of_stream: false
     }
 }
 
@@ -782,6 +784,7 @@ impl TcpSocketBuf: io::Reader {
                 let err_data = read_result.get_err();
 
                 if err_data.err_name == ~"EOF" {
+                    self.end_of_stream = true;
                     break;
                 } else {
                     debug!("ERROR sock_buf as io::reader.read err %? %?",
@@ -808,13 +811,21 @@ impl TcpSocketBuf: io::Reader {
     }
     fn read_byte() -> int {
         let mut bytes = ~[0];
-        if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
+        if self.read(bytes, 1u) == 0 {
+            if self.end_of_stream {
+                -1
+            } else {
+                fail
+            }
+        } else {
+            bytes[0] as int
+        }
     }
     fn unread_byte(amt: int) {
         self.data.buf.unshift(amt as u8);
     }
     fn eof() -> bool {
-        false // noop
+        self.end_of_stream
     }
     fn seek(dist: int, seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
@@ -871,7 +882,8 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) unsafe {
         uv::ll::close(stream_handle_ptr, tcp_socket_dtor_close_cb);
     };
     core::comm::recv(closed_po);
-    log(debug, fmt!("about to free socket_data at %?", socket_data));
+    //the line below will most likely crash
+    //log(debug, fmt!("about to free socket_data at %?", socket_data));
     rustrt::rust_uv_current_kernel_free(stream_handle_ptr
                                        as *libc::c_void);
     log(debug, ~"exiting dtor for tcp_socket");
@@ -1268,7 +1280,10 @@ mod test {
             fn test_gl_tcp_ipv4_server_client_reader_writer() {
                 impl_gl_tcp_ipv4_server_client_reader_writer();
             }
-
+            #[test]
+            fn test_tcp_socket_impl_reader_handles_eof() {
+                impl_tcp_socket_impl_reader_handles_eof();
+            }
         }
         #[cfg(target_arch="x86")]
         mod impl32 {
@@ -1539,6 +1554,49 @@ mod test {
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
         */
+    }
+
+    fn impl_tcp_socket_impl_reader_handles_eof() {
+        use io::{Reader,ReaderUtil};
+        let hl_loop = uv::global_loop::get();
+        let server_ip = ~"127.0.0.1";
+        let server_port = 10041u;
+        let expected_req = ~"GET /";
+        let expected_resp = ~"A string\nwith multiple lines\n";
+
+        let server_result_po = core::comm::Port::<~str>();
+        let server_result_ch = core::comm::Chan(&server_result_po);
+
+        let cont_po = core::comm::Port::<()>();
+        let cont_ch = core::comm::Chan(&cont_po);
+        // server
+        do task::spawn_sched(task::ManualThreads(1u)) {
+            let actual_req = do comm::listen |server_ch| {
+                run_tcp_test_server(
+                    server_ip,
+                    server_port,
+                    expected_resp,
+                    server_ch,
+                    cont_ch,
+                    hl_loop)
+            };
+            server_result_ch.send(actual_req);
+        };
+        core::comm::recv(cont_po);
+        // client
+        log(debug, ~"server started, firing up client..");
+        let server_addr = ip::v4::parse_addr(server_ip);
+        let conn_result = connect(server_addr, server_port, hl_loop);
+        if result::is_err(&conn_result) {
+            assert false;
+        }
+        let sock_buf = @socket_buf(result::unwrap(move conn_result));
+        buf_write(sock_buf, expected_req);
+
+        let buf_reader = sock_buf as Reader;
+        let actual_response = str::from_bytes(buf_reader.read_whole_stream());
+        log(debug, fmt!("Actual response: %s", actual_response));
+        assert expected_resp == actual_response;
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
