@@ -662,8 +662,8 @@ type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
 
 #[auto_serialize]
 #[auto_deserialize]
-enum log_level { error, debug, other }
-// 0 = error, 1 = debug, 2 = other
+enum log_level { error, debug, log_other }
+// 0 = error, 1 = debug, 2 = log_other
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -1137,7 +1137,7 @@ impl Ty : to_bytes::IterBytes {
 
 #[auto_serialize]
 #[auto_deserialize]
-type arg = {mode: mode, ty: @Ty, ident: ident, id: node_id};
+type arg = {mode: mode, ty: @Ty, pat: @pat, id: node_id};
 
 #[auto_serialize]
 #[auto_deserialize]

@@ -267,7 +267,7 @@ fn check_fn(ccx: @crate_ctxt,
         } else { None };
 
         @fn_ctxt {
-            self_impl_def_id: self_info.map(|info| info.def_id),
+            self_impl_def_id: self_info.map(|self_info| self_info.def_id),
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             purity: purity,
@@ -280,16 +280,16 @@ fn check_fn(ccx: @crate_ctxt,
 
     // Update the self_info to contain an accurate self type (taking
     // into account explicit self).
-    let self_info = do self_info.chain_ref |info| {
+    let self_info = do self_info.chain_ref |self_info| {
         // If the self type is sty_static, we don't have a self ty.
-        if info.explicit_self.node == ast::sty_static {
+        if self_info.explicit_self.node == ast::sty_static {
             None
         } else  {
             let self_region = fcx.in_scope_regions.find(ty::br_self);
             let ty = method::transform_self_type_for_method(
                 fcx.tcx(), self_region,
-                info.self_ty, info.explicit_self.node);
-            Some({self_ty: ty,.. *info})
+                self_info.self_ty, self_info.explicit_self.node);
+            Some({self_ty: ty,.. *self_info})
         }
     };
 
@@ -306,8 +306,8 @@ fn check_fn(ccx: @crate_ctxt,
       None => ()
     }
 
-    for self_info.each |info| {
-        fcx.write_ty(info.self_id, info.self_ty);
+    for self_info.each |self_info| {
+        fcx.write_ty(self_info.self_id, self_info.self_ty);
     }
     for vec::each2(decl.inputs, arg_tys) |input, arg| {
         fcx.write_ty(input.id, *arg);
@@ -344,19 +344,31 @@ fn check_fn(ccx: @crate_ctxt,
         };
 
         // Add the self parameter
-        for self_info.each |info| {
-            assign(info.explicit_self.span,
-                   info.self_id, Some(info.self_ty));
+        for self_info.each |self_info| {
+            assign(self_info.explicit_self.span,
+                   self_info.self_id,
+                   Some(self_info.self_ty));
             debug!("self is assigned to %s",
-                   fcx.inh.locals.get(info.self_id).to_str());
+                   fcx.inh.locals.get(self_info.self_id).to_str());
         }
 
         // Add formal parameters.
         for vec::each2(arg_tys, decl.inputs) |arg_ty, input| {
-            assign(input.ty.span, input.id, Some(*arg_ty));
-            debug!("Argument %s is assigned to %s",
-                   tcx.sess.str_of(input.ident),
-                   fcx.inh.locals.get(input.id).to_str());
+            // Create type variables for each argument.
+            do pat_util::pat_bindings(tcx.def_map, input.pat)
+                    |_bm, pat_id, _sp, _path| {
+                assign(input.ty.span, pat_id, None);
+            }
+
+            // Check the pattern.
+            let region = fcx.block_region();
+            let pcx = {
+                fcx: fcx,
+                map: pat_id_map(tcx.def_map, input.pat),
+                alt_region: region,
+                block_region: region,
+            };
+            alt::check_pat(pcx, input.pat, *arg_ty);
         }
 
         // Add explicitly-declared locals.

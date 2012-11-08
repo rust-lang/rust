@@ -261,9 +261,9 @@ fn call_substructure_method(bcx: block,
                                                         vtable_result);
     let llfn = fn_data.llfn;
 
-    let cb: &fn(block) -> Callee = |block| {
+    let cb: &fn(block) -> Callee = |bloc| {
         Callee {
-            bcx: block,
+            bcx: bloc,
             data: Method(MethodData {
                 llfn: llfn,
                 llself: llselfval,

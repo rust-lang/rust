@@ -4,7 +4,7 @@
 // something smarter.
 
 use ast::{ident, node_id};
-use ast_util::respan;
+use ast_util::{ident_to_path, respan};
 use codemap::span;
 use ext::base::mk_ctxt;
 
@@ -178,7 +178,12 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
         {mode: ast::infer(self.next_id()),
          ty: ty,
-         ident: name,
+         pat: @{id: self.next_id(),
+                node: ast::pat_ident(
+                    ast::bind_by_value,
+                    ast_util::ident_to_path(self.empty_span(), name),
+                    None),
+                span: self.empty_span()},
          id: self.next_id()}
     }
 

@@ -696,19 +696,21 @@ impl Parser {
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
         let mut m;
-        let i = if require_name || self.is_named_argument() {
+        let pat = if require_name || self.is_named_argument() {
             m = self.parse_arg_mode();
-            let name = self.parse_value_ident();
+            let pat = self.parse_pat(false);
             self.expect(token::COLON);
-            name
+            pat
         } else {
             m = infer(self.get_id());
-            special_idents::invalid
+            ast_util::ident_to_pat(self.get_id(),
+                                   copy self.last_span,
+                                   special_idents::invalid)
         };
 
         let t = self.parse_ty(false);
 
-        {mode: m, ty: t, ident: i, id: self.get_id()}
+        {mode: m, ty: t, pat: pat, id: self.get_id()}
     }
 
     fn parse_arg() -> arg_or_capture_item {
@@ -722,7 +724,7 @@ impl Parser {
     fn parse_fn_block_arg() -> arg_or_capture_item {
         do self.parse_capture_item_or |p| {
             let m = p.parse_arg_mode();
-            let i = p.parse_value_ident();
+            let pat = p.parse_pat(false);
             let t = if p.eat(token::COLON) {
                 p.parse_ty(false)
             } else {
@@ -730,7 +732,7 @@ impl Parser {
                   node: ty_infer,
                   span: mk_sp(p.span.lo, p.span.hi)}
             };
-            either::Left({mode: m, ty: t, ident: i, id: p.get_id()})
+            either::Left({mode: m, ty: t, pat: pat, id: p.get_id()})
         }
     }
 
@@ -1042,7 +1044,7 @@ impl Parser {
             let lvl = self.parse_expr();
             self.expect(token::COMMA);
             let e = self.parse_expr();
-            ex = expr_log(ast::other, lvl, e);
+            ex = expr_log(ast::log_other, lvl, e);
             hi = self.span.hi;
             self.expect(token::RPAREN);
         } else if self.eat_keyword(~"assert") {
@@ -2706,6 +2708,11 @@ impl Parser {
                 node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
                 span: s}})
          }
+    }
+
+    fn ident_to_path(i: ident) -> @path {
+        @{span: self.last_span, global: false, idents: ~[i],
+          rp: None, types: ~[]}
     }
 
     fn parse_trait_ref() -> @trait_ref {

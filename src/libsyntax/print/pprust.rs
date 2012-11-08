@@ -1386,7 +1386,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         match lvl {
           ast::debug => { word_nbsp(s, ~"log"); print_expr(s, expr); }
           ast::error => { word_nbsp(s, ~"log_err"); print_expr(s, expr); }
-          ast::other => {
+          ast::log_other => {
             word_nbsp(s, ~"log");
             popen(s);
             print_expr(s, lexp);
@@ -1820,12 +1820,19 @@ fn print_arg(s: ps, input: ast::arg) {
     ibox(s, indent_unit);
     print_arg_mode(s, input.mode);
     match input.ty.node {
-      ast::ty_infer => print_ident(s, input.ident),
+      ast::ty_infer => print_pat(s, input.pat),
       _ => {
-        if input.ident != parse::token::special_idents::invalid {
-            print_ident(s, input.ident);
-            word(s.s, ~":");
-            space(s.s);
+        match input.pat.node {
+            ast::pat_ident(_, path, _) if
+                path.idents.len() == 1 &&
+                path.idents[0] == parse::token::special_idents::invalid => {
+                // Do nothing.
+            }
+            _ => {
+                print_pat(s, input.pat);
+                word(s.s, ~":");
+                space(s.s);
+            }
         }
         print_type(s, input.ty);
       }

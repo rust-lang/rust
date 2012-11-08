@@ -664,13 +664,13 @@ fn create_local_var(bcx: block, local: @ast::local)
 }
 
 fn create_arg(bcx: block, arg: ast::arg, sp: span)
-    -> @metadata<argument_md> unsafe {
+    -> Option<@metadata<argument_md>> unsafe {
     let fcx = bcx.fcx, cx = fcx.ccx;
     let cache = get_cache(cx);
     let tg = ArgVariableTag;
     match cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, |md| md.data.id == arg.id) {
-      option::Some(md) => return md,
+      option::Some(md) => return Some(md),
       option::None => ()
     }
 
@@ -680,18 +680,32 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.file.name);
     let context = create_function(bcx.fcx);
-    let mdnode = create_var(tg, context.node, cx.sess.str_of(arg.ident),
-                            filemd.node, loc.line as int, tymd.node);
-    let mdval = @{node: mdnode, data: {id: arg.id}};
-    update_cache(cache, tg, argument_metadata(mdval));
 
-    let llptr = match fcx.llargs.get(arg.id) {
-      local_mem(v) | local_imm(v) => v,
-    };
-    let declargs = ~[llmdnode(~[llptr]), mdnode];
-    trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
-                       declargs);
-    return mdval;
+    match arg.pat.node {
+        ast::pat_ident(_, path, _) => {
+            // XXX: This is wrong; it should work for multiple bindings.
+            let mdnode = create_var(tg,
+                                    context.node,
+                                    cx.sess.str_of(path.idents.last()),
+                                    filemd.node,
+                                    loc.line as int,
+                                    tymd.node);
+
+            let mdval = @{node: mdnode, data: {id: arg.id}};
+            update_cache(cache, tg, argument_metadata(mdval));
+
+            let llptr = match fcx.llargs.get(arg.id) {
+              local_mem(v) | local_imm(v) => v,
+            };
+            let declargs = ~[llmdnode(~[llptr]), mdnode];
+            trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
+                               declargs);
+            return Some(mdval);
+        }
+        _ => {
+            return None;
+        }
+    }
 }
 
 fn update_source_pos(cx: block, s: span) {

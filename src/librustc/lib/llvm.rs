@@ -959,15 +959,15 @@ extern mod llvm {
     /** Opens an object file. */
     fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
     /** Closes an object file. */
-    fn LLVMDisposeObjectFile(ObjectFile: ObjectFileRef);
+    fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
 
     /** Enumerates the sections in an object file. */
-    fn LLVMGetSections(ObjectFile: ObjectFileRef) -> SectionIteratorRef;
+    fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
     /** Destroys a section iterator. */
     fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
     /** Returns true if the section iterator is at the end of the section
         list: */
-    fn LLVMIsSectionIteratorAtEnd(ObjectFile: ObjectFileRef,
+    fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef,
                                   SI: SectionIteratorRef) -> Bool;
     /** Moves the section iterator to point to the next section. */
     fn LLVMMoveToNextSection(SI: SectionIteratorRef);
@@ -1228,9 +1228,9 @@ struct object_file_res {
     drop { llvm::LLVMDisposeObjectFile(self.ObjectFile); }
 }
 
-fn object_file_res(ObjectFile: ObjectFileRef) -> object_file_res{
+fn object_file_res(ObjFile: ObjectFileRef) -> object_file_res {
     object_file_res {
-        ObjectFile: ObjectFile
+        ObjectFile: ObjFile
     }
 }
 

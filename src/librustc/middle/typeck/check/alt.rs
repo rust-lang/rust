@@ -428,6 +428,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             demand::eqtype(fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
+
+        debug!("(checking alt) writing type for pat id %d", pat.id);
+
         match sub {
           Some(p) => check_pat(pcx, p, expected),
           _ => ()
