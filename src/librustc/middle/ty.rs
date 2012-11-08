@@ -21,7 +21,7 @@ use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 
 export ProvidedMethodSource;
 export InstantiatedTraitRef;
-export TyVid, IntVid, FnVid, RegionVid, vid;
+export TyVid, IntVid, FloatVid, FnVid, RegionVid, vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -86,6 +86,7 @@ export ty_fn, FnTy, FnTyBase, FnMeta, FnSig, mk_fn;
 export ty_fn_proto, ty_fn_purity, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
+export mk_f32, mk_f64;
 export ty_estr, mk_estr, type_is_str;
 export ty_evec, mk_evec, type_is_vec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
@@ -102,8 +103,8 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var;
-export InferTy, TyVar, IntVar;
+export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var, mk_float_var;
+export InferTy, TyVar, IntVar, FloatVar;
 export ty_self, mk_self, type_has_self;
 export ty_class;
 export Region, bound_region, encl_region;
@@ -172,7 +173,8 @@ export ty_sort_str;
 export normalize_ty;
 export to_str;
 export bound_const;
-export terr_no_integral_type, terr_ty_param_size, terr_self_substs;
+export terr_no_integral_type, terr_no_floating_point_type;
+export terr_ty_param_size, terr_self_substs;
 export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
 export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
 export terr_regions_does_not_outlive, terr_mutability, terr_purity_mismatch;
@@ -666,6 +668,7 @@ enum type_err {
     terr_sorts(expected_found<t>),
     terr_self_substs,
     terr_no_integral_type,
+    terr_no_floating_point_type,
 }
 
 enum param_bound {
@@ -678,6 +681,7 @@ enum param_bound {
 
 enum TyVid = uint;
 enum IntVid = uint;
+enum FloatVid = uint;
 enum FnVid = uint;
 #[auto_serialize]
 #[auto_deserialize]
@@ -685,14 +689,16 @@ enum RegionVid = uint;
 
 enum InferTy {
     TyVar(TyVid),
-    IntVar(IntVid)
+    IntVar(IntVid),
+    FloatVar(FloatVid)
 }
 
 impl InferTy : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
-          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f)
+          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
+          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f)
         }
     }
 }
@@ -758,6 +764,11 @@ impl IntVid: vid {
     pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
+impl FloatVid: vid {
+    pure fn to_uint() -> uint { *self }
+    pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
+}
+
 impl FnVid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!("<F%u>", self.to_uint()) }
@@ -773,6 +784,7 @@ impl InferTy {
         match self {
             TyVar(v) => v.to_uint() << 1,
             IntVar(v) => (v.to_uint() << 1) + 1,
+            FloatVar(v) => (v.to_uint() << 1) + 2
         }
     }
 
@@ -780,6 +792,7 @@ impl InferTy {
         match self {
             TyVar(v) => v.to_str(),
             IntVar(v) => v.to_str(),
+            FloatVar(v) => v.to_str()
         }
     }
 }
@@ -807,6 +820,12 @@ impl TyVid : to_bytes::IterBytes {
 }
 
 impl IntVid : to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
+impl FloatVid : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
@@ -1030,6 +1049,10 @@ fn mk_u32(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u32)) }
 
 fn mk_u64(cx: ctxt) -> t { mk_t(cx, ty_uint(ast::ty_u64)) }
 
+fn mk_f32(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f32)) }
+
+fn mk_f64(cx: ctxt) -> t { mk_t(cx, ty_float(ast::ty_f64)) }
+
 fn mk_mach_int(cx: ctxt, tm: ast::int_ty) -> t { mk_t(cx, ty_int(tm)) }
 
 fn mk_mach_uint(cx: ctxt, tm: ast::uint_ty) -> t { mk_t(cx, ty_uint(tm)) }
@@ -1110,9 +1133,9 @@ fn mk_class(cx: ctxt, class_id: ast::def_id, +substs: substs) -> t {
 
 fn mk_var(cx: ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
 
-fn mk_int_var(cx: ctxt, v: IntVid) -> t {
-    mk_infer(cx, IntVar(v))
-}
+fn mk_int_var(cx: ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
+
+fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
 
 fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
@@ -1661,7 +1684,8 @@ pure fn type_is_unique(ty: t) -> bool {
 pure fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_infer(IntVar(_)) | ty_type | ty_ptr(_) => true,
+      ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
+      ty_ptr(_) => true,
       _ => false
     }
 }
@@ -2428,7 +2452,7 @@ fn type_is_integral(ty: t) -> bool {
 
 fn type_is_fp(ty: t) -> bool {
     match get(ty).sty {
-      ty_float(_) => true,
+      ty_infer(FloatVar(_)) | ty_float(_) => true,
       _ => false
     }
 }
@@ -3260,6 +3284,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_tup(_) => ~"tuple",
       ty_infer(TyVar(_)) => ~"inferred type",
       ty_infer(IntVar(_)) => ~"integral variable",
+      ty_infer(FloatVar(_)) => ~"floating-point variable",
       ty_param(_) => ~"type parameter",
       ty_self => ~"self"
     }
@@ -3386,6 +3411,10 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_no_integral_type => {
             ~"couldn't determine an appropriate integral type for integer \
               literal"
+        }
+        terr_no_floating_point_type => {
+            ~"couldn't determine an appropriate floating point type for \
+              floating point literal"
         }
     }
 }
@@ -4000,7 +4029,7 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
         match get(ty).sty {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
-          ty_float(_) => tycat_float,
+          ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
           ty_rec(_) | ty_tup(_) | ty_enum(_, _) => tycat_struct,
           ty_bot => tycat_bot,
           _ => tycat_other
@@ -4228,6 +4257,11 @@ impl TyVid : cmp::Eq {
 impl IntVid : cmp::Eq {
     pure fn eq(other: &IntVid) -> bool { *self == *(*other) }
     pure fn ne(other: &IntVid) -> bool { *self != *(*other) }
+}
+
+impl FloatVid : cmp::Eq {
+    pure fn eq(other: &FloatVid) -> bool { *self == *(*other) }
+    pure fn ne(other: &FloatVid) -> bool { *self != *(*other) }
 }
 
 impl FnVid : cmp::Eq {

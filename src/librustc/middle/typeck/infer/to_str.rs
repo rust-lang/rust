@@ -1,4 +1,5 @@
 use integral::{int_ty_set};
+use floating::{float_ty_set};
 use unify::{var_value, redirect, root};
 
 trait ToStr {
@@ -50,6 +51,14 @@ impl int_ty_set: ToStr {
     fn to_str(_cx: infer_ctxt) -> ~str {
         match self {
           int_ty_set(v) => uint::to_str(v, 10u)
+        }
+    }
+}
+
+impl float_ty_set: ToStr {
+    fn to_str(_cx: infer_ctxt) -> ~str {
+        match self {
+          float_ty_set(v) => uint::to_str(v, 10u)
         }
     }
 }

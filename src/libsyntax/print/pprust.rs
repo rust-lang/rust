@@ -1970,6 +1970,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
       ast::lit_float(f, t) => {
         word(s.s, *f + ast_util::float_ty_to_str(t));
       }
+      ast::lit_float_unsuffixed(f) => word(s.s, *f),
       ast::lit_nil => word(s.s, ~"()"),
       ast::lit_bool(val) => {
         if val { word(s.s, ~"true"); } else { word(s.s, ~"false"); }

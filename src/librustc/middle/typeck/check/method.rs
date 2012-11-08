@@ -664,6 +664,7 @@ impl LookupContext {
         match ty::get(self_ty).sty {
             ty_box(*) | ty_uniq(*) | ty_rptr(*) |
             ty_infer(IntVar(_)) | // FIXME(#3211)---should be resolved
+            ty_infer(FloatVar(_)) | // FIXME(#3211)---should be resolved
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |

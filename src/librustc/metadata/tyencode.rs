@@ -286,6 +286,11 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
         w.write_char('I');
         w.write_uint(id.to_uint());
       }
+      ty::ty_infer(ty::FloatVar(id)) => {
+        w.write_char('X');
+        w.write_char('F');
+        w.write_uint(id.to_uint());
+      }
       ty::ty_param({idx: id, def_id: did}) => {
         w.write_char('p');
         w.write_str(cx.ds(did));
