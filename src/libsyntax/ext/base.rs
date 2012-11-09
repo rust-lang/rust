@@ -96,6 +96,8 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                                 ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(~"ast",
                             builtin(ext::qquote::expand_ast));
+    syntax_expanders.insert(~"quote",
+                            builtin_expr_tt(ext::quote::expand_quote));
     syntax_expanders.insert(~"line",
                             builtin(ext::source_util::expand_line));
     syntax_expanders.insert(~"col",
