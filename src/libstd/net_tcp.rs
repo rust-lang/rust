@@ -1586,7 +1586,7 @@ mod test {
         // client
         log(debug, ~"server started, firing up client..");
         let server_addr = ip::v4::parse_addr(server_ip);
-        let conn_result = connect(server_addr, server_port, hl_loop);
+        let conn_result = connect(move server_addr, server_port, hl_loop);
         if result::is_err(&conn_result) {
             assert false;
         }
