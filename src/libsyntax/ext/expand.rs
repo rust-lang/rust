@@ -225,8 +225,8 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
             cx.bt_pop();
             return maybe_it
           }
-          _ => cx.span_fatal(it.span,
-                            fmt!("%s is not a legal here", *extname))
+          _ => cx.span_fatal(
+              it.span, fmt!("%s! is not legal in item position", *extname))
         }
       }
       _ => cx.span_bug(it.span, ~"invalid item macro invocation")
