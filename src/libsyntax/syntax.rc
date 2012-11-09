@@ -102,6 +102,9 @@ mod ext {
     mod expand;
     #[legacy_exports]
     mod qquote;
+
+    mod quote;
+
     #[legacy_exports]
     mod build;
 

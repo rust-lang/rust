@@ -34,12 +34,14 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
+fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
+    let p : @ast::path = @{span: sp, global: false, idents: idents,
+                           rp: None, types: ~[]};
+    return p;
+}
 fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) ->
     @ast::expr {
-    let path = @{span: sp, global: false, idents: idents,
-                 rp: None, types: ~[]};
-    let pathexpr = ast::expr_path(path);
-    mk_expr(cx, sp, pathexpr)
+    mk_expr(cx, sp, ast::expr_path(mk_raw_path(sp, idents)))
 }
 fn mk_access_(cx: ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
     -> @ast::expr {
@@ -53,7 +55,6 @@ fn mk_access(cx: ext_ctxt, sp: span, p: ~[ast::ident], m: ast::ident)
 fn mk_addr_of(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_imm, e));
 }
-
 fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
             args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, false))
@@ -90,19 +91,54 @@ fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
 fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::expr_vstore_uniq)
 }
-
+fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
+    -> ast::field {
+    {node: {mutbl: ast::m_imm, ident: f.ident, expr: f.ex}, span: sp}
+}
+fn mk_fields(sp: span, fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
+    ~[ast::field] {
+    move fields.map(|f| mk_field(sp, f))
+}
 fn mk_rec_e(cx: ext_ctxt, sp: span,
             fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
     @ast::expr {
-    let mut astfields: ~[ast::field] = ~[];
-    for fields.each |field| {
-        let ident = field.ident;
-        let val = field.ex;
-        let astfield =
-            {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
-        astfields.push(astfield);
-    }
-    let recexpr = ast::expr_rec(astfields, option::None::<@ast::expr>);
-    mk_expr(cx, sp, recexpr)
+    mk_expr(cx, sp, ast::expr_rec(mk_fields(sp, fields),
+                                  option::None::<@ast::expr>))
 }
-
+fn mk_struct_e(cx: ext_ctxt, sp: span,
+               ctor_path: ~[ast::ident],
+               fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
+    @ast::expr {
+    mk_expr(cx, sp,
+            ast::expr_struct(mk_raw_path(sp, ctor_path),
+                             mk_fields(sp, fields),
+                                    option::None::<@ast::expr>))
+}
+fn mk_glob_use(cx: ext_ctxt, sp: span,
+               path: ~[ast::ident]) -> @ast::view_item {
+    let glob = @{node: ast::view_path_glob(mk_raw_path(sp, path),
+                                          cx.next_id()),
+                span: sp};
+    @{node: ast::view_item_import(~[glob]),
+      attrs: ~[],
+      vis: ast::private,
+      span: sp}
+}
+fn mk_block(cx: ext_ctxt, sp: span,
+            view_items: ~[@ast::view_item],
+            stmts: ~[@ast::stmt],
+            expr: Option<@ast::expr>) -> @ast::expr {
+    let blk = {node: {view_items: view_items,
+                      stmts: stmts,
+                      expr: expr,
+                      id: cx.next_id(),
+                      rules: ast::default_blk },
+               span: sp };
+    mk_expr(cx, sp, ast::expr_block(blk))
+}
+fn mk_copy(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+    mk_expr(cx, sp, ast::expr_copy(e))
+}
+fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+    mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
+}
