@@ -63,7 +63,10 @@ fn get_type_param_count(cstore: cstore::CStore, def: ast::def_id) -> uint {
 fn each_path(cstore: cstore::CStore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
-    decoder::each_path(cstore.intr, crate_data, f);
+    let get_crate_data: decoder::GetCrateDataCb = |cnum| {
+        cstore::get_crate_data(cstore, cnum)
+    };
+    decoder::each_path(cstore.intr, crate_data, get_crate_data, f);
 }
 
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {

@@ -2436,7 +2436,10 @@ fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
 
 fn gather_external_rtcalls(ccx: @crate_ctxt) {
     do cstore::iter_crate_data(ccx.sess.cstore) |_cnum, cmeta| {
-        do decoder::each_path(ccx.sess.intr(), cmeta) |path| {
+        let get_crate_data: decoder::GetCrateDataCb = |cnum| {
+            cstore::get_crate_data(ccx.sess.cstore, cnum)
+        };
+        do decoder::each_path(ccx.sess.intr(), cmeta, get_crate_data) |path| {
             let pathname = path.path_string;
             match path.def_like {
               decoder::dl_def(d) => {

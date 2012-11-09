@@ -1,4 +1,3 @@
-// xfail-test Issue #3908
 // aux-build:pub_use_xcrate1.rs
 // aux-build:pub_use_xcrate2.rs
 
