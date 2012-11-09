@@ -1084,7 +1084,7 @@ impl Parser {
                 self.bump();
                 let tts = match self.token {
                   token::LPAREN | token::LBRACE => {
-                    let ket = token::flip_delimiter(self.token);
+                    let ket = token::flip_delimiter(copy self.token);
                     self.parse_unspanned_seq(copy self.token, ket,
                                              seq_sep_none(),
                                              |p| p.parse_token_tree())
@@ -1279,6 +1279,7 @@ impl Parser {
         maybe_whole!(deref self, nt_tt);
 
         fn parse_tt_tok(p: Parser, delim_ok: bool) -> token_tree {
+            maybe_whole!(deref p, nt_tt);
             match p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               if !delim_ok => {
@@ -3419,7 +3420,7 @@ impl Parser {
             let id = self.parse_ident();
             let tts = match self.token {
               token::LPAREN | token::LBRACE => {
-                let ket = token::flip_delimiter(self.token);
+                let ket = token::flip_delimiter(copy self.token);
                 self.parse_unspanned_seq(copy self.token, ket,
                                          seq_sep_none(),
                                          |p| p.parse_token_tree())
