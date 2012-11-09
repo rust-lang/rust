@@ -85,16 +85,17 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pub pure fn expect<T: Copy>(opt: Option<T>, reason: ~str) -> T {
+pub pure fn expect<T>(opt: Option<T>, reason: ~str) -> T {
     /*!
-     * Gets the value out of an option, printing a specified message on
-     * failure
+     * Gets the value out of an option without copying, printing a 
+     * specified message on failure.
      *
      * # Failure
      *
      * Fails if the value equals `none`
      */
-    match opt { Some(copy x) => x, None => fail reason }
+    if opt.is_some() { move option::unwrap(move opt) }
+    else { fail reason }
 }
 
 pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
