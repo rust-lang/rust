@@ -54,7 +54,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     exts.insert(named_extension.name, named_extension.ext);
                     (ast::expr_rec(~[], None), s)
                   }
-                  Some(expr_tt(_)) => {
+                  Some(normal_tt(_)) => {
                     cx.span_fatal(pth.span,
                                   fmt!("this tt-style macro should be \
                                         invoked '%s!(...)'", *extname))
@@ -78,7 +78,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
-                  Some(expr_tt({expander: exp, span: exp_sp})) => {
+                  Some(normal_tt({expander: exp, span: exp_sp})) => {
                     let expanded = match exp(cx, mac.span, tts) {
                       mr_expr(e) => e,
                       mr_expr_or_item(expr_maker,_) => expr_maker(),
@@ -153,7 +153,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
             };
             match exts.find(mname) {
               None | Some(normal(_)) | Some(macro_defining(_))
-              | Some(expr_tt(_)) | Some(item_tt(*)) => items,
+              | Some(normal_tt(_)) | Some(item_tt(*)) => items,
               Some(item_decorator(dec_fn)) => {
                 dec_fn(cx, attr.span, attr.node.value, items)
               }
@@ -200,34 +200,49 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
     match it.node {
       item_mac({node: mac_invoc_tt(pth, tts), _}) => {
         let extname = cx.parse_sess().interner.get(pth.idents[0]);
-        match exts.find(*extname) {
+        let (expanded, ex_span) = match exts.find(*extname) {
           None => {
             cx.span_fatal(pth.span,
-                          fmt!("macro undefined: '%s'", *extname))
+                          fmt!("macro undefined: '%s!'", *extname))
+          }
+          Some(normal_tt(expand)) => {
+            if it.ident != parse::token::special_idents::invalid {
+                cx.span_fatal(pth.span,
+                              fmt!("macro %s! expects no ident argument, \
+                                    given '%s'", *extname,
+                                   *cx.parse_sess().interner.get(it.ident)));
+            }
+            (expand.expander(cx, it.span, tts), expand.span)
           }
           Some(item_tt(expand)) => {
-            let expanded = expand.expander(cx, it.span, it.ident, tts);
-            cx.bt_push(ExpandedFrom({call_site: it.span,
-                                      callie: {name: *extname,
-                                               span: expand.span}}));
-            let maybe_it = match expanded {
-              mr_item(it) => fld.fold_item(it),
-              mr_expr(_) => cx.span_fatal(pth.span,
-                                         ~"expr macro in item position: " +
-                                         *extname),
-              mr_expr_or_item(_, item_maker) =>
-                option::chain(item_maker(), |i| {fld.fold_item(i)}),
-              mr_def(mdef) => {
-                exts.insert(mdef.name, mdef.ext);
-                None
-              }
-            };
-            cx.bt_pop();
-            return maybe_it
+            if it.ident == parse::token::special_idents::invalid {
+                cx.span_fatal(pth.span,
+                              fmt!("macro %s! expects an ident argument",
+                                   *extname));
+            }
+            (expand.expander(cx, it.span, it.ident, tts), expand.span)
           }
           _ => cx.span_fatal(
               it.span, fmt!("%s! is not legal in item position", *extname))
-        }
+        };
+
+        cx.bt_push(ExpandedFrom({call_site: it.span,
+                                  callie: {name: *extname,
+                                           span: ex_span}}));
+        let maybe_it = match expanded {
+            mr_item(it) => fld.fold_item(it),
+            mr_expr(_) => cx.span_fatal(pth.span,
+                                        ~"expr macro in item position: " +
+                                        *extname),
+            mr_expr_or_item(_, item_maker) =>
+                option::chain(item_maker(), |i| {fld.fold_item(i)}),
+            mr_def(mdef) => {
+                exts.insert(mdef.name, mdef.ext);
+                None
+            }
+        };
+        cx.bt_pop();
+        return maybe_it;
       }
       _ => cx.span_bug(it.span, ~"invalid item macro invocation")
     }

@@ -12,7 +12,7 @@ use ast_util::dummy_sp;
 // new-style macro! tt code:
 //
 //    syntax_expander_tt, syntax_expander_tt_item, mac_result,
-//    expr_tt, item_tt
+//    normal_tt, item_tt
 //
 // also note that ast::mac has way too many cases and can probably
 // be trimmed down substantially.
@@ -60,7 +60,10 @@ enum syntax_extension {
     item_decorator(item_decorator),
 
     // Token-tree expanders
-    expr_tt(syntax_expander_tt),
+    normal_tt(syntax_expander_tt),
+
+    // perhaps macro_rules! will lose its odd special identifier argument,
+    // and this can go away also
     item_tt(syntax_expander_tt_item),
 }
 
@@ -69,8 +72,8 @@ enum syntax_extension {
 fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: None})}
-    fn builtin_expr_tt(f: syntax_expander_tt_) -> syntax_extension {
-        expr_tt({expander: f, span: None})
+    fn builtin_normal_tt(f: syntax_expander_tt_) -> syntax_extension {
+        normal_tt({expander: f, span: None})
     }
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: None})
@@ -94,7 +97,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"ident_to_str",
                             builtin(ext::ident_to_str::expand_syntax_ext));
     syntax_expanders.insert(~"log_syntax",
-                            builtin_expr_tt(
+                            builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(~"ast",
                             builtin(ext::qquote::expand_ast));
@@ -139,7 +142,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                             builtin_item_tt(ext::pipes::expand_proto));
     syntax_expanders.insert(
         ~"trace_macros",
-        builtin_expr_tt(ext::trace_macros::expand_trace_macros));
+        builtin_normal_tt(ext::trace_macros::expand_trace_macros));
     return syntax_expanders;
 }
 

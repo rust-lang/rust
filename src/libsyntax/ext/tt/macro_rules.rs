@@ -1,4 +1,4 @@
-use base::{ext_ctxt, mac_result, mr_expr_or_item, mr_def, expr_tt};
+use base::{ext_ctxt, mac_result, mr_expr_or_item, mr_def, normal_tt};
 use codemap::span;
 use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
@@ -113,6 +113,6 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     return mr_def({
         name: *cx.parse_sess().interner.get(name),
-        ext: expr_tt({expander: exp, span: Some(sp)})
+        ext: normal_tt({expander: exp, span: Some(sp)})
     });
 }
