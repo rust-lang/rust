@@ -87,7 +87,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
 
 pub pure fn expect<T>(opt: Option<T>, reason: ~str) -> T {
     /*!
-     * Gets the value out of an option without copying, printing a 
+     * Gets the value out of an option without copying, printing a
      * specified message on failure.
      *
      * # Failure
