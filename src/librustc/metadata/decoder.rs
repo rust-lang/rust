@@ -60,6 +60,7 @@ export item_type; // sketchy
 export maybe_get_item_ast;
 export decode_inlined_item;
 export method_info, _impl;
+export GetCrateDataCb;
 
 // Used internally by astencode:
 export translate_def_id;
@@ -87,6 +88,8 @@ fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     };
     None
 }
+
+pub type GetCrateDataCb = &fn(ast::crate_num) -> cmd;
 
 fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
@@ -477,7 +480,9 @@ fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
 }
 
 /// Iterates over all the paths in the given crate.
-fn each_path(intr: @ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
+fn each_path(intr: @ident_interner, cdata: cmd,
+             get_crate_data: GetCrateDataCb,
+             f: fn(path_entry) -> bool) {
     let root = ebml::Doc(cdata.data);
     let items = ebml::get_doc(root, tag_items);
     let items_data = ebml::get_doc(items, tag_items_data);
@@ -526,8 +531,17 @@ fn each_path(intr: @ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
                         reexport_path = path + ~"::" + reexport_name;
                     }
 
+                    // This reexport may be in yet another crate
+                    let other_crates_items = if def_id.crate == cdata.cnum {
+                        items
+                    } else {
+                        let crate_data = get_crate_data(def_id.crate);
+                        let root = ebml::Doc(crate_data.data);
+                        ebml::get_doc(root, tag_items)
+                    };
+
                     // Get the item.
-                    match maybe_find_item(def_id.node, items) {
+                    match maybe_find_item(def_id.node, other_crates_items) {
                         None => {}
                         Some(item_doc) => {
                             // Construct the def for this item.
@@ -1079,9 +1093,10 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     };
 }
 
-fn iter_crate_items(intr: @ident_interner,
-                    cdata: cmd, proc: fn(~str, ast::def_id)) {
-    for each_path(intr, cdata) |path_entry| {
+fn iter_crate_items(intr: @ident_interner, cdata: cmd,
+                    get_crate_data: GetCrateDataCb,
+                    proc: fn(~str, ast::def_id)) {
+    for each_path(intr, cdata, get_crate_data) |path_entry| {
         match path_entry.def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {
@@ -1091,7 +1106,8 @@ fn iter_crate_items(intr: @ident_interner,
     }
 }
 
-fn get_crate_module_paths(intr: @ident_interner, cdata: cmd)
+fn get_crate_module_paths(intr: @ident_interner, cdata: cmd,
+                          get_crate_data: GetCrateDataCb)
                                     -> ~[(ast::def_id, ~str)] {
     fn mod_of_path(p: ~str) -> ~str {
         str::connect(vec::init(str::split_str(p, ~"::")), ~"::")
@@ -1101,7 +1117,7 @@ fn get_crate_module_paths(intr: @ident_interner, cdata: cmd)
     // fowarded path due to renamed import or reexport
     let mut res = ~[];
     let mods = map::HashMap();
-    do iter_crate_items(intr, cdata) |path, did| {
+    do iter_crate_items(intr, cdata, get_crate_data) |path, did| {
         let m = mod_of_path(path);
         if str::is_not_empty(m) {
             // if m has a sub-item, it must be a module
