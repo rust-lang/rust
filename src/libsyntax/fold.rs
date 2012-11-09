@@ -170,7 +170,6 @@ fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
                          /* FIXME (#2543) */ copy attrs)
           }
           cdir_view_item(vi) => cdir_view_item(fld.fold_view_item(vi)),
-          cdir_syntax(_) => copy cd
         }
 }
 

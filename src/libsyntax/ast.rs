@@ -276,8 +276,6 @@ enum crate_directive_ {
     // exists only to preserve the view items in order in case we decide to
     // pretty-print crates in the future.
     cdir_view_item(@view_item),
-
-    cdir_syntax(@path),
 }
 
 type crate_directive = spanned<crate_directive_>;
