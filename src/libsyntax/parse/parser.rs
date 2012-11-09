@@ -3534,7 +3534,11 @@ impl Parser {
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
-            let id = self.parse_ident();
+            let id = if self.token == token::LPAREN {
+                token::special_idents::invalid // no special identifier
+            } else {
+                self.parse_ident()
+            };
             let tts = match self.token {
               token::LPAREN | token::LBRACE => {
                 let ket = token::flip_delimiter(copy self.token);
