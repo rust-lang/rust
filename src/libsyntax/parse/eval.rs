@@ -124,7 +124,6 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
         items.push(i);
       }
       ast::cdir_view_item(vi) => view_items.push(vi),
-      ast::cdir_syntax(*) => ()
     }
 }
 //
