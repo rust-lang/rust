@@ -994,7 +994,7 @@ pub mod funcs {
             fn chmod(path: *c_char, mode: mode_t) -> c_int;
             fn fchmod(fd: c_int, mode: mode_t) -> c_int;
             fn mkdir(path: *c_char, mode: mode_t) -> c_int;
-            fn mkfifo(ath: *c_char, mode: mode_t) -> c_int;
+            fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
         }
 
         #[nolink]
