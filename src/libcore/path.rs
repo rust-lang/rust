@@ -68,6 +68,270 @@ pub pure fn Path(s: &str) -> Path {
     PosixPath(s)
 }
 
+#[cfg(target_os = "linux")]
+mod stat {
+    #[cfg(target_arch = "x86")]
+    pub mod arch {
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                __pad1: 0,
+                st_ino: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                __pad2: 0,
+                st_size: 0,
+                st_blksize: 0,
+                st_blocks: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                __unused4: 0,
+                __unused5: 0,
+            }
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub mod arch {
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                st_ino: 0,
+                st_nlink: 0,
+                st_mode: 0,
+                st_uid: 0,
+                st_gid: 0,
+                __pad0: 0,
+                st_rdev: 0,
+                st_size: 0,
+                st_blksize: 0,
+                st_blocks: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                __unused: [0, 0, 0],
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+mod stat {
+    #[cfg(target_arch = "x86_64")]
+    pub mod arch {
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                st_ino: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                st_size: 0,
+                st_blocks: 0,
+                st_blksize: 0,
+                st_flags: 0,
+                st_gen: 0,
+                st_lspare: 0,
+                st_birthtime: 0,
+                st_birthtime_nsec: 0,
+                __unused: [0, 0],
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod stat {
+    pub mod arch {
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_ino: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                st_birthtime: 0,
+                st_birthtime_nsec: 0,
+                st_size: 0,
+                st_blocks: 0,
+                st_blksize: 0,
+                st_flags: 0,
+                st_gen: 0,
+                st_lspare: 0,
+                st_qspare: [0, 0],
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod stat {
+    pub mod arch {
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                st_ino: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                st_size: 0,
+                st_atime: 0,
+                st_mtime: 0,
+                st_ctime: 0,
+            }
+        }
+    }
+}
+
+
+impl Path {
+    fn stat(&self) -> Option<libc::stat> {
+         do str::as_c_str(self.to_str()) |buf| {
+            let mut st = stat::arch::default_stat();
+            let r = libc::stat(buf, ptr::mut_addr_of(&st));
+
+            if r == 0 { Some(move st) } else { None }
+        }
+    }
+
+    fn lstat(&self) -> Option<libc::stat> {
+         do str::as_c_str(self.to_str()) |buf| {
+            let mut st = stat::arch::default_stat();
+            let r = libc::lstat(buf, ptr::mut_addr_of(&st));
+
+            if r == 0 { Some(move st) } else { None }
+        }
+    }
+
+    fn exists(&self) -> bool {
+        match self.stat() {
+            None => false,
+            Some(_) => true,
+        }
+    }
+
+    fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_size as i64),
+        }
+    }
+
+    fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_mode as uint),
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+impl Path {
+    fn get_atime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_atime as i64,
+                      st.st_atime_nsec as int))
+            }
+        }
+    }
+
+    fn get_mtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_mtime as i64,
+                      st.st_mtime_nsec as int))
+            }
+        }
+    }
+
+    fn get_ctime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_ctime as i64,
+                      st.st_ctime_nsec as int))
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+impl Path {
+    fn get_birthtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_birthtime as i64,
+                      st.st_birthtime_nsec as int))
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "win32")]
+impl Path {
+    fn get_atime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_atime as i64, 0))
+            }
+        }
+    }
+
+    fn get_mtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_mtime as i64, 0))
+            }
+        }
+    }
+
+    fn get_ctime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => {
+                Some((st.st_ctime as i64, 0))
+            }
+        }
+    }
+}
+
 impl PosixPath : ToStr {
     pure fn to_str() -> ~str {
         let mut s = ~"";
@@ -539,7 +803,7 @@ mod windows {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     #[test]
     fn test_double_slash_collapsing() {
