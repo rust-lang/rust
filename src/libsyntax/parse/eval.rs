@@ -1,7 +1,9 @@
 use parser::{Parser, SOURCE_FILE};
 use attr::parser_attr;
+use ast_util::mk_sp;
 
 export eval_crate_directives_to_mod;
+export eval_src_mod;
 
 type ctx =
     @{sess: parse::parse_sess,
@@ -79,29 +81,46 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     }
 }
 
+fn eval_src_mod(cx: ctx, prefix: &Path, id: ast::ident,
+                outer_attrs: ~[ast::attribute]) -> (ast::item_, ~[ast::attribute]) {
+    let file_path = Path(cdir_path_opt(
+        cx.sess.interner.get(id) + ~".rs", outer_attrs));
+    let full_path = if file_path.is_absolute {
+        copy file_path
+    } else {
+        prefix.push_many(file_path.components)
+    };
+    let p0 =
+        new_parser_from_file(cx.sess, cx.cfg,
+                             &full_path, SOURCE_FILE);
+    let inner_attrs = p0.parse_inner_attrs_and_next();
+    let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
+    let first_item_outer_attrs = inner_attrs.next;
+    let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
+    return (ast::item_mod(m0), mod_attrs);
+}
+
+// XXX: Duplicated from parser.rs
+fn mk_item(ctx: ctx, lo: BytePos, hi: BytePos, +ident: ast::ident,
+           +node: ast::item_, vis: ast::visibility,
+           +attrs: ~[ast::attribute]) -> @ast::item {
+    return @{ident: ident,
+             attrs: attrs,
+             id: next_node_id(ctx.sess),
+             node: node,
+             vis: vis,
+             span: mk_sp(lo, hi)};
+}
+
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                         view_items: &mut ~[@ast::view_item],
                         items: &mut ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(vis, id, attrs) => {
-        let file_path = Path(cdir_path_opt(
-            cx.sess.interner.get(id) + ~".rs", attrs));
-        let full_path = if file_path.is_absolute {
-            copy file_path
-        } else {
-            prefix.push_many(file_path.components)
-        };
-        let p0 =
-            new_parser_from_file(cx.sess, cx.cfg,
-                                 &full_path, SOURCE_FILE);
-        let inner_attrs = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec::append(attrs, inner_attrs.inner);
-        let first_item_outer_attrs = inner_attrs.next;
-        let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
-
-        let i = p0.mk_item(cdir.span.lo, cdir.span.hi,
+        let (m, mod_attrs) = eval_src_mod(cx, prefix, id, attrs);
+        let i = mk_item(cx, cdir.span.lo, cdir.span.hi,
                            /* FIXME (#2543) */ copy id,
-                           ast::item_mod(m0), vis, mod_attrs);
+                           m, vis, mod_attrs);
         items.push(i);
       }
       ast::cdir_dir_mod(vis, id, cdirs, attrs) => {
