@@ -2958,13 +2958,26 @@ impl Parser {
         (id, item_const(ty, e), None)
     }
 
-    fn parse_item_mod() -> item_info {
+    fn parse_item_mod(outer_attrs: ~[ast::attribute]) -> item_info {
         let id = self.parse_ident();
-        self.expect(token::LBRACE);
-        let inner_attrs = self.parse_inner_attrs_and_next();
-        let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
-        self.expect(token::RBRACE);
-        (id, item_mod(m), Some(inner_attrs.inner))
+        if self.token == token::SEMI {
+            self.bump();
+            // This mod is in an external file. Let's go get it!
+            let eval_ctx = @{
+                sess: self.sess,
+                cfg: self.cfg
+            };
+            let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
+            let prefix = prefix.dir_path();
+            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id, outer_attrs);
+            (id, m, Some(move attrs))
+        } else {
+            self.expect(token::LBRACE);
+            let inner_attrs = self.parse_inner_attrs_and_next();
+            let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
+            self.expect(token::RBRACE);
+            (id, item_mod(m), Some(inner_attrs.inner))
+        }
     }
 
     fn parse_item_foreign_fn( +attrs: ~[attribute]) -> @foreign_item {
@@ -3360,7 +3373,7 @@ impl Parser {
             return self.parse_item_foreign_mod(lo, visibility, attrs,
                                                items_allowed);
         } else if items_allowed && self.eat_keyword(~"mod") {
-            let (ident, item_, extra_attrs) = self.parse_item_mod();
+            let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
