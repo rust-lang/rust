@@ -103,6 +103,13 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     pure fn find(key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
 
+    fn insert_with_key(ff: fn(uint, V, V) -> V, key: uint, val: V) -> bool {
+        match self.find(key) {
+            None            => return self.insert(key, val),
+            Some(copy orig) => return self.insert(key, ff(key, orig, val)),
+        }
+    }
+
     pure fn each(it: fn(key: uint, value: V) -> bool) {
         self.each_ref(|k, v| it(*k, *v))
     }
