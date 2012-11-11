@@ -27,7 +27,15 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      *
      * Returns true if the key did not already exist in the map
      */
-    fn insert(v: K, v: V) -> bool;
+    fn insert(key: K, value: V) -> bool;
+
+    /**
+     * Add a value to the map.
+     *
+     * If the map contains a value for the key, use the function
+     * to set a new value.
+     */
+    fn insert_with_key(ff: fn(K, V, V) -> V, key: K, value: V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
     pure fn contains_key(key: K) -> bool;
@@ -264,6 +272,14 @@ pub mod chained {
             }
         }
 
+        fn insert_with_key(ff: fn(K, V, V) -> V, key: K, val: V) -> bool {
+            // this can be optimized but first lets see if it compiles...
+            match self.find(key) {
+                None            => return self.insert(key, val),
+                Some(copy orig) => return self.insert(key, ff(key, orig, val))
+            }
+        }
+
         pure fn get(k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
@@ -446,6 +462,13 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
             }
         }
     }
+
+     fn insert_with_key(ff: fn(K, V, V) -> V, key: K, val: V) -> bool {
+         match self.find(key) {
+             None            => return self.insert(key, val),
+             Some(copy orig) => return self.insert(key, ff(key, orig, val)),
+         }
+     }
 
     fn remove(key: K) -> bool {
         do self.borrow_mut |p| {
