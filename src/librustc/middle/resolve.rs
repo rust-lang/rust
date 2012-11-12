@@ -1299,6 +1299,38 @@ impl Resolver {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
+                // If the trait has static methods, then add all the static
+                // methods within to a new module.
+                //
+                // We only need to create the module if the trait has static
+                // methods, so check that first.
+                let mut has_static_methods = false;
+                for methods.each |method| {
+                    let ty_m = trait_method_to_ty_method(*method);
+                    match ty_m.self_ty.node {
+                        sty_static => {
+                            has_static_methods = true;
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Create the module if necessary.
+                let module_parent_opt;
+                if has_static_methods {
+                    let parent_link = self.get_parent_link(parent, ident);
+                    name_bindings.define_module(privacy,
+                                                parent_link,
+                                                Some(local_def(item.id)),
+                                                false,
+                                                sp);
+                    module_parent_opt = Some(ModuleReducedGraphParent(
+                        name_bindings.get_module()));
+                } else {
+                    module_parent_opt = None;
+                }
+
                 // Add the names of all the methods to the trait info.
                 let method_names = @HashMap();
                 for methods.each |method| {
@@ -1306,22 +1338,37 @@ impl Resolver {
 
                     let ident = ty_m.ident;
                     // Add it to the trait info if not static,
-                    // add it as a name in the enclosing module otherwise.
+                    // add it as a name in the trait module otherwise.
                     match ty_m.self_ty.node {
-                      sty_static => {
-                        // which parent to use??
-                        let (method_name_bindings, _) =
-                            self.add_child(ident, new_parent,
-                                           ForbidDuplicateValues, ty_m.span);
-                        let def = def_static_method(local_def(ty_m.id),
-                                                    Some(local_def(item.id)),
-                                                    ty_m.purity);
-                        (*method_name_bindings).define_value
-                            (Public, def, ty_m.span);
-                      }
-                      _ => {
-                        (*method_names).insert(ident, ());
-                      }
+                        sty_static => {
+                            let def = def_static_method(
+                                local_def(ty_m.id),
+                                Some(local_def(item.id)),
+                                ty_m.purity);
+
+                            // For now, add to both the trait module and the
+                            // enclosing module, for backwards compatibility.
+                            let (method_name_bindings, _) =
+                                self.add_child(ident,
+                                               new_parent,
+                                               ForbidDuplicateValues,
+                                               ty_m.span);
+                            method_name_bindings.define_value(Public,
+                                                              def,
+                                                              ty_m.span);
+
+                            let (method_name_bindings, _) =
+                                self.add_child(ident,
+                                               module_parent_opt.get(),
+                                               ForbidDuplicateValues,
+                                               ty_m.span);
+                            method_name_bindings.define_value(Public,
+                                                              def,
+                                                              ty_m.span);
+                        }
+                        _ => {
+                            method_names.insert(ident, ());
+                        }
                     }
                 }
 
