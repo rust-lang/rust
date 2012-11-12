@@ -232,7 +232,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
 
 fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
-    return {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
+    return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
 // FIXME (#2247): this is a terrible kludge to inject some macros into

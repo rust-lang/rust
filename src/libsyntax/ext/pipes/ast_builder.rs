@@ -24,7 +24,7 @@ fn path(ids: ~[ident], span: span) -> @ast::path {
 }
 
 fn empty_span() -> span {
-    {lo: 0, hi: 0, expn_info: None}
+    span {lo: 0, hi: 0, expn_info: None}
 }
 
 trait append_types {
@@ -95,7 +95,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn empty_span() -> span {
-        {lo: 0, hi: 0, expn_info: self.backtrace()}
+        span {lo: 0, hi: 0, expn_info: self.backtrace()}
     }
 
     fn block_expr(b: ast::blk) -> @ast::expr {
