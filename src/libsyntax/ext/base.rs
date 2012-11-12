@@ -2,6 +2,7 @@ use std::map::HashMap;
 use parse::parser;
 use diagnostic::span_handler;
 use codemap::{CodeMap, span, expn_info, expanded_from};
+use ast_util::dummy_sp;
 
 // obsolete old-style #macro code:
 //
@@ -169,15 +170,15 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
               expanded_from({call_site: cs, callie: callie}) => {
                 self.backtrace =
                     Some(@expanded_from({
-                        call_site: {lo: cs.lo, hi: cs.hi,
-                                    expn_info: self.backtrace},
+                        call_site: span {lo: cs.lo, hi: cs.hi,
+                                         expn_info: self.backtrace},
                         callie: callie}));
               }
             }
         }
         fn bt_pop() {
             match self.backtrace {
-              Some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
+              Some(@expanded_from({call_site: span {expn_info: prev, _}, _})) => {
                 self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")
@@ -311,7 +312,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
 
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: {lo: 0u, hi: 0u, expn_info: None}}
+        {node: m, span: dummy_sp()}
     }
     let arg_nm = cx.parse_sess().interner.gensym(@~"arg");
 

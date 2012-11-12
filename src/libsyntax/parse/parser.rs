@@ -3415,9 +3415,8 @@ impl Parser {
                 |p| p.parse_token_tree());
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
-                               span: {lo: self.span.lo,
-                                      hi: self.span.hi,
-                                      expn_info: None}};
+                               span: mk_sp(self.span.lo,
+                                           self.span.hi)};
             let item_ = item_mac(m);
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));

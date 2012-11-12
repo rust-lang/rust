@@ -15,7 +15,7 @@ pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
 
 /* assuming that we're not in macro expansion */
 pure fn mk_sp(lo: uint, hi: uint) -> span {
-    {lo: lo, hi: hi, expn_info: None}
+    span {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it

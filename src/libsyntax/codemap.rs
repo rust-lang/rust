@@ -6,6 +6,7 @@ use std::serialization::{Serializable,
 
 export filename;
 export filemap;
+export filemap_;
 export span;
 export file_substr;
 export fss_none;
@@ -34,7 +35,9 @@ export new_codemap;
 
 type filename = ~str;
 
-type file_pos = {ch: uint, byte: uint};
+struct file_pos {
+    ch: uint, byte: uint
+}
 
 impl file_pos : cmp::Eq {
     pure fn eq(other: &file_pos) -> bool {
@@ -55,23 +58,34 @@ enum file_substr {
     fss_external({filename: ~str, line: uint, col: uint})
 }
 
-type filemap =
-    @{name: filename, substr: file_substr, src: @~str,
-      start_pos: file_pos, mut lines: ~[file_pos]};
+struct filemap_ {
+    name: filename, substr: file_substr, src: @~str,
+    start_pos: file_pos, mut lines: ~[file_pos]
+}
 
-type CodeMap = @{files: DVec<filemap>};
+type filemap = @filemap_;
 
-type loc = {file: filemap, line: uint, col: uint};
+struct CodeMap_ {
+    files: DVec<filemap>
+}
 
-fn new_codemap() -> CodeMap { @{files: DVec()} }
+type CodeMap = @CodeMap_;
+
+struct loc {
+    file: filemap, line: uint, col: uint
+}
+
+fn new_codemap() -> CodeMap { @CodeMap_ {files: DVec()} }
 
 fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
                         src: @~str,
                         start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
-    return @{name: filename, substr: substr, src: src,
-          start_pos: {ch: start_pos_ch, byte: start_pos_byte},
-          mut lines: ~[{ch: start_pos_ch, byte: start_pos_byte}]};
+    return @filemap_ {
+        name: filename, substr: substr, src: src,
+        start_pos: file_pos {ch: start_pos_ch, byte: start_pos_byte},
+        mut lines: ~[file_pos {ch: start_pos_ch, byte: start_pos_byte}]
+    };
 }
 
 fn new_filemap(+filename: filename, src: @~str,
@@ -88,7 +102,7 @@ fn mk_substr_filename(cm: CodeMap, sp: span) -> ~str
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
-    file.lines.push({ch: chpos, byte: byte_pos + file.start_pos.byte});
+    file.lines.push(file_pos {ch: chpos, byte: byte_pos + file.start_pos.byte});
 }
 
 type lookup_fn = pure fn(file_pos) -> uint;
@@ -118,7 +132,7 @@ fn lookup_line(map: CodeMap, pos: uint, lookup: lookup_fn)
 
 fn lookup_pos(map: CodeMap, pos: uint, lookup: lookup_fn) -> loc {
     let {fm: f, line: a} = lookup_line(map, pos, lookup);
-    return {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
+    return loc {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
 }
 
 fn lookup_char_pos(map: CodeMap, pos: uint) -> loc {
@@ -160,9 +174,9 @@ fn adjust_span(map: CodeMap, sp: span) -> span {
     match (line.fm.substr) {
       fss_none => sp,
       fss_internal(s) => {
-        adjust_span(map, {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
-                          hi: s.lo + (sp.hi - line.fm.start_pos.ch),
-                          expn_info: sp.expn_info})}
+        adjust_span(map, span {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
+                               hi: s.lo + (sp.hi - line.fm.start_pos.ch),
+                               expn_info: sp.expn_info})}
       fss_external(_) => sp
     }
 }
@@ -173,7 +187,7 @@ enum expn_info_ {
 }
 type expn_info = Option<@expn_info_>;
 
-type span = {lo: uint, hi: uint, expn_info: expn_info};
+struct span {lo: uint, hi: uint, expn_info: expn_info}
 
 impl span : cmp::Eq {
     pure fn eq(other: &span) -> bool {
@@ -207,7 +221,10 @@ fn span_to_str(sp: span, cm: CodeMap) -> ~str {
              lo.line, lo.col, hi.line, hi.col)
 }
 
-type file_lines = {file: filemap, lines: ~[uint]};
+struct file_lines {
+    file: filemap,
+    lines: ~[uint]
+}
 
 fn span_to_filename(sp: span, cm: codemap::CodeMap) -> filename {
     let lo = lookup_char_pos(cm, sp.lo);
@@ -221,7 +238,7 @@ fn span_to_lines(sp: span, cm: codemap::CodeMap) -> @file_lines {
     for uint::range(lo.line - 1u, hi.line as uint) |i| {
         lines.push(i);
     };
-    return @{file: lo.file, lines: lines};
+    return @file_lines {file: lo.file, lines: lines};
 }
 
 fn get_line(fm: filemap, line: int) -> ~str unsafe {

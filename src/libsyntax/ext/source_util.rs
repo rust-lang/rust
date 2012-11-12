@@ -1,5 +1,5 @@
 use base::*;
-use codemap::span;
+use codemap::{span, loc, filemap_};
 use print::pprust;
 use build::{mk_base_vec_e,mk_uint,mk_u8,mk_uniq_str};
 
@@ -34,7 +34,7 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::Some(0u), ~"file");
-    let { file: @{ name: filename, _ }, _ } =
+    let loc { file: @filemap_ { name: filename, _ }, _ } =
         codemap::lookup_char_pos(cx.codemap(), sp.lo);
     return mk_uniq_str(cx, sp, filename);
 }
