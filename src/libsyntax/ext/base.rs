@@ -125,7 +125,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 trait ext_ctxt {
-    fn codemap() -> CodeMap;
+    fn codemap() -> @CodeMap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
@@ -157,7 +157,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
                       mut mod_path: ~[ast::ident],
                       mut trace_mac: bool};
     impl ctxt_repr: ext_ctxt {
-        fn codemap() -> CodeMap { self.parse_sess.cm }
+        fn codemap() -> @CodeMap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }

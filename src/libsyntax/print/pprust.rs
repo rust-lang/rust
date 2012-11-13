@@ -25,7 +25,7 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: Option<CodeMap>,
+      cm: Option<@CodeMap>,
       intr: @token::ident_interner,
       comments: Option<~[comments::cmnt]>,
       literals: Option<~[comments::lit]>,
@@ -46,7 +46,7 @@ fn end(s: ps) {
 
 fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
-             cm: None::<CodeMap>,
+             cm: None::<@CodeMap>,
              intr: intr,
              comments: None::<~[comments::cmnt]>,
              literals: None::<~[comments::lit]>,
@@ -64,7 +64,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: CodeMap, intr: @ident_interner,
+fn print_crate(cm: @CodeMap, intr: @ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {

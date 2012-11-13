@@ -225,7 +225,7 @@ fn as_str(f: fn@(+x: io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
-fn check_variants_of_ast(crate: ast::crate, codemap: codemap::CodeMap,
+fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
                          filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
@@ -239,7 +239,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::CodeMap,
 
 fn check_variants_T<T: Copy>(
   crate: ast::crate,
-  codemap: codemap::CodeMap,
+  codemap: @codemap::CodeMap,
   filename: &Path,
   thing_label: ~str,
   things: ~[T],

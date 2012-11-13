@@ -574,7 +574,7 @@ fn build_session_options(binary: ~str,
 
 fn build_session(sopts: @session::options,
                  demitter: diagnostic::emitter) -> Session {
-    let codemap = codemap::new_codemap();
+    let codemap = @codemap::new_codemap();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
     let span_diagnostic_handler =
@@ -583,7 +583,7 @@ fn build_session(sopts: @session::options,
 }
 
 fn build_session_(sopts: @session::options,
-                  cm: codemap::CodeMap,
+                  cm: @codemap::CodeMap,
                   demitter: diagnostic::emitter,
                   span_diagnostic_handler: diagnostic::span_handler)
                -> Session {

@@ -232,7 +232,7 @@ fn consume_any_line_comment(rdr: string_reader)
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
-            let cmap = codemap::new_codemap();
+            let cmap = @codemap::new_codemap();
             (*cmap).files.push(rdr.filemap);
             let loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
             if loc.line == 1u && loc.col == 0u {
