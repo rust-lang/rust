@@ -32,14 +32,14 @@ fn inject_libcore_ref(sess: Session,
 
     let vi1 = @{node: ast::view_item_use(sess.ident_of(~"core"), ~[], n1),
                 attrs: ~[],
-                vis: ast::public,
+                vis: ast::private,
                 span: dummy_sp()};
     let vp = spanned(ast::view_path_glob(
         ident_to_path(dummy_sp(), sess.ident_of(~"core")),
         n2));
     let vi2 = @{node: ast::view_item_import(~[vp]),
                 attrs: ~[],
-                vis: ast::public,
+                vis: ast::private,
                 span: dummy_sp()};
 
     let vis = vec::append(~[vi1, vi2], crate.node.module.view_items);
