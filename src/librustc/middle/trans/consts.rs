@@ -95,6 +95,22 @@ fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     }
 }
 
+fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
+    if !ast_util::is_local(def_id) {
+        cx.tcx.sess.bug(~"cross-crate constants");
+    }
+    if !cx.const_values.contains_key(def_id.node) {
+        match cx.tcx.items.get(def_id.node) {
+            ast_map::node_item(@{
+                node: ast::item_const(_, subexpr), _
+            }, _) => {
+                trans_const(cx, subexpr, def_id.node);
+            }
+            _ => cx.tcx.sess.bug(~"expected a const to be an item")
+        }
+    }
+    cx.const_values.get(def_id.node)
+}
 
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("const_expr");
@@ -359,18 +375,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
           }
           Some(ast::def_const(def_id)) => {
-            assert ast_util::is_local(def_id);
-            if ! cx.const_values.contains_key(def_id.node) {
-                match cx.tcx.items.get(def_id.node) {
-                    ast_map::node_item(@{
-                        node: ast::item_const(_, subexpr), _
-                    }, _) => {
-                        trans_const(cx, subexpr, def_id.node);
-                    }
-                    _ => cx.sess.span_bug(e.span, ~"expected item")
-                }
-            }
-            cx.const_values.get(def_id.node)
+            get_const_val(cx, def_id)
           }
           _ => cx.sess.span_bug(e.span, ~"expected a const or fn def")
         }

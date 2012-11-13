@@ -1,6 +1,6 @@
 use syntax::print::pprust;
 use syntax::ast_util::{walk_pat};
-use pat_util::{pat_is_variant_or_struct};
+use pat_util::{pat_is_const, pat_is_variant_or_struct};
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -390,6 +390,11 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                                            than upper");
         }
         fcx.write_ty(pat.id, b_ty);
+      }
+      ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
+        let const_did = ast_util::def_id_of_def(tcx.def_map.get(pat.id));
+        let const_tpt = ty::lookup_item_type(tcx, const_did);
+        fcx.write_ty(pat.id, const_tpt.ty);
       }
       ast::pat_ident(bm, name, sub)
             if !pat_is_variant_or_struct(tcx.def_map, pat) => {
