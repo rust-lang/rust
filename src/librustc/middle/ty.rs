@@ -3437,6 +3437,7 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
+      ast::stmt_mac(*) => fail ~"unexpanded macro in trans"
     }
 }
 

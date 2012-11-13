@@ -21,18 +21,15 @@ fn expr_is_simple_block(e: @ast::expr) -> bool {
 }
 
 fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
-    match stmt.node {
-      ast::stmt_decl(d, _) => {
-        return match d.node {
-              ast::decl_local(_) => true,
-              ast::decl_item(_) => false
+    return match stmt.node {
+        ast::stmt_decl(d, _) => {
+            match d.node {
+                ast::decl_local(_) => true,
+                ast::decl_item(_) => false
             }
-      }
-      ast::stmt_expr(e, _) => {
-        return expr_requires_semi_to_be_stmt(e);
-      }
-      ast::stmt_semi(*) => {
-        return false;
-      }
+        }
+        ast::stmt_expr(e, _) => { expr_requires_semi_to_be_stmt(e) }
+        ast::stmt_semi(*) => { false }
+        ast::stmt_mac(*) => { false }
     }
 }

@@ -1026,6 +1026,7 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
                 ast::decl_item(i) => trans_item(cx.fcx.ccx, *i)
             }
         }
+        ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
     }
 
     return bcx;
