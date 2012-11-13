@@ -100,7 +100,7 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ wget http://dl.rust-lang.org/dist/rust-0.4.tar.gz
+$ curl -O http://dl.rust-lang.org/dist/rust-0.4.tar.gz
 $ tar -xzf rust-0.4.tar.gz
 $ cd rust-0.4
 $ ./configure
@@ -490,7 +490,7 @@ const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
 ## Operators
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
-`*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder, plus, minus). `-` is
+`*`, `/`, `%`, `+`, and `-` (multiply, divide, take remainder, add, subtract). `-` is
 also a unary prefix operator that negates numbers. As in C, the bit operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
@@ -608,7 +608,7 @@ a wildcard pattern that matches any single value. The asterisk (`*`)
 is a different wildcard that can match one or more fields in an `enum`
 variant.
 
-The patterns in an match arm are followed by a fat arrow, `=>`, then an
+The patterns in a match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
 convenient to use a block expression for each case, in which case the
 commas are optional.
@@ -865,7 +865,7 @@ fn area(sh: Shape) -> float {
 }
 ~~~~
 
-You can write a lone `_` to ignore an individual fields, and can
+You can write a lone `_` to ignore an individual field, and can
 ignore all fields of a variant like: `Circle(*)`. As in their
 introduction form, nullary enum patterns are written without
 parentheses.
@@ -1096,7 +1096,7 @@ All pointer types can be dereferenced with the `*` unary operator.
 Managed boxes are pointers to heap-allocated, garbage collected
 memory.  Applying the unary `@` operator to an expression creates a
 managed box. The resulting box contains the result of the
-expression. Copying a shared box, as happens during assignment, only
+expression. Copying a managed box, as happens during assignment, only
 copies a pointer, never the contents of the box.
 
 ~~~~
@@ -1145,7 +1145,7 @@ Managed boxes never cross task boundaries.
 In contrast with managed boxes, owned boxes have a single owning
 memory slot and thus two owned boxes may not refer to the same
 memory. All owned boxes across all tasks are allocated on a single
-_exchange heap_, where their uniquely owned nature allows tasks to
+_exchange heap_, where their uniquely-owned nature allows tasks to
 exchange them efficiently.
 
 Because owned boxes are uniquely owned, copying them requires allocating
@@ -1158,7 +1158,7 @@ let x = ~10;
 let y = x; // error: copying a non-implicitly copyable type
 ~~~~
 
-If you really want to copy a unique box you must say so explicitly.
+If you really want to copy an owned box you must say so explicitly.
 
 ~~~~
 let x = ~10;
@@ -1190,7 +1190,7 @@ become the sole owner of the box.
 
 Rust borrowed pointers are a general purpose reference/pointer type,
 similar to the C++ reference type, but guaranteed to point to valid
-memory. In contrast with owned pointers, where the holder of a unique
+memory. In contrast with owned pointers, where the holder of an owned
 pointer is the owner of the pointed-to memory, borrowed pointers never
 imply ownership. Pointers may be borrowed from any type, in which case
 the pointer is guaranteed not to outlive the value it points to.
@@ -1210,14 +1210,14 @@ contains a point, but allocated in a different location:
 ~~~
 # struct Point { x: float, y: float }
 let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
-let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
-let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
+let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
+let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance
 between any two points, no matter where they were stored. For example,
 we might like to compute the distance between `on_the_stack` and
-`shared_box`, or between `shared_box` and `unique_box`. One option is
+`managed_box`, or between `managed_box` and `owned_box`. One option is
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
@@ -1241,11 +1241,11 @@ Now we can call `compute_distance()` in various ways:
 ~~~
 # struct Point{ x: float, y: float };
 # let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
-# let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
-# let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
+# let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
+# let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
 # fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
-compute_distance(&on_the_stack, shared_box);
-compute_distance(shared_box, unique_box);
+compute_distance(&on_the_stack, managed_box);
+compute_distance(managed_box, owned_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
@@ -1255,11 +1255,11 @@ value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are created an alias: that is, another
 route to the same data.
 
-In the case of the boxes `shared_box` and `unique_box`, however, no
+In the case of the boxes `managed_box` and `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
 a box like `@point` or `~point` to a borrowed pointer like
 `&point`. This is another form of borrowing; in this case, the
-contents of the shared/unique box is being lent out.
+contents of the managed/owned box is being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable
