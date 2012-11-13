@@ -33,7 +33,7 @@ PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
 PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
 
-install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
+install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME))
 	$$(Q)$$(call INSTALL_LIB, \
@@ -74,7 +74,7 @@ PHB = $(PREFIX_BIN)
 # Shorthand for the prefix bin directory
 PHL = $(PREFIX_LIB)
 
-install-host: $(SREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
+install-host: $(CSREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1

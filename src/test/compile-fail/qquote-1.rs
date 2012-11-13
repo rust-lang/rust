@@ -1,3 +1,4 @@
+// xfail-test Can't use syntax crate here
 
 extern mod std;
 extern mod syntax;
