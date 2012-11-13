@@ -25,7 +25,6 @@ use core::*;
 mod attr;
 #[legacy_exports]
 mod diagnostic;
-#[legacy_exports]
 mod codemap;
 #[legacy_exports]
 mod ast;
