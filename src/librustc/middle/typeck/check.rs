@@ -868,6 +868,16 @@ fn check_expr_with(fcx: @fn_ctxt, expr: @ast::expr, expected: ty::t) -> bool {
     check_expr(fcx, expr, Some(expected))
 }
 
+fn check_expr_with_assignability(fcx: @fn_ctxt,
+                                 expr: @ast::expr,
+                                 expected: ty::t)
+                              -> bool {
+    do check_expr_with_unifier(fcx, expr, Some(expected)) {
+        demand::assign(fcx, expr.span, expected, expr)
+    }
+}
+
+
 fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
               expected: Option<ty::t>) -> bool {
     return do check_expr_with_unifier(fcx, expr, expected) {
@@ -1072,11 +1082,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         DontDerefArgs => {}
                     }
 
-                    bot |= check_expr_with_unifier(
-                        fcx, *arg, Some(formal_ty),
-                        || demand::assign(fcx, arg.span,
-                                           formal_ty, *arg)
-                    );
+                    bot |= check_expr_with_assignability(fcx, *arg, formal_ty);
                     fcx.write_ty(arg.id, fcx.expr_ty(*arg));
 
                 }
@@ -1087,10 +1093,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
-                        rhs: @ast::expr, id: ast::node_id) -> bool {
+    fn check_assignment(fcx: @fn_ctxt,
+                        lhs: @ast::expr,
+                        rhs: @ast::expr,
+                        id: ast::node_id)
+                     -> bool {
         let mut bot = check_expr(fcx, lhs, None);
-        bot |= check_expr_with(fcx, rhs, fcx.expr_ty(lhs));
+        let lhs_type = fcx.expr_ty(lhs);
+        bot |= check_expr_with_assignability(fcx, rhs, lhs_type);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         return bot;
     }
@@ -1908,10 +1918,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
       }
       ast::expr_assign(lhs, rhs) => {
-        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
+        bot = check_assignment(fcx, lhs, rhs, id);
       }
       ast::expr_swap(lhs, rhs) => {
-        bot = check_assignment(fcx, expr.span, lhs, rhs, id);
+        bot = check_assignment(fcx, lhs, rhs, id);
       }
       ast::expr_if(cond, thn, elsopt) => {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
@@ -2246,7 +2256,7 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: @ast::expr) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
-    return check_expr_with(fcx, init, lty);
+    return check_expr_with_assignability(fcx, init, lty);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
