@@ -1691,7 +1691,7 @@ impl Resolver {
                     // avoid creating cycles in the
                     // module graph.
 
-                    let resolution = @ImportResolution(Public, dummy_sp());
+                    let resolution = @ImportResolution(Private, dummy_sp());
                     resolution.outstanding_references = 0;
 
                     match existing_module.parent_link {
@@ -2159,7 +2159,8 @@ impl Resolver {
                             let span = import_directive.span;
                             let p = import_directive.privacy;
                             resolution_result =
-                                self.resolve_glob_import(p, module_,
+                                self.resolve_glob_import(p,
+                                                         module_,
                                                          containing_module,
                                                          span);
                         }
@@ -2284,7 +2285,6 @@ impl Resolver {
                         fn get_binding(import_resolution: @ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
-
                             // Import resolutions must be declared with "pub"
                             // in order to be exported.
                             if import_resolution.privacy == Private {
@@ -2506,14 +2506,13 @@ impl Resolver {
                            containing_module: @Module,
                            span: span)
                         -> ResolveResult<()> {
-
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
         // node.
+        debug!("(resolving glob import) resolving %? glob import", privacy);
 
         // We must bail out if the node has unresolved imports of any kind
         // (including globs).
-
         if !(*containing_module).all_imports_resolved() {
             debug!("(resolving glob import) target module has unresolved \
                     imports; bailing out");
@@ -2590,8 +2589,7 @@ impl Resolver {
             match module_.import_resolutions.find(ident) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @ImportResolution(privacy,
-                                                               span);
+                    dest_import_resolution = @ImportResolution(privacy, span);
                     module_.import_resolutions.insert
                         (ident, dest_import_resolution);
                 }
@@ -2602,10 +2600,11 @@ impl Resolver {
 
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
-                    to `%s`",
+                    to `%s`, privacy=%?",
                    self.session.str_of(ident),
                    self.module_to_str(containing_module),
-                   self.module_to_str(module_));
+                   self.module_to_str(module_),
+                   dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
             if (*name_bindings).defined_in_namespace(ValueNS) {
@@ -3142,14 +3141,18 @@ impl Resolver {
 
     fn record_exports_for_module_subtree(module_: @Module) {
         // If this isn't a local crate, then bail out. We don't need to record
-        // exports for local crates.
+        // exports for nonlocal crates.
 
         match module_.def_id {
             Some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
+                debug!("(recording exports for module subtree) recording \
+                        exports for local module");
             }
             None => {
                 // Record exports for the root module.
+                debug!("(recording exports for module subtree) recording \
+                        exports for root module");
             }
             Some(_) => {
                 // Bail out.
@@ -3222,15 +3225,21 @@ impl Resolver {
     }
 
     fn add_exports_for_module(exports2: &mut ~[Export2], module_: @Module) {
-
         for module_.children.each_ref |ident, namebindings| {
             debug!("(computing exports) maybe export '%s'",
                    self.session.str_of(*ident));
-            self.add_exports_of_namebindings(exports2, *ident,
-                                             *namebindings, false)
+            self.add_exports_of_namebindings(exports2,
+                                             *ident,
+                                             *namebindings,
+                                             false)
         }
 
         for module_.import_resolutions.each_ref |ident, importresolution| {
+            if importresolution.privacy != Public {
+                debug!("(computing exports) not reexporting private `%s`",
+                       self.session.str_of(*ident));
+                loop;
+            }
             for [ TypeNS, ValueNS ].each |ns| {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
