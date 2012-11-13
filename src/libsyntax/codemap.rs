@@ -215,12 +215,6 @@ pub impl CodeMap {
         return str::slice(*begin.fm.src, begin.pos, end.pos);
     }
 
-    pub fn get_snippet(@self, fidx: uint, lo: uint, hi: uint) -> ~str
-    {
-        let fm = self.files[fidx];
-        return str::slice(*fm.src, lo, hi)
-    }
-
     pub fn get_filemap(@self, filename: ~str) -> @filemap {
         for self.files.each |fm| { if fm.name == filename { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
