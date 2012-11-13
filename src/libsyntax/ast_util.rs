@@ -39,7 +39,8 @@ pure fn stmt_id(s: stmt) -> node_id {
     match s.node {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
-      stmt_semi(_, id) => id
+      stmt_semi(_, id) => id,
+      stmt_mac(_) => fail ~"attempted to analyze unexpanded stmt",
     }
 }
 

@@ -245,6 +245,7 @@ fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
         expr_cx.parent = Some(stmt_id);
         visit::visit_stmt(stmt, expr_cx, visitor);
       }
+      ast::stmt_mac(*) => cx.sess.bug(~"unexpanded macro")
     }
 }
 

@@ -896,6 +896,8 @@ enum stmt_ {
 
     // expr with trailing semi-colon (may have any type):
     stmt_semi(@expr, node_id),
+
+    stmt_mac(mac),
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be

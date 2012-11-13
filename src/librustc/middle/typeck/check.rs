@@ -2362,6 +2362,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
         node_id = id;
         bot = check_expr(fcx, expr, None);
       }
+      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug(~"unexpanded macro")
     }
     fcx.write_nil(node_id);
     return bot;
