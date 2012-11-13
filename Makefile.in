@@ -341,6 +341,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
 	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
+	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
 
@@ -350,9 +351,23 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
-# Prerequisites for complete stageN targets
+# Prerequisites for a working stageN compiler and libraries
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
+
+# Prerequisites for a working stageN compiler and libraries
+CSREQ$(1)_T_$(2)_H_$(3) = \
+	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
+	$$(HBIN$(1)_H_$(3))/fuzzer$$(X) \
+	$$(HBIN$(1)_H_$(3))/cargo$$(X) \
+	$$(HBIN$(1)_H_$(3))/rustdoc$$(X) \
+	$$(HBIN$(1)_H_$(3))/rusti$$(X) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBFUZZER) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBCARGO) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTDOC) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTI) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)  \
@@ -360,7 +375,7 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBFUZZER) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCARGO) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
@@ -461,15 +476,7 @@ all: $(SREQ1$(CFG_HOST_TRIPLE)) $(GENERATED) docs
 
 else
 
-TSREQS :=											\
-	$(foreach target,$(CFG_TARGET_TRIPLES),			\
-		$(SREQ3_T_$(target)_H_$(CFG_HOST_TRIPLE)))
-FUZZ := $(HBIN2_H_$(CFG_HOST_TRIPLE))/fuzzer$(X)
-CARGO := $(HBIN2_H_$(CFG_HOST_TRIPLE))/cargo$(X)
-RUSTDOC := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
-RUSTI := $(HBIN2_H_$(CFG_HOST_TRIPLE))/rusti$(X)
-
-all: rustc $(GENERATED) docs $(FUZZ) $(CARGO) $(RUSTDOC) $(RUSTI)
+all: $(CSREQ3$(CFG_HOST_TRIPLE)) $(GENERATED) docs
 
 endif
 

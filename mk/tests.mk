@@ -352,7 +352,8 @@ $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
 		$$(COMPILER_CRATE)									\
 		$$(COMPILER_INPUTS)									\
 		$$(SREQ$(1)_T_$(2)_H_$(3))							\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM) \
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
