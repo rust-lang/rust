@@ -59,8 +59,11 @@ enum file_substr {
 }
 
 struct filemap {
-    name: filename, substr: file_substr, src: @~str,
-    start_pos: file_pos, mut lines: ~[file_pos]
+    name: filename,
+    substr: file_substr,
+    src: @~str,
+    start_pos: file_pos,
+    mut lines: ~[file_pos]
 }
 
 impl filemap {
