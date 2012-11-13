@@ -7,7 +7,8 @@ use syntax::codemap::span;
 use std::map::HashMap;
 
 export pat_binding_ids, pat_bindings, pat_id_map, PatIdMap;
-export pat_is_variant_or_struct, pat_is_binding_or_wild;
+export pat_is_variant_or_struct, pat_is_binding, pat_is_binding_or_wild;
+export pat_is_const;
 
 type PatIdMap = std::map::HashMap<ident, node_id>;
 
@@ -33,9 +34,31 @@ fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {
     }
 }
 
+fn pat_is_const(dm: resolve::DefMap, pat: &pat) -> bool {
+    match pat.node {
+        pat_ident(_, _, None) => {
+            match dm.find(pat.id) {
+                Some(def_const(*)) => true,
+                _ => false
+            }
+        }
+        _ => false
+    }
+}
+
+fn pat_is_binding(dm: resolve::DefMap, pat: @pat) -> bool {
+    match pat.node {
+        pat_ident(*) => {
+            !pat_is_variant_or_struct(dm, pat) &&
+            !pat_is_const(dm, pat)
+        }
+        _ => false
+    }
+}
+
 fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @pat) -> bool {
     match pat.node {
-        pat_ident(*) => !pat_is_variant_or_struct(dm, pat),
+        pat_ident(*) => pat_is_binding(dm, pat),
         pat_wild => true,
         _ => false
     }
@@ -45,8 +68,7 @@ fn pat_bindings(dm: resolve::DefMap, pat: @pat,
                 it: fn(binding_mode, node_id, span, @path)) {
     do walk_pat(pat) |p| {
         match p.node {
-          pat_ident(binding_mode, pth, _)
-                if !pat_is_variant_or_struct(dm, p) => {
+          pat_ident(binding_mode, pth, _) if pat_is_binding(dm, p) => {
             it(binding_mode, p.id, p.span, pth);
           }
           _ => {}

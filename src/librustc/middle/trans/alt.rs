@@ -158,7 +158,8 @@ fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 // expression.
 enum Lit {
     UnitLikeStructLit(ast::node_id),    // the node ID of the pattern
-    ExprLit(@ast::expr)
+    ExprLit(@ast::expr),
+    ConstLit(ast::def_id),              // the def ID of the constant
 }
 
 // An option identifying a branch (either a literal, a enum variant or a
@@ -168,11 +169,43 @@ enum Opt {
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
+
 fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (*a, *b) {
-      (lit(ExprLit(a)), lit(ExprLit(b))) =>
-            const_eval::compare_lit_exprs(tcx, a, b) == 0,
-      (lit(UnitLikeStructLit(a)), lit(UnitLikeStructLit(b))) => a == b,
+      (lit(a), lit(b)) => {
+        match (a, b) {
+            (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
+            _ => {
+                let a_expr;
+                match a {
+                    ExprLit(existing_a_expr) => a_expr = existing_a_expr,
+                    ConstLit(a_const) => {
+                        let e = const_eval::lookup_const_by_id(tcx, a_const);
+                        a_expr = e.get();
+                    }
+                    UnitLikeStructLit(_) => {
+                        fail ~"UnitLikeStructLit should have been handled \
+                               above"
+                    }
+                }
+
+                let b_expr;
+                match b {
+                    ExprLit(existing_b_expr) => b_expr = existing_b_expr,
+                    ConstLit(b_const) => {
+                        let e = const_eval::lookup_const_by_id(tcx, b_const);
+                        b_expr = e.get();
+                    }
+                    UnitLikeStructLit(_) => {
+                        fail ~"UnitLikeStructLit should have been handled \
+                               above"
+                    }
+                }
+
+                const_eval::compare_lit_exprs(tcx, a_expr, b_expr) == 0
+            }
+        }
+      }
       (range(a1, a2), range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
         const_eval::compare_lit_exprs(tcx, a2, b2) == 0
@@ -199,6 +232,10 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
             let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
             let datumblock = datum::scratch_datum(bcx, struct_ty, true);
             return single_result(datumblock.to_result(bcx));
+        }
+        lit(ConstLit(lit_id)) => {
+            let llval = consts::get_const_val(bcx.ccx(), lit_id);
+            return single_result(rslt(bcx, llval));
         }
         var(disr_val, _) => {
             return single_result(rslt(bcx, C_int(ccx, disr_val)));
@@ -353,7 +390,7 @@ fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
                 let self = br.pats[col];
                 match self.node {
                     ast::pat_ident(_, path, None) => {
-                        if !pat_is_variant_or_struct(dm, self) {
+                        if pat_is_binding(dm, self) {
                             let binding_info =
                                 br.data.bindings_map.get(path_to_ident(path));
                             Store(bcx, val, binding_info.llmatch);
@@ -388,8 +425,7 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
         match p.node {
           ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) |
           ast::pat_struct(*) => Some(~[]),
-          ast::pat_ident(_, _, None)
-                if !pat_is_variant_or_struct(dm, p) => Some(~[]),
+          ast::pat_ident(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
     }
@@ -446,6 +482,15 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             ast::pat_ident(_, _, None)
                     if pat_is_variant_or_struct(tcx.def_map, p) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
+                    Some(~[])
+                } else {
+                    None
+                }
+            }
+            ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
+                let const_def = tcx.def_map.get(p.id);
+                let const_def_id = ast_util::def_id_of_def(const_def);
+                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
                 } else {
                     None
@@ -674,6 +719,10 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
                     Some(ast::def_class(*)) => {
                         add_to_set(ccx.tcx, &found,
                                    lit(UnitLikeStructLit(cur.id)));
+                    }
+                    Some(ast::def_const(const_did)) => {
+                        add_to_set(ccx.tcx, &found,
+                                   lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
