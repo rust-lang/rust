@@ -20,7 +20,7 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
-use codemap::{CodeMap, filemap};
+use codemap::{CodeMap, FileMap};
 
 type parse_sess = @{
     cm: @codemap::CodeMap,
@@ -100,7 +100,7 @@ fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
 fn parse_crate_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
-                                                  codemap::fss_none, source);
+                                                  codemap::FssNone, source);
     let r = p.parse_crate_mod(cfg);
     p.abort_if_errors();
     sess.chpos = rdr.chpos;
@@ -111,7 +111,7 @@ fn parse_crate_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
 fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               sess: parse_sess) -> @ast::expr {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
-                                                  codemap::fss_none, source);
+                                                  codemap::FssNone, source);
     let r = p.parse_expr();
     p.abort_if_errors();
     sess.chpos = rdr.chpos;
@@ -123,7 +123,7 @@ fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
                               sess: parse_sess) -> Option<@ast::item> {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
-                                                  codemap::fss_none, source);
+                                                  codemap::FssNone, source);
     let r = p.parse_item(attrs);
     p.abort_if_errors();
     sess.chpos = rdr.chpos;
@@ -135,7 +135,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
                               sess: parse_sess) -> @ast::stmt {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
-                                                  codemap::fss_none, source);
+                                                  codemap::FssNone, source);
     let r = p.parse_stmt(attrs);
     p.abort_if_errors();
     sess.chpos = rdr.chpos;
@@ -144,7 +144,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
 }
 
 fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
-                            name: ~str, ss: codemap::file_substr,
+                            name: ~str, ss: codemap::FileSubstr,
                             source: @~str, cfg: ast::crate_cfg,
                             sess: parse_sess)
     -> T
@@ -170,10 +170,10 @@ fn next_node_id(sess: parse_sess) -> node_id {
 }
 
 fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                                  +name: ~str, +ss: codemap::file_substr,
+                                  +name: ~str, +ss: codemap::FileSubstr,
                                   source: @~str) -> (Parser, string_reader) {
     let ftype = parser::SOURCE_FILE;
-    let filemap = @filemap::new_w_substr
+    let filemap = @FileMap::new_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
@@ -182,7 +182,7 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
 }
 
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
-                              +name: ~str, +ss: codemap::file_substr,
+                              +name: ~str, +ss: codemap::FileSubstr,
                               source: @~str) -> Parser {
     let (p, _) = new_parser_etc_from_source_str(sess, cfg, name, ss, source);
     move p
@@ -198,7 +198,7 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
       result::Err(e) => sess.span_diagnostic.handler().fatal(e)
     }
     let src = @result::unwrap(res);
-    let filemap = @filemap::new(path.to_str(), src,
+    let filemap = @FileMap::new(path.to_str(), src,
                                 sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,

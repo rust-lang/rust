@@ -25,7 +25,7 @@ type string_reader = @{
     mut pos: uint,
     mut curr: char,
     mut chpos: uint,
-    filemap: @codemap::filemap,
+    filemap: @codemap::FileMap,
     interner: @token::ident_interner,
     /* cached: */
     mut peek_tok: token::Token,
@@ -33,7 +33,7 @@ type string_reader = @{
 };
 
 fn new_string_reader(span_diagnostic: span_handler,
-                     filemap: @codemap::filemap,
+                     filemap: @codemap::FileMap,
                      itr: @token::ident_interner) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
@@ -42,7 +42,7 @@ fn new_string_reader(span_diagnostic: span_handler,
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 fn new_low_level_string_reader(span_diagnostic: span_handler,
-                               filemap: @codemap::filemap,
+                               filemap: @codemap::FileMap,
                                itr: @token::ident_interner)
     -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,

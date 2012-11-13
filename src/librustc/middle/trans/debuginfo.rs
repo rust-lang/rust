@@ -112,7 +112,7 @@ type compile_unit_md = {name: ~str};
 type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
-type block_md = {start: codemap::loc, end: codemap::loc};
+type block_md = {start: codemap::Loc, end: codemap::Loc};
 type argument_md = {id: ast::node_id};
 type retval_md = {id: ast::node_id};
 

@@ -208,7 +208,7 @@ fn finish<T: qq_helper>
     debug!("qquote--str==%?", str);
     let fname = cm.mk_substr_filename(body.span);
     let node = parse_from_source_str
-        (f, fname, codemap::fss_internal(body.span), str,
+        (f, fname, codemap::FssInternal(body.span), str,
          ecx.cfg(), ecx.parse_sess());
     let loc = cm.lookup_char_pos(body.span.lo);
 
@@ -345,8 +345,8 @@ fn replace_ty(repls: ~[fragment],
 }
 
 fn mk_file_substr(fname: ~str, line: uint, col: uint) ->
-    codemap::file_substr {
-    codemap::fss_external({filename: fname, line: line, col: col})
+    codemap::FileSubstr {
+    codemap::FssExternal({filename: fname, line: line, col: col})
 }
 
 // Local Variables:

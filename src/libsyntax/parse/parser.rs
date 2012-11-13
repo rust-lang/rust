@@ -5,7 +5,7 @@ use either::{Either, Left, Right};
 use std::map::HashMap;
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
             INTERPOLATED, special_idents};
-use codemap::{span,fss_none};
+use codemap::{span,FssNone};
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 use lexer::reader;

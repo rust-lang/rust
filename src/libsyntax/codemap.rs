@@ -10,13 +10,13 @@ use std::serialization::{Serializable,
                          Serializer,
                          Deserializer};
 
-pub type byte_pos = uint;
-pub type char_pos = uint;
+pub type BytePos = uint;
+pub type CharPos = uint;
 
 pub struct span {
-    lo: char_pos,
-    hi: char_pos,
-    expn_info: Option<@expn_info>
+    lo: CharPos,
+    hi: CharPos,
+    expn_info: Option<@ExpnInfo>
 }
 
 impl span : cmp::Eq {
@@ -37,70 +37,70 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-pub struct file_pos {
-    ch: char_pos, byte: byte_pos
+pub struct Loc {
+    file: @FileMap, line: uint, col: uint
 }
 
-pub struct loc {
-    file: @filemap, line: uint, col: uint
+pub struct FilePos {
+    ch: CharPos, byte: BytePos
 }
 
-impl file_pos : cmp::Eq {
-    pure fn eq(other: &file_pos) -> bool {
+impl FilePos : cmp::Eq {
+    pure fn eq(other: &FilePos) -> bool {
         self.ch == (*other).ch && self.byte == (*other).byte
     }
-    pure fn ne(other: &file_pos) -> bool { !self.eq(other) }
+    pure fn ne(other: &FilePos) -> bool { !self.eq(other) }
 }
 
-pub enum expn_info {
-    expanded_from({call_site: span,
-                   callie: {name: ~str, span: Option<span>}})
+pub enum ExpnInfo {
+    ExpandedFrom({call_site: span,
+                  callie: {name: ~str, span: Option<span>}})
 }
 
-pub type filename = ~str;
+pub type FileName = ~str;
 
-pub type lookup_fn = pure fn(file_pos) -> uint;
+pub type LookupFn = pure fn(FilePos) -> uint;
 
-pub struct file_lines {
-    file: @filemap,
+pub struct FileLines {
+    file: @FileMap,
     lines: ~[uint]
 }
 
-pub enum file_substr {
-    pub fss_none,
-    pub fss_internal(span),
-    pub fss_external({filename: ~str, line: uint, col: uint})
+pub enum FileSubstr {
+    pub FssNone,
+    pub FssInternal(span),
+    pub FssExternal({filename: ~str, line: uint, col: uint})
 }
 
-pub struct filemap {
-    name: filename,
-    substr: file_substr,
+pub struct FileMap {
+    name: FileName,
+    substr: FileSubstr,
     src: @~str,
-    start_pos: file_pos,
-    mut lines: ~[file_pos]
+    start_pos: FilePos,
+    mut lines: ~[FilePos]
 }
 
-pub impl filemap {
-    static fn new_w_substr(+filename: filename, +substr: file_substr,
+pub impl FileMap {
+    static fn new_w_substr(+filename: FileName, +substr: FileSubstr,
                            src: @~str,
                            start_pos_ch: uint, start_pos_byte: uint)
-        -> filemap {
-        return filemap {
+        -> FileMap {
+        return FileMap {
             name: filename, substr: substr, src: src,
-            start_pos: file_pos {ch: start_pos_ch, byte: start_pos_byte},
-            mut lines: ~[file_pos {ch: start_pos_ch, byte: start_pos_byte}]
+            start_pos: FilePos {ch: start_pos_ch, byte: start_pos_byte},
+            mut lines: ~[FilePos {ch: start_pos_ch, byte: start_pos_byte}]
         };
     }
 
-    static fn new(+filename: filename, src: @~str,
-                  start_pos_ch: char_pos, start_pos_byte: byte_pos)
-        -> filemap {
-        return filemap::new_w_substr(filename, fss_none, src,
+    static fn new(+filename: FileName, src: @~str,
+                  start_pos_ch: CharPos, start_pos_byte: BytePos)
+        -> FileMap {
+        return FileMap::new_w_substr(filename, FssNone, src,
                                      start_pos_ch, start_pos_byte);
     }
 
-    fn next_line(@self, chpos: char_pos, byte_pos: byte_pos) {
-        self.lines.push(file_pos {ch: chpos, byte: byte_pos + self.start_pos.byte});
+    fn next_line(@self, chpos: CharPos, byte_pos: BytePos) {
+        self.lines.push(FilePos {ch: chpos, byte: byte_pos + self.start_pos.byte});
     }
 
     pub fn get_line(@self, line: int) -> ~str unsafe {
@@ -115,7 +115,7 @@ pub impl filemap {
 }
 
 pub struct CodeMap {
-    files: DVec<@filemap>
+    files: DVec<@FileMap>
 }
 
 pub impl CodeMap {
@@ -130,31 +130,31 @@ pub impl CodeMap {
         return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
     }
 
-    pub fn lookup_char_pos(@self, pos: char_pos) -> loc {
-        pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
+    pub fn lookup_char_pos(@self, pos: CharPos) -> Loc {
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_byte_pos(@self, pos: byte_pos) -> loc {
-        pure fn lookup(pos: file_pos) -> uint { return pos.byte; }
+    pub fn lookup_byte_pos(@self, pos: BytePos) -> Loc {
+        pure fn lookup(pos: FilePos) -> uint { return pos.byte; }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_char_pos_adj(@self, pos: char_pos)
-        -> {filename: ~str, line: uint, col: uint, file: Option<@filemap>}
+    pub fn lookup_char_pos_adj(@self, pos: CharPos)
+        -> {filename: ~str, line: uint, col: uint, file: Option<@FileMap>}
     {
         let loc = self.lookup_char_pos(pos);
         match (loc.file.substr) {
-            fss_none => {
+            FssNone => {
                 {filename: /* FIXME (#2543) */ copy loc.file.name,
                  line: loc.line,
                  col: loc.col,
                  file: Some(loc.file)}
             }
-            fss_internal(sp) => {
+            FssInternal(sp) => {
                 self.lookup_char_pos_adj(sp.lo + (pos - loc.file.start_pos.ch))
             }
-            fss_external(eloc) => {
+            FssExternal(eloc) => {
                 {filename: /* FIXME (#2543) */ copy eloc.filename,
                  line: eloc.line + loc.line - 1u,
                  col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
@@ -164,15 +164,15 @@ pub impl CodeMap {
     }
 
     pub fn adjust_span(@self, sp: span) -> span {
-        pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
         let line = self.lookup_line(sp.lo, lookup);
         match (line.fm.substr) {
-            fss_none => sp,
-            fss_internal(s) => {
+            FssNone => sp,
+            FssInternal(s) => {
                 self.adjust_span(span {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
                                        hi: s.lo + (sp.hi - line.fm.start_pos.ch),
                                        expn_info: sp.expn_info})}
-            fss_external(_) => sp
+            FssExternal(_) => sp
         }
     }
 
@@ -183,24 +183,24 @@ pub impl CodeMap {
                     lo.line, lo.col, hi.line, hi.col)
     }
 
-    pub fn span_to_filename(@self, sp: span) -> filename {
+    pub fn span_to_filename(@self, sp: span) -> FileName {
         let lo = self.lookup_char_pos(sp.lo);
         return /* FIXME (#2543) */ copy lo.file.name;
     }
 
-    pub fn span_to_lines(@self, sp: span) -> @file_lines {
+    pub fn span_to_lines(@self, sp: span) -> @FileLines {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = ~[];
         for uint::range(lo.line - 1u, hi.line as uint) |i| {
             lines.push(i);
         };
-        return @file_lines {file: lo.file, lines: lines};
+        return @FileLines {file: lo.file, lines: lines};
     }
 
-    fn lookup_byte_offset(@self, chpos: char_pos)
-        -> {fm: @filemap, pos: byte_pos} {
-        pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
+    fn lookup_byte_offset(@self, chpos: CharPos)
+        -> {fm: @FileMap, pos: BytePos} {
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
         let {fm, line} = self.lookup_line(chpos, lookup);
         let line_offset = fm.lines[line].byte - fm.start_pos.byte;
         let col = chpos - fm.lines[line].ch;
@@ -215,7 +215,7 @@ pub impl CodeMap {
         return str::slice(*begin.fm.src, begin.pos, end.pos);
     }
 
-    pub fn get_filemap(@self, filename: ~str) -> @filemap {
+    pub fn get_filemap(@self, filename: ~str) -> @FileMap {
         for self.files.each |fm| { if fm.name == filename { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
@@ -225,8 +225,8 @@ pub impl CodeMap {
 }
 
 priv impl CodeMap {
-    fn lookup_line(@self, pos: uint, lookup: lookup_fn)
-        -> {fm: @filemap, line: uint}
+    fn lookup_line(@self, pos: uint, lookup: LookupFn)
+        -> {fm: @FileMap, line: uint}
     {
         let len = self.files.len();
         let mut a = 0u;
@@ -248,9 +248,9 @@ priv impl CodeMap {
         return {fm: f, line: a};
     }
 
-    fn lookup_pos(@self, pos: uint, lookup: lookup_fn) -> loc {
+    fn lookup_pos(@self, pos: uint, lookup: LookupFn) -> Loc {
         let {fm: f, line: a} = self.lookup_line(pos, lookup);
-        return loc {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
+        return Loc {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
     }
 
     fn span_to_str_no_adj(@self, sp: span) -> ~str {
