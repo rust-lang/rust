@@ -16,7 +16,7 @@ export expand_include_bin;
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::Some(0u), ~"line");
-    let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
+    let loc = cx.codemap().lookup_char_pos(sp.lo);
     return mk_uint(cx, sp, loc.line);
 }
 
@@ -24,7 +24,7 @@ fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::Some(0u), ~"col");
-    let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
+    let loc = cx.codemap().lookup_char_pos(sp.lo);
     return mk_uint(cx, sp, loc.col);
 }
 
@@ -35,7 +35,7 @@ fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::Some(0u), ~"file");
     let loc { file: @filemap { name: filename, _ }, _ } =
-        codemap::lookup_char_pos(cx.codemap(), sp.lo);
+        cx.codemap().lookup_char_pos(sp.lo);
     return mk_uniq_str(cx, sp, filename);
 }
 
@@ -103,7 +103,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 fn res_rel_file(cx: ext_ctxt, sp: codemap::span, arg: &Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute {
-        let cu = Path(codemap::span_to_filename(sp, cx.codemap()));
+        let cu = Path(cx.codemap().span_to_filename(sp));
         cu.dir_path().push_many(arg.components)
     } else {
         copy *arg

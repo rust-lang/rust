@@ -20,7 +20,7 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
-use codemap::filemap;
+use codemap::{CodeMap, filemap};
 
 type parse_sess = @{
     cm: @codemap::CodeMap,
@@ -33,7 +33,7 @@ type parse_sess = @{
 };
 
 fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
-    let cm = @codemap::new_codemap();
+    let cm = @CodeMap::new();
     return @{cm: cm,
              mut next_id: 1,
              span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
