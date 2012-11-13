@@ -2275,6 +2275,8 @@ fn register_deriving_method(ccx: @crate_ctxt,
     }
 
     let path = vec::append(*path, ~[
+        ast_map::path_mod(
+            ccx.sess.parse_sess.interner.intern(@fmt!("__derived%d__", id))),
         ast_map::path_name(derived_method_info.method_info.ident)
     ]);
     let mty = ty::lookup_item_type(ccx.tcx, local_def(id)).ty;
