@@ -10,36 +10,7 @@ use std::serialization::{Serializable,
                          Serializer,
                          Deserializer};
 
-export filename;
-export filemap;
-export filemap_;
-export span;
-export file_substr;
-export fss_none;
-export fss_internal;
-export fss_external;
-export CodeMap;
-export expn_info;
-export expn_info_;
-export expanded_from;
-export new_filemap;
-export new_filemap_w_substr;
-export mk_substr_filename;
-export lookup_char_pos;
-export lookup_char_pos_adj;
-export adjust_span;
-export span_to_str;
-export span_to_filename;
-export span_to_lines;
-export file_lines;
-export get_line;
-export next_line;
-export span_to_snippet;
-export loc;
-export get_filemap;
-export new_codemap;
-
-struct span {
+pub struct span {
     lo: uint,
     hi: uint,
     expn_info: Option<@expn_info>
@@ -63,20 +34,20 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-enum expn_info {
+pub enum expn_info {
     expanded_from({call_site: span,
                    callie: {name: ~str, span: Option<span>}})
 }
 
-type filename = ~str;
+pub type filename = ~str;
 
-type lookup_fn = pure fn(file_pos) -> uint;
+pub type lookup_fn = pure fn(file_pos) -> uint;
 
-struct loc {
+pub struct loc {
     file: @filemap, line: uint, col: uint
 }
 
-struct file_pos {
+pub struct file_pos {
     ch: uint, byte: uint
 }
 
@@ -87,13 +58,13 @@ impl file_pos : cmp::Eq {
     pure fn ne(other: &file_pos) -> bool { !self.eq(other) }
 }
 
-enum file_substr {
-    fss_none,
-    fss_internal(span),
-    fss_external({filename: ~str, line: uint, col: uint})
+pub enum file_substr {
+    pub fss_none,
+    pub fss_internal(span),
+    pub fss_external({filename: ~str, line: uint, col: uint})
 }
 
-struct filemap {
+pub struct filemap {
     name: filename,
     substr: file_substr,
     src: @~str,
@@ -101,7 +72,7 @@ struct filemap {
     mut lines: ~[file_pos]
 }
 
-impl filemap {
+pub impl filemap {
     static fn new_w_substr(+filename: filename, +substr: file_substr,
                            src: @~str,
                            start_pos_ch: uint, start_pos_byte: uint)
@@ -121,23 +92,23 @@ impl filemap {
     }
 }
 
-struct CodeMap {
+pub struct CodeMap {
     files: DVec<@filemap>
 }
 
-fn new_codemap() -> CodeMap {
+pub fn new_codemap() -> CodeMap {
     CodeMap {
         files: DVec()
     }
 }
 
-fn mk_substr_filename(cm: @CodeMap, sp: span) -> ~str
+pub fn mk_substr_filename(cm: @CodeMap, sp: span) -> ~str
 {
     let pos = lookup_char_pos(cm, sp.lo);
     return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
-fn next_line(file: @filemap, chpos: uint, byte_pos: uint) {
+pub fn next_line(file: @filemap, chpos: uint, byte_pos: uint) {
     file.lines.push(file_pos {ch: chpos, byte: byte_pos + file.start_pos.byte});
 }
 
@@ -169,7 +140,7 @@ fn lookup_pos(map: @CodeMap, pos: uint, lookup: lookup_fn) -> loc {
     return loc {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
 }
 
-fn lookup_char_pos(map: @CodeMap, pos: uint) -> loc {
+pub fn lookup_char_pos(map: @CodeMap, pos: uint) -> loc {
     pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
     return lookup_pos(map, pos, lookup);
 }
@@ -179,7 +150,7 @@ fn lookup_byte_pos(map: @CodeMap, pos: uint) -> loc {
     return lookup_pos(map, pos, lookup);
 }
 
-fn lookup_char_pos_adj(map: @CodeMap, pos: uint)
+pub fn lookup_char_pos_adj(map: @CodeMap, pos: uint)
     -> {filename: ~str, line: uint, col: uint, file: Option<@filemap>}
 {
     let loc = lookup_char_pos(map, pos);
@@ -202,7 +173,7 @@ fn lookup_char_pos_adj(map: @CodeMap, pos: uint)
     }
 }
 
-fn adjust_span(map: @CodeMap, sp: span) -> span {
+pub fn adjust_span(map: @CodeMap, sp: span) -> span {
     pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
     let line = lookup_line(map, sp.lo, lookup);
     match (line.fm.substr) {
@@ -222,24 +193,24 @@ fn span_to_str_no_adj(sp: span, cm: @CodeMap) -> ~str {
              lo.line, lo.col, hi.line, hi.col)
 }
 
-fn span_to_str(sp: span, cm: @CodeMap) -> ~str {
+pub fn span_to_str(sp: span, cm: @CodeMap) -> ~str {
     let lo = lookup_char_pos_adj(cm, sp.lo);
     let hi = lookup_char_pos_adj(cm, sp.hi);
     return fmt!("%s:%u:%u: %u:%u", lo.filename,
              lo.line, lo.col, hi.line, hi.col)
 }
 
-struct file_lines {
+pub struct file_lines {
     file: @filemap,
     lines: ~[uint]
 }
 
-fn span_to_filename(sp: span, cm: @codemap::CodeMap) -> filename {
+pub fn span_to_filename(sp: span, cm: @codemap::CodeMap) -> filename {
     let lo = lookup_char_pos(cm, sp.lo);
     return /* FIXME (#2543) */ copy lo.file.name;
 }
 
-fn span_to_lines(sp: span, cm: @codemap::CodeMap) -> @file_lines {
+pub fn span_to_lines(sp: span, cm: @codemap::CodeMap) -> @file_lines {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
     let mut lines = ~[];
@@ -249,7 +220,7 @@ fn span_to_lines(sp: span, cm: @codemap::CodeMap) -> @file_lines {
     return @file_lines {file: lo.file, lines: lines};
 }
 
-fn get_line(fm: @filemap, line: int) -> ~str unsafe {
+pub fn get_line(fm: @filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = match str::find_char_from(*fm.src, '\n', begin) {
       Some(e) => e,
@@ -268,20 +239,20 @@ fn lookup_byte_offset(cm: @codemap::CodeMap, chpos: uint)
     {fm: fm, pos: line_offset + col_offset}
 }
 
-fn span_to_snippet(sp: span, cm: @codemap::CodeMap) -> ~str {
+pub fn span_to_snippet(sp: span, cm: @codemap::CodeMap) -> ~str {
     let begin = lookup_byte_offset(cm, sp.lo);
     let end = lookup_byte_offset(cm, sp.hi);
     assert begin.fm.start_pos == end.fm.start_pos;
     return str::slice(*begin.fm.src, begin.pos, end.pos);
 }
 
-fn get_snippet(cm: @codemap::CodeMap, fidx: uint, lo: uint, hi: uint) -> ~str
+pub fn get_snippet(cm: @codemap::CodeMap, fidx: uint, lo: uint, hi: uint) -> ~str
 {
     let fm = cm.files[fidx];
     return str::slice(*fm.src, lo, hi)
 }
 
-fn get_filemap(cm: @CodeMap, filename: ~str) -> @filemap {
+pub fn get_filemap(cm: @CodeMap, filename: ~str) -> @filemap {
     for cm.files.each |fm| { if fm.name == filename { return *fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
