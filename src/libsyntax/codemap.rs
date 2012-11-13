@@ -1,3 +1,9 @@
+/*! A codemap is a thing that maps uints to file/line/column positions
+ * in a crate. This to make it possible to represent the positions
+ * with single-word things, rather than passing records all over the
+ * compiler.
+ */
+
 use dvec::DVec;
 use std::serialization::{Serializable,
                          Deserializable,
@@ -45,12 +51,6 @@ impl file_pos : cmp::Eq {
     }
     pure fn ne(other: &file_pos) -> bool { !self.eq(other) }
 }
-
-/* A codemap is a thing that maps uints to file/line/column positions
- * in a crate. This to make it possible to represent the positions
- * with single-word things, rather than passing records all over the
- * compiler.
- */
 
 enum file_substr {
     fss_none,
