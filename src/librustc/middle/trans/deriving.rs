@@ -23,8 +23,8 @@ use syntax::ast_util::local_def;
 
 /// The kind of deriving method this is.
 enum DerivingKind {
-    BoolKind,	// fn f(&self, other: &other) -> bool
-    UnitKind,	// fn f(&self) -> ()
+    BoolKind,   // fn f(&self, other: &other) -> bool
+    UnitKind,   // fn f(&self) -> ()
 }
 
 impl DerivingKind {
