@@ -2115,8 +2115,8 @@ fn print_fn_header_info(s: ps,
                         opt_proto: Option<ast::Proto>,
                         vis: ast::visibility)
 {
-    word(s.s, visibility_qualified(vis, ~""));
     print_self_ty_if_static(s, opt_sty);
+    word(s.s, visibility_qualified(vis, ~""));
     print_opt_purity(s, opt_purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");
