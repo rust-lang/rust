@@ -149,21 +149,23 @@ fn classify(e: @expr,
 
 fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
     match tcx.def_map.find(e.id) {
-        Some(ast::def_const(def_id)) => {
-            if ast_util::is_local(def_id) {
-                match tcx.items.find(def_id.node) {
-                    None => None,
-                    Some(ast_map::node_item(it, _)) => match it.node {
-                        item_const(_, const_expr) => Some(const_expr),
-                        _ => None
-                    },
-                    Some(_) => None
-                }
-            }
-            else { None }
+        Some(ast::def_const(def_id)) => lookup_const_by_id(tcx, def_id),
+        _ => None
+    }
+}
+
+fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::def_id) -> Option<@expr> {
+    if ast_util::is_local(def_id) {
+        match tcx.items.find(def_id.node) {
+            None => None,
+            Some(ast_map::node_item(it, _)) => match it.node {
+                item_const(_, const_expr) => Some(const_expr),
+                _ => None
+            },
+            Some(_) => None
         }
-        Some(_) => None,
-        None => None
+    } else {
+        None
     }
 }
 

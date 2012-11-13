@@ -310,7 +310,7 @@ impl AllowCapturingSelfFlag : cmp::Eq {
 
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(def),
-    FoundConst,
+    FoundConst(def),
     BareIdentifierPatternUnresolved
 }
 
@@ -4299,11 +4299,17 @@ impl Resolver {
                                                         self.session
                                                         .str_of(ident)));
                         }
-                        FoundConst => {
+                        FoundConst(def) if mode == RefutableMode => {
+                            debug!("(resolving pattern) resolving `%s` to \
+                                    constant",
+                                    self.session.str_of(ident));
+
+                            self.record_def(pattern.id, def);
+                        }
+                        FoundConst(_) => {
                             self.session.span_err(pattern.span,
-                                                  ~"pattern variable \
-                                                   conflicts with a constant \
-                                                   in scope");
+                                                  ~"only refutable patterns \
+                                                    allowed here");
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
@@ -4456,8 +4462,8 @@ impl Resolver {
                             def @ def_variant(*) | def @ def_class(*) => {
                                 return FoundStructOrEnumVariant(def);
                             }
-                            def_const(*) => {
-                                return FoundConst;
+                            def @ def_const(*) => {
+                                return FoundConst(def);
                             }
                             _ => {
                                 return BareIdentifierPatternUnresolved;

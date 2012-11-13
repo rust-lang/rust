@@ -1,7 +1,7 @@
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
 use const_eval::{eval_const_expr, const_val, const_int, const_bool,
-                    compare_const_vals};
+                 compare_const_vals, lookup_const_by_id};
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use util::ppaux::ty_to_str;
@@ -229,6 +229,10 @@ fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> Option<ctor> {
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match tcx.def_map.find(pat.id) {
           Some(def_variant(_, id)) => Some(variant(id)),
+          Some(def_const(did)) => {
+            let const_expr = lookup_const_by_id(tcx, did).get();
+            Some(val(eval_const_expr(tcx, const_expr)))
+          }
           _ => None
         }
       }
@@ -255,7 +259,7 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
       pat_wild => { true }
       pat_ident(_, _, _) => {
         match tcx.def_map.find(pat.id) {
-          Some(def_variant(_, _)) => { false }
+          Some(def_variant(_, _)) | Some(def_const(*)) => { false }
           _ => { true }
         }
       }
@@ -343,6 +347,20 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
           Some(def_variant(_, id)) => {
             if variant(id) == ctor_id { Some(vec::tail(r)) }
             else { None }
+          }
+          Some(def_const(did)) => {
+            let const_expr = lookup_const_by_id(tcx, did).get();
+            let e_v = eval_const_expr(tcx, const_expr);
+            let match_ = match ctor_id {
+                val(v) => compare_const_vals(e_v, v) == 0,
+                range(c_lo, c_hi) => {
+                    compare_const_vals(c_lo, e_v) >= 0 &&
+                        compare_const_vals(c_hi, e_v) <= 0
+                }
+                single => true,
+                _ => fail ~"type error"
+            };
+            if match_ { Some(vec::tail(r)) } else { None }
           }
           _ => Some(vec::append(vec::from_elem(arity, wild()), vec::tail(r)))
         }
@@ -491,6 +509,7 @@ fn is_refutable(tcx: ty::ctxt, pat: &pat) -> bool {
             return true;
         }
       }
+      Some(def_const(*)) => return true,
       _ => ()
     }
 
