@@ -103,11 +103,11 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
  *         ok(parse_bytes(buf))
  *     }
  */
-pub fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(t: T)
+pub fn chain<T, U, V>(res: Result<T, V>, op: fn(t: T)
     -> Result<U, V>) -> Result<U, V> {
     match move res {
         Ok(move t) => op(move t),
-        Err(move e) => Err(e)
+        Err(move e) => Err(move e)
     }
 }
 
@@ -119,13 +119,13 @@ pub fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(t: T)
  * immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-pub fn chain_err<T: Copy, U: Copy, V: Copy>(
+pub fn chain_err<T, U, V>(
     res: Result<T, V>,
     op: fn(t: V) -> Result<T, U>)
     -> Result<T, U> {
     match move res {
-      Ok(move t) => Ok(t),
-      Err(move v) => op(v)
+      Ok(move t) => Ok(move t),
+      Err(move v) => op(move v)
     }
 }
 
