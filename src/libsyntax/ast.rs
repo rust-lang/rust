@@ -4,7 +4,7 @@ use std::serialization::{Serializable,
                          Deserializable,
                          Serializer,
                          Deserializer};
-use codemap::{span, filename};
+use codemap::{span, FileName};
 use parse::token;
 
 #[auto_serialize]

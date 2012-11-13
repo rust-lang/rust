@@ -206,7 +206,7 @@ fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
 }
 
 fn highlight_lines(cm: @codemap::CodeMap, sp: span,
-                   lines: @codemap::file_lines) {
+                   lines: @codemap::FileLines) {
 
     let fm = lines.file;
 
