@@ -223,6 +223,7 @@ FULL_TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
 
 check-stage$(1)-T-$(2)-H-$(3):     				\
+	check-stage$(1)-T-$(2)-H-$(3)-syntax			\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
 	check-stage$(1)-T-$(2)-H-$(3)-core          \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
@@ -247,6 +248,9 @@ check-stage$(1)-T-$(2)-H-$(3)-core:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-std:				\
 	check-stage$(1)-T-$(2)-H-$(3)-std-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-syntax:				\
+	check-stage$(1)-T-$(2)-H-$(3)-syntax-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-rustc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy
@@ -321,10 +325,11 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-ref: \
 # Rules for the core library test runner
 
 $(3)/test/coretest.stage$(1)-$(2)$$(X):			\
-		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
-        $$(SREQ$(1)_T_$(2)_H_$(3))
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg core_test
 
 check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
 		$(3)/test/coretest.stage$(1)-$(2)$$(X)
@@ -335,10 +340,10 @@ check-stage$(1)-T-$(2)-H-$(3)-core-dummy:			\
 # Rules for the standard library test runner
 
 $(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
-        $$(SREQ$(1)_T_$(2)_H_$(3))
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg std_test
 
 check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 		$(3)/test/stdtest.stage$(1)-$(2)$$(X)
@@ -346,15 +351,27 @@ check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-std.log
 
+# Rules for the syntax test runner
+
+$(3)/test/syntaxtest.stage$(1)-$(2)$$(X):					\
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg syntax_test
+
+check-stage$(1)-T-$(2)-H-$(3)-syntax-dummy:		\
+		$(3)/test/syntaxtest.stage$(1)-$(2)$$(X)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)   \
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-syntax.log
+
 # Rules for the rustc test runner
 
 $(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
-		$$(COMPILER_CRATE)									\
-		$$(COMPILER_INPUTS)									\
-		$$(SREQ$(1)_T_$(2)_H_$(3))							\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg rustc_test
 
 check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 		$(3)/test/rustctest.stage$(1)-$(2)$$(X)
@@ -365,13 +382,10 @@ check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy:		\
 # Rules for the rustdoc test runner
 
 $(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
-		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
-		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg rustdoc_test
 
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 		$(3)/test/rustdoctest.stage$(1)-$(2)$$(X)
@@ -382,13 +396,10 @@ check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy:		\
 # Rules for the rusti test runner
 
 $(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
-		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
-		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg rusti_test
 
 check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy:		\
 		$(3)/test/rustitest.stage$(1)-$(2)$$(X)
@@ -400,13 +411,10 @@ check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy:		\
 # Rules for the cargo test runner
 
 $(3)/test/cargotest.stage$(1)-$(2)$$(X):					\
-		$$(CARGO_LIB) $$(CARGO_INPUTS)		\
-		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(DRIVER_CRATE) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCARGO)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg cargo_test
 
 check-stage$(1)-T-$(2)-H-$(3)-cargo-dummy:		\
 		$(3)/test/cargotest.stage$(1)-$(2)$$(X)
@@ -737,6 +745,9 @@ check-stage$(1)-H-$(2):					\
 check-stage$(1)-H-$(2)-perf:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-perf)
+check-stage$(1)-H-$(2)-syntax:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-syntax)
 check-stage$(1)-H-$(2)-rustc:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rustc)
@@ -830,6 +841,9 @@ check-stage$(1)-H-all: \
 check-stage$(1)-H-all-perf: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-perf)
+check-stage$(1)-H-all-syntax: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-syntax)
 check-stage$(1)-H-all-rustc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustc)
@@ -897,6 +911,7 @@ define DEF_CHECK_FOR_STAGE
 
 check-stage$(1): check-stage$(1)-H-$$(CFG_HOST_TRIPLE)
 check-stage$(1)-perf: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-perf
+check-stage$(1)-syntax: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-syntax
 check-stage$(1)-rustc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustc
 check-stage$(1)-core: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-core
 check-stage$(1)-std: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-std

@@ -105,7 +105,6 @@ struct Task {
  */
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
-#[cfg(notest)]
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
     use rt::rt_free;

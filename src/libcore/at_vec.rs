@@ -133,18 +133,12 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
     }
 }
 
-#[cfg(notest)]
-pub mod traits {
-    pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
-        #[inline(always)]
-        pure fn add(rhs: & &self/[const T]) -> @[T] {
-            append(self, (*rhs))
-        }
+pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+    #[inline(always)]
+    pure fn add(rhs: & &self/[const T]) -> @[T] {
+        append(self, (*rhs))
     }
 }
-
-#[cfg(test)]
-pub mod traits {}
 
 pub mod raw {
     pub type VecRepr = vec::raw::VecRepr;

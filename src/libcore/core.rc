@@ -137,7 +137,6 @@ pub mod owned;
 
 // Ubiquitous-utility-type modules
 
-#[cfg(notest)]
 pub mod ops;
 pub mod cmp;
 pub mod num;
@@ -206,12 +205,13 @@ pub mod condition;
 
 pub mod extfmt;
 // The test harness links against core, so don't include runtime in tests.
-#[cfg(notest)]
 #[legacy_exports]
 pub mod rt;
 
 // Ideally not exported, but currently is.
-pub mod private;
+pub mod private {
+    pub mod test;
+}
 
 // For internal use, not exported.
 mod unicode;

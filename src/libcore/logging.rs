@@ -29,7 +29,6 @@ pub fn console_off() {
     rustrt::rust_log_console_off();
 }
 
-#[cfg(notest)]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
     let bytes = do io::with_bytes_writer |writer| {

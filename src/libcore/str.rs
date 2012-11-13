@@ -659,7 +659,6 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
-#[cfg(notest)]
 #[lang="str_eq"]
 pub pure fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
@@ -676,30 +675,8 @@ pub pure fn eq_slice(a: &str, b: &str) -> bool {
     }
 }
 
-#[cfg(test)]
-pub pure fn eq_slice(a: &str, b: &str) -> bool {
-    do as_buf(a) |ap, alen| {
-        do as_buf(b) |bp, blen| {
-            if (alen != blen) { false }
-            else {
-                unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
-                                 (alen - 1) as libc::size_t) == 0
-                }
-            }
-        }
-    }
-}
-
 /// Bytewise string equality
-#[cfg(notest)]
 #[lang="uniq_str_eq"]
-pub pure fn eq(a: &~str, b: &~str) -> bool {
-    eq_slice(*a, *b)
-}
-
-#[cfg(test)]
 pub pure fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
@@ -2094,18 +2071,12 @@ impl ~str: Trimmable {
     pure fn trim_right() -> ~str { trim_right(self) }
 }
 
-#[cfg(notest)]
-pub mod traits {
-    impl ~str : Add<&str,~str> {
-        #[inline(always)]
-        pure fn add(rhs: & &self/str) -> ~str {
-            append(copy self, (*rhs))
-        }
+impl ~str : Add<&str,~str> {
+    #[inline(always)]
+    pure fn add(rhs: & &self/str) -> ~str {
+        append(copy self, (*rhs))
     }
 }
-
-#[cfg(test)]
-pub mod traits {}
 
 pub trait StrSlice {
     pure fn all(it: fn(char) -> bool) -> bool;

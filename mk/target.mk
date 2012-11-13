@@ -28,7 +28,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC):		\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X):			\
 		$$(DRIVER_CRATE) 							\
@@ -47,7 +47,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX): \
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< --cfg test && touch $$@
 
 endef
 
@@ -110,7 +110,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB): \
 		$$(CORELIB_CRATE) $$(CORELIB_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 endef
 
@@ -134,7 +134,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB): \
 	        $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --cfg test && touch $$@
 
 endef
 
