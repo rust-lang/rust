@@ -63,6 +63,26 @@ struct filemap {
     start_pos: file_pos, mut lines: ~[file_pos]
 }
 
+impl filemap {
+    static fn new_w_substr(+filename: filename, +substr: file_substr,
+                           src: @~str,
+                           start_pos_ch: uint, start_pos_byte: uint)
+        -> filemap {
+        return filemap {
+            name: filename, substr: substr, src: src,
+            start_pos: file_pos {ch: start_pos_ch, byte: start_pos_byte},
+            mut lines: ~[file_pos {ch: start_pos_ch, byte: start_pos_byte}]
+        };
+    }
+
+    static fn new(+filename: filename, src: @~str,
+                  start_pos_ch: uint, start_pos_byte: uint)
+        -> filemap {
+        return filemap::new_w_substr(filename, fss_none, src,
+                                     start_pos_ch, start_pos_byte);
+    }
+}
+
 struct CodeMap_ {
     files: DVec<@filemap>
 }
@@ -74,24 +94,6 @@ struct loc {
 }
 
 fn new_codemap() -> CodeMap { @CodeMap_ {files: DVec()} }
-
-fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
-                        src: @~str,
-                        start_pos_ch: uint, start_pos_byte: uint)
-   -> filemap {
-    return filemap {
-        name: filename, substr: substr, src: src,
-        start_pos: file_pos {ch: start_pos_ch, byte: start_pos_byte},
-        mut lines: ~[file_pos {ch: start_pos_ch, byte: start_pos_byte}]
-    };
-}
-
-fn new_filemap(+filename: filename, src: @~str,
-               start_pos_ch: uint, start_pos_byte: uint)
-    -> filemap {
-    return new_filemap_w_substr(filename, fss_none, src,
-                             start_pos_ch, start_pos_byte);
-}
 
 fn mk_substr_filename(cm: CodeMap, sp: span) -> ~str
 {

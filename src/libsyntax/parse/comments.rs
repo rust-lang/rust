@@ -3,6 +3,7 @@ use io::ReaderUtil;
 use util::interner;
 use lexer::{string_reader, bump, is_eof, nextch,
                is_whitespace, get_str_from, reader};
+use codemap::filemap;
 
 export cmnt;
 export lit;
@@ -288,7 +289,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
     let rdr = lexer::new_low_level_string_reader
-        (span_diagnostic, @codemap::new_filemap(path, src, 0u, 0u), itr);
+        (span_diagnostic, @filemap::new(path, src, 0u, 0u), itr);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];

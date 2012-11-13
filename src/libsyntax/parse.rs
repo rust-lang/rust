@@ -20,6 +20,7 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
+use codemap::filemap;
 
 type parse_sess = @{
     cm: codemap::CodeMap,
@@ -172,7 +173,7 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                                   +name: ~str, +ss: codemap::file_substr,
                                   source: @~str) -> (Parser, string_reader) {
     let ftype = parser::SOURCE_FILE;
-    let filemap = @codemap::new_filemap_w_substr
+    let filemap = @filemap::new_w_substr
         (name, ss, source, sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
@@ -197,8 +198,8 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
       result::Err(e) => sess.span_diagnostic.handler().fatal(e)
     }
     let src = @result::unwrap(res);
-    let filemap = @codemap::new_filemap(path.to_str(), src,
-                                       sess.chpos, sess.byte_pos);
+    let filemap = @filemap::new(path.to_str(), src,
+                                sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
