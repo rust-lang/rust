@@ -10,9 +10,12 @@ use std::serialization::{Serializable,
                          Serializer,
                          Deserializer};
 
+pub type byte_pos = uint;
+pub type char_pos = uint;
+
 pub struct span {
-    lo: uint,
-    hi: uint,
+    lo: char_pos,
+    hi: char_pos,
     expn_info: Option<@expn_info>
 }
 
@@ -34,21 +37,12 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-pub enum expn_info {
-    expanded_from({call_site: span,
-                   callie: {name: ~str, span: Option<span>}})
+pub struct file_pos {
+    ch: char_pos, byte: byte_pos
 }
-
-pub type filename = ~str;
-
-pub type lookup_fn = pure fn(file_pos) -> uint;
 
 pub struct loc {
     file: @filemap, line: uint, col: uint
-}
-
-pub struct file_pos {
-    ch: uint, byte: uint
 }
 
 impl file_pos : cmp::Eq {
@@ -57,6 +51,15 @@ impl file_pos : cmp::Eq {
     }
     pure fn ne(other: &file_pos) -> bool { !self.eq(other) }
 }
+
+pub enum expn_info {
+    expanded_from({call_site: span,
+                   callie: {name: ~str, span: Option<span>}})
+}
+
+pub type filename = ~str;
+
+pub type lookup_fn = pure fn(file_pos) -> uint;
 
 pub struct file_lines {
     file: @filemap,
@@ -90,13 +93,13 @@ pub impl filemap {
     }
 
     static fn new(+filename: filename, src: @~str,
-                  start_pos_ch: uint, start_pos_byte: uint)
+                  start_pos_ch: char_pos, start_pos_byte: byte_pos)
         -> filemap {
         return filemap::new_w_substr(filename, fss_none, src,
                                      start_pos_ch, start_pos_byte);
     }
 
-    fn next_line(@self, chpos: uint, byte_pos: uint) {
+    fn next_line(@self, chpos: char_pos, byte_pos: byte_pos) {
         self.lines.push(file_pos {ch: chpos, byte: byte_pos + self.start_pos.byte});
     }
 
@@ -127,17 +130,17 @@ pub impl CodeMap {
         return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
     }
 
-    pub fn lookup_char_pos(@self, pos: uint) -> loc {
+    pub fn lookup_char_pos(@self, pos: char_pos) -> loc {
         pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_byte_pos(@self, pos: uint) -> loc {
+    pub fn lookup_byte_pos(@self, pos: byte_pos) -> loc {
         pure fn lookup(pos: file_pos) -> uint { return pos.byte; }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_char_pos_adj(@self, pos: uint)
+    pub fn lookup_char_pos_adj(@self, pos: char_pos)
         -> {filename: ~str, line: uint, col: uint, file: Option<@filemap>}
     {
         let loc = self.lookup_char_pos(pos);
@@ -195,8 +198,8 @@ pub impl CodeMap {
         return @file_lines {file: lo.file, lines: lines};
     }
 
-    fn lookup_byte_offset(@self, chpos: uint)
-        -> {fm: @filemap, pos: uint} {
+    fn lookup_byte_offset(@self, chpos: char_pos)
+        -> {fm: @filemap, pos: byte_pos} {
         pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
         let {fm, line} = self.lookup_line(chpos, lookup);
         let line_offset = fm.lines[line].byte - fm.start_pos.byte;
