@@ -980,6 +980,10 @@ impl Liveness {
           stmt_expr(expr, _) | stmt_semi(expr, _) => {
             return self.propagate_through_expr(expr, succ);
           }
+
+          stmt_mac(*) => {
+            self.tcx.sess.span_bug(stmt.span, ~"unexpanded macro");
+          }
         }
     }
 
