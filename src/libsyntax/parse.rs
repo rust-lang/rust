@@ -23,7 +23,7 @@ use parse::token::{ident_interner, mk_ident_interner};
 use codemap::filemap;
 
 type parse_sess = @{
-    cm: codemap::CodeMap,
+    cm: @codemap::CodeMap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
     interner: @ident_interner,
@@ -33,7 +33,7 @@ type parse_sess = @{
 };
 
 fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
-    let cm = codemap::new_codemap();
+    let cm = @codemap::new_codemap();
     return @{cm: cm,
              mut next_id: 1,
              span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
@@ -41,7 +41,7 @@ fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
              mut chpos: 0u, mut byte_pos: 0u};
 }
 
-fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::CodeMap)
+fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
     -> parse_sess {
     return @{cm: cm,
              mut next_id: 1,

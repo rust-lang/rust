@@ -229,7 +229,7 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     return mdval;
 }
 
-fn line_from_span(cm: codemap::CodeMap, sp: span) -> uint {
+fn line_from_span(cm: @codemap::CodeMap, sp: span) -> uint {
     codemap::lookup_char_pos(cm, sp.lo).line
 }
 
