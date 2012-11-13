@@ -207,8 +207,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         let impl_did = ast_util::local_def(i.id);
         for ms_opt.each |ms| {
             for ms.each |m| {
-                map_method(impl_did, extend(cx, i.ident), *m,
-                           cx);
+                map_method(impl_did, extend(cx, i.ident), *m, cx);
             }
         }
       }
