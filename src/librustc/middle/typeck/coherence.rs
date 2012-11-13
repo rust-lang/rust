@@ -262,6 +262,9 @@ impl CoherenceChecker {
             }
         }
 
+        // We only want to generate one Impl structure. When we generate one,
+        // we store it here so that we don't recreate it.
+        let mut implementation_opt = None;
         for associated_traits.each |associated_trait| {
             let trait_did =
                 self.trait_ref_to_trait_def_id(*associated_trait);
@@ -273,8 +276,14 @@ impl CoherenceChecker {
                     self.crate_context.tcx.sess.str_of(item.ident));
 
             self.instantiate_default_methods(item.id, trait_did);
-            let implementation = self.create_impl_from_item(item);
-            self.add_trait_method(trait_did, implementation);
+
+            let implementation;
+            if implementation_opt.is_none() {
+                implementation = self.create_impl_from_item(item);
+                implementation_opt = Some(implementation);
+            }
+
+            self.add_trait_method(trait_did, implementation_opt.get());
         }
 
         // Add the implementation to the mapping from implementation to base
@@ -288,7 +297,15 @@ impl CoherenceChecker {
             }
             Some(base_type_def_id) => {
                 // XXX: Gather up default methods?
-                let implementation = self.create_impl_from_item(item);
+                let implementation;
+                match implementation_opt {
+                    None => {
+                        implementation = self.create_impl_from_item(item);
+                    }
+                    Some(copy existing_implementation) => {
+                        implementation = existing_implementation;
+                    }
+                }
                 self.add_inherent_method(base_type_def_id, implementation);
 
                 self.base_type_def_ids.insert(local_def(item.id),
@@ -620,6 +637,7 @@ impl CoherenceChecker {
                 method_info: method_info,
                 containing_impl: impl_did
             };
+
             tcx.automatically_derived_methods.insert(new_def_id,
                                                      derived_method_info);
 
@@ -666,18 +684,21 @@ impl CoherenceChecker {
                         }
                     }
                     None => {
-                        // This is a "deriving" impl. For each trait, collect
-                        // all the "required" methods and add them to the
-                        // Impl structure.
+                        // This is a "deriving" impl. For each trait,
+                        // collect all the "required" methods and add
+                        // them to the Impl structure.
                         let tcx = self.crate_context.tcx;
-                        let self_ty =
-                            ty::lookup_item_type(tcx, local_def(item.id));
+                        let self_ty = ty::lookup_item_type(
+                            tcx, local_def(item.id));
                         for trait_refs.each |trait_ref| {
                             let trait_did =
-                                self.trait_ref_to_trait_def_id(*trait_ref);
+                                self.trait_ref_to_trait_def_id(
+                                    *trait_ref);
                             self.add_automatically_derived_methods_from_trait(
-                                &mut methods, trait_did, self_ty.ty,
-                                local_def(item.id));
+                                    &mut methods,
+                                    trait_did,
+                                    self_ty.ty,
+                                    local_def(item.id));
                         }
                     }
                 }

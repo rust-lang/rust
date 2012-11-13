@@ -21,6 +21,38 @@ use syntax::ast_map::path;
 use syntax::ast_util;
 use syntax::ast_util::local_def;
 
+/// The kind of deriving method this is.
+enum DerivingKind {
+	BoolKind,	// fn f(&self, other: &other) -> bool
+	UnitKind,	// fn f(&self) -> ()
+}
+
+impl DerivingKind {
+    static fn of_item(ccx: @crate_ctxt, method_did: ast::def_id)
+                   -> DerivingKind {
+        let item_type = ty::lookup_item_type(ccx.tcx, method_did).ty;
+        match ty::get(item_type).sty {
+            ty::ty_fn(ref f) => {
+                match ty::get(f.sig.output).sty {
+                    ty::ty_bool => BoolKind,
+                    ty::ty_nil => UnitKind,
+                    _ => {
+                        // FIXME (#3957): Report this earlier.
+                        ccx.tcx.sess.fatal(~"attempt to automatically derive \
+                                             derive an implementation of a \
+                                             function returning something \
+                                             other than bool or ()");
+                    }
+                }
+            }
+            _ => {
+                ccx.tcx.sess.bug(~"DerivingKind::of_item(): method def ID \
+                                   didn't have a function type");
+            }
+        }
+    }
+}
+
 /// The main "translation" pass for automatically-derived impls. Generates
 /// code for monomorphic methods only. Other methods will be generated when
 /// they are invoked with specific type parameters; see
@@ -36,15 +68,16 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt, _path: path, _name: ident,
         impl_def_id);
 
     for method_dids.each |method_did| {
+        let kind = DerivingKind::of_item(ccx, *method_did);
         let llfn = get_item_val(ccx, method_did.node);
         match ty::get(self_ty.ty).sty {
             ty::ty_class(*) => {
                 trans_deriving_struct_method(ccx, llfn, impl_def_id,
-                                             self_ty.ty);
+                                             self_ty.ty, kind);
             }
             ty::ty_enum(*) => {
                 trans_deriving_enum_method(ccx, llfn, impl_def_id,
-                                           self_ty.ty);
+                                           self_ty.ty, kind);
             }
             _ => {
                 ccx.tcx.sess.bug(~"translation of non-struct deriving \
@@ -54,8 +87,11 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt, _path: path, _name: ident,
     }
 }
 
-fn trans_deriving_struct_method(ccx: @crate_ctxt, llfn: ValueRef,
-                                impl_did: def_id, self_ty: ty::t) {
+fn trans_deriving_struct_method(ccx: @crate_ctxt,
+                                llfn: ValueRef,
+                                impl_did: def_id,
+                                self_ty: ty::t,
+                                kind: DerivingKind) {
     let _icx = ccx.insn_ctxt("trans_deriving_struct_method");
     let fcx = new_fn_ctxt(ccx, ~[], llfn, None);
     let top_bcx = top_scope_block(fcx, None);
@@ -64,7 +100,14 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt, llfn: ValueRef,
 
     let llselfty = type_of(ccx, self_ty);
     let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
-    let llotherval = llvm::LLVMGetParam(llfn, 2);
+
+    // If there is an "other" value, then get it. The "other" value is the
+    // value we're comparing against in the case of Eq and Ord.
+    let llotherval_opt;
+    match kind {
+        BoolKind => llotherval_opt = Some(llvm::LLVMGetParam(llfn, 2)),
+        UnitKind => llotherval_opt = None
+    }
 
     let struct_field_tys;
     match ty::get(self_ty).sty {
@@ -82,27 +125,45 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt, llfn: ValueRef,
     for ccx.tcx.deriving_struct_methods.get(impl_did).eachi
             |i, derived_method_info| {
         let llselfval = GEPi(bcx, llselfval, [0, 0, i]);
-        let llotherval = GEPi(bcx, llotherval, [0, 0, i]);
+
+        let llotherval_opt = llotherval_opt.map(
+            |llotherval| GEPi(bcx, *llotherval, [0, 0, i]));
 
         let self_ty = struct_field_tys[i].mt.ty;
         bcx = call_substructure_method(bcx, derived_method_info, self_ty,
-                                       llselfval, llotherval);
+                                       llselfval, llotherval_opt);
 
-        // Return immediately if the call returned false.
-        let next_block = sub_block(top_bcx, ~"next");
-        let llcond = Load(bcx, fcx.llretptr);
-        CondBr(bcx, llcond, next_block.llbb, fcx.llreturn);
-        bcx = next_block;
+        // If this derived method is of boolean kind, return immediately if
+        // the call to the substructure method returned false.
+        match kind {
+            BoolKind => {
+                let next_block = sub_block(top_bcx, ~"next");
+                let llcond = Load(bcx, fcx.llretptr);
+                CondBr(bcx, llcond, next_block.llbb, fcx.llreturn);
+                bcx = next_block;
+            }
+            UnitKind => {}  // Unconditionally continue.
+        }
     }
 
-    Store(bcx, C_bool(true), fcx.llretptr);
+    // Store true if necessary.
+    match kind {
+        BoolKind => Store(bcx, C_bool(true), fcx.llretptr),
+        UnitKind => {}
+    }
+
     Br(bcx, fcx.llreturn);
 
     finish_fn(fcx, lltop);
 }
 
-fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
-                              impl_did: def_id, self_ty: ty::t) {
+// This could have been combined with trans_deriving_struct_method, but it
+// would probably be too big and hard to understand.
+fn trans_deriving_enum_method(ccx: @crate_ctxt,
+                              llfn: ValueRef,
+                              impl_did: def_id,
+                              self_ty: ty::t,
+                              kind: DerivingKind) {
     let _icx = ccx.insn_ctxt("trans_deriving_enum_method");
     let fcx = new_fn_ctxt(ccx, ~[], llfn, None);
     let top_bcx = top_scope_block(fcx, None);
@@ -111,7 +172,12 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
 
     let llselfty = type_of(ccx, self_ty);
     let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
-    let llotherval = llvm::LLVMGetParam(llfn, 2);
+
+    let llotherval_opt;
+    match kind {
+        UnitKind => llotherval_opt = None,
+        BoolKind => llotherval_opt = Some(llvm::LLVMGetParam(llfn, 2))
+    }
 
     let enum_id, enum_substs, enum_variant_infos;
     match ty::get(self_ty).sty {
@@ -127,11 +193,18 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
         }
     }
 
-    // Create the "no match" basic block. This is a basic block that does
-    // nothing more than return false.
-    let nomatch_bcx = sub_block(top_bcx, ~"no_match");
-    Store(nomatch_bcx, C_bool(false), fcx.llretptr);
-    Br(nomatch_bcx, fcx.llreturn);
+    // Create the "no match" basic block, if necessary. This is a basic block
+    // that does nothing more than return false.
+    let nomatch_bcx_opt;
+    match kind {
+        BoolKind => {
+            let nomatch_bcx = sub_block(top_bcx, ~"no_match");
+            Store(nomatch_bcx, C_bool(false), fcx.llretptr);
+            Br(nomatch_bcx, fcx.llreturn);
+            nomatch_bcx_opt = Some(nomatch_bcx);
+        }
+        UnitKind => nomatch_bcx_opt = None
+    }
 
     // Create the "unreachable" basic block.
     let unreachable_bcx = sub_block(top_bcx, ~"unreachable");
@@ -144,11 +217,13 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
     if n_variants != 1 {
         // Grab the two discriminants.
         let llselfdiscrim = Load(bcx, GEPi(bcx, llselfval, [0, 0]));
-        let llotherdiscrim = Load(bcx, GEPi(bcx, llotherval, [0, 0]));
+        let llotherdiscrim_opt = llotherval_opt.map(
+            |llotherval| Load(bcx, GEPi(bcx, *llotherval, [0, 0])));
 
         // Skip over the discriminants and compute the address of the payload.
         let llselfpayload = GEPi(bcx, llselfval, [0, 1]);
-        let llotherpayload = GEPi(bcx, llotherval, [0, 1]);
+        let llotherpayload_opt = llotherval_opt.map(
+            |llotherval| GEPi(bcx, *llotherval, [0, 1]));
 
         // Create basic blocks for the outer switch.
         let outer_bcxs = vec::from_fn(
@@ -169,46 +244,71 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt, llfn: ValueRef,
                         enum_variant_infos[self_variant_index].id;
                 let llselfval = GEP_enum(match_bcx, llselfpayload, enum_id,
                                          variant_def_id, enum_substs.tps, i);
-                let llotherval = GEP_enum(match_bcx, llotherpayload,
-                                          enum_id, variant_def_id,
-                                          enum_substs.tps, i);
+
+                let llotherval_opt = llotherpayload_opt.map(|llotherpayload|
+                    GEP_enum(match_bcx, *llotherpayload, enum_id,
+                             variant_def_id, enum_substs.tps, i));
 
                 let self_ty = enum_variant_infos[self_variant_index].args[i];
                 match_bcx = call_substructure_method(match_bcx,
                                                      derived_method_info,
                                                      self_ty,
                                                      llselfval,
-                                                     llotherval);
+                                                     llotherval_opt);
 
-                // Return immediately if the call to the substructure returned
-                // false.
-                let next_bcx = sub_block(
-                    top_bcx, fmt!("next_%u_%u", self_variant_index, i));
-                let llcond = Load(match_bcx, fcx.llretptr);
-                CondBr(match_bcx, llcond, next_bcx.llbb, fcx.llreturn);
-                match_bcx = next_bcx;
+                // If this is a boolean-kind deriving method, then return
+                // immediately if the call to the substructure returned false.
+                match kind {
+                    BoolKind => {
+                        let next_bcx = sub_block(top_bcx,
+                                                 fmt!("next_%u_%u",
+                                                      self_variant_index,
+                                                      i));
+                        let llcond = Load(match_bcx, fcx.llretptr);
+                        CondBr(match_bcx,
+                               llcond,
+                               next_bcx.llbb,
+                               fcx.llreturn);
+                        match_bcx = next_bcx;
+                    }
+                    UnitKind => {}
+                }
+            }
+
+            // Store true in the return pointer if this is a boolean-kind
+            // deriving method.
+            match kind {
+                BoolKind => Store(match_bcx, C_bool(true), fcx.llretptr),
+                UnitKind => {}
             }
 
             // Finish up the matching block.
-            Store(match_bcx, C_bool(true), fcx.llretptr);
             Br(match_bcx, fcx.llreturn);
 
-            // Build the inner switch.
-            let llswitch = Switch(
-                *bcx, llotherdiscrim, unreachable_bcx.llbb, n_variants);
-            for uint::range(0, n_variants) |other_variant_index| {
-                let discriminant =
-                    enum_variant_infos[other_variant_index].disr_val;
-                if self_variant_index == other_variant_index {
-                    // This is the potentially-matching case.
-                    AddCase(llswitch,
-                            C_int(ccx, discriminant),
-                            top_match_bcx.llbb);
-                } else {
-                    // This is always a non-matching case.
-                    AddCase(llswitch,
-                            C_int(ccx, discriminant),
-                            nomatch_bcx.llbb);
+            // If this is a boolean-kind derived method, build the inner
+            // switch. Otherwise, just jump to the matching case.
+            match llotherdiscrim_opt {
+                None => Br(*bcx, top_match_bcx.llbb),
+                Some(copy llotherdiscrim) => {
+                    let llswitch = Switch(*bcx,
+                                          llotherdiscrim,
+                                          unreachable_bcx.llbb,
+                                          n_variants);
+                    for uint::range(0, n_variants) |other_variant_index| {
+                        let discriminant =
+                            enum_variant_infos[other_variant_index].disr_val;
+                        if self_variant_index == other_variant_index {
+                            // This is the potentially-matching case.
+                            AddCase(llswitch,
+                                    C_int(ccx, discriminant),
+                                    top_match_bcx.llbb);
+                        } else {
+                            // This is always a non-matching case.
+                            AddCase(llswitch,
+                                    C_int(ccx, discriminant),
+                                    nomatch_bcx_opt.get().llbb);
+                        }
+                    }
                 }
             }
         }
@@ -233,7 +333,7 @@ fn call_substructure_method(bcx: block,
                             derived_field_info: &DerivedFieldInfo,
                             self_ty: ty::t,
                             llselfval: ValueRef,
-                            llotherval: ValueRef) -> block {
+                            llotherval_opt: Option<ValueRef>) -> block {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
 
@@ -273,12 +373,18 @@ fn call_substructure_method(bcx: block,
         }
     };
 
+    let arg_values;
+    match llotherval_opt {
+        None => arg_values = ArgVals(~[]),
+        Some(copy llotherval) => arg_values = ArgVals(~[llotherval])
+    }
+
     callee::trans_call_inner(bcx,
                              None,
                              fn_expr_tpbt.ty,
                              ty::mk_bool(ccx.tcx),
                              cb,
-                             ArgVals(~[llotherval]),
+                             move arg_values,
                              SaveIn(fcx.llretptr),
                              DontAutorefArg)
 }
