@@ -129,11 +129,11 @@ trait ext_ctxt {
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
-    fn backtrace() -> expn_info;
+    fn backtrace() -> Option<@expn_info>;
     fn mod_push(mod_name: ast::ident);
     fn mod_pop();
     fn mod_path() -> ~[ast::ident];
-    fn bt_push(ei: codemap::expn_info_);
+    fn bt_push(ei: codemap::expn_info);
     fn bt_pop();
     fn span_fatal(sp: span, msg: &str) -> !;
     fn span_err(sp: span, msg: &str);
@@ -153,7 +153,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
            cfg: ast::crate_cfg) -> ext_ctxt {
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
-                      mut backtrace: expn_info,
+                      mut backtrace: Option<@expn_info>,
                       mut mod_path: ~[ast::ident],
                       mut trace_mac: bool};
     impl ctxt_repr: ext_ctxt {
@@ -161,11 +161,11 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
-        fn backtrace() -> expn_info { self.backtrace }
+        fn backtrace() -> Option<@expn_info> { self.backtrace }
         fn mod_push(i: ast::ident) { self.mod_path.push(i); }
         fn mod_pop() { self.mod_path.pop(); }
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
-        fn bt_push(ei: codemap::expn_info_) {
+        fn bt_push(ei: codemap::expn_info) {
             match ei {
               expanded_from({call_site: cs, callie: callie}) => {
                 self.backtrace =

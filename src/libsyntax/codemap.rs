@@ -39,7 +39,11 @@ export loc;
 export get_filemap;
 export new_codemap;
 
-struct span {lo: uint, hi: uint, expn_info: expn_info}
+struct span {
+    lo: uint,
+    hi: uint,
+    expn_info: Option<@expn_info>
+}
 
 impl span : cmp::Eq {
     pure fn eq(other: &span) -> bool {
@@ -59,11 +63,10 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-enum expn_info_ {
+enum expn_info {
     expanded_from({call_site: span,
                    callie: {name: ~str, span: Option<span>}})
 }
-type expn_info = Option<@expn_info_>;
 
 type filename = ~str;
 
