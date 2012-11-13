@@ -20,7 +20,7 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
-use codemap::{CodeMap, FileMap};
+use codemap::{CodeMap, FileMap, CharPos, BytePos};
 
 type parse_sess = @{
     cm: @codemap::CodeMap,
@@ -28,8 +28,8 @@ type parse_sess = @{
     span_diagnostic: span_handler,
     interner: @ident_interner,
     // these two must be kept up to date
-    mut chpos: uint,
-    mut byte_pos: uint
+    mut chpos: CharPos,
+    mut byte_pos: BytePos
 };
 
 fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
@@ -38,7 +38,7 @@ fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
              mut next_id: 1,
              span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
              interner: mk_ident_interner(),
-             mut chpos: 0u, mut byte_pos: 0u};
+             mut chpos: CharPos(0u), mut byte_pos: BytePos(0u)};
 }
 
 fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
@@ -47,7 +47,7 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
              mut next_id: 1,
              span_diagnostic: sh,
              interner: mk_ident_interner(),
-             mut chpos: 0u, mut byte_pos: 0u};
+             mut chpos: CharPos(0u), mut byte_pos: BytePos(0u)};
 }
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,

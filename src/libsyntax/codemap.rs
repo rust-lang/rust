@@ -10,8 +10,109 @@ use std::serialization::{Serializable,
                          Serializer,
                          Deserializer};
 
-pub type BytePos = uint;
-pub type CharPos = uint;
+trait Pos {
+    static pure fn from_uint(n: uint) -> self;
+    pure fn to_uint(&self) -> uint;
+}
+
+pub enum BytePos = uint;
+pub enum CharPos = uint;
+
+impl BytePos: Pos {
+    static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
+    pure fn to_uint(&self) -> uint { **self }
+}
+
+impl BytePos: cmp::Eq {
+    pure fn eq(other: &BytePos) -> bool {
+        *self == **other
+    }
+    pure fn ne(other: &BytePos) -> bool { !self.eq(other) }
+}
+
+impl BytePos: cmp::Ord {
+    pure fn lt(other: &BytePos) -> bool { *self < **other }
+    pure fn le(other: &BytePos) -> bool { *self <= **other }
+    pure fn ge(other: &BytePos) -> bool { *self >= **other }
+    pure fn gt(other: &BytePos) -> bool { *self > **other }
+}
+
+impl BytePos: Num {
+    pure fn add(other: &BytePos) -> BytePos {
+        BytePos(*self + **other)
+    }
+    pure fn sub(other: &BytePos) -> BytePos {
+        BytePos(*self - **other)
+    }
+    pure fn mul(other: &BytePos) -> BytePos {
+        BytePos(*self * (**other))
+    }
+    pure fn div(other: &BytePos) -> BytePos {
+        BytePos(*self / **other)
+    }
+    pure fn modulo(other: &BytePos) -> BytePos {
+        BytePos(*self % **other)
+    }
+    pure fn neg() -> BytePos {
+        BytePos(-*self)
+    }
+    pure fn to_int() -> int { *self as int }
+    static pure fn from_int(+n: int) -> BytePos { BytePos(n as uint) }
+}
+
+impl BytePos: to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
+impl CharPos: Pos {
+    static pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
+    pure fn to_uint(&self) -> uint { **self }
+}
+
+impl CharPos: cmp::Eq {
+    pure fn eq(other: &CharPos) -> bool {
+        *self == **other
+    }
+    pure fn ne(other: &CharPos) -> bool { !self.eq(other) }
+}
+
+impl CharPos: cmp::Ord {
+    pure fn lt(other: &CharPos) -> bool { *self < **other }
+    pure fn le(other: &CharPos) -> bool { *self <= **other }
+    pure fn ge(other: &CharPos) -> bool { *self >= **other }
+    pure fn gt(other: &CharPos) -> bool { *self > **other }
+}
+
+impl CharPos: Num {
+    pure fn add(other: &CharPos) -> CharPos {
+        CharPos(*self + **other)
+    }
+    pure fn sub(other: &CharPos) -> CharPos {
+        CharPos(*self - **other)
+    }
+    pure fn mul(other: &CharPos) -> CharPos {
+        CharPos(*self * (**other))
+    }
+    pure fn div(other: &CharPos) -> CharPos {
+        CharPos(*self / **other)
+    }
+    pure fn modulo(other: &CharPos) -> CharPos {
+        CharPos(*self % **other)
+    }
+    pure fn neg() -> CharPos {
+        CharPos(-*self)
+    }
+    pure fn to_int() -> int { *self as int }
+    static pure fn from_int(+n: int) -> CharPos { CharPos(n as uint) }
+}
+
+impl CharPos: to_bytes::IterBytes {
+    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
 
 pub struct span {
     lo: CharPos,
@@ -37,8 +138,8 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-pub struct Loc {
-    file: @FileMap, line: uint, col: uint
+pub struct Loc<A: Pos> {
+    file: @FileMap, line: uint, col: A
 }
 
 pub struct FilePos {
@@ -69,7 +170,7 @@ pub struct FileLines {
 pub enum FileSubstr {
     pub FssNone,
     pub FssInternal(span),
-    pub FssExternal({filename: ~str, line: uint, col: uint})
+    pub FssExternal({filename: ~str, line: uint, col: CharPos})
 }
 
 pub struct FileMap {
@@ -83,7 +184,7 @@ pub struct FileMap {
 pub impl FileMap {
     static fn new_w_substr(+filename: FileName, +substr: FileSubstr,
                            src: @~str,
-                           start_pos_ch: uint, start_pos_byte: uint)
+                           +start_pos_ch: CharPos, +start_pos_byte: BytePos)
         -> FileMap {
         return FileMap {
             name: filename, substr: substr, src: src,
@@ -93,18 +194,22 @@ pub impl FileMap {
     }
 
     static fn new(+filename: FileName, src: @~str,
-                  start_pos_ch: CharPos, start_pos_byte: BytePos)
+                  +start_pos_ch: CharPos, +start_pos_byte: BytePos)
         -> FileMap {
         return FileMap::new_w_substr(filename, FssNone, src,
                                      start_pos_ch, start_pos_byte);
     }
 
-    fn next_line(@self, chpos: CharPos, byte_pos: BytePos) {
-        self.lines.push(FilePos {ch: chpos, byte: byte_pos + self.start_pos.byte});
+    fn next_line(@self, +chpos: CharPos, +byte_pos: BytePos) {
+        self.lines.push(FilePos {
+            ch: chpos,
+            byte: byte_pos + self.start_pos.byte
+        });
     }
 
     pub fn get_line(@self, line: int) -> ~str unsafe {
-        let begin: uint = self.lines[line].byte - self.start_pos.byte;
+        let begin: BytePos = self.lines[line].byte - self.start_pos.byte;
+        let begin = begin.to_uint();
         let end = match str::find_char_from(*self.src, '\n', begin) {
             Some(e) => e,
             None => str::len(*self.src)
@@ -127,21 +232,22 @@ pub impl CodeMap {
 
     pub fn mk_substr_filename(@self, sp: span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
-        return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
+        return fmt!("<%s:%u:%u>", pos.file.name,
+                    pos.line, pos.col.to_uint());
     }
 
-    pub fn lookup_char_pos(@self, pos: CharPos) -> Loc {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
+    pub fn lookup_char_pos(@self, +pos: CharPos) -> Loc<CharPos> {
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_byte_pos(@self, pos: BytePos) -> Loc {
-        pure fn lookup(pos: FilePos) -> uint { return pos.byte; }
+    pub fn lookup_byte_pos(@self, +pos: BytePos) -> Loc<BytePos> {
+        pure fn lookup(pos: FilePos) -> uint { return pos.byte.to_uint(); }
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_char_pos_adj(@self, pos: CharPos)
-        -> {filename: ~str, line: uint, col: uint, file: Option<@FileMap>}
+    pub fn lookup_char_pos_adj(@self, +pos: CharPos)
+        -> {filename: ~str, line: uint, col: CharPos, file: Option<@FileMap>}
     {
         let loc = self.lookup_char_pos(pos);
         match (loc.file.substr) {
@@ -152,7 +258,8 @@ pub impl CodeMap {
                  file: Some(loc.file)}
             }
             FssInternal(sp) => {
-                self.lookup_char_pos_adj(sp.lo + (pos - loc.file.start_pos.ch))
+                self.lookup_char_pos_adj(
+                    sp.lo + (pos - loc.file.start_pos.ch))
             }
             FssExternal(eloc) => {
                 {filename: /* FIXME (#2543) */ copy eloc.filename,
@@ -164,14 +271,17 @@ pub impl CodeMap {
     }
 
     pub fn adjust_span(@self, sp: span) -> span {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
         let line = self.lookup_line(sp.lo, lookup);
         match (line.fm.substr) {
             FssNone => sp,
             FssInternal(s) => {
-                self.adjust_span(span {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
-                                       hi: s.lo + (sp.hi - line.fm.start_pos.ch),
-                                       expn_info: sp.expn_info})}
+                self.adjust_span(span {
+                    lo: s.lo + (sp.lo - line.fm.start_pos.ch),
+                    hi: s.lo + (sp.hi - line.fm.start_pos.ch),
+                    expn_info: sp.expn_info
+                })
+            }
             FssExternal(_) => sp
         }
     }
@@ -180,7 +290,7 @@ pub impl CodeMap {
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.filename,
-                    lo.line, lo.col, hi.line, hi.col)
+                    lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 
     pub fn span_to_filename(@self, sp: span) -> FileName {
@@ -198,21 +308,24 @@ pub impl CodeMap {
         return @FileLines {file: lo.file, lines: lines};
     }
 
-    fn lookup_byte_offset(@self, chpos: CharPos)
+    fn lookup_byte_offset(@self, +chpos: CharPos)
         -> {fm: @FileMap, pos: BytePos} {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch; }
+        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
         let {fm, line} = self.lookup_line(chpos, lookup);
         let line_offset = fm.lines[line].byte - fm.start_pos.byte;
         let col = chpos - fm.lines[line].ch;
-        let col_offset = str::count_bytes(*fm.src, line_offset, col);
-        {fm: fm, pos: line_offset + col_offset}
+        let col_offset = str::count_bytes(*fm.src,
+                                          line_offset.to_uint(),
+                                          col.to_uint());
+        {fm: fm, pos: line_offset + BytePos(col_offset)}
     }
 
     pub fn span_to_snippet(@self, sp: span) -> ~str {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
         assert begin.fm.start_pos == end.fm.start_pos;
-        return str::slice(*begin.fm.src, begin.pos, end.pos);
+        return str::slice(*begin.fm.src,
+                          begin.pos.to_uint(), end.pos.to_uint());
     }
 
     pub fn get_filemap(@self, filename: ~str) -> @FileMap {
@@ -225,7 +338,7 @@ pub impl CodeMap {
 }
 
 priv impl CodeMap {
-    fn lookup_line(@self, pos: uint, lookup: LookupFn)
+    fn lookup_line<A: Pos>(@self, pos: A, lookup: LookupFn)
         -> {fm: @FileMap, line: uint}
     {
         let len = self.files.len();
@@ -233,31 +346,40 @@ priv impl CodeMap {
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if lookup(self.files[m].start_pos) > pos { b = m; } else { a = m; }
+            if lookup(self.files[m].start_pos) > pos.to_uint() {
+                b = m;
+            } else {
+                a = m;
+            }
         }
         if (a >= len) {
-            fail fmt!("position %u does not resolve to a source location", pos)
+            fail fmt!("position %u does not resolve to a source location",
+                      pos.to_uint())
         }
         let f = self.files[a];
         a = 0u;
         b = vec::len(f.lines);
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if lookup(f.lines[m]) > pos { b = m; } else { a = m; }
+            if lookup(f.lines[m]) > pos.to_uint() { b = m; } else { a = m; }
         }
         return {fm: f, line: a};
     }
 
-    fn lookup_pos(@self, pos: uint, lookup: LookupFn) -> Loc {
+    fn lookup_pos<A: Pos Num>(@self, pos: A, lookup: LookupFn) -> Loc<A> {
         let {fm: f, line: a} = self.lookup_line(pos, lookup);
-        return Loc {file: f, line: a + 1u, col: pos - lookup(f.lines[a])};
+        return Loc {
+            file: f,
+            line: a + 1u,
+            col: pos - from_uint(lookup(f.lines[a]))
+        };
     }
 
     fn span_to_str_no_adj(@self, sp: span) -> ~str {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.file.name,
-                    lo.line, lo.col, hi.line, hi.col)
+                    lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 }
 
