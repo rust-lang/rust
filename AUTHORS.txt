@@ -26,6 +26,7 @@ Brian J. Burg <burg@cs.washington.edu>
 Brian Leibig <brian.leibig@gmail.com>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
+Chris Pressey <cpressey@gmail.com>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Daniel Brooks <db48x@db48x.net>
