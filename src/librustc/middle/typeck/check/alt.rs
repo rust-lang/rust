@@ -1,6 +1,6 @@
 use syntax::print::pprust;
 use syntax::ast_util::{walk_pat};
-use pat_util::{pat_is_variant_or_struct};
+use pat_util::{pat_is_binding, pat_is_const, pat_is_variant_or_struct};
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -74,7 +74,7 @@ fn check_legality_of_move_bindings(fcx: @fn_ctxt,
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
         do walk_pat(*pat) |p| {
-            if !pat_is_variant_or_struct(def_map, p) {
+            if pat_is_binding(def_map, p) {
                 match p.node {
                     ast::pat_ident(ast::bind_by_move, _, sub) => {
                         // check legality of moving out of the enum
@@ -391,8 +391,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, b_ty);
       }
-      ast::pat_ident(bm, name, sub)
-            if !pat_is_variant_or_struct(tcx.def_map, pat) => {
+      ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
+        let const_did = ast_util::def_id_of_def(tcx.def_map.get(pat.id));
+        let const_tpt = ty::lookup_item_type(tcx, const_did);
+        fcx.write_ty(pat.id, const_tpt.ty);
+      }
+      ast::pat_ident(bm, name, sub) if pat_is_binding(tcx.def_map, pat) => {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
 
