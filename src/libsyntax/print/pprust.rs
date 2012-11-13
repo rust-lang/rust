@@ -1904,8 +1904,8 @@ fn maybe_print_trailing_comment(s: ps, span: codemap::span,
     match next_comment(s) {
       Some(cmnt) => {
         if cmnt.style != comments::trailing { return; }
-        let span_line = codemap::lookup_char_pos(cm, span.hi);
-        let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
+        let span_line = cm.lookup_char_pos(span.hi);
+        let comment_line = cm.lookup_char_pos(cmnt.pos);
         let mut next = cmnt.pos + 1u;
         match next_pos { None => (), Some(p) => next = p }
         if span.hi < cmnt.pos && cmnt.pos < next &&

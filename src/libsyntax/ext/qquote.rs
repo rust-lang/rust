@@ -204,13 +204,13 @@ fn finish<T: qq_helper>
     -> @ast::expr
 {
     let cm = ecx.codemap();
-    let str = @codemap::span_to_snippet(body.span, cm);
+    let str = @cm.span_to_snippet(body.span);
     debug!("qquote--str==%?", str);
-    let fname = codemap::mk_substr_filename(cm, body.span);
+    let fname = cm.mk_substr_filename(body.span);
     let node = parse_from_source_str
         (f, fname, codemap::fss_internal(body.span), str,
          ecx.cfg(), ecx.parse_sess());
-    let loc = codemap::lookup_char_pos(cm, body.span.lo);
+    let loc = cm.lookup_char_pos(body.span.lo);
 
     let sp = node.span();
     let qcx = gather_anti_quotes(sp.lo, node);

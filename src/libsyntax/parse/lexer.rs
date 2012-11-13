@@ -1,5 +1,5 @@
 use diagnostic::span_handler;
-use codemap::span;
+use codemap::{span, CodeMap};
 use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
                              tt_next_token};
 
@@ -135,7 +135,7 @@ fn bump(rdr: string_reader) {
         rdr.col += 1u;
         rdr.chpos += 1u;
         if rdr.curr == '\n' {
-            codemap::next_line(rdr.filemap, rdr.chpos, rdr.pos);
+            rdr.filemap.next_line(rdr.chpos, rdr.pos);
             rdr.col = 0u;
         }
         let next = str::char_range_at(*rdr.src, rdr.pos);
@@ -232,9 +232,9 @@ fn consume_any_line_comment(rdr: string_reader)
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
-            let cmap = @codemap::new_codemap();
+            let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
-            let loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
+            let loc = cmap.lookup_char_pos_adj(rdr.chpos);
             if loc.line == 1u && loc.col == 0u {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);

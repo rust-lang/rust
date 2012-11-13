@@ -120,7 +120,7 @@ fn build_ctxt(sess: Session,
 
 fn build_session() -> Session {
     let sopts: @options = basic_options();
-    let codemap = @codemap::new_codemap();
+    let codemap = @codemap::CodeMap::new();
     let error_handlers = build_error_handlers(codemap);
     let {emitter, span_handler} = error_handlers;
 

@@ -192,9 +192,9 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
 fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
-        let sp = codemap::adjust_span(cm,sp);
-        let ss = codemap::span_to_str(sp, cm);
-        let lines = codemap::span_to_lines(sp, cm);
+        let sp = cm.adjust_span(sp);
+        let ss = cm.span_to_str(sp);
+        let lines = cm.span_to_lines(sp);
         print_diagnostic(ss, lvl, msg);
         highlight_lines(cm, sp, lines);
         print_macro_backtrace(cm, sp);
@@ -221,7 +221,7 @@ fn highlight_lines(cm: @codemap::CodeMap, sp: span,
     // Print the offending lines
     for display_lines.each |line| {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
-        let s = codemap::get_line(fm, *line as int) + ~"\n";
+        let s = fm.get_line(*line as int) + ~"\n";
         io::stderr().write_str(s);
     }
     if elided {
@@ -237,7 +237,7 @@ fn highlight_lines(cm: @codemap::CodeMap, sp: span,
 
     // If there's one line at fault we can easily point to the problem
     if vec::len(lines.lines) == 1u {
-        let lo = codemap::lookup_char_pos(cm, sp.lo);
+        let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0u;
         let mut num = (lines.lines[0] + 1u) / 10u;
 
@@ -250,7 +250,7 @@ fn highlight_lines(cm: @codemap::CodeMap, sp: span,
         while left > 0u { str::push_char(&mut s, ' '); left -= 1u; }
 
         s += ~"^";
-        let hi = codemap::lookup_char_pos(cm, sp.hi);
+        let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let mut width = hi.col - lo.col - 1u;
@@ -263,10 +263,10 @@ fn highlight_lines(cm: @codemap::CodeMap, sp: span,
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     do option::iter(&sp.expn_info) |ei| {
         let ss = option::map_default(&ei.callie.span, @~"",
-                                     |span| @codemap::span_to_str(*span, cm));
+                                     |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,
                          fmt!("in expansion of %s!", ei.callie.name));
-        let ss = codemap::span_to_str(ei.call_site, cm);
+        let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);
     }
