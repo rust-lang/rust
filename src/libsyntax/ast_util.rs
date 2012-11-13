@@ -1,7 +1,7 @@
-use codemap::span;
+use codemap::{span, CharPos};
 use ast::*;
 
-pure fn spanned<T>(lo: uint, hi: uint, +t: T) -> spanned<T> {
+pure fn spanned<T>(+lo: CharPos, +hi: CharPos, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), move t)
 }
 
@@ -14,12 +14,12 @@ pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
 }
 
 /* assuming that we're not in macro expansion */
-pure fn mk_sp(lo: uint, hi: uint) -> span {
+pure fn mk_sp(+lo: CharPos, +hi: CharPos) -> span {
     span {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
-pure fn dummy_sp() -> span { return mk_sp(0u, 0u); }
+pure fn dummy_sp() -> span { return mk_sp(CharPos(0), CharPos(0)); }
 
 
 

@@ -53,7 +53,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
               mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
-              mut cur_span: ast_util::mk_sp(0u,0u)
+              mut cur_span: ast_util::dummy_sp()
              };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;

@@ -1,5 +1,5 @@
 use parse::{comments, lexer, token};
-use codemap::CodeMap;
+use codemap::{CodeMap, CharPos};
 use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
 use pp::{consistent, inconsistent, eof};
 use ast::{required, provided};
@@ -631,7 +631,7 @@ fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
         print_variant(s, *v);
         word(s.s, ~",");
         end(s);
-        maybe_print_trailing_comment(s, v.span, None::<uint>);
+        maybe_print_trailing_comment(s, v.span, None);
     }
     bclose(s, span);
 }
@@ -886,7 +886,7 @@ fn print_stmt(s: ps, st: ast::stmt) {
       }
     }
     if parse::classify::stmt_ends_with_semi(st) { word(s.s, ~";"); }
-    maybe_print_trailing_comment(s, st.span, None::<uint>);
+    maybe_print_trailing_comment(s, st.span, None);
 }
 
 fn print_block(s: ps, blk: ast::blk) {
@@ -1898,7 +1898,7 @@ fn print_ty_fn(s: ps,
 }
 
 fn maybe_print_trailing_comment(s: ps, span: codemap::span,
-                                next_pos: Option<uint>) {
+                                next_pos: Option<CharPos>) {
     let mut cm;
     match s.cm { Some(ccm) => cm = ccm, _ => return }
     match next_comment(s) {
@@ -1906,7 +1906,7 @@ fn maybe_print_trailing_comment(s: ps, span: codemap::span,
         if cmnt.style != comments::trailing { return; }
         let span_line = cm.lookup_char_pos(span.hi);
         let comment_line = cm.lookup_char_pos(cmnt.pos);
-        let mut next = cmnt.pos + 1u;
+        let mut next = cmnt.pos + CharPos(1u);
         match next_pos { None => (), Some(p) => next = p }
         if span.hi < cmnt.pos && cmnt.pos < next &&
                span_line.line == comment_line.line {
@@ -1981,7 +1981,7 @@ fn lit_to_str(l: @ast::lit) -> ~str {
     return to_str(l, print_literal, parse::token::mk_fake_ident_interner());
 }
 
-fn next_lit(s: ps, pos: uint) -> Option<comments::lit> {
+fn next_lit(s: ps, pos: CharPos) -> Option<comments::lit> {
     match s.literals {
       Some(lits) => {
         while s.cur_lit < vec::len(lits) {
@@ -1996,7 +1996,7 @@ fn next_lit(s: ps, pos: uint) -> Option<comments::lit> {
     }
 }
 
-fn maybe_print_comment(s: ps, pos: uint) {
+fn maybe_print_comment(s: ps, pos: CharPos) {
     loop {
         match next_comment(s) {
           Some(cmnt) => {

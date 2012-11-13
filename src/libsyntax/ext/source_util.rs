@@ -25,7 +25,7 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::Some(0u), ~"col");
     let loc = cx.codemap().lookup_char_pos(sp.lo);
-    return mk_uint(cx, sp, loc.col);
+    return mk_uint(cx, sp, loc.col.to_uint());
 }
 
 /* file!(): expands to the current filename */

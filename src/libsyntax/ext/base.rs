@@ -178,7 +178,9 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         }
         fn bt_pop() {
             match self.backtrace {
-              Some(@ExpandedFrom({call_site: span {expn_info: prev, _}, _})) => {
+              Some(@ExpandedFrom({
+                  call_site: span {expn_info: prev, _}, _
+              })) => {
                 self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")

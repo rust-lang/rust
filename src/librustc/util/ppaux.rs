@@ -106,7 +106,8 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
         -> (~str, Option<span>)
     {
         let lo = cx.sess.codemap.lookup_char_pos_adj(span.lo);
-        (fmt!("the %s at %u:%u", heading, lo.line, lo.col), Some(span))
+        (fmt!("the %s at %u:%u", heading,
+              lo.line, lo.col.to_uint()), Some(span))
     }
 }
 

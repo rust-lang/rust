@@ -8,7 +8,7 @@ use trans::build::B;
 use middle::ty;
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token::ident_interner;
-use codemap::span;
+use codemap::{span, CharPos};
 use ast::Ty;
 use pat_util::*;
 use util::ppaux::ty_to_str;
@@ -112,7 +112,7 @@ type compile_unit_md = {name: ~str};
 type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
-type block_md = {start: codemap::Loc, end: codemap::Loc};
+type block_md = {start: codemap::Loc<CharPos>, end: codemap::Loc<CharPos>};
 type argument_md = {id: ast::node_id};
 type retval_md = {id: ast::node_id};
 
@@ -266,8 +266,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
     };
     let lldata = ~[lltag(tg),
                   parent,
-                  lli32(start.line as int),
-                  lli32(start.col as int),
+                  lli32(start.line.to_int()),
+                  lli32(start.col.to_int()),
                   file_node.node,
                   lli32(unique_id)
                  ];
@@ -713,8 +713,8 @@ fn update_source_pos(cx: block, s: span) {
     let cm = cx.sess().codemap;
     let blockmd = create_block(cx);
     let loc = cm.lookup_char_pos(s.lo);
-    let scopedata = ~[lli32(loc.line as int),
-                     lli32(loc.col as int),
+    let scopedata = ~[lli32(loc.line.to_int()),
+                     lli32(loc.col.to_int()),
                      blockmd.node,
                      llnull()];
     let dbgscope = llmdnode(scopedata);

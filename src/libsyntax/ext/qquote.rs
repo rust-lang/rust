@@ -4,6 +4,7 @@ use parse::parser;
 use parse::parser::{Parser, parse_from_source_str};
 use dvec::DVec;
 use parse::token::ident_interner;
+use codemap::CharPos;
 
 use fold::*;
 use visit::*;
@@ -15,13 +16,13 @@ use io::*;
 use codemap::span;
 
 struct gather_item {
-    lo: uint,
-    hi: uint,
+    lo: CharPos,
+    hi: CharPos,
     e: @ast::expr,
     constr: ~str
 }
 
-type aq_ctxt = @{lo: uint, gather: DVec<gather_item>};
+type aq_ctxt = @{lo: CharPos, gather: DVec<gather_item>};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::Ty)
@@ -114,7 +115,7 @@ impl @ast::pat: qq_helper {
     fn get_fold_fn() -> ~str {~"fold_pat"}
 }
 
-fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
+fn gather_anti_quotes<N: qq_helper>(lo: CharPos, node: N) -> aq_ctxt
 {
     let v = @{visit_expr: |node, &&cx, v| visit_aq(node, ~"from_expr", cx, v),
               visit_ty: |node, &&cx, v| visit_aq(node, ~"from_ty", cx, v),
@@ -226,7 +227,8 @@ fn finish<T: qq_helper>
     let mut str2 = ~"";
     enum state {active, skip(uint), blank};
     let mut state = active;
-    let mut i = 0u, j = 0u;
+    let mut i = CharPos(0u);
+    let mut j = 0u;
     let g_len = cx.gather.len();
     for str::chars_each(*str) |ch| {
         if (j < g_len && i == cx.gather[j].lo) {
@@ -242,7 +244,7 @@ fn finish<T: qq_helper>
           blank if is_space(ch) => str::push_char(&mut str2, ch),
           blank => str::push_char(&mut str2, ' ')
         }
-        i += 1u;
+        i += CharPos(1u);
         if (j < g_len && i == cx.gather[j].hi) {
             assert ch == ')';
             state = active;
@@ -270,7 +272,7 @@ fn finish<T: qq_helper>
                                  ~"qquote", ~"mk_file_substr"]),
                                 ~[mk_uniq_str(cx,sp, loc.file.name),
                                  mk_uint(cx,sp, loc.line),
-                                 mk_uint(cx,sp, loc.col)]),
+                                 mk_uint(cx,sp, loc.col.to_uint())]),
                         mk_unary(cx,sp, ast::box(ast::m_imm),
                                  mk_uniq_str(cx,sp, str2)),
                         cfg_call(),
@@ -346,7 +348,7 @@ fn replace_ty(repls: ~[fragment],
 
 fn mk_file_substr(fname: ~str, line: uint, col: uint) ->
     codemap::FileSubstr {
-    codemap::FssExternal({filename: fname, line: line, col: col})
+    codemap::FssExternal({filename: fname, line: line, col: CharPos(col)})
 }
 
 // Local Variables:
