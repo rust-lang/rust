@@ -58,21 +58,19 @@ enum file_substr {
     fss_external({filename: ~str, line: uint, col: uint})
 }
 
-struct filemap_ {
+struct filemap {
     name: filename, substr: file_substr, src: @~str,
     start_pos: file_pos, mut lines: ~[file_pos]
 }
 
-type filemap = @filemap_;
-
 struct CodeMap_ {
-    files: DVec<filemap>
+    files: DVec<@filemap>
 }
 
 type CodeMap = @CodeMap_;
 
 struct loc {
-    file: filemap, line: uint, col: uint
+    file: @filemap, line: uint, col: uint
 }
 
 fn new_codemap() -> CodeMap { @CodeMap_ {files: DVec()} }
@@ -81,7 +79,7 @@ fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
                         src: @~str,
                         start_pos_ch: uint, start_pos_byte: uint)
    -> filemap {
-    return @filemap_ {
+    return filemap {
         name: filename, substr: substr, src: src,
         start_pos: file_pos {ch: start_pos_ch, byte: start_pos_byte},
         mut lines: ~[file_pos {ch: start_pos_ch, byte: start_pos_byte}]
@@ -101,14 +99,14 @@ fn mk_substr_filename(cm: CodeMap, sp: span) -> ~str
     return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
-fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
+fn next_line(file: @filemap, chpos: uint, byte_pos: uint) {
     file.lines.push(file_pos {ch: chpos, byte: byte_pos + file.start_pos.byte});
 }
 
 type lookup_fn = pure fn(file_pos) -> uint;
 
 fn lookup_line(map: CodeMap, pos: uint, lookup: lookup_fn)
-    -> {fm: filemap, line: uint}
+    -> {fm: @filemap, line: uint}
 {
     let len = map.files.len();
     let mut a = 0u;
@@ -146,7 +144,7 @@ fn lookup_byte_pos(map: CodeMap, pos: uint) -> loc {
 }
 
 fn lookup_char_pos_adj(map: CodeMap, pos: uint)
-    -> {filename: ~str, line: uint, col: uint, file: Option<filemap>}
+    -> {filename: ~str, line: uint, col: uint, file: Option<@filemap>}
 {
     let loc = lookup_char_pos(map, pos);
     match (loc.file.substr) {
@@ -222,7 +220,7 @@ fn span_to_str(sp: span, cm: CodeMap) -> ~str {
 }
 
 struct file_lines {
-    file: filemap,
+    file: @filemap,
     lines: ~[uint]
 }
 
@@ -241,7 +239,7 @@ fn span_to_lines(sp: span, cm: codemap::CodeMap) -> @file_lines {
     return @file_lines {file: lo.file, lines: lines};
 }
 
-fn get_line(fm: filemap, line: int) -> ~str unsafe {
+fn get_line(fm: @filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = match str::find_char_from(*fm.src, '\n', begin) {
       Some(e) => e,
@@ -251,7 +249,7 @@ fn get_line(fm: filemap, line: int) -> ~str unsafe {
 }
 
 fn lookup_byte_offset(cm: codemap::CodeMap, chpos: uint)
-    -> {fm: filemap, pos: uint} {
+    -> {fm: @filemap, pos: uint} {
     pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
     let {fm, line} = lookup_line(cm, chpos, lookup);
     let line_offset = fm.lines[line].byte - fm.start_pos.byte;
@@ -273,7 +271,7 @@ fn get_snippet(cm: codemap::CodeMap, fidx: uint, lo: uint, hi: uint) -> ~str
     return str::slice(*fm.src, lo, hi)
 }
 
-fn get_filemap(cm: CodeMap, filename: ~str) -> filemap {
+fn get_filemap(cm: CodeMap, filename: ~str) -> @filemap {
     for cm.files.each |fm| { if fm.name == filename { return *fm; } }
     //XXjdm the following triggers a mismatched type bug
     //      (or expected function, found _|_)
