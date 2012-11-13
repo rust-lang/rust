@@ -39,7 +39,39 @@ export loc;
 export get_filemap;
 export new_codemap;
 
+struct span {lo: uint, hi: uint, expn_info: expn_info}
+
+impl span : cmp::Eq {
+    pure fn eq(other: &span) -> bool {
+        return self.lo == (*other).lo && self.hi == (*other).hi;
+    }
+    pure fn ne(other: &span) -> bool { !self.eq(other) }
+}
+
+impl<S: Serializer> span: Serializable<S> {
+    /* Note #1972 -- spans are serialized but not deserialized */
+    fn serialize(&self, _s: &S) { }
+}
+
+impl<D: Deserializer> span: Deserializable<D> {
+    static fn deserialize(_d: &D) -> span {
+        ast_util::dummy_sp()
+    }
+}
+
+enum expn_info_ {
+    expanded_from({call_site: span,
+                   callie: {name: ~str, span: Option<span>}})
+}
+type expn_info = Option<@expn_info_>;
+
 type filename = ~str;
+
+type lookup_fn = pure fn(file_pos) -> uint;
+
+struct loc {
+    file: @filemap, line: uint, col: uint
+}
 
 struct file_pos {
     ch: uint, byte: uint
@@ -90,10 +122,6 @@ struct CodeMap {
     files: DVec<@filemap>
 }
 
-struct loc {
-    file: @filemap, line: uint, col: uint
-}
-
 fn new_codemap() -> CodeMap {
     CodeMap {
         files: DVec()
@@ -109,8 +137,6 @@ fn mk_substr_filename(cm: @CodeMap, sp: span) -> ~str
 fn next_line(file: @filemap, chpos: uint, byte_pos: uint) {
     file.lines.push(file_pos {ch: chpos, byte: byte_pos + file.start_pos.byte});
 }
-
-type lookup_fn = pure fn(file_pos) -> uint;
 
 fn lookup_line(map: @CodeMap, pos: uint, lookup: lookup_fn)
     -> {fm: @filemap, line: uint}
@@ -183,32 +209,6 @@ fn adjust_span(map: @CodeMap, sp: span) -> span {
                                hi: s.lo + (sp.hi - line.fm.start_pos.ch),
                                expn_info: sp.expn_info})}
       fss_external(_) => sp
-    }
-}
-
-enum expn_info_ {
-    expanded_from({call_site: span,
-                   callie: {name: ~str, span: Option<span>}})
-}
-type expn_info = Option<@expn_info_>;
-
-struct span {lo: uint, hi: uint, expn_info: expn_info}
-
-impl span : cmp::Eq {
-    pure fn eq(other: &span) -> bool {
-        return self.lo == (*other).lo && self.hi == (*other).hi;
-    }
-    pure fn ne(other: &span) -> bool { !self.eq(other) }
-}
-
-impl<S: Serializer> span: Serializable<S> {
-    /* Note #1972 -- spans are serialized but not deserialized */
-    fn serialize(&self, _s: &S) { }
-}
-
-impl<D: Deserializer> span: Deserializable<D> {
-    static fn deserialize(_d: &D) -> span {
-        ast_util::dummy_sp()
     }
 }
 
