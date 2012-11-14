@@ -432,6 +432,15 @@ then
     fi
 fi
 
+# Force freebsd to build with clang; gcc doesn't like us there
+if [ $CFG_OSTYPE = unknown-freebsd ]
+then
+    step_msg "on FreeBSD, forcing use of clang"
+    CFG_ENABLE_CLANG=1
+    putvar CFG_ENABLE_CLANG
+fi
+
+
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
