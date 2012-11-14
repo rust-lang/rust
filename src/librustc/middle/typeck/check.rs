@@ -1088,10 +1088,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
+    fn check_assignment(fcx: @fn_ctxt, sp: span, lhs: @ast::expr,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
         let mut bot = check_expr(fcx, lhs, None);
-        bot |= check_expr_with(fcx, rhs, fcx.expr_ty(lhs));
+        let lhs_type = fcx.expr_ty(lhs);
+        let unifier = || demand::assign(fcx, sp, lhs_type, rhs);
+        bot |= check_expr_with_unifier(fcx, rhs, Some(lhs_type), unifier);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         return bot;
     }
@@ -2247,7 +2249,8 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: @ast::expr) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
-    return check_expr_with(fcx, init, lty);
+    let unifier = || demand::assign(fcx, init.span, lty, init);
+    return check_expr_with_unifier(fcx, init, Some(lty), unifier);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
