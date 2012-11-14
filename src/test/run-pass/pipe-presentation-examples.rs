@@ -66,7 +66,10 @@ macro_rules! select (
 struct Buffer {
     foo: (),
 
-    drop { }
+}
+
+impl Buffer : Drop {
+    fn finalize() {}
 }
 
 proto! double_buffer (

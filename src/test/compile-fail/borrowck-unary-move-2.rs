@@ -1,5 +1,11 @@
 struct noncopyable {
-    i: (), drop { error!("dropped"); }
+    i: (),
+}
+
+impl noncopyable : Drop {
+    fn finalize() {
+        error!("dropped");
+    }
 }
 
 fn noncopyable() -> noncopyable {

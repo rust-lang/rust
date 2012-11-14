@@ -3,9 +3,14 @@ extern mod std;
 
 struct complainer {
   c: comm::Chan<bool>,
-  drop { error!("About to send!");
-    comm::send(self.c, true);
-    error!("Sent!"); }
+}
+
+impl complainer : Drop {
+    fn finalize() {
+        error!("About to send!");
+        comm::send(self.c, true);
+        error!("Sent!");
+    }
 }
 
 fn complainer(c: comm::Chan<bool>) -> complainer {

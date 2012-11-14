@@ -1,7 +1,9 @@
 struct socket {
     sock: int,
+}
 
-    drop { }
+impl socket : Drop {
+    fn finalize() {}
 }
 
 impl socket {

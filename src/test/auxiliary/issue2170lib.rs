@@ -5,7 +5,12 @@ fn foo(_x: i32) {
 
 struct rsrc {
   x: i32,
-  drop { foo(self.x); }
+}
+
+impl rsrc : Drop {
+    fn finalize() {
+        foo(self.x);
+    }
 }
 
 fn rsrc(x: i32) -> rsrc {

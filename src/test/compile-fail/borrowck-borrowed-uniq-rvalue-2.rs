@@ -1,6 +1,11 @@
 struct defer {
     x: &[&str],
-    drop { error!("%?", self.x); }
+}
+
+impl defer : Drop {
+    fn finalize() {
+        error!("%?", self.x);
+    }
 }
 
 fn defer(x: &r/[&r/str]) -> defer/&r {

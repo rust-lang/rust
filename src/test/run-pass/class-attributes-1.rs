@@ -1,10 +1,14 @@
 // pp-exact - Make sure we actually print the attributes
 
 struct cat {
-    #[cat_dropper]
-    drop { error!("%s landed on hir feet",self.name); }
     name: ~str,
 }
+
+impl cat: Drop {
+    #[cat_dropper]
+    fn finalize() { error!("%s landed on hir feet",self.name); }
+}
+
 
 #[cat_maker]
 fn cat(name: ~str) -> cat { cat{name: name,} }

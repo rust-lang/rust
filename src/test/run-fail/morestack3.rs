@@ -15,14 +15,17 @@ fn getbig_and_fail(&&i: int) {
 
 struct and_then_get_big_again {
   x:int,
-  drop {
-    fn getbig(i: int) {
-        if i != 0 {
-            getbig(i - 1);
+}
+
+impl and_then_get_big_again : Drop {
+    fn finalize() {
+        fn getbig(i: int) {
+            if i != 0 {
+                getbig(i - 1);
+            }
         }
+        getbig(100);
     }
-    getbig(100);
-  }
 }
 
 fn and_then_get_big_again(x:int) -> and_then_get_big_again {

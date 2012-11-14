@@ -7,7 +7,10 @@ extern mod std;
 
 struct notify {
     ch: comm::Chan<bool>, v: @mut bool,
-    drop {
+}
+
+impl notify : Drop {
+    fn finalize() {
         error!("notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
                ptr::addr_of(&(*(self.v))) as uint,

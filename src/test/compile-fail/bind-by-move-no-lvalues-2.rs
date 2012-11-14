@@ -1,4 +1,11 @@
-struct X { x: (), drop { error!("destructor runs"); } }
+struct X { x: (), }
+
+impl X : Drop {
+    fn finalize() {
+        error!("destructor runs");
+    }
+}
+
 struct Y { y: Option<X> }
 
 fn main() {

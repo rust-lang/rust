@@ -1,10 +1,15 @@
 struct cat {
   name: ~str,
-  #[cat_dropper]
-  /**
-     Actually, cats don't always land on their feet when you drop them.
-  */
-  drop { error!("%s landed on hir feet", self.name); }
+}
+
+impl cat : Drop {
+    #[cat_dropper]
+    /**
+       Actually, cats don't always land on their feet when you drop them.
+    */
+    fn finalize() {
+        error!("%s landed on hir feet", self.name);
+    }
 }
 
 #[cat_maker]

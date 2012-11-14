@@ -1,6 +1,11 @@
 struct Bar {
     x: int,
-    drop { io::println("Goodbye, cruel world"); }
+}
+
+impl Bar : Drop {
+    fn finalize() {
+        io::println("Goodbye, cruel world");
+    }
 }
 
 struct Foo {

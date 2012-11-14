@@ -1,4 +1,9 @@
-struct thing { x: int, drop { } }
+struct thing { x: int, }
+
+impl thing : Drop {
+    fn finalize() {}
+}
+
 fn thing() -> thing {
     thing {
         x: 0

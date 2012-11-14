@@ -7,7 +7,10 @@ struct Cat {
 
 struct Kitty {
     x: int,
-    drop {}
+}
+
+impl Kitty : Drop {
+    fn finalize() {}
 }
 
 #[cfg(target_arch = "x86_64")]

@@ -1,6 +1,10 @@
 // error-pattern: copying a noncopyable value
 
-struct foo { x: int, drop { } }
+struct foo { x: int, }
+
+impl foo : Drop {
+    fn finalize() {}
+}
 
 fn foo(x: int) -> foo {
     foo {

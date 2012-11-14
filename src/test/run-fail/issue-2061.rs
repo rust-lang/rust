@@ -2,7 +2,10 @@
 // error-pattern: ran out of stack
 struct R {
     b: int,
-    drop {
+}
+
+impl R : Drop {
+    fn finalize() {
         let _y = R { b: self.b };
     }
 }

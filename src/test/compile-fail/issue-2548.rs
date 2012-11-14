@@ -4,7 +4,10 @@ struct foo {
     x: @mut int,
 
 
-    drop {
+}
+
+impl foo : Drop {
+    fn finalize() {
         io::println("Goodbye, World!");
         *self.x += 1;
     }

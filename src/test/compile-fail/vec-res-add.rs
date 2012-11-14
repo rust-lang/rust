@@ -4,7 +4,10 @@
 struct r {
   let i:int;
   new(i:int) {self.i = i;}
-  drop {}
+}
+
+impl r : Drop {
+    fn finalize() {}
 }
 
 fn main() {

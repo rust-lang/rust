@@ -2,12 +2,15 @@
 
 struct r {
   x:int,
-            // Setting the exit status after the runtime has already
-            // failed has no effect and the process exits with the
-            // runtime's exit code
-  drop {
-    os::set_exit_status(50);
-  }
+}
+
+// Setting the exit status after the runtime has already
+// failed has no effect and the process exits with the
+// runtime's exit code
+impl r : Drop {
+    fn finalize() {
+        os::set_exit_status(50);
+    }
 }
 
 fn r(x:int) -> r {
