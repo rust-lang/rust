@@ -12,6 +12,6 @@ fn main()
     let add2 : &(fn@(int)->int) = &add(2);
     assert (*add2)(5) == 7;
 
-    let add3 : fn(int)->int = add(3); //~ ERROR mismatched types
+    let add3 : fn(int)->int = add(3);
     assert add3(4) == 7;
 }
