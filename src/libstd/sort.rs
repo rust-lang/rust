@@ -1133,7 +1133,10 @@ mod big_tests {
         val: uint,
         key: fn(@uint),
 
-        drop {
+    }
+
+    impl LVal : Drop {
+        fn finalize() {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
                 Some(@y) => {
