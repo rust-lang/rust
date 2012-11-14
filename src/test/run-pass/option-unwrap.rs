@@ -1,7 +1,10 @@
 struct dtor {
     x: @mut int,
 
-    drop {
+}
+
+impl dtor : Drop {
+    fn finalize() {
         // abuse access to shared mutable state to write this code
         *self.x -= 1;
     }

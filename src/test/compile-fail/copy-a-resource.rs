@@ -2,7 +2,10 @@
 
 struct foo {
   i: int,
-  drop {}
+}
+
+impl foo : Drop {
+    fn finalize() {}
 }
 
 fn foo(i:int) -> foo {

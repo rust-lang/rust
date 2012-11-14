@@ -5,8 +5,13 @@ type closable = @mut bool;
 
 struct close_res {
   i: closable,
- 
-  drop { *(self.i) = false; }
+
+}
+
+impl close_res : Drop {
+    fn finalize() {
+        *(self.i) = false;
+    }
 }
 
 fn close_res(i: closable) -> close_res {

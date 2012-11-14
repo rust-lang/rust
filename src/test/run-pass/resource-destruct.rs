@@ -1,6 +1,11 @@
 struct shrinky_pointer {
   i: @@mut int,
-  drop { log(error, ~"Hello!"); **(self.i) -= 1; }
+}
+
+impl shrinky_pointer : Drop {
+    fn finalize() {
+        log(error, ~"Hello!"); **(self.i) -= 1;
+    }
 }
 
 impl shrinky_pointer {

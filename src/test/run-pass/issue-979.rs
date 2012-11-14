@@ -1,6 +1,11 @@
 struct r {
   b: @mut int,
-  drop { *(self.b) += 1; }
+}
+
+impl r : Drop {
+    fn finalize() {
+        *(self.b) += 1;
+    }
 }
 
 fn r(b: @mut int) -> r {

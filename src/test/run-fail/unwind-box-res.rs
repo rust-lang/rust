@@ -6,9 +6,14 @@ fn failfn() {
 
 struct r {
   v: *int,
-  drop unsafe {
-    let _v2: ~int = cast::reinterpret_cast(&self.v);
-  }
+}
+
+impl r : Drop {
+    fn finalize() {
+        unsafe {
+            let _v2: ~int = cast::reinterpret_cast(&self.v);
+        }
+    }
 }
 
 fn r(v: *int) -> r {

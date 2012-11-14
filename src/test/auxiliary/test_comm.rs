@@ -29,23 +29,28 @@ fn port<T: Send>() -> port<T> {
 
 struct port_ptr<T:Send> {
    po: *rust_port,
-   drop unsafe {
-    debug!("in the port_ptr destructor");
-       do task::unkillable {
-        let yield = 0u;
-        let yieldp = ptr::addr_of(&yield);
-        rustrt::rust_port_begin_detach(self.po, yieldp);
-        if yield != 0u {
-            task::yield();
-        }
-        rustrt::rust_port_end_detach(self.po);
+}
 
-        while rustrt::rust_port_size(self.po) > 0u as size_t {
-            recv_::<T>(self.po);
+impl<T:Send> port_ptr<T> : Drop {
+    fn finalize() {
+        unsafe {
+            debug!("in the port_ptr destructor");
+               do task::unkillable {
+                let yield = 0u;
+                let yieldp = ptr::addr_of(&yield);
+                rustrt::rust_port_begin_detach(self.po, yieldp);
+                if yield != 0u {
+                    task::yield();
+                }
+                rustrt::rust_port_end_detach(self.po);
+
+                while rustrt::rust_port_size(self.po) > 0u as size_t {
+                    recv_::<T>(self.po);
+                }
+                rustrt::del_port(self.po);
+            }
         }
-        rustrt::del_port(self.po);
     }
-  }
 }
 
 fn port_ptr<T: Send>(po: *rust_port) -> port_ptr<T> {

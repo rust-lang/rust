@@ -4,7 +4,10 @@ fn foo<T: Const>(_x: T) { }
 
 struct r {
   x:int,
-  drop {}
+}
+
+impl r : Drop {
+    fn finalize() {}
 }
 
 fn r(x:int) -> r {
@@ -15,7 +18,10 @@ fn r(x:int) -> r {
 
 struct r2 {
   x:@mut int,
-  drop {}
+}
+
+impl r2 : Drop {
+    fn finalize() {}
 }
 
 fn r2(x:@mut int) -> r2 {

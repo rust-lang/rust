@@ -12,10 +12,15 @@ struct r {
   v: u,
   w: int,
   x: *int,
-  drop unsafe {
-    let _v2: ~int = cast::reinterpret_cast(&self.v.c);
-    // let _v3: ~int = unsafe::reinterpret_cast(self.x);
-  }
+}
+
+impl r : Drop {
+    fn finalize() {
+        unsafe {
+            let _v2: ~int = cast::reinterpret_cast(&self.v.c);
+            // let _v3: ~int = unsafe::reinterpret_cast(self.x);
+        }
+    }
 }
 
 fn r(v: u, w: int, _x: *int) -> r unsafe {

@@ -3,7 +3,10 @@ struct Font {
     cairo_font: uint,
     font_dtor: uint,
 
-    drop { }
+}
+
+impl Font : Drop {
+    fn finalize() {}
 }
 
 fn Font() -> Font {

@@ -1,4 +1,10 @@
-struct X { x: (), drop { error!("destructor runs"); } }
+struct X { x: (), }
+
+impl X : Drop {
+    fn finalize() {
+        error!("destructor runs");
+    }
+}
 
 enum double_option<T,U> { some2(T,U), none2 }
 

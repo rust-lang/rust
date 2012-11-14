@@ -3,7 +3,10 @@ extern mod std;
 
 struct complainer {
   c: @int,
-  drop {}
+}
+
+impl complainer : Drop {
+    fn finalize() {}
 }
 
 fn complainer(c: @int) -> complainer {

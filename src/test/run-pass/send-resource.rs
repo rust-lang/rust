@@ -3,7 +3,10 @@ use comm::*;
 
 struct test {
   f: int,
-  drop {}
+}
+
+impl test : Drop {
+    fn finalize() {}
 }
 
 fn test(f: int) -> test {

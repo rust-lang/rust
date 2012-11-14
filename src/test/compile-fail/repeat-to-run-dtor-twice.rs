@@ -4,7 +4,10 @@
 struct Foo {
     x: int,
 
-    drop {
+}
+
+impl Foo : Drop {
+    fn finalize() {
         io::println("Goodbye!");
     }
 }

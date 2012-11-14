@@ -50,8 +50,12 @@ fn f4b() -> int {
 // leave this in here just to trigger compile-fail:
 struct r {
     x: (),
-    drop {}
 }
+
+impl r : Drop {
+    fn finalize() {}
+}
+
 fn main() {
     let x = r { x: () };
     fn@(move x) { copy x; }; //~ ERROR copying a noncopyable value

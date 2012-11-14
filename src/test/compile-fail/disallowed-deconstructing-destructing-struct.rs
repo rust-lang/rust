@@ -1,6 +1,9 @@
 struct X {
     x: ~str,
-    drop {
+}
+
+impl X : Drop {
+    fn finalize() {
         error!("value: %s", self.x);
     }
 }

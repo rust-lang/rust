@@ -1,7 +1,12 @@
 // Make sure that destructors get run on slice literals
 struct foo {
     x: @mut int,
-    drop { *self.x += 1; }
+}
+
+impl foo : Drop {
+    fn finalize() {
+        *self.x += 1;
+    }
 }
 
 fn foo(x: @mut int) -> foo {
