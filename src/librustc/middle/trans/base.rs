@@ -1854,17 +1854,13 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms_opt) => {
-        match ms_opt {
-            None => {
-                deriving::trans_deriving_impl(ccx, *path, item.ident, tps,
-                                              item.id);
-            }
-            Some(ms) => {
-                meth::trans_impl(ccx, *path, item.ident, ms, tps, None,
-                                 item.id);
-            }
-        }
+      ast::item_impl(tps, _, _, ms) => {
+        // This call will do nothing if there are no derivable methods.
+        deriving::trans_deriving_impl(ccx, *path, item.ident, tps,
+                                      item.id);
+
+        meth::trans_impl(ccx, *path, item.ident, ms, tps, None,
+                         item.id);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);

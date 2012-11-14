@@ -715,7 +715,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, opt_trait, ty, methods_opt) => {
+      item_impl(tps, opt_trait, ty, methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -732,13 +732,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
             }
             _ => {}
         }
-        for methods_opt.each |methods| {
-            for methods.each |m| {
-                ebml_w.start_tag(tag_item_impl_method);
-                let method_def_id = local_def(m.id);
-                ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
-                ebml_w.end_tag();
-            }
+        for methods.each |m| {
+            ebml_w.start_tag(tag_item_impl_method);
+            let method_def_id = local_def(m.id);
+            ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
+            ebml_w.end_tag();
         }
         do opt_trait.iter() |associated_trait| {
            encode_trait_ref(ebml_w, ecx, *associated_trait);
@@ -748,13 +746,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
 
         let impl_path = vec::append_one(path,
                                         ast_map::path_name(item.ident));
-        for methods_opt.each |methods| {
-            for methods.each |m| {
-                index.push({val: m.id, pos: ebml_w.writer.tell()});
-                encode_info_for_method(ecx, ebml_w, impl_path,
-                                       should_inline(m.attrs), item.id, *m,
-                                       vec::append(tps, m.tps));
-            }
+        for methods.each |m| {
+            index.push({val: m.id, pos: ebml_w.writer.tell()});
+            encode_info_for_method(ecx, ebml_w, impl_path,
+                                   should_inline(m.attrs), item.id, *m,
+                                   vec::append(tps, m.tps));
         }
       }
       item_trait(tps, traits, ms) => {

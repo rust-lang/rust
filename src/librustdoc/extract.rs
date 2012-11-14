@@ -258,25 +258,20 @@ fn should_extract_trait_methods() {
 
 fn impldoc_from_impl(
     itemdoc: doc::ItemDoc,
-    methods_opt: Option<~[@ast::method]>
+    methods: ~[@ast::method]
 ) -> doc::ImplDoc {
     {
         item: itemdoc,
         trait_types: ~[],
         self_ty: None,
-        methods: match methods_opt {
-            None => ~[],
-            Some(methods) => {
-                do vec::map(methods) |method| {
-                    {
-                        name: to_str(method.ident),
-                        brief: None,
-                        desc: None,
-                        sections: ~[],
-                        sig: None,
-                        implementation: doc::Provided,
-                    }
-                }
+        methods: do vec::map(methods) |method| {
+            {
+                name: to_str(method.ident),
+                brief: None,
+                desc: None,
+                sections: ~[],
+                sig: None,
+                implementation: doc::Provided,
             }
         }
     }

@@ -451,24 +451,10 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
             }
             None => {
                 // If we couldn't find an implementation for trait_m in
-                // the impl, then see if there was a default
-                // implementation in the trait itself.  If not, raise a
-                // "missing method" error.
-
-                let provided_methods = ty::provided_trait_methods(tcx, did);
-                match vec::find(provided_methods, |provided_method|
-                                *provided_method == trait_m.ident) {
-                    Some(_) => {
-                        // If there's a provided method with the name we
-                        // want, then we're fine; nothing else to do.
-                    }
-                    None => {
-                        tcx.sess.span_err(
-                            a_trait_ty.path.span,
-                            fmt!("missing method `%s`",
-                                 tcx.sess.str_of(trait_m.ident)));
-                    }
-                }
+                // the impl, then either this method has a default
+                // implementation or we're using the trait-provided
+                // version. Either way, we handle this later, during the
+                // coherence phase.
             }
         } // match
     } // |trait_m|
@@ -532,7 +518,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
                                ty_params, rp);
       }
-      ast::item_impl(tps, trait_ref, selfty, ms_opt) => {
+      ast::item_impl(tps, trait_ref, selfty, ms) => {
         let i_bounds = ty_param_bounds(ccx, tps);
         let selfty = ccx.to_ty(type_rscope(rp), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
@@ -541,21 +527,9 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            region_param: rp,
                            ty: selfty});
 
-        match ms_opt {
-            Some(ref ms) => {
-                let cms = convert_methods(ccx, *ms, rp, i_bounds);
-                for trait_ref.each |t| {
-                    check_methods_against_trait(ccx, tps, rp, selfty, *t,
-                                                cms);
-                }
-            }
-            None => {
-                // We still need to instantiate the trait ref here so that
-                // metadata encoding will find the type.
-                for trait_ref.each |trait_ref| {
-                    let _ = instantiate_trait_ref(ccx, *trait_ref, rp);
-                }
-            }
+        let cms = convert_methods(ccx, ms, rp, i_bounds);
+        for trait_ref.each |t| {
+            check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         }
       }
       ast::item_trait(tps, supertraits, trait_methods) => {
