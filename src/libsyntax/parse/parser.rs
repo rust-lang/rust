@@ -52,12 +52,12 @@ use ast::{_mod, add, arg, arm, attribute,
              pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare,
              ProtoBorrowed, ProtoBox, ProtoUniq, provided, public, pure_fn,
              purity, re_static, re_self, re_anon, re_named, region,
-             rem, required, ret_style,
-             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, struct_def, struct_field, struct_variant_kind,
-             subtract, sty_box, sty_by_ref, sty_region, sty_static, sty_uniq,
-             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
+             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
+             stmt_decl, stmt_expr, stmt_semi, stmt_mac, struct_def,
+             struct_field, struct_variant_kind, subtract, sty_box, sty_by_ref,
+             sty_region, sty_static, sty_uniq, sty_value, token_tree,
+             trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
              ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
              ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
              ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length_vec,
@@ -2207,6 +2207,39 @@ impl Parser {
             self.expect_keyword(~"let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
+        } else if is_ident(self.token)
+            && !self.is_any_keyword(copy self.token)
+            && self.look_ahead(1) == token::NOT {
+            // Potential trouble: if we allow macros with paths instead of
+            // idents, we'd need to look ahead past the whole path here...
+            let pth = self.parse_value_path();
+            self.bump();
+
+            let id = if self.token == token::LPAREN {
+                token::special_idents::invalid // no special identifier
+            } else {
+                self.parse_ident()
+            };
+
+            let tts = self.parse_unspanned_seq(
+                token::LPAREN, token::RPAREN, seq_sep_none(),
+                |p| p.parse_token_tree());
+            let hi = self.span.hi;
+
+            if id == token::special_idents::invalid {
+                return @spanned(lo, hi, stmt_mac(
+                    spanned(lo, hi, mac_invoc_tt(pth, tts))));
+            } else {
+                // if it has a special ident, it's definitely an item
+                return @spanned(lo, hi, stmt_decl(
+                    @spanned(lo, hi, decl_item(
+                        self.mk_item(
+                            lo, hi, id /*id is good here*/,
+                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts))),
+                            inherited, ~[/*no attrs*/]))),
+                    self.get_id()));
+            }
+
         } else {
             let mut item_attrs;
             match self.parse_outer_attrs_or_ext(first_item_attrs) {
