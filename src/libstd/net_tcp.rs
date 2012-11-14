@@ -27,14 +27,11 @@ extern mod rustrt {
  */
 struct TcpSocket {
   socket_data: @TcpSocketData,
-}
-
-impl TcpSocket : Drop {
-    fn finalize() {
+  drop {
     unsafe {
         tear_down_socket_data(self.socket_data)
     }
-    }
+  }
 }
 
 pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {

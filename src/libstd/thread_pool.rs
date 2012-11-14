@@ -13,10 +13,7 @@ pub struct ThreadPool<T> {
     channels: ~[Chan<Msg<T>>],
     mut next_index: uint,
 
-}
-
-impl<T> ThreadPool<T> {
-    fn finalize() {
+    drop {
         for self.channels.each |channel| {
             channel.send(Quit);
         }

@@ -23,12 +23,10 @@ use cast::copy_lifetime;
 #[doc = "The future type"]
 pub struct Future<A> {
     /*priv*/ mut state: FutureState<A>,
-}
 
-// FIXME(#2829) -- futures should not be copyable, because they close
-// over fn~'s that have pipes and so forth within!
-impl<A> Future<A> : Drop {
-    fn finalize() {}
+    // FIXME(#2829) -- futures should not be copyable, because they close
+    // over fn~'s that have pipes and so forth within!
+    drop {}
 }
 
 priv enum FutureState<A> {
