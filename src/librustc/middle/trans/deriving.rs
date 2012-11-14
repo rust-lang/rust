@@ -53,37 +53,43 @@ impl DerivingKind {
     }
 }
 
-/// The main "translation" pass for automatically-derived impls. Generates
-/// code for monomorphic methods only. Other methods will be generated when
-/// they are invoked with specific type parameters; see
+/// The main "translation" pass for the automatically-derived methods in
+/// an impl. Generates code for monomorphic methods only. Other methods will
+/// be generated when they are invoked with specific type parameters; see
 /// `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
-pub fn trans_deriving_impl(ccx: @crate_ctxt, _path: path, _name: ident,
-                           tps: ~[ty_param], id: node_id) {
+pub fn trans_deriving_impl(ccx: @crate_ctxt,
+                           _path: path,
+                           _name: ident,
+                           tps: ~[ty_param],
+                           id: node_id) {
     let _icx = ccx.insn_ctxt("deriving::trans_deriving_impl");
     if tps.len() > 0 { return; }
 
     let impl_def_id = local_def(id);
     let self_ty = ty::lookup_item_type(ccx.tcx, impl_def_id);
-    let method_dids = ccx.tcx.automatically_derived_methods_for_impl.get(
-        impl_def_id);
 
-    for method_dids.each |method_did| {
-        let kind = DerivingKind::of_item(ccx, *method_did);
-        let llfn = get_item_val(ccx, method_did.node);
-        match ty::get(self_ty.ty).sty {
-            ty::ty_class(*) => {
-                trans_deriving_struct_method(ccx, llfn, impl_def_id,
-                                             self_ty.ty, kind);
-            }
-            ty::ty_enum(*) => {
-                trans_deriving_enum_method(ccx, llfn, impl_def_id,
-                                           self_ty.ty, kind);
-            }
-            _ => {
-                ccx.tcx.sess.bug(~"translation of non-struct deriving \
-                                   method");
+    match ccx.tcx.automatically_derived_methods_for_impl.find(impl_def_id) {
+        Some(copy method_dids) => {
+            for method_dids.each |method_did| {
+                let kind = DerivingKind::of_item(ccx, *method_did);
+                let llfn = get_item_val(ccx, method_did.node);
+                match ty::get(self_ty.ty).sty {
+                    ty::ty_class(*) => {
+                        trans_deriving_struct_method(ccx, llfn, impl_def_id,
+                                                     self_ty.ty, kind);
+                    }
+                    ty::ty_enum(*) => {
+                        trans_deriving_enum_method(ccx, llfn, impl_def_id,
+                                                   self_ty.ty, kind);
+                    }
+                    _ => {
+                        ccx.tcx.sess.bug(~"translation of non-struct \
+                                           deriving method");
+                    }
+                }
             }
         }
+        None => {}  // Nothing to do.
     }
 }
 

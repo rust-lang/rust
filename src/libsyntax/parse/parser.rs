@@ -2687,19 +2687,15 @@ impl Parser {
             None
         };
 
-        let meths_opt;
-        if self.eat(token::SEMI) {
-            meths_opt = None;
-        } else {
-            let mut meths = ~[];
+        let mut meths = ~[];
+        if !self.eat(token::SEMI) {
             self.expect(token::LBRACE);
             while !self.eat(token::RBRACE) {
                 meths.push(self.parse_method());
             }
-            meths_opt = Some(move meths);
         }
 
-        (ident, item_impl(tps, opt_trait, ty, meths_opt), None)
+        (ident, item_impl(tps, opt_trait, ty, meths), None)
     }
 
     // Instantiates ident <i> with references to <typarams> as arguments.

@@ -499,15 +499,13 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_fn(decl, _, _, body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(_, _, ty, ms_opt) => {
+      ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(it.id);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
-        for ms_opt.each |ms| {
-            for ms.each |m| {
-                check_method(ccx, *m, self_ty, local_def(it.id));
-            }
+        for ms.each |m| {
+            check_method(ccx, *m, self_ty, local_def(it.id));
         }
       }
       ast::item_trait(_, _, trait_methods) => {
@@ -1088,10 +1086,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(fcx: @fn_ctxt, _sp: span, lhs: @ast::expr,
+    fn check_assignment(fcx: @fn_ctxt, sp: span, lhs: @ast::expr,
                         rhs: @ast::expr, id: ast::node_id) -> bool {
         let mut bot = check_expr(fcx, lhs, None);
-        bot |= check_expr_with(fcx, rhs, fcx.expr_ty(lhs));
+        let lhs_type = fcx.expr_ty(lhs);
+        let unifier = || demand::assign(fcx, sp, lhs_type, rhs);
+        bot |= check_expr_with_unifier(fcx, rhs, Some(lhs_type), unifier);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         return bot;
     }
@@ -2247,7 +2247,8 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: @ast::expr) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
-    return check_expr_with(fcx, init, lty);
+    let unifier = || demand::assign(fcx, init.span, lty, init);
+    return check_expr_with_unifier(fcx, init, Some(lty), unifier);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {

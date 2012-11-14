@@ -207,25 +207,20 @@ fn get_method_sig(
             }
           }
           ast_map::node_item(@{
-            node: ast::item_impl(_, _, _, methods_opt), _
+            node: ast::item_impl(_, _, _, methods), _
           }, _) => {
-            match methods_opt {
-                None => fail ~"no methods in this impl",
-                Some(methods) => {
-                    match vec::find(methods, |method| {
-                        to_str(method.ident) == method_name
-                    }) {
-                        Some(method) => {
-                            Some(pprust::fun_to_str(
-                                method.decl,
-                                method.ident,
-                                method.tps,
-                                extract::interner()
-                            ))
-                        }
-                        None => fail ~"method not found"
-                    }
+            match vec::find(methods, |method| {
+                to_str(method.ident) == method_name
+            }) {
+                Some(method) => {
+                    Some(pprust::fun_to_str(
+                        method.decl,
+                        method.ident,
+                        method.tps,
+                        extract::interner()
+                    ))
                 }
+                None => fail ~"method not found"
             }
           }
           _ => fail ~"get_method_sig: item ID not bound to trait or impl"

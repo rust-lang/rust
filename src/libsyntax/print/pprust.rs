@@ -520,7 +520,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
 
-      ast::item_impl(tps, opt_trait, ty, methods_opt) => {
+      ast::item_impl(tps, opt_trait, ty, methods) => {
         head(s, visibility_qualified(item.vis, ~"impl"));
         if tps.is_not_empty() {
             print_type_params(s, tps);
@@ -537,17 +537,14 @@ fn print_item(s: ps, &&item: @ast::item) {
         };
         space(s.s);
 
-        match methods_opt {
-            None => {
-                word(s.s, ~";");
+        if methods.len() == 0 {
+            word(s.s, ~";");
+        } else {
+            bopen(s);
+            for methods.each |meth| {
+               print_method(s, *meth);
             }
-            Some(methods) => {
-                bopen(s);
-                for methods.each |meth| {
-                   print_method(s, *meth);
-                }
-                bclose(s, item.span);
-            }
+            bclose(s, item.span);
         }
       }
       ast::item_trait(tps, traits, methods) => {

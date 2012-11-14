@@ -1,4 +1,5 @@
 trait MyEq {
+    #[derivable]
     pure fn eq(other: &self) -> bool;
 }
 
