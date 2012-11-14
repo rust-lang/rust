@@ -1,4 +1,5 @@
 trait Show {
+    #[derivable]
     fn show();
 }
 

@@ -1223,7 +1223,7 @@ impl Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_impl(_, trait_ref_opt, ty, methods_opt) => {
+            item_impl(_, trait_ref_opt, ty, methods) => {
                 // If this implements an anonymous trait and it has static
                 // methods, then add all the static methods within to a new
                 // module, if the type was defined within this module.
@@ -1234,12 +1234,10 @@ impl Resolver {
 
                 // Bail out early if there are no static methods.
                 let mut has_static_methods = false;
-                for methods_opt.each |methods| {
-                    for methods.each |method| {
-                        match method.self_ty.node {
-                            sty_static => has_static_methods = true,
-                            _ => {}
-                        }
+                for methods.each |method| {
+                    match method.self_ty.node {
+                        sty_static => has_static_methods = true,
+                        _ => {}
                     }
                 }
 
@@ -1266,26 +1264,24 @@ impl Resolver {
                             name_bindings.get_module());
 
                         // For each static method...
-                        for methods_opt.each |methods| {
-                            for methods.each |method| {
-                                match method.self_ty.node {
-                                    sty_static => {
-                                        // Add the static method to the
-                                        // module.
-                                        let ident = method.ident;
-                                        let (method_name_bindings, _) =
-                                            self.add_child(
-                                                ident,
-                                                new_parent,
-                                                ForbidDuplicateValues,
-                                                method.span);
-                                        let def = def_fn(local_def(method.id),
-                                                         method.purity);
-                                        method_name_bindings.define_value(
-                                            Public, def, method.span);
-                                    }
-                                    _ => {}
+                        for methods.each |method| {
+                            match method.self_ty.node {
+                                sty_static => {
+                                    // Add the static method to the
+                                    // module.
+                                    let ident = method.ident;
+                                    let (method_name_bindings, _) =
+                                        self.add_child(
+                                            ident,
+                                            new_parent,
+                                            ForbidDuplicateValues,
+                                            method.span);
+                                    let def = def_fn(local_def(method.id),
+                                                     method.purity);
+                                    method_name_bindings.define_value(
+                                        Public, def, method.span);
                                 }
+                                _ => {}
                             }
                         }
                     }
@@ -3553,14 +3549,16 @@ impl Resolver {
                 }
             }
 
-            item_impl(type_parameters, implemented_traits, self_type,
-                      methods_opt) => {
+            item_impl(type_parameters,
+                      implemented_traits,
+                      self_type,
+                      methods) => {
                 self.resolve_implementation(item.id,
                                             item.span,
                                             type_parameters,
                                             implemented_traits,
                                             self_type,
-                                            methods_opt,
+                                            methods,
                                             visitor);
             }
 
@@ -3988,7 +3986,7 @@ impl Resolver {
                               type_parameters: ~[ty_param],
                               opt_trait_reference: Option<@trait_ref>,
                               self_type: @Ty,
-                              opt_methods: Option<~[@method]>,
+                              methods: ~[@method],
                               visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = type_parameters.len();
@@ -4027,16 +4025,15 @@ impl Resolver {
             // Resolve the self type.
             self.resolve_type(self_type, visitor);
 
-            for opt_methods.each |methods| {
-                for methods.each |method| {
-                    // We also need a new scope for the method-specific
-                    // type parameters.
-                    self.resolve_method(MethodRibKind(
-                        id,
-                        Provided(method.id)),
-                        *method,
-                        outer_type_parameter_count,
-                        visitor);
+            for methods.each |method| {
+                // We also need a new scope for the method-specific
+                // type parameters.
+                self.resolve_method(MethodRibKind(
+                    id,
+                    Provided(method.id)),
+                    *method,
+                    outer_type_parameter_count,
+                    visitor);
 /*
                     let borrowed_type_parameters = &method.tps;
                     self.resolve_function(MethodRibKind(
@@ -4053,7 +4050,6 @@ impl Resolver {
                                           NoCaptureClause,
                                           visitor);
 */
-                }
             }
 
             // Restore the original trait references.
