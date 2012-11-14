@@ -39,15 +39,12 @@ pub enum CVec<T> {
 
 struct DtorRes {
   dtor: Option<fn@()>,
-}
-
-impl DtorRes : Drop {
-    fn finalize() {
+  drop {
     match self.dtor {
       option::None => (),
       option::Some(f) => f()
     }
-    }
+  }
 }
 
 fn DtorRes(dtor: Option<fn@()>) -> DtorRes {

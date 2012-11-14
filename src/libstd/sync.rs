@@ -150,12 +150,7 @@ impl &Sem<~[mut Waitqueue]> {
 #[doc(hidden)]
 struct SemRelease {
     sem: &Sem<()>,
-}
-
-impl SemRelease : Drop {
-    fn finalize() {
-        self.sem.release();
-    }
+    drop { self.sem.release(); }
 }
 
 fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
@@ -167,12 +162,7 @@ fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
 #[doc(hidden)]
 struct SemAndSignalRelease {
     sem: &Sem<~[mut Waitqueue]>,
-}
-
-impl SemAndSignalRelease : Drop {
-    fn finalize() {
-        self.sem.release();
-    }
+    drop { self.sem.release(); }
 }
 
 fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
@@ -183,9 +173,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]> }
-
-impl Condvar : Drop { fn finalize() {} }
+pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
 
 impl &Condvar {
     /**
@@ -254,15 +242,10 @@ impl &Condvar {
         // bounded in when it gets released, this shouldn't hang forever.
         struct SemAndSignalReacquire {
             sem: &Sem<~[mut Waitqueue]>,
-        }
-
-        impl SemAndSignalReacquire : Drop {
-            fn finalize() {
-                unsafe {
-                    // Needs to succeed, instead of itself dying.
-                    do task::unkillable {
-                        self.sem.acquire();
-                    }
+            drop unsafe {
+                // Needs to succeed, instead of itself dying.
+                do task::unkillable {
+                    self.sem.acquire();
                 }
             }
         }
@@ -598,25 +581,20 @@ impl &RWlock {
 #[doc(hidden)]
 struct RWlockReleaseRead {
     lock: &RWlock,
-}
-
-impl RWlockReleaseRead : Drop {
-    fn finalize() {
-        unsafe {
-            do task::unkillable {
-                let mut last_reader = false;
-                do self.lock.state.with |state| {
-                    assert state.read_mode;
-                    assert state.read_count > 0;
-                    state.read_count -= 1;
-                    if state.read_count == 0 {
-                        last_reader = true;
-                        state.read_mode = false;
-                    }
+    drop unsafe {
+        do task::unkillable {
+            let mut last_reader = false;
+            do self.lock.state.with |state| {
+                assert state.read_mode;
+                assert state.read_count > 0;
+                state.read_count -= 1;
+                if state.read_count == 0 {
+                    last_reader = true;
+                    state.read_mode = false;
                 }
-                if last_reader {
-                    (&self.lock.access_lock).release();
-                }
+            }
+            if last_reader {
+                (&self.lock.access_lock).release();
             }
         }
     }
@@ -632,33 +610,27 @@ fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
 #[doc(hidden)]
 struct RWlockReleaseDowngrade {
     lock: &RWlock,
-}
-
-impl RWlockReleaseDowngrade : Drop {
-    fn finalize() {
-        unsafe {
-            do task::unkillable {
-                let mut writer_or_last_reader = false;
-                do self.lock.state.with |state| {
-                    if state.read_mode {
-                        assert state.read_count > 0;
-                        state.read_count -= 1;
-                        if state.read_count == 0 {
-                            // Case 1: Writer downgraded & was the last reader
-                            writer_or_last_reader = true;
-                            state.read_mode = false;
-                        } else {
-                            // Case 2: Writer downgraded & was not the last
-                            // reader
-                        }
-                    } else {
-                        // Case 3: Writer did not downgrade
+    drop unsafe {
+        do task::unkillable {
+            let mut writer_or_last_reader = false;
+            do self.lock.state.with |state| {
+                if state.read_mode {
+                    assert state.read_count > 0;
+                    state.read_count -= 1;
+                    if state.read_count == 0 {
+                        // Case 1: Writer downgraded & was the last reader
                         writer_or_last_reader = true;
+                        state.read_mode = false;
+                    } else {
+                        // Case 2: Writer downgraded & was not the last reader
                     }
+                } else {
+                    // Case 3: Writer did not downgrade
+                    writer_or_last_reader = true;
                 }
-                if writer_or_last_reader {
-                    (&self.lock.access_lock).release();
-                }
+            }
+            if writer_or_last_reader {
+                (&self.lock.access_lock).release();
             }
         }
     }
@@ -671,11 +643,9 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWlockWriteMode { /* priv */ lock: &RWlock }
-impl RWlockWriteMode : Drop { fn finalize() {} }
+pub struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
-pub struct RWlockReadMode  { priv lock: &RWlock }
-impl RWlockReadMode : Drop { fn finalize() {} }
+pub struct RWlockReadMode  { priv lock: &RWlock, drop { } }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
@@ -984,12 +954,7 @@ mod tests {
         }
         struct SendOnFailure {
             c: pipes::Chan<()>,
-        }
-
-        impl SendOnFailure : Drop {
-            fn finalize() {
-                self.c.send(());
-            }
+            drop { self.c.send(()); }
         }
 
         fn SendOnFailure(c: pipes::Chan<()>) -> SendOnFailure {

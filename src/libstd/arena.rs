@@ -55,10 +55,7 @@ pub struct Arena {
     priv mut head: Chunk,
     priv mut pod_head: Chunk,
     priv mut chunks: @List<Chunk>,
-}
-
-impl Arena : Drop {
-    fn finalize() {
+    drop {
         unsafe {
             destroy_chunk(&self.head);
             for list::each(self.chunks) |chunk| {
