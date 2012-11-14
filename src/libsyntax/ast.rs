@@ -1517,7 +1517,7 @@ enum item_ {
     item_impl(~[ty_param],
               Option<@trait_ref>, /* (optional) trait this impl implements */
               @Ty, /* self */
-              Option<~[@method]>),
+              ~[@method]),
     item_mac(mac),
 }
 

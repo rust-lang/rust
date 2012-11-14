@@ -398,7 +398,7 @@ fn mk_impl(
         ident: ast::token::special_idents::clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
-        node: ast::item_impl(trait_tps, opt_trait, ty, Some(~[f(ty)])),
+        node: ast::item_impl(trait_tps, opt_trait, ty, ~[f(ty)]),
         vis: ast::public,
         span: span,
     }

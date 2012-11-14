@@ -251,33 +251,40 @@ impl DerivingChecker {
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
                 match item.node {
-                    item_impl(_, Some(trait_ref), _, None) => {
-                        // XXX: This does not handle generic impls.
-                        let superty = ty::lookup_item_type(
-                            tcx, local_def(item.id)).ty;
-                        match ty::get(superty).sty {
-                            ty_enum(def_id, ref substs) => {
-                                self.check_deriving_for_enum(
-                                    def_id,
-                                    substs,
-                                    trait_ref,
-                                    item.id,
-                                    item.span);
-                            }
-                            ty_class(def_id, ref substs) => {
-                                self.check_deriving_for_struct(
-                                    def_id,
-                                    substs,
-                                    trait_ref,
-                                    item.id,
-                                    item.span);
-                            }
-                            _ => {
-                                tcx.sess.span_err(item.span,
-                                                  ~"only enums and structs \
-                                                    may have implementations \
-                                                    automatically derived \
-                                                    for them");
+                    item_impl(_, Some(trait_ref), _, _) => {
+                        // Determine whether there were any automatically-
+                        // derived methods in this implementation.
+                        let impl_did = local_def(item.id);
+                        if tcx.automatically_derived_methods_for_impl.
+                                contains_key(impl_did) {
+                            // XXX: This does not handle generic impls.
+                            let superty = ty::lookup_item_type(
+                                tcx, local_def(item.id)).ty;
+                            match ty::get(superty).sty {
+                                ty_enum(def_id, ref substs) => {
+                                    self.check_deriving_for_enum(
+                                        def_id,
+                                        substs,
+                                        trait_ref,
+                                        item.id,
+                                        item.span);
+                                }
+                                ty_class(def_id, ref substs) => {
+                                    self.check_deriving_for_struct(
+                                        def_id,
+                                        substs,
+                                        trait_ref,
+                                        item.id,
+                                        item.span);
+                                }
+                                _ => {
+                                    tcx.sess.span_err(item.span,
+                                                      ~"only enums and \
+                                                        structs may have \
+                                                        implementations \
+                                                        automatically \
+                                                        derived for them");
+                                }
                             }
                         }
                     }
