@@ -1,4 +1,10 @@
-struct X { x: (), drop { error!("destructor runs"); } }
+struct X { x: (), }
+
+impl X : Drop {
+    fn finalize() {
+        error!("destructor runs");
+    }
+}
 
 fn main() {
     let x = Some(X { x: () });

@@ -1,7 +1,12 @@
 struct cat {
   done : extern fn(uint),
   meows : uint,
-  drop { self.done(self.meows); }
+}
+
+impl cat : Drop {
+    fn finalize() {
+        self.done(self.meows);
+    }
 }
 
 fn cat(done: extern fn(uint)) -> cat {

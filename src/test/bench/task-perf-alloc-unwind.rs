@@ -42,7 +42,10 @@ enum st {
 
 struct r {
   _l: @nillist,
-  drop {}
+}
+
+impl r : Drop {
+    fn finalize() {}
 }
 
 fn r(l: @nillist) -> r {

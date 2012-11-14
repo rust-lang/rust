@@ -4,7 +4,10 @@ trait Foo {
 
 struct Bar {
     x: int,
-    drop {}
+}
+
+impl Bar : Drop {
+    fn finalize() {}
 }
 
 impl Bar : Foo {

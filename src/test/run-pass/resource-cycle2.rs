@@ -8,9 +8,14 @@ type u = {
 
 struct r {
   v: u,
-  drop unsafe {
-    let v2: ~int = cast::reinterpret_cast(&self.v.c);
-  }
+}
+
+impl r : Drop {
+    fn finalize() {
+        unsafe {
+            let v2: ~int = cast::reinterpret_cast(&self.v.c);
+        }
+    }
 }
 
 fn r(v: u) -> r {

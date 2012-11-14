@@ -1,6 +1,9 @@
 struct C {
     x: int,
-    drop {
+}
+
+impl C : Drop {
+    fn finalize() {
         error!("dropping: %?", self.x);
     }
 }

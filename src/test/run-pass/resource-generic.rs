@@ -3,7 +3,12 @@
 
 struct finish<T: Copy> {
   arg: {val: T, fin: extern fn(T)},
-  drop { self.arg.fin(self.arg.val); }
+}
+
+impl<T: Copy> finish<T> : Drop {
+    fn finalize() {
+        self.arg.fin(self.arg.val);
+    }
 }
 
 fn finish<T: Copy>(arg: {val: T, fin: extern fn(T)}) -> finish<T> {

@@ -2,7 +2,10 @@
 
 struct r {
   b:bool,
-  drop {}
+}
+
+impl r : Drop {
+    fn finalize() {}
 }
 
 fn main() {

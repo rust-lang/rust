@@ -7,7 +7,10 @@ fn u_foo<T: Send>(unique: T) { }
 
 struct r {
   i: int,
-  drop {}
+}
+
+impl r : Drop {
+    fn finalize() {}
 }
 
 fn r(i:int) -> r {

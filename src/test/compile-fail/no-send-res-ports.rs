@@ -1,7 +1,10 @@
 fn main() {
     struct foo {
       _x: comm::Port<()>,
-      drop {}
+    }
+
+    impl foo : Drop {
+        fn finalize() {}
     }
 
     fn foo(x: comm::Port<()>) -> foo {

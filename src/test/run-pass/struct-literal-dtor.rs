@@ -1,6 +1,11 @@
 struct foo {
     x: ~str,
-    drop { error!("%s", self.x); }
+}
+
+impl foo : Drop {
+    fn finalize() {
+        error!("%s", self.x);
+    }
 }
 
 fn main() {

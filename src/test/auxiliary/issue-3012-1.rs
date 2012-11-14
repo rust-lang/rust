@@ -9,7 +9,12 @@ export socket_handle;
 
 struct socket_handle {
     sockfd: libc::c_int,
-    drop { /* c::close(self.sockfd); */ }
+}
+
+impl socket_handle : Drop {
+    fn finalize() {
+        /* c::close(self.sockfd); */
+    }
 }
 
     fn socket_handle(x: libc::c_int) -> socket_handle {

@@ -4,7 +4,10 @@
 // copied
 struct bar {
   x: int,
-  drop {}
+}
+
+impl bar : Drop {
+    fn finalize() {}
 }
 
 fn bar(x:int) -> bar {

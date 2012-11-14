@@ -1,16 +1,25 @@
 struct yes0 {
   x: &uint,
-  drop {}
+}
+
+impl yes0 : Drop {
+    fn finalize() {}
 }
 
 struct yes1 {
   x: &self/uint,
-  drop {}
+}
+
+impl yes1 : Drop {
+    fn finalize() {}
 }
 
 struct yes2 {
   x: &foo/uint, //~ ERROR named regions other than `self` are not allowed as part of a type declaration
-  drop {}
+}
+
+impl yes2 : Drop {
+    fn finalize() {}
 }
 
 fn main() {}

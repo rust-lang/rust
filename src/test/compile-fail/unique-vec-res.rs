@@ -2,7 +2,12 @@
 
 struct r {
   i: @mut int,
-  drop { *(self.i) = *(self.i) + 1; }
+}
+
+impl r : Drop {
+    fn finalize() {
+        *(self.i) = *(self.i) + 1;
+    }
 }
 
 fn f<T>(+i: ~[T], +j: ~[T]) {

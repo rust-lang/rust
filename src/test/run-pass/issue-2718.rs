@@ -141,7 +141,10 @@ mod pipes {
 
     struct send_packet<T: Send> {
         mut p: Option<*packet<T>>,
-        drop {
+    }
+
+    impl<T: Send> send_packet<T> : Drop {
+        fn finalize() {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;
@@ -166,7 +169,10 @@ mod pipes {
 
     struct recv_packet<T: Send> {
         mut p: Option<*packet<T>>,
-        drop {
+    }
+
+    impl<T: Send> recv_packet<T> : Drop {
+        fn finalize() {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;

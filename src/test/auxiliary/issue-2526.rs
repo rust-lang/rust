@@ -9,7 +9,10 @@ export context;
 
 struct arc_destruct<T:Const> {
   _data: int,
-  drop {}
+}
+
+impl<T:Const> arc_destruct<T> : Drop {
+    fn finalize() {}
 }
 
 fn arc_destruct<T: Const>(data: int) -> arc_destruct<T> {
@@ -28,8 +31,10 @@ fn init() -> arc_destruct<context_res> unsafe {
 
 struct context_res {
     ctx : int,
+}
 
-    drop { }
+impl context_res : Drop {
+    fn finalize() {}
 }
 
 fn context_res() -> context_res {

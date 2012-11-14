@@ -11,7 +11,10 @@ fn bar<T>(+_t: T) { fail; }
 
 struct S {
     x: int,
-    drop {}
+}
+
+impl S : Drop {
+    fn finalize() {}
 }
 
 fn S(x: int) -> S { S { x: x } }

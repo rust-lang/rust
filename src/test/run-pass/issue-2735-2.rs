@@ -1,7 +1,12 @@
 // This test should behave exactly like issue-2735-3
 struct defer {
     b: &mut bool,
-    drop { *(self.b) = true; }
+}
+
+impl defer : Drop {
+    fn finalize() {
+        *(self.b) = true;
+    }
 }
 
 fn defer(b: &r/mut bool) -> defer/&r {
