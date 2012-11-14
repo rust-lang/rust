@@ -1,7 +1,7 @@
 // Translation of automatically-derived trait implementations. This handles
 // enums and structs only; other types cannot be automatically derived.
 
-use lib::llvm::llvm;
+use lib::llvm::llvm::{LLVMCountParams, LLVMGetParam};
 use middle::trans::base::{GEP_enum, finish_fn, get_insn_ctxt, get_item_val};
 use middle::trans::base::{new_fn_ctxt, sub_block, top_scope_block};
 use middle::trans::build::{AddCase, Br, CondBr, GEPi, Load, PointerCast};
@@ -11,6 +11,7 @@ use middle::trans::callee::{ArgVals, Callee, DontAutorefArg, Method};
 use middle::trans::callee::{MethodData};
 use middle::trans::common;
 use middle::trans::common::{C_bool, C_int, T_ptr, block, crate_ctxt};
+use middle::trans::common::{fn_ctxt};
 use middle::trans::expr::SaveIn;
 use middle::trans::type_of::type_of;
 use middle::ty::DerivedFieldInfo;
@@ -20,6 +21,10 @@ use syntax::ast::{def_id, ident, node_id, ty_param};
 use syntax::ast_map::path;
 use syntax::ast_util;
 use syntax::ast_util::local_def;
+
+use core::dvec::DVec;
+use core::dvec;
+use core::libc::c_uint;
 
 /// The kind of deriving method this is.
 enum DerivingKind {
@@ -93,6 +98,23 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt,
     }
 }
 
+fn get_extra_params(llfn: ValueRef, kind: DerivingKind) -> ~[ValueRef] {
+    let n_params = LLVMCountParams(llfn) as uint;
+
+    let initial_extra_param;
+    match kind {
+        BoolKind => initial_extra_param = 3,
+        UnitKind => initial_extra_param = 2,
+    }
+
+    let extra_params = DVec();
+    for uint::range(initial_extra_param, n_params) |i| {
+        extra_params.push(LLVMGetParam(llfn, i as c_uint));
+    }
+
+    return dvec::unwrap(move extra_params);
+}
+
 fn trans_deriving_struct_method(ccx: @crate_ctxt,
                                 llfn: ValueRef,
                                 impl_did: def_id,
@@ -104,6 +126,8 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
     let lltop = top_bcx.llbb;
     let mut bcx = top_bcx;
 
+    let llextraparams = get_extra_params(llfn, kind);
+
     let llselfty = type_of(ccx, self_ty);
     let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
 
@@ -111,7 +135,7 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
     // value we're comparing against in the case of Eq and Ord.
     let llotherval_opt;
     match kind {
-        BoolKind => llotherval_opt = Some(llvm::LLVMGetParam(llfn, 2)),
+        BoolKind => llotherval_opt = Some(LLVMGetParam(llfn, 2)),
         UnitKind => llotherval_opt = None
     }
 
@@ -136,8 +160,12 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
             |llotherval| GEPi(bcx, *llotherval, [0, 0, i]));
 
         let self_ty = struct_field_tys[i].mt.ty;
-        bcx = call_substructure_method(bcx, derived_method_info, self_ty,
-                                       llselfval, llotherval_opt);
+        bcx = call_substructure_method(bcx,
+                                       derived_method_info,
+                                       self_ty,
+                                       llselfval,
+                                       llotherval_opt,
+                                       llextraparams);
 
         // If this derived method is of boolean kind, return immediately if
         // the call to the substructure method returned false.
@@ -176,13 +204,15 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
     let lltop = top_bcx.llbb;
     let mut bcx = top_bcx;
 
+    let llextraparams = get_extra_params(llfn, kind);
+
     let llselfty = type_of(ccx, self_ty);
     let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
 
     let llotherval_opt;
     match kind {
         UnitKind => llotherval_opt = None,
-        BoolKind => llotherval_opt = Some(llvm::LLVMGetParam(llfn, 2))
+        BoolKind => llotherval_opt = Some(LLVMGetParam(llfn, 2))
     }
 
     let enum_id, enum_substs, enum_variant_infos;
@@ -260,7 +290,8 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
                                                      derived_method_info,
                                                      self_ty,
                                                      llselfval,
-                                                     llotherval_opt);
+                                                     llotherval_opt,
+                                                     llextraparams);
 
                 // If this is a boolean-kind deriving method, then return
                 // immediately if the call to the substructure returned false.
@@ -339,7 +370,8 @@ fn call_substructure_method(bcx: block,
                             derived_field_info: &DerivedFieldInfo,
                             self_ty: ty::t,
                             llselfval: ValueRef,
-                            llotherval_opt: Option<ValueRef>) -> block {
+                            llotherval_opt: Option<ValueRef>,
+                            llextraparams: &[ValueRef]) -> block {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
 
@@ -367,6 +399,7 @@ fn call_substructure_method(bcx: block,
                                                         vtable_result);
     let llfn = fn_data.llfn;
 
+    // Create the callee.
     let cb: &fn(block) -> Callee = |bloc| {
         Callee {
             bcx: bloc,
@@ -379,18 +412,18 @@ fn call_substructure_method(bcx: block,
         }
     };
 
-    let arg_values;
-    match llotherval_opt {
-        None => arg_values = ArgVals(~[]),
-        Some(copy llotherval) => arg_values = ArgVals(~[llotherval])
-    }
+    // Build up the argument list.
+    let llargvals = DVec();
+    for llotherval_opt.each |llotherval| { llargvals.push(*llotherval); }
+    for llextraparams.each |llextraparam| { llargvals.push(*llextraparam); }
 
+    // And perform the call.
     callee::trans_call_inner(bcx,
                              None,
                              fn_expr_tpbt.ty,
                              ty::mk_bool(ccx.tcx),
                              cb,
-                             move arg_values,
+                             ArgVals(dvec::unwrap(move llargvals)),
                              SaveIn(fcx.llretptr),
                              DontAutorefArg)
 }
