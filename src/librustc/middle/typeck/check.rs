@@ -1080,7 +1080,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         DontDerefArgs => {}
                     }
 
-                    bot |= check_expr_with_assignability(fcx, *arg, formal_ty);
+                    bot |= check_expr_with_assignability(fcx,
+                                                         *arg, formal_ty);
                     fcx.write_ty(arg.id, fcx.expr_ty(*arg));
 
                 }
