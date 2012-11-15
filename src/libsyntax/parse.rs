@@ -11,6 +11,7 @@ export parse_crate_from_source_str;
 export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_stmt_from_source_str;
 export parse_from_source_str;
+export update_parse_sess_position;
 
 use parser::Parser;
 use attr::parser_attr;
@@ -76,7 +77,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
     let leading_attrs = p.parse_inner_attrs_and_next();
     let { inner: crate_attrs, next: first_cdir_attr } = leading_attrs;
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
     let companionmod = input.filestem().map(|s| Path(*s));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
@@ -96,7 +97,7 @@ fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_file(sess, cfg, input,
                                             parser::SOURCE_FILE);
     let r = p.parse_crate_mod(cfg);
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -106,7 +107,7 @@ fn parse_crate_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_crate_mod(cfg);
     p.abort_if_errors();
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -116,7 +117,7 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_expr();
     p.abort_if_errors();
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -127,7 +128,7 @@ fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_item(attrs);
     p.abort_if_errors();
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -138,7 +139,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_stmt(attrs);
     p.abort_if_errors();
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -155,7 +156,7 @@ fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
         p.reader.fatal(~"expected end-of-string");
     }
     p.abort_if_errors();
-    eval::update_parse_sess_position(&sess, &rdr);
+    update_parse_sess_position(&sess, &rdr);
     move r
 }
 
@@ -215,4 +216,11 @@ fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
                                     None, tt);
     return Parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
+}
+
+fn update_parse_sess_position(sess: &parse_sess, r: &lexer::string_reader) {
+    sess.pos = FilePos {
+        ch: r.last_pos.ch,
+        byte: r.last_pos.byte
+    };
 }

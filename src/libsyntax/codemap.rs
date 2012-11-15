@@ -200,11 +200,8 @@ pub impl FileMap {
                                      start_pos);
     }
 
-    fn next_line(@self, +chpos: CharPos, +byte_pos: BytePos) {
-        self.lines.push(FilePos {
-            ch: chpos,
-            byte: byte_pos + self.start_pos.byte
-        });
+    fn next_line(@self, +pos: FilePos) {
+        self.lines.push(pos);
     }
 
     pub fn get_line(@self, line: int) -> ~str unsafe {
@@ -231,6 +228,18 @@ pub impl CodeMap {
     }
 
     pub fn add_filemap(@self, filemap: @FileMap) {
+        let expected_byte_pos = if self.files.len() == 0 {
+            0
+        } else {
+            let last_start = self.files.last().start_pos.byte.to_uint();
+            let last_len = self.files.last().src.len();
+            last_start + last_len
+        };
+        let actual_byte_pos = filemap.start_pos.byte.to_uint();
+        debug!("codemap: adding filemap: %s", filemap.name);
+        debug!("codemap: expected offset: %u", expected_byte_pos);
+        debug!("codemap: actual offset: %u", actual_byte_pos);
+        assert expected_byte_pos == actual_byte_pos;
         self.files.push(filemap);
     }
 

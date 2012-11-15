@@ -1,8 +1,8 @@
+use parse::update_parse_sess_position;
 use parser::{Parser, SOURCE_FILE};
 use attr::parser_attr;
 
 export eval_crate_directives_to_mod;
-export update_parse_sess_position;
 
 type ctx =
     @{sess: parse::parse_sess,
@@ -72,13 +72,6 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
     } else {
         return (~[], ~[], ~[]);
     }
-}
-
-fn update_parse_sess_position(sess: &parse_sess, r: &lexer::string_reader) {
-    sess.pos = FilePos {
-        ch: r.chpos,
-        byte: sess.pos.byte + r.pos
-    };
 }
 
 fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {

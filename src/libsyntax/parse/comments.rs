@@ -131,7 +131,7 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 fn push_blank_line_comment(rdr: string_reader, comments: &mut ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
-    comments.push({style: blank_line, lines: v, pos: rdr.chpos});
+    comments.push({style: blank_line, lines: v, pos: rdr.last_pos.ch});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
@@ -148,7 +148,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
     debug!(">>> shebang comment");
-    let p = rdr.chpos;
+    let p = rdr.last_pos.ch;
     debug!("<<< shebang comment");
     comments.push({
         style: if code_to_the_left { trailing } else { isolated },
@@ -160,7 +160,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> line comments");
-    let p = rdr.chpos;
+    let p = rdr.last_pos.ch;
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
@@ -209,7 +209,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> block comment");
-    let p = rdr.chpos;
+    let p = rdr.last_pos.ch;
     let mut lines: ~[~str] = ~[];
     let mut col: CharPos = rdr.col;
     bump(rdr);
@@ -319,7 +319,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         }
 
 
-        let bstart = rdr.pos;
+        let bstart = rdr.pos.byte;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let {tok: tok, sp: sp} = rdr.peek();
