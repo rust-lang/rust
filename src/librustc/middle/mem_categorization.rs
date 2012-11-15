@@ -797,7 +797,8 @@ impl &mem_categorization_ctxt {
 
           deref_comp(_) => {
             // fixed-length vectors have no deref
-            comp(expr, base_cmt, base_cmt.ty, mt.mutbl, mt.ty)
+            let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
+            comp(expr, base_cmt, base_cmt.ty, m, mt.ty)
           }
         };
 
