@@ -1,5 +1,4 @@
-// xfail-test
-// error-pattern: unresolved
+// error-pattern:failed to resolve import
 use zed::bar;
 use zed::baz;
 mod zed {

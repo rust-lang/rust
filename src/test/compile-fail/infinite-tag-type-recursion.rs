@@ -1,7 +1,6 @@
-// xfail-test
 // -*- rust -*-
 
-// error-pattern: enum of infinite size
+// error-pattern: illegal recursive enum type; wrap the inner value in a box
 
 enum mlist { cons(int, mlist), nil, }
 
