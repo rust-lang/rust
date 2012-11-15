@@ -4,10 +4,10 @@
 
 #include "rust_globals.h"
 
-const uint32_t log_err = 0;
-const uint32_t log_warn = 1;
-const uint32_t log_info = 2;
-const uint32_t log_debug = 3;
+const uint32_t log_err = 1;
+const uint32_t log_warn = 2;
+const uint32_t log_info = 3;
+const uint32_t log_debug = 4;
 
 #define LOG(task, field, ...)                                   \
     DLOG_LVL(log_debug, task, task->sched_loop, field, __VA_ARGS__)
