@@ -63,6 +63,7 @@ use std::list;
 use list::{List, Nil, Cons};
 use dvec::DVec;
 
+export check;
 export check_crate;
 export infer;
 export method_map;

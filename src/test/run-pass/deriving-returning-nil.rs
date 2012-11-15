@@ -1,10 +1,10 @@
 trait Show {
     #[derivable]
-    fn show();
+    fn show(&self);
 }
 
 impl int : Show {
-    fn show() {
+    fn show(&self) {
         io::println(self.to_str());
     }
 }

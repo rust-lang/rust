@@ -17,8 +17,8 @@ use syntax::print::pprust;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, visit_crate};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty;
-use middle::ty::{DerivedFieldInfo, substs, ty_class, ty_enum};
-use middle::ty::{ty_param_bounds_and_ty};
+use middle::ty::{DerivedFieldInfo, ReVar, re_infer, re_static, substs};
+use middle::ty::{ty_class, ty_enum, ty_param_bounds_and_ty};
 use /*middle::typeck::*/check::method;
 use /*middle::typeck::*/check::vtable;
 use /*middle::typeck::*/infer::infer_ctxt;
@@ -56,10 +56,12 @@ impl DerivingChecker {
         let tcx = self.crate_context.tcx;
 
         let impl_self_tpbt = ty::lookup_item_type(tcx, impl_info.did);
-        let transformed_type = method::transform_self_type_for_method(
-            tcx, None, impl_self_tpbt.ty, method_info.self_type);
 
         let inference_context = infer::new_infer_ctxt(self.crate_context.tcx);
+        let region = inference_context.next_region_var_nb(span);
+        let transformed_type = method::transform_self_type_for_method(
+            tcx, Some(region), impl_self_tpbt.ty, method_info.self_type);
+
         let substs = {
             self_r: None,
             self_ty: None,
@@ -67,6 +69,13 @@ impl DerivingChecker {
         };
         let transformed_type = ty::subst(
             self.crate_context.tcx, &substs, transformed_type);
+
+        // Automatically reference the substructure type.
+        let region = inference_context.next_region_var_nb(span);
+        let substructure_type = ty::mk_rptr(
+            self.crate_context.tcx,
+            region,
+            { ty: substructure_type, mutbl: ast::m_imm });
 
         debug!("(matching impl method) substructure type %s, transformed \
                 type %s, subst tps %u",

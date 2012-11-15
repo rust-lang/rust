@@ -1,6 +1,6 @@
 trait MyEq {
     #[derivable]
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
 }
 
 struct A {
@@ -14,7 +14,7 @@ enum B {
 }
 
 impl A : MyEq {
-    pure fn eq(other: &A) -> bool {
+    pure fn eq(&self, other: &A) -> bool {
         unsafe { io::println("in eq"); }
         self.x == other.x
     }
