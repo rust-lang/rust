@@ -2,6 +2,7 @@ use parser::{Parser, SOURCE_FILE};
 use attr::parser_attr;
 
 export eval_crate_directives_to_mod;
+export update_parse_sess_position;
 
 type ctx =
     @{sess: parse::parse_sess,
@@ -66,12 +67,18 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
                                                 modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
-        cx.sess.chpos = r0.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
+        update_parse_sess_position(&cx.sess, &r0);
         return (m0.view_items, m0.items, inner_attrs.inner);
     } else {
         return (~[], ~[], ~[]);
     }
+}
+
+fn update_parse_sess_position(sess: &parse_sess, r: &lexer::string_reader) {
+    sess.pos = FilePos {
+        ch: r.chpos,
+        byte: sess.pos.byte + r.pos
+    };
 }
 
 fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
@@ -105,8 +112,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                            /* FIXME (#2543) */ copy id,
                            ast::item_mod(m0), vis, mod_attrs);
         // Thread defids, chpos and byte_pos through the parsers
-        cx.sess.chpos = r0.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
+        update_parse_sess_position(&cx.sess, &r0);
         items.push(i);
       }
       ast::cdir_dir_mod(vis, id, cdirs, attrs) => {

@@ -292,9 +292,13 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
-    let rdr = lexer::new_low_level_string_reader
-        (span_diagnostic, @FileMap::new(path, src,
-                                        CharPos(0u), BytePos(0u)), itr);
+    let filemap = @FileMap::new(path, src,
+                                FilePos {
+                                    ch: CharPos(0u),
+                                    byte: BytePos(0u)
+                                });
+    let rdr = lexer::new_low_level_string_reader(
+        span_diagnostic, filemap, itr);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];
