@@ -1,8 +1,3 @@
-// xfail-test
-// xfail-fast
-
-// XFAIL'd because of error message problems with demoded Add.
-
 struct Point { 
     x: int,
     y: int,

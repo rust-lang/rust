@@ -1,4 +1,3 @@
-// xfail-test
 // -*- rust -*-
 
 // error-pattern: dead
