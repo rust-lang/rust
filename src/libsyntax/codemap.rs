@@ -189,7 +189,7 @@ pub impl FileMap {
         return FileMap {
             name: filename, substr: substr, src: src,
             start_pos: start_pos,
-            mut lines: ~[start_pos]
+            mut lines: ~[]
         };
     }
 
