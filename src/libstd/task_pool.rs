@@ -1,4 +1,4 @@
-/// A thread pool abstraction. Useful for achieving predictable CPU
+/// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
 use pipes::{Chan, Port};
@@ -9,7 +9,7 @@ enum Msg<T> {
     Quit
 }
 
-pub struct ThreadPool<T> {
+pub struct TaskPool<T> {
     channels: ~[Chan<Msg<T>>],
     mut next_index: uint,
 
@@ -20,15 +20,15 @@ pub struct ThreadPool<T> {
     }
 }
 
-pub impl<T> ThreadPool<T> {
-    /// Spawns a new thread pool with `n_tasks` tasks. If the `sched_mode`
+pub impl<T> TaskPool<T> {
+    /// Spawns a new task pool with `n_tasks` tasks. If the `sched_mode`
     /// is None, the tasks run on this scheduler; otherwise, they run on a
     /// new scheduler with the given mode. The provided `init_fn_factory`
     /// returns a function which, given the index of the task, should return
     /// local data to be kept around in that task.
     static fn new(n_tasks: uint,
                   opt_sched_mode: Option<SchedMode>,
-                  init_fn_factory: ~fn() -> ~fn(uint) -> T) -> ThreadPool<T> {
+                  init_fn_factory: ~fn() -> ~fn(uint) -> T) -> TaskPool<T> {
         assert n_tasks >= 1;
 
         let channels = do vec::from_fn(n_tasks) |i| {
@@ -59,10 +59,10 @@ pub impl<T> ThreadPool<T> {
             move chan
         };
 
-        return ThreadPool { channels: move channels, next_index: 0 };
+        return TaskPool { channels: move channels, next_index: 0 };
     }
 
-    /// Executes the function `f` on a thread in the pool. The function
+    /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
     fn execute(&self, f: ~fn(&T)) {
         self.channels[self.next_index].send(Execute(move f));
@@ -72,12 +72,12 @@ pub impl<T> ThreadPool<T> {
 }
 
 #[test]
-fn test_thread_pool() {
+fn test_task_pool() {
     let f: ~fn() -> ~fn(uint) -> uint = || {
         let g: ~fn(uint) -> uint = |i| i;
         move g
     };
-    let pool = ThreadPool::new(4, Some(SingleThreaded), move f);
+    let pool = TaskPool::new(4, Some(SingleThreaded), move f);
     for 8.times {
         pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
     }
