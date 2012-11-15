@@ -208,57 +208,69 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     let rp_set = time(time_passes, ~"region parameterization inference", ||
         middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, move lang_items, crate);
 
-    let (method_map, vtable_map) = time(time_passes, ~"typechecking", ||
-                                        typeck::check_crate(ty_cx,
-                                                            trait_map,
-                                                            crate));
-    // These next two const passes can probably be merged
-    time(time_passes, ~"const marking", ||
-        middle::const_eval::process_crate(crate, def_map, ty_cx));
-
-    time(time_passes, ~"const checking", ||
-        middle::check_const::check_crate(sess, crate, ast_map, def_map,
-                                         method_map, ty_cx));
-
-    if upto == cu_typeck { return {crate: crate, tcx: Some(ty_cx)}; }
-
-    time(time_passes, ~"privacy checking", ||
-        middle::privacy::check_crate(ty_cx, &method_map, crate));
-
-    time(time_passes, ~"loop checking", ||
-        middle::check_loop::check_crate(ty_cx, crate));
-
-    time(time_passes, ~"alt checking", ||
-        middle::check_alt::check_crate(ty_cx, crate));
-
-    let last_use_map = time(time_passes, ~"liveness checking", ||
-        middle::liveness::check_crate(ty_cx, method_map, crate));
-
-    let (root_map, mutbl_map) = time(time_passes, ~"borrow checking", ||
-        middle::borrowck::check_crate(ty_cx, method_map,
-                                      last_use_map, crate));
-
-    time(time_passes, ~"kind checking", ||
-        kind::check_crate(ty_cx, method_map, last_use_map, crate));
-
-    time(time_passes, ~"lint checking", || lint::check_crate(ty_cx, crate));
-
-    if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
     let outputs = outputs.get();
 
-    let maps = {mutbl_map: mutbl_map,
-                root_map: root_map,
-                last_use_map: last_use_map,
-                method_map: method_map,
-                vtable_map: vtable_map};
+    let (llmod, link_meta) = {
 
-    let (llmod, link_meta) = time(time_passes, ~"translation", ||
-        trans::base::trans_crate(sess, crate, ty_cx,
-                                 &outputs.obj_filename,
-                                 exp_map2, maps));
+        let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
+                                region_map, rp_set, move lang_items, crate);
+
+        let (method_map, vtable_map) =
+            time(time_passes, ~"typechecking", ||
+                 typeck::check_crate(ty_cx,
+                                     trait_map,
+                                     crate));
+
+        // These next two const passes can probably be merged
+        time(time_passes, ~"const marking", ||
+             middle::const_eval::process_crate(crate, def_map, ty_cx));
+
+        time(time_passes, ~"const checking", ||
+             middle::check_const::check_crate(sess, crate, ast_map, def_map,
+                                              method_map, ty_cx));
+
+        if upto == cu_typeck { return {crate: crate, tcx: Some(ty_cx)}; }
+
+        time(time_passes, ~"privacy checking", ||
+             middle::privacy::check_crate(ty_cx, &method_map, crate));
+
+        time(time_passes, ~"loop checking", ||
+             middle::check_loop::check_crate(ty_cx, crate));
+
+        time(time_passes, ~"alt checking", ||
+             middle::check_alt::check_crate(ty_cx, crate));
+
+        let last_use_map =
+            time(time_passes, ~"liveness checking", ||
+                 middle::liveness::check_crate(ty_cx, method_map, crate));
+
+        let (root_map, mutbl_map) =
+            time(time_passes, ~"borrow checking", ||
+                 middle::borrowck::check_crate(ty_cx, method_map,
+                                               last_use_map, crate));
+
+        time(time_passes, ~"kind checking", ||
+             kind::check_crate(ty_cx, method_map, last_use_map, crate));
+
+        time(time_passes, ~"lint checking", ||
+             lint::check_crate(ty_cx, crate));
+
+        if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
+
+        let maps = {mutbl_map: mutbl_map,
+                    root_map: root_map,
+                    last_use_map: last_use_map,
+                    method_map: method_map,
+                    vtable_map: vtable_map};
+
+        time(time_passes, ~"translation", ||
+             trans::base::trans_crate(sess, crate, ty_cx,
+                                      &outputs.obj_filename,
+                                      exp_map2, maps))
+
+    };
+
 
     time(time_passes, ~"LLVM passes", ||
         link::write::run_passes(sess, llmod,
@@ -269,14 +281,14 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         (sess.opts.static && sess.building_library)    ||
         sess.opts.jit;
 
-    if stop_after_codegen { return {crate: crate, tcx: Some(ty_cx)}; }
+    if stop_after_codegen { return {crate: crate, tcx: None}; }
 
     time(time_passes, ~"linking", ||
          link::link_binary(sess,
                            &outputs.obj_filename,
                            &outputs.out_filename, link_meta));
 
-    return {crate: crate, tcx: Some(ty_cx)};
+    return {crate: crate, tcx: None};
 }
 
 fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
