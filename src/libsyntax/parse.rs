@@ -173,7 +173,7 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
     let ftype = parser::SOURCE_FILE;
     let filemap = @FileMap::new_w_substr
         (name, ss, source, sess.pos);
-    sess.cm.files.push(filemap);
+    sess.cm.add_filemap(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
     return (Parser(sess, cfg, srdr as reader, ftype), srdr);
@@ -198,7 +198,7 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
     let src = @result::unwrap(res);
     let filemap = @FileMap::new(path.to_str(), src,
                                 sess.pos);
-    sess.cm.files.push(filemap);
+    sess.cm.add_filemap(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
     return (Parser(sess, cfg, srdr as reader, ftype), srdr);

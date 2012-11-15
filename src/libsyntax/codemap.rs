@@ -230,6 +230,10 @@ pub impl CodeMap {
         }
     }
 
+    pub fn add_filemap(@self, filemap: @FileMap) {
+        self.files.push(filemap);
+    }
+
     pub fn mk_substr_filename(@self, sp: span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
         return fmt!("<%s:%u:%u>", pos.file.name,
