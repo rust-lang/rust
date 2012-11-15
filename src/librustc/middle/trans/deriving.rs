@@ -4,6 +4,7 @@
 use lib::llvm::llvm::{LLVMCountParams, LLVMGetParam};
 use middle::trans::base::{GEP_enum, finish_fn, get_insn_ctxt, get_item_val};
 use middle::trans::base::{new_fn_ctxt, sub_block, top_scope_block};
+use middle::trans::base;
 use middle::trans::build::{AddCase, Br, CondBr, GEPi, Load, PointerCast};
 use middle::trans::build::{Store, Switch, Unreachable, ValueRef};
 use middle::trans::callee;
@@ -14,7 +15,8 @@ use middle::trans::common::{C_bool, C_int, T_ptr, block, crate_ctxt};
 use middle::trans::common::{fn_ctxt};
 use middle::trans::expr::SaveIn;
 use middle::trans::type_of::type_of;
-use middle::ty::DerivedFieldInfo;
+use middle::ty::{DerivedFieldInfo, re_static};
+use middle::typeck::check::method;
 use middle::typeck::method_static;
 use syntax::ast;
 use syntax::ast::{def_id, ident, node_id, ty_param};
@@ -78,14 +80,33 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt,
             for method_dids.each |method_did| {
                 let kind = DerivingKind::of_item(ccx, *method_did);
                 let llfn = get_item_val(ccx, method_did.node);
+
+                // Transform the self type as appropriate.
+                let derived_method_info =
+                    ccx.tcx.automatically_derived_methods.get(*method_did);
+                let transformed_self_ty =
+                    method::transform_self_type_for_method(
+                        ccx.tcx,
+                        Some(re_static),
+                        self_ty.ty,
+                        derived_method_info.method_info.self_type);
+
                 match ty::get(self_ty.ty).sty {
                     ty::ty_class(*) => {
-                        trans_deriving_struct_method(ccx, llfn, impl_def_id,
-                                                     self_ty.ty, kind);
+                        trans_deriving_struct_method(ccx,
+                                                     llfn,
+                                                     impl_def_id,
+                                                     self_ty.ty,
+                                                     transformed_self_ty,
+                                                     kind);
                     }
                     ty::ty_enum(*) => {
-                        trans_deriving_enum_method(ccx, llfn, impl_def_id,
-                                                   self_ty.ty, kind);
+                        trans_deriving_enum_method(ccx,
+                                                   llfn,
+                                                   impl_def_id,
+                                                   self_ty.ty,
+                                                   transformed_self_ty,
+                                                   kind);
                     }
                     _ => {
                         ccx.tcx.sess.bug(~"translation of non-struct \
@@ -119,6 +140,7 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
                                 llfn: ValueRef,
                                 impl_did: def_id,
                                 self_ty: ty::t,
+                                transformed_self_ty: ty::t,
                                 kind: DerivingKind) {
     let _icx = ccx.insn_ctxt("trans_deriving_struct_method");
     let fcx = new_fn_ctxt(ccx, ~[], llfn, None);
@@ -128,8 +150,10 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
 
     let llextraparams = get_extra_params(llfn, kind);
 
-    let llselfty = type_of(ccx, self_ty);
-    let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
+    let lltransformedselfty = type_of(ccx, transformed_self_ty);
+    let lltransformedselfval =
+        PointerCast(bcx, fcx.llenv, T_ptr(lltransformedselfty));
+    let llselfval = Load(bcx, lltransformedselfval);
 
     // If there is an "other" value, then get it. The "other" value is the
     // value we're comparing against in the case of Eq and Ord.
@@ -155,6 +179,9 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
     for ccx.tcx.deriving_struct_methods.get(impl_did).eachi
             |i, derived_method_info| {
         let llselfval = GEPi(bcx, llselfval, [0, 0, i]);
+        let llselfallocaty = common::val_ty(llselfval);
+        let llselfalloca = base::alloca(bcx, llselfallocaty);
+        Store(bcx, llselfval, llselfalloca);
 
         let llotherval_opt = llotherval_opt.map(
             |llotherval| GEPi(bcx, *llotherval, [0, 0, i]));
@@ -163,7 +190,7 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
         bcx = call_substructure_method(bcx,
                                        derived_method_info,
                                        self_ty,
-                                       llselfval,
+                                       llselfalloca,
                                        llotherval_opt,
                                        llextraparams);
 
@@ -197,6 +224,7 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
                               llfn: ValueRef,
                               impl_did: def_id,
                               self_ty: ty::t,
+                              transformed_self_ty: ty::t,
                               kind: DerivingKind) {
     let _icx = ccx.insn_ctxt("trans_deriving_enum_method");
     let fcx = new_fn_ctxt(ccx, ~[], llfn, None);
@@ -206,8 +234,10 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
 
     let llextraparams = get_extra_params(llfn, kind);
 
-    let llselfty = type_of(ccx, self_ty);
-    let llselfval = PointerCast(bcx, fcx.llenv, T_ptr(llselfty));
+    let lltransformedselfty = type_of(ccx, transformed_self_ty);
+    let lltransformedselfval =
+        PointerCast(bcx, fcx.llenv, T_ptr(lltransformedselfty));
+    let llselfval = Load(bcx, lltransformedselfval);
 
     let llotherval_opt;
     match kind {
@@ -280,6 +310,9 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
                         enum_variant_infos[self_variant_index].id;
                 let llselfval = GEP_enum(match_bcx, llselfpayload, enum_id,
                                          variant_def_id, enum_substs.tps, i);
+                let llselfallocaty = common::val_ty(llselfval);
+                let llselfalloca = base::alloca(match_bcx, llselfallocaty);
+                Store(match_bcx, llselfval, llselfalloca);
 
                 let llotherval_opt = llotherpayload_opt.map(|llotherpayload|
                     GEP_enum(match_bcx, *llotherpayload, enum_id,
@@ -289,7 +322,7 @@ fn trans_deriving_enum_method(ccx: @crate_ctxt,
                 match_bcx = call_substructure_method(match_bcx,
                                                      derived_method_info,
                                                      self_ty,
-                                                     llselfval,
+                                                     llselfalloca,
                                                      llotherval_opt,
                                                      llextraparams);
 

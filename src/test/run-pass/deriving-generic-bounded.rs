@@ -1,20 +1,20 @@
 trait MyEq {
     #[derivable]
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
 }
 
 impl int : MyEq {
-    pure fn eq(other: &int) -> bool {
-        self == *other
+    pure fn eq(&self, other: &int) -> bool {
+        *self == *other
     }
 }
 
 impl<T:MyEq> @T : MyEq {
-    pure fn eq(other: &@T) -> bool {
+    pure fn eq(&self, other: &@T) -> bool {
         unsafe {
             io::println("@T");
         }
-        (*self).eq(&**other)
+        (**self).eq(&**other)
     }
 }
 

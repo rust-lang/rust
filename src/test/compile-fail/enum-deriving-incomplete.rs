@@ -1,6 +1,6 @@
 trait MyEq {
     #[derivable]
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
 }
 
 struct A {

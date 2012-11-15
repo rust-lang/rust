@@ -1,8 +1,8 @@
 trait MyEq {
     #[derivable]
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
     #[derivable]
-    pure fn ne(other: &self) -> bool;
+    pure fn ne(&self, other: &self) -> bool;
 }
 
 struct A {
@@ -10,12 +10,12 @@ struct A {
 }
 
 impl int : MyEq {
-    pure fn eq(other: &int) -> bool { self == *other }
-    pure fn ne(other: &int) -> bool { self != *other }
+    pure fn eq(&self, other: &int) -> bool { *self == *other }
+    pure fn ne(&self, other: &int) -> bool { *self != *other }
 }
 
 impl A : MyEq {
-    pure fn ne(other: &A) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &A) -> bool { !self.eq(other) }
 }
 
 fn main() {

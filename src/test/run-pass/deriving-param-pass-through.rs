@@ -1,17 +1,17 @@
 trait Trait {
     #[derivable]
-    fn f(x: int, y: &str);
+    fn f(&self, x: int, y: &str);
 }
 
 impl int : Trait {
-    fn f(x: int, y: &str) {
+    fn f(&self, x: int, y: &str) {
         assert x == 42;
         assert y == "hello";
     }
 }
 
 impl float : Trait {
-    fn f(x: int, y: &str) {
+    fn f(&self, x: int, y: &str) {
         assert x == 42;
         assert y == "hello";
     }
