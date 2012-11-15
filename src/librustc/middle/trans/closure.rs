@@ -316,7 +316,20 @@ fn load_environment(fcx: fn_ctxt,
                     load_ret_handle: bool,
                     proto: ast::Proto) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
-    let bcx = raw_block(fcx, false, fcx.llloadenv);
+
+    let llloadenv = match fcx.llloadenv {
+        Some(ll) => ll,
+        None => {
+            let ll =
+                str::as_c_str(~"load_env",
+                              |buf|
+                              llvm::LLVMAppendBasicBlock(fcx.llfn, buf));
+            fcx.llloadenv = Some(ll);
+            ll
+        }
+    };
+
+    let bcx = raw_block(fcx, false, llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);
