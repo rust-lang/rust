@@ -3743,10 +3743,20 @@ impl Parser {
 }
 
 impl restriction : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &restriction) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &restriction) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &restriction) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &restriction) -> bool { !(*self).eq(other) }
 }
 
 //

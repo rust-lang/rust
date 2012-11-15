@@ -351,6 +351,7 @@ enum Constraint {
 }
 
 impl Constraint : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Constraint) -> bool {
         match (self, (*other)) {
             (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
@@ -367,7 +368,29 @@ impl Constraint : cmp::Eq {
             (ConstrainVarSubReg(*), _) => false
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Constraint) -> bool {
+        match ((*self), (*other)) {
+            (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
+                v0a == v0b && v1a == v1b
+            }
+            (ConstrainRegSubVar(ra, va), ConstrainRegSubVar(rb, vb)) => {
+                ra == rb && va == vb
+            }
+            (ConstrainVarSubReg(va, ra), ConstrainVarSubReg(vb, rb)) => {
+                va == vb && ra == rb
+            }
+            (ConstrainVarSubVar(*), _) => false,
+            (ConstrainRegSubVar(*), _) => false,
+            (ConstrainVarSubReg(*), _) => false
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Constraint) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Constraint) -> bool { !(*self).eq(other) }
 }
 
 impl Constraint : to_bytes::IterBytes {
@@ -391,10 +414,20 @@ struct TwoRegions {
 }
 
 impl TwoRegions : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &TwoRegions) -> bool {
         self.a == (*other).a && self.b == (*other).b
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &TwoRegions) -> bool {
+        (*self).a == (*other).a && (*self).b == (*other).b
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &TwoRegions) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &TwoRegions) -> bool { !(*self).eq(other) }
 }
 
 impl TwoRegions : to_bytes::IterBytes {
@@ -891,19 +924,39 @@ priv impl RegionVarBindings {
 enum Direction { Incoming = 0, Outgoing = 1 }
 
 impl Direction : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Direction) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Direction) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Direction) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Direction) -> bool { !(*self).eq(other) }
 }
 
 enum Classification { Expanding, Contracting }
 
 impl Classification : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Classification) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Classification) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Classification) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Classification) -> bool { !(*self).eq(other) }
 }
 
 enum GraphNodeValue { NoValue, Value(Region), ErrorValue }

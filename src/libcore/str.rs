@@ -737,62 +737,140 @@ pure fn gt(a: &str, b: &str) -> bool {
 
 impl &str : Eq {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn eq(other: & &self/str) -> bool {
         eq_slice(self, (*other))
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: & &self/str) -> bool {
+        eq_slice((*self), (*other))
+    }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ne(other: & &self/str) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: & &self/str) -> bool { !(*self).eq(other) }
 }
 
 impl ~str : Eq {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn eq(other: &~str) -> bool {
         eq_slice(self, (*other))
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &~str) -> bool {
+        eq_slice((*self), (*other))
+    }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ne(other: &~str) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
 }
 
 impl @str : Eq {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn eq(other: &@str) -> bool {
         eq_slice(self, (*other))
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &@str) -> bool {
+        eq_slice((*self), (*other))
+    }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ne(other: &@str) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
 }
 
 impl ~str : Ord {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn lt(other: &~str) -> bool { lt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn le(other: &~str) -> bool { le(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: &~str) -> bool { le((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ge(other: &~str) -> bool { ge(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: &~str) -> bool { ge((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn gt(other: &~str) -> bool { gt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
 }
 
 impl &str : Ord {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn lt(other: & &self/str) -> bool { lt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: & &self/str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn le(other: & &self/str) -> bool { le(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: & &self/str) -> bool { le((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ge(other: & &self/str) -> bool { ge(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: & &self/str) -> bool { ge((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn gt(other: & &self/str) -> bool { gt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: & &self/str) -> bool { gt((*self), (*other)) }
 }
 
 impl @str : Ord {
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn lt(other: &@str) -> bool { lt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn le(other: &@str) -> bool { le(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: &@str) -> bool { le((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn ge(other: &@str) -> bool { ge(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: &@str) -> bool { ge((*self), (*other)) }
     #[inline(always)]
+    #[cfg(stage0)]
     pure fn gt(other: &@str) -> bool { gt(self, (*other)) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
 }
 
 /*

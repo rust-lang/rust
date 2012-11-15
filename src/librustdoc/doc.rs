@@ -7,10 +7,20 @@ type Doc_ = {
 };
 
 impl Doc_ : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Doc_) -> bool {
         self.pages == (*other).pages
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Doc_) -> bool {
+        (*self).pages == (*other).pages
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Doc_) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Doc_) -> bool { !(*self).eq(other) }
 }
 
 enum Doc {
@@ -18,8 +28,16 @@ enum Doc {
 }
 
 impl Doc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Doc) -> bool { *self == *(*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Doc) -> bool { *(*self) == *(*other) }
+    #[cfg(stage0)]
     pure fn ne(other: &Doc) -> bool { *self != *(*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Doc) -> bool { *(*self) != *(*other) }
 }
 
 enum Page {
@@ -28,6 +46,7 @@ enum Page {
 }
 
 impl Page : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Page) -> bool {
         match self {
             CratePage(e0a) => {
@@ -44,7 +63,29 @@ impl Page : cmp::Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Page) -> bool {
+        match (*self) {
+            CratePage(e0a) => {
+                match (*other) {
+                    CratePage(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ItemPage(e0a) => {
+                match (*other) {
+                    ItemPage(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Page) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Page) -> bool { !(*self).eq(other) }
 }
 
 enum Implementation {
@@ -53,10 +94,20 @@ enum Implementation {
 }
 
 impl Implementation : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Implementation) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Implementation) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Implementation) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Implementation) -> bool { !(*self).eq(other) }
 }
 
 
@@ -70,10 +121,20 @@ type Section = {
 };
 
 impl Section : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Section) -> bool {
         self.header == (*other).header && self.body == (*other).body
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Section) -> bool {
+        (*self).header == (*other).header && (*self).body == (*other).body
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Section) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Section) -> bool { !(*self).eq(other) }
 }
 
 // FIXME (#2596): We currently give topmod the name of the crate.  There
@@ -84,10 +145,20 @@ type CrateDoc = {
 };
 
 impl CrateDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &CrateDoc) -> bool {
         self.topmod == (*other).topmod
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &CrateDoc) -> bool {
+        (*self).topmod == (*other).topmod
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &CrateDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &CrateDoc) -> bool { !(*self).eq(other) }
 }
 
 enum ItemTag {
@@ -103,6 +174,7 @@ enum ItemTag {
 }
 
 impl ItemTag : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ItemTag) -> bool {
         match self {
             ModTag(e0a) => {
@@ -161,7 +233,71 @@ impl ItemTag : cmp::Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ItemTag) -> bool {
+        match (*self) {
+            ModTag(e0a) => {
+                match (*other) {
+                    ModTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            NmodTag(e0a) => {
+                match (*other) {
+                    NmodTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ConstTag(e0a) => {
+                match (*other) {
+                    ConstTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            FnTag(e0a) => {
+                match (*other) {
+                    FnTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            EnumTag(e0a) => {
+                match (*other) {
+                    EnumTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            TraitTag(e0a) => {
+                match (*other) {
+                    TraitTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ImplTag(e0a) => {
+                match (*other) {
+                    ImplTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            TyTag(e0a) => {
+                match (*other) {
+                    TyTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            StructTag(e0a) => {
+                match (*other) {
+                    StructTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &ItemTag) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ItemTag) -> bool { !(*self).eq(other) }
 }
 
 type ItemDoc = {
@@ -176,6 +312,7 @@ type ItemDoc = {
 };
 
 impl ItemDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ItemDoc) -> bool {
         self.id == (*other).id &&
         self.name == (*other).name &&
@@ -185,7 +322,22 @@ impl ItemDoc : cmp::Eq {
         self.sections == (*other).sections &&
         self.reexport == (*other).reexport
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ItemDoc) -> bool {
+        (*self).id == (*other).id &&
+        (*self).name == (*other).name &&
+        (*self).path == (*other).path &&
+        (*self).brief == (*other).brief &&
+        (*self).desc == (*other).desc &&
+        (*self).sections == (*other).sections &&
+        (*self).reexport == (*other).reexport
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &ItemDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ItemDoc) -> bool { !(*self).eq(other) }
 }
 
 type SimpleItemDoc = {
@@ -194,10 +346,20 @@ type SimpleItemDoc = {
 };
 
 impl SimpleItemDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &SimpleItemDoc) -> bool {
         self.item == (*other).item && self.sig == (*other).sig
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &SimpleItemDoc) -> bool {
+        (*self).item == (*other).item && (*self).sig == (*other).sig
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &SimpleItemDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &SimpleItemDoc) -> bool { !(*self).eq(other) }
 }
 
 type ModDoc_ = {
@@ -207,12 +369,24 @@ type ModDoc_ = {
 };
 
 impl ModDoc_ : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ModDoc_) -> bool {
         self.item == (*other).item &&
         self.items == (*other).items &&
         self.index == (*other).index
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ModDoc_) -> bool {
+        (*self).item == (*other).item &&
+        (*self).items == (*other).items &&
+        (*self).index == (*other).index
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &ModDoc_) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ModDoc_) -> bool { !(*self).eq(other) }
 }
 
 enum ModDoc {
@@ -220,8 +394,16 @@ enum ModDoc {
 }
 
 impl ModDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ModDoc) -> bool { *self == *(*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ModDoc) -> bool { *(*self) == *(*other) }
+    #[cfg(stage0)]
     pure fn ne(other: &ModDoc) -> bool { *self != *(*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ModDoc) -> bool { *(*self) != *(*other) }
 }
 
 type NmodDoc = {
@@ -231,12 +413,24 @@ type NmodDoc = {
 };
 
 impl NmodDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &NmodDoc) -> bool {
         self.item == (*other).item &&
         self.fns == (*other).fns &&
         self.index == (*other).index
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &NmodDoc) -> bool {
+        (*self).item == (*other).item &&
+        (*self).fns == (*other).fns &&
+        (*self).index == (*other).index
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &NmodDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &NmodDoc) -> bool { !(*self).eq(other) }
 }
 
 type ConstDoc = SimpleItemDoc;
@@ -249,10 +443,20 @@ type EnumDoc = {
 };
 
 impl EnumDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &EnumDoc) -> bool {
         self.item == (*other).item && self.variants == (*other).variants
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &EnumDoc) -> bool {
+        (*self).item == (*other).item && (*self).variants == (*other).variants
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &EnumDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &EnumDoc) -> bool { !(*self).eq(other) }
 }
 
 type VariantDoc = {
@@ -262,12 +466,24 @@ type VariantDoc = {
 };
 
 impl VariantDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &VariantDoc) -> bool {
         self.name == (*other).name &&
         self.desc == (*other).desc &&
         self.sig == (*other).sig
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &VariantDoc) -> bool {
+        (*self).name == (*other).name &&
+        (*self).desc == (*other).desc &&
+        (*self).sig == (*other).sig
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &VariantDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &VariantDoc) -> bool { !(*self).eq(other) }
 }
 
 type TraitDoc = {
@@ -276,10 +492,20 @@ type TraitDoc = {
 };
 
 impl TraitDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &TraitDoc) -> bool {
         self.item == (*other).item && self.methods == (*other).methods
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &TraitDoc) -> bool {
+        (*self).item == (*other).item && (*self).methods == (*other).methods
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &TraitDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &TraitDoc) -> bool { !(*self).eq(other) }
 }
 
 type MethodDoc = {
@@ -292,6 +518,7 @@ type MethodDoc = {
 };
 
 impl MethodDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &MethodDoc) -> bool {
         self.name == (*other).name &&
         self.brief == (*other).brief &&
@@ -300,7 +527,21 @@ impl MethodDoc : cmp::Eq {
         self.sig == (*other).sig &&
         self.implementation == (*other).implementation
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &MethodDoc) -> bool {
+        (*self).name == (*other).name &&
+        (*self).brief == (*other).brief &&
+        (*self).desc == (*other).desc &&
+        (*self).sections == (*other).sections &&
+        (*self).sig == (*other).sig &&
+        (*self).implementation == (*other).implementation
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &MethodDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &MethodDoc) -> bool { !(*self).eq(other) }
 }
 
 type ImplDoc = {
@@ -311,13 +552,26 @@ type ImplDoc = {
 };
 
 impl ImplDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ImplDoc) -> bool {
         self.item == (*other).item &&
         self.trait_types == (*other).trait_types &&
         self.self_ty == (*other).self_ty &&
         self.methods == (*other).methods
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ImplDoc) -> bool {
+        (*self).item == (*other).item &&
+        (*self).trait_types == (*other).trait_types &&
+        (*self).self_ty == (*other).self_ty &&
+        (*self).methods == (*other).methods
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &ImplDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ImplDoc) -> bool { !(*self).eq(other) }
 }
 
 type TyDoc = SimpleItemDoc;
@@ -329,12 +583,24 @@ type StructDoc = {
 };
 
 impl StructDoc : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &StructDoc) -> bool {
         return self.item == other.item
             && self.fields == other.fields
             && self.sig == other.sig;
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &StructDoc) -> bool {
+        return (*self).item == other.item
+            && (*self).fields == other.fields
+            && (*self).sig == other.sig;
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &StructDoc) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &StructDoc) -> bool { !(*self).eq(other) }
 }
 
 type Index = {
@@ -342,10 +608,20 @@ type Index = {
 };
 
 impl Index : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Index) -> bool {
         self.entries == (*other).entries
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Index) -> bool {
+        (*self).entries == (*other).entries
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Index) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Index) -> bool { !(*self).eq(other) }
 }
 
 /**
@@ -366,13 +642,26 @@ type IndexEntry = {
 };
 
 impl IndexEntry : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &IndexEntry) -> bool {
         self.kind == (*other).kind &&
         self.name == (*other).name &&
         self.brief == (*other).brief &&
         self.link == (*other).link
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &IndexEntry) -> bool {
+        (*self).kind == (*other).kind &&
+        (*self).name == (*other).name &&
+        (*self).brief == (*other).brief &&
+        (*self).link == (*other).link
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &IndexEntry) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &IndexEntry) -> bool { !(*self).eq(other) }
 }
 
 impl Doc {

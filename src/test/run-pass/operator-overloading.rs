@@ -31,10 +31,10 @@ impl Point : ops::Index<bool,int> {
 }
 
 impl Point : cmp::Eq {
-    pure fn eq(other: &Point) -> bool {
-        self.x == (*other).x && self.y == (*other).y
+    pure fn eq(&self, other: &Point) -> bool {
+        (*self).x == (*other).x && (*self).y == (*other).y
     }
-    pure fn ne(other: &Point) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
 }
 
 fn main() {

@@ -12,10 +12,10 @@ fn test_rec() {
 enum mood { happy, sad, }
 
 impl mood : cmp::Eq {
-    pure fn eq(other: &mood) -> bool {
-        (self as uint) == ((*other) as uint)
+    pure fn eq(&self, other: &mood) -> bool {
+        ((*self) as uint) == ((*other) as uint)
     }
-    pure fn ne(other: &mood) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &mood) -> bool { !(*self).eq(other) }
 }
 
 fn test_tag() {

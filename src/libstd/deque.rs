@@ -239,6 +239,7 @@ mod tests {
     type RecCy = {x: int, y: int, t: Taggy};
 
     impl Taggy : Eq {
+        #[cfg(stage0)]
         pure fn eq(other: &Taggy) -> bool {
             match self {
               One(a1) => match (*other) {
@@ -255,11 +256,34 @@ mod tests {
               }
             }
         }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn eq(&self, other: &Taggy) -> bool {
+            match (*self) {
+              One(a1) => match (*other) {
+                One(b1) => return a1 == b1,
+                _ => return false
+              },
+              Two(a1, a2) => match (*other) {
+                Two(b1, b2) => return a1 == b1 && a2 == b2,
+                _ => return false
+              },
+              Three(a1, a2, a3) => match (*other) {
+                Three(b1, b2, b3) => return a1 == b1 && a2 == b2 && a3 == b3,
+                _ => return false
+              }
+            }
+        }
+        #[cfg(stage0)]
         pure fn ne(other: &Taggy) -> bool { !self.eq(other) }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ne(&self, other: &Taggy) -> bool { !(*self).eq(other) }
     }
 
     impl Taggypar<int> : Eq {
         //let eq4: EqFn<Taggypar<int>> = |x,y| taggypareq::<int>(x, y);
+        #[cfg(stage0)]
         pure fn eq(other: &Taggypar<int>) -> bool {
                   match self {
                     Onepar::<int>(a1) => match (*other) {
@@ -278,15 +302,54 @@ mod tests {
                     }
                   }
         }
-        pure fn ne(other: &Taggypar<int>) -> bool { !self.eq(other) }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn eq(&self, other: &Taggypar<int>) -> bool {
+                  match (*self) {
+                    Onepar::<int>(a1) => match (*other) {
+                      Onepar::<int>(b1) => return a1 == b1,
+                      _ => return false
+                    },
+                    Twopar::<int>(a1, a2) => match (*other) {
+                      Twopar::<int>(b1, b2) => return a1 == b1 && a2 == b2,
+                      _ => return false
+                    },
+                    Threepar::<int>(a1, a2, a3) => match (*other) {
+                      Threepar::<int>(b1, b2, b3) => {
+                          return a1 == b1 && a2 == b2 && a3 == b3
+                      }
+                      _ => return false
+                    }
+                  }
+        }
+        #[cfg(stage0)]
+        pure fn ne(other: &Taggypar<int>) -> bool {
+            !self.eq(other)
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ne(&self, other: &Taggypar<int>) -> bool {
+            !(*self).eq(other)
+        }
     }
 
     impl RecCy : Eq {
+        #[cfg(stage0)]
         pure fn eq(other: &RecCy) -> bool {
           return self.x == (*other).x && self.y == (*other).y &&
                  self.t == (*other).t;
         }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn eq(&self, other: &RecCy) -> bool {
+          return (*self).x == (*other).x && (*self).y == (*other).y &&
+                 (*self).t == (*other).t;
+        }
+        #[cfg(stage0)]
         pure fn ne(other: &RecCy) -> bool { !self.eq(other) }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ne(&self, other: &RecCy) -> bool { !(*self).eq(other) }
     }
 
     #[test]

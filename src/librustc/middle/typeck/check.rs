@@ -956,7 +956,7 @@ fn lookup_field_ty(tcx: ty::ctxt,
 
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
-enum DerefArgs {
+pub enum DerefArgs {
     DontDerefArgs,
     DoDerefArgs
 }
@@ -1182,7 +1182,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         -> Option<(ty::t, bool)>
     {
         match method::lookup(fcx, op_ex, self_ex,
-                             op_ex.callee_id, opname, self_t, ~[]) {
+                             op_ex.callee_id, opname, self_t, ~[],
+                             deref_args) {
           Some(origin) => {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
@@ -1439,7 +1440,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let tps = vec::map(tys, |ty| fcx.to_ty(*ty));
 
         match method::lookup(fcx, expr, base, expr.id,
-                             field, expr_t, tps) {
+                             field, expr_t, tps, DontDerefArgs) {
             Some(entry) => {
                 fcx.ccx.method_map.insert(expr.id, entry);
 

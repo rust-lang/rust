@@ -91,10 +91,10 @@ fn p(x: int, y: int) -> p {
 }
 
 impl p : cmp::Eq {
-    pure fn eq(other: &p) -> bool {
-        self.x == (*other).x && self.y == (*other).y
+    pure fn eq(&self, other: &p) -> bool {
+        (*self).x == (*other).x && (*self).y == (*other).y
     }
-    pure fn ne(other: &p) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &p) -> bool { !(*self).eq(other) }
 }
 
 fn test_class() {

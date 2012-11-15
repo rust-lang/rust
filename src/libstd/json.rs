@@ -911,6 +911,7 @@ pub impl Deserializer: serialization::Deserializer {
 }
 
 impl Json : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Json) -> bool {
         // XXX: This is ugly because matching on references is broken, and
         // we can't match on dereferenced tuples without a copy.
@@ -946,11 +947,53 @@ impl Json : Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Json) -> bool {
+        // XXX: This is ugly because matching on references is broken, and
+        // we can't match on dereferenced tuples without a copy.
+        match (*self) {
+            Number(f0) =>
+                match *other { Number(f1) => f0 == f1, _ => false },
+            String(ref s0) =>
+                match *other { String(ref s1) => s0 == s1, _ => false },
+            Boolean(b0) =>
+                match *other { Boolean(b1) => b0 == b1, _ => false },
+            Null =>
+                match *other { Null => true, _ => false },
+            List(v0) =>
+                match *other { List(v1) => v0 == v1, _ => false },
+            Object(ref d0) => {
+                match *other {
+                    Object(ref d1) => {
+                        if d0.len() == d1.len() {
+                            let mut equal = true;
+                            for d0.each |k, v0| {
+                                match d1.find_ref(k) {
+                                    Some(v1) if v0 == v1 => { },
+                                    _ => { equal = false; break }
+                                }
+                            };
+                            equal
+                        } else {
+                            false
+                        }
+                    }
+                    _ => false
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Json) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Json) -> bool { !(*self).eq(other) }
 }
 
 /// Test if two json values are less than one another
 impl Json : Ord {
+    #[cfg(stage0)]
     pure fn lt(other: &Json) -> bool {
         match self {
             Number(f0) => {
@@ -1021,18 +1064,114 @@ impl Json : Ord {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: &Json) -> bool {
+        match (*self) {
+            Number(f0) => {
+                match *other {
+                    Number(f1) => f0 < f1,
+                    String(_) | Boolean(_) | List(_) | Object(_) |
+                    Null => true
+                }
+            }
+
+            String(ref s0) => {
+                match *other {
+                    Number(_) => false,
+                    String(ref s1) => s0 < s1,
+                    Boolean(_) | List(_) | Object(_) | Null => true
+                }
+            }
+
+            Boolean(b0) => {
+                match *other {
+                    Number(_) | String(_) => false,
+                    Boolean(b1) => b0 < b1,
+                    List(_) | Object(_) | Null => true
+                }
+            }
+
+            List(l0) => {
+                match *other {
+                    Number(_) | String(_) | Boolean(_) => false,
+                    List(l1) => l0 < l1,
+                    Object(_) | Null => true
+                }
+            }
+
+            Object(ref d0) => {
+                match *other {
+                    Number(_) | String(_) | Boolean(_) | List(_) => false,
+                    Object(ref d1) => {
+                        unsafe {
+                            let mut d0_flat = ~[];
+                            let mut d1_flat = ~[];
+
+                            // XXX: this is horribly inefficient...
+                            for d0.each |k, v| {
+                                 d0_flat.push((@copy *k, @copy *v));
+                            }
+                            d0_flat.qsort();
+
+                            for d1.each |k, v| {
+                                d1_flat.push((@copy *k, @copy *v));
+                            }
+                            d1_flat.qsort();
+
+                            d0_flat < d1_flat
+                        }
+                    }
+                    Null => true
+                }
+            }
+
+            Null => {
+                match *other {
+                    Number(_) | String(_) | Boolean(_) | List(_) |
+                    Object(_) =>
+                        false,
+                    Null => true
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn le(other: &Json) -> bool { !(*other).lt(&self) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: &Json) -> bool { !(*other).lt(&(*self)) }
+    #[cfg(stage0)]
     pure fn ge(other: &Json) -> bool { !self.lt(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: &Json) -> bool { !(*self).lt(other) }
+    #[cfg(stage0)]
     pure fn gt(other: &Json) -> bool { (*other).lt(&self)  }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
 impl Error : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Error) -> bool {
         self.line == other.line &&
         self.col == other.col &&
         self.msg == other.msg
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Error) -> bool {
+        (*self).line == other.line &&
+        (*self).col == other.col &&
+        (*self).msg == other.msg
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Error) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Error) -> bool { !(*self).eq(other) }
 }
 
 trait ToJson { fn to_json() -> Json; }
