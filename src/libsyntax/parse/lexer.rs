@@ -21,9 +21,13 @@ trait reader {
 type string_reader = @{
     span_diagnostic: span_handler,
     src: @~str,
+    // The absolute offset within the codemap of the next character to read
     mut pos: FilePos,
+    // The absolute offset within the codemap of the last character to be read (curr)
     mut last_pos: FilePos,
+    // The column of the next character to read
     mut col: CharPos,
+    // The last character to be read
     mut curr: char,
     filemap: @codemap::FileMap,
     interner: @token::ident_interner,
