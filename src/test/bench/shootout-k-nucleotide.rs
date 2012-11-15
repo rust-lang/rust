@@ -1,5 +1,4 @@
-// xfail-pretty
-
+// xfail-pretty (extra blank line is inserted in vec::mapi call)
 // multi tasking k-nucleotide
 
 extern mod std;
