@@ -436,7 +436,7 @@ rust_task::die() {
 
 void
 rust_task::backtrace() {
-    if (!log_rt_backtrace) return;
+    if (log_rt_backtrace <= log_err) return;
 #ifndef __WIN32__
     void *call_stack[256];
     int nframes = ::backtrace(call_stack, 256);
