@@ -2,6 +2,9 @@
  * in a crate. This to make it possible to represent the positions
  * with single-word things, rather than passing records all over the
  * compiler.
+ *
+ * All represented positions are *absolute* positions within the codemap,
+ * not relative positions within a single file.
  */
 
 use dvec::DVec;
@@ -142,6 +145,8 @@ pub struct Loc<A: Pos> {
     file: @FileMap, line: uint, col: A
 }
 
+/// An absolute offset within the CodeMap (not a relative offset within a
+/// a single FileMap)
 pub struct FilePos {
     ch: CharPos, byte: BytePos
 }
