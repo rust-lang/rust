@@ -1,5 +1,5 @@
 use diagnostic::span_handler;
-use codemap::{span, CodeMap, CharPos, BytePos};
+use codemap::{span, CodeMap, CharPos, BytePos, FilePos};
 use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
                              tt_next_token};
 
@@ -21,10 +21,10 @@ trait reader {
 type string_reader = @{
     span_diagnostic: span_handler,
     src: @~str,
+    mut pos: FilePos,
+    mut last_pos: FilePos,
     mut col: CharPos,
-    mut pos: BytePos,
     mut curr: char,
-    mut chpos: CharPos,
     filemap: @codemap::FileMap,
     interner: @token::ident_interner,
     /* cached: */
@@ -48,9 +48,10 @@ fn new_low_level_string_reader(span_diagnostic: span_handler,
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
-              mut col: CharPos(0), mut pos: BytePos(0),
+              mut pos: filemap.start_pos,
+              mut last_pos: filemap.start_pos,
+              mut col: CharPos(0),
               mut curr: initial_char,
-              mut chpos: filemap.start_pos.ch,
               filemap: filemap, interner: itr,
               /* dummy values; not read */
               mut peek_tok: token::EOF,
@@ -61,7 +62,9 @@ fn new_low_level_string_reader(span_diagnostic: span_handler,
 
 fn dup_string_reader(&&r: string_reader) -> string_reader {
     @{span_diagnostic: r.span_diagnostic, src: r.src,
-      mut col: r.col, mut pos: r.pos, mut curr: r.curr, mut chpos: r.chpos,
+      mut pos: r.pos,
+      mut last_pos: r.last_pos,
+      mut col: r.col, mut curr: r.curr,
       filemap: r.filemap, interner: r.interner,
       mut peek_tok: r.peek_tok, mut peek_span: r.peek_span}
 }
@@ -116,34 +119,48 @@ fn string_advance_token(&&r: string_reader) {
     if is_eof(r) {
         r.peek_tok = token::EOF;
     } else {
-        let start_chpos = r.chpos;
+        let start_chpos = r.last_pos.ch;
         r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_chpos, r.chpos);
+        r.peek_span = ast_util::mk_sp(start_chpos, r.last_pos.ch);
     };
 
+}
+
+fn byte_offset(rdr: string_reader) -> BytePos {
+    (rdr.pos.byte - rdr.filemap.start_pos.byte)
 }
 
 fn get_str_from(rdr: string_reader, start: BytePos) -> ~str unsafe {
     // I'm pretty skeptical about this subtraction. What if there's a
     // multi-byte character before the mark?
-    return str::slice(*rdr.src, start.to_uint() - 1u, rdr.pos.to_uint() - 1u);
+    return str::slice(*rdr.src, start.to_uint() - 1u,
+                      byte_offset(rdr).to_uint() - 1u);
 }
 
 fn bump(rdr: string_reader) {
-    if rdr.pos.to_uint() < (*rdr.src).len() {
+    rdr.last_pos = rdr.pos;
+    let current_byte_offset = byte_offset(rdr).to_uint();;
+    if current_byte_offset < (*rdr.src).len() {
+        let last_char = rdr.curr;
+        let next = str::char_range_at(*rdr.src, current_byte_offset);
+        let byte_offset_diff = next.next - current_byte_offset;
+        rdr.pos = FilePos {
+            ch: rdr.pos.ch + CharPos(1u),
+            byte: rdr.pos.byte + BytePos(byte_offset_diff)
+        };
+        rdr.curr = next.ch;
         rdr.col += CharPos(1u);
-        rdr.chpos += CharPos(1u);
-        if rdr.curr == '\n' {
-            rdr.filemap.next_line(rdr.chpos, rdr.pos);
+        if last_char == '\n' {
+            rdr.filemap.next_line(rdr.last_pos);
             rdr.col = CharPos(0u);
         }
-        let next = str::char_range_at(*rdr.src, rdr.pos.to_uint());
-        rdr.pos = BytePos(next.next);
-        rdr.curr = next.ch;
     } else {
         // XXX: What does this accomplish?
         if (rdr.curr != -1 as char) {
-            rdr.chpos += CharPos(1u);
+            rdr.pos = FilePos {
+                ch: rdr.pos.ch + CharPos(1u),
+                byte: rdr.pos.byte + BytePos(1u)
+            };
             rdr.col += CharPos(1u);
             rdr.curr = -1 as char;
         }
@@ -153,8 +170,9 @@ fn is_eof(rdr: string_reader) -> bool {
     rdr.curr == -1 as char
 }
 fn nextch(rdr: string_reader) -> char {
-    if rdr.pos.to_uint() < (*rdr.src).len() {
-        return str::char_at(*rdr.src, rdr.pos.to_uint());
+    let offset = byte_offset(rdr).to_uint();
+    if offset < (*rdr.src).len() {
+        return str::char_at(*rdr.src, offset);
     } else { return -1 as char; }
 }
 
@@ -211,7 +229,7 @@ fn consume_any_line_comment(rdr: string_reader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_chpos = rdr.chpos - CharPos(2u);
+                let start_chpos = rdr.pos.ch - CharPos(2u);
                 let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     str::push_char(&mut acc, rdr.curr);
@@ -219,7 +237,7 @@ fn consume_any_line_comment(rdr: string_reader)
                 }
                 return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+                    sp: ast_util::mk_sp(start_chpos, rdr.pos.ch)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -234,7 +252,7 @@ fn consume_any_line_comment(rdr: string_reader)
         if nextch(rdr) == '!' {
             let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
-            let loc = cmap.lookup_char_pos_adj(rdr.chpos);
+            let loc = cmap.lookup_char_pos_adj(rdr.last_pos.ch);
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
@@ -250,7 +268,7 @@ fn consume_block_comment(rdr: string_reader)
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
-        let start_chpos = rdr.chpos - CharPos(2u);
+        let start_chpos = rdr.pos.ch - CharPos(2u);
         let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
             str::push_char(&mut acc, rdr.curr);
@@ -264,7 +282,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+                sp: ast_util::mk_sp(start_chpos, rdr.pos.ch)
             });
         }
     } else {
@@ -584,7 +602,7 @@ fn next_token_inner(rdr: string_reader) -> token::Token {
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' => {
-        let n = rdr.pos;
+        let n = byte_offset(rdr);
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {

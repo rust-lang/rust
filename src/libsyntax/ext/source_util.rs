@@ -58,10 +58,13 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                   _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::Some(1u), ~"include");
     let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
-    let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
-                                        &res_rel_file(cx, sp, &Path(file)),
-                                        parse::parser::SOURCE_FILE);
-    return p.parse_expr();
+    let (p, rdr) = parse::new_parser_etc_from_file(
+        cx.parse_sess(), cx.cfg(),
+        &res_rel_file(cx, sp, &Path(file)),
+        parse::parser::SOURCE_FILE);
+    let e = p.parse_expr();
+    parse::update_parse_sess_position(&cx.parse_sess(), &rdr);
+    return e;
 }
 
 fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
