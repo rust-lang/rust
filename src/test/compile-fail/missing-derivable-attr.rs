@@ -1,5 +1,5 @@
 trait MyEq {
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
 }
 
 struct A {
@@ -7,7 +7,7 @@ struct A {
 }
 
 impl int : MyEq {
-    pure fn eq(other: &int) -> bool { self == *other }
+    pure fn eq(&self, other: &int) -> bool { *self == *other }
 }
 
 impl A : MyEq;  //~ ERROR missing method

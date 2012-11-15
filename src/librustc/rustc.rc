@@ -95,10 +95,10 @@ mod middle {
     mod ty;
     #[legacy_exports]
     mod resolve;
-    mod typeck {
+    pub mod typeck {
         #[legacy_exports];
-        mod check {
-            #[legacy_exports];
+        #[legacy_exports]
+        pub mod check {
             #[legacy_exports]
             mod alt;
             #[legacy_exports]
@@ -112,7 +112,7 @@ mod middle {
             #[legacy_exports]
             mod demand;
             #[legacy_exports]
-            mod method;
+            pub mod method;
         }
         #[legacy_exports]
         mod rscope;

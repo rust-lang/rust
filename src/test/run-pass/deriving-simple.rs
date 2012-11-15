@@ -1,6 +1,6 @@
 trait MyEq {
     #[derivable]
-    pure fn eq(other: &self) -> bool;
+    pure fn eq(&self, other: &self) -> bool;
 }
 
 struct A {
@@ -14,7 +14,7 @@ struct B {
 }
 
 impl A : MyEq {
-    pure fn eq(other: &A) -> bool {
+    pure fn eq(&self, other: &A) -> bool {
         unsafe { io::println(fmt!("eq %d %d", self.x, other.x)); }
         self.x == other.x
     }
