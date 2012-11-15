@@ -7,12 +7,24 @@ pub trait LocalData { }
 impl<T: Owned> @T: LocalData { }
 
 impl LocalData: Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &@LocalData) -> bool unsafe {
         let ptr_a: (uint, uint) = cast::reinterpret_cast(&self);
         let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
         return ptr_a == ptr_b;
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &@LocalData) -> bool unsafe {
+        let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
+        let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
+        return ptr_a == ptr_b;
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &@LocalData) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &@LocalData) -> bool { !(*self).eq(other) }
 }
 
 // We use dvec because it's the best data structure in core. If TLS is used

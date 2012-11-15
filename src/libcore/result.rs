@@ -365,6 +365,7 @@ pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
 }
 
 impl<T:Eq,U:Eq> Result<T,U> : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Result<T,U>) -> bool {
         match self {
             Ok(ref e0a) => {
@@ -381,7 +382,29 @@ impl<T:Eq,U:Eq> Result<T,U> : Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Result<T,U>) -> bool {
+        match (*self) {
+            Ok(ref e0a) => {
+                match (*other) {
+                    Ok(ref e0b) => *e0a == *e0b,
+                    _ => false
+                }
+            }
+            Err(ref e0a) => {
+                match (*other) {
+                    Err(ref e0b) => *e0a == *e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Result<T,U>) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Result<T,U>) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(test)]

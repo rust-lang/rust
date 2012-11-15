@@ -30,6 +30,7 @@ struct Package {
 }
 
 impl Package : cmp::Ord {
+    #[cfg(stage0)]
     pure fn lt(other: &Package) -> bool {
         if self.name.lt(&(*other).name) { return true; }
         if (*other).name.lt(&self.name) { return false; }
@@ -46,9 +47,39 @@ impl Package : cmp::Ord {
         if self.versions.lt(&(*other).versions) { return true; }
         return false;
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: &Package) -> bool {
+        if (*self).name.lt(&(*other).name) { return true; }
+        if (*other).name.lt(&(*self).name) { return false; }
+        if (*self).uuid.lt(&(*other).uuid) { return true; }
+        if (*other).uuid.lt(&(*self).uuid) { return false; }
+        if (*self).url.lt(&(*other).url) { return true; }
+        if (*other).url.lt(&(*self).url) { return false; }
+        if (*self).method.lt(&(*other).method) { return true; }
+        if (*other).method.lt(&(*self).method) { return false; }
+        if (*self).description.lt(&(*other).description) { return true; }
+        if (*other).description.lt(&(*self).description) { return false; }
+        if (*self).tags.lt(&(*other).tags) { return true; }
+        if (*other).tags.lt(&(*self).tags) { return false; }
+        if (*self).versions.lt(&(*other).versions) { return true; }
+        return false;
+    }
+    #[cfg(stage0)]
     pure fn le(other: &Package) -> bool { !(*other).lt(&self) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: &Package) -> bool { !(*other).lt(&(*self)) }
+    #[cfg(stage0)]
     pure fn ge(other: &Package) -> bool { !self.lt(other)     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: &Package) -> bool { !(*self).lt(other)     }
+    #[cfg(stage0)]
     pure fn gt(other: &Package) -> bool { (*other).lt(&self)  }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: &Package) -> bool { (*other).lt(&(*self))  }
 }
 
 struct Source {
@@ -94,10 +125,20 @@ struct Options {
 enum Mode { SystemMode, UserMode, LocalMode }
 
 impl Mode : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Mode) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Mode) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Mode) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Mode) -> bool { !(*self).eq(other) }
 }
 
 fn opts() -> ~[getopts::Opt] {

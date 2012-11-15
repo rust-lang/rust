@@ -85,10 +85,20 @@ fn parse_opts(args: &[~str]) -> OptRes {
 pub enum TestResult { TrOk, TrFailed, TrIgnored, }
 
 impl TestResult : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &TestResult) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &TestResult) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &TestResult) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &TestResult) -> bool { !(*self).eq(other) }
 }
 
 type ConsoleTestState =

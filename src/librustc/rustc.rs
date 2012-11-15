@@ -167,10 +167,20 @@ enum monitor_msg {
 }
 
 impl monitor_msg : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &monitor_msg) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &monitor_msg) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &monitor_msg) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &monitor_msg) -> bool { !(*self).eq(other) }
 }
 
 /*

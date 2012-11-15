@@ -2,10 +2,12 @@
 struct foo { a: int, b: int, c: int }
 
 impl foo : cmp::Eq {
-    pure fn eq(other: &foo) -> bool {
-        self.a == (*other).a && self.b == (*other).b && self.c == (*other).c
+    pure fn eq(&self, other: &foo) -> bool {
+        (*self).a == (*other).a &&
+        (*self).b == (*other).b &&
+        (*self).c == (*other).c
     }
-    pure fn ne(other: &foo) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
 }
 
 const x : foo = foo { a:1, b:2, c: 3 };

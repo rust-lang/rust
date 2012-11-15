@@ -43,8 +43,8 @@ enum Expr {
 }
 
 impl Expr : cmp::Eq {
-    pure fn eq(other: &Expr) -> bool {
-        match self {
+    pure fn eq(&self, other: &Expr) -> bool {
+        match *self {
             Val(e0a) => {
                 match *other {
                     Val(e0b) => e0a == e0b,
@@ -65,26 +65,26 @@ impl Expr : cmp::Eq {
             }
         }
     }
-    pure fn ne(other: &Expr) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &Expr) -> bool { !(*self).eq(other) }
 }
 
 impl AnEnum : cmp::Eq {
-    pure fn eq(other: &AnEnum) -> bool {
-        self.v == other.v
+    pure fn eq(&self, other: &AnEnum) -> bool {
+        (*self).v == other.v
     }
-    pure fn ne(other: &AnEnum) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &AnEnum) -> bool { !(*self).eq(other) }
 }
 
 impl Point : cmp::Eq {
-    pure fn eq(other: &Point) -> bool {
+    pure fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
-    pure fn ne(other: &Point) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
 }
 
 impl<T:cmp::Eq> Quark<T> : cmp::Eq {
-    pure fn eq(other: &Quark<T>) -> bool {
-        match self {
+    pure fn eq(&self, other: &Quark<T>) -> bool {
+        match *self {
             Top(ref q) => {
                 match *other {
                     Top(ref r) => q == r,
@@ -99,14 +99,14 @@ impl<T:cmp::Eq> Quark<T> : cmp::Eq {
             },
         }
     }
-    pure fn ne(other: &Quark<T>) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &Quark<T>) -> bool { !(*self).eq(other) }
 }
 
 impl CLike : cmp::Eq {
-    pure fn eq(other: &CLike) -> bool {
-        self as int == *other as int
+    pure fn eq(&self, other: &CLike) -> bool {
+        (*self) as int == *other as int
     }
-    pure fn ne(other: &CLike) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &CLike) -> bool { !(*self).eq(other) }
 }
 
 #[auto_serialize]
@@ -114,10 +114,12 @@ impl CLike : cmp::Eq {
 type Spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
-    pure fn eq(other: &Spanned<T>) -> bool {
-        self.lo == other.lo && self.hi == other.hi && self.node == other.node
+    pure fn eq(&self, other: &Spanned<T>) -> bool {
+        (*self).lo == other.lo &&
+        (*self).hi == other.hi &&
+        (*self).node == other.node
     }
-    pure fn ne(other: &Spanned<T>) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &Spanned<T>) -> bool { !(*self).eq(other) }
 }
 
 #[auto_serialize]

@@ -2,8 +2,8 @@
 enum t { a, b(~str), }
 
 impl t : cmp::Eq {
-    pure fn eq(other: &t) -> bool {
-        match self {
+    pure fn eq(&self, other: &t) -> bool {
+        match *self {
             a => {
                 match (*other) {
                     a => true,
@@ -18,7 +18,7 @@ impl t : cmp::Eq {
             }
         }
     }
-    pure fn ne(other: &t) -> bool { !self.eq(other) }
+    pure fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
 }
 
 fn make(i: int) -> t {

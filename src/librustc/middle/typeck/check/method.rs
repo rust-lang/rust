@@ -89,7 +89,8 @@ fn lookup(
     callee_id: node_id, // Where to store the type of `a.b`
     m_name: ast::ident,      // The ident `b`.
     self_ty: ty::t,          // The type of `a`.
-    supplied_tps: &[ty::t])  // The list of types X, Y, ... .
+    supplied_tps: &[ty::t],  // The list of types X, Y, ... .
+    deref_args: check::DerefArgs)   // Whether we autopointer first.
     -> Option<method_map_entry>
 {
     let lcx = LookupContext {
@@ -101,7 +102,8 @@ fn lookup(
         supplied_tps: supplied_tps,
         impl_dups: HashMap(),
         inherent_candidates: DVec(),
-        extension_candidates: DVec()
+        extension_candidates: DVec(),
+        deref_args: deref_args,
     };
     let mme = lcx.do_lookup(self_ty);
     debug!("method lookup for %s yielded %?",
@@ -118,7 +120,8 @@ struct LookupContext {
     supplied_tps: &[ty::t],
     impl_dups: HashMap<def_id, ()>,
     inherent_candidates: DVec<Candidate>,
-    extension_candidates: DVec<Candidate>
+    extension_candidates: DVec<Candidate>,
+    deref_args: check::DerefArgs,
 }
 
 /**
@@ -155,14 +158,33 @@ impl LookupContext {
             debug!("loop: self_ty=%s autoderefs=%u",
                    self.ty_to_str(self_ty), autoderefs);
 
-            match self.search_for_autoderefd_method(self_ty, autoderefs) {
-                Some(move mme) => { return Some(mme); }
-                None => {}
-            }
+            match self.deref_args {
+                check::DontDerefArgs => {
+                    match self.search_for_autoderefd_method(self_ty,
+                                                            autoderefs) {
+                        Some(move mme) => { return Some(mme); }
+                        None => {}
+                    }
 
-            match self.search_for_autoptrd_method(self_ty, autoderefs) {
-                Some(move mme) => { return Some(move mme); }
-                None => {}
+                    match self.search_for_autoptrd_method(self_ty,
+                                                          autoderefs) {
+                        Some(move mme) => { return Some(move mme); }
+                        None => {}
+                    }
+                }
+                check::DoDerefArgs => {
+                    match self.search_for_autoptrd_method(self_ty,
+                                                          autoderefs) {
+                        Some(move mme) => { return Some(move mme); }
+                        None => {}
+                    }
+
+                    match self.search_for_autoderefd_method(self_ty,
+                                                            autoderefs) {
+                        Some(move mme) => { return Some(mme); }
+                        None => {}
+                    }
+                }
             }
 
             match self.deref(self_ty, &enum_dids) {

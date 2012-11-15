@@ -315,10 +315,20 @@ pure fn userinfo_to_str(userinfo: UserInfo) -> ~str {
 }
 
 impl UserInfo : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &UserInfo) -> bool {
         self.user == (*other).user && self.pass == (*other).pass
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &UserInfo) -> bool {
+        (*self).user == (*other).user && (*self).pass == (*other).pass
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &UserInfo) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &UserInfo) -> bool { !(*self).eq(other) }
 }
 
 pure fn query_from_str(rawquery: &str) -> Query {
@@ -379,6 +389,7 @@ enum Input {
 }
 
 impl Input : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Input) -> bool {
         match (self, (*other)) {
             (Digit, Digit) => true,
@@ -389,7 +400,23 @@ impl Input : Eq {
             (Unreserved, _) => false
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Input) -> bool {
+        match ((*self), (*other)) {
+            (Digit, Digit) => true,
+            (Hex, Hex) => true,
+            (Unreserved, Unreserved) => true,
+            (Digit, _) => false,
+            (Hex, _) => false,
+            (Unreserved, _) => false
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Input) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Input) -> bool { !(*self).eq(other) }
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
@@ -722,6 +749,7 @@ impl Url: to_str::ToStr {
 }
 
 impl Url : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Url) -> bool {
         self.scheme == (*other).scheme
             && self.user == (*other).user
@@ -731,9 +759,26 @@ impl Url : Eq {
             && self.query == (*other).query
             && self.fragment == (*other).fragment
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Url) -> bool {
+        (*self).scheme == (*other).scheme
+            && (*self).user == (*other).user
+            && (*self).host == (*other).host
+            && (*self).port == (*other).port
+            && (*self).path == (*other).path
+            && (*self).query == (*other).query
+            && (*self).fragment == (*other).fragment
+    }
 
+    #[cfg(stage0)]
     pure fn ne(other: &Url) -> bool {
         !self.eq(other)
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Url) -> bool {
+        !(*self).eq(other)
     }
 }
 

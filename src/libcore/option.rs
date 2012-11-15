@@ -301,6 +301,7 @@ impl<T: Copy> Option<T> {
 }
 
 impl<T: Eq> Option<T> : Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Option<T>) -> bool {
         match self {
             None => {
@@ -318,7 +319,30 @@ impl<T: Eq> Option<T> : Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Option<T>) -> bool {
+        match (*self) {
+            None => {
+                match (*other) {
+                    None => true,
+                    Some(_) => false
+                }
+            }
+            Some(ref self_contents) => {
+                match (*other) {
+                    None => false,
+                    Some(ref other_contents) =>
+                        (*self_contents).eq(other_contents)
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Option<T>) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Option<T>) -> bool { !(*self).eq(other) }
 }
 
 #[test]

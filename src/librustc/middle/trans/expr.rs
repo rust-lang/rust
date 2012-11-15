@@ -148,6 +148,7 @@ impl Dest {
 }
 
 impl Dest : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Dest) -> bool {
         match (self, (*other)) {
             (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
@@ -156,7 +157,21 @@ impl Dest : cmp::Eq {
             (Ignore, _) => false,
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Dest) -> bool {
+        match ((*self), (*other)) {
+            (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
+            (Ignore, Ignore) => true,
+            (SaveIn(*), _) => false,
+            (Ignore, _) => false,
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Dest) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Dest) -> bool { !(*self).eq(other) }
 }
 
 fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
@@ -1429,6 +1444,7 @@ enum cast_kind {
 }
 
 impl cast_kind : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &cast_kind) -> bool {
         match (self, (*other)) {
             (cast_pointer, cast_pointer) => true,
@@ -1443,7 +1459,27 @@ impl cast_kind : cmp::Eq {
             (cast_other, _) => false,
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &cast_kind) -> bool {
+        match ((*self), (*other)) {
+            (cast_pointer, cast_pointer) => true,
+            (cast_integral, cast_integral) => true,
+            (cast_float, cast_float) => true,
+            (cast_enum, cast_enum) => true,
+            (cast_other, cast_other) => true,
+            (cast_pointer, _) => false,
+            (cast_integral, _) => false,
+            (cast_float, _) => false,
+            (cast_enum, _) => false,
+            (cast_other, _) => false,
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &cast_kind) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &cast_kind) -> bool { !(*self).eq(other) }
 }
 
 fn cast_type_kind(t: ty::t) -> cast_kind {

@@ -871,6 +871,7 @@ mod test_tim_sort {
     }
 
     impl CVal: Ord {
+        #[cfg(stage0)]
         pure fn lt(other: &CVal) -> bool {
             unsafe {
                 let rng = rand::Rng();
@@ -878,9 +879,30 @@ mod test_tim_sort {
             }
             self.val < other.val
         }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn lt(&self, other: &CVal) -> bool {
+            unsafe {
+                let rng = rand::Rng();
+                if rng.gen_float() > 0.995 { fail ~"It's happening!!!"; }
+            }
+            (*self).val < other.val
+        }
+        #[cfg(stage0)]
         pure fn le(other: &CVal) -> bool { self.val <= other.val }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }
+        #[cfg(stage0)]
         pure fn gt(other: &CVal) -> bool { self.val > other.val }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn gt(&self, other: &CVal) -> bool { (*self).val > other.val }
+        #[cfg(stage0)]
         pure fn ge(other: &CVal) -> bool { self.val >= other.val }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ge(&self, other: &CVal) -> bool { (*self).val >= other.val }
     }
 
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
@@ -934,11 +956,22 @@ mod test_tim_sort {
     }
 
     struct DVal { val: ~uint }
+
+    #[cfg(stage0)]
     impl DVal: Ord {
         pure fn lt(_x: &DVal) -> bool { true }
         pure fn le(_x: &DVal) -> bool { true }
         pure fn gt(_x: &DVal) -> bool { true }
         pure fn ge(_x: &DVal) -> bool { true }
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl DVal: Ord {
+        pure fn lt(&self, _x: &DVal) -> bool { true }
+        pure fn le(&self, _x: &DVal) -> bool { true }
+        pure fn gt(&self, _x: &DVal) -> bool { true }
+        pure fn ge(&self, _x: &DVal) -> bool { true }
     }
 
     #[test]
@@ -1150,10 +1183,42 @@ mod big_tests {
     }
 
     impl LVal: Ord {
-        pure fn lt(other: &a/LVal/&self) -> bool { self.val < other.val }
-        pure fn le(other: &a/LVal/&self) -> bool { self.val <= other.val }
-        pure fn gt(other: &a/LVal/&self) -> bool { self.val > other.val }
-        pure fn ge(other: &a/LVal/&self) -> bool { self.val >= other.val }
+        #[cfg(stage0)]
+        pure fn lt(other: &a/LVal/&self) -> bool {
+            self.val < other.val
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn lt(&self, other: &a/LVal/&self) -> bool {
+            (*self).val < other.val
+        }
+        #[cfg(stage0)]
+        pure fn le(other: &a/LVal/&self) -> bool {
+            self.val <= other.val
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn le(&self, other: &a/LVal/&self) -> bool {
+            (*self).val <= other.val
+        }
+        #[cfg(stage0)]
+        pure fn gt(other: &a/LVal/&self) -> bool {
+            self.val > other.val
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn gt(&self, other: &a/LVal/&self) -> bool {
+            (*self).val > other.val
+        }
+        #[cfg(stage0)]
+        pure fn ge(other: &a/LVal/&self) -> bool {
+            self.val >= other.val
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ge(&self, other: &a/LVal/&self) -> bool {
+            (*self).val >= other.val
+        }
     }
 }
 

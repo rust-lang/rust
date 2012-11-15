@@ -108,6 +108,7 @@ enum PatternBindingMode {
 }
 
 impl PatternBindingMode : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &PatternBindingMode) -> bool {
         match self {
             RefutableMode => {
@@ -130,7 +131,37 @@ impl PatternBindingMode : cmp::Eq {
             }
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &PatternBindingMode) -> bool {
+        match (*self) {
+            RefutableMode => {
+                match *other {
+                    RefutableMode => true,
+                    _ => false
+                }
+            }
+            LocalIrrefutableMode => {
+                match *other {
+                    LocalIrrefutableMode => true,
+                    _ => false
+                }
+            }
+            ArgumentIrrefutableMode(mode_a) => {
+                match *other {
+                    ArgumentIrrefutableMode(mode_b) => mode_a == mode_b,
+                    _ => false
+                }
+            }
+        }
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &PatternBindingMode) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &PatternBindingMode) -> bool {
+        !(*self).eq(other)
+    }
 }
 
 
@@ -167,10 +198,20 @@ enum Mutability {
 }
 
 impl Mutability : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Mutability) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Mutability) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Mutability) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Mutability) -> bool { !(*self).eq(other) }
 }
 
 enum SelfBinding {
@@ -191,10 +232,22 @@ enum ImportDirectiveNS {
 }
 
 impl ImportDirectiveNS : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &ImportDirectiveNS) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &ImportDirectiveNS) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &ImportDirectiveNS) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &ImportDirectiveNS) -> bool {
+        !(*self).eq(other)
+    }
 }
 
 /// Contains data for specific types of import directives.
@@ -290,10 +343,20 @@ enum XrayFlag {
 }
 
 impl XrayFlag : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &XrayFlag) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &XrayFlag) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &XrayFlag) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &XrayFlag) -> bool { !(*self).eq(other) }
 }
 
 enum AllowCapturingSelfFlag {
@@ -302,10 +365,22 @@ enum AllowCapturingSelfFlag {
 }
 
 impl AllowCapturingSelfFlag : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &AllowCapturingSelfFlag) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &AllowCapturingSelfFlag) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &AllowCapturingSelfFlag) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &AllowCapturingSelfFlag) -> bool {
+        !(*self).eq(other)
+    }
 }
 
 enum BareIdentifierPatternResolution {
@@ -325,10 +400,22 @@ enum DuplicateCheckingMode {
 }
 
 impl DuplicateCheckingMode : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &DuplicateCheckingMode) -> bool {
         (self as uint) == (*other as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &DuplicateCheckingMode) -> bool {
+        ((*self) as uint) == (*other as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &DuplicateCheckingMode) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &DuplicateCheckingMode) -> bool {
+        !(*self).eq(other)
+    }
 }
 
 // Returns the namespace associated with the given duplicate checking mode,
@@ -532,10 +619,20 @@ enum Privacy {
 }
 
 impl Privacy : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &Privacy) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &Privacy) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &Privacy) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &Privacy) -> bool { !(*self).eq(other) }
 }
 
 // Records a possibly-private type definition.

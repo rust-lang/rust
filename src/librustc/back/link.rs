@@ -27,10 +27,20 @@ enum output_type {
 }
 
 impl output_type : cmp::Eq {
+    #[cfg(stage0)]
     pure fn eq(other: &output_type) -> bool {
         (self as uint) == ((*other) as uint)
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &output_type) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    #[cfg(stage0)]
     pure fn ne(other: &output_type) -> bool { !self.eq(other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &output_type) -> bool { !(*self).eq(other) }
 }
 
 fn llvm_err(sess: Session, msg: ~str) -> ! unsafe {

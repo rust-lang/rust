@@ -394,6 +394,7 @@ pub mod rt {
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
     pub impl PadMode : Eq {
+        #[cfg(stage0)]
         pure fn eq(other: &PadMode) -> bool {
             match (self, (*other)) {
                 (PadSigned, PadSigned) => true,
@@ -406,7 +407,25 @@ pub mod rt {
                 (PadFloat, _) => false
             }
         }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn eq(&self, other: &PadMode) -> bool {
+            match ((*self), (*other)) {
+                (PadSigned, PadSigned) => true,
+                (PadUnsigned, PadUnsigned) => true,
+                (PadNozero, PadNozero) => true,
+                (PadFloat, PadFloat) => true,
+                (PadSigned, _) => false,
+                (PadUnsigned, _) => false,
+                (PadNozero, _) => false,
+                (PadFloat, _) => false
+            }
+        }
+        #[cfg(stage0)]
         pure fn ne(other: &PadMode) -> bool { !self.eq(other) }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        pure fn ne(&self, other: &PadMode) -> bool { !(*self).eq(other) }
     }
 
     pub fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {

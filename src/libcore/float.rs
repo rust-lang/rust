@@ -400,15 +400,39 @@ pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl float : Eq {
+    #[cfg(stage0)]
     pub pure fn eq(other: &float) -> bool { self == (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn eq(&self, other: &float) -> bool { (*self) == (*other) }
+    #[cfg(stage0)]
     pub pure fn ne(other: &float) -> bool { self != (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 impl float : Ord {
+    #[cfg(stage0)]
     pub pure fn lt(other: &float) -> bool { self < (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn lt(&self, other: &float) -> bool { (*self) < (*other) }
+    #[cfg(stage0)]
     pub pure fn le(other: &float) -> bool { self <= (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn le(&self, other: &float) -> bool { (*self) <= (*other) }
+    #[cfg(stage0)]
     pub pure fn ge(other: &float) -> bool { self >= (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn ge(&self, other: &float) -> bool { (*self) >= (*other) }
+    #[cfg(stage0)]
     pub pure fn gt(other: &float) -> bool { self > (*other) }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    pure fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
 impl float: num::Num {
