@@ -222,7 +222,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                 for [
                     ~"the compiler hit an unexpected failure path. \
                      this is a bug",
-                    ~"try running with RUST_LOG=rustc=0,::rt::backtrace \
+                    ~"try running with RUST_LOG=rustc=1,::rt::backtrace \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ].each |note| {

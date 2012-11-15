@@ -168,7 +168,7 @@ struct log_directive {
 
 const size_t max_log_directives = 255;
 const size_t max_log_level = 255;
-const size_t default_log_level = 0;
+const size_t default_log_level = log_err;
 
 // This is a rather ugly parser for strings in the form
 // "crate1,crate2.mod3,crate3.x=1". Log levels are 0-255,

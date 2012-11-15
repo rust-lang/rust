@@ -54,23 +54,23 @@ pub use coreops::ops::{Shl, Shr, Index};
 // warn-and-below.
 
 /// The error log level
-pub const error : u32 = 0_u32;
+pub const error : u32 = 1_u32;
 /// The warning log level
-pub const warn : u32 = 1_u32;
+pub const warn : u32 = 2_u32;
 /// The info log level
-pub const info : u32 = 2_u32;
+pub const info : u32 = 3_u32;
 /// The debug log level
-pub const debug : u32 = 3_u32;
+pub const debug : u32 = 4_u32;
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
 mod core {
-    pub const error : u32 = 0_u32;
-    pub const warn : u32 = 1_u32;
-    pub const info : u32 = 2_u32;
-    pub const debug : u32 = 3_u32;
+    pub const error : u32 = 1_u32;
+    pub const warn : u32 = 2_u32;
+    pub const info : u32 = 3_u32;
+    pub const debug : u32 = 4_u32;
 }
 
 // Similar to above. Some magic to make core testable.
