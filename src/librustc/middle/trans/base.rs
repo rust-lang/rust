@@ -1379,10 +1379,8 @@ fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
 
 // Creates the standard set of basic blocks for a function
 fn mk_standard_basic_blocks(llfn: ValueRef) ->
-   {sa: BasicBlockRef, ca: BasicBlockRef, rt: BasicBlockRef} {
+   {sa: BasicBlockRef, rt: BasicBlockRef} {
     {sa: str::as_c_str(~"static_allocas",
-                       |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
-     ca: str::as_c_str(~"load_env",
                        |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
      rt: str::as_c_str(~"return",
                        |buf| llvm::LLVMAppendBasicBlock(llfn, buf))}
@@ -1407,7 +1405,7 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
           llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
           llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
           mut llstaticallocas: llbbs.sa,
-          mut llloadenv: llbbs.ca,
+          mut llloadenv: None,
           mut llreturn: llbbs.rt,
           mut llself: None,
           mut personality: None,
@@ -1560,8 +1558,15 @@ fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
 
 fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("tie_up_header_blocks");
-    Br(raw_block(fcx, false, fcx.llstaticallocas), fcx.llloadenv);
-    Br(raw_block(fcx, false, fcx.llloadenv), lltop);
+    match fcx.llloadenv {
+        Some(copy ll) => {
+            Br(raw_block(fcx, false, fcx.llstaticallocas), ll);
+            Br(raw_block(fcx, false, ll), lltop);
+        }
+        None => {
+            Br(raw_block(fcx, false, fcx.llstaticallocas), lltop);
+        }
+    }
 }
 
 enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }

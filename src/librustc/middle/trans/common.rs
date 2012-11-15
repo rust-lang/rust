@@ -228,7 +228,7 @@ type fn_ctxt = @{
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-    mut llloadenv: BasicBlockRef,
+    mut llloadenv: Option<BasicBlockRef>,
     mut llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
