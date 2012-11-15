@@ -184,20 +184,20 @@ pub struct FileMap {
 pub impl FileMap {
     static fn new_w_substr(+filename: FileName, +substr: FileSubstr,
                            src: @~str,
-                           +start_pos_ch: CharPos, +start_pos_byte: BytePos)
+                           +start_pos: FilePos)
         -> FileMap {
         return FileMap {
             name: filename, substr: substr, src: src,
-            start_pos: FilePos {ch: start_pos_ch, byte: start_pos_byte},
-            mut lines: ~[FilePos {ch: start_pos_ch, byte: start_pos_byte}]
+            start_pos: start_pos,
+            mut lines: ~[start_pos]
         };
     }
 
     static fn new(+filename: FileName, src: @~str,
-                  +start_pos_ch: CharPos, +start_pos_byte: BytePos)
+                  +start_pos: FilePos)
         -> FileMap {
         return FileMap::new_w_substr(filename, FssNone, src,
-                                     start_pos_ch, start_pos_byte);
+                                     start_pos);
     }
 
     fn next_line(@self, +chpos: CharPos, +byte_pos: BytePos) {

@@ -20,16 +20,15 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
-use codemap::{CodeMap, FileMap, CharPos, BytePos};
+use codemap::{CodeMap, FileMap, CharPos, BytePos, FilePos};
 
 type parse_sess = @{
     cm: @codemap::CodeMap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
     interner: @ident_interner,
-    // these two must be kept up to date
-    mut chpos: CharPos,
-    mut byte_pos: BytePos
+    // must be kept up to date
+    mut pos: FilePos
 };
 
 fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
@@ -38,7 +37,10 @@ fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
              mut next_id: 1,
              span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
              interner: mk_ident_interner(),
-             mut chpos: CharPos(0u), mut byte_pos: BytePos(0u)};
+             mut pos: FilePos {
+                 ch: CharPos(0u),
+                 byte: BytePos(0u)
+             }};
 }
 
 fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
@@ -47,7 +49,10 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
              mut next_id: 1,
              span_diagnostic: sh,
              interner: mk_ident_interner(),
-             mut chpos: CharPos(0u), mut byte_pos: BytePos(0u)};
+             mut pos: FilePos {
+                 ch: CharPos(0u),
+                 byte: BytePos(0u)
+             }};
 }
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
@@ -71,8 +76,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
     let leading_attrs = p.parse_inner_attrs_and_next();
     let { inner: crate_attrs, next: first_cdir_attr } = leading_attrs;
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
     let companionmod = input.filestem().map(|s| Path(*s));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
@@ -92,8 +96,7 @@ fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_file(sess, cfg, input,
                                             parser::SOURCE_FILE);
     let r = p.parse_crate_mod(cfg);
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -103,8 +106,7 @@ fn parse_crate_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_crate_mod(cfg);
     p.abort_if_errors();
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -114,8 +116,7 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_expr();
     p.abort_if_errors();
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -126,8 +127,7 @@ fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_item(attrs);
     p.abort_if_errors();
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -138,8 +138,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                                                   codemap::FssNone, source);
     let r = p.parse_stmt(attrs);
     p.abort_if_errors();
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     return r;
 }
 
@@ -156,8 +155,7 @@ fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
         p.reader.fatal(~"expected end-of-string");
     }
     p.abort_if_errors();
-    sess.chpos = rdr.chpos;
-    sess.byte_pos = sess.byte_pos + rdr.pos;
+    eval::update_parse_sess_position(&sess, &rdr);
     move r
 }
 
@@ -174,7 +172,7 @@ fn new_parser_etc_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                                   source: @~str) -> (Parser, string_reader) {
     let ftype = parser::SOURCE_FILE;
     let filemap = @FileMap::new_w_substr
-        (name, ss, source, sess.chpos, sess.byte_pos);
+        (name, ss, source, sess.pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
@@ -199,7 +197,7 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
     }
     let src = @result::unwrap(res);
     let filemap = @FileMap::new(path.to_str(), src,
-                                sess.chpos, sess.byte_pos);
+                                sess.pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
