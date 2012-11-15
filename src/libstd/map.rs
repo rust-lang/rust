@@ -773,4 +773,25 @@ mod tests {
         assert map.get(~"b") == 2;
         assert map.get(~"c") == 3;
     }
+
+    #[test]
+    fn test_insert_with_key() {
+        let map = map::HashMap::<~str, uint>();
+
+        fn inc(k: ~str, v0: uint, v1: uint) -> uint {
+            v0 + v1
+        }
+
+        map.insert_with_key(inc, ~"cat", 1);
+        map.insert_with_key(inc, ~"mongoose", 1);
+        map.insert_with_key(inc, ~"cat", 7);
+        map.insert_with_key(inc, ~"ferret", 3);
+        map.insert_with_key(inc, ~"cat", 2);
+
+        assert 10 == option::get(map.find(~"cat"));
+        assert  3 == option::get(map.find(~"ferret"));
+        assert  1 == option::get(map.find(~"mongoose"));
+
+        assert None == map.find(~"unicorn");
+    }
 }
