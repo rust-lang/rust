@@ -45,18 +45,17 @@ fn new_low_level_string_reader(span_diagnostic: span_handler,
                                filemap: @codemap::FileMap,
                                itr: @token::ident_interner)
     -> string_reader {
+    // Force the initial reader bump to start on a fresh line
+    let initial_char = '\n';
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
-              mut col: CharPos(0), mut pos: BytePos(0), mut curr: -1 as char,
+              mut col: CharPos(0), mut pos: BytePos(0),
+              mut curr: initial_char,
               mut chpos: filemap.start_pos.ch,
               filemap: filemap, interner: itr,
               /* dummy values; not read */
               mut peek_tok: token::EOF,
               mut peek_span: ast_util::dummy_sp()};
-    if r.pos.to_uint() < (*filemap.src).len() {
-        let next = str::char_range_at(*r.src, r.pos.to_uint());
-        r.pos = BytePos(next.next);
-        r.curr = next.ch;
-    }
+    bump(r);
     return r;
 }
 
@@ -142,9 +141,10 @@ fn bump(rdr: string_reader) {
         rdr.pos = BytePos(next.next);
         rdr.curr = next.ch;
     } else {
+        // XXX: What does this accomplish?
         if (rdr.curr != -1 as char) {
-            rdr.col += CharPos(1u);
             rdr.chpos += CharPos(1u);
+            rdr.col += CharPos(1u);
             rdr.curr = -1 as char;
         }
     }
