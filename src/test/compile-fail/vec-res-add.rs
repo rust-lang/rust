@@ -1,10 +1,10 @@
-// xfail-test #2587
 // error-pattern: copying a noncopyable value
 
 struct r {
-  let i:int;
-  new(i:int) {self.i = i;}
+  i:int
 }
+
+fn r(i:int) -> r { r { i: i } }
 
 impl r : Drop {
     fn finalize() {}
