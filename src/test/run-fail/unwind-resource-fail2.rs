@@ -1,3 +1,4 @@
+// xfail-test leaks
 // error-pattern:wombat
 
 struct r {
