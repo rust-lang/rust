@@ -141,8 +141,6 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-// XXX col shouldn't be CharPos because col is not an absolute location in the
-// codemap, and BytePos and CharPos always represent absolute positions
 pub struct Loc {
     file: @FileMap, line: uint, col: CharPos
 }
