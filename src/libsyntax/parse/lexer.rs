@@ -1,5 +1,5 @@
 use diagnostic::span_handler;
-use codemap::{span, CodeMap, CharPos, BytePos, FilePos};
+use codemap::{span, CodeMap, CharPos, BytePos};
 use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
                              tt_next_token};
 
