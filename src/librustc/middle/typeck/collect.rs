@@ -254,16 +254,26 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
 
 fn ensure_supertraits(ccx: @crate_ctxt,
                       id: ast::node_id,
+                      sp: codemap::span,
                       rp: Option<ty::region_variance>,
                       trait_refs: &[@ast::trait_ref]) {
-    if ccx.tcx.supertraits.contains_key(local_def(id)) { return; }
+    let tcx = ccx.tcx;
+    if tcx.supertraits.contains_key(local_def(id)) { return; }
 
     let instantiated = dvec::DVec();
     for trait_refs.each |trait_ref| {
         let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp);
+        if instantiated.any(|other_trait: &InstantiatedTraitRef|
+                            { (*other_trait).def_id == did }) {
+            // This means a trait inherited from the same supertrait more
+            // than once.
+            tcx.sess.span_err(sp, ~"Duplicate supertrait in trait \
+                                     declaration");
+            return;
+        }
         instantiated.push(InstantiatedTraitRef { def_id: did, tpt: tpt });
     }
-    ccx.tcx.supertraits.insert(local_def(id),
+    tcx.supertraits.insert(local_def(id),
                                @dvec::unwrap(move instantiated));
 }
 
@@ -551,7 +561,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                it.id, ty_to_str(tcx, tpt.ty));
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id, tpt.ty);
-        ensure_supertraits(ccx, it.id, rp, supertraits);
+        ensure_supertraits(ccx, it.id, it.span, rp, supertraits);
 
         let (_, provided_methods) = split_trait_methods(trait_methods);
         let {bounds, _} = mk_substs(ccx, tps, rp);
