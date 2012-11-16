@@ -195,15 +195,15 @@ pub struct FileMap {
     name: FileName,
     substr: FileSubstr,
     src: @~str,
-    start_pos: FilePos,
-    mut lines: ~[FilePos],
+    start_pos: BytePos,
+    mut lines: ~[BytePos],
     multibyte_chars: DVec<MultiByteChar>
 }
 
 pub impl FileMap {
     static fn new_w_substr(+filename: FileName, +substr: FileSubstr,
                            src: @~str,
-                           +start_pos: FilePos)
+                           +start_pos: BytePos)
         -> FileMap {
         return FileMap {
             name: filename, substr: substr, src: src,
@@ -214,18 +214,18 @@ pub impl FileMap {
     }
 
     static fn new(+filename: FileName, src: @~str,
-                  +start_pos: FilePos)
+                  +start_pos: BytePos)
         -> FileMap {
         return FileMap::new_w_substr(filename, FssNone, src,
                                      start_pos);
     }
 
-    fn next_line(&self, +pos: FilePos) {
+    fn next_line(&self, +pos: BytePos) {
         self.lines.push(pos);
     }
 
     pub fn get_line(&self, line: int) -> ~str unsafe {
-        let begin: BytePos = self.lines[line].byte - self.start_pos.byte;
+        let begin: BytePos = self.lines[line] - self.start_pos;
         let begin = begin.to_uint();
         let end = match str::find_char_from(*self.src, '\n', begin) {
             Some(e) => e,
@@ -266,11 +266,11 @@ pub impl CodeMap {
         let expected_byte_pos = if self.files.len() == 0 {
             0
         } else {
-            let last_start = self.files.last().start_pos.byte.to_uint();
+            let last_start = self.files.last().start_pos.to_uint();
             let last_len = self.files.last().src.len();
             last_start + last_len
         };
-        let actual_byte_pos = filemap.start_pos.byte.to_uint();
+        let actual_byte_pos = filemap.start_pos.to_uint();
         debug!("codemap: adding filemap: %s", filemap.name);
         debug!("codemap: expected offset: %u", expected_byte_pos);
         debug!("codemap: actual offset: %u", actual_byte_pos);
@@ -301,7 +301,7 @@ pub impl CodeMap {
             }
             FssInternal(sp) => {
                 self.lookup_char_pos_adj(
-                    sp.lo + (pos - loc.file.start_pos.byte))
+                    sp.lo + (pos - loc.file.start_pos))
             }
             FssExternal(eloc) => {
                 {filename: /* FIXME (#2543) */ copy eloc.filename,
@@ -318,8 +318,8 @@ pub impl CodeMap {
             FssNone => sp,
             FssInternal(s) => {
                 self.adjust_span(span {
-                    lo: s.lo + (sp.lo - line.fm.start_pos.byte),
-                    hi: s.lo + (sp.hi - line.fm.start_pos.byte),
+                    lo: s.lo + (sp.lo - line.fm.start_pos),
+                    hi: s.lo + (sp.hi - line.fm.start_pos),
                     expn_info: sp.expn_info
                 })
             }
@@ -374,7 +374,7 @@ priv impl CodeMap {
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if self.files[m].start_pos.byte > pos {
+            if self.files[m].start_pos > pos {
                 b = m;
             } else {
                 a = m;
@@ -397,7 +397,7 @@ priv impl CodeMap {
         let mut b = vec::len(f.lines);
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if f.lines[m].byte > pos { b = m; } else { a = m; }
+            if f.lines[m] > pos { b = m; } else { a = m; }
         }
         return {fm: f, line: a};
     }
@@ -406,7 +406,7 @@ priv impl CodeMap {
         let {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_local_charpos(pos);
-        let linebpos = f.lines[a].byte;
+        let linebpos = f.lines[a];
         let linechpos = self.bytepos_to_local_charpos(linebpos);
         debug!("codemap: byte pos %? is on the line at byte pos %?",
                pos, linebpos);
@@ -432,7 +432,7 @@ priv impl CodeMap {
         -> {fm: @FileMap, pos: BytePos} {
         let idx = self.lookup_filemap_idx(bpos);
         let fm = self.files[idx];
-        let offset = bpos - fm.start_pos.byte;
+        let offset = bpos - fm.start_pos;
         return {fm: fm, pos: offset};
     }
 

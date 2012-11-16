@@ -29,7 +29,7 @@ type parse_sess = @{
     span_diagnostic: span_handler,
     interner: @ident_interner,
     // must be kept up to date
-    mut pos: FilePos
+    mut pos: BytePos
 };
 
 fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
@@ -38,10 +38,8 @@ fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
              mut next_id: 1,
              span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
              interner: mk_ident_interner(),
-             mut pos: FilePos {
-                 ch: CharPos(0u),
-                 byte: BytePos(0u)
-             }};
+             mut pos: BytePos(0)
+            };
 }
 
 fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
@@ -50,10 +48,8 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
              mut next_id: 1,
              span_diagnostic: sh,
              interner: mk_ident_interner(),
-             mut pos: FilePos {
-                 ch: CharPos(0u),
-                 byte: BytePos(0u)
-             }};
+             mut pos: BytePos(0)
+             };
 }
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
@@ -219,8 +215,5 @@ fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
 }
 
 fn update_parse_sess_position(sess: &parse_sess, r: &lexer::string_reader) {
-    sess.pos = FilePos {
-        ch: r.last_pos.ch,
-        byte: r.last_pos.byte
-    };
+    sess.pos = r.last_pos
 }

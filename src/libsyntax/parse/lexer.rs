@@ -22,9 +22,9 @@ type string_reader = @{
     span_diagnostic: span_handler,
     src: @~str,
     // The absolute offset within the codemap of the next character to read
-    mut pos: FilePos,
+    mut pos: BytePos,
     // The absolute offset within the codemap of the last character read(curr)
-    mut last_pos: FilePos,
+    mut last_pos: BytePos,
     // The column of the next character to read
     mut col: CharPos,
     // The last character to be read
@@ -123,15 +123,15 @@ fn string_advance_token(&&r: string_reader) {
     if is_eof(r) {
         r.peek_tok = token::EOF;
     } else {
-        let start_bytepos = r.last_pos.byte;
+        let start_bytepos = r.last_pos;
         r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos.byte);
+        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos);
     };
 
 }
 
 fn byte_offset(rdr: string_reader) -> BytePos {
-    (rdr.pos.byte - rdr.filemap.start_pos.byte)
+    (rdr.pos - rdr.filemap.start_pos)
 }
 
 fn get_str_from(rdr: string_reader, start: BytePos) -> ~str unsafe {
@@ -148,10 +148,7 @@ fn bump(rdr: string_reader) {
         let last_char = rdr.curr;
         let next = str::char_range_at(*rdr.src, current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
-        rdr.pos = FilePos {
-            ch: rdr.pos.ch + CharPos(1u),
-            byte: rdr.pos.byte + BytePos(byte_offset_diff)
-        };
+        rdr.pos = rdr.pos + BytePos(byte_offset_diff);
         rdr.curr = next.ch;
         rdr.col += CharPos(1u);
         if last_char == '\n' {
@@ -166,10 +163,7 @@ fn bump(rdr: string_reader) {
     } else {
         // XXX: What does this accomplish?
         if (rdr.curr != -1 as char) {
-            rdr.pos = FilePos {
-                ch: rdr.pos.ch + CharPos(1u),
-                byte: rdr.pos.byte + BytePos(1u)
-            };
+            rdr.pos = rdr.pos + BytePos(1u);
             rdr.col += CharPos(1u);
             rdr.curr = -1 as char;
         }
@@ -238,7 +232,7 @@ fn consume_any_line_comment(rdr: string_reader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_bpos = rdr.pos.byte - BytePos(2u);
+                let start_bpos = rdr.pos - BytePos(2u);
                 let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     str::push_char(&mut acc, rdr.curr);
@@ -246,7 +240,7 @@ fn consume_any_line_comment(rdr: string_reader)
                 }
                 return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_bpos, rdr.pos.byte)
+                    sp: ast_util::mk_sp(start_bpos, rdr.pos)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -261,7 +255,7 @@ fn consume_any_line_comment(rdr: string_reader)
         if nextch(rdr) == '!' {
             let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
-            let loc = cmap.lookup_char_pos_adj(rdr.last_pos.byte);
+            let loc = cmap.lookup_char_pos_adj(rdr.last_pos);
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
@@ -277,7 +271,7 @@ fn consume_block_comment(rdr: string_reader)
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
-        let start_bpos = rdr.pos.byte - BytePos(2u);
+        let start_bpos = rdr.pos - BytePos(2u);
         let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
             str::push_char(&mut acc, rdr.curr);
@@ -291,7 +285,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_bpos, rdr.pos.byte)
+                sp: ast_util::mk_sp(start_bpos, rdr.pos)
             });
         }
     } else {
