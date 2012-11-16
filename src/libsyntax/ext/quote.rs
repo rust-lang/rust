@@ -16,33 +16,54 @@ use token::*;
 *
 */
 
-pub fn expand_quote(cx: ext_ctxt,
-                    sp: span,
-                    tts: ~[ast::token_tree]) -> base::mac_result
-{
+pub mod rt {
+    pub use ast::*;
+    pub use parse::token::*;
+    pub use parse::new_parser_from_tt;
+}
 
-    // NB: It appears that the main parser loses its mind if we consider
-    // $foo as a tt_nonterminal during the main parse, so we have to re-parse
-    // under quote_depth > 0. This is silly and should go away; the _guess_ is
-    // it has to do with transition away from supporting old-style macros, so
-    // try removing it when enough of them are gone.
-    let p = parse::new_parser_from_tt(cx.parse_sess(), cx.cfg(), tts);
-    p.quote_depth += 1u;
-    let tq = dvec::DVec();
-    while p.token != token::EOF {
-        tq.push(p.parse_token_tree());
-    }
-    let tts = tq.get();
+pub fn expand_quote_tokens(cx: ext_ctxt,
+                           sp: span,
+                           tts: ~[ast::token_tree]) -> base::mac_result {
+    base::mr_expr(expand_tt(cx, sp, tts))
+}
 
-    // We want to emit a block expression that does a sequence of 'use's to
-    // import the AST and token constructors, followed by a tt expression.
-    let uses = ~[ build::mk_glob_use(cx, sp, ids_ext(cx, ~[~"syntax",
-                                                           ~"ast"])),
-                  build::mk_glob_use(cx, sp, ids_ext(cx, ~[~"syntax",
-                                                           ~"parse",
-                                                           ~"token"])) ];
-    base::mr_expr(build::mk_block(cx, sp, uses, ~[],
-                                  Some(mk_tt(cx, sp, &ast::tt_delim(tts)))))
+pub fn expand_quote_expr(cx: ext_ctxt,
+                         sp: span,
+                         tts: ~[ast::token_tree]) -> base::mac_result {
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_expr", ~[], tts))
+}
+
+pub fn expand_quote_item(cx: ext_ctxt,
+                         sp: span,
+                         tts: ~[ast::token_tree]) -> base::mac_result {
+    let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_item",
+                                    ~[e_attrs], tts))
+}
+
+pub fn expand_quote_pat(cx: ext_ctxt,
+                        sp: span,
+                        tts: ~[ast::token_tree]) -> base::mac_result {
+    let e_refutable = build::mk_lit(cx, sp, ast::lit_bool(true));
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_pat",
+                                    ~[e_refutable], tts))
+}
+
+pub fn expand_quote_type(cx: ext_ctxt,
+                         sp: span,
+                         tts: ~[ast::token_tree]) -> base::mac_result {
+    let e_param_colons = build::mk_lit(cx, sp, ast::lit_bool(false));
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_type",
+                                    ~[e_param_colons], tts))
+}
+
+pub fn expand_quote_stmt(cx: ext_ctxt,
+                         sp: span,
+                         tts: ~[ast::token_tree]) -> base::mac_result {
+    let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_stmt",
+                                    ~[e_attrs], tts))
 }
 
 fn ids_ext(cx: ext_ctxt, strs: ~[~str]) -> ~[ast::ident] {
@@ -305,3 +326,63 @@ fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree) -> @ast::expr {
         build::mk_copy(cx, sp, build::mk_path(cx, sp, ~[ident]))
     }
 }
+
+
+fn expand_tt(cx: ext_ctxt,
+             sp: span,
+             tts: ~[ast::token_tree]) -> @ast::expr {
+    // NB: It appears that the main parser loses its mind if we consider
+    // $foo as a tt_nonterminal during the main parse, so we have to re-parse
+    // under quote_depth > 0. This is silly and should go away; the _guess_ is
+    // it has to do with transition away from supporting old-style macros, so
+    // try removing it when enough of them are gone.
+    let p = parse::new_parser_from_tt(cx.parse_sess(), cx.cfg(), tts);
+    p.quote_depth += 1u;
+    let tq = dvec::DVec();
+    while p.token != token::EOF {
+        tq.push(p.parse_token_tree());
+    }
+    let tts = tq.get();
+
+    // We want to emit a block expression that does a sequence of 'use's to
+    // import the runtime module, followed by a tt expression.
+    let uses = ~[ build::mk_glob_use(cx, sp, ids_ext(cx, ~[~"syntax",
+                                                           ~"ext",
+                                                           ~"quote",
+                                                           ~"rt"])) ];
+    build::mk_block(cx, sp, uses, ~[],
+                    Some(mk_tt(cx, sp, &ast::tt_delim(tts))))
+}
+
+fn expand_parse_call(cx: ext_ctxt,
+                     sp: span,
+                     parse_method: ~str,
+                     arg_exprs: ~[@ast::expr],
+                     tts: ~[ast::token_tree]) -> @ast::expr {
+    let tt_expr = expand_tt(cx, sp, tts);
+
+    let cfg_call = || build::mk_call_(
+        cx, sp, build::mk_access(cx, sp, ids_ext(cx, ~[~"ext_cx"]),
+                                 id_ext(cx, ~"cfg")), ~[]);
+
+    let parse_sess_call = || build::mk_call_(
+        cx, sp, build::mk_access(cx, sp, ids_ext(cx, ~[~"ext_cx"]),
+                                 id_ext(cx, ~"parse_sess")), ~[]);
+
+    let new_parser_call =
+        build::mk_call(cx, sp,
+                       ids_ext(cx, ~[~"syntax",
+                                     ~"ext",
+                                     ~"quote",
+                                     ~"rt",
+                                     ~"new_parser_from_tt"]),
+                       ~[parse_sess_call(),
+                         cfg_call(),
+                         build::mk_uniq_vec_e(cx, sp, ~[tt_expr])]);
+
+    build::mk_call_(cx, sp,
+                    build::mk_access_(cx, sp, new_parser_call,
+                                      id_ext(cx, parse_method)),
+                    arg_exprs)
+}
+
