@@ -264,7 +264,7 @@ fn ensure_supertraits(ccx: @crate_ctxt,
     for trait_refs.each |trait_ref| {
         let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp);
         if instantiated.any(|other_trait: &InstantiatedTraitRef|
-                            { (*other_trait).def_id == did }) {
+                            { other_trait.def_id == did }) {
             // This means a trait inherited from the same supertrait more
             // than once.
             tcx.sess.span_err(sp, ~"Duplicate supertrait in trait \
