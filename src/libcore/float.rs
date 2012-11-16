@@ -16,15 +16,15 @@
 
 use m_float = f64;
 
-use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
-use f64::logarithm;
-use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
-use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
-use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
-use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
-use f64::signbit;
-use f64::{j0, j1, jn, y0, y1, yn};
+pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
+pub use f64::logarithm;
+pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
+pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
+pub use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
+pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
+pub use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
+pub use f64::signbit;
+pub use f64::{j0, j1, jn, y0, y1, yn};
 use cmp::{Eq, Ord};
 use num::from_int;
 
