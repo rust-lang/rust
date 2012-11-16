@@ -1,15 +1,15 @@
 // error-pattern:quux
-// xfail-test
 
-class faily_box {
-  let i: @int;
-  new(i: @int) { self.i = i; }
-  // What happens to the box pointer owned by this class?
+struct faily_box {
+    i: @int
 }
+// What happens to the box pointer owned by this class?
+ 
+fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
 
 impl faily_box : Drop {
     fn finalize() {
-        fail "quux";
+        fail ~"quux";
     }
 }
 
