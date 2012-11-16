@@ -1,13 +1,13 @@
-// xfail-test
 // Fail statements without arguments need to be disambiguated in
 // certain positions
-// error-pattern:explicit-failure
+// error-pattern:oops
 
 fn bigfail() {
-    do { while (fail) { if (fail) {
-        match (fail) { _ {
-        }}
-    }}} while fail;
+    while (fail ~"oops") { if (fail) {
+        match (fail) { () => {
+        }
+                     }
+    }};
 }
 
 fn main() { bigfail(); }

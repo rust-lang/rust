@@ -1,10 +1,11 @@
-// error-pattern:fail
-// xfail-test
+// error-pattern:wombat
 
-class r {
-  new(i:int) {}
-  drop { fail; }
+struct r {
+    i: int,
+    drop { fail ~"wombat" }
 }
+
+fn r(i: int) -> r { r { i: i } }
 
 fn main() {
     @0;
