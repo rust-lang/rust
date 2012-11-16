@@ -1,5 +1,4 @@
-// xfail-test
-
+// xfail-test - #2093
 fn let_in<T>(x: T, f: fn(T)) {}
 
 fn main() {
