@@ -761,7 +761,7 @@ view_item : extern_mod_decl | use_decl ;
 ~~~~~~~~
 
 A view item manages the namespace of a module.
-View items do not define new items, but rather, simply change other items' visibilit.
+View items do not define new items, but rather, simply change other items' visibility.
 There are several kinds of view item:
 
  * [`extern mod` declarations](#extern-mod-declarations)
