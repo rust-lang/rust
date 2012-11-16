@@ -296,11 +296,27 @@ fn compare_impl_method(tcx: ty::ctxt,
     // implementable by an `&const self` method (the impl assumes less
     // than the trait provides).
     if impl_m.self_ty != trait_m.self_ty {
-        tcx.sess.span_err(
-            cm.span,
-            fmt!("method `%s`'s self type does \
-                  not match the trait method's \
-                  self type", tcx.sess.str_of(impl_m.ident)));
+        if impl_m.self_ty == ast::sty_static {
+            // Needs to be a fatal error because otherwise,
+            // method::transform_self_type_for_method ICEs
+            tcx.sess.span_fatal(cm.span,
+                 fmt!("method `%s` is declared as \
+                       static in its impl, but not in \
+                       its trait", tcx.sess.str_of(impl_m.ident)));
+        }
+        else if trait_m.self_ty == ast::sty_static {
+            tcx.sess.span_fatal(cm.span,
+                 fmt!("method `%s` is declared as \
+                       static in its trait, but not in \
+                       its impl", tcx.sess.str_of(impl_m.ident)));
+        }
+        else {
+            tcx.sess.span_err(
+                cm.span,
+                fmt!("method `%s`'s self type does \
+                      not match the trait method's \
+                      self type", tcx.sess.str_of(impl_m.ident)));
+        }
     }
 
     if impl_m.tps.len() != trait_m.tps.len() {
@@ -348,9 +364,6 @@ fn compare_impl_method(tcx: ty::ctxt,
                     pluralize(trait_param_bounds.len(), ~"bound")));
            return;
         }
-        // tjc: I'm mildly worried that there's something I'm
-        // not checking that require_same_types doesn't catch,
-        // but I can't figure out what.
     }
 
     // Replace any references to the self region in the self type with
