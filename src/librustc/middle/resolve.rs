@@ -1687,7 +1687,7 @@ impl Resolver {
                     // avoid creating cycles in the
                     // module graph.
 
-                    let resolution = @ImportResolution(Private, dummy_sp());
+                    let resolution = @ImportResolution(Public, dummy_sp());
                     resolution.outstanding_references = 0;
 
                     match existing_module.parent_link {
@@ -3199,23 +3199,26 @@ impl Resolver {
     fn add_exports_of_namebindings(exports2: &mut ~[Export2],
                                    ident: ident,
                                    namebindings: @NameBindings,
+                                   ns: Namespace,
                                    reexport: bool) {
-        for [ TypeNS, ValueNS ].each |ns| {
-            match (namebindings.def_for_namespace(*ns),
-                   namebindings.privacy_for_namespace(*ns)) {
-                (Some(d), Some(Public)) => {
-                    debug!("(computing exports) YES: %s '%s' \
-                            => %?",
-                           if reexport { ~"reexport" } else { ~"export"},
-                           self.session.str_of(ident),
-                           def_id_of_def(d));
-                    exports2.push(Export2 {
-                        reexport: reexport,
-                        name: self.session.str_of(ident),
-                        def_id: def_id_of_def(d)
-                    });
-                }
-                _ => ()
+        match (namebindings.def_for_namespace(ns),
+               namebindings.privacy_for_namespace(ns)) {
+            (Some(d), Some(Public)) => {
+                debug!("(computing exports) YES: %s '%s' => %?",
+                       if reexport { ~"reexport" } else { ~"export"},
+                       self.session.str_of(ident),
+                       def_id_of_def(d));
+                exports2.push(Export2 {
+                    reexport: reexport,
+                    name: self.session.str_of(ident),
+                    def_id: def_id_of_def(d)
+                });
+            }
+            (Some(_), Some(privacy)) => {
+                debug!("(computing reexports) NO: privacy %?", privacy);
+            }
+            (d_opt, p_opt) => {
+                debug!("(computing reexports) NO: %?, %?", d_opt, p_opt);
             }
         }
     }
@@ -3227,7 +3230,13 @@ impl Resolver {
             self.add_exports_of_namebindings(exports2,
                                              *ident,
                                              *namebindings,
-                                             false)
+                                             TypeNS,
+                                             false);
+            self.add_exports_of_namebindings(exports2,
+                                             *ident,
+                                             *namebindings,
+                                             ValueNS,
+                                             false);
         }
 
         for module_.import_resolutions.each_ref |ident, importresolution| {
@@ -3244,6 +3253,7 @@ impl Resolver {
                         self.add_exports_of_namebindings(exports2,
                                                          *ident,
                                                          target.bindings,
+                                                         *ns,
                                                          true)
                     }
                     _ => ()
