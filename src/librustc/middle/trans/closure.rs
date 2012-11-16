@@ -485,7 +485,7 @@ fn make_opaque_cbox_take_glue(
         let bcx = callee::trans_rtcall(bcx, malloc, ~[opaque_tydesc, sz],
                                        expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
-        call_memmove(bcx, cbox_out, cbox_in, sz);
+        call_memcpy(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
