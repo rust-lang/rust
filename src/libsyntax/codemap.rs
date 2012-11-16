@@ -201,25 +201,6 @@ pub struct FileMap {
 }
 
 pub impl FileMap {
-    static fn new_w_substr(+filename: FileName, +substr: FileSubstr,
-                           src: @~str,
-                           +start_pos: BytePos)
-        -> FileMap {
-        return FileMap {
-            name: filename, substr: substr, src: src,
-            start_pos: start_pos,
-            mut lines: ~[],
-            multibyte_chars: DVec()
-        };
-    }
-
-    static fn new(+filename: FileName, src: @~str,
-                  +start_pos: BytePos)
-        -> FileMap {
-        return FileMap::new_w_substr(filename, FssNone, src,
-                                     start_pos);
-    }
-
     fn next_line(&self, +pos: BytePos) {
         self.lines.push(pos);
     }
@@ -262,20 +243,30 @@ pub impl CodeMap {
         }
     }
 
-    pub fn add_filemap(&self, filemap: @FileMap) {
-        let expected_byte_pos = if self.files.len() == 0 {
+    fn new_filemap_w_substr(+filename: FileName, +substr: FileSubstr,
+                            src: @~str) -> @FileMap {
+        let start_pos = if self.files.len() == 0 {
             0
         } else {
             let last_start = self.files.last().start_pos.to_uint();
             let last_len = self.files.last().src.len();
             last_start + last_len
         };
-        let actual_byte_pos = filemap.start_pos.to_uint();
-        debug!("codemap: adding filemap: %s", filemap.name);
-        debug!("codemap: expected offset: %u", expected_byte_pos);
-        debug!("codemap: actual offset: %u", actual_byte_pos);
-        assert expected_byte_pos == actual_byte_pos;
+
+        let filemap = @FileMap {
+            name: filename, substr: substr, src: src,
+            start_pos: BytePos(start_pos),
+            mut lines: ~[],
+            multibyte_chars: DVec()
+        };
+
         self.files.push(filemap);
+
+        return filemap;
+    }
+
+    fn new_filemap(+filename: FileName, src: @~str) -> @FileMap {
+        return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
     pub fn mk_substr_filename(&self, sp: span) -> ~str {
