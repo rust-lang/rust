@@ -259,11 +259,6 @@ pub impl CodeMap {
         return self.lookup_pos(pos, lookup);
     }
 
-    pub fn lookup_byte_pos(&self, +pos: BytePos) -> Loc<BytePos> {
-        pure fn lookup(pos: FilePos) -> uint { return pos.byte.to_uint(); }
-        return self.lookup_pos(pos, lookup);
-    }
-
     pub fn lookup_char_pos_adj(&self, +pos: CharPos)
         -> {filename: ~str, line: uint, col: CharPos, file: Option<@FileMap>}
     {
