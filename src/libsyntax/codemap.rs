@@ -1,11 +1,15 @@
-/*! A codemap is a thing that maps uints to file/line/column positions
- * in a crate. This to make it possible to represent the positions
- * with single-word things, rather than passing records all over the
- * compiler.
- *
- * All represented positions are *absolute* positions within the codemap,
- * not relative positions within a single file.
- */
+/*!
+
+The CodeMap tracks all the source code used within a single crate, mapping
+from integer byte positions to the original source code location. Each bit of
+source parsed during crate parsing (typically files, in-memory strings, or
+various bits of macro expansion) cover a continuous range of bytes in the
+CodeMap and are represented by FileMaps. Byte positions are stored in `spans`
+and used pervasively in the compiler. They are absolute positions within the
+CodeMap, which upon request can be converted to line and column information,
+source code snippets, etc.
+
+*/
 
 use dvec::DVec;
 use std::serialization::{Serializable,
@@ -18,8 +22,15 @@ trait Pos {
     pure fn to_uint(&self) -> uint;
 }
 
+/// A byte offset
 pub enum BytePos = uint;
+/// A character offset. Because of multibyte utf8 characters, a byte offset
+/// is not equivalent to a character offset. The CodeMap will convert BytePos
+/// values to CharPos values as necessary.
 pub enum CharPos = uint;
+
+// XXX: Lots of boilerplate in these impls, but so far my attempts to fix
+// have been unsuccessful
 
 impl BytePos: Pos {
     static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
@@ -117,6 +128,12 @@ impl CharPos: to_bytes::IterBytes {
     }
 }
 
+/**
+Spans represent a region of code, used for error reporting. Positions in spans
+are *absolute* positions from the beginning of the codemap, not positions
+relative to FileMaps. Methods on the CodeMap can be used to relate spans back
+to the original source.
+*/
 pub struct span {
     lo: BytePos,
     hi: BytePos,
@@ -141,10 +158,17 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
+/// A source code location used for error reporting
 pub struct Loc {
-    file: @FileMap, line: uint, col: CharPos
+    /// Information about the original source
+    file: @FileMap,
+    /// The (1-based) line number
+    line: uint,
+    /// The (0-based) column offset
+    col: CharPos
 }
 
+/// Extra information for tracking macro expansion of spans
 pub enum ExpnInfo {
     ExpandedFrom({call_site: span,
                   callie: {name: ~str, span: Option<span>}})
@@ -174,12 +198,21 @@ pub struct MultiByteChar {
     sum: uint
 }
 
+/// A single source in the CodeMap
 pub struct FileMap {
+    /// The name of the file that the source came from, source that doesn't
+    /// originate from files has names between angle brackets by convention,
+    /// e.g. `<anon>`
     name: FileName,
+    /// Extra information used by qquote
     substr: FileSubstr,
+    /// The complete source code
     src: @~str,
+    /// The start position of this source in the CodeMap
     start_pos: BytePos,
+    /// Locations of lines beginnings in the source code
     mut lines: ~[BytePos],
+    /// Locations of multi-byte characters in the source code
     multibyte_chars: DVec<MultiByteChar>
 }
 
@@ -226,6 +259,11 @@ pub impl CodeMap {
         }
     }
 
+    /// Add a new FileMap to the CodeMap and return it
+    fn new_filemap(+filename: FileName, src: @~str) -> @FileMap {
+        return self.new_filemap_w_substr(filename, FssNone, src);
+    }
+
     fn new_filemap_w_substr(+filename: FileName, +substr: FileSubstr,
                             src: @~str) -> @FileMap {
         let start_pos = if self.files.len() == 0 {
@@ -248,16 +286,13 @@ pub impl CodeMap {
         return filemap;
     }
 
-    fn new_filemap(+filename: FileName, src: @~str) -> @FileMap {
-        return self.new_filemap_w_substr(filename, FssNone, src);
-    }
-
     pub fn mk_substr_filename(&self, sp: span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
         return fmt!("<%s:%u:%u>", pos.file.name,
                     pos.line, pos.col.to_uint());
     }
 
+    /// Lookup source information about a BytePos
     pub fn lookup_char_pos(&self, +pos: BytePos) -> Loc {
         return self.lookup_pos(pos);
     }
