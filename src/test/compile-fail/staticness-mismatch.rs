@@ -4,7 +4,7 @@ trait foo {
 }
 
 impl int: foo {
-    fn bar() {} //~ ERROR self type does not match the trait method's
+    fn bar() {} //~ ERROR method `bar` is declared as static in its trait, but not in its impl
 }
 
 fn main() {}
