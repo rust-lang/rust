@@ -221,7 +221,6 @@ pub fn test_to_str() {
 }
 
 #[test]
-#[ignore]
 pub fn test_from_str() {
     assert from_str(~"0") == Some(0u as T);
     assert from_str(~"3") == Some(3u as T);
@@ -235,7 +234,6 @@ pub fn test_from_str() {
 }
 
 #[test]
-#[ignore]
 pub fn test_parse_bytes() {
     use str::to_bytes;
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T);

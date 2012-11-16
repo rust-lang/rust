@@ -155,9 +155,7 @@ pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 /// Convert to a string
 pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
 
-// FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
-#[ignore]
 fn test_from_str() {
     assert from_str(~"0") == Some(0 as T);
     assert from_str(~"3") == Some(3 as T);
@@ -175,9 +173,7 @@ fn test_from_str() {
     assert from_str(~"x").is_none();
 }
 
-// FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
-#[ignore]
 fn test_parse_bytes() {
     use str::to_bytes;
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T);
