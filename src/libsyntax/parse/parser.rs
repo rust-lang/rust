@@ -5,7 +5,7 @@ use either::{Either, Left, Right};
 use std::map::HashMap;
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
             INTERPOLATED, special_idents};
-use codemap::{span,FssNone, CharPos};
+use codemap::{span,FssNone, BytePos};
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 use lexer::reader;
@@ -244,7 +244,7 @@ impl Parser {
         self.token = next.tok;
         self.span = next.sp;
     }
-    fn swap(next: token::Token, +lo: CharPos, +hi: CharPos) {
+    fn swap(next: token::Token, +lo: BytePos, +hi: BytePos) {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
@@ -904,12 +904,12 @@ impl Parser {
         return spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
     }
 
-    fn mk_expr(+lo: CharPos, +hi: CharPos, +node: expr_) -> @expr {
+    fn mk_expr(+lo: BytePos, +hi: BytePos, +node: expr_) -> @expr {
         return @{id: self.get_id(), callee_id: self.get_id(),
               node: node, span: mk_sp(lo, hi)};
     }
 
-    fn mk_mac_expr(+lo: CharPos, +hi: CharPos, m: mac_) -> @expr {
+    fn mk_mac_expr(+lo: BytePos, +hi: BytePos, m: mac_) -> @expr {
         return @{id: self.get_id(),
               callee_id: self.get_id(),
               node: expr_mac({node: m, span: mk_sp(lo, hi)}),
@@ -1134,7 +1134,7 @@ impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
-    fn parse_block_expr(lo: CharPos, blk_mode: blk_check_mode) -> @expr {
+    fn parse_block_expr(lo: BytePos, blk_mode: blk_check_mode) -> @expr {
         self.expect(token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
@@ -1146,7 +1146,7 @@ impl Parser {
         return self.parse_syntax_ext_naked(lo);
     }
 
-    fn parse_syntax_ext_naked(lo: CharPos) -> @expr {
+    fn parse_syntax_ext_naked(lo: BytePos) -> @expr {
         match self.token {
           token::IDENT(_, _) => (),
           _ => self.fatal(~"expected a syntax expander name")
@@ -2279,11 +2279,11 @@ impl Parser {
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
-    fn parse_block_tail(lo: CharPos, s: blk_check_mode) -> blk {
+    fn parse_block_tail(lo: BytePos, s: blk_check_mode) -> blk {
         self.parse_block_tail_(lo, s, ~[])
     }
 
-    fn parse_block_tail_(lo: CharPos, s: blk_check_mode,
+    fn parse_block_tail_(lo: BytePos, s: blk_check_mode,
                          +first_item_attrs: ~[attribute]) -> blk {
         let mut stmts = ~[];
         let mut expr = None;
@@ -2581,7 +2581,7 @@ impl Parser {
         return {ident: id, tps: ty_params};
     }
 
-    fn mk_item(+lo: CharPos, +hi: CharPos, +ident: ident,
+    fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
                +node: item_, vis: visibility,
                +attrs: ~[attribute]) -> @item {
         return @{ident: ident,
@@ -3037,7 +3037,7 @@ impl Parser {
             items: items};
     }
 
-    fn parse_item_foreign_mod(lo: CharPos,
+    fn parse_item_foreign_mod(lo: BytePos,
                               visibility: visibility,
                               attrs: ~[attribute],
                               items_allowed: bool)
@@ -3092,7 +3092,7 @@ impl Parser {
         });
     }
 
-    fn parse_type_decl() -> {lo: CharPos, ident: ident} {
+    fn parse_type_decl() -> {lo: BytePos, ident: ident} {
         let lo = self.last_span.lo;
         let id = self.parse_ident();
         return {lo: lo, ident: id};

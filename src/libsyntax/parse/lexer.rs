@@ -23,7 +23,7 @@ type string_reader = @{
     src: @~str,
     // The absolute offset within the codemap of the next character to read
     mut pos: FilePos,
-    // The absolute offset within the codemap of the last character to be read (curr)
+    // The absolute offset within the codemap of the last character read(curr)
     mut last_pos: FilePos,
     // The column of the next character to read
     mut col: CharPos,
@@ -123,9 +123,9 @@ fn string_advance_token(&&r: string_reader) {
     if is_eof(r) {
         r.peek_tok = token::EOF;
     } else {
-        let start_chpos = r.last_pos.ch;
+        let start_bytepos = r.last_pos.byte;
         r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_chpos, r.last_pos.ch);
+        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos.byte);
     };
 
 }
@@ -157,6 +157,11 @@ fn bump(rdr: string_reader) {
         if last_char == '\n' {
             rdr.filemap.next_line(rdr.last_pos);
             rdr.col = CharPos(0u);
+        }
+
+        if byte_offset_diff > 1 {
+            rdr.filemap.record_multibyte_char(
+                BytePos(current_byte_offset), byte_offset_diff);
         }
     } else {
         // XXX: What does this accomplish?
@@ -233,7 +238,7 @@ fn consume_any_line_comment(rdr: string_reader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_chpos = rdr.pos.ch - CharPos(2u);
+                let start_bpos = rdr.pos.byte - BytePos(2u);
                 let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     str::push_char(&mut acc, rdr.curr);
@@ -241,7 +246,7 @@ fn consume_any_line_comment(rdr: string_reader)
                 }
                 return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_chpos, rdr.pos.ch)
+                    sp: ast_util::mk_sp(start_bpos, rdr.pos.byte)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -256,7 +261,7 @@ fn consume_any_line_comment(rdr: string_reader)
         if nextch(rdr) == '!' {
             let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
-            let loc = cmap.lookup_char_pos_adj(rdr.last_pos.ch);
+            let loc = cmap.lookup_char_pos_adj(rdr.last_pos.byte);
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
@@ -272,7 +277,7 @@ fn consume_block_comment(rdr: string_reader)
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
-        let start_chpos = rdr.pos.ch - CharPos(2u);
+        let start_bpos = rdr.pos.byte - BytePos(2u);
         let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
             str::push_char(&mut acc, rdr.curr);
@@ -286,7 +291,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_chpos, rdr.pos.ch)
+                sp: ast_util::mk_sp(start_bpos, rdr.pos.byte)
             });
         }
     } else {

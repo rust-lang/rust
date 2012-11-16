@@ -118,8 +118,8 @@ impl CharPos: to_bytes::IterBytes {
 }
 
 pub struct span {
-    lo: CharPos,
-    hi: CharPos,
+    lo: BytePos,
+    hi: BytePos,
     expn_info: Option<@ExpnInfo>
 }
 
@@ -141,8 +141,10 @@ impl<D: Deserializer> span: Deserializable<D> {
     }
 }
 
-pub struct Loc<A: Pos> {
-    file: @FileMap, line: uint, col: A
+// XXX col shouldn't be CharPos because col is not an absolute location in the
+// codemap, and BytePos and CharPos always represent absolute positions
+pub struct Loc {
+    file: @FileMap, line: uint, col: CharPos
 }
 
 /// An absolute offset within the CodeMap (not a relative offset within a
@@ -178,12 +180,24 @@ pub enum FileSubstr {
     pub FssExternal({filename: ~str, line: uint, col: CharPos})
 }
 
+/// Identifies an offset of a multi-byte character in a FileMap
+pub struct MultiByteChar {
+    /// The absolute offset of the character in the CodeMap
+    pos: BytePos,
+    /// The number of bytes, >=2
+    bytes: uint,
+    /// The complete number of 'extra' bytes through this character in the
+    /// FileMap
+    sum: uint
+}
+
 pub struct FileMap {
     name: FileName,
     substr: FileSubstr,
     src: @~str,
     start_pos: FilePos,
-    mut lines: ~[FilePos]
+    mut lines: ~[FilePos],
+    multibyte_chars: DVec<MultiByteChar>
 }
 
 pub impl FileMap {
@@ -194,7 +208,8 @@ pub impl FileMap {
         return FileMap {
             name: filename, substr: substr, src: src,
             start_pos: start_pos,
-            mut lines: ~[]
+            mut lines: ~[],
+            multibyte_chars: DVec()
         };
     }
 
@@ -219,6 +234,21 @@ pub impl FileMap {
         str::slice(*self.src, begin, end)
     }
 
+    pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
+        assert bytes >=2 && bytes <= 4;
+        let sum = if self.multibyte_chars.len() > 0 {
+            self.multibyte_chars.last().sum
+        } else {
+            0
+        };
+        let sum = sum + bytes;
+        let mbc = MultiByteChar {
+            pos: pos,
+            bytes: bytes,
+            sum: sum
+        };
+        self.multibyte_chars.push(mbc);
+    }
 }
 
 pub struct CodeMap {
@@ -254,12 +284,11 @@ pub impl CodeMap {
                     pos.line, pos.col.to_uint());
     }
 
-    pub fn lookup_char_pos(&self, +pos: CharPos) -> Loc<CharPos> {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
-        return self.lookup_pos(pos, lookup);
+    pub fn lookup_char_pos(&self, +pos: BytePos) -> Loc {
+        return self.lookup_pos(pos);
     }
 
-    pub fn lookup_char_pos_adj(&self, +pos: CharPos)
+    pub fn lookup_char_pos_adj(&self, +pos: BytePos)
         -> {filename: ~str, line: uint, col: CharPos, file: Option<@FileMap>}
     {
         let loc = self.lookup_char_pos(pos);
@@ -272,7 +301,7 @@ pub impl CodeMap {
             }
             FssInternal(sp) => {
                 self.lookup_char_pos_adj(
-                    sp.lo + (pos - loc.file.start_pos.ch))
+                    sp.lo + (pos - loc.file.start_pos.byte))
             }
             FssExternal(eloc) => {
                 {filename: /* FIXME (#2543) */ copy eloc.filename,
@@ -284,14 +313,13 @@ pub impl CodeMap {
     }
 
     pub fn adjust_span(&self, sp: span) -> span {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
-        let line = self.lookup_line(sp.lo, lookup);
+        let line = self.lookup_line(sp.lo);
         match (line.fm.substr) {
             FssNone => sp,
             FssInternal(s) => {
                 self.adjust_span(span {
-                    lo: s.lo + (sp.lo - line.fm.start_pos.ch),
-                    hi: s.lo + (sp.hi - line.fm.start_pos.ch),
+                    lo: s.lo + (sp.lo - line.fm.start_pos.byte),
+                    hi: s.lo + (sp.hi - line.fm.start_pos.byte),
                     expn_info: sp.expn_info
                 })
             }
@@ -321,18 +349,6 @@ pub impl CodeMap {
         return @FileLines {file: lo.file, lines: lines};
     }
 
-    fn lookup_byte_offset(&self, +chpos: CharPos)
-        -> {fm: @FileMap, pos: BytePos} {
-        pure fn lookup(pos: FilePos) -> uint { return pos.ch.to_uint(); }
-        let {fm, line} = self.lookup_line(chpos, lookup);
-        let line_offset = fm.lines[line].byte - fm.start_pos.byte;
-        let col = chpos - fm.lines[line].ch;
-        let col_offset = str::count_bytes(*fm.src,
-                                          line_offset.to_uint(),
-                                          col.to_uint());
-        {fm: fm, pos: line_offset + BytePos(col_offset)}
-    }
-
     pub fn span_to_snippet(&self, sp: span) -> ~str {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
@@ -351,15 +367,14 @@ pub impl CodeMap {
 }
 
 priv impl CodeMap {
-    fn lookup_line<A: Pos>(&self, pos: A, lookup: LookupFn)
-        -> {fm: @FileMap, line: uint}
-    {
+
+    fn lookup_filemap_idx(&self, +pos: BytePos) -> uint {
         let len = self.files.len();
         let mut a = 0u;
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if lookup(self.files[m].start_pos) > pos.to_uint() {
+            if self.files[m].start_pos.byte > pos {
                 b = m;
             } else {
                 a = m;
@@ -369,22 +384,40 @@ priv impl CodeMap {
             fail fmt!("position %u does not resolve to a source location",
                       pos.to_uint())
         }
-        let f = self.files[a];
-        a = 0u;
-        b = vec::len(f.lines);
+
+        return a;
+    }
+
+    fn lookup_line(&self, +pos: BytePos)
+        -> {fm: @FileMap, line: uint}
+    {
+        let idx = self.lookup_filemap_idx(pos);
+        let f = self.files[idx];
+        let mut a = 0u;
+        let mut b = vec::len(f.lines);
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if lookup(f.lines[m]) > pos.to_uint() { b = m; } else { a = m; }
+            if f.lines[m].byte > pos { b = m; } else { a = m; }
         }
         return {fm: f, line: a};
     }
 
-    fn lookup_pos<A: Pos Num>(&self, pos: A, lookup: LookupFn) -> Loc<A> {
-        let {fm: f, line: a} = self.lookup_line(pos, lookup);
+    fn lookup_pos(&self, +pos: BytePos) -> Loc {
+        let {fm: f, line: a} = self.lookup_line(pos);
+        let line = a + 1u; // Line numbers start at 1
+        let chpos = self.bytepos_to_local_charpos(pos);
+        let linebpos = f.lines[a].byte;
+        let linechpos = self.bytepos_to_local_charpos(linebpos);
+        debug!("codemap: byte pos %? is on the line at byte pos %?",
+               pos, linebpos);
+        debug!("codemap: char pos %? is on the line at char pos %?",
+               chpos, linechpos);
+        debug!("codemap: byte is on line: %?", line);
+        assert chpos >= linechpos;
         return Loc {
             file: f,
-            line: a + 1u,
-            col: pos - from_uint(lookup(f.lines[a]))
+            line: line,
+            col: chpos - linechpos
         };
     }
 
@@ -393,6 +426,40 @@ priv impl CodeMap {
         let hi = self.lookup_char_pos(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.file.name,
                     lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
+    }
+
+    fn lookup_byte_offset(&self, +bpos: BytePos)
+        -> {fm: @FileMap, pos: BytePos} {
+        let idx = self.lookup_filemap_idx(bpos);
+        let fm = self.files[idx];
+        let offset = bpos - fm.start_pos.byte;
+        return {fm: fm, pos: offset};
+    }
+
+    // Converts an absolute BytePos to a CharPos relative to the file it is
+    // located in
+    fn bytepos_to_local_charpos(&self, +bpos: BytePos) -> CharPos {
+        debug!("codemap: converting %? to char pos", bpos);
+        let idx = self.lookup_filemap_idx(bpos);
+        let map = self.files[idx];
+
+        // The number of extra bytes due to multibyte chars in the FileMap
+        let mut total_extra_bytes = 0;
+
+        for map.multibyte_chars.each |mbc| {
+            debug!("codemap: %?-byte char at %?", mbc.bytes, mbc.pos);
+            if mbc.pos < bpos {
+                total_extra_bytes += mbc.bytes;
+                // We should never see a byte position in the middle of a
+                // character
+                assert bpos == mbc.pos
+                    || bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes;
+            } else {
+                break;
+            }
+        }
+
+        CharPos(bpos.to_uint() - total_extra_bytes)
     }
 }
 

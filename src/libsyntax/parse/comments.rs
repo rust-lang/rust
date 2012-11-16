@@ -28,7 +28,7 @@ impl cmnt_style : cmp::Eq {
     }
 }
 
-type cmnt = {style: cmnt_style, lines: ~[~str], pos: CharPos};
+type cmnt = {style: cmnt_style, lines: ~[~str], pos: BytePos};
 
 fn is_doc_comment(s: ~str) -> bool {
     s.starts_with(~"///") ||
@@ -131,7 +131,7 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 fn push_blank_line_comment(rdr: string_reader, comments: &mut ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
-    comments.push({style: blank_line, lines: v, pos: rdr.last_pos.ch});
+    comments.push({style: blank_line, lines: v, pos: rdr.last_pos.byte});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
@@ -148,7 +148,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
     debug!(">>> shebang comment");
-    let p = rdr.last_pos.ch;
+    let p = rdr.last_pos.byte;
     debug!("<<< shebang comment");
     comments.push({
         style: if code_to_the_left { trailing } else { isolated },
@@ -160,7 +160,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> line comments");
-    let p = rdr.last_pos.ch;
+    let p = rdr.last_pos.byte;
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
@@ -209,7 +209,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> block comment");
-    let p = rdr.last_pos.ch;
+    let p = rdr.last_pos.byte;
     let mut lines: ~[~str] = ~[];
     let mut col: CharPos = rdr.col;
     bump(rdr);
@@ -284,7 +284,7 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
     debug!("<<< consume comment");
 }
 
-type lit = {lit: ~str, pos: CharPos};
+type lit = {lit: ~str, pos: BytePos};
 
 fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 path: ~str,

@@ -4,7 +4,7 @@ use parse::parser;
 use parse::parser::{Parser, parse_from_source_str};
 use dvec::DVec;
 use parse::token::ident_interner;
-use codemap::CharPos;
+use codemap::{CharPos, BytePos};
 
 use fold::*;
 use visit::*;
@@ -16,13 +16,13 @@ use io::*;
 use codemap::span;
 
 struct gather_item {
-    lo: CharPos,
-    hi: CharPos,
+    lo: BytePos,
+    hi: BytePos,
     e: @ast::expr,
     constr: ~str
 }
 
-type aq_ctxt = @{lo: CharPos, gather: DVec<gather_item>};
+type aq_ctxt = @{lo: BytePos, gather: DVec<gather_item>};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::Ty)
@@ -115,7 +115,7 @@ impl @ast::pat: qq_helper {
     fn get_fold_fn() -> ~str {~"fold_pat"}
 }
 
-fn gather_anti_quotes<N: qq_helper>(lo: CharPos, node: N) -> aq_ctxt
+fn gather_anti_quotes<N: qq_helper>(lo: BytePos, node: N) -> aq_ctxt
 {
     let v = @{visit_expr: |node, &&cx, v| visit_aq(node, ~"from_expr", cx, v),
               visit_ty: |node, &&cx, v| visit_aq(node, ~"from_ty", cx, v),
@@ -227,7 +227,7 @@ fn finish<T: qq_helper>
     let mut str2 = ~"";
     enum state {active, skip(uint), blank};
     let mut state = active;
-    let mut i = CharPos(0u);
+    let mut i = BytePos(0u);
     let mut j = 0u;
     let g_len = cx.gather.len();
     for str::chars_each(*str) |ch| {
@@ -244,7 +244,7 @@ fn finish<T: qq_helper>
           blank if is_space(ch) => str::push_char(&mut str2, ch),
           blank => str::push_char(&mut str2, ' ')
         }
-        i += CharPos(1u);
+        i += BytePos(1u);
         if (j < g_len && i == cx.gather[j].hi) {
             assert ch == ')';
             state = active;
