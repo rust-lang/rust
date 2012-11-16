@@ -20,7 +20,7 @@ use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use lexer::{reader, string_reader};
 use parse::token::{ident_interner, mk_ident_interner};
-use codemap::{CodeMap, FileMap, CharPos, BytePos, FilePos};
+use codemap::{CodeMap, FileMap, CharPos, BytePos};
 
 type parse_sess = @{
     cm: @codemap::CodeMap,

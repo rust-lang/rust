@@ -147,27 +147,12 @@ pub struct Loc {
     file: @FileMap, line: uint, col: CharPos
 }
 
-/// An absolute offset within the CodeMap (not a relative offset within a
-/// a single FileMap)
-pub struct FilePos {
-    ch: CharPos, byte: BytePos
-}
-
-impl FilePos : cmp::Eq {
-    pure fn eq(other: &FilePos) -> bool {
-        self.ch == (*other).ch && self.byte == (*other).byte
-    }
-    pure fn ne(other: &FilePos) -> bool { !self.eq(other) }
-}
-
 pub enum ExpnInfo {
     ExpandedFrom({call_site: span,
                   callie: {name: ~str, span: Option<span>}})
 }
 
 pub type FileName = ~str;
-
-pub type LookupFn = pure fn(FilePos) -> uint;
 
 pub struct FileLines {
     file: @FileMap,
