@@ -971,7 +971,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
               let llretptr = PointerCast(bcx, fcx.llretptr, T_ptr(T_i8()));
               let llcast = get_param(decl, first_real_arg);
               let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
-              call_memmove(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
+              call_memcpy(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
           }
       }
         ~"addr_of" => {

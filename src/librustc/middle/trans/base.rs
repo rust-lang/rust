@@ -1275,33 +1275,33 @@ fn with_cond(bcx: block, val: ValueRef, f: fn(block) -> block) -> block {
     next_cx
 }
 
-fn call_memmove(cx: block, dst: ValueRef, src: ValueRef,
+fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
                 n_bytes: ValueRef) {
     // FIXME (Related to #1645, I think?): Provide LLVM with better
     // alignment information when the alignment is statically known (it must
     // be nothing more than a constant int, or LLVM complains -- not even a
     // constant element of a tydesc works).
-    let _icx = cx.insn_ctxt("call_memmove");
+    let _icx = cx.insn_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
-      session::arch_x86 | session::arch_arm => ~"llvm.memmove.p0i8.p0i8.i32",
-      session::arch_x86_64 => ~"llvm.memmove.p0i8.p0i8.i64"
+      session::arch_x86 | session::arch_arm => ~"llvm.memcpy.p0i8.p0i8.i32",
+      session::arch_x86_64 => ~"llvm.memcpy.p0i8.p0i8.i64"
     };
-    let memmove = ccx.intrinsics.get(key);
+    let memcpy = ccx.intrinsics.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_bool(false);
-    Call(cx, memmove, ~[dst_ptr, src_ptr, size, align, volatile]);
+    Call(cx, memcpy, ~[dst_ptr, src_ptr, size, align, volatile]);
 }
 
-fn memmove_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
-    let _icx = bcx.insn_ctxt("memmove_ty");
+fn memcpy_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
+    let _icx = bcx.insn_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
         let llsz = llsize_of(ccx, type_of::type_of(ccx, t));
-        call_memmove(bcx, dst, src, llsz);
+        call_memcpy(bcx, dst, src, llsz);
     } else {
         Store(bcx, Load(bcx, src), dst);
     }
@@ -1711,7 +1711,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
             _ => fail ~"trans_enum_variant: how do we know this works?",
         };
         let arg_ty = arg_tys[i].ty;
-        memmove_ty(bcx, lldestptr, llarg, arg_ty);
+        memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
     build_return(bcx);
     finish_fn(fcx, lltop);
@@ -1757,7 +1757,7 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
             }
         };
         let arg_ty = arg_tys[i].ty;
-        memmove_ty(bcx, lldestptr, llarg, arg_ty);
+        memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
 
     build_return(bcx);
@@ -2333,9 +2333,9 @@ fn p2i(ccx: @crate_ctxt, v: ValueRef) -> ValueRef {
 }
 
 fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
-    let T_memmove32_args: ~[TypeRef] =
+    let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
-    let T_memmove64_args: ~[TypeRef] =
+    let T_memcpy64_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i64(), T_i32(), T_i1()];
     let T_memset32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_i8(), T_i32(), T_i32(), T_i1()];
@@ -2351,12 +2351,12 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
         decl_cdecl_fn(llmod, ~"llvm.gcread",
                       T_fn(~[T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))],
                            T_void()));
-    let memmove32 =
-        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i32",
-                      T_fn(T_memmove32_args, T_void()));
-    let memmove64 =
-        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i64",
-                      T_fn(T_memmove64_args, T_void()));
+    let memcpy32 =
+        decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i32",
+                      T_fn(T_memcpy32_args, T_void()));
+    let memcpy64 =
+        decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i64",
+                      T_fn(T_memcpy64_args, T_void()));
     let memset32 =
         decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i32",
                       T_fn(T_memset32_args, T_void()));
@@ -2371,8 +2371,8 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let intrinsics = HashMap();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
-    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
-    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i64", memmove64);
+    intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
+    intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i64", memcpy64);
     intrinsics.insert(~"llvm.memset.p0i8.i32", memset32);
     intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
     intrinsics.insert(~"llvm.trap", trap);

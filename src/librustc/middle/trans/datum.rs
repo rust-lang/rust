@@ -326,7 +326,7 @@ impl Datum {
                 Store(bcx, self.val, dst);
             }
             ByRef => {
-                memmove_ty(bcx, dst, self.val, self.ty);
+                memcpy_ty(bcx, dst, self.val, self.ty);
             }
         }
 
@@ -353,7 +353,7 @@ impl Datum {
 
         match self.mode {
             ByRef => {
-                glue::memmove_ty(bcx, dst, self.val, self.ty);
+                glue::memcpy_ty(bcx, dst, self.val, self.ty);
             }
             ByValue => {
                 Store(bcx, self.val, dst);
