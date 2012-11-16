@@ -193,9 +193,6 @@ pub struct MultiByteChar {
     pos: BytePos,
     /// The number of bytes, >=2
     bytes: uint,
-    /// The complete number of 'extra' bytes through this character in the
-    /// FileMap
-    sum: uint
 }
 
 /// A single source in the CodeMap
@@ -233,16 +230,9 @@ pub impl FileMap {
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
         assert bytes >=2 && bytes <= 4;
-        let sum = if self.multibyte_chars.len() > 0 {
-            self.multibyte_chars.last().sum
-        } else {
-            0
-        };
-        let sum = sum + bytes;
         let mbc = MultiByteChar {
             pos: pos,
             bytes: bytes,
-            sum: sum
         };
         self.multibyte_chars.push(mbc);
     }
