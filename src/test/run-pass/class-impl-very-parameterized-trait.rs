@@ -47,10 +47,10 @@ impl<T: Copy> cat<T> : Map<int, T> {
     self.meows += k;
     true
   }
-  fn contains_key(+k: int) -> bool { k <= self.meows }
-  fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
+  pure fn contains_key(+k: int) -> bool { k <= self.meows }
+  pure fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
 
-  fn get(+k:int) -> T { match self.find(k) {
+  pure fn get(+k:int) -> T { match self.find(k) {
       Some(v) => { v }
       None    => { fail ~"epic fail"; }
     }
