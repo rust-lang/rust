@@ -60,7 +60,7 @@ pub pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
 }
 
 /// Returns true if the map contains a value for the specified key
-pub fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
+pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
     return !find(self, key).is_none();
 }
 
@@ -93,13 +93,13 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     fn clear() {
         self.v.set(~[]);
     }
-    fn contains_key(key: uint) -> bool {
+    pure fn contains_key(key: uint) -> bool {
         contains_key(self, key)
     }
-    fn contains_key_ref(key: &uint) -> bool {
+    pure fn contains_key_ref(key: &uint) -> bool {
         contains_key(self, *key)
     }
-    fn get(key: uint) -> V { get(self, key) }
+    pure fn get(key: uint) -> V { get(self, key) }
     pure fn find(key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
 

@@ -30,17 +30,17 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
     fn insert(v: K, v: V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
-    fn contains_key(key: K) -> bool;
+    pure fn contains_key(key: K) -> bool;
 
     /// Returns true if the map contains a value for the specified
     /// key, taking the key by reference.
-    fn contains_key_ref(key: &K) -> bool;
+    pure fn contains_key_ref(key: &K) -> bool;
 
     /**
      * Get the value for the specified key. Fails if the key does not exist in
      * the map.
      */
-    fn get(key: K) -> V;
+    pure fn get(key: K) -> V;
 
     /**
      * Get the value for the specified key. If the key does not exist in
@@ -200,11 +200,11 @@ pub mod chained {
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: Map<K, V> {
         pure fn size() -> uint { self.count }
 
-        fn contains_key(k: K) -> bool {
+        pure fn contains_key(k: K) -> bool {
             self.contains_key_ref(&k)
         }
 
-        fn contains_key_ref(k: &K) -> bool {
+        pure fn contains_key_ref(k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -264,7 +264,7 @@ pub mod chained {
             }
         }
 
-        fn get(k: K) -> V {
+        pure fn get(k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
                 fail fmt!("Key not found in table: %?", k);
@@ -421,19 +421,19 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    fn contains_key(key: K) -> bool {
+    pure fn contains_key(key: K) -> bool {
         do self.borrow_const |p| {
             p.contains_key(&key)
         }
     }
 
-    fn contains_key_ref(key: &K) -> bool {
+    pure fn contains_key_ref(key: &K) -> bool {
         do self.borrow_const |p| {
             p.contains_key(key)
         }
     }
 
-    fn get(key: K) -> V {
+    pure fn get(key: K) -> V {
         do self.borrow_const |p| {
             p.get(&key)
         }
