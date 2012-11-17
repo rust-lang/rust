@@ -57,7 +57,7 @@ export lookup_item_type;
 export lookup_public_fields;
 export method;
 export method_idx;
-export mk_class;
+export mk_class, mk_err;
 export mk_ctxt;
 export mk_with_id, type_def_id;
 export mt;
@@ -87,6 +87,7 @@ export ty_fn_proto, ty_fn_purity, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export mk_f32, mk_f64;
+export ty_err;
 export ty_estr, mk_estr, type_is_str;
 export ty_evec, mk_evec, type_is_vec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
@@ -127,7 +128,7 @@ export kind_is_owned;
 export meta_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
-export terr_onceness_mismatch;
+export terr_mismatch, terr_onceness_mismatch;
 export type_err_to_str, note_and_explain_type_err;
 export expected_found;
 export type_needs_drop;
@@ -673,6 +674,9 @@ enum sty {
     ty_self, // special, implicit `self` type parameter
 
     ty_infer(InferTy), // soething used only during inference/typeck
+    ty_err, // Also only used during inference/typeck, to represent
+            // the type of an erroneous expression (helps cut down
+            // on non-useful type error messages)
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
@@ -1062,7 +1066,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box => (),
+      ty_opaque_box | ty_err => (),
       ty_param(_) => flags |= has_params as uint,
       ty_infer(_) => flags |= needs_infer as uint,
       ty_self => flags |= has_self as uint,
@@ -1093,6 +1097,8 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
 }
 
 fn mk_nil(cx: ctxt) -> t { mk_t(cx, ty_nil) }
+
+fn mk_err(cx: ctxt) -> t { mk_t(cx, ty_err) }
 
 fn mk_bot(cx: ctxt) -> t { mk_t(cx, ty_bot) }
 
@@ -1301,7 +1307,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
-      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) => {
+      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
       ty_box(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
       ty_ptr(tm) | ty_rptr(_, tm) => {
@@ -1386,7 +1392,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             ty_class(did, fold_substs(substs, fldop))
         }
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
+        ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
         ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self => {
             *sty
         }
@@ -1794,7 +1800,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_trait(_, _, vstore_fixed(_)) |
       ty_trait(_, _, vstore_slice(_)) => false,
 
-      ty_param(*) | ty_infer(*) => true,
+      ty_param(*) | ty_infer(*) | ty_err => true,
 
       ty_evec(mt, vstore_fixed(_)) => type_needs_drop(cx, mt.ty),
       ty_unboxed_vec(mt) => type_needs_drop(cx, mt.ty),
@@ -2270,7 +2276,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
         cx.sess.bug(~"Asked to compute kind of a type variable");
       }
       ty_type | ty_opaque_closure_ptr(_)
-      | ty_opaque_box | ty_unboxed_vec(_) => {
+      | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
         cx.sess.bug(~"Asked to compute kind of fictitious type");
       }
     };
@@ -2341,7 +2347,7 @@ fn type_size(cx: ctxt, ty: t) -> uint {
         cx.sess.bug(~"Asked to compute kind of a type variable");
       }
       ty_type | ty_opaque_closure_ptr(_)
-      | ty_opaque_box | ty_unboxed_vec(_) => {
+      | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
         cx.sess.bug(~"Asked to compute kind of fictitious type");
       }
     }
@@ -2384,6 +2390,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_estr(_) |
           ty_fn(_) |
           ty_infer(_) |
+          ty_err |
           ty_param(_) |
           ty_self |
           ty_type |
@@ -2589,7 +2596,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = false;
       }
 
-      ty_infer(*) | ty_self(*) => {
+      ty_infer(*) | ty_self(*) | ty_err => {
         cx.sess.bug(~"non concrete type in type_is_pod");
       }
     }
@@ -2862,6 +2869,8 @@ impl sty : to_bytes::IterBytes {
 
           ty_rptr(ref r, ref mt) =>
           to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
+
+          ty_err => 25u8.iter_bytes(lsb0, f)
         }
     }
 }
@@ -3357,7 +3366,8 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_infer(IntVar(_)) => ~"integral variable",
       ty_infer(FloatVar(_)) => ~"floating-point variable",
       ty_param(_) => ~"type parameter",
-      ty_self => ~"self"
+      ty_self => ~"self",
+      ty_err => ~"type error"
     }
 }
 
@@ -4787,6 +4797,12 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
+            ty_err => {
+                match (*other) {
+                    ty_err => true,
+                    _ => false
+                }
+            }
             ty_param(e0a) => {
                 match (*other) {
                     ty_param(e0b) => e0a == e0b,
@@ -4941,6 +4957,12 @@ impl sty : cmp::Eq {
             ty_infer(e0a) => {
                 match (*other) {
                     ty_infer(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_err => {
+                match (*other) {
+                    ty_err => true,
                     _ => false
                 }
             }

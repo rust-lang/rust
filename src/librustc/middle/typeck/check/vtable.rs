@@ -476,13 +476,7 @@ fn demand_suptype(vcx: &VtableContext, sp: span, e: ty::t, a: ty::t) {
     match infer::mk_subty(vcx.infcx, false, sp, a, e) {
         result::Ok(()) => {} // Ok.
         result::Err(ref err) => {
-            vcx.tcx().sess.span_err(
-                sp,
-                fmt!("mismatched types: expected `%s` but found `%s` (%s)",
-                     vcx.infcx.ty_to_str(e),
-                     vcx.infcx.ty_to_str(a),
-                     ty::type_err_to_str(vcx.tcx(), err)));
-            ty::note_and_explain_type_err(vcx.tcx(), err);
+            vcx.infcx.report_mismatched_types(sp, e, a, err);
         }
     }
 }
