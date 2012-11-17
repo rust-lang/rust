@@ -9,7 +9,7 @@ use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
-use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
+use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
 use middle::ty::{ty_type, ty_uniq, ty_uint, ty_infer};
@@ -390,6 +390,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                   f.meta.ret_style)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
+      ty_err => ~"[type error]",
       ty_param({idx: id, _}) => {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }

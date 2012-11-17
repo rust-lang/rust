@@ -702,16 +702,6 @@ impl @fn_ctxt {
         self.inh.node_type_substs.find(id)
     }
 
-    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
-                               err: &ty::type_err) {
-        self.ccx.tcx.sess.span_err(
-            sp,
-            fmt!("mismatched types: expected `%s` but found `%s` (%s)",
-                 self.infcx().ty_to_str(e),
-                 self.infcx().ty_to_str(a),
-                 ty::type_err_to_str(self.ccx.tcx, err)));
-        ty::note_and_explain_type_err(self.ccx.tcx, err);
-    }
 
     fn mk_subty(a_is_expected: bool, span: span,
                 sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
@@ -775,6 +765,17 @@ impl @fn_ctxt {
         rp.map(
             |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
     }
+
+    fn type_error_message(sp: span, mk_msg: fn(~str) -> ~str,
+                          actual_ty: ty::t, err: Option<&ty::type_err>) {
+        self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
+    }
+
+    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+                               err: &ty::type_err) {
+        self.infcx().report_mismatched_types(sp, e, a, err);
+    }
+
 }
 
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
@@ -979,6 +980,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         args: ~[@ast::expr],
         deref_args: DerefArgs) -> {fty: ty::t, bot: bool} {
 
+        let tcx = fcx.ccx.tcx;
         let mut bot = false;
 
         // Replace all region parameters in the arguments and return
@@ -987,57 +989,59 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         debug!("check_call_inner: before universal quant., in_fty=%s",
                fcx.infcx().ty_to_str(in_fty));
 
+        let mut formal_tys;
+
         // This is subtle: we expect `fty` to be a function type, which
         // normally introduce a level of binding.  In this case, we want to
         // process the types bound by the function but not by any nested
         // functions.  Therefore, we match one level of structure.
-        let fn_ty =
+        let fty =
             match structure_of(fcx, sp, in_fty) {
               ty::ty_fn(ref fn_ty) => {
-                replace_bound_regions_in_fn_ty(
-                    fcx.ccx.tcx, @Nil, None, fn_ty,
-                    |_br| fcx.infcx().next_region_var(sp,
-                                                      call_expr_id)).fn_ty
+                  let fn_ty = replace_bound_regions_in_fn_ty(tcx, @Nil,
+                      None, fn_ty, |_br| fcx.infcx().next_region_var(sp,
+                                                      call_expr_id)).fn_ty;
+
+                  let supplied_arg_count = args.len();
+
+                  // Grab the argument types, supplying fresh type variables
+                  // if the wrong number of arguments were supplied
+                  let expected_arg_count = fn_ty.sig.inputs.len();
+                  formal_tys = if expected_arg_count == supplied_arg_count {
+                      fn_ty.sig.inputs.map(|a| a.ty)
+                  } else {
+                      tcx.sess.span_err(
+                          sp, fmt!("this function takes %u parameter%s but \
+                                    %u parameter%s supplied",
+                                   expected_arg_count,
+                                   if expected_arg_count == 1 {
+                                       ~""
+                                   } else {
+                                       ~"s"
+                                   },
+                                   supplied_arg_count,
+                                   if supplied_arg_count == 1 {
+                                       ~" was"
+                                   } else {
+                                       ~"s were"
+                                   }));
+                      fcx.infcx().next_ty_vars(supplied_arg_count)
+                  };
+                  ty::mk_fn(tcx, fn_ty)
               }
               _ => {
-                // I would like to make this span_err, but it's
-                // really hard due to the way that expr_bind() is
-                // written.
-                fcx.ccx.tcx.sess.span_fatal(sp, ~"mismatched types: \
-                                            expected function or foreign \
-                                            function but found "
-                                            + fcx.infcx().ty_to_str(in_fty));
+                  fcx.type_error_message(sp, |actual| {
+                      fmt!("expected function or foreign function but \
+                            found `%s`", actual) }, in_fty, None);
+                  // check each arg against "error", in order to set up
+                  // all the node type bindings
+                  formal_tys = args.map(|_x| ty::mk_err(tcx));
+                  ty::mk_err(tcx)
               }
             };
 
-        let fty = ty::mk_fn(fcx.tcx(), fn_ty);
         debug!("check_call_inner: after universal quant., fty=%s",
                fcx.infcx().ty_to_str(fty));
-
-        let supplied_arg_count = args.len();
-
-        // Grab the argument types, supplying fresh type variables
-        // if the wrong number of arguments were supplied
-        let expected_arg_count = fn_ty.sig.inputs.len();
-        let formal_tys = if expected_arg_count == supplied_arg_count {
-            fn_ty.sig.inputs.map(|a| a.ty)
-        } else {
-            fcx.ccx.tcx.sess.span_err(
-                sp, fmt!("this function takes %u parameter%s but %u \
-                          parameter%s supplied", expected_arg_count,
-                         if expected_arg_count == 1u {
-                             ~""
-                         } else {
-                             ~"s"
-                         },
-                         supplied_arg_count,
-                         if supplied_arg_count == 1u {
-                             ~" was"
-                         } else {
-                             ~"s were"
-                         }));
-            fcx.infcx().next_ty_vars(supplied_arg_count)
-        };
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -1129,11 +1133,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Pull the return type out of the type of the function.
         match structure_of(fcx, sp, fty) {
           ty::ty_fn(ref f) => {
-            bot |= (f.meta.ret_style == ast::noreturn);
-            fcx.write_ty(call_expr_id, f.sig.output);
-            return bot;
+              bot |= (f.meta.ret_style == ast::noreturn);
+              fcx.write_ty(call_expr_id, f.sig.output);
+              return bot;
           }
-          _ => fcx.ccx.tcx.sess.span_fatal(sp, ~"calling non-function")
+          _ => {
+              fcx.write_ty(call_expr_id, ty::mk_err(fcx.ccx.tcx));
+              fcx.type_error_message(sp, |_actual| {
+                  ~"expected function"}, fty, None);
+              return bot;
+          }
         }
     }
 
@@ -1239,8 +1248,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             };
         }
 
+        // A hack, but this prevents multiple errors for the same code
+        // (since check_user_binop calls structurally_resolve_type)
         let (result, rhs_bot) =
-            check_user_binop(fcx, expr, lhs, lhs_t, op, rhs);
+           match ty::deref(fcx.tcx(), lhs_t, false).map(
+                      |tt| structurally_resolved_type(fcx,
+                                                      expr.span, tt.ty)) {
+                Some(t) if ty::get(t).sty == ty::ty_err => (t, false),
+                _ => check_user_binop(fcx, expr, lhs, lhs_t, op, rhs)
+           };
         fcx.write_ty(expr.id, result);
         return lhs_bot | rhs_bot;
     }
@@ -1262,12 +1278,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ => ()
         }
         check_expr(fcx, rhs, None);
-
-        tcx.sess.span_err(
-            ex.span, ~"binary operation " + ast_util::binop_to_str(op) +
-            ~" cannot be applied to type `" +
-            fcx.infcx().ty_to_str(lhs_resolved_t) +
-            ~"`");
+        fcx.type_error_message(ex.span,
+           |actual| {
+               fmt!("binary operation %s cannot be applied to type `%s`",
+                    ast_util::binop_to_str(op), actual)
+           },
+           lhs_resolved_t, None);
 
         // If the or operator is used it might be that the user forgot to
         // supply the do keyword.  Let's be more helpful in that situation.
@@ -1292,10 +1308,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                DontDerefArgs) {
           Some((ret_ty, _)) => ret_ty,
           _ => {
-            fcx.ccx.tcx.sess.span_err(
-                ex.span, fmt!("cannot apply unary operator `%s` to type `%s`",
-                              op_str, fcx.infcx().ty_to_str(rhs_t)));
-            rhs_t
+              fcx.type_error_message(ex.span, |actual| {
+                  fmt!("cannot apply unary operator `%s` to type `%s`",
+                              op_str, actual)
+              }, rhs_t, None);
+              rhs_t
           }
         }
     }
@@ -1454,17 +1471,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 }
             }
             None => {
-                let t_err =
-                    fcx.infcx().resolve_type_vars_if_possible(expr_t);
-                let msg =
-                    fmt!(
-                        "attempted access of field `%s` on type `%s`, \
-                         but no field or method with that name was found",
-                        tcx.sess.str_of(field),
-                        fcx.infcx().ty_to_str(t_err));
-                tcx.sess.span_err(expr.span, msg);
-                // NB: Add bogus type to allow typechecking to continue
-                fcx.write_ty(expr.id, fcx.infcx().next_ty_var());
+                fcx.type_error_message(expr.span,
+                  |actual| {
+                      fmt!("attempted access of field `%s` on type `%s`, but \
+                            no field or method with that name was found",
+                           tcx.sess.str_of(field), actual)
+                  },
+                  expr_t, None);
+                // Add error type for the result
+                fcx.write_ty(expr.id, ty::mk_err(tcx));
             }
         }
 
@@ -1802,10 +1817,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                           field");
                   }
                   _ => {
-                    tcx.sess.span_err(
-                        expr.span,
-                        fmt!("type %s cannot be dereferenced",
-                             fcx.infcx().ty_to_str(oprnd_t)));
+                      fcx.type_error_message(expr.span, |actual| {
+                          fmt!("type %s cannot be dereferenced", actual)
+                      }, oprnd_t, None);
                   }
                 }
               }
@@ -1958,7 +1972,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // appear in the context of a call, so we get the expected type of the
         // parameter. The catch here is that we need to validate two things:
         // 1. a closure that returns a bool is expected
-        // 2. the cloure that was given returns unit
+        // 2. the closure that was given returns unit
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
         let inner_ty = match expected_sty {
           Some(ty::ty_fn(fty)) => {
@@ -1966,10 +1980,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                fty.sig.output, ty::mk_bool(tcx)) {
               result::Ok(_) => (),
               result::Err(_) => {
-                tcx.sess.span_fatal(
-                    expr.span, fmt!("a `loop` function's last argument \
-                                     should return `bool`, not `%s`",
-                                    fcx.infcx().ty_to_str(fty.sig.output)));
+                   fcx.type_error_message(expr.span,
+                      |actual| {
+                          fmt!("a `loop` function's last argument \
+                                should return `bool`, not `%s`", actual)
+                      },
+                      fty.sig.output, None);
+                fcx.write_ty(id, ty::mk_err(tcx));
+                return true;
               }
             }
             ty::mk_fn(tcx, FnTyBase {
@@ -1978,11 +1996,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                             ..fty.sig}
             })
           }
-          _ => {
-            tcx.sess.span_fatal(expr.span, ~"a `loop` function's last \
-                                            argument should be of function \
-                                            type");
-          }
+          _ =>
+              match expected {
+                  Some(expected_t) => {
+                      fcx.type_error_message(expr.span, |actual| {
+                          fmt!("a `loop` function's last \
+                                argument should be of function \
+                                type, not `%s`",
+                               actual)
+                      },
+                                             expected_t, None);
+                      fcx.write_ty(id, ty::mk_err(tcx));
+                      return true;
+                  }
+                  None => fcx.tcx().sess.impossible_case(expr.span,
+                            ~"loop body must have an expected type")
+              }
         };
         match b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
@@ -2012,13 +2041,21 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
         let inner_ty = match expected_sty {
           Some(ty::ty_fn(fty)) => {
-            ty::mk_fn(tcx, fty)
+              ty::mk_fn(tcx, fty)
           }
-          _ => {
-            tcx.sess.span_fatal(expr.span, ~"Non-function passed to a `do` \
-              function as its last argument, or wrong number of arguments \
-              passed to a `do` function");
-          }
+          _ => match expected {
+                  Some(expected_t) => {
+                      fcx.type_error_message(expr.span, |_actual| {
+                          ~"Non-function passed to a `do` \
+                            function as its last argument, or wrong number \
+                            of arguments passed to a `do` function"
+                      }, expected_t, None);
+                      fcx.write_ty(id, ty::mk_err(tcx));
+                      return true;
+                  }
+                  None => fcx.tcx().sess.impossible_case(expr.span,
+                              ~"do body must have expected type")
+              }
         };
         match b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
@@ -2067,13 +2104,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
           _ => {
             if ty::type_is_nil(t_e) {
-                tcx.sess.span_err(expr.span, ~"cast from nil: " +
-                                  fcx.infcx().ty_to_str(t_e) + ~" as " +
-                                  fcx.infcx().ty_to_str(t_1));
+                fcx.type_error_message(expr.span, |actual| {
+                    fmt!("cast from nil: `%s` as `%s`", actual,
+                         fcx.infcx().ty_to_str(t_1))
+                }, t_e, None);
             } else if ty::type_is_nil(t_1) {
-                tcx.sess.span_err(expr.span, ~"cast to nil: " +
-                                  fcx.infcx().ty_to_str(t_e) + ~" as " +
-                                  fcx.infcx().ty_to_str(t_1));
+                fcx.type_error_message(expr.span, |actual| {
+                    fmt!("cast to nil: `%s` as `%s`", actual,
+                         fcx.infcx().ty_to_str(t_1))
+                }, t_e, None);
             }
 
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
@@ -2085,10 +2124,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 supported here, then file an enhancement issue and record the
                 issue number in this comment.
                 */
-                tcx.sess.span_err(expr.span,
-                                  ~"non-scalar cast: " +
-                                  fcx.infcx().ty_to_str(t_e) + ~" as " +
-                                  fcx.infcx().ty_to_str(t_1));
+                fcx.type_error_message(expr.span, |actual| {
+                    fmt!("non-scalar cast: `%s` as `%s`", actual,
+                         fcx.infcx().ty_to_str(t_1))
+                }, t_e, None);
             }
           }
         }
@@ -2157,8 +2196,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let base_fields =  match structure_of(fcx, expr.span, bexpr_t) {
               ty::ty_rec(flds) => flds,
               _ => {
-                tcx.sess.span_fatal(expr.span,
-                                    ~"record update has non-record base");
+                  fcx.type_error_message(expr.span, |_actual| {
+                      ~"record update has non-record base"
+                  }, bexpr_t, None);
+                fcx.write_ty(id, ty::mk_err(tcx));
+                return true;
               }
             };
             fcx.write_ty(id, bexpr_t);
@@ -2171,9 +2213,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     }
                 }
                 if !found {
-                    tcx.sess.span_fatal(f.span,
+                    tcx.sess.span_err(f.span,
                                         ~"unknown field in record update: " +
                                         tcx.sess.str_of(f.node.ident));
+                    fcx.write_ty(id, ty::mk_err(tcx));
+                    return true;
                 }
             }
           }
@@ -2220,9 +2264,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                          ~[idx], DontDerefArgs) {
                       Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
                       _ => {
-                          tcx.sess.span_fatal(
-                              expr.span, ~"cannot index a value of type `" +
-                              fcx.infcx().ty_to_str(base_t) + ~"`");
+                          fcx.type_error_message(expr.span, |actual|
+                              fmt!("cannot index a value of type `%s`",
+                                   actual), base_t, None);
+                          fcx.write_ty(id, ty::mk_err(tcx));
+                          return true;
                       }
                   }
               }
@@ -2247,9 +2293,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
 fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
-        fcx.ccx.tcx.sess.span_err(sp, ~"mismatched types: expected \
-                                       integral type but found `"
-                                  + fcx.infcx().ty_to_str(t) + ~"`");
+        fcx.type_error_message(sp, |actual| {
+            fmt!("mismatched types: expected integral type but found `%s`",
+                 actual)
+        }, t, None);
     }
 }
 
@@ -2403,8 +2450,8 @@ fn check_instantiable(tcx: ty::ctxt,
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, fmt!("this type cannot be instantiated \
-                                    without an instance of itself; \
-                                    consider using `option<%s>`",
+                  without an instance of itself; \
+                  consider using `option<%s>`",
                                    ty_to_str(tcx, item_ty)));
     }
 }
@@ -2507,8 +2554,8 @@ fn check_enum_variants(ccx: @crate_ctxt,
         }
     }) {
         ccx.tcx.sess.span_err(sp, ~"illegal recursive enum type; \
-                                   wrap the inner value in a box to \
-                                   make it representable");
+                                 wrap the inner value in a box to \
+                                 make it representable");
     }
 
     // Check that it is possible to instantiate this enum:
@@ -2657,8 +2704,10 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => return t_s,
         _ => {
-            fcx.ccx.tcx.sess.span_fatal
-                (sp, ~"the type of this value must be known in this context");
+            fcx.type_error_message(sp, |_actual| {
+                ~"the type of this value must be known in this context"
+            }, tp, None);
+            return ty::mk_err(fcx.tcx());
         }
     }
 }

@@ -11,5 +11,5 @@ impl<A> ~[A]: vec_monad<A> {
    }
 }
 fn main() {
-    ["hi"].bind({|x| [x] });
+    ["hi"].bind({|x| [x] }); //~ ERROR attempted access of field `bind`
 }
