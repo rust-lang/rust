@@ -13,7 +13,7 @@ use middle::ty::{DerivedMethodInfo, ProvidedMethodSource, get};
 use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_class};
 use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
 use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec, ty_uniq};
-use middle::ty::{ty_fn, ty_trait, ty_tup, ty_infer};
+use middle::ty::{ty_err, ty_fn, ty_trait, ty_tup, ty_infer};
 use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_ty_var};
 use middle::typeck::infer::{infer_ctxt, can_mk_subty};
@@ -76,7 +76,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_estr(*) | ty_evec(*) | ty_rec(*) |
         ty_fn(*) | ty_tup(*) | ty_infer(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
-        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
+        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err => {
             debug!("(getting base type) no base type; found %?",
                    get(original_type).sty);
             None

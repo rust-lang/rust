@@ -697,6 +697,8 @@ impl LookupContext {
                     |m,r| ty::mk_rptr(tcx, r, {ty:self_ty, mutbl:m}))
             }
 
+            ty_err => None,
+
             ty_opaque_closure_ptr(_) | ty_unboxed_vec(_) |
             ty_opaque_box | ty_type | ty_infer(TyVar(_)) => {
                 self.bug(fmt!("Unexpected type: %s",

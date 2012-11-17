@@ -684,5 +684,43 @@ impl infer_ctxt {
           result::Err(_) => typ
         }
     }
+
+    fn type_error_message(sp: span, mk_msg: fn(~str) -> ~str,
+                          actual_ty: ty::t, err: Option<&ty::type_err>) {
+        let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
+
+        // Don't report an error if actual type is ty_err.
+        match ty::get(actual_ty).sty {
+            ty::ty_err => return,
+            _           => ()
+        }
+        let error_str = err.map_default(~"", |t_err|
+                         fmt!(" (%s)",
+                              ty::type_err_to_str(self.tcx, *t_err)));
+        self.tcx.sess.span_err(sp,
+           fmt!("%s%s", mk_msg(self.ty_to_str(actual_ty)),
+                error_str));
+        err.iter(|err|
+             ty::note_and_explain_type_err(self.tcx, *err));
+    }
+
+    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+                               err: &ty::type_err) {
+        // Don't report an error if expected is ty_err
+        let resolved_expected =
+            self.resolve_type_vars_if_possible(e);
+        let mk_msg = match ty::get(resolved_expected).sty {
+            ty::ty_err => return,
+            _ => {
+                // if I leave out : ~str, it infers &str and complains
+                |actual: ~str| {
+                    fmt!("mismatched types: expected `%s` but found `%s`",
+                         self.ty_to_str(resolved_expected), actual)
+                }
+            }
+        };
+        self.type_error_message(sp, mk_msg, a, Some(err));
+    }
+
 }
 

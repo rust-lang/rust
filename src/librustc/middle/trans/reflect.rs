@@ -266,6 +266,7 @@ impl reflector {
           // Miscallaneous extra types
           ty::ty_trait(_, _, _) => self.leaf(~"trait"),
           ty::ty_infer(_) => self.leaf(~"infer"),
+          ty::ty_err => self.leaf(~"err"),
           ty::ty_param(p) => self.visit(~"param", ~[self.c_uint(p.idx)]),
           ty::ty_self => self.leaf(~"self"),
           ty::ty_type => self.leaf(~"type"),
