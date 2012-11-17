@@ -7,6 +7,6 @@
 use option::Option;
 
 pub trait FromStr {
-    static fn from_str(s: &str) -> Option<self>;
+    static pure fn from_str(s: &str) -> Option<self>;
 }
 
