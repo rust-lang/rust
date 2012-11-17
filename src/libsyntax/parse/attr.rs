@@ -14,7 +14,7 @@ trait parser_attr {
         -> attr_or_ext;
     fn parse_outer_attributes() -> ~[ast::attribute];
     fn parse_attribute(style: ast::attr_style) -> ast::attribute;
-    fn parse_attribute_naked(style: ast::attr_style, lo: uint) ->
+    fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
         ast::attribute;
     fn parse_inner_attrs_and_next() ->
         {inner: ~[ast::attribute], next: ~[ast::attribute]};
@@ -85,7 +85,7 @@ impl Parser: parser_attr {
         return self.parse_attribute_naked(style, lo);
     }
 
-    fn parse_attribute_naked(style: ast::attr_style, lo: uint) ->
+    fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
         ast::attribute {
         self.expect(token::LBRACKET);
         let meta_item = self.parse_meta_item();

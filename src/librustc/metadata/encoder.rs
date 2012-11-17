@@ -557,7 +557,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
 
     debug!("encoding info for item at %s",
-           syntax::codemap::span_to_str(item.span, ecx.tcx.sess.codemap));
+           ecx.tcx.sess.codemap.span_to_str(item.span));
 
     match item.node {
       item_const(_, _) => {

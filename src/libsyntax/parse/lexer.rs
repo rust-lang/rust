@@ -1,5 +1,5 @@
 use diagnostic::span_handler;
-use codemap::span;
+use codemap::{span, CodeMap, CharPos, BytePos};
 use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
                              tt_next_token};
 
@@ -21,11 +21,15 @@ trait reader {
 type string_reader = @{
     span_diagnostic: span_handler,
     src: @~str,
-    mut col: uint,
-    mut pos: uint,
+    // The absolute offset within the codemap of the next character to read
+    mut pos: BytePos,
+    // The absolute offset within the codemap of the last character read(curr)
+    mut last_pos: BytePos,
+    // The column of the next character to read
+    mut col: CharPos,
+    // The last character to be read
     mut curr: char,
-    mut chpos: uint,
-    filemap: codemap::filemap,
+    filemap: @codemap::FileMap,
     interner: @token::ident_interner,
     /* cached: */
     mut peek_tok: token::Token,
@@ -33,7 +37,7 @@ type string_reader = @{
 };
 
 fn new_string_reader(span_diagnostic: span_handler,
-                     filemap: codemap::filemap,
+                     filemap: @codemap::FileMap,
                      itr: @token::ident_interner) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
@@ -42,27 +46,29 @@ fn new_string_reader(span_diagnostic: span_handler,
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 fn new_low_level_string_reader(span_diagnostic: span_handler,
-                               filemap: codemap::filemap,
+                               filemap: @codemap::FileMap,
                                itr: @token::ident_interner)
     -> string_reader {
+    // Force the initial reader bump to start on a fresh line
+    let initial_char = '\n';
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
-              mut col: 0u, mut pos: 0u, mut curr: -1 as char,
-              mut chpos: filemap.start_pos.ch,
+              mut pos: filemap.start_pos,
+              mut last_pos: filemap.start_pos,
+              mut col: CharPos(0),
+              mut curr: initial_char,
               filemap: filemap, interner: itr,
               /* dummy values; not read */
               mut peek_tok: token::EOF,
-              mut peek_span: ast_util::mk_sp(0u,0u)};
-    if r.pos < (*filemap.src).len() {
-        let next = str::char_range_at(*r.src, r.pos);
-        r.pos = next.next;
-        r.curr = next.ch;
-    }
+              mut peek_span: ast_util::dummy_sp()};
+    bump(r);
     return r;
 }
 
 fn dup_string_reader(&&r: string_reader) -> string_reader {
     @{span_diagnostic: r.span_diagnostic, src: r.src,
-      mut col: r.col, mut pos: r.pos, mut curr: r.curr, mut chpos: r.chpos,
+      mut pos: r.pos,
+      mut last_pos: r.last_pos,
+      mut col: r.col, mut curr: r.curr,
       filemap: r.filemap, interner: r.interner,
       mut peek_tok: r.peek_tok, mut peek_span: r.peek_span}
 }
@@ -117,34 +123,48 @@ fn string_advance_token(&&r: string_reader) {
     if is_eof(r) {
         r.peek_tok = token::EOF;
     } else {
-        let start_chpos = r.chpos;
+        let start_bytepos = r.last_pos;
         r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_chpos, r.chpos);
+        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos);
     };
 
 }
 
-fn get_str_from(rdr: string_reader, start: uint) -> ~str unsafe {
+fn byte_offset(rdr: string_reader) -> BytePos {
+    (rdr.pos - rdr.filemap.start_pos)
+}
+
+fn get_str_from(rdr: string_reader, start: BytePos) -> ~str unsafe {
     // I'm pretty skeptical about this subtraction. What if there's a
     // multi-byte character before the mark?
-    return str::slice(*rdr.src, start - 1u, rdr.pos - 1u);
+    return str::slice(*rdr.src, start.to_uint() - 1u,
+                      byte_offset(rdr).to_uint() - 1u);
 }
 
 fn bump(rdr: string_reader) {
-    if rdr.pos < (*rdr.src).len() {
-        rdr.col += 1u;
-        rdr.chpos += 1u;
-        if rdr.curr == '\n' {
-            codemap::next_line(rdr.filemap, rdr.chpos, rdr.pos);
-            rdr.col = 0u;
-        }
-        let next = str::char_range_at(*rdr.src, rdr.pos);
-        rdr.pos = next.next;
+    rdr.last_pos = rdr.pos;
+    let current_byte_offset = byte_offset(rdr).to_uint();;
+    if current_byte_offset < (*rdr.src).len() {
+        let last_char = rdr.curr;
+        let next = str::char_range_at(*rdr.src, current_byte_offset);
+        let byte_offset_diff = next.next - current_byte_offset;
+        rdr.pos = rdr.pos + BytePos(byte_offset_diff);
         rdr.curr = next.ch;
+        rdr.col += CharPos(1u);
+        if last_char == '\n' {
+            rdr.filemap.next_line(rdr.last_pos);
+            rdr.col = CharPos(0u);
+        }
+
+        if byte_offset_diff > 1 {
+            rdr.filemap.record_multibyte_char(
+                BytePos(current_byte_offset), byte_offset_diff);
+        }
     } else {
+        // XXX: What does this accomplish?
         if (rdr.curr != -1 as char) {
-            rdr.col += 1u;
-            rdr.chpos += 1u;
+            rdr.pos = rdr.pos + BytePos(1u);
+            rdr.col += CharPos(1u);
             rdr.curr = -1 as char;
         }
     }
@@ -153,8 +173,9 @@ fn is_eof(rdr: string_reader) -> bool {
     rdr.curr == -1 as char
 }
 fn nextch(rdr: string_reader) -> char {
-    if rdr.pos < (*rdr.src).len() {
-        return str::char_at(*rdr.src, rdr.pos);
+    let offset = byte_offset(rdr).to_uint();
+    if offset < (*rdr.src).len() {
+        return str::char_at(*rdr.src, offset);
     } else { return -1 as char; }
 }
 
@@ -211,7 +232,7 @@ fn consume_any_line_comment(rdr: string_reader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_chpos = rdr.chpos - 2u;
+                let start_bpos = rdr.pos - BytePos(2u);
                 let mut acc = ~"//";
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     str::push_char(&mut acc, rdr.curr);
@@ -219,7 +240,7 @@ fn consume_any_line_comment(rdr: string_reader)
                 }
                 return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+                    sp: ast_util::mk_sp(start_bpos, rdr.pos)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -232,10 +253,10 @@ fn consume_any_line_comment(rdr: string_reader)
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
-            let cmap = codemap::new_codemap();
+            let cmap = @CodeMap::new();
             (*cmap).files.push(rdr.filemap);
-            let loc = codemap::lookup_char_pos_adj(cmap, rdr.chpos);
-            if loc.line == 1u && loc.col == 0u {
+            let loc = cmap.lookup_char_pos_adj(rdr.last_pos);
+            if loc.line == 1u && loc.col == CharPos(0u) {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
             }
@@ -250,7 +271,7 @@ fn consume_block_comment(rdr: string_reader)
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
-        let start_chpos = rdr.chpos - 2u;
+        let start_bpos = rdr.pos - BytePos(2u);
         let mut acc = ~"/*";
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
             str::push_char(&mut acc, rdr.curr);
@@ -264,7 +285,7 @@ fn consume_block_comment(rdr: string_reader)
             bump(rdr);
             return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_chpos, rdr.chpos)
+                sp: ast_util::mk_sp(start_bpos, rdr.pos)
             });
         }
     } else {
@@ -590,7 +611,7 @@ fn next_token_inner(rdr: string_reader) -> token::Token {
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' => {
-        let n = rdr.chpos;
+        let n = byte_offset(rdr);
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {

@@ -8,7 +8,7 @@ use trans::build::B;
 use middle::ty;
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token::ident_interner;
-use codemap::span;
+use codemap::{span, CharPos};
 use ast::Ty;
 use pat_util::*;
 use util::ppaux::ty_to_str;
@@ -112,7 +112,7 @@ type compile_unit_md = {name: ~str};
 type subprogram_md = {id: ast::node_id};
 type local_var_md = {id: ast::node_id};
 type tydesc_md = {hash: uint};
-type block_md = {start: codemap::loc, end: codemap::loc};
+type block_md = {start: codemap::Loc, end: codemap::Loc};
 type argument_md = {id: ast::node_id};
 type retval_md = {id: ast::node_id};
 
@@ -229,8 +229,8 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     return mdval;
 }
 
-fn line_from_span(cm: codemap::CodeMap, sp: span) -> uint {
-    codemap::lookup_char_pos(cm, sp.lo).line
+fn line_from_span(cm: @codemap::CodeMap, sp: span) -> uint {
+    cm.lookup_char_pos(sp.lo).line
 }
 
 fn create_block(cx: block) -> @metadata<block_md> {
@@ -244,9 +244,9 @@ fn create_block(cx: block) -> @metadata<block_md> {
     }
     let sp = cx.node_info.get().span;
 
-    let start = codemap::lookup_char_pos(cx.sess().codemap, sp.lo);
+    let start = cx.sess().codemap.lookup_char_pos(sp.lo);
     let fname = start.file.name;
-    let end = codemap::lookup_char_pos(cx.sess().codemap, sp.hi);
+    let end = cx.sess().codemap.lookup_char_pos(sp.hi);
     let tg = LexicalBlockTag;
     /*alt cached_metadata::<@metadata<block_md>>(
         cache, tg,
@@ -266,8 +266,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
     };
     let lldata = ~[lltag(tg),
                   parent,
-                  lli32(start.line as int),
-                  lli32(start.col as int),
+                  lli32(start.line.to_int()),
+                  lli32(start.col.to_int()),
                   file_node.node,
                   lli32(unique_id)
                  ];
@@ -597,7 +597,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::Ty)
 }
 
 fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> ~str {
-    codemap::lookup_char_pos(cx.sess.codemap, sp.lo).file.name
+    cx.sess.codemap.lookup_char_pos(sp.lo).file.name
 }
 
 fn create_var(type_tag: int, context: ValueRef, name: ~str, file: ValueRef,
@@ -629,8 +629,7 @@ fn create_local_var(bcx: block, local: @ast::local)
       // FIXME this should be handled (#2533)
       _ => fail ~"no single variable name for local"
     };
-    let loc = codemap::lookup_char_pos(cx.sess.codemap,
-                                       local.span.lo);
+    let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.file.name);
@@ -674,8 +673,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
       option::None => ()
     }
 
-    let loc = codemap::lookup_char_pos(cx.sess.codemap,
-                                       sp.lo);
+    let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
     let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
     let filemd = create_file(cx, loc.file.name);
@@ -714,9 +712,9 @@ fn update_source_pos(cx: block, s: span) {
     }
     let cm = cx.sess().codemap;
     let blockmd = create_block(cx);
-    let loc = codemap::lookup_char_pos(cm, s.lo);
-    let scopedata = ~[lli32(loc.line as int),
-                     lli32(loc.col as int),
+    let loc = cm.lookup_char_pos(s.lo);
+    let scopedata = ~[lli32(loc.line.to_int()),
+                     lli32(loc.col.to_int()),
                      blockmd.node,
                      llnull()];
     let dbgscope = llmdnode(scopedata);
@@ -731,7 +729,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     log(debug, fcx.id);
 
     let sp = fcx.span.get();
-    log(debug, codemap::span_to_str(sp, cx.sess.codemap));
+    log(debug, cx.sess.codemap.span_to_str(sp));
 
     let (ident, ret_ty, id) = match cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) => {
@@ -773,8 +771,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       option::None => ()
     }
 
-    let loc = codemap::lookup_char_pos(cx.sess.codemap,
-                                       sp.lo);
+    let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
     let file_node = create_file(cx, loc.file.name).node;
     let ty_node = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {

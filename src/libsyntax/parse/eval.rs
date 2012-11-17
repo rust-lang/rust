@@ -62,12 +62,10 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
     let modpath = &companion_file(prefix, suffix);
     if file_exists(modpath) {
         debug!("found companion mod");
-        let (p0, r0) = new_parser_etc_from_file(cx.sess, cx.cfg,
-                                                modpath, SOURCE_FILE);
+        let p0 = new_parser_from_file(cx.sess, cx.cfg,
+                                      modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
-        cx.sess.chpos = r0.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         return (m0.view_items, m0.items, inner_attrs.inner);
     } else {
         return (~[], ~[], ~[]);
@@ -93,9 +91,9 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
         } else {
             prefix.push_many(file_path.components)
         };
-        let (p0, r0) =
-            new_parser_etc_from_file(cx.sess, cx.cfg,
-                                     &full_path, SOURCE_FILE);
+        let p0 =
+            new_parser_from_file(cx.sess, cx.cfg,
+                                 &full_path, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let mod_attrs = vec::append(attrs, inner_attrs.inner);
         let first_item_outer_attrs = inner_attrs.next;
@@ -104,9 +102,6 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
         let i = p0.mk_item(cdir.span.lo, cdir.span.hi,
                            /* FIXME (#2543) */ copy id,
                            ast::item_mod(m0), vis, mod_attrs);
-        // Thread defids, chpos and byte_pos through the parsers
-        cx.sess.chpos = r0.chpos;
-        cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         items.push(i);
       }
       ast::cdir_dir_mod(vis, id, cdirs, attrs) => {

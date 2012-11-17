@@ -1,7 +1,7 @@
 use mod ast;
 use mod parse::token;
 
-use codemap::span;
+use codemap::{span, BytePos};
 use ext::base::ext_ctxt;
 use token::*;
 
@@ -20,6 +20,8 @@ pub mod rt {
     pub use ast::*;
     pub use parse::token::*;
     pub use parse::new_parser_from_tt;
+    pub use codemap::BytePos;
+    pub use codemap::span;
 }
 
 pub fn expand_quote_tokens(cx: ext_ctxt,
@@ -92,7 +94,7 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
 
     let e_expn_info = match sp.expn_info {
         None => build::mk_path(cx, qsp, ids_ext(cx, ~[~"None"])),
-        Some(@codemap::expanded_from(cr)) => {
+        Some(@codemap::ExpandedFrom(cr)) => {
             let e_callee =
                 build::mk_rec_e(
                     cx, qsp,
@@ -119,12 +121,16 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
         }
     };
 
-    build::mk_rec_e(cx, qsp,
+    let span_path = ids_ext(
+        cx, ~[~"syntax", ~"ext", ~"quote", ~"rt", ~"span"]);
+
+    build::mk_struct_e(cx, qsp,
+                       span_path,
                     ~[{ident: id_ext(cx, ~"lo"),
-                       ex: build::mk_uint(cx, qsp, sp.lo) },
+                       ex: mk_bytepos(cx, qsp, sp.lo) },
 
                       {ident: id_ext(cx, ~"hi"),
-                       ex: build::mk_uint(cx, qsp, sp.hi) },
+                       ex: mk_bytepos(cx, qsp, sp.hi) },
 
                       {ident: id_ext(cx, ~"expn_info"),
                        ex: e_expn_info}])
@@ -143,6 +149,11 @@ fn mk_ident(cx: ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
                           ex: build::mk_uint(cx, sp, ident.repr) }])
 }
 
+fn mk_bytepos(cx: ext_ctxt, sp: span, bpos: BytePos) -> @ast::expr {
+    let path = ids_ext(cx, ~[~"syntax", ~"ext", ~"quote", ~"rt", ~"BytePos"]);
+    let arg = build::mk_uint(cx, sp, bpos.to_uint());
+    build::mk_call(cx, sp, path, ~[arg])
+}
 
 fn mk_binop(cx: ext_ctxt, sp: span, bop: token::binop) -> @ast::expr {
     let name = match bop {

@@ -6,6 +6,7 @@ use either::Either;
 use diagnostic::span_handler;
 use ast_util::{spanned, dummy_spanned};
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use codemap::BytePos;
 
 // Constructors
 export mk_name_value_item_str;
@@ -74,7 +75,8 @@ fn mk_attr(item: @ast::meta_item) -> ast::attribute {
                        is_sugared_doc: false});
 }
 
-fn mk_sugared_doc_attr(text: ~str, lo: uint, hi: uint) -> ast::attribute {
+fn mk_sugared_doc_attr(text: ~str,
+                       +lo: BytePos, +hi: BytePos) -> ast::attribute {
     let lit = spanned(lo, hi, ast::lit_str(@text));
     let attr = {
         style: doc_comment_style(text),

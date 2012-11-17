@@ -205,7 +205,7 @@ impl Parser: parser_common {
         if self.token == token::GT {
             self.bump();
         } else if self.token == token::BINOP(token::SHR) {
-            self.swap(token::GT, self.span.lo + 1u, self.span.hi);
+            self.swap(token::GT, self.span.lo + BytePos(1u), self.span.hi);
         } else {
             let mut s: ~str = ~"expected `";
             s += token_to_str(self.reader, token::GT);

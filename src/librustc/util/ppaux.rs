@@ -105,8 +105,9 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
     fn explain_span(cx: ctxt, heading: ~str, span: span)
         -> (~str, Option<span>)
     {
-        let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
-        (fmt!("the %s at %u:%u", heading, lo.line, lo.col), Some(span))
+        let lo = cx.sess.codemap.lookup_char_pos_adj(span.lo);
+        (fmt!("the %s at %u:%u", heading,
+              lo.line, lo.col.to_uint()), Some(span))
     }
 }
 
@@ -131,17 +132,17 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(node_id) {
       Some(ast_map::node_block(blk)) => {
         fmt!("<block at %s>",
-             codemap::span_to_str(blk.span, cx.sess.codemap))
+             cx.sess.codemap.span_to_str(blk.span))
       }
       Some(ast_map::node_expr(expr)) => {
         match expr.node {
           ast::expr_call(*) => {
             fmt!("<call at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+                 cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_match(*) => {
             fmt!("<alt at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+                 cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_assign_op(*) |
           ast::expr_field(*) |
@@ -149,11 +150,11 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
           ast::expr_binary(*) |
           ast::expr_index(*) => {
             fmt!("<method at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+                 cx.sess.codemap.span_to_str(expr.span))
           }
           _ => {
             fmt!("<expression at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap))
+                 cx.sess.codemap.span_to_str(expr.span))
           }
         }
       }

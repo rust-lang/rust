@@ -507,7 +507,7 @@ impl RegionVarBindings {
             self.undo_log.push(AddVar(vid));
         }
         debug!("created new region variable %? with span %?",
-               vid, codemap::span_to_str(span, self.tcx.sess.codemap));
+               vid, self.tcx.sess.codemap.span_to_str(span));
         return vid;
     }
 
