@@ -155,6 +155,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     do_strptime(s, format)
 }
 
+/// Formats the time according to the format string.
 pub fn strftime(format: &str, tm: Tm) -> ~str {
     do_strftime(format, tm)
 }
@@ -235,21 +236,6 @@ impl Tm {
 }
 
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
-    type TmMut = {
-       mut tm_sec: i32,
-       mut tm_min: i32,
-       mut tm_hour: i32,
-       mut tm_mday: i32,
-       mut tm_mon: i32,
-       mut tm_year: i32,
-       mut tm_wday: i32,
-       mut tm_yday: i32,
-       mut tm_isdst: i32,
-       mut tm_gmtoff: i32,
-       mut tm_zone: ~str,
-       mut tm_nsec: i32,
-    };
-
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for str::each(needle) |ch| {
@@ -312,7 +298,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    fn parse_type(s: &str, pos: uint, ch: char, tm: &TmMut)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm_)
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
@@ -623,19 +609,19 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     do io::with_str_reader(str::from_slice(format)) |rdr| {
-        let tm = {
-            mut tm_sec: 0_i32,
-            mut tm_min: 0_i32,
-            mut tm_hour: 0_i32,
-            mut tm_mday: 0_i32,
-            mut tm_mon: 0_i32,
-            mut tm_year: 0_i32,
-            mut tm_wday: 0_i32,
-            mut tm_yday: 0_i32,
-            mut tm_isdst: 0_i32,
-            mut tm_gmtoff: 0_i32,
-            mut tm_zone: ~"",
-            mut tm_nsec: 0_i32,
+        let mut tm = {
+            tm_sec: 0_i32,
+            tm_min: 0_i32,
+            tm_hour: 0_i32,
+            tm_mday: 0_i32,
+            tm_mon: 0_i32,
+            tm_year: 0_i32,
+            tm_wday: 0_i32,
+            tm_yday: 0_i32,
+            tm_isdst: 0_i32,
+            tm_gmtoff: 0_i32,
+            tm_zone: ~"",
+            tm_nsec: 0_i32,
         };
         let mut pos = 0u;
         let len = str::len(s);
@@ -645,7 +631,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             let {ch, next} = str::char_range_at(s, pos);
 
             match rdr.read_char() {
-              '%' => match parse_type(s, pos, rdr.read_char(), &tm) {
+              '%' => match parse_type(s, pos, rdr.read_char(), &mut tm) {
                 Ok(next) => pos = next,
                   Err(copy e) => { result = Err(e); break; }
               },
