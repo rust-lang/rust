@@ -9,12 +9,13 @@ use macro_parser::{parse, parse_or_else, success, failure, named_match,
                       matched_seq, matched_nonterminal, error};
 use std::map::HashMap;
 use parse::token::special_idents;
+use ast_util::dummy_sp;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                      arg: ~[ast::token_tree]) -> base::mac_result {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: {lo: 0u, hi: 0u, expn_info: None}}
+        {node: m, span: dummy_sp()}
     }
 
     let lhs_nm =  cx.parse_sess().interner.gensym(@~"lhs");
@@ -65,7 +66,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         }
 
         // Which arm's failure should we report? (the one furthest along)
-        let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: None};
+        let mut best_fail_spot = dummy_sp();
         let mut best_fail_msg = ~"internal error: ran no matchers";
 
         let s_d = cx.parse_sess().span_diagnostic;

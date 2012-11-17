@@ -645,7 +645,7 @@ fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 fn add_span_comment(bcx: block, sp: span, text: ~str) {
     let ccx = bcx.ccx();
     if !ccx.sess.no_asm_comments() {
-        let s = text + ~" (" + codemap::span_to_str(sp, ccx.sess.codemap)
+        let s = text + ~" (" + ccx.sess.codemap.span_to_str(sp)
             + ~")";
         log(debug, s);
         add_comment(bcx, s);

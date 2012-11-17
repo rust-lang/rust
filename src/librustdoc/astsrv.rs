@@ -120,7 +120,7 @@ fn build_ctxt(sess: Session,
 
 fn build_session() -> Session {
     let sopts: @options = basic_options();
-    let codemap = codemap::new_codemap();
+    let codemap = @codemap::CodeMap::new();
     let error_handlers = build_error_handlers(codemap);
     let {emitter, span_handler} = error_handlers;
 
@@ -137,7 +137,7 @@ type ErrorHandlers = {
 // Build a custom error handler that will allow us to ignore non-fatal
 // errors
 fn build_error_handlers(
-    codemap: codemap::CodeMap
+    codemap: @codemap::CodeMap
 ) -> ErrorHandlers {
 
     type DiagnosticHandler = {
@@ -156,13 +156,13 @@ fn build_error_handlers(
         fn note(msg: &str) { self.inner.note(msg) }
         fn bug(msg: &str) -> ! { self.inner.bug(msg) }
         fn unimpl(msg: &str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: Option<(codemap::CodeMap, codemap::span)>,
+        fn emit(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
                 msg: &str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
     }
 
-    let emitter = fn@(cmsp: Option<(codemap::CodeMap, codemap::span)>,
+    let emitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
                        msg: &str, lvl: diagnostic::level) {
         diagnostic::emit(cmsp, msg, lvl);
     };

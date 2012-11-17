@@ -5,6 +5,7 @@ use to_str::ToStr;
 use dvec::DVec;
 
 use ast::ident;
+use ast_util::dummy_sp;
 use util::interner;
 use print::pprust;
 use pprust::{item_to_str, ty_to_str};
@@ -12,7 +13,7 @@ use ext::base::{mk_ctxt, ext_ctxt};
 use parse::*;
 use proto::*;
 
-use ast_builder::{append_types, path, empty_span};
+use ast_builder::{append_types, path};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -256,11 +257,11 @@ impl state: to_type_decls {
                     cx.ty_path_ast_builder(
                         path(~[cx.ident_of(~"pipes"),
                                cx.ident_of(dir.to_str() + ~"Packet")],
-                             empty_span())
+                             dummy_sp())
                         .add_ty(cx.ty_path_ast_builder(
                             path(~[cx.ident_of(self.proto.name),
                                    self.data_name()],
-                                 empty_span())
+                                 dummy_sp())
                             .add_tys(cx.ty_vars(self.ty_params))))),
                     self.ty_params));
         }
@@ -273,11 +274,11 @@ impl state: to_type_decls {
                         path(~[cx.ident_of(~"pipes"),
                                cx.ident_of(dir.to_str()
                                            + ~"PacketBuffered")],
-                             empty_span())
+                             dummy_sp())
                         .add_tys(~[cx.ty_path_ast_builder(
                             path(~[cx.ident_of(self.proto.name),
                                    self.data_name()],
-                                 empty_span())
+                                 dummy_sp())
                             .add_tys(cx.ty_vars(self.ty_params))),
                                    self.proto.buffer_ty_path(cx)])),
                     self.ty_params));
@@ -394,7 +395,7 @@ impl protocol: gen_init {
 
         cx.item_ty_poly(
             cx.ident_of(~"__Buffer"),
-            cx.empty_span(),
+            dummy_sp(),
             cx.ty_rec(fields),
             params)
     }
