@@ -595,7 +595,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
  * This version prepends each entry with the directory.
  */
 pub fn list_dir_path(p: &Path) -> ~[~Path] {
-    os::list_dir(p).map(|f| ~p.push(*f))
+    list_dir(p).map(|f| ~p.push(*f))
 }
 
 /// Removes a directory at the specified path
