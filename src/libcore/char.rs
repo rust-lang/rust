@@ -126,16 +126,18 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
  *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
-pub fn escape_unicode(c: char) -> ~str {
+pub pure fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });
     assert str::len(s) <= pad;
     let mut out = ~"\\";
-    str::push_str(&mut out, str::from_char(c));
-    for uint::range(str::len(s), pad) |_i| { str::push_str(&mut out, ~"0"); }
-    str::push_str(&mut out, s);
+    unsafe {
+        str::push_str(&mut out, str::from_char(c));
+        for uint::range(str::len(s), pad) |_i| { str::push_str(&mut out, ~"0"); }
+        str::push_str(&mut out, s);
+    }
     move out
 }
 
@@ -151,7 +153,7 @@ pub fn escape_unicode(c: char) -> ~str {
  *   - Any other chars in the range [0x20,0x7e] are not escaped.
  *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
  */
-pub fn escape_default(c: char) -> ~str {
+pub pure fn escape_default(c: char) -> ~str {
     match c {
       '\t' => ~"\\t",
       '\r' => ~"\\r",
