@@ -1,6 +1,6 @@
 #[forbid(deprecated_mode)];
 
-pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
+pub pure fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
@@ -10,14 +10,14 @@ pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     let mut msg = vec::append(vec::from_slice(msg), ~[0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
-        msg.push(0u8);
+        unsafe {msg.push(0u8);}
         bitlen += 8u64;
     }
 
     // append length
     let mut i = 0u64;
     while i < 8u64 {
-        msg.push((orig_len >> (i * 8u64)) as u8);
+        unsafe {msg.push((orig_len >> (i * 8u64)) as u8);}
         i += 1u64;
     }
 
@@ -26,7 +26,7 @@ pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     let mut c = 0x98badcfeu32;
     let mut d = 0x10325476u32;
 
-    fn rot(r: int, x: u32) -> u32 {
+    pure fn rot(r: int, x: u32) -> u32 {
         let r = r as u32;
         (x << r) | (x >> (32u32 - r))
     }
@@ -84,9 +84,9 @@ pub fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     return {a: a, b: b, c: c, d: d};
 }
 
-pub fn md4_str(msg: &[u8]) -> ~str {
+pub pure fn md4_str(msg: &[u8]) -> ~str {
     let {a, b, c, d} = md4(msg);
-    fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
+    pure fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
         f(a); f(b); f(c); f(d);
     }
     let mut result = ~"";
@@ -102,7 +102,7 @@ pub fn md4_str(msg: &[u8]) -> ~str {
     result
 }
 
-pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+pub pure fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]
 fn test_md4() {
