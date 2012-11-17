@@ -204,13 +204,13 @@ pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn((&E)) -> F)
 }
 
 impl<T, E> Result<T, E> {
-    fn get_ref(&self) -> &self/T { get_ref(self) }
+    pure fn get_ref(&self) -> &self/T { get_ref(self) }
 
-    fn is_ok() -> bool { is_ok(&self) }
+    pure fn is_ok() -> bool { is_ok(&self) }
 
-    fn is_err() -> bool { is_err(&self) }
+    pure fn is_err() -> bool { is_err(&self) }
 
-    fn iter(f: fn((&T))) {
+    pure fn iter(f: fn((&T))) {
         match self {
           Ok(ref t) => f(t),
           Err(_) => ()
@@ -226,7 +226,7 @@ impl<T, E> Result<T, E> {
 }
 
 impl<T: Copy, E> Result<T, E> {
-    fn get() -> T { get(&self) }
+    pure fn get() -> T { get(&self) }
 
     fn map_err<F:Copy>(op: fn((&E)) -> F) -> Result<T,F> {
         match self {
@@ -237,7 +237,7 @@ impl<T: Copy, E> Result<T, E> {
 }
 
 impl<T, E: Copy> Result<T, E> {
-    fn get_err() -> E { get_err(&self) }
+    pure fn get_err() -> E { get_err(&self) }
 
     fn map<U:Copy>(op: fn((&T)) -> U) -> Result<U,E> {
         match self {
