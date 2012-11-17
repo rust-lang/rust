@@ -106,7 +106,7 @@ impl T: iter::Times {
  * * buf - A byte buffer
  * * radix - The base of the number
  */
-pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
     if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
@@ -129,10 +129,13 @@ pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
-pub fn from_str(s: &str) -> Option<T> { parse_bytes(str::to_bytes(s), 10u) }
+pub pure fn from_str(s: &str) -> Option<T>
+{
+    parse_bytes(str::to_bytes(s), 10u)
+}
 
 impl T : FromStr {
-    static fn from_str(s: &str) -> Option<T> { from_str(s) }
+    static pure fn from_str(s: &str) -> Option<T> { from_str(s) }
 }
 
 /// Convert to a string in a given base
