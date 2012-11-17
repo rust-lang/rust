@@ -12,7 +12,7 @@ pub fn Cell<T>(value: T) -> Cell<T> {
     Cell { value: Some(move value) }
 }
 
-pub fn empty_cell<T>() -> Cell<T> {
+pub pure fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
@@ -37,7 +37,7 @@ impl<T> Cell<T> {
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
-    fn is_empty() -> bool {
+    pure fn is_empty() -> bool {
         self.value.is_none()
     }
 
