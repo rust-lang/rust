@@ -702,14 +702,8 @@ pub struct Deserializer {
     priv mut stack: ~[&Json],
 }
 
-pub fn Deserializer(rdr: io::Reader) -> Result<Deserializer, Error> {
-    match move from_reader(rdr) {
-        Ok(move json) => {
-            let des = Deserializer { json: move json, stack: ~[] };
-            Ok(move des)
-        }
-        Err(move e) => Err(e)
-    }
+pub fn Deserializer(json: Json) -> Deserializer {
+    Deserializer { json: move json, stack: ~[] }
 }
 
 priv impl Deserializer {
