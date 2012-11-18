@@ -142,15 +142,18 @@ inline void isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size)
         (_T("CryptReleaseContext"), CryptReleaseContext(hProv, 0));
 #else
     int fd = open("/dev/urandom", O_RDONLY);
-    assert(fd > 0);
+    if (fd == -1)
+        kernel->fatal("error opening /dev/urandom: %s", strerror(errno));
     size_t amount = 0;
     do {
         ssize_t ret = read(fd, dest+amount, size-amount);
-        assert(ret >= 0);
+        if (ret < 0)
+            kernel->fatal("error reading /dev/urandom: %s", strerror(errno));
+        else if (ret == 0)
+            kernel->fatal("somehow hit eof reading from /dev/urandom");
         amount += (size_t)ret;
     } while (amount < size);
-    int ret = close(fd);
-    assert(ret == 0);
+    (void) close(fd);
 #endif
 }
 
