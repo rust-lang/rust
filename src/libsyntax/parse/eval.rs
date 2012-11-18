@@ -1,4 +1,4 @@
-use parser::{Parser, SOURCE_FILE};
+use parser::Parser;
 use attr::parser_attr;
 use ast_util::mk_sp;
 use codemap::span;
@@ -67,7 +67,7 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
         debug!("found companion mod");
         // XXX: Using a dummy span, but this code will go away soon
         let p0 = new_sub_parser_from_file(cx.sess, cx.cfg,
-                                          modpath, SOURCE_FILE,
+                                          modpath,
                                           ast_util::dummy_sp());
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
@@ -96,7 +96,7 @@ fn eval_src_mod(cx: ctx, prefix: &Path, id: ast::ident,
     };
     let p0 =
         new_sub_parser_from_file(cx.sess, cx.cfg,
-                                 &full_path, SOURCE_FILE, sp);
+                                 &full_path, sp);
     let inner_attrs = p0.parse_inner_attrs_and_next();
     let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
     let first_item_outer_attrs = inner_attrs.next;

@@ -4,7 +4,7 @@ use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
 use parse::lexer::{new_tt_reader, reader};
 use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
-use parse::parser::{Parser, SOURCE_FILE};
+use parse::parser::Parser;
 use macro_parser::{parse, parse_or_else, success, failure, named_match,
                       matched_seq, matched_nonterminal, error};
 use std::map::HashMap;
@@ -88,7 +88,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
                                                ~[rhs]);
                     let p = Parser(cx.parse_sess(), cx.cfg(),
-                                   trncbr as reader, SOURCE_FILE);
+                                   trncbr as reader);
                     let e = p.parse_expr();
                     return mr_expr(e);
                   }
