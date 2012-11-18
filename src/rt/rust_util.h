@@ -153,7 +153,10 @@ inline void isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size)
             kernel->fatal("somehow hit eof reading from /dev/urandom");
         amount += (size_t)ret;
     } while (amount < size);
-    (void) close(fd);
+    int ret = close(fd);
+    if (ret != 0)
+        kernel->log(log_warn, "error closing /dev/urandom: %s",
+            strerror(errno));
 #endif
 }
 
