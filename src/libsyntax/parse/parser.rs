@@ -2959,6 +2959,7 @@ impl Parser {
     }
 
     fn parse_item_mod(outer_attrs: ~[ast::attribute]) -> item_info {
+        let id_span = self.span;
         let id = self.parse_ident();
         if self.token == token::SEMI {
             self.bump();
@@ -2969,7 +2970,8 @@ impl Parser {
             };
             let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
             let prefix = prefix.dir_path();
-            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id, outer_attrs);
+            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id,
+                                                outer_attrs, id_span);
             (id, m, Some(move attrs))
         } else {
             self.expect(token::LBRACE);

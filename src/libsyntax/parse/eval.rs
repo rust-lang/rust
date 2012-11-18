@@ -1,6 +1,7 @@
 use parser::{Parser, SOURCE_FILE};
 use attr::parser_attr;
 use ast_util::mk_sp;
+use codemap::span;
 
 export eval_crate_directives_to_mod;
 export eval_src_mod;
@@ -64,8 +65,10 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
     let modpath = &companion_file(prefix, suffix);
     if file_exists(modpath) {
         debug!("found companion mod");
-        let p0 = new_parser_from_file(cx.sess, cx.cfg,
-                                      modpath, SOURCE_FILE);
+        // XXX: Using a dummy span, but this code will go away soon
+        let p0 = new_sub_parser_from_file(cx.sess, cx.cfg,
+                                          modpath, SOURCE_FILE,
+                                          ast_util::dummy_sp());
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
         return (m0.view_items, m0.items, inner_attrs.inner);
@@ -82,7 +85,8 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
 }
 
 fn eval_src_mod(cx: ctx, prefix: &Path, id: ast::ident,
-                outer_attrs: ~[ast::attribute]) -> (ast::item_, ~[ast::attribute]) {
+                outer_attrs: ~[ast::attribute],
+                sp: span) -> (ast::item_, ~[ast::attribute]) {
     let file_path = Path(cdir_path_opt(
         cx.sess.interner.get(id) + ~".rs", outer_attrs));
     let full_path = if file_path.is_absolute {
@@ -91,8 +95,8 @@ fn eval_src_mod(cx: ctx, prefix: &Path, id: ast::ident,
         prefix.push_many(file_path.components)
     };
     let p0 =
-        new_parser_from_file(cx.sess, cx.cfg,
-                             &full_path, SOURCE_FILE);
+        new_sub_parser_from_file(cx.sess, cx.cfg,
+                                 &full_path, SOURCE_FILE, sp);
     let inner_attrs = p0.parse_inner_attrs_and_next();
     let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
     let first_item_outer_attrs = inner_attrs.next;
@@ -117,7 +121,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                         items: &mut ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(vis, id, attrs) => {
-        let (m, mod_attrs) = eval_src_mod(cx, prefix, id, attrs);
+        let (m, mod_attrs) = eval_src_mod(cx, prefix, id, attrs, cdir.span);
         let i = mk_item(cx, cdir.span.lo, cdir.span.hi,
                            /* FIXME (#2543) */ copy id,
                            m, vis, mod_attrs);
