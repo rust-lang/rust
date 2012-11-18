@@ -48,6 +48,7 @@ pub use types::common::posix88::*;
 pub use types::common::posix01::*;
 pub use types::common::posix08::*;
 pub use types::common::bsd44::*;
+pub use types::os::common::posix01::*;
 pub use types::os::arch::c95::*;
 pub use types::os::arch::c99::*;
 pub use types::os::arch::posix88::*;
@@ -69,12 +70,13 @@ pub use funcs::c95::stdio::*;
 pub use funcs::c95::stdlib::*;
 pub use funcs::c95::string::*;
 
-pub use funcs::posix88::stat::*;
+pub use funcs::posix88::stat_::*;
 pub use funcs::posix88::stdio::*;
 pub use funcs::posix88::fcntl::*;
 pub use funcs::posix88::dirent::*;
 pub use funcs::posix88::unistd::*;
 
+pub use funcs::posix01::stat_::*;
 pub use funcs::posix01::unistd::*;
 pub use funcs::posix08::unistd::*;
 
@@ -122,6 +124,8 @@ pub use open, creat;
 pub use access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
 getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
 
+pub use fstat, lstat, stat;
+
 
 mod types {
 
@@ -158,6 +162,10 @@ mod types {
 
     #[cfg(target_os = "linux")]
     pub mod os {
+        pub mod common {
+            pub mod posix01 {}
+        }
+
         #[cfg(target_arch = "x86")]
         pub mod arch {
             pub mod c95 {
@@ -195,7 +203,33 @@ mod types {
                 pub type mode_t = u32;
                 pub type ssize_t = i32;
             }
-            pub mod posix01 {}
+            pub mod posix01 {
+                pub type nlink_t = u32;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i32;
+                pub struct stat {
+                    st_dev: dev_t,
+                    __pad1: c_short,
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    __pad2: c_short,
+                    st_size: off_t,
+                    st_blksize: blksize_t,
+                    st_blocks: blkcnt_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    __unused4: c_long,
+                    __unused5: c_long,
+                }
+            }
             pub mod posix08 {}
             pub mod bsd44 {}
             pub mod extra {}
@@ -239,6 +273,29 @@ mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                pub type nlink_t = u64;
+                pub type blksize_t = i64;
+                pub type blkcnt_t = i64;
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_ino: ino_t,
+                    st_nlink: nlink_t,
+                    st_mode: mode_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    __pad0: c_int,
+                    st_rdev: dev_t,
+                    st_size: off_t,
+                    st_blksize: blksize_t,
+                    st_blocks: blkcnt_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    __unused: [c_long * 3],
+                }
             }
             pub mod posix08 {
             }
@@ -251,6 +308,10 @@ mod types {
 
     #[cfg(target_os = "freebsd")]
     pub mod os {
+        pub mod common {
+            pub mod posix01 {}
+        }
+
         #[cfg(target_arch = "x86_64")]
         pub mod arch {
             pub mod c95 {
@@ -289,6 +350,34 @@ mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                pub type nlink_t = u16;
+                pub type blksize_t = i64;
+                pub type blkcnt_t = i64;
+                pub type fflags_t = u32;
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_size: off_t,
+                    st_blocks: blkcnt_t,
+                    st_blksize: blksize_t,
+                    st_flags: fflags_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    __unused: [uint8_t * 2],
+                }
             }
             pub mod posix08 {
             }
@@ -301,6 +390,24 @@ mod types {
 
     #[cfg(target_os = "win32")]
     pub mod os {
+        pub mod common {
+            pub mod posix01 {
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: c_short,
+                    st_uid: c_short,
+                    st_gid: c_short,
+                    st_rdev: dev_t,
+                    st_size: int64_t,
+                    st_atime: time64_t,
+                    st_mtime: time64_t,
+                    st_c_time: time64_t,
+                }
+            }
+        }
+
         #[cfg(target_arch = "x86")]
         pub mod arch {
             pub mod c95 {
@@ -378,6 +485,38 @@ mod types {
 
     #[cfg(target_os = "macos")]
     pub mod os {
+        pub mod common {
+            pub mod posix01 {
+                pub type nlink_t = u16;
+                pub type blksize_t = i64;
+                pub type blkcnt_t = i32;
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_ino: ino_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    st_size: off_t,
+                    st_blocks: blkcnt_t,
+                    st_blksize: blksize_t,
+                    st_flags: uint32_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_qspare: [int64_t * 2],
+                }
+            }
+        }
+
         #[cfg(target_arch = "x86")]
         pub mod arch {
             pub mod c95 {
@@ -880,7 +1019,7 @@ pub mod funcs {
     pub mod posix88 {
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stat {
+        pub extern mod stat_ {
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -990,11 +1129,28 @@ pub mod funcs {
     pub mod posix88 {
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stat {
+        pub extern mod stat_ {
             fn chmod(path: *c_char, mode: mode_t) -> c_int;
             fn fchmod(fd: c_int, mode: mode_t) -> c_int;
+
+            #[cfg(target_os = "linux")]
+            #[cfg(target_os = "freebsd")]
+            fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+
+            #[cfg(target_os = "macos")]
+            #[link_name = "fstat64"]
+            fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+
             fn mkdir(path: *c_char, mode: mode_t) -> c_int;
             fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
+
+            #[cfg(target_os = "linux")]
+            #[cfg(target_os = "freebsd")]
+            fn stat(path: *c_char, buf: *mut stat) -> c_int;
+
+            #[cfg(target_os = "macos")]
+            #[link_name = "stat64"]
+            fn stat(path: *c_char, buf: *mut stat) -> c_int;
         }
 
         #[nolink]
@@ -1081,6 +1237,18 @@ pub mod funcs {
     pub mod posix01 {
         #[nolink]
         #[abi = "cdecl"]
+        pub extern mod stat_ {
+            #[cfg(target_os = "linux")]
+            #[cfg(target_os = "freebsd")]
+            fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+
+            #[cfg(target_os = "macos")]
+            #[link_name = "lstat64"]
+            fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+        }
+
+        #[nolink]
+        #[abi = "cdecl"]
         pub extern mod unistd {
             fn readlink(path: *c_char, buf: *mut c_char,
                         bufsz: size_t) -> ssize_t;
@@ -1106,6 +1274,10 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     pub mod posix01 {
+        #[nolink]
+        pub extern mod stat_ {
+        }
+
         #[nolink]
         pub extern mod unistd {
         }
