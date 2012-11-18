@@ -45,9 +45,9 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
                 a_ix += 1;
             } else { rs.push(b[b_ix]); b_ix += 1; }
         }
-        rs = vec::append(rs, vec::slice(a, a_ix, a_len));
-        rs = vec::append(rs, vec::slice(b, b_ix, b_len));
-        return rs;
+        rs.push_all(vec::slice(a, a_ix, a_len));
+        rs.push_all(vec::slice(b, b_ix, b_len));
+        move rs
     }
 }
 
@@ -786,11 +786,11 @@ mod test_qsort {
 
         let expected = ~[1, 2, 3];
 
-        do sort::quick_sort(names) |x, y| { int::le(*x, *y) };
+        do quick_sort(names) |x, y| { int::le(*x, *y) };
 
         let immut_names = vec::from_mut(move names);
 
-        let pairs = vec::zip(expected, immut_names);
+        let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
             let (a, b) = *p;
             debug!("%d %d", a, b);
@@ -867,7 +867,7 @@ mod tests {
 #[cfg(test)]
 mod test_tim_sort {
     struct CVal {
-        val: ~float,
+        val: float,
     }
 
     impl CVal: Ord {
@@ -948,14 +948,14 @@ mod test_tim_sort {
         let rng = rand::Rng();
         let mut arr = do vec::from_fn(1000) |_i| {
             let randVal = rng.gen_float();
-            CVal { val: ~randVal }
+            CVal { val: randVal }
         };
 
         tim_sort(arr);
         fail ~"Guarantee the fail";
     }
 
-    struct DVal { val: ~uint }
+    struct DVal { val: uint }
 
     #[cfg(stage0)]
     impl DVal: Ord {
@@ -979,7 +979,7 @@ mod test_tim_sort {
         let rng = rand::Rng();
         let mut arr = do vec::from_fn(500) |_i| {
             let randVal = rng.gen_uint();
-            DVal { val: ~randVal }
+            DVal { val: randVal }
         };
 
         tim_sort(arr);
@@ -1032,7 +1032,7 @@ mod big_tests {
         for uint::range(lo, hi) |i| {
             let n = 1 << i;
             let arr = do vec::from_fn(n) |_i| {
-                ~rng.gen_float()
+                rng.gen_float()
             };
             let arr = vec::to_mut(move arr);
 
@@ -1058,7 +1058,7 @@ mod big_tests {
                 let size = arr.len();
                 let mut idx = 1;
                 while idx <= 10 {
-                    arr[size-idx] = ~rng.gen_float();
+                    arr[size-idx] = rng.gen_float();
                     idx += 1;
                 }
             }
@@ -1067,7 +1067,7 @@ mod big_tests {
 
             for (n/100).times {
                 let idx = rng.gen_uint_range(0, n);
-                arr[idx] = ~rng.gen_float();
+                arr[idx] = rng.gen_float();
             }
             tim_sort(arr);
             isSorted(arr);
@@ -1079,12 +1079,12 @@ mod big_tests {
             tim_sort(arr); // ~sort
             isSorted(arr);
 
-            let mut arr = vec::from_elem(n, ~(-0.5));
+            let mut arr = vec::from_elem(n, -0.5);
             tim_sort(arr); // =sort
             isSorted(arr);
 
             let half = n / 2;
-            let mut arr = makeRange(half).map(|i| ~(*i as float));
+            let mut arr = makeRange(half).map(|i| *i as float);
             tim_sort(arr); // !sort
             isSorted(arr);
         }
