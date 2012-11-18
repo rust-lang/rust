@@ -145,6 +145,7 @@ fn bump(rdr: string_reader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
     if current_byte_offset < (*rdr.src).len() {
+        assert rdr.curr != -1 as char;
         let last_char = rdr.curr;
         let next = str::char_range_at(*rdr.src, current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
@@ -161,12 +162,7 @@ fn bump(rdr: string_reader) {
                 BytePos(current_byte_offset), byte_offset_diff);
         }
     } else {
-        // XXX: What does this accomplish?
-        if (rdr.curr != -1 as char) {
-            rdr.pos = rdr.pos + BytePos(1u);
-            rdr.col += CharPos(1u);
-            rdr.curr = -1 as char;
-        }
+        rdr.curr = -1 as char;
     }
 }
 fn is_eof(rdr: string_reader) -> bool {
