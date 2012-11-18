@@ -70,10 +70,7 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_vstore_fixed, expr_vstore_slice, expr_vstore_box,
              expr_vstore_uniq, TyFn, Onceness, Once, Many};
 
-export file_type;
 export Parser;
-export CRATE_FILE;
-export SOURCE_FILE;
 
 // FIXME (#3726): #ast expects to find this here but it's actually
 // defined in `parse` Fixing this will be easier when we have export
@@ -91,8 +88,6 @@ enum restriction {
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
-
-enum file_type { CRATE_FILE, SOURCE_FILE, }
 
 enum class_member {
     field_member(@struct_field),
@@ -180,7 +175,7 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
 /* ident is handled by common.rs */
 
 fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
-          +rdr: reader, ftype: file_type) -> Parser {
+          +rdr: reader) -> Parser {
 
     let tok0 = rdr.next_token();
     let span0 = tok0.sp;
@@ -191,7 +186,6 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         interner: move interner,
         sess: sess,
         cfg: cfg,
-        file_type: ftype,
         token: tok0.tok,
         span: span0,
         last_span: span0,
@@ -210,7 +204,6 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
 struct Parser {
     sess: parse_sess,
     cfg: crate_cfg,
-    file_type: file_type,
     mut token: token::Token,
     mut span: span,
     mut last_span: span,

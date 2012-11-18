@@ -62,8 +62,7 @@ fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
 
 fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
-    let p = new_crate_parser_from_file(sess, cfg, input,
-                                       parser::CRATE_FILE);
+    let p = new_crate_parser_from_file(sess, cfg, input);
     let lo = p.span.lo;
     let prefix = input.dir_path();
     let leading_attrs = p.parse_inner_attrs_and_next();
@@ -85,8 +84,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
 
 fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
                                 sess: parse_sess) -> @ast::crate {
-    let p = new_crate_parser_from_file(sess, cfg, input,
-                                       parser::SOURCE_FILE);
+    let p = new_crate_parser_from_file(sess, cfg, input);
     let r = p.parse_crate_mod(cfg);
     return r;
 }
@@ -156,23 +154,21 @@ fn next_node_id(sess: parse_sess) -> node_id {
 fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               +name: ~str, +ss: codemap::FileSubstr,
                               source: @~str) -> Parser {
-    let ftype = parser::SOURCE_FILE;
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
-    return Parser(sess, cfg, srdr as reader, ftype);
+    return Parser(sess, cfg, srdr as reader);
 }
 
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
-                        path: &Path,
-                        ftype: parser::file_type) -> Result<Parser, ~str> {
+                        path: &Path) -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
       result::Ok(move src) => {
           let filemap = sess.cm.new_filemap(path.to_str(), @move src);
           let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                               sess.interner);
 
-          Ok(Parser(sess, cfg, srdr as reader, ftype))
+          Ok(Parser(sess, cfg, srdr as reader))
 
       }
       result::Err(move e) => Err(move e)
@@ -182,9 +178,8 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
 /// Create a new parser for an entire crate, handling errors as appropriate
 /// if the file doesn't exist
 fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
-                              path: &Path,
-                              ftype: parser::file_type) -> Parser {
-    match new_parser_from_file(sess, cfg, path, ftype) {
+                              path: &Path) -> Parser {
+    match new_parser_from_file(sess, cfg, path) {
         Ok(move parser) => move parser,
         Err(move e) => {
             sess.span_diagnostic.handler().fatal(e)
@@ -195,9 +190,8 @@ fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
 /// Create a new parser based on a span from an existing parser. Handles
 /// error messages correctly when the file does not exist.
 fn new_sub_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
-                            path: &Path, ftype: parser::file_type,
-                            sp: span) -> Parser {
-    match new_parser_from_file(sess, cfg, path, ftype) {
+                            path: &Path, sp: span) -> Parser {
+    match new_parser_from_file(sess, cfg, path) {
         Ok(move parser) => move parser,
         Err(move e) => {
             sess.span_diagnostic.span_fatal(sp, e)
@@ -209,5 +203,5 @@ fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
                       tt: ~[ast::token_tree]) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
                                     None, tt);
-    return Parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
+    return Parser(sess, cfg, trdr as reader)
 }
