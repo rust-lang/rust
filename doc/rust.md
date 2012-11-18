@@ -1175,6 +1175,9 @@ Values with a trait type can have [methods called](#method-call-expressions) on 
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
 
+Trait methods may be static. Currently implementations of static methods behave like
+functions declared in the implentation's module.
+
 ### Implementations
 
 An _implementation_ is an item that implements a [trait](#traits) for a specific type.
