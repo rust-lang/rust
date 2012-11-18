@@ -17,14 +17,22 @@ pub struct WindowsPath {
     components: ~[~str],
 }
 
+pub pure fn WindowsPath(s: &str) -> WindowsPath {
+    from_str(s)
+}
+
 pub struct PosixPath {
     is_absolute: bool,
     components: ~[~str],
 }
 
+pub pure fn PosixPath(s: &str) -> PosixPath {
+    from_str(s)
+}
+
 pub trait GenericPath {
 
-    static pure fn from_str((&str)) -> self;
+    static pure fn from_str(&str) -> self;
 
     pure fn dirname() -> ~str;
     pure fn filename() -> Option<~str>;
@@ -49,7 +57,7 @@ pub type Path = WindowsPath;
 
 #[cfg(windows)]
 pub pure fn Path(s: &str) -> Path {
-    from_str::<WindowsPath>(s)
+    WindowsPath(s)
 }
 
 #[cfg(unix)]
@@ -57,7 +65,7 @@ pub type Path = PosixPath;
 
 #[cfg(unix)]
 pub pure fn Path(s: &str) -> Path {
-    from_str::<PosixPath>(s)
+    PosixPath(s)
 }
 
 impl PosixPath : ToStr {
@@ -166,7 +174,7 @@ impl PosixPath : GenericPath {
     }
 
     pure fn with_dirname(d: &str) -> PosixPath {
-        let dpath = from_str::<PosixPath>(d);
+        let dpath = PosixPath(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
           None => move dpath
@@ -365,7 +373,7 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn with_dirname(d: &str) -> WindowsPath {
-        let dpath = from_str::<WindowsPath>(d);
+        let dpath = WindowsPath(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
           None => move dpath
@@ -493,12 +501,12 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
 #[test]
 fn test_double_slash_collapsing()
 {
-    let path = from_str::<PosixPath>("tmp/");
+    let path = PosixPath("tmp/");
     let path = path.push("/hmm");
     let path = path.normalize();
     assert ~"tmp/hmm" == path.to_str();
 
-    let path = from_str::<WindowsPath>("tmp/");
+    let path = WindowsPath("tmp/");
     let path = path.push("/hmm");
     let path = path.normalize();
     assert ~"tmp\\hmm" == path.to_str();
@@ -507,7 +515,7 @@ fn test_double_slash_collapsing()
 mod posix {
 
     #[cfg(test)]
-    fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
+    fn mk(s: &str) -> PosixPath { PosixPath(s) }
 
     #[cfg(test)]
     fn t(wp: &PosixPath, s: &str) {
@@ -661,7 +669,7 @@ mod windows {
 
     #[test]
     fn test_windows_paths() {
-        fn mk(s: &str) -> WindowsPath { from_str::<WindowsPath>(s) }
+        fn mk(s: &str) -> WindowsPath { WindowsPath(s) }
         fn t(wp: &WindowsPath, s: &str) {
             let ss = wp.to_str();
             let sss = str::from_slice(s);
@@ -705,7 +713,7 @@ mod windows {
     }
 
     #[cfg(test)]
-    fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
+    fn mk(s: &str) -> PosixPath { PosixPath(s) }
 
     #[test]
     fn test_filetype_foo_bar() {
