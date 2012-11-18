@@ -498,112 +498,8 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
     move cs
 }
 
-#[test]
-fn test_double_slash_collapsing()
-{
-    let path = PosixPath("tmp/");
-    let path = path.push("/hmm");
-    let path = path.normalize();
-    assert ~"tmp/hmm" == path.to_str();
-
-    let path = WindowsPath("tmp/");
-    let path = path.push("/hmm");
-    let path = path.normalize();
-    assert ~"tmp\\hmm" == path.to_str();
-}
-
-mod posix {
-
-    #[cfg(test)]
-    fn mk(s: &str) -> PosixPath { PosixPath(s) }
-
-    #[cfg(test)]
-    fn t(wp: &PosixPath, s: &str) {
-        let ss = wp.to_str();
-        let sss = str::from_slice(s);
-        if (ss != sss) {
-            debug!("got %s", ss);
-            debug!("expected %s", sss);
-            assert ss == sss;
-        }
-    }
-
-    #[test]
-    fn test_filetype_foo_bar() {
-        let wp = mk("foo.bar");
-        assert wp.filetype() == Some(~".bar");
-    }
-
-    #[test]
-    fn test_filetype_foo() {
-        let wp = mk("foo");
-        assert wp.filetype() == None;
-    }
-
-    #[test]
-    fn test_posix_paths() {
-        t(&(mk("hi")), "hi");
-        t(&(mk("/lib")), "/lib");
-        t(&(mk("hi/there")), "hi/there");
-        t(&(mk("hi/there.txt")), "hi/there.txt");
-
-        t(&(mk("hi/there.txt")), "hi/there.txt");
-        t(&(mk("hi/there.txt")
-           .with_filetype("")), "hi/there");
-
-        t(&(mk("/a/b/c/there.txt")
-            .with_dirname("hi")), "hi/there.txt");
-
-        t(&(mk("hi/there.txt")
-            .with_dirname(".")), "./there.txt");
-
-        t(&(mk("a/b/c")
-            .push("..")), "a/b/c/..");
-
-        t(&(mk("there.txt")
-            .with_filetype("o")), "there.o");
-
-        t(&(mk("hi/there.txt")
-            .with_filetype("o")), "hi/there.o");
-
-        t(&(mk("hi/there.txt")
-            .with_filetype("o")
-            .with_dirname("/usr/lib")),
-          "/usr/lib/there.o");
-
-        t(&(mk("hi/there.txt")
-            .with_filetype("o")
-            .with_dirname("/usr/lib/")),
-          "/usr/lib/there.o");
-
-        t(&(mk("hi/there.txt")
-            .with_filetype("o")
-            .with_dirname("/usr//lib//")),
-            "/usr/lib/there.o");
-
-        t(&(mk("/usr/bin/rust")
-            .push_many([~"lib", ~"thingy.so"])
-            .with_filestem("librustc")),
-          "/usr/bin/rust/lib/librustc.so");
-
-    }
-
-    #[test]
-    fn test_normalize() {
-        t(&(mk("hi/there.txt")
-            .with_dirname(".").normalize()), "there.txt");
-
-        t(&(mk("a/b/../c/././/../foo.txt/").normalize()),
-          "a/foo.txt");
-
-        t(&(mk("a/b/c")
-            .push("..").normalize()), "a/b");
-    }
-}
-
 // Various windows helpers, and tests for the impl.
 mod windows {
-
     #[inline(always)]
     pub pure fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
@@ -641,35 +537,150 @@ mod windows {
             None
         }
     }
+}
+
+#[cfg(tests)]
+mod tests {
+    #[test]
+    fn test_double_slash_collapsing() {
+        let path = PosixPath("tmp/");
+        let path = path.push("/hmm");
+        let path = path.normalize();
+        assert ~"tmp/hmm" == path.to_str();
+
+        let path = WindowsPath("tmp/");
+        let path = path.push("/hmm");
+        let path = path.normalize();
+        assert ~"tmp\\hmm" == path.to_str();
+    }
+
+    #[test]
+    fn test_filetype_foo_bar() {
+        let wp = PosixPath("foo.bar");
+        assert wp.filetype() == Some(~".bar");
+
+        let wp = WindowsPath("foo.bar");
+        assert wp.filetype() == Some(~".bar");
+    }
+
+    #[test]
+    fn test_filetype_foo() {
+        let wp = PosixPath("foo");
+        assert wp.filetype() == None;
+
+        let wp = WindowsPath("foo");
+        assert wp.filetype() == None;
+    }
+
+    #[test]
+    fn test_posix_paths() {
+        fn t(wp: &PosixPath, s: &str) {
+            let ss = wp.to_str();
+            let sss = str::from_slice(s);
+            if (ss != sss) {
+                debug!("got %s", ss);
+                debug!("expected %s", sss);
+                assert ss == sss;
+            }
+        }
+
+        t(&(PosixPath("hi")), "hi");
+        t(&(PosixPath("/lib")), "/lib");
+        t(&(PosixPath("hi/there")), "hi/there");
+        t(&(PosixPath("hi/there.txt")), "hi/there.txt");
+
+        t(&(PosixPath("hi/there.txt")), "hi/there.txt");
+        t(&(PosixPath("hi/there.txt")
+           .with_filetype("")), "hi/there");
+
+        t(&(PosixPath("/a/b/c/there.txt")
+            .with_dirname("hi")), "hi/there.txt");
+
+        t(&(PosixPath("hi/there.txt")
+            .with_dirname(".")), "./there.txt");
+
+        t(&(PosixPath("a/b/c")
+            .push("..")), "a/b/c/..");
+
+        t(&(PosixPath("there.txt")
+            .with_filetype("o")), "there.o");
+
+        t(&(PosixPath("hi/there.txt")
+            .with_filetype("o")), "hi/there.o");
+
+        t(&(PosixPath("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr/lib")),
+          "/usr/lib/there.o");
+
+        t(&(PosixPath("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr/lib/")),
+          "/usr/lib/there.o");
+
+        t(&(PosixPath("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr//lib//")),
+            "/usr/lib/there.o");
+
+        t(&(PosixPath("/usr/bin/rust")
+            .push_many([~"lib", ~"thingy.so"])
+            .with_filestem("librustc")),
+          "/usr/bin/rust/lib/librustc.so");
+
+    }
+
+    #[test]
+    fn test_normalize() {
+        fn t(wp: &PosixPath, s: &str) {
+            let ss = wp.to_str();
+            let sss = str::from_slice(s);
+            if (ss != sss) {
+                debug!("got %s", ss);
+                debug!("expected %s", sss);
+                assert ss == sss;
+            }
+        }
+
+        t(&(PosixPath("hi/there.txt")
+            .with_dirname(".").normalize()), "there.txt");
+
+        t(&(PosixPath("a/b/../c/././/../foo.txt/").normalize()),
+          "a/foo.txt");
+
+        t(&(PosixPath("a/b/c")
+            .push("..").normalize()), "a/b");
+    }
 
     #[test]
     fn test_extract_unc_prefixes() {
-        assert extract_unc_prefix("\\\\").is_none();
-        assert extract_unc_prefix("\\\\hi").is_none();
-        assert extract_unc_prefix("\\\\hi\\") == Some((~"hi", ~"\\"));
-        assert extract_unc_prefix("\\\\hi\\there") ==
+        assert windows::extract_unc_prefix("\\\\").is_none();
+        assert windows::extract_unc_prefix("\\\\hi").is_none();
+        assert windows::extract_unc_prefix("\\\\hi\\") ==
+            Some((~"hi", ~"\\"));
+        assert windows::extract_unc_prefix("\\\\hi\\there") ==
             Some((~"hi", ~"\\there"));
-        assert extract_unc_prefix("\\\\hi\\there\\friends.txt") ==
+        assert windows::extract_unc_prefix("\\\\hi\\there\\friends.txt") ==
             Some((~"hi", ~"\\there\\friends.txt"));
     }
 
     #[test]
     fn test_extract_drive_prefixes() {
-        assert extract_drive_prefix("c").is_none();
-        assert extract_drive_prefix("c:") == Some((~"c", ~""));
-        assert extract_drive_prefix("d:") == Some((~"d", ~""));
-        assert extract_drive_prefix("z:") == Some((~"z", ~""));
-        assert extract_drive_prefix("c:\\hi") == Some((~"c", ~"\\hi"));
-        assert extract_drive_prefix("d:hi") == Some((~"d", ~"hi"));
-        assert extract_drive_prefix("c:hi\\there.txt") ==
+        assert windows::extract_drive_prefix("c").is_none();
+        assert windows::extract_drive_prefix("c:") == Some((~"c", ~""));
+        assert windows::extract_drive_prefix("d:") == Some((~"d", ~""));
+        assert windows::extract_drive_prefix("z:") == Some((~"z", ~""));
+        assert windows::extract_drive_prefix("c:\\hi") ==
+            Some((~"c", ~"\\hi"));
+        assert windows::extract_drive_prefix("d:hi") == Some((~"d", ~"hi"));
+        assert windows::extract_drive_prefix("c:hi\\there.txt") ==
             Some((~"c", ~"hi\\there.txt"));
-        assert extract_drive_prefix("c:\\hi\\there.txt") ==
+        assert windows::extract_drive_prefix("c:\\hi\\there.txt") ==
             Some((~"c", ~"\\hi\\there.txt"));
     }
 
     #[test]
     fn test_windows_paths() {
-        fn mk(s: &str) -> WindowsPath { WindowsPath(s) }
         fn t(wp: &WindowsPath, s: &str) {
             let ss = wp.to_str();
             let sss = str::from_slice(s);
@@ -680,51 +691,34 @@ mod windows {
             }
         }
 
-        t(&(mk("hi")), "hi");
-        t(&(mk("hi/there")), "hi\\there");
-        t(&(mk("hi/there.txt")), "hi\\there.txt");
+        t(&(WindowsPath("hi")), "hi");
+        t(&(WindowsPath("hi/there")), "hi\\there");
+        t(&(WindowsPath("hi/there.txt")), "hi\\there.txt");
 
-        t(&(mk("there.txt")
+        t(&(WindowsPath("there.txt")
             .with_filetype("o")), "there.o");
 
-        t(&(mk("hi/there.txt")
+        t(&(WindowsPath("hi/there.txt")
             .with_filetype("o")), "hi\\there.o");
 
-        t(&(mk("hi/there.txt")
+        t(&(WindowsPath("hi/there.txt")
             .with_filetype("o")
             .with_dirname("c:\\program files A")),
           "c:\\program files A\\there.o");
 
-        t(&(mk("hi/there.txt")
+        t(&(WindowsPath("hi/there.txt")
             .with_filetype("o")
             .with_dirname("c:\\program files B\\")),
           "c:\\program files B\\there.o");
 
-        t(&(mk("hi/there.txt")
+        t(&(WindowsPath("hi/there.txt")
             .with_filetype("o")
             .with_dirname("c:\\program files C\\/")),
             "c:\\program files C\\there.o");
 
-        t(&(mk("c:\\program files (x86)\\rust")
+        t(&(WindowsPath("c:\\program files (x86)\\rust")
             .push_many([~"lib", ~"thingy.dll"])
             .with_filename("librustc.dll")),
           "c:\\program files (x86)\\rust\\lib\\librustc.dll");
-
     }
-
-    #[cfg(test)]
-    fn mk(s: &str) -> PosixPath { PosixPath(s) }
-
-    #[test]
-    fn test_filetype_foo_bar() {
-        let wp = mk("foo.bar");
-        assert wp.filetype() == Some(~".bar");
-    }
-
-    #[test]
-    fn test_filetype_foo() {
-        let wp = mk("foo");
-        assert wp.filetype() == None;
-    }
-
 }
