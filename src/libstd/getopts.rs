@@ -145,6 +145,11 @@ pub fn optflag(name: &str) -> Opt {
     return {name: mkname(name), hasarg: No, occur: Optional};
 }
 
+/// Create an option that is optional and does not take an argument
+pub fn optflagmulti(name: &str) -> Opt {
+    return {name: mkname(name), hasarg: No, occur: Multi};
+}
+
 /// Create an option that is optional and takes an optional argument
 pub fn optflagopt(name: &str) -> Opt {
     return {name: mkname(name), hasarg: Maybe, occur: Optional};
@@ -415,6 +420,11 @@ fn opt_val(mm: Matches, nm: &str) -> Optval { return opt_vals(mm, nm)[0]; }
 /// Returns true if an option was matched
 pub fn opt_present(mm: Matches, nm: &str) -> bool {
     return vec::len::<Optval>(opt_vals(mm, nm)) > 0u;
+}
+
+/// Returns the number of times an option was matched
+pub fn opt_count(mm: Matches, nm: &str) -> uint {
+    return vec::len::<Optval>(opt_vals(mm, nm));
 }
 
 /// Returns true if any of several options were matched
@@ -1003,6 +1013,71 @@ mod tests {
         }
     }
 
+    // Tests for optflagmulti
+    #[test]
+    fn test_optflagmulti_short1() {
+        let args = ~[~"-v"];
+        let opts = ~[optflagmulti(~"v")];
+        let rs = getopts(args, opts);
+        match rs {
+          Ok(copy m) => {
+            assert (opt_count(m, ~"v") == 1);
+          }
+          _ => fail
+        }
+    }
+
+    #[test]
+    fn test_optflagmulti_short2a() { 
+        let args = ~[~"-v", ~"-v"];
+        let opts = ~[optflagmulti(~"v")];
+        let rs = getopts(args, opts);
+        match rs {
+          Ok(copy m) => {
+            assert (opt_count(m, ~"v") == 2);
+          }
+          _ => fail
+        }
+    }
+
+    #[test]
+    fn test_optflagmulti_short2b() {
+        let args = ~[~"-vv"];
+        let opts = ~[optflagmulti(~"v")];
+        let rs = getopts(args, opts);
+        match rs {
+          Ok(copy m) => {
+            assert (opt_count(m, ~"v") == 2);
+          }
+          _ => fail
+        }
+    }
+
+    #[test]
+    fn test_optflagmulti_long1() {
+        let args = ~[~"--verbose"];
+        let opts = ~[optflagmulti(~"verbose")];
+        let rs = getopts(args, opts);
+        match rs {
+          Ok(copy m) => {
+            assert (opt_count(m, ~"verbose") == 1);
+          }
+          _ => fail
+        }
+    }
+
+    #[test]
+    fn test_optflagmulti_long2() {
+        let args = ~[~"--verbose", ~"--verbose"];
+        let opts = ~[optflagmulti(~"verbose")];
+        let rs = getopts(args, opts);
+        match rs {
+          Ok(copy m) => {
+            assert (opt_count(m, ~"verbose") == 2);
+          }
+          _ => fail
+        }
+    }
 
     // Tests for optmulti
     #[test]
