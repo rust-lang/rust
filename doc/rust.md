@@ -1304,9 +1304,8 @@ Attributes may appear as any of
 * An identifier followed by the equals sign '=' and a literal, providing a key/value pair
 * An identifier followed by a parenthesized list of sub-attribute arguments
 
-Attributes are applied to an entity by placing them within a hash-list
-(`#[...]`) as either a prefix to the entity or as a semicolon-delimited
-declaration within the entity body.
+Attributes terminated by a semi-colon apply to the entity that the attribute is declared
+within. Attributes that are not terminated by a semi-colon apply to the next entity.
 
 An example of attributes:
 
@@ -1326,9 +1325,9 @@ mod bar {
   ...
 }
 
-// A documentation attribute
-#[doc = "Add two numbers together."]
-fn add(x: int, y: int) { x + y }
+// A lint attribute used to suppress a warning/error
+#[allow(non_camel_case_types)]
+pub type int8_t = i8;
 ~~~~~~~~
 
 > **Note:** In future versions of Rust, user-provided extensions to the compiler will be able to interpret attributes.
@@ -1341,6 +1340,8 @@ names are effectively reserved. Some significant attributes include:
 * The `cfg` attribute, for conditional-compilation by build-configuration.
 * The `link` attribute, for describing linkage metadata for a crate.
 * The `test` attribute, for marking functions as unit tests.
+* The `allow`, `warn`, `forbid`, and `deny` attributes, for controling lint checks. Lint checks supported
+by the compiler can be found via `rustc -W help`.
 
 Other attributes may be added or removed during development of the language.
 
