@@ -1028,7 +1028,7 @@ mod tests {
     }
 
     #[test]
-    fn test_optflagmulti_short2a() { 
+    fn test_optflagmulti_short2a() {
         let args = ~[~"-v", ~"-v"];
         let opts = ~[optflagmulti(~"v")];
         let rs = getopts(args, opts);
