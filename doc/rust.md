@@ -1547,7 +1547,9 @@ it is automatically derferenced to make the field access possible.
 ### Vector expressions
 
 ~~~~~~~~{.ebnf .gram}
-vec_expr : '[' "mut" ? [ expr [ ',' expr ] * ] ? ']'
+vec_expr : '[' "mut"? vec_elems? ']'
+
+vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 ~~~~~~~~
 
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
@@ -1557,8 +1559,10 @@ indicate that the elements of the resulting vector may be mutated.
 When no mutability is specified, the vector is immutable.
 
 ~~~~
+[]
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
+[0, ..128];             // vector with 128 zeros
 [mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -1890,7 +1894,7 @@ let x: int = add(1, 2);
 
 ~~~~~~~~ {.abnf .gram}
 ident_list : [ ident [ ',' ident ]* ] ? ;
-lambda_expr : '|' ident_list '| expr ;
+lambda_expr : '|' ident_list '|' expr ;
 ~~~~~~~~
 
 A _lambda expression_ (a.k.a. "anonymous function expression") defines a function and denotes it as a value,
