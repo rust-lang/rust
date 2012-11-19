@@ -357,7 +357,6 @@ mod test {
         if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
         if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
         @ast_util::respan(ast_util::dummy_sp(), {
-            directives: ~[],
             module: {view_items: ~[], items: ~[]},
             attrs: attrs,
             config: ~[]
