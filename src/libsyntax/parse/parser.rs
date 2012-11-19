@@ -566,7 +566,8 @@ impl Parser {
             self.parse_borrowed_pointee()
         } else if self.token_is_fn_keyword(self.token) {
             self.parse_ty_fn(None, None)
-        } else if self.token == token::MOD_SEP || is_ident(self.token) {
+        } else if self.token == token::MOD_SEP
+            || is_ident_or_path(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
         } else { self.fatal(~"expected type"); };
