@@ -798,7 +798,7 @@ extern mod ruststd (name = "std"); // linking to 'std' under another name
 ##### Use declarations
 
 ~~~~~~~~ {.ebnf .gram}
-use_decl : "use" ident [ '=' path
+use_decl : "pub"? "use" ident [ '=' path
                           | "::" path_glob ] ;
 
 path_glob : ident [ "::" path_glob ] ?
