@@ -303,6 +303,24 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
             return (fully_expanded, sp)
         }
+
+        Some(normal({expander: exp, span: exp_sp})) => {
+            //convert the new-style invoc for the old-style macro
+            let arg = base::tt_args_to_original_flavor(cx, pth.span, tts);
+            let exp_expr = exp(cx, mac.span, arg, None);
+            let expanded = @{node: ast::stmt_expr(exp_expr, cx.next_id()),
+                             span: exp_expr.span};
+
+            cx.bt_push(ExpandedFrom({call_site: sp,
+                                      callie: {name: *extname,
+                                               span: exp_sp}}));
+            //keep going, outside-in
+            let fully_expanded = fld.fold_stmt(expanded).node;
+            cx.bt_pop();
+
+            (fully_expanded, sp)
+        }
+
         _ => {
             cx.span_fatal(pth.span,
                           fmt!("'%s' is not a tt-style macro",
