@@ -1,3 +1,5 @@
+// DIVERT
+
 // -*- rust -*-
 
 #[link(name = "rustc",

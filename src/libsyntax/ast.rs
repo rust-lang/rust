@@ -406,24 +406,9 @@ type crate_cfg = ~[@meta_item];
 type crate = spanned<crate_>;
 
 type crate_ =
-    {directives: ~[@crate_directive],
-     module: _mod,
+    {module: _mod,
      attrs: ~[attribute],
      config: crate_cfg};
-
-enum crate_directive_ {
-    cdir_src_mod(visibility, ident, ~[attribute]),
-    cdir_dir_mod(visibility, ident, ~[@crate_directive], ~[attribute]),
-
-    // NB: cdir_view_item is *not* processed by the rest of the compiler, the
-    // attached view_items are sunk into the crate's module during parsing,
-    // and processed (resolved, imported, etc.) there. This enum-variant
-    // exists only to preserve the view items in order in case we decide to
-    // pretty-print crates in the future.
-    cdir_view_item(@view_item),
-}
-
-type crate_directive = spanned<crate_directive_>;
 
 type meta_item = spanned<meta_item_>;
 
