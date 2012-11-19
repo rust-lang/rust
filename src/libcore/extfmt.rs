@@ -1,7 +1,7 @@
 //! Support for fmt! expressions.
 //!
 //! The syntax is close to that of Posix format strings:
-//! 
+//!
 //! ~~~~~~
 //! Format := '%' Parameter? Flag* Width? Precision? Type
 //! Parameter := [0-9]+ '$'
@@ -10,18 +10,24 @@
 //! Precision := '.' [0-9]+
 //! Type := [bcdfiostuxX?]
 //! ~~~~~~
-//! 
-//! * Parameter is the 1-based argument to apply the format to. Currently not implemented.
-//! * Flag 0 causes leading zeros to be used for padding when converting numbers.
-//! * Flag # causes the conversion to be done in an *alternative* manner. Currently not implemented.
-//! * Flag + causes signed numbers to always be prepended with a sign character.
+//!
+//! * Parameter is the 1-based argument to apply the format to. Currently not
+//! implemented.
+//! * Flag 0 causes leading zeros to be used for padding when converting
+//! numbers.
+//! * Flag # causes the conversion to be done in an *alternative* manner.
+//! Currently not implemented.
+//! * Flag + causes signed numbers to always be prepended with a sign
+//! character.
 //! * Flag - left justifies the result
-//! * Width specifies the minimum field width of the result. By default leading spaces are added.
-//! * Precision specifies the minimum number of digits for integral types and the minimum number
+//! * Width specifies the minimum field width of the result. By default
+//! leading spaces are added.
+//! * Precision specifies the minimum number of digits for integral types
+//! and the minimum number
 //! of decimal places for float.
-//! 
+//!
 //! The types currently supported are:
-//! 
+//!
 //! * b - bool
 //! * c - char
 //! * d - int
