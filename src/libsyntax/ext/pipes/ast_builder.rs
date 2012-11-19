@@ -4,7 +4,7 @@
 // something smarter.
 
 use ast::{ident, node_id};
-use ast_util::{ident_to_path, respan};
+use ast_util::{ident_to_path, respan, dummy_sp};
 use codemap::span;
 use ext::base::mk_ctxt;
 
@@ -21,10 +21,6 @@ fn path(ids: ~[ident], span: span) -> @ast::path {
       idents: ids,
       rp: None,
       types: ~[]}
-}
-
-fn empty_span() -> span {
-    {lo: 0, hi: 0, expn_info: None}
 }
 
 trait append_types {
@@ -83,26 +79,21 @@ trait ext_ctxt_ast_builder {
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
     fn block_expr(b: ast::blk) -> @ast::expr;
-    fn empty_span() -> span;
     fn ty_option(ty: @ast::Ty) -> @ast::Ty;
 }
 
 impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path(~[self.ident_of(~"Option")],
-                                      self.empty_span())
+                                      dummy_sp())
                                  .add_ty(ty))
-    }
-
-    fn empty_span() -> span {
-        {lo: 0, hi: 0, expn_info: self.backtrace()}
     }
 
     fn block_expr(b: ast::blk) -> @ast::expr {
         @{id: self.next_id(),
           callee_id: self.next_id(),
           node: ast::expr_block(b),
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn move_expr(e: @ast::expr) -> @ast::expr {
@@ -114,7 +105,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn stmt_expr(e: @ast::expr) -> @ast::stmt {
         @{node: ast::stmt_expr(e, self.next_id()),
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
@@ -130,43 +121,43 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                      pat: @{id: self.next_id(),
                             node: ast::pat_ident(ast::bind_by_implicit_ref,
                                                  path(~[ident],
-                                                      self.empty_span()),
+                                                      dummy_sp()),
                                                  None),
-                            span: self.empty_span()},
+                            span: dummy_sp()},
                      init: Some(self.move_expr(e)),
                      id: self.next_id()},
-              span: self.empty_span()}]),
-                               span: self.empty_span()}, self.next_id()),
-         span: self.empty_span()}
+              span: dummy_sp()}]),
+                               span: dummy_sp()}, self.next_id()),
+         span: dummy_sp()}
     }
 
     fn field_imm(name: ident, e: @ast::expr) -> ast::field {
         {node: {mutbl: ast::m_imm, ident: name, expr: e},
-         span: self.empty_span()}
+         span: dummy_sp()}
     }
 
     fn rec(+fields: ~[ast::field]) -> @ast::expr {
         @{id: self.next_id(),
           callee_id: self.next_id(),
           node: ast::expr_rec(fields, None),
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {
         {node: {ident: name, mt: { ty: ty, mutbl: ast::m_imm } },
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_rec(fields),
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn ty_infer() -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_infer,
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
@@ -181,9 +172,9 @@ impl ext_ctxt: ext_ctxt_ast_builder {
          pat: @{id: self.next_id(),
                 node: ast::pat_ident(
                     ast::bind_by_value,
-                    ast_util::ident_to_path(self.empty_span(), name),
+                    ast_util::ident_to_path(dummy_sp(), name),
                     None),
-                span: self.empty_span()},
+                span: dummy_sp()},
          id: self.next_id()}
     }
 
@@ -195,7 +186,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                    rules: ast::default_blk};
 
         {node: blk,
-         span: self.empty_span()}
+         span: dummy_sp()}
     }
 
     fn expr_block(e: @ast::expr) -> ast::blk {
@@ -215,11 +206,11 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
-        let non_camel_case_attribute = respan(self.empty_span(), {
+        let non_camel_case_attribute = respan(dummy_sp(), {
             style: ast::attr_outer,
-            value: respan(self.empty_span(),
+            value: respan(dummy_sp(),
                           ast::meta_list(~"allow", ~[
-                              @respan(self.empty_span(),
+                              @respan(dummy_sp(),
                                       ast::meta_word(~"non_camel_case_types"))
                           ])),
             is_sugared_doc: false
@@ -239,7 +230,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                     +ty_params: ~[ast::ty_param],
                     +body: ast::blk) -> @ast::item {
         self.item(name,
-                  self.empty_span(),
+                  dummy_sp(),
                   ast::item_fn(self.fn_decl(inputs, output),
                                ast::impure_fn,
                                ty_params,
@@ -298,7 +289,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_nil_ast_builder() -> @ast::Ty {
         @{id: self.next_id(),
           node: ast::ty_nil,
-          span: self.empty_span()}
+          span: dummy_sp()}
     }
 
     fn item_ty_poly(name: ident,
@@ -314,6 +305,6 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
-            path(~[p.ident], self.empty_span())))
+            path(~[p.ident], dummy_sp())))
     }
 }

@@ -177,7 +177,7 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
     fn new_id(_old: node_id, cx: ext_ctxt) -> node_id { return cx.next_id(); }
     fn new_span(cx: ext_ctxt, sp: span) -> span {
         /* this discards information in the case of macro-defining macros */
-        return {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
+        return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
     }
     let afp = default_ast_fold();
     let f_pre =

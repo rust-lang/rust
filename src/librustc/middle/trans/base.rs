@@ -919,7 +919,7 @@ fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: ~str) {
     let {V_filename, V_line} = match sp_opt {
       Some(sp) => {
         let sess = bcx.sess();
-        let loc = codemap::lookup_char_pos(sess.parse_sess.cm, sp.lo);
+        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
         {V_filename: C_cstr(bcx.ccx(), loc.file.name),
          V_line: loc.line as int}
       }

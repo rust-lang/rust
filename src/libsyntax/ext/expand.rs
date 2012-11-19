@@ -8,7 +8,7 @@ use ext::qquote::{qq_helper};
 use parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
 
 
-use codemap::{span, expanded_from};
+use codemap::{span, ExpandedFrom};
 
 fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
@@ -41,7 +41,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                   Some(normal({expander: exp, span: exp_sp})) => {
                     let expanded = exp(cx, mac.span, args, body);
 
-                    cx.bt_push(expanded_from({call_site: s,
+                    cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
@@ -86,7 +86,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                                          *extname))
                     };
 
-                    cx.bt_push(expanded_from({call_site: s,
+                    cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
@@ -100,7 +100,7 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                                                                tts);
                     let expanded = exp(cx, mac.span, arg, None);
 
-                    cx.bt_push(expanded_from({call_site: s,
+                    cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
@@ -206,7 +206,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
           }
           Some(item_tt(expand)) => {
             let expanded = expand.expander(cx, it.span, it.ident, tts);
-            cx.bt_push(expanded_from({call_site: it.span,
+            cx.bt_push(ExpandedFrom({call_site: it.span,
                                       callie: {name: *extname,
                                                span: expand.span}}));
             let maybe_it = match expanded {
@@ -232,7 +232,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
 
 fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
-    return {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
+    return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
 // FIXME (#2247): this is a terrible kludge to inject some macros into

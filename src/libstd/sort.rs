@@ -13,10 +13,10 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-pub fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
+pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
-    return merge_sort_(v, (0u, len(v)), le);
+    unsafe {return merge_sort_(v, (0u, len(v)), le);}
 
     fn merge_sort_<T: Copy>(v: &[const T], slice: Slice, le: Le<T>)
         -> ~[T] {

@@ -97,7 +97,7 @@ use std::map::HashMap;
 use syntax::{visit, ast_util};
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use visit::vt;
-use syntax::codemap::{span, span_to_str};
+use syntax::codemap::span;
 use syntax::ast::*;
 use io::WriterUtil;
 use capture::{cap_move, cap_drop, cap_copy, cap_ref};
@@ -170,9 +170,9 @@ impl LiveNodeKind : cmp::Eq {
 fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
     let cm = cx.sess.codemap;
     match lnk {
-        FreeVarNode(s) => fmt!("Free var node [%s]", span_to_str(s, cm)),
-        ExprNode(s)    => fmt!("Expr node [%s]", span_to_str(s, cm)),
-        VarDefNode(s)  => fmt!("Var def node [%s]", span_to_str(s, cm)),
+        FreeVarNode(s) => fmt!("Free var node [%s]", cm.span_to_str(s)),
+        ExprNode(s)    => fmt!("Expr node [%s]", cm.span_to_str(s)),
+        VarDefNode(s)  => fmt!("Var def node [%s]", cm.span_to_str(s)),
         ExitNode       => ~"Exit node"
     }
 }

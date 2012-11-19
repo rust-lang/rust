@@ -3,6 +3,7 @@ use io::ReaderUtil;
 use util::interner;
 use lexer::{string_reader, bump, is_eof, nextch,
                is_whitespace, get_str_from, reader};
+use codemap::{FileMap, CharPos};
 
 export cmnt;
 export lit;
@@ -27,7 +28,7 @@ impl cmnt_style : cmp::Eq {
     }
 }
 
-type cmnt = {style: cmnt_style, lines: ~[~str], pos: uint};
+type cmnt = {style: cmnt_style, lines: ~[~str], pos: BytePos};
 
 fn is_doc_comment(s: ~str) -> bool {
     s.starts_with(~"///") ||
@@ -130,13 +131,13 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 fn push_blank_line_comment(rdr: string_reader, comments: &mut ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
-    comments.push({style: blank_line, lines: v, pos: rdr.chpos});
+    comments.push({style: blank_line, lines: v, pos: rdr.last_pos});
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: string_reader,
                                            comments: &mut ~[cmnt]) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) {
-        if rdr.col == 0u && rdr.curr == '\n' {
+        if rdr.col == CharPos(0u) && rdr.curr == '\n' {
             push_blank_line_comment(rdr, comments);
         }
         bump(rdr);
@@ -147,7 +148,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
     debug!(">>> shebang comment");
-    let p = rdr.chpos;
+    let p = rdr.last_pos;
     debug!("<<< shebang comment");
     comments.push({
         style: if code_to_the_left { trailing } else { isolated },
@@ -159,7 +160,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> line comments");
-    let p = rdr.chpos;
+    let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
@@ -180,6 +181,8 @@ fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
     }
 }
 
+// FIXME #3961: This is not the right way to convert string byte
+// offsets to characters.
 fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
     let mut i: uint = begin;
     while i != end {
@@ -189,9 +192,11 @@ fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
 }
 
 fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
-                                        s: ~str, col: uint) {
+                                        s: ~str, col: CharPos) {
     let mut s1;
     let len = str::len(s);
+    // FIXME #3961: Doing bytewise comparison and slicing with CharPos
+    let col = col.to_uint();
     if all_whitespace(s, 0u, uint::min(len, col)) {
         if col < len {
             s1 = str::slice(s, col, len);
@@ -204,9 +209,9 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> block comment");
-    let p = rdr.chpos;
+    let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
-    let mut col: uint = rdr.col;
+    let mut col: CharPos = rdr.col;
     bump(rdr);
     bump(rdr);
 
@@ -279,7 +284,7 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
     debug!("<<< consume comment");
 }
 
-type lit = {lit: ~str, pos: uint};
+type lit = {lit: ~str, pos: BytePos};
 
 fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 path: ~str,
@@ -287,8 +292,10 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
-    let rdr = lexer::new_low_level_string_reader
-        (span_diagnostic, codemap::new_filemap(path, src, 0u, 0u), itr);
+    let cm = CodeMap::new();
+    let filemap = cm.new_filemap(path, src);
+    let rdr = lexer::new_low_level_string_reader(
+        span_diagnostic, filemap, itr);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];

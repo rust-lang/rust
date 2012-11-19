@@ -366,7 +366,7 @@ fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
       ppm_expanded | ppm_normal => pprust::no_ann()
     };
     let is_expanded = upto != cu_parse;
-    let src = codemap::get_filemap(sess.codemap, source_name(input)).src;
+    let src = sess.codemap.get_filemap(source_name(input)).src;
     do io::with_str_reader(*src) |rdr| {
         pprust::print_crate(sess.codemap, sess.parse_sess.interner,
                             sess.span_diagnostic, crate,
@@ -586,7 +586,7 @@ fn build_session_options(binary: ~str,
 
 fn build_session(sopts: @session::options,
                  demitter: diagnostic::emitter) -> Session {
-    let codemap = codemap::new_codemap();
+    let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
     let span_diagnostic_handler =
@@ -595,7 +595,7 @@ fn build_session(sopts: @session::options,
 }
 
 fn build_session_(sopts: @session::options,
-                  cm: codemap::CodeMap,
+                  cm: @codemap::CodeMap,
                   demitter: diagnostic::emitter,
                   span_diagnostic_handler: diagnostic::span_handler)
                -> Session {

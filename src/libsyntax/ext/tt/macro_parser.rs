@@ -3,7 +3,7 @@ use parse::token;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::lexer::*; //resolve bug?
 //import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
-use parse::parser::{Parser, SOURCE_FILE};
+use parse::parser::Parser;
 //import parse::common::parser_common;
 use parse::common::*; //resolve bug?
 use parse::parse_sess;
@@ -11,6 +11,7 @@ use dvec::DVec;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use ast_util::mk_sp;
 use std::map::HashMap;
+use codemap::BytePos;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -102,7 +103,7 @@ type matcher_pos = ~{
     mut up: matcher_pos_up, // mutable for swapping only
     matches: ~[DVec<@named_match>],
     match_lo: uint, match_hi: uint,
-    sp_lo: uint,
+    sp_lo: BytePos,
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
@@ -122,7 +123,7 @@ fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: uint)
+fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
     -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
@@ -354,7 +355,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, cfg, rdr.dup(), SOURCE_FILE);
+                let rust_parser = Parser(sess, cfg, rdr.dup());
 
                 let ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {

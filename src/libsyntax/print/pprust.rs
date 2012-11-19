@@ -1,5 +1,5 @@
 use parse::{comments, lexer, token};
-use codemap::CodeMap;
+use codemap::{CodeMap, BytePos};
 use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
 use pp::{consistent, inconsistent, eof};
 use ast::{required, provided};
@@ -25,7 +25,7 @@ fn no_ann() -> pp_ann {
 
 type ps =
     @{s: pp::printer,
-      cm: Option<CodeMap>,
+      cm: Option<@CodeMap>,
       intr: @token::ident_interner,
       comments: Option<~[comments::cmnt]>,
       literals: Option<~[comments::lit]>,
@@ -46,7 +46,7 @@ fn end(s: ps) {
 
 fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
-             cm: None::<CodeMap>,
+             cm: None::<@CodeMap>,
              intr: intr,
              comments: None::<~[comments::cmnt]>,
              literals: None::<~[comments::lit]>,
@@ -64,7 +64,7 @@ const default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-fn print_crate(cm: CodeMap, intr: @ident_interner,
+fn print_crate(cm: @CodeMap, intr: @ident_interner,
                span_diagnostic: diagnostic::span_handler,
                crate: @ast::crate, filename: ~str, in: io::Reader,
                out: io::Writer, ann: pp_ann, is_expanded: bool) {
@@ -628,7 +628,7 @@ fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
         print_variant(s, *v);
         word(s.s, ~",");
         end(s);
-        maybe_print_trailing_comment(s, v.span, None::<uint>);
+        maybe_print_trailing_comment(s, v.span, None);
     }
     bclose(s, span);
 }
@@ -883,7 +883,7 @@ fn print_stmt(s: ps, st: ast::stmt) {
       }
     }
     if parse::classify::stmt_ends_with_semi(st) { word(s.s, ~";"); }
-    maybe_print_trailing_comment(s, st.span, None::<uint>);
+    maybe_print_trailing_comment(s, st.span, None);
 }
 
 fn print_block(s: ps, blk: ast::blk) {
@@ -1895,15 +1895,15 @@ fn print_ty_fn(s: ps,
 }
 
 fn maybe_print_trailing_comment(s: ps, span: codemap::span,
-                                next_pos: Option<uint>) {
+                                next_pos: Option<BytePos>) {
     let mut cm;
     match s.cm { Some(ccm) => cm = ccm, _ => return }
     match next_comment(s) {
       Some(cmnt) => {
         if cmnt.style != comments::trailing { return; }
-        let span_line = codemap::lookup_char_pos(cm, span.hi);
-        let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
-        let mut next = cmnt.pos + 1u;
+        let span_line = cm.lookup_char_pos(span.hi);
+        let comment_line = cm.lookup_char_pos(cmnt.pos);
+        let mut next = cmnt.pos + BytePos(1u);
         match next_pos { None => (), Some(p) => next = p }
         if span.hi < cmnt.pos && cmnt.pos < next &&
                span_line.line == comment_line.line {
@@ -1979,7 +1979,7 @@ fn lit_to_str(l: @ast::lit) -> ~str {
     return to_str(l, print_literal, parse::token::mk_fake_ident_interner());
 }
 
-fn next_lit(s: ps, pos: uint) -> Option<comments::lit> {
+fn next_lit(s: ps, pos: BytePos) -> Option<comments::lit> {
     match s.literals {
       Some(lits) => {
         while s.cur_lit < vec::len(lits) {
@@ -1994,7 +1994,7 @@ fn next_lit(s: ps, pos: uint) -> Option<comments::lit> {
     }
 }
 
-fn maybe_print_comment(s: ps, pos: uint) {
+fn maybe_print_comment(s: ps, pos: BytePos) {
     loop {
         match next_comment(s) {
           Some(cmnt) => {

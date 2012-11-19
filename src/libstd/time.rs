@@ -107,7 +107,7 @@ impl Tm : Eq {
     pure fn ne(other: &Tm) -> bool { *self != *(*other) }
 }
 
-pub fn empty_tm() -> Tm {
+pub pure fn empty_tm() -> Tm {
     Tm_({
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -151,22 +151,95 @@ pub fn now() -> Tm {
 }
 
 /// Parses the time from the string according to the format string.
-pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
-    type TmMut = {
-       mut tm_sec: i32,
-       mut tm_min: i32,
-       mut tm_hour: i32,
-       mut tm_mday: i32,
-       mut tm_mon: i32,
-       mut tm_year: i32,
-       mut tm_wday: i32,
-       mut tm_yday: i32,
-       mut tm_isdst: i32,
-       mut tm_gmtoff: i32,
-       mut tm_zone: ~str,
-       mut tm_nsec: i32,
-    };
+pub pure fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+    // unsafe only because do_strptime is annoying to make pure
+    // (it does IO with a str_reader)
+    unsafe {do_strptime(s, format)}
+}
 
+/// Formats the time according to the format string.
+pub pure fn strftime(format: &str, tm: Tm) -> ~str {
+    // unsafe only because do_strftime is annoying to make pure
+    // (it does IO with a str_reader)
+    unsafe {do_strftime(format, tm)}
+}
+
+impl Tm {
+    /// Convert time to the seconds from January 1, 1970
+    fn to_timespec() -> Timespec {
+        let mut sec = 0i64;
+        if self.tm_gmtoff == 0_i32 {
+            rustrt::rust_timegm(self, &mut sec);
+        } else {
+            rustrt::rust_mktime(self, &mut sec);
+        }
+        { sec: sec, nsec: self.tm_nsec }
+    }
+
+    /// Convert time to the local timezone
+    fn to_local() -> Tm {
+        at(self.to_timespec())
+    }
+
+    /// Convert time to the UTC
+    fn to_utc() -> Tm {
+        at_utc(self.to_timespec())
+    }
+
+    /**
+     * Return a string of the current time in the form
+     * "Thu Jan  1 00:00:00 1970".
+     */
+    pure fn ctime() -> ~str { self.strftime(~"%c") }
+
+    /// Formats the time according to the format string.
+    pure fn strftime(format: &str) -> ~str { strftime(format, self) }
+
+    /**
+     * Returns a time string formatted according to RFC 822.
+     *
+     * local: "Thu, 22 Mar 2012 07:53:18 PST"
+     * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
+     */
+    pure fn rfc822() -> ~str {
+        if self.tm_gmtoff == 0_i32 {
+            self.strftime(~"%a, %d %b %Y %T GMT")
+        } else {
+            self.strftime(~"%a, %d %b %Y %T %Z")
+        }
+    }
+
+    /**
+     * Returns a time string formatted according to RFC 822 with Zulu time.
+     *
+     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
+     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
+     */
+    pure fn rfc822z() -> ~str {
+        self.strftime(~"%a, %d %b %Y %T %z")
+    }
+
+    /**
+     * Returns a time string formatted according to ISO 8601.
+     *
+     * local: "2012-02-22T07:53:18-07:00"
+     * utc:   "2012-02-22T14:53:18Z"
+     */
+    pure fn rfc3339() -> ~str {
+        if self.tm_gmtoff == 0_i32 {
+            self.strftime(~"%Y-%m-%dT%H:%M:%SZ")
+        } else {
+            let s = self.strftime(~"%Y-%m-%dT%H:%M:%S");
+            let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
+            let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
+            let h = m / 60_i32;
+            m -= h * 60_i32;
+            s + fmt!("%c%02d:%02d", sign, h as int, m as int)
+        }
+    }
+}
+
+priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for str::each(needle) |ch| {
@@ -229,7 +302,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    fn parse_type(s: &str, pos: uint, ch: char, tm: &TmMut)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm_)
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
@@ -540,19 +613,19 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     do io::with_str_reader(str::from_slice(format)) |rdr| {
-        let tm = {
-            mut tm_sec: 0_i32,
-            mut tm_min: 0_i32,
-            mut tm_hour: 0_i32,
-            mut tm_mday: 0_i32,
-            mut tm_mon: 0_i32,
-            mut tm_year: 0_i32,
-            mut tm_wday: 0_i32,
-            mut tm_yday: 0_i32,
-            mut tm_isdst: 0_i32,
-            mut tm_gmtoff: 0_i32,
-            mut tm_zone: ~"",
-            mut tm_nsec: 0_i32,
+        let mut tm = {
+            tm_sec: 0_i32,
+            tm_min: 0_i32,
+            tm_hour: 0_i32,
+            tm_mday: 0_i32,
+            tm_mon: 0_i32,
+            tm_year: 0_i32,
+            tm_wday: 0_i32,
+            tm_yday: 0_i32,
+            tm_isdst: 0_i32,
+            tm_gmtoff: 0_i32,
+            tm_zone: ~"",
+            tm_nsec: 0_i32,
         };
         let mut pos = 0u;
         let len = str::len(s);
@@ -562,7 +635,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             let {ch, next} = str::char_range_at(s, pos);
 
             match rdr.read_char() {
-              '%' => match parse_type(s, pos, rdr.read_char(), &tm) {
+              '%' => match parse_type(s, pos, rdr.read_char(), &mut tm) {
                 Ok(next) => pos = next,
                   Err(copy e) => { result = Err(e); break; }
               },
@@ -592,7 +665,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 }
 
-fn strftime(format: &str, tm: Tm) -> ~str {
+priv fn do_strftime(format: &str, tm: Tm) -> ~str {
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || fmt!("strftime: can't understand this format %c ", ch);
@@ -757,81 +830,6 @@ fn strftime(format: &str, tm: Tm) -> ~str {
     }
 
     buf
-}
-
-impl Tm {
-    /// Convert time to the seconds from January 1, 1970
-    fn to_timespec() -> Timespec {
-        let mut sec = 0i64;
-        if self.tm_gmtoff == 0_i32 {
-            rustrt::rust_timegm(self, &mut sec);
-        } else {
-            rustrt::rust_mktime(self, &mut sec);
-        }
-        { sec: sec, nsec: self.tm_nsec }
-    }
-
-    /// Convert time to the local timezone
-    fn to_local() -> Tm {
-        at(self.to_timespec())
-    }
-
-    /// Convert time to the UTC
-    fn to_utc() -> Tm {
-        at_utc(self.to_timespec())
-    }
-
-    /**
-     * Return a string of the current time in the form
-     * "Thu Jan  1 00:00:00 1970".
-     */
-    fn ctime() -> ~str { self.strftime(~"%c") }
-
-    /// Formats the time according to the format string.
-    fn strftime(format: &str) -> ~str { strftime(format, self) }
-
-    /**
-     * Returns a time string formatted according to RFC 822.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 PST"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
-     */
-    fn rfc822() -> ~str {
-        if self.tm_gmtoff == 0_i32 {
-            self.strftime(~"%a, %d %b %Y %T GMT")
-        } else {
-            self.strftime(~"%a, %d %b %Y %T %Z")
-        }
-    }
-
-    /**
-     * Returns a time string formatted according to RFC 822 with Zulu time.
-     *
-     * local: "Thu, 22 Mar 2012 07:53:18 -0700"
-     * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
-     */
-    fn rfc822z() -> ~str {
-        self.strftime(~"%a, %d %b %Y %T %z")
-    }
-
-    /**
-     * Returns a time string formatted according to ISO 8601.
-     *
-     * local: "2012-02-22T07:53:18-07:00"
-     * utc:   "2012-02-22T14:53:18Z"
-     */
-    fn rfc3339() -> ~str {
-        if self.tm_gmtoff == 0_i32 {
-            self.strftime(~"%Y-%m-%dT%H:%M:%SZ")
-        } else {
-            let s = self.strftime(~"%Y-%m-%dT%H:%M:%S");
-            let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
-            let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
-            let h = m / 60_i32;
-            m -= h * 60_i32;
-            s + fmt!("%c%02d:%02d", sign, h as int, m as int)
-        }
-    }
 }
 
 #[cfg(test)]

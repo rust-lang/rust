@@ -512,7 +512,7 @@ pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
     f(BytesReader { bytes: bytes, pos: 0u } as Reader)
 }
 
-pub fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
+pub pure fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
     str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 

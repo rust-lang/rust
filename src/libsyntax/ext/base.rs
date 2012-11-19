@@ -1,7 +1,8 @@
 use std::map::HashMap;
 use parse::parser;
 use diagnostic::span_handler;
-use codemap::{CodeMap, span, expn_info, expanded_from};
+use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
+use ast_util::dummy_sp;
 
 // obsolete old-style #macro code:
 //
@@ -139,15 +140,15 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 trait ext_ctxt {
-    fn codemap() -> CodeMap;
+    fn codemap() -> @CodeMap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
     fn print_backtrace();
-    fn backtrace() -> expn_info;
+    fn backtrace() -> Option<@ExpnInfo>;
     fn mod_push(mod_name: ast::ident);
     fn mod_pop();
     fn mod_path() -> ~[ast::ident];
-    fn bt_push(ei: codemap::expn_info_);
+    fn bt_push(ei: codemap::ExpnInfo);
     fn bt_pop();
     fn span_fatal(sp: span, msg: &str) -> !;
     fn span_err(sp: span, msg: &str);
@@ -167,32 +168,34 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
            cfg: ast::crate_cfg) -> ext_ctxt {
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
-                      mut backtrace: expn_info,
+                      mut backtrace: Option<@ExpnInfo>,
                       mut mod_path: ~[ast::ident],
                       mut trace_mac: bool};
     impl ctxt_repr: ext_ctxt {
-        fn codemap() -> CodeMap { self.parse_sess.cm }
+        fn codemap() -> @CodeMap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
         fn print_backtrace() { }
-        fn backtrace() -> expn_info { self.backtrace }
+        fn backtrace() -> Option<@ExpnInfo> { self.backtrace }
         fn mod_push(i: ast::ident) { self.mod_path.push(i); }
         fn mod_pop() { self.mod_path.pop(); }
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
-        fn bt_push(ei: codemap::expn_info_) {
+        fn bt_push(ei: codemap::ExpnInfo) {
             match ei {
-              expanded_from({call_site: cs, callie: callie}) => {
+              ExpandedFrom({call_site: cs, callie: callie}) => {
                 self.backtrace =
-                    Some(@expanded_from({
-                        call_site: {lo: cs.lo, hi: cs.hi,
-                                    expn_info: self.backtrace},
+                    Some(@ExpandedFrom({
+                        call_site: span {lo: cs.lo, hi: cs.hi,
+                                         expn_info: self.backtrace},
                         callie: callie}));
               }
             }
         }
         fn bt_pop() {
             match self.backtrace {
-              Some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
+              Some(@ExpandedFrom({
+                  call_site: span {expn_info: prev, _}, _
+              })) => {
                 self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")
@@ -326,7 +329,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
 
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: {lo: 0u, hi: 0u, expn_info: None}}
+        {node: m, span: dummy_sp()}
     }
     let arg_nm = cx.parse_sess().interner.gensym(@~"arg");
 

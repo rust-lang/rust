@@ -5,7 +5,7 @@ use either::{Either, Left, Right};
 use std::map::HashMap;
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
             INTERPOLATED, special_idents};
-use codemap::{span,fss_none};
+use codemap::{span,FssNone, BytePos};
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 use lexer::reader;
@@ -70,10 +70,7 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_vstore_fixed, expr_vstore_slice, expr_vstore_box,
              expr_vstore_uniq, TyFn, Onceness, Once, Many};
 
-export file_type;
 export Parser;
-export CRATE_FILE;
-export SOURCE_FILE;
 
 // FIXME (#3726): #ast expects to find this here but it's actually
 // defined in `parse` Fixing this will be easier when we have export
@@ -91,8 +88,6 @@ enum restriction {
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
-
-enum file_type { CRATE_FILE, SOURCE_FILE, }
 
 enum class_member {
     field_member(@struct_field),
@@ -180,7 +175,7 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
 /* ident is handled by common.rs */
 
 fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
-          +rdr: reader, ftype: file_type) -> Parser {
+          +rdr: reader) -> Parser {
 
     let tok0 = rdr.next_token();
     let span0 = tok0.sp;
@@ -191,7 +186,6 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         interner: move interner,
         sess: sess,
         cfg: cfg,
-        file_type: ftype,
         token: tok0.tok,
         span: span0,
         last_span: span0,
@@ -210,7 +204,6 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
 struct Parser {
     sess: parse_sess,
     cfg: crate_cfg,
-    file_type: file_type,
     mut token: token::Token,
     mut span: span,
     mut last_span: span,
@@ -244,7 +237,7 @@ impl Parser {
         self.token = next.tok;
         self.span = next.sp;
     }
-    fn swap(next: token::Token, lo: uint, hi: uint) {
+    fn swap(next: token::Token, +lo: BytePos, +hi: BytePos) {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
@@ -906,12 +899,12 @@ impl Parser {
         return spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
     }
 
-    fn mk_expr(lo: uint, hi: uint, +node: expr_) -> @expr {
+    fn mk_expr(+lo: BytePos, +hi: BytePos, +node: expr_) -> @expr {
         return @{id: self.get_id(), callee_id: self.get_id(),
               node: node, span: mk_sp(lo, hi)};
     }
 
-    fn mk_mac_expr(lo: uint, hi: uint, m: mac_) -> @expr {
+    fn mk_mac_expr(+lo: BytePos, +hi: BytePos, m: mac_) -> @expr {
         return @{id: self.get_id(),
               callee_id: self.get_id(),
               node: expr_mac({node: m, span: mk_sp(lo, hi)}),
@@ -1141,7 +1134,7 @@ impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
-    fn parse_block_expr(lo: uint, blk_mode: blk_check_mode) -> @expr {
+    fn parse_block_expr(lo: BytePos, blk_mode: blk_check_mode) -> @expr {
         self.expect(token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
@@ -1153,7 +1146,7 @@ impl Parser {
         return self.parse_syntax_ext_naked(lo);
     }
 
-    fn parse_syntax_ext_naked(lo: uint) -> @expr {
+    fn parse_syntax_ext_naked(lo: BytePos) -> @expr {
         match self.token {
           token::IDENT(_, _) => (),
           _ => self.fatal(~"expected a syntax expander name")
@@ -2287,11 +2280,11 @@ impl Parser {
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
-    fn parse_block_tail(lo: uint, s: blk_check_mode) -> blk {
+    fn parse_block_tail(lo: BytePos, s: blk_check_mode) -> blk {
         self.parse_block_tail_(lo, s, ~[])
     }
 
-    fn parse_block_tail_(lo: uint, s: blk_check_mode,
+    fn parse_block_tail_(lo: BytePos, s: blk_check_mode,
                          +first_item_attrs: ~[attribute]) -> blk {
         let mut stmts = ~[];
         let mut expr = None;
@@ -2589,7 +2582,7 @@ impl Parser {
         return {ident: id, tps: ty_params};
     }
 
-    fn mk_item(lo: uint, hi: uint, +ident: ident,
+    fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
                +node: item_, vis: visibility,
                +attrs: ~[attribute]) -> @item {
         return @{ident: ident,
@@ -2958,13 +2951,28 @@ impl Parser {
         (id, item_const(ty, e), None)
     }
 
-    fn parse_item_mod() -> item_info {
+    fn parse_item_mod(outer_attrs: ~[ast::attribute]) -> item_info {
+        let id_span = self.span;
         let id = self.parse_ident();
-        self.expect(token::LBRACE);
-        let inner_attrs = self.parse_inner_attrs_and_next();
-        let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
-        self.expect(token::RBRACE);
-        (id, item_mod(m), Some(inner_attrs.inner))
+        if self.token == token::SEMI {
+            self.bump();
+            // This mod is in an external file. Let's go get it!
+            let eval_ctx = @{
+                sess: self.sess,
+                cfg: self.cfg
+            };
+            let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
+            let prefix = prefix.dir_path();
+            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id,
+                                                outer_attrs, id_span);
+            (id, m, Some(move attrs))
+        } else {
+            self.expect(token::LBRACE);
+            let inner_attrs = self.parse_inner_attrs_and_next();
+            let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
+            self.expect(token::RBRACE);
+            (id, item_mod(m), Some(inner_attrs.inner))
+        }
     }
 
     fn parse_item_foreign_fn( +attrs: ~[attribute]) -> @foreign_item {
@@ -3041,7 +3049,7 @@ impl Parser {
             items: items};
     }
 
-    fn parse_item_foreign_mod(lo: uint,
+    fn parse_item_foreign_mod(lo: BytePos,
                               visibility: visibility,
                               attrs: ~[attribute],
                               items_allowed: bool)
@@ -3096,7 +3104,7 @@ impl Parser {
         });
     }
 
-    fn parse_type_decl() -> {lo: uint, ident: ident} {
+    fn parse_type_decl() -> {lo: BytePos, ident: ident} {
         let lo = self.last_span.lo;
         let id = self.parse_ident();
         return {lo: lo, ident: id};
@@ -3360,7 +3368,7 @@ impl Parser {
             return self.parse_item_foreign_mod(lo, visibility, attrs,
                                                items_allowed);
         } else if items_allowed && self.eat_keyword(~"mod") {
-            let (ident, item_, extra_attrs) = self.parse_item_mod();
+            let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
@@ -3425,9 +3433,8 @@ impl Parser {
             };
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
-                               span: {lo: self.span.lo,
-                                      hi: self.span.hi,
-                                      expn_info: None}};
+                               span: mk_sp(self.span.lo,
+                                           self.span.hi)};
             let item_ = item_mac(m);
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));
