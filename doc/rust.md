@@ -1104,6 +1104,17 @@ Constants are declared with the `const` keyword.
 A constant item must have an expression giving its definition.
 The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
 
+Constants must be explicitly typed. The type may be ```bool```, ```char```, a number, or a type derived from
+those primitive types. The derived types are borrowed pointers, static arrays, tuples, and structs.
+
+~~~~
+const bit1: uint = 1 << 0;
+const bit2: uint = 1 << 1;
+
+const bits: [uint * 2] = [bit1, bit2];
+const bits_r: &[uint] = &bits;
+~~~~
+
 ### Traits
 
 A _trait_ describes a set of method types.
@@ -1562,7 +1573,6 @@ indicate that the elements of the resulting vector may be mutated.
 When no mutability is specified, the vector is immutable.
 
 ~~~~
-[]
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
 [0, ..128];             // vector with 128 zeros
