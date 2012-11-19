@@ -2380,6 +2380,25 @@ impl Parser {
                             }
                         }
 
+                        stmt_mac(m) => {
+                            // Statement macro; might be an expr
+                            match self.token {
+                                token::SEMI => {
+                                    self.bump();
+                                    stmts.push(stmt);
+                                }
+                                token::RBRACE => {
+                                    // if a block ends in `m!(arg)` without
+                                    // a `;`, it must be an expr
+                                    expr = Some(
+                                        self.mk_mac_expr(stmt.span.lo,
+                                                         stmt.span.hi,
+                                                         m.node));
+                                }
+                                _ => { stmts.push(stmt); }
+                            }
+                        }
+
                         _ => { // All other kinds of statements:
                             stmts.push(stmt);
 
@@ -3567,6 +3586,10 @@ impl Parser {
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
+
+            // a 'special' identifier (like what `macro_rules!` uses)
+            // is optional. We should eventually unify invoc syntax
+            // and remove this.
             let id = if self.token == token::LPAREN {
                 token::special_idents::invalid // no special identifier
             } else {
