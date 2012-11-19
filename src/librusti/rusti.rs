@@ -10,6 +10,12 @@ struct Repl {
     stmts: ~str
 }
 
+// Action to do after reading a :command
+enum CmdAction {
+    action_none,
+    action_run_line(~str),
+}
+
 /// A utility function that hands off a pretty printer to a callback.
 fn with_pp(intr: @token::ident_interner,
            cb: fn(pprust::ps, io::Writer)) -> ~str {
@@ -234,9 +240,26 @@ fn run(repl: Repl, input: ~str) -> Repl {
     record(repl, blk, sess.parse_sess.interner)
 }
 
+/// Tries to get a line from rl after outputting a prompt. Returns
+/// None if no input was read (e.g. EOF was reached).
+fn get_line(prompt: ~str) -> Option<~str> {
+    let result = unsafe { rl::read(prompt) };
+
+    if result.is_none() {
+        return None;
+    }
+
+    let line = result.get();
+
+    unsafe { rl::add_history(line) };
+
+    return Some(line);
+}
+
 /// Run a command, e.g. :clear, :exit, etc.
 fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
-           cmd: ~str, _args: ~[~str]) {
+           cmd: ~str, _args: ~[~str]) -> CmdAction {
+    let mut action = action_none;
     match cmd {
         ~"exit" => repl.running = false,
         ~"clear" => {
@@ -247,12 +270,74 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
             //rl::clear();
         }
         ~"help" => {
-            io::println(~":clear - clear the screen\n" +
+            io::println(~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
+                        ~":clear - clear the screen\n" +
                         ~":exit - exit from the repl\n" +
                         ~":help - show this message");
         }
+        ~"{" => {
+            let mut multiline_cmd = ~"";
+            let mut end_multiline = false;
+            while (!end_multiline) {
+                match get_line(~"rusti| ") {
+                    None => fail ~"unterminated multiline command :{ .. :}",
+                    Some(line) => {
+                        if str::trim(line) == ~":}" {
+                            end_multiline = true;
+                        } else {
+                            multiline_cmd += line + ~"\n";
+                        }
+                    }
+                }
+            }
+            action = action_run_line(multiline_cmd);
+        }
         _ => io::println(~"unknown cmd: " + cmd)
     }
+    return action;
+}
+
+/// Executes a line of input, which may either be rust code or a
+/// :command. Returns a new Repl if it has changed.
+fn run_line(repl: &mut Repl, in: io::Reader, out: io::Writer, line: ~str)
+    -> Option<Repl> {
+    if line.starts_with(~":") {
+        let full = line.substr(1, line.len() - 1);
+        let split = str::words(full);
+        let len = split.len();
+
+        if len > 0 {
+            let cmd = split[0];
+
+            if !cmd.is_empty() {
+                let args = if len > 1 {
+                    do vec::view(split, 1, len - 1).map |arg| {
+                        *arg
+                    }
+                } else { ~[] };
+
+                match run_cmd(repl, in, out, cmd, args) {
+                    action_none => { }
+                    action_run_line(multiline_cmd) => {
+                        if !multiline_cmd.is_empty() {
+                            return run_line(repl, in, out, multiline_cmd);
+                        }
+                    }
+                }
+                return None;
+            }
+        }
+    }
+
+    let r = *repl;
+    let result = do task::try |copy r| {
+        run(r, line)
+    };
+
+    if result.is_ok() {
+        return Some(result.get());
+    }
+    return None;
 }
 
 pub fn main() {
@@ -278,50 +363,18 @@ pub fn main() {
     }
 
     while repl.running {
-        let result = unsafe { rl::read(repl.prompt) };
-
-        if result.is_none() {
-            break;
-        }
-
-        let line = result.get();
-
-        if line.is_empty() {
-            io::println(~"()");
-
-            loop;
-        }
-
-        unsafe { rl::add_history(line) };
-
-        if line.starts_with(~":") {
-            let full = line.substr(1, line.len() - 1);
-            let split = full.split_char(' ');
-            let len = split.len();
-
-            if len > 0 {
-                let cmd = split[0];
-
-                if !cmd.is_empty() {
-                    let args = if len > 1 {
-                        do vec::view(split, 1, len - 1).map |arg| {
-                            *arg
-                        }
-                    } else { ~[] };
-
-                    run_cmd(&mut repl, in, out, cmd, args);
-
+        match get_line(repl.prompt) {
+            None => break,
+            Some(line) => {
+                if line.is_empty() {
+                    io::println(~"()");
                     loop;
                 }
+                match run_line(&mut repl, in, out, line) {
+                    Some(new_repl) => repl = new_repl,
+                    None => { }
+                }
             }
-        }
-
-        let result = do task::try |copy repl| {
-            run(copy repl, line)
-        };
-
-        if result.is_ok() {
-            repl = result.get();
         }
     }
 }
