@@ -11,7 +11,7 @@ use syntax::ast;
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {
         name: ~"page",
-        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+        f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, output_style)
         }
     }
@@ -19,7 +19,7 @@ pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
 
 fn run(
     _srv: astsrv::Srv,
-    doc: doc::Doc,
+    +doc: doc::Doc,
     output_style: config::OutputStyle
 ) -> doc::Doc {
 
@@ -61,14 +61,14 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
         fold_nmod: fold_nmod,
         .. *fold::default_any_fold(page_chan)
     });
-    fold.fold_doc(fold, doc);
+    fold.fold_doc(&fold, doc);
 
     comm::send(page_chan, None);
 }
 
 fn fold_crate(
-    fold: fold::Fold<PageChan>,
-    doc: doc::CrateDoc
+    fold: &fold::Fold<PageChan>,
+    +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
     let doc = fold::default_seq_fold_crate(fold, doc);
@@ -84,8 +84,8 @@ fn fold_crate(
 }
 
 fn fold_mod(
-    fold: fold::Fold<PageChan>,
-    doc: doc::ModDoc
+    fold: &fold::Fold<PageChan>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
 
     let doc = fold::default_any_fold_mod(fold, doc);
@@ -114,8 +114,8 @@ fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
 }
 
 fn fold_nmod(
-    fold: fold::Fold<PageChan>,
-    doc: doc::NmodDoc
+    fold: &fold::Fold<PageChan>,
+    +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::ItemPage(doc::NmodTag(doc));

@@ -5,7 +5,7 @@ use doc::ItemUtils;
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {
         name: name,
-        f: fn~(move op, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+        f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, op)
         }
     }
@@ -16,7 +16,7 @@ type Op = fn~(~str) -> ~str;
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
-    doc: doc::Doc,
+    +doc: doc::Doc,
     op: Op
 ) -> doc::Doc {
     let fold = fold::Fold({
@@ -26,14 +26,14 @@ fn run(
         fold_impl: fold_impl,
         .. *fold::default_any_fold(op)
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
 fn maybe_apply_op(op: Op, s: Option<~str>) -> Option<~str> {
     s.map(|s| op(*s) )
 }
 
-fn fold_item(fold: fold::Fold<Op>, doc: doc::ItemDoc) -> doc::ItemDoc {
+fn fold_item(fold: &fold::Fold<Op>, +doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     {
@@ -51,13 +51,14 @@ fn apply_to_sections(op: Op, sections: ~[doc::Section]) -> ~[doc::Section] {
     })
 }
 
-fn fold_enum(fold: fold::Fold<Op>, doc: doc::EnumDoc) -> doc::EnumDoc {
+fn fold_enum(fold: &fold::Fold<Op>, +doc: doc::EnumDoc) -> doc::EnumDoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
+    let fold_copy = copy *fold;
 
     {
-        variants: do par::map(doc.variants) |variant, copy fold| {
+        variants: do par::map(doc.variants) |variant, copy fold_copy| {
             {
-                desc: maybe_apply_op(fold.ctxt, variant.desc),
+                desc: maybe_apply_op(fold_copy.ctxt, variant.desc),
                 .. *variant
             }
         },
@@ -65,7 +66,7 @@ fn fold_enum(fold: fold::Fold<Op>, doc: doc::EnumDoc) -> doc::EnumDoc {
     }
 }
 
-fn fold_trait(fold: fold::Fold<Op>, doc: doc::TraitDoc) -> doc::TraitDoc {
+fn fold_trait(fold: &fold::Fold<Op>, +doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
@@ -85,7 +86,7 @@ fn apply_to_methods(op: Op, docs: ~[doc::MethodDoc]) -> ~[doc::MethodDoc] {
     }
 }
 
-fn fold_impl(fold: fold::Fold<Op>, doc: doc::ImplDoc) -> doc::ImplDoc {
+fn fold_impl(fold: &fold::Fold<Op>, +doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {

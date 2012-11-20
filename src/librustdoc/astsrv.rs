@@ -28,7 +28,7 @@ pub type Ctxt = {
 
 type SrvOwner<T> = fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
-type Parser = fn~(Session, ~str) -> @ast::crate;
+type Parser = fn~(Session, +s: ~str) -> @ast::crate;
 
 enum Msg {
     HandleRequest(fn~(Ctxt)),

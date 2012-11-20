@@ -8,7 +8,7 @@ pub type ItemLtEq = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 pub fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
     {
         name: name,
-        f: fn~(move lteq, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+        f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, lteq)
         }
     }
@@ -17,20 +17,20 @@ pub fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
-    doc: doc::Doc,
+    +doc: doc::Doc,
     lteq: ItemLtEq
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_mod: fold_mod,
         .. *fold::default_any_fold(lteq)
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
 #[allow(non_implicitly_copyable_typarams)]
 fn fold_mod(
-    fold: fold::Fold<ItemLtEq>,
-    doc: doc::ModDoc
+    fold: &fold::Fold<ItemLtEq>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     doc::ModDoc_({

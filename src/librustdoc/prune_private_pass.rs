@@ -11,17 +11,17 @@ fn mk_pass() -> Pass {
     }
 }
 
-fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
     let fold = fold::Fold({
         fold_mod: fold_mod,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
 fn fold_mod(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::ModDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
