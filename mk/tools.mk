@@ -10,11 +10,11 @@ COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*rs)
 
 # Cargo, the package manager
 CARGO_LIB := $(S)src/libcargo/cargo.rc
-CARGO_INPUTS := $(wildcard $(S)src/cargo/*rs)
+CARGO_INPUTS := $(wildcard $(S)src/libcargo/*rs)
 
 # Rustdoc, the documentation tool
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rc
-RUSTDOC_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
+RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 
 # Rusti, the JIT REPL
 RUSTI_LIB := $(S)src/librusti/rusti.rc
