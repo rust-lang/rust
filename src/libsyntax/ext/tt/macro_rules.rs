@@ -1,4 +1,4 @@
-use base::{ext_ctxt, mac_result, mr_expr_or_item, mr_def, normal_tt};
+use base::{ext_ctxt, mac_result, mr_any, mr_def, normal_tt};
 use codemap::span;
 use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
@@ -92,8 +92,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
                     // Let the context choose how to interpret the result.
                     // Weird, but useful for X-macros.
-                    return mr_expr_or_item(|| p.parse_expr(),
-                                           || p.parse_item(~[/* no attrs*/]));
+                    return mr_any(|| p.parse_expr(),
+                                  || p.parse_item(~[/* no attrs*/]),
+                                  || p.parse_stmt(~[/* no attrs*/]));
                   }
                   failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;

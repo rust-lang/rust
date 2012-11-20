@@ -44,7 +44,7 @@ type syntax_expander_tt_item_
 enum mac_result {
     mr_expr(@ast::expr),
     mr_item(@ast::item),
-    mr_expr_or_item(fn@()-> @ast::expr, fn@()-> Option<@ast::item>),
+    mr_any(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
     mr_def(macro_def)
 }
 
@@ -109,18 +109,18 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                                 ext::deriving::expand_deriving_iter_bytes));
 
     // Quasi-quoting expanders
-    syntax_expanders.insert(~"quote_tokens",
-                            builtin_expr_tt(ext::quote::expand_quote_tokens));
+    syntax_expanders.insert(
+        ~"quote_tokens", builtin_normal_tt(ext::quote::expand_quote_tokens));
     syntax_expanders.insert(~"quote_expr",
-                            builtin_expr_tt(ext::quote::expand_quote_expr));
+                            builtin_normal_tt(ext::quote::expand_quote_expr));
     syntax_expanders.insert(~"quote_type",
-                            builtin_expr_tt(ext::quote::expand_quote_type));
+                            builtin_normal_tt(ext::quote::expand_quote_type));
     syntax_expanders.insert(~"quote_item",
-                            builtin_expr_tt(ext::quote::expand_quote_item));
+                            builtin_normal_tt(ext::quote::expand_quote_item));
     syntax_expanders.insert(~"quote_pat",
-                            builtin_expr_tt(ext::quote::expand_quote_pat));
+                            builtin_normal_tt(ext::quote::expand_quote_pat));
     syntax_expanders.insert(~"quote_stmt",
-                            builtin_expr_tt(ext::quote::expand_quote_stmt));
+                            builtin_normal_tt(ext::quote::expand_quote_stmt));
 
     syntax_expanders.insert(~"line",
                             builtin(ext::source_util::expand_line));
