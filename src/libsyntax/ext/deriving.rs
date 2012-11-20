@@ -49,7 +49,7 @@ pub fn expand_deriving_eq(cx: ext_ctxt,
                                                      enum_definition,
                                                      item.ident));
             }
-            _ => result.push(copy *item)    // XXX: Don't copy.
+            _ => ()
         }
     }
     dvec::unwrap(move result)
