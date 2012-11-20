@@ -1111,7 +1111,17 @@ const bit1: uint = 1 << 0;
 const bit2: uint = 1 << 1;
 
 const bits: [uint * 2] = [bit1, bit2];
-const bits_r: &[uint] = &bits;
+const string: &str = "bitstring";
+
+struct BitsNStrings {
+    mybits: [uint *2],
+    mystring: &str
+}
+
+const bits_n_strings: BitsNStrings = BitsNStrings {
+    mybits: bits,
+    mystring: string
+};
 ~~~~
 
 ### Traits
