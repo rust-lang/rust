@@ -196,7 +196,7 @@ fn expand_deriving_struct_def(cx: ext_ctxt,
                                                   Disjunction);
 
     // Create the implementation.
-    return create_derived_impl(cx, span, type_ident, eq_method, ne_method);    
+    return create_derived_impl(cx, span, type_ident, eq_method, ne_method);
 }
 
 fn expand_deriving_struct_method(cx: ext_ctxt,
