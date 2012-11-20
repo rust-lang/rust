@@ -86,7 +86,7 @@ use option::unwrap;
 const SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
+    { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
 )
 
 #[doc(hidden)]
