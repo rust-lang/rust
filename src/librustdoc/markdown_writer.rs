@@ -2,23 +2,15 @@ use doc::ItemUtils;
 use io::ReaderUtil;
 use std::future;
 
-export WriteInstr;
-export Writer;
-export WriterFactory;
-export WriterUtils;
-export make_writer_factory;
-export future_writer_factory;
-export make_filename;
-
-enum WriteInstr {
+pub enum WriteInstr {
     Write(~str),
     Done
 }
 
-type Writer = fn~(+v: WriteInstr);
-type WriterFactory = fn~(page: doc::Page) -> Writer;
+pub type Writer = fn~(+v: WriteInstr);
+pub type WriterFactory = fn~(page: doc::Page) -> Writer;
 
-trait WriterUtils {
+pub trait WriterUtils {
     fn write_str(str: ~str);
     fn write_line(str: ~str);
     fn write_done();
@@ -38,7 +30,7 @@ impl Writer: WriterUtils {
     }
 }
 
-fn make_writer_factory(config: config::Config) -> WriterFactory {
+pub fn make_writer_factory(config: config::Config) -> WriterFactory {
     match config.output_format {
       config::Markdown => {
         markdown_writer_factory(config)
@@ -175,7 +167,7 @@ fn make_local_filename(
     config.output_dir.push_rel(&filename)
 }
 
-fn make_filename(
+pub fn make_filename(
     config: config::Config,
     page: doc::Page
 ) -> Path {
@@ -269,7 +261,7 @@ fn write_file(path: &Path, s: ~str) {
     }
 }
 
-fn future_writer_factory(
+pub fn future_writer_factory(
 ) -> (WriterFactory, comm::Port<(doc::Page, ~str)>) {
     let markdown_po = comm::Port();
     let markdown_ch = comm::Chan(&markdown_po);

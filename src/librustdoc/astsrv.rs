@@ -21,20 +21,13 @@ use rustc::back::link;
 use rustc::metadata::filesearch;
 use rustc::front;
 
-export Ctxt;
-export CtxtHandler;
-export Srv;
-export from_str;
-export from_file;
-export exec;
-
-type Ctxt = {
+pub type Ctxt = {
     ast: @ast::crate,
     ast_map: ast_map::map
 };
 
 type SrvOwner<T> = fn(srv: Srv) -> T;
-type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
+pub type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
 type Parser = fn~(Session, ~str) -> @ast::crate;
 
 enum Msg {
@@ -42,15 +35,15 @@ enum Msg {
     Exit
 }
 
-enum Srv = {
+pub enum Srv = {
     ch: comm::Chan<Msg>
 };
 
-fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
+pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
     run(owner, source, parse::from_str_sess)
 }
 
-fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
+pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
     run(owner, file, |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
@@ -88,7 +81,7 @@ fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
     }
 }
 
-fn exec<T:Send>(
+pub fn exec<T:Send>(
     srv: Srv,
     +f: fn~(ctxt: Ctxt) -> T
 ) -> T {

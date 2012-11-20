@@ -11,7 +11,6 @@
 
 #[no_core];
 #[legacy_modes];
-#[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_implicitly_copyable_typarams)];
@@ -26,56 +25,30 @@ extern mod syntax(vers = "0.5");
 use core::*;
 use std::par;
 
-#[legacy_exports]
 mod pass;
-#[legacy_exports]
 mod config;
-#[legacy_exports]
 mod parse;
-#[legacy_exports]
 mod extract;
-#[legacy_exports]
 mod attr_parser;
-#[legacy_exports]
 mod doc;
-#[legacy_exports]
 mod markdown_index_pass;
-#[legacy_exports]
 mod markdown_pass;
-#[legacy_exports]
 mod markdown_writer;
-#[legacy_exports]
 mod fold;
-#[legacy_exports]
 mod path_pass;
-#[legacy_exports]
 mod attr_pass;
-#[legacy_exports]
 mod tystr_pass;
-#[legacy_exports]
 mod prune_hidden_pass;
-#[legacy_exports]
 mod desc_to_brief_pass;
-#[legacy_exports]
 mod text_pass;
-#[legacy_exports]
 mod unindent_pass;
-#[legacy_exports]
 mod trim_pass;
-#[legacy_exports]
 mod astsrv;
-#[legacy_exports]
 mod demo;
-#[legacy_exports]
 mod sort_pass;
-#[legacy_exports]
 mod sort_item_name_pass;
-#[legacy_exports]
 mod sort_item_type_pass;
-#[legacy_exports]
 mod page_pass;
-#[legacy_exports]
 mod sectionalize_pass;
-#[legacy_exports]
 mod escape_pass;
 mod prune_private_pass;

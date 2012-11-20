@@ -7,9 +7,7 @@ is interpreted as the brief description.
 
 use doc::ItemUtils;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"desc_to_brief",
         f: run

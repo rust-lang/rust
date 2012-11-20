@@ -4,8 +4,6 @@ use syntax::ast;
 use doc::ItemUtils;
 use task::local_data::local_data_get;
 
-export from_srv, extract, to_str, interner;
-
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
@@ -15,17 +13,17 @@ macro_rules! interner_key (
 
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
-fn to_str(id: ast::ident) -> ~str {
+pub fn to_str(id: ast::ident) -> ~str {
     let intr = unsafe{ local_data_get(interner_key!()) };
 
     return *(*intr.get()).get(id);
 }
 
-fn interner() -> @syntax::parse::token::ident_interner {
+pub fn interner() -> @syntax::parse::token::ident_interner {
     return *(unsafe{ local_data_get(interner_key!()) }).get();
 }
 
-fn from_srv(
+pub fn from_srv(
     srv: astsrv::Srv,
     default_name: ~str
 ) -> doc::Doc {
@@ -37,7 +35,7 @@ fn from_srv(
     }
 }
 
-fn extract(
+pub fn extract(
     crate: @ast::crate,
     default_name: ~str
 ) -> doc::Doc {

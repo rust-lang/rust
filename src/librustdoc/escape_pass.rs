@@ -1,8 +1,6 @@
 //! Escapes text sequences
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"escape", escape)
 }
 

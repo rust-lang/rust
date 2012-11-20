@@ -8,9 +8,7 @@ individual modules, pages for the crate, indexes, etc.
 use doc::{ItemUtils, PageUtils};
 use syntax::ast;
 
-export mk_pass;
-
-fn mk_pass(output_style: config::OutputStyle) -> Pass {
+pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {
         name: ~"page",
         f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {

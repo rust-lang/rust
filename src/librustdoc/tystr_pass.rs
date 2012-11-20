@@ -7,9 +7,7 @@ use syntax::ast_map;
 use std::map::HashMap;
 use extract::to_str;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"tystr",
         f: run

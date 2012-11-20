@@ -1,9 +1,8 @@
 //! Sorts items by name
 
 use doc::ItemUtils;
-export mk_pass;
 
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     pure fn by_item_name(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         (*item1).name() <= (*item2).name()
     }

@@ -9,11 +9,7 @@ use syntax::ast;
 use syntax::attr;
 use core::tuple;
 
-export CrateAttrs;
-export parse_crate, parse_desc;
-export parse_hidden;
-
-type CrateAttrs = {
+pub type CrateAttrs = {
     name: Option<~str>
 };
 
@@ -48,7 +44,7 @@ fn doc_metas(
     return doc_metas;
 }
 
-fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
+pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
@@ -80,7 +76,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     assert attrs.name == None;
 }
 
-fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
+pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     let doc_strs = do doc_metas(attrs).filter_map |meta| {
         attr::get_meta_item_value_str(*meta)
     };
@@ -107,7 +103,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
     assert attrs == Some(~"basic");
 }
 
-fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
+pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     do doc_metas(attrs).find |meta| {
         match attr::get_meta_item_list(meta) {
           Some(metas) => {

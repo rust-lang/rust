@@ -2,9 +2,7 @@
 
 use doc::ItemUtils;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     pure fn by_score(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         pure fn score(item: &doc::ItemTag) -> int {
             match *item {
