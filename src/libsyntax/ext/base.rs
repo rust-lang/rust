@@ -97,6 +97,9 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                                 ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(~"ast",
                             builtin(ext::qquote::expand_ast));
+    syntax_expanders.insert(~"deriving_eq",
+                            item_decorator(
+                                ext::deriving::expand_deriving_eq));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(~"quote_tokens",
