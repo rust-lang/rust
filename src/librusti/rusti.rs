@@ -270,10 +270,11 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
             //rl::clear();
         }
         ~"help" => {
-            io::println(~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                        ~":clear - clear the screen\n" +
-                        ~":exit - exit from the repl\n" +
-                        ~":help - show this message");
+            io::println(
+                ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
+                ~":clear - clear the screen\n" +
+                ~":exit - exit from the repl\n" +
+                ~":help - show this message");
         }
         ~"{" => {
             let mut multiline_cmd = ~"";
