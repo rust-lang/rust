@@ -157,10 +157,21 @@ fn mk_copy(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
 fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
 }
-fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
-    let path = build::mk_raw_path(span, ~[ ident ]);
-    let pat = ast::pat_ident(ast::bind_by_value, path, None);
+fn mk_pat(cx: ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
     @{ id: cx.next_id(), node: move pat, span: span }
+}
+fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
+    let path = mk_raw_path(span, ~[ ident ]);
+    let pat = ast::pat_ident(ast::bind_by_value, path, None);
+    mk_pat(cx, span, move pat)
+}
+fn mk_pat_enum(cx: ext_ctxt,
+               span: span,
+               path: @ast::path,
+               +subpats: ~[@ast::pat])
+            -> @ast::pat {
+    let pat = ast::pat_enum(path, Some(move subpats));
+    mk_pat(cx, span, move pat)
 }
 fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
     let lit_expr = ast::expr_lit(@{ node: ast::lit_bool(value), span: span });
