@@ -136,9 +136,29 @@ fn mk_block(cx: ext_ctxt, sp: span,
                span: sp };
     mk_expr(cx, sp, ast::expr_block(blk))
 }
+fn mk_simple_block(cx: ext_ctxt, span: span, expr: @ast::expr) -> ast::blk {
+    let block = {
+        view_items: ~[],
+        stmts: ~[],
+        expr: Some(expr),
+        id: cx.next_id(),
+        rules: ast::default_blk
+    };
+    { node: move block, span: span }
+}
 fn mk_copy(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))
 }
 fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
 }
+fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
+    let path = build::mk_raw_path(span, ~[ ident ]);
+    let pat = ast::pat_ident(ast::bind_by_value, path, None);
+    @{ id: cx.next_id(), node: move pat, span: span }
+}
+fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
+    let lit_expr = ast::expr_lit(@{ node: ast::lit_bool(value), span: span });
+    build::mk_expr(cx, span, move lit_expr)
+}
+

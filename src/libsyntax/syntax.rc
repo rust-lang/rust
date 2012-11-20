@@ -103,6 +103,7 @@ mod ext {
     mod qquote;
 
     mod quote;
+    mod deriving;
 
     #[legacy_exports]
     mod build;
