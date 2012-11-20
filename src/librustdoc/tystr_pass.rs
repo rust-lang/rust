@@ -16,7 +16,7 @@ pub fn mk_pass() -> Pass {
 
 fn run(
     srv: astsrv::Srv,
-    doc: doc::Doc
+    +doc: doc::Doc
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_fn: fold_fn,
@@ -28,12 +28,12 @@ fn run(
         fold_struct: fold_struct,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
 fn fold_fn(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::FnDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::FnDoc
 ) -> doc::FnDoc {
 
     let srv = fold.ctxt;
@@ -75,8 +75,8 @@ fn should_add_foreign_fn_sig() {
 }
 
 fn fold_const(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::ConstDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::ConstDoc
 ) -> doc::ConstDoc {
     let srv = fold.ctxt;
 
@@ -102,8 +102,8 @@ fn should_add_const_types() {
 }
 
 fn fold_enum(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::EnumDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     let doc_id = doc.id();
     let srv = fold.ctxt;
@@ -143,8 +143,8 @@ fn should_add_variant_sigs() {
 }
 
 fn fold_trait(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::TraitDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     {
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
@@ -234,8 +234,8 @@ fn should_add_trait_method_sigs() {
 }
 
 fn fold_impl(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::ImplDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::ImplDoc
 ) -> doc::ImplDoc {
 
     let srv = fold.ctxt;
@@ -289,8 +289,8 @@ fn should_add_impl_method_sigs() {
 }
 
 fn fold_type(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::TyDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::TyDoc
 ) -> doc::TyDoc {
 
     let srv = fold.ctxt;
@@ -323,8 +323,8 @@ fn should_add_type_signatures() {
 }
 
 fn fold_struct(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::StructDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::StructDoc
 ) -> doc::StructDoc {
     let srv = fold.ctxt;
 

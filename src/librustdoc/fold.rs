@@ -1,18 +1,18 @@
 pub enum Fold<T> = Fold_<T>;
 
-type FoldDoc<T> = fn~(fold: Fold<T>, doc: doc::Doc) -> doc::Doc;
-type FoldCrate<T> = fn~(fold: Fold<T>, doc: doc::CrateDoc) -> doc::CrateDoc;
-type FoldItem<T> = fn~(fold: Fold<T>, doc: doc::ItemDoc) -> doc::ItemDoc;
-type FoldMod<T> = fn~(fold: Fold<T>, doc: doc::ModDoc) -> doc::ModDoc;
-type FoldNmod<T> = fn~(fold: Fold<T>, doc: doc::NmodDoc) -> doc::NmodDoc;
-type FoldFn<T> = fn~(fold: Fold<T>, doc: doc::FnDoc) -> doc::FnDoc;
-type FoldConst<T> = fn~(fold: Fold<T>, doc: doc::ConstDoc) -> doc::ConstDoc;
-type FoldEnum<T> = fn~(fold: Fold<T>, doc: doc::EnumDoc) -> doc::EnumDoc;
-type FoldTrait<T> = fn~(fold: Fold<T>, doc: doc::TraitDoc) -> doc::TraitDoc;
-type FoldImpl<T> = fn~(fold: Fold<T>, doc: doc::ImplDoc) -> doc::ImplDoc;
-type FoldType<T> = fn~(fold: Fold<T>, doc: doc::TyDoc) -> doc::TyDoc;
-type FoldStruct<T> = fn~(fold: Fold<T>,
-                         doc: doc::StructDoc) -> doc::StructDoc;
+type FoldDoc<T> = fn~(fold: &Fold<T>, +doc: doc::Doc) -> doc::Doc;
+type FoldCrate<T> = fn~(fold: &Fold<T>, +doc: doc::CrateDoc) -> doc::CrateDoc;
+type FoldItem<T> = fn~(fold: &Fold<T>, +doc: doc::ItemDoc) -> doc::ItemDoc;
+type FoldMod<T> = fn~(fold: &Fold<T>, +doc: doc::ModDoc) -> doc::ModDoc;
+type FoldNmod<T> = fn~(fold: &Fold<T>, +doc: doc::NmodDoc) -> doc::NmodDoc;
+type FoldFn<T> = fn~(fold: &Fold<T>, +doc: doc::FnDoc) -> doc::FnDoc;
+type FoldConst<T> = fn~(fold: &Fold<T>, +doc: doc::ConstDoc) -> doc::ConstDoc;
+type FoldEnum<T> = fn~(fold: &Fold<T>, +doc: doc::EnumDoc) -> doc::EnumDoc;
+type FoldTrait<T> = fn~(fold: &Fold<T>, +doc: doc::TraitDoc) -> doc::TraitDoc;
+type FoldImpl<T> = fn~(fold: &Fold<T>, +doc: doc::ImplDoc) -> doc::ImplDoc;
+type FoldType<T> = fn~(fold: &Fold<T>, +doc: doc::TyDoc) -> doc::TyDoc;
+type FoldStruct<T> = fn~(fold: &Fold<T>,
+                         +doc: doc::StructDoc) -> doc::StructDoc;
 
 type Fold_<T> = {
     ctxt: T,
@@ -119,7 +119,7 @@ pub fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_seq_fold_doc<T>(fold: Fold<T>, doc: doc::Doc) -> doc::Doc {
+pub fn default_seq_fold_doc<T>(fold: &Fold<T>, +doc: doc::Doc) -> doc::Doc {
     doc::Doc_({
         pages: do vec::map(doc.pages) |page| {
             match *page {
@@ -136,8 +136,8 @@ pub fn default_seq_fold_doc<T>(fold: Fold<T>, doc: doc::Doc) -> doc::Doc {
 }
 
 pub fn default_seq_fold_crate<T>(
-    fold: Fold<T>,
-    doc: doc::CrateDoc
+    fold: &Fold<T>,
+    +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
     {
         topmod: fold.fold_mod(fold, doc.topmod)
@@ -145,28 +145,29 @@ pub fn default_seq_fold_crate<T>(
 }
 
 pub fn default_seq_fold_item<T>(
-    _fold: Fold<T>,
-    doc: doc::ItemDoc
+    _fold: &Fold<T>,
+    +doc: doc::ItemDoc
 ) -> doc::ItemDoc {
     doc
 }
 
 pub fn default_any_fold_mod<T:Send Copy>(
-    fold: Fold<T>,
-    doc: doc::ModDoc
+    fold: &Fold<T>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
+    let fold_copy = copy *fold;
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
-        items: par::map(doc.items, |ItemTag, copy fold| {
-            fold_ItemTag(fold, *ItemTag)
+        items: par::map(doc.items, |ItemTag, move fold_copy| {
+            fold_ItemTag(&fold_copy, *ItemTag)
         }),
         .. *doc
     })
 }
 
 pub fn default_seq_fold_mod<T>(
-    fold: Fold<T>,
-    doc: doc::ModDoc
+    fold: &Fold<T>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
@@ -178,34 +179,36 @@ pub fn default_seq_fold_mod<T>(
 }
 
 pub fn default_par_fold_mod<T:Send Copy>(
-    fold: Fold<T>,
-    doc: doc::ModDoc
+    fold: &Fold<T>,
+    +doc: doc::ModDoc
 ) -> doc::ModDoc {
+    let fold_copy = copy *fold;
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
-        items: par::map(doc.items, |ItemTag, copy fold| {
-            fold_ItemTag(fold, *ItemTag)
+        items: par::map(doc.items, |ItemTag, move fold_copy| {
+            fold_ItemTag(&fold_copy, *ItemTag)
         }),
         .. *doc
     })
 }
 
 pub fn default_any_fold_nmod<T:Send Copy>(
-    fold: Fold<T>,
-    doc: doc::NmodDoc
+    fold: &Fold<T>,
+    +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
+    let fold_copy = copy *fold;
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::map(doc.fns, |FnDoc, copy fold| {
-            fold.fold_fn(fold, *FnDoc)
+        fns: par::map(doc.fns, |FnDoc, move fold_copy| {
+            fold_copy.fold_fn(&fold_copy, *FnDoc)
         }),
         .. doc
     }
 }
 
 pub fn default_seq_fold_nmod<T>(
-    fold: Fold<T>,
-    doc: doc::NmodDoc
+    fold: &Fold<T>,
+    +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -217,19 +220,20 @@ pub fn default_seq_fold_nmod<T>(
 }
 
 pub fn default_par_fold_nmod<T:Send Copy>(
-    fold: Fold<T>,
-    doc: doc::NmodDoc
+    fold: &Fold<T>,
+    +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
+    let fold_copy = copy *fold;
     {
         item: fold.fold_item(fold, doc.item),
-        fns: par::map(doc.fns, |FnDoc, copy fold| {
-            fold.fold_fn(fold, *FnDoc)
+        fns: par::map(doc.fns, |FnDoc, move fold_copy| {
+            fold_copy.fold_fn(&fold_copy, *FnDoc)
         }),
         .. doc
     }
 }
 
-pub fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
+pub fn fold_ItemTag<T>(fold: &Fold<T>, +doc: doc::ItemTag) -> doc::ItemTag {
     match doc {
       doc::ModTag(ModDoc) => {
         doc::ModTag(fold.fold_mod(fold, ModDoc))
@@ -262,8 +266,8 @@ pub fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
 }
 
 pub fn default_seq_fold_fn<T>(
-    fold: Fold<T>,
-    doc: doc::FnDoc
+    fold: &Fold<T>,
+    +doc: doc::FnDoc
 ) -> doc::FnDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -272,8 +276,8 @@ pub fn default_seq_fold_fn<T>(
 }
 
 pub fn default_seq_fold_const<T>(
-    fold: Fold<T>,
-    doc: doc::ConstDoc
+    fold: &Fold<T>,
+    +doc: doc::ConstDoc
 ) -> doc::ConstDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -282,8 +286,8 @@ pub fn default_seq_fold_const<T>(
 }
 
 pub fn default_seq_fold_enum<T>(
-    fold: Fold<T>,
-    doc: doc::EnumDoc
+    fold: &Fold<T>,
+    +doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -292,8 +296,8 @@ pub fn default_seq_fold_enum<T>(
 }
 
 pub fn default_seq_fold_trait<T>(
-    fold: Fold<T>,
-    doc: doc::TraitDoc
+    fold: &Fold<T>,
+    +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -302,8 +306,8 @@ pub fn default_seq_fold_trait<T>(
 }
 
 pub fn default_seq_fold_impl<T>(
-    fold: Fold<T>,
-    doc: doc::ImplDoc
+    fold: &Fold<T>,
+    +doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -312,8 +316,8 @@ pub fn default_seq_fold_impl<T>(
 }
 
 pub fn default_seq_fold_type<T>(
-    fold: Fold<T>,
-    doc: doc::TyDoc
+    fold: &Fold<T>,
+    +doc: doc::TyDoc
 ) -> doc::TyDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -322,8 +326,8 @@ pub fn default_seq_fold_type<T>(
 }
 
 pub fn default_seq_fold_struct<T>(
-    fold: Fold<T>,
-    doc: doc::StructDoc
+    fold: &Fold<T>,
+    +doc: doc::StructDoc
 ) -> doc::StructDoc {
     {
         item: fold.fold_item(fold, doc.item),
@@ -337,7 +341,7 @@ fn default_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(fld, doc);
+    let folded = fld.fold_doc(&fld, doc);
     assert doc == folded;
 }
 
@@ -347,7 +351,7 @@ fn default_fold_should_produce_same_consts() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(fld, doc);
+    let folded = fld.fold_doc(&fld, doc);
     assert doc == folded;
 }
 
@@ -357,7 +361,7 @@ fn default_fold_should_produce_same_enums() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(fld, doc);
+    let folded = fld.fold_doc(&fld, doc);
     assert doc == folded;
 }
 
@@ -367,6 +371,6 @@ fn default_parallel_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());
-    let folded = fld.fold_doc(fld, doc);
+    let folded = fld.fold_doc(&fld, doc);
     assert doc == folded;
 }

@@ -16,7 +16,7 @@ pub fn mk_pass() -> Pass {
 
 fn run(
     _srv: astsrv::Srv,
-    doc: doc::Doc
+    +doc: doc::Doc
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_item: fold_item,
@@ -24,10 +24,10 @@ fn run(
         fold_impl: fold_impl,
         .. *fold::default_any_fold(())
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
-fn fold_item(fold: fold::Fold<()>, doc: doc::ItemDoc) -> doc::ItemDoc {
+fn fold_item(fold: &fold::Fold<()>, +doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     {
@@ -36,7 +36,7 @@ fn fold_item(fold: fold::Fold<()>, doc: doc::ItemDoc) -> doc::ItemDoc {
     }
 }
 
-fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
+fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc =fold::default_seq_fold_trait(fold, doc);
 
     {
@@ -48,7 +48,7 @@ fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
     }
 }
 
-fn fold_impl(fold: fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
+fn fold_impl(fold: &fold::Fold<()>, +doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
     {

@@ -17,7 +17,7 @@ pub type CrateAttrs = {
 mod test {
     #[legacy_exports];
 
-    fn parse_attributes(source: ~str) -> ~[ast::attribute] {
+    fn parse_attributes(+source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
         use parse::parser;
         use parse::attr::parser_attr;
@@ -33,7 +33,7 @@ mod test {
 }
 
 fn doc_metas(
-    attrs: ~[ast::attribute]
+    +attrs: ~[ast::attribute]
 ) -> ~[@ast::meta_item] {
 
     let doc_attrs = attr::find_attrs_by_name(attrs, ~"doc");
@@ -44,7 +44,7 @@ fn doc_metas(
     return doc_metas;
 }
 
-pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
+pub fn parse_crate(+attrs: ~[ast::attribute]) -> CrateAttrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
@@ -76,7 +76,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     assert attrs.name == None;
 }
 
-pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
+pub fn parse_desc(+attrs: ~[ast::attribute]) -> Option<~str> {
     let doc_strs = do doc_metas(attrs).filter_map |meta| {
         attr::get_meta_item_value_str(*meta)
     };
@@ -103,7 +103,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
     assert attrs == Some(~"basic");
 }
 
-pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
+pub fn parse_hidden(+attrs: ~[ast::attribute]) -> bool {
     do doc_metas(attrs).find |meta| {
         match attr::get_meta_item_list(meta) {
           Some(metas) => {

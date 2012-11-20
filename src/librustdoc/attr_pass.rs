@@ -21,7 +21,7 @@ pub fn mk_pass() -> Pass {
 
 fn run(
     srv: astsrv::Srv,
-    doc: doc::Doc
+    +doc: doc::Doc
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_crate: fold_crate,
@@ -31,12 +31,12 @@ fn run(
         fold_impl: fold_impl,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(fold, doc)
+    fold.fold_doc(&fold, doc)
 }
 
 fn fold_crate(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::CrateDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
     let srv = fold.ctxt;
@@ -65,8 +65,8 @@ fn should_replace_top_module_name_with_crate_name() {
 }
 
 fn fold_item(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::ItemDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::ItemDoc
 ) -> doc::ItemDoc {
 
     let srv = fold.ctxt;
@@ -90,7 +90,7 @@ fn fold_item(
 fn parse_item_attrs<T:Send>(
     srv: astsrv::Srv,
     id: doc::AstId,
-    +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
+    +parse_attrs: fn~(+a: ~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |move parse_attrs, ctxt| {
         let attrs = match ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) => item.attrs,
@@ -132,8 +132,8 @@ fn should_extract_fn_attributes() {
 }
 
 fn fold_enum(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::EnumDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::EnumDoc
 ) -> doc::EnumDoc {
 
     let srv = fold.ctxt;
@@ -183,8 +183,8 @@ fn should_extract_variant_docs() {
 }
 
 fn fold_trait(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::TraitDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_trait(fold, doc);
@@ -259,8 +259,8 @@ fn should_extract_trait_method_docs() {
 
 
 fn fold_impl(
-    fold: fold::Fold<astsrv::Srv>,
-    doc: doc::ImplDoc
+    fold: &fold::Fold<astsrv::Srv>,
+    +doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_impl(fold, doc);

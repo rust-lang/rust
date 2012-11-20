@@ -1,5 +1,6 @@
 use result::Result;
 use std::getopts;
+use std::cell::Cell;
 
 /// The type of document to output
 pub enum OutputFormat {
@@ -115,13 +116,13 @@ fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     }
 }
 
-fn parse_config(args: ~[~str]) -> Result<Config, ~str> {
+fn parse_config(args: &[~str]) -> Result<Config, ~str> {
     parse_config_(args, run::program_output)
 }
 
 fn parse_config_(
-    args: ~[~str],
-    program_output: ProgramOutput
+    args: &[~str],
+    +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
     let args = vec::tail(args);
     let opts = vec::unzip(opts()).first();
@@ -129,7 +130,7 @@ fn parse_config_(
         result::Ok(matches) => {
             if vec::len(matches.free) == 1u {
                 let input_crate = Path(vec::head(matches.free));
-                config_from_opts(&input_crate, matches, program_output)
+                config_from_opts(&input_crate, matches, move program_output)
             } else if vec::is_empty(matches.free) {
                 result::Err(~"no crates specified")
             } else {
@@ -144,8 +145,8 @@ fn parse_config_(
 
 fn config_from_opts(
     input_crate: &Path,
-    matches: getopts::Matches,
-    program_output: ProgramOutput
+    +matches: getopts::Matches,
+    +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
 
     let config = default_config(input_crate);
@@ -187,10 +188,11 @@ fn config_from_opts(
             }
         }
     };
+    let program_output = Cell(move program_output);
     let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
-            config, pandoc_cmd, program_output);
+            &config, pandoc_cmd, move program_output.take());
         do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::Ok({
                 pandoc_cmd: pandoc_cmd,
@@ -201,16 +203,16 @@ fn config_from_opts(
     return result;
 }
 
-fn parse_output_format(output_format: ~str) -> Result<OutputFormat, ~str> {
-    match output_format {
+fn parse_output_format(output_format: &str) -> Result<OutputFormat, ~str> {
+    match output_format.to_str() {
       ~"markdown" => result::Ok(Markdown),
       ~"html" => result::Ok(PandocHtml),
       _ => result::Err(fmt!("unknown output format '%s'", output_format))
     }
 }
 
-fn parse_output_style(output_style: ~str) -> Result<OutputStyle, ~str> {
-    match output_style {
+fn parse_output_style(output_style: &str) -> Result<OutputStyle, ~str> {
+    match output_style.to_str() {
       ~"doc-per-crate" => result::Ok(DocPerCrate),
       ~"doc-per-mod" => result::Ok(DocPerMod),
       _ => result::Err(fmt!("unknown output style '%s'", output_style))
@@ -218,9 +220,9 @@ fn parse_output_style(output_style: ~str) -> Result<OutputStyle, ~str> {
 }
 
 fn maybe_find_pandoc(
-    config: Config,
-    maybe_pandoc_cmd: Option<~str>,
-    program_output: ProgramOutput
+    config: &Config,
+    +maybe_pandoc_cmd: Option<~str>,
+    +program_output: ProgramOutput
 ) -> Result<Option<~str>, ~str> {
     if config.output_format != PandocHtml {
         return result::Ok(maybe_pandoc_cmd);
@@ -264,7 +266,7 @@ fn should_find_pandoc() {
             status: 0, out: ~"pandoc 1.8.2.1", err: ~""
         }
     };
-    let result = maybe_find_pandoc(config, None, mock_program_output);
+    let result = maybe_find_pandoc(&config, None, move mock_program_output);
     assert result == result::Ok(Some(~"pandoc"));
 }
 
@@ -281,14 +283,14 @@ fn should_error_with_no_pandoc() {
             status: 1, out: ~"", err: ~""
         }
     };
-    let result = maybe_find_pandoc(config, None, mock_program_output);
+    let result = maybe_find_pandoc(&config, None, move mock_program_output);
     assert result == result::Err(~"couldn't find pandoc");
 }
 
 #[cfg(test)]
 mod test {
     #[legacy_exports];
-    fn parse_config(args: ~[~str]) -> Result<Config, ~str> {
+    fn parse_config(args: &[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_program_output)
     }
 }
