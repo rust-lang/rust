@@ -1,4 +1,46 @@
-#[doc(hidden)];
+//! Support for fmt! expressions.
+//!
+//! The syntax is close to that of Posix format strings:
+//!
+//! ~~~~~~
+//! Format := '%' Parameter? Flag* Width? Precision? Type
+//! Parameter := [0-9]+ '$'
+//! Flag := [ 0#+-]
+//! Width := Parameter | [0-9]+
+//! Precision := '.' [0-9]+
+//! Type := [bcdfiostuxX?]
+//! ~~~~~~
+//!
+//! * Parameter is the 1-based argument to apply the format to. Currently not
+//! implemented.
+//! * Flag 0 causes leading zeros to be used for padding when converting
+//! numbers.
+//! * Flag # causes the conversion to be done in an *alternative* manner.
+//! Currently not implemented.
+//! * Flag + causes signed numbers to always be prepended with a sign
+//! character.
+//! * Flag - left justifies the result
+//! * Width specifies the minimum field width of the result. By default
+//! leading spaces are added.
+//! * Precision specifies the minimum number of digits for integral types
+//! and the minimum number
+//! of decimal places for float.
+//!
+//! The types currently supported are:
+//!
+//! * b - bool
+//! * c - char
+//! * d - int
+//! * f - float
+//! * i - int (same as d)
+//! * o - uint as octal
+//! * t - uint as binary
+//! * u - uint
+//! * x - uint as lower-case hexadecimal
+//! * X - uint as upper-case hexadecimal
+//! * s - str (any flavor)
+//! * ? - arbitrary type (does not use the to_str trait)
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
@@ -44,6 +86,7 @@ use option::{Some, None};
  */
 
 // Functions used by the fmt extension at compile time
+#[doc(hidden)]
 pub mod ct {
     pub enum Signedness { Signed, Unsigned, }
     pub enum Caseness { CaseUpper, CaseLower, }
@@ -277,6 +320,7 @@ pub mod ct {
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
+#[doc(hidden)]
 pub mod rt {
     pub const flag_none : u32 = 0u32;
     pub const flag_left_justify   : u32 = 0b00000000000001u32;
@@ -483,6 +527,7 @@ pub mod rt {
     }
 }
 
+// Bulk of the tests are in src/test/run-pass/syntax-extension-fmt.rs
 #[cfg(test)]
 mod test {
     #[test]

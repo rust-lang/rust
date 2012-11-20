@@ -510,9 +510,8 @@ For parsing reasons, delimiters must be balanced, but they are otherwise not spe
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the
 Rust syntax named by _designator_. Valid designators are `item`, `block`,
-`stmt`, `pat`, `expr`, `ty`, `ident`, `path`, `tt`, `matchers`. The last two
-are the right-hand side and the left-hand side respectively of the `=>` in
-macro rules. In the transcriber, the designator is already known, and so only
+`stmt`, `pat`, `expr`, `ty` (type), `ident`, `path`, `matchers` (lhs of the `=>` in macro rules), 
+`tt` (rhs of the `=>` in macro rules). In the transcriber, the designator is already known, and so only
 the name of a matched nonterminal comes after the dollar sign.
 
 In both the matcher and transcriber, the Kleene star-like operator indicates repetition.
@@ -799,7 +798,7 @@ extern mod ruststd (name = "std"); // linking to 'std' under another name
 ##### Use declarations
 
 ~~~~~~~~ {.ebnf .gram}
-use_decl : "use" ident [ '=' path
+use_decl : "pub"? "use" ident [ '=' path
                           | "::" path_glob ] ;
 
 path_glob : ident [ "::" path_glob ] ?
@@ -1104,6 +1103,17 @@ Constants are declared with the `const` keyword.
 A constant item must have an expression giving its definition.
 The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
 
+Constants must be explicitly typed. The type may be ```bool```, ```char```, a number, or a type derived from
+those primitive types. The derived types are borrowed pointers, static arrays, tuples, and structs.
+
+~~~~
+const bit1: uint = 1 << 0;
+const bit2: uint = 1 << 1;
+
+const bits: [uint * 2] = [bit1, bit2];
+const bits_r: &[uint] = &bits;
+~~~~
+
 ### Traits
 
 A _trait_ describes a set of method types.
@@ -1174,6 +1184,9 @@ along with information that identifies the methods of the implementation that wa
 Values with a trait type can have [methods called](#method-call-expressions) on them,
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
+
+Trait methods may be static. Currently implementations of static methods behave like
+functions declared in the implentation's module.
 
 ### Implementations
 
@@ -1304,9 +1317,8 @@ Attributes may appear as any of
 * An identifier followed by the equals sign '=' and a literal, providing a key/value pair
 * An identifier followed by a parenthesized list of sub-attribute arguments
 
-Attributes are applied to an entity by placing them within a hash-list
-(`#[...]`) as either a prefix to the entity or as a semicolon-delimited
-declaration within the entity body.
+Attributes terminated by a semi-colon apply to the entity that the attribute is declared
+within. Attributes that are not terminated by a semi-colon apply to the next entity.
 
 An example of attributes:
 
@@ -1326,9 +1338,9 @@ mod bar {
   ...
 }
 
-// A documentation attribute
-#[doc = "Add two numbers together."]
-fn add(x: int, y: int) { x + y }
+// A lint attribute used to suppress a warning/error
+#[allow(non_camel_case_types)]
+pub type int8_t = i8;
 ~~~~~~~~
 
 > **Note:** In future versions of Rust, user-provided extensions to the compiler will be able to interpret attributes.
@@ -1341,6 +1353,8 @@ names are effectively reserved. Some significant attributes include:
 * The `cfg` attribute, for conditional-compilation by build-configuration.
 * The `link` attribute, for describing linkage metadata for a crate.
 * The `test` attribute, for marking functions as unit tests.
+* The `allow`, `warn`, `forbid`, and `deny` attributes, for controling lint checks. Lint checks supported
+by the compiler can be found via `rustc -W help`.
 
 Other attributes may be added or removed during development of the language.
 
@@ -1546,7 +1560,9 @@ it is automatically derferenced to make the field access possible.
 ### Vector expressions
 
 ~~~~~~~~{.ebnf .gram}
-vec_expr : '[' "mut" ? [ expr [ ',' expr ] * ] ? ']'
+vec_expr : '[' "mut"? vec_elems? ']'
+
+vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 ~~~~~~~~
 
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
@@ -1558,6 +1574,7 @@ When no mutability is specified, the vector is immutable.
 ~~~~
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
+[0, ..128];             // vector with 128 zeros
 [mut 0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -1889,7 +1906,7 @@ let x: int = add(1, 2);
 
 ~~~~~~~~ {.abnf .gram}
 ident_list : [ ident [ ',' ident ]* ] ? ;
-lambda_expr : '|' ident_list '| expr ;
+lambda_expr : '|' ident_list '|' expr ;
 ~~~~~~~~
 
 A _lambda expression_ (a.k.a. "anonymous function expression") defines a function and denotes it as a value,
@@ -2169,17 +2186,6 @@ Records and structures can also be pattern-matched and their fields bound to var
 When matching fields of a record,
 the fields being matched are specified first,
 then a placeholder (`_`) represents the remaining fields.
-
-A pattern that's just a variable binding,
-like `Nil` in the previous answer,
-could either refer to an enum variant that's in scope,
-or bind a new variable.
-The compiler resolves this ambiguity by forbidding variable bindings that occur in ```match``` patterns from shadowing names of variants that are in scope.
-For example, wherever ```List``` is in scope,
-a ```match``` pattern would not be able to bind ```Nil``` as a new name.
-The compiler interprets a variable pattern `x` as a binding _only_ if there is no variant named `x` in scope.
-A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
-and local variables with lower-case letters.
  
 ~~~~
 # type options = {choose: bool, size: ~str};
@@ -2211,6 +2217,22 @@ fn main() {
     }
 }
 ~~~~
+
+Patterns that bind variables default to binding to a copy of the matched value. This can be made
+explicit using the ```copy``` keyword, changed to bind to a borrowed pointer by using the ```ref```
+keyword, or to a mutable borrowed pointer using ```ref mut```, or the value can be moved into
+the new binding using ```move```.
+
+A pattern that's just an identifier,
+like `Nil` in the previous answer,
+could either refer to an enum variant that's in scope,
+or bind a new variable.
+The compiler resolves this ambiguity by forbidding variable bindings that occur in ```match``` patterns from shadowing names of variants that are in scope.
+For example, wherever ```List``` is in scope,
+a ```match``` pattern would not be able to bind ```Nil``` as a new name.
+The compiler interprets a variable pattern `x` as a binding _only_ if there is no variant named `x` in scope.
+A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
+and local variables with lower-case letters.
 
 Multiple match patterns may be joined with the `|` operator.  A
 range of values may be specified with `..`. For example:
