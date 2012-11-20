@@ -1,13 +1,15 @@
 /// The compiler code necessary to implement the #[deriving_eq] and
 /// #[deriving_ord] extensions.
 
-use ast::{and, bind_by_value, binop, blk, default_blk, deref, enum_def, expr};
+use ast::{and, bind_by_ref, binop, blk, default_blk, deref, enum_def};
+use ast::{enum_variant_kind, expr};
 use ast::{expr_, expr_addr_of, expr_binary, expr_call, expr_field, expr_lit};
 use ast::{expr_match, expr_path, expr_unary, ident, infer, item, item_};
 use ast::{item_class, item_enum, item_impl, lit_bool, m_imm, meta_item};
 use ast::{method, named_field, or, pat, pat_ident, pat_wild, path, public};
-use ast::{pure_fn, re_anon, return_val, struct_def, sty_region, ty_path};
-use ast::{ty_rptr, unnamed_field};
+use ast::{pure_fn, re_anon, return_val, struct_def, struct_variant_kind};
+use ast::{sty_region, tuple_variant_kind, ty_path};
+use ast::{ty_rptr, unnamed_field, variant};
 use base::ext_ctxt;
 use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
@@ -174,6 +176,99 @@ fn create_derived_impl(cx: ext_ctxt,
     return create_impl_item(cx, span, move impl_item);
 }
 
+fn create_enum_variant_pattern(cx: ext_ctxt,
+                               span: span,
+                               variant: &ast::variant,
+                               prefix: ~str)
+                            -> @ast::pat {
+    let variant_ident = variant.node.name;
+    match variant.node.kind {
+        tuple_variant_kind(ref variant_args) => {
+            if variant_args.len() == 0 {
+                return build::mk_pat_ident(cx, span, variant_ident);
+            }
+
+            let subpats = dvec::DVec();
+            for variant_args.each |_variant_arg| {
+                // Create the subidentifier.
+                let index = subpats.len().to_str();
+                let ident = cx.ident_of(prefix + index);
+
+                // Create the subpattern.
+                let subpath = build::mk_raw_path(span, ~[ ident ]);
+                let subpat = pat_ident(bind_by_ref(m_imm), subpath, None);
+                let subpat = build::mk_pat(cx, span, move subpat);
+                subpats.push(subpat);
+            }
+
+            let matching_path = build::mk_raw_path(span, ~[ variant_ident ]);
+            let subpats = dvec::unwrap(move subpats);
+            return build::mk_pat_enum(cx, span, matching_path, move subpats);
+        }
+        struct_variant_kind(*) => {
+            cx.span_unimpl(span, ~"struct variants for `deriving`");
+        }
+        enum_variant_kind(*) => {
+            cx.span_unimpl(span, ~"enum variants for `deriving`");
+        }
+    }
+}
+
+fn call_substructure_method(cx: ext_ctxt,
+                            span: span,
+                            self_field: @expr,
+                            other_field_ref: @expr,
+                            method_ident: ident,
+                            junction: Junction,
+                            chain_expr: &mut Option<@expr>) {
+    // Call the substructure method.
+    let self_method = build::mk_access_(cx, span, self_field, method_ident);
+    let self_call = build::mk_call_(cx,
+                                    span,
+                                    self_method,
+                                    ~[ other_field_ref ]);
+
+    // Connect to the outer expression if necessary.
+    *chain_expr = match *chain_expr {
+        None => Some(self_call),
+        Some(copy old_outer_expr) => {
+            let binop = junction.to_binop();
+            let chain_expr = build::mk_binary(cx,
+                                              span,
+                                              binop,
+                                              old_outer_expr,
+                                              self_call);
+            Some(chain_expr)
+        }
+    };
+}
+
+fn finish_chain_expr(cx: ext_ctxt,
+                     span: span,
+                     chain_expr: Option<@expr>,
+                     junction: Junction)
+                  -> @expr {
+    match chain_expr {
+        None => {
+            match junction {
+                Conjunction => build::mk_bool(cx, span, true),
+                Disjunction => build::mk_bool(cx, span, false),
+            }
+        }
+        Some(ref outer_expr) => *outer_expr,
+    }
+}
+
+fn variant_arg_count(cx: ext_ctxt, span: span, variant: &variant) -> uint {
+    match variant.node.kind {
+        tuple_variant_kind(args) => args.len(),
+        struct_variant_kind(struct_def) => struct_def.fields.len(),
+        enum_variant_kind(*) => {
+            cx.span_bug(span, ~"variant_arg_count: enum variants deprecated")
+        }
+    }
+}
+
 fn expand_deriving_struct_def(cx: ext_ctxt,
                               span: span,
                               struct_def: &struct_def,
@@ -209,8 +304,6 @@ fn expand_deriving_struct_method(cx: ext_ctxt,
     let self_ident = cx.ident_of(~"self");
     let other_ident = cx.ident_of(~"__other");
 
-    let binop = junction.to_binop();
-
     // Create the body of the method.
     let mut outer_expr = None;
     for struct_def.fields.each |struct_field| {
@@ -232,27 +325,13 @@ fn expand_deriving_struct_method(cx: ext_ctxt,
                                                   ident);
 
                 // Call the substructure method.
-                let self_method = build::mk_access_(cx,
-                                                    span,
-                                                    self_field,
-                                                    method_ident);
-                let self_call = build::mk_call_(cx,
-                                                span,
-                                                self_method,
-                                                ~[ other_field_ref ]);
-
-                // Connect to the outer expression if necessary.
-                outer_expr = match outer_expr {
-                    None => Some(self_call),
-                    Some(old_outer_expr) => {
-                        let chain_expr = build::mk_binary(cx,
-                                                          span,
-                                                          binop,
-                                                          old_outer_expr,
-                                                          self_call);
-                        Some(chain_expr)
-                    }
-                };
+                call_substructure_method(cx,
+                                         span,
+                                         self_field,
+                                         other_field_ref,
+                                         method_ident,
+                                         junction,
+                                         &mut outer_expr);
             }
             unnamed_field => {
                 cx.span_unimpl(span, ~"unnamed fields with `deriving_eq`");
@@ -261,12 +340,7 @@ fn expand_deriving_struct_method(cx: ext_ctxt,
     }
 
     // Create the method itself.
-    let body;
-    match outer_expr {
-        None => cx.span_unimpl(span, ~"empty structs with `deriving_eq`"),
-        Some(outer_expr) => body = outer_expr,
-    }
-
+    let body = finish_chain_expr(cx, span, outer_expr, junction);
     return create_method(cx, span, method_ident, type_ident, body);
 }
 
@@ -305,8 +379,6 @@ fn expand_deriving_enum_method(cx: ext_ctxt,
     let self_ident = cx.ident_of(~"self");
     let other_ident = cx.ident_of(~"__other");
 
-    let _binop = junction.to_binop();
-
     let is_eq;
     match junction {
         Conjunction => is_eq = true,
@@ -317,13 +389,40 @@ fn expand_deriving_enum_method(cx: ext_ctxt,
     let self_arms = dvec::DVec();
     for enum_definition.variants.each |self_variant| {
         let other_arms = dvec::DVec();
-        let self_variant_ident = self_variant.node.name;
 
         // Create the matching pattern.
-        let matching_pat = build::mk_pat_ident(cx, span, self_variant_ident);
+        let matching_pat = create_enum_variant_pattern(cx,
+                                                       span,
+                                                       self_variant,
+                                                       ~"__other");
 
         // Create the matching pattern body.
-        let matching_body_expr = build::mk_bool(cx, span, is_eq);
+        let mut matching_body_expr = None;
+        for uint::range(0, variant_arg_count(cx, span, self_variant)) |i| {
+            // Create the expression for the other field.
+            let other_field_ident = cx.ident_of(~"__other" + i.to_str());
+            let other_field = build::mk_path(cx,
+                                             span,
+                                             ~[ other_field_ident ]);
+
+            // Create the expression for this field.
+            let self_field_ident = cx.ident_of(~"__self" + i.to_str());
+            let self_field = build::mk_path(cx, span, ~[ self_field_ident ]);
+
+            // Call the substructure method.
+            call_substructure_method(cx,
+                                     span,
+                                     self_field,
+                                     other_field,
+                                     method_ident,
+                                     junction,
+                                     &mut matching_body_expr);
+        }
+
+        let matching_body_expr = finish_chain_expr(cx,
+                                                   span,
+                                                   matching_body_expr,
+                                                   junction);
         let matching_body_block = build::mk_simple_block(cx,
                                                          span,
                                                          matching_body_expr);
@@ -358,7 +457,10 @@ fn expand_deriving_enum_method(cx: ext_ctxt,
         other_arms.push(move nonmatching_arm);
 
         // Create the self pattern.
-        let self_pat = build::mk_pat_ident(cx, span, self_variant_ident);
+        let self_pat = create_enum_variant_pattern(cx,
+                                                   span,
+                                                   self_variant,
+                                                   ~"__self");
 
         // Create the self pattern body.
         let other_expr = build::mk_path(cx, span, ~[ other_ident ]);
