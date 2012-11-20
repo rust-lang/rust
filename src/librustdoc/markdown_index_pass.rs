@@ -2,9 +2,7 @@
 
 use doc::ItemUtils;
 
-export mk_pass;
-
-fn mk_pass(config: config::Config) -> Pass {
+pub fn mk_pass(config: config::Config) -> Pass {
     {
         name: ~"markdown_index",
         f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {

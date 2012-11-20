@@ -12,9 +12,7 @@ use syntax::ast;
 use syntax::ast_map;
 use std::map::HashMap;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"attr",
         f: run

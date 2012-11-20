@@ -1,25 +1,4 @@
-export Fold;
-export default_seq_fold;
-export default_seq_fold_doc;
-export default_seq_fold_crate;
-export default_seq_fold_item;
-export default_seq_fold_mod;
-export default_seq_fold_nmod;
-export default_seq_fold_fn;
-export default_seq_fold_const;
-export default_seq_fold_enum;
-export default_seq_fold_trait;
-export default_seq_fold_impl;
-export default_seq_fold_type;
-export default_seq_fold_struct;
-export default_par_fold;
-export default_par_fold_mod;
-export default_par_fold_nmod;
-export default_any_fold;
-export default_any_fold_mod;
-export default_any_fold_nmod;
-
-enum Fold<T> = Fold_<T>;
+pub enum Fold<T> = Fold_<T>;
 
 type FoldDoc<T> = fn~(fold: Fold<T>, doc: doc::Doc) -> doc::Doc;
 type FoldCrate<T> = fn~(fold: Fold<T>, doc: doc::CrateDoc) -> doc::CrateDoc;
@@ -86,7 +65,7 @@ fn mk_fold<T:Copy>(
     })
 }
 
-fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -104,7 +83,7 @@ fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
+pub fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -122,7 +101,7 @@ fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -140,7 +119,7 @@ fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-fn default_seq_fold_doc<T>(fold: Fold<T>, doc: doc::Doc) -> doc::Doc {
+pub fn default_seq_fold_doc<T>(fold: Fold<T>, doc: doc::Doc) -> doc::Doc {
     doc::Doc_({
         pages: do vec::map(doc.pages) |page| {
             match *page {
@@ -156,7 +135,7 @@ fn default_seq_fold_doc<T>(fold: Fold<T>, doc: doc::Doc) -> doc::Doc {
     })
 }
 
-fn default_seq_fold_crate<T>(
+pub fn default_seq_fold_crate<T>(
     fold: Fold<T>,
     doc: doc::CrateDoc
 ) -> doc::CrateDoc {
@@ -165,14 +144,14 @@ fn default_seq_fold_crate<T>(
     }
 }
 
-fn default_seq_fold_item<T>(
+pub fn default_seq_fold_item<T>(
     _fold: Fold<T>,
     doc: doc::ItemDoc
 ) -> doc::ItemDoc {
     doc
 }
 
-fn default_any_fold_mod<T:Send Copy>(
+pub fn default_any_fold_mod<T:Send Copy>(
     fold: Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -185,7 +164,7 @@ fn default_any_fold_mod<T:Send Copy>(
     })
 }
 
-fn default_seq_fold_mod<T>(
+pub fn default_seq_fold_mod<T>(
     fold: Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -198,7 +177,7 @@ fn default_seq_fold_mod<T>(
     })
 }
 
-fn default_par_fold_mod<T:Send Copy>(
+pub fn default_par_fold_mod<T:Send Copy>(
     fold: Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -211,7 +190,7 @@ fn default_par_fold_mod<T:Send Copy>(
     })
 }
 
-fn default_any_fold_nmod<T:Send Copy>(
+pub fn default_any_fold_nmod<T:Send Copy>(
     fold: Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
@@ -224,7 +203,7 @@ fn default_any_fold_nmod<T:Send Copy>(
     }
 }
 
-fn default_seq_fold_nmod<T>(
+pub fn default_seq_fold_nmod<T>(
     fold: Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
@@ -237,7 +216,7 @@ fn default_seq_fold_nmod<T>(
     }
 }
 
-fn default_par_fold_nmod<T:Send Copy>(
+pub fn default_par_fold_nmod<T:Send Copy>(
     fold: Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
@@ -250,7 +229,7 @@ fn default_par_fold_nmod<T:Send Copy>(
     }
 }
 
-fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
+pub fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
     match doc {
       doc::ModTag(ModDoc) => {
         doc::ModTag(fold.fold_mod(fold, ModDoc))
@@ -282,7 +261,7 @@ fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
     }
 }
 
-fn default_seq_fold_fn<T>(
+pub fn default_seq_fold_fn<T>(
     fold: Fold<T>,
     doc: doc::FnDoc
 ) -> doc::FnDoc {
@@ -292,7 +271,7 @@ fn default_seq_fold_fn<T>(
     }
 }
 
-fn default_seq_fold_const<T>(
+pub fn default_seq_fold_const<T>(
     fold: Fold<T>,
     doc: doc::ConstDoc
 ) -> doc::ConstDoc {
@@ -302,7 +281,7 @@ fn default_seq_fold_const<T>(
     }
 }
 
-fn default_seq_fold_enum<T>(
+pub fn default_seq_fold_enum<T>(
     fold: Fold<T>,
     doc: doc::EnumDoc
 ) -> doc::EnumDoc {
@@ -312,7 +291,7 @@ fn default_seq_fold_enum<T>(
     }
 }
 
-fn default_seq_fold_trait<T>(
+pub fn default_seq_fold_trait<T>(
     fold: Fold<T>,
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
@@ -322,7 +301,7 @@ fn default_seq_fold_trait<T>(
     }
 }
 
-fn default_seq_fold_impl<T>(
+pub fn default_seq_fold_impl<T>(
     fold: Fold<T>,
     doc: doc::ImplDoc
 ) -> doc::ImplDoc {
@@ -332,7 +311,7 @@ fn default_seq_fold_impl<T>(
     }
 }
 
-fn default_seq_fold_type<T>(
+pub fn default_seq_fold_type<T>(
     fold: Fold<T>,
     doc: doc::TyDoc
 ) -> doc::TyDoc {
@@ -342,7 +321,7 @@ fn default_seq_fold_type<T>(
     }
 }
 
-fn default_seq_fold_struct<T>(
+pub fn default_seq_fold_struct<T>(
     fold: Fold<T>,
     doc: doc::StructDoc
 ) -> doc::StructDoc {

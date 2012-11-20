@@ -9,9 +9,7 @@ instances where the string containing the doc comment is opened in the
 middle of a line, and each of the following lines is indented.
 */
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"unindent", unindent)
 }
 

@@ -2,9 +2,7 @@
 
 use doc::ItemUtils;
 
-export mk_pass;
-
-fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
+pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {
         name: name,
         f: fn~(move op, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {

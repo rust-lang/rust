@@ -2,9 +2,8 @@
 
 use doc::ItemUtils;
 use std::map::HashMap;
-export mk_pass;
 
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"prune_hidden",
         f: run

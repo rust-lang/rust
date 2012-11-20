@@ -3,9 +3,7 @@
 use doc::ItemUtils;
 use syntax::ast;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"path",
         f: run

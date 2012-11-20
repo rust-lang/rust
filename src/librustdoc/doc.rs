@@ -1,8 +1,8 @@
 //! The document model
 
-type AstId = int;
+pub type AstId = int;
 
-type Doc_ = {
+pub type Doc_ = {
     pages: ~[Page]
 };
 
@@ -23,7 +23,7 @@ impl Doc_ : cmp::Eq {
     pure fn ne(&self, other: &Doc_) -> bool { !(*self).eq(other) }
 }
 
-enum Doc {
+pub enum Doc {
     Doc_(Doc_)
 }
 
@@ -40,7 +40,7 @@ impl Doc : cmp::Eq {
     pure fn ne(&self, other: &Doc) -> bool { *(*self) != *(*other) }
 }
 
-enum Page {
+pub enum Page {
     CratePage(CrateDoc),
     ItemPage(ItemTag)
 }
@@ -88,7 +88,7 @@ impl Page : cmp::Eq {
     pure fn ne(&self, other: &Page) -> bool { !(*self).eq(other) }
 }
 
-enum Implementation {
+pub enum Implementation {
     Required,
     Provided,
 }
@@ -115,7 +115,7 @@ impl Implementation : cmp::Eq {
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-type Section = {
+pub type Section = {
     header: ~str,
     body: ~str
 };
@@ -140,7 +140,7 @@ impl Section : cmp::Eq {
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-type CrateDoc = {
+pub type CrateDoc = {
     topmod: ModDoc,
 };
 
@@ -161,7 +161,7 @@ impl CrateDoc : cmp::Eq {
     pure fn ne(&self, other: &CrateDoc) -> bool { !(*self).eq(other) }
 }
 
-enum ItemTag {
+pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
     ConstTag(ConstDoc),
@@ -300,7 +300,7 @@ impl ItemTag : cmp::Eq {
     pure fn ne(&self, other: &ItemTag) -> bool { !(*self).eq(other) }
 }
 
-type ItemDoc = {
+pub type ItemDoc = {
     id: AstId,
     name: ~str,
     path: ~[~str],
@@ -340,7 +340,7 @@ impl ItemDoc : cmp::Eq {
     pure fn ne(&self, other: &ItemDoc) -> bool { !(*self).eq(other) }
 }
 
-type SimpleItemDoc = {
+pub type SimpleItemDoc = {
     item: ItemDoc,
     sig: Option<~str>
 };
@@ -362,7 +362,7 @@ impl SimpleItemDoc : cmp::Eq {
     pure fn ne(&self, other: &SimpleItemDoc) -> bool { !(*self).eq(other) }
 }
 
-type ModDoc_ = {
+pub type ModDoc_ = {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
@@ -389,7 +389,7 @@ impl ModDoc_ : cmp::Eq {
     pure fn ne(&self, other: &ModDoc_) -> bool { !(*self).eq(other) }
 }
 
-enum ModDoc {
+pub enum ModDoc {
     ModDoc_(ModDoc_)
 }
 
@@ -406,7 +406,7 @@ impl ModDoc : cmp::Eq {
     pure fn ne(&self, other: &ModDoc) -> bool { *(*self) != *(*other) }
 }
 
-type NmodDoc = {
+pub type NmodDoc = {
     item: ItemDoc,
     fns: ~[FnDoc],
     index: Option<Index>
@@ -433,11 +433,11 @@ impl NmodDoc : cmp::Eq {
     pure fn ne(&self, other: &NmodDoc) -> bool { !(*self).eq(other) }
 }
 
-type ConstDoc = SimpleItemDoc;
+pub type ConstDoc = SimpleItemDoc;
 
-type FnDoc = SimpleItemDoc;
+pub type FnDoc = SimpleItemDoc;
 
-type EnumDoc = {
+pub type EnumDoc = {
     item: ItemDoc,
     variants: ~[VariantDoc]
 };
@@ -459,7 +459,7 @@ impl EnumDoc : cmp::Eq {
     pure fn ne(&self, other: &EnumDoc) -> bool { !(*self).eq(other) }
 }
 
-type VariantDoc = {
+pub type VariantDoc = {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
@@ -486,7 +486,7 @@ impl VariantDoc : cmp::Eq {
     pure fn ne(&self, other: &VariantDoc) -> bool { !(*self).eq(other) }
 }
 
-type TraitDoc = {
+pub type TraitDoc = {
     item: ItemDoc,
     methods: ~[MethodDoc]
 };
@@ -508,7 +508,7 @@ impl TraitDoc : cmp::Eq {
     pure fn ne(&self, other: &TraitDoc) -> bool { !(*self).eq(other) }
 }
 
-type MethodDoc = {
+pub type MethodDoc = {
     name: ~str,
     brief: Option<~str>,
     desc: Option<~str>,
@@ -544,7 +544,7 @@ impl MethodDoc : cmp::Eq {
     pure fn ne(&self, other: &MethodDoc) -> bool { !(*self).eq(other) }
 }
 
-type ImplDoc = {
+pub type ImplDoc = {
     item: ItemDoc,
     trait_types: ~[~str],
     self_ty: Option<~str>,
@@ -574,9 +574,9 @@ impl ImplDoc : cmp::Eq {
     pure fn ne(&self, other: &ImplDoc) -> bool { !(*self).eq(other) }
 }
 
-type TyDoc = SimpleItemDoc;
+pub type TyDoc = SimpleItemDoc;
 
-type StructDoc = {
+pub type StructDoc = {
     item: ItemDoc,
     fields: ~[~str],
     sig: Option<~str>
@@ -603,7 +603,7 @@ impl StructDoc : cmp::Eq {
     pure fn ne(&self, other: &StructDoc) -> bool { !(*self).eq(other) }
 }
 
-type Index = {
+pub type Index = {
     entries: ~[IndexEntry]
 };
 
@@ -634,7 +634,7 @@ impl Index : cmp::Eq {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-type IndexEntry = {
+pub type IndexEntry = {
     kind: ~str,
     name: ~str,
     brief: Option<~str>,
@@ -764,7 +764,7 @@ impl ModDoc {
     }
 }
 
-trait PageUtils {
+pub trait PageUtils {
     fn mods() -> ~[ModDoc];
     fn nmods() -> ~[NmodDoc];
     fn fns() -> ~[FnDoc];
@@ -850,7 +850,7 @@ impl ~[Page]: PageUtils {
     }
 }
 
-trait Item {
+pub trait Item {
     pure fn item() -> ItemDoc;
 }
 
@@ -898,7 +898,7 @@ impl StructDoc: Item {
     pure fn item() -> ItemDoc { self.item }
 }
 
-trait ItemUtils {
+pub trait ItemUtils {
     pure fn id() -> AstId;
     pure fn name() -> ~str;
     pure fn path() -> ~[~str];

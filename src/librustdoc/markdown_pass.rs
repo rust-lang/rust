@@ -5,10 +5,7 @@ use markdown_writer::Writer;
 use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
 
-export mk_pass;
-export header_kind, header_name, header_text;
-
-fn mk_pass(+writer_factory: WriterFactory) -> Pass {
+pub fn mk_pass(+writer_factory: WriterFactory) -> Pass {
     let f = fn~(move writer_factory,
                 srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
         run(srv, doc, copy writer_factory)
@@ -183,7 +180,7 @@ fn write_header_(ctxt: Ctxt, lvl: Hlvl, title: ~str) {
     ctxt.w.write_line(~"");
 }
 
-fn header_kind(doc: doc::ItemTag) -> ~str {
+pub fn header_kind(doc: doc::ItemTag) -> ~str {
     match doc {
       doc::ModTag(_) => {
         if doc.id() == syntax::ast::crate_node_id {
@@ -219,7 +216,7 @@ fn header_kind(doc: doc::ItemTag) -> ~str {
     }
 }
 
-fn header_name(doc: doc::ItemTag) -> ~str {
+pub fn header_name(doc: doc::ItemTag) -> ~str {
     let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
     match doc {
       doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
@@ -248,7 +245,7 @@ fn header_name(doc: doc::ItemTag) -> ~str {
     }
 }
 
-fn header_text(doc: doc::ItemTag) -> ~str {
+pub fn header_text(doc: doc::ItemTag) -> ~str {
     match doc {
       doc::ImplTag(ImplDoc) => {
         let header_kind = header_kind(doc);

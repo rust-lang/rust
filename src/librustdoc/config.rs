@@ -1,21 +1,12 @@
 use result::Result;
 use std::getopts;
 
-export OutputFormat;
-export OutputStyle;
-export Config;
-export default_config;
-export parse_config;
-export usage;
-export Markdown, PandocHtml;
-export DocPerCrate, DocPerMod;
-
 /// The type of document to output
-enum OutputFormat {
+pub enum OutputFormat {
     /// Markdown
-    Markdown,
+    pub Markdown,
     /// HTML, via markdown and pandoc
-    PandocHtml
+    pub PandocHtml
 }
 
 impl OutputFormat : cmp::Eq {
@@ -36,11 +27,11 @@ impl OutputFormat : cmp::Eq {
 }
 
 /// How to organize the output
-enum OutputStyle {
+pub enum OutputStyle {
     /// All in a single document
-    DocPerCrate,
+    pub DocPerCrate,
     /// Each module in its own document
-    DocPerMod
+    pub DocPerMod
 }
 
 impl OutputStyle : cmp::Eq {
@@ -61,7 +52,7 @@ impl OutputStyle : cmp::Eq {
 }
 
 /// The configuration for a rustdoc session
-type Config = {
+pub type Config = {
     input_crate: Path,
     output_dir: Path,
     output_format: OutputFormat,
@@ -90,7 +81,7 @@ fn opts() -> ~[(getopts::Opt, ~str)] {
     ]
 }
 
-fn usage() {
+pub fn usage() {
     use io::println;
 
     println(~"Usage: rustdoc [options] <cratefile>\n");
@@ -101,7 +92,7 @@ fn usage() {
     println(~"");
 }
 
-fn default_config(input_crate: &Path) -> Config {
+pub fn default_config(input_crate: &Path) -> Config {
     {
         input_crate: *input_crate,
         output_dir: Path("."),

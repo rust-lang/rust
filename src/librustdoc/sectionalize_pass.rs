@@ -2,9 +2,7 @@
 
 use doc::ItemUtils;
 
-export mk_pass;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     {
         name: ~"sectionalize",
         f: run
