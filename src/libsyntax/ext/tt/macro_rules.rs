@@ -81,12 +81,19 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   success(named_matches) => {
                     let rhs = match rhses[i] {
                         // okay, what's your transcriber?
-                      @matched_nonterminal(nt_tt(@tt)) => tt,
-                      _ => cx.span_bug(sp, ~"bad thing in rhs")
+                        @matched_nonterminal(nt_tt(@tt)) => {
+                            match tt {
+                                // cut off delimiters; don't parse 'em
+                                tt_delim(tts) => tts.slice(1u,tts.len()-1u),
+                                _ => cx.span_fatal(
+                                    sp, ~"macro rhs must be delimited")
+                            }
+                        },
+                        _ => cx.span_bug(sp, ~"bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
-                                               ~[rhs]);
+                                               rhs);
                     let p = @Parser(cx.parse_sess(), cx.cfg(),
                                     trncbr as reader);
 

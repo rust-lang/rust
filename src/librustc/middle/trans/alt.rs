@@ -831,14 +831,14 @@ fn root_pats_as_necessary(bcx: block, m: &[@Match],
 // matches should fit that sort of pattern or NONE (however, some of the
 // matches may be wildcards like _ or identifiers).
 macro_rules! any_pat (
-    ($m:expr, $pattern:pat) => {
+    ($m:expr, $pattern:pat) => (
         vec::any($m, |br| {
             match br.pats[col].node {
                 $pattern => true,
                 _ => false
             }
         })
-    }
+    )
 )
 
 fn any_box_pat(m: &[@Match], col: uint) -> bool {
