@@ -141,6 +141,18 @@ fn mk_block(cx: ext_ctxt, sp: span,
                span: sp };
     mk_expr(cx, sp, ast::expr_block(blk))
 }
+fn mk_block_(cx: ext_ctxt, sp: span, +stmts: ~[@ast::stmt]) -> ast::blk {
+    {
+        node: {
+            view_items: ~[],
+            stmts: move stmts,
+            expr: None,
+            id: cx.next_id(),
+            rules: ast::default_blk
+        },
+        span: sp
+    }
+}
 fn mk_simple_block(cx: ext_ctxt, span: span, expr: @ast::expr) -> ast::blk {
     let block = {
         view_items: ~[],
@@ -176,5 +188,40 @@ fn mk_pat_enum(cx: ext_ctxt,
 fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
     let lit_expr = ast::expr_lit(@{ node: ast::lit_bool(value), span: span });
     build::mk_expr(cx, span, move lit_expr)
+}
+fn mk_stmt(cx: ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
+    let stmt_ = ast::stmt_semi(expr, cx.next_id());
+    @{ node: move stmt_, span: span }
+}
+fn mk_ty_path(cx: ext_ctxt,
+              span: span,
+              idents: ~[ ast::ident ])
+           -> @ast::Ty {
+    let ty = build::mk_raw_path(span, idents);
+    let ty = ast::ty_path(ty, cx.next_id());
+    let ty = @{ id: cx.next_id(), node: move ty, span: span };
+    ty
+}
+fn mk_simple_ty_path(cx: ext_ctxt,
+                     span: span,
+                     ident: ast::ident)
+                  -> @ast::Ty {
+    mk_ty_path(cx, span, ~[ ident ])
+}
+fn mk_arg(cx: ext_ctxt,
+          span: span,
+          ident: ast::ident,
+          ty: @ast::Ty)
+       -> ast::arg {
+    let arg_pat = mk_pat_ident(cx, span, ident);
+    {
+        mode: ast::infer(cx.next_id()),
+        ty: ty,
+        pat: arg_pat,
+        id: cx.next_id()
+    }
+}
+fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
+    { inputs: move inputs, output: output, cf: ast::return_val }
 }
 
