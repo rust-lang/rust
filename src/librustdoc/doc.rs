@@ -765,20 +765,20 @@ impl ModDoc {
 }
 
 pub trait PageUtils {
-    fn mods() -> ~[ModDoc];
-    fn nmods() -> ~[NmodDoc];
-    fn fns() -> ~[FnDoc];
-    fn consts() -> ~[ConstDoc];
-    fn enums() -> ~[EnumDoc];
-    fn traits() -> ~[TraitDoc];
-    fn impls() -> ~[ImplDoc];
-    fn types() -> ~[TyDoc];
+    fn mods(&self) -> ~[ModDoc];
+    fn nmods(&self) -> ~[NmodDoc];
+    fn fns(&self) -> ~[FnDoc];
+    fn consts(&self) -> ~[ConstDoc];
+    fn enums(&self) -> ~[EnumDoc];
+    fn traits(&self) -> ~[TraitDoc];
+    fn impls(&self) -> ~[ImplDoc];
+    fn types(&self) -> ~[TyDoc];
 }
 
 impl ~[Page]: PageUtils {
 
-    fn mods() -> ~[ModDoc] {
-        do vec::filter_map(self) |page| {
+    fn mods(&self) -> ~[ModDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(ModTag(ModDoc)) => Some(ModDoc),
               _ => None
@@ -786,8 +786,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn nmods() -> ~[NmodDoc] {
-        do vec::filter_map(self) |page| {
+    fn nmods(&self) -> ~[NmodDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(NmodTag(nModDoc)) => Some(nModDoc),
               _ => None
@@ -795,8 +795,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn fns() -> ~[FnDoc] {
-        do vec::filter_map(self) |page| {
+    fn fns(&self) -> ~[FnDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(FnTag(FnDoc)) => Some(FnDoc),
               _ => None
@@ -804,8 +804,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn consts() -> ~[ConstDoc] {
-        do vec::filter_map(self) |page| {
+    fn consts(&self) -> ~[ConstDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(ConstTag(ConstDoc)) => Some(ConstDoc),
               _ => None
@@ -813,8 +813,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn enums() -> ~[EnumDoc] {
-        do vec::filter_map(self) |page| {
+    fn enums(&self) -> ~[EnumDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(EnumTag(EnumDoc)) => Some(EnumDoc),
               _ => None
@@ -822,8 +822,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn traits() -> ~[TraitDoc] {
-        do vec::filter_map(self) |page| {
+    fn traits(&self) -> ~[TraitDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(TraitTag(TraitDoc)) => Some(TraitDoc),
               _ => None
@@ -831,8 +831,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn impls() -> ~[ImplDoc] {
-        do vec::filter_map(self) |page| {
+    fn impls(&self) -> ~[ImplDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(ImplTag(ImplDoc)) => Some(ImplDoc),
               _ => None
@@ -840,8 +840,8 @@ impl ~[Page]: PageUtils {
         }
     }
 
-    fn types() -> ~[TyDoc] {
-        do vec::filter_map(self) |page| {
+    fn types(&self) -> ~[TyDoc] {
+        do vec::filter_map(*self) |page| {
             match *page {
               ItemPage(TyTag(TyDoc)) => Some(TyDoc),
               _ => None
@@ -851,12 +851,12 @@ impl ~[Page]: PageUtils {
 }
 
 pub trait Item {
-    pure fn item() -> ItemDoc;
+    pure fn item(&self) -> ItemDoc;
 }
 
 impl ItemTag: Item {
-    pure fn item() -> ItemDoc {
-        match self {
+    pure fn item(&self) -> ItemDoc {
+        match *self {
           doc::ModTag(doc) => doc.item,
           doc::NmodTag(doc) => doc.item,
           doc::FnTag(doc) => doc.item,
@@ -871,64 +871,64 @@ impl ItemTag: Item {
 }
 
 impl SimpleItemDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl ModDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl NmodDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl EnumDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl TraitDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl ImplDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 impl StructDoc: Item {
-    pure fn item() -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { self.item }
 }
 
 pub trait ItemUtils {
-    pure fn id() -> AstId;
-    pure fn name() -> ~str;
-    pure fn path() -> ~[~str];
-    pure fn brief() -> Option<~str>;
-    pure fn desc() -> Option<~str>;
-    pure fn sections() -> ~[Section];
+    pure fn id(&self) -> AstId;
+    pure fn name(&self) -> ~str;
+    pure fn path(&self) -> ~[~str];
+    pure fn brief(&self) -> Option<~str>;
+    pure fn desc(&self) -> Option<~str>;
+    pure fn sections(&self) -> ~[Section];
 }
 
 impl<A:Item> A: ItemUtils {
-    pure fn id() -> AstId {
+    pure fn id(&self) -> AstId {
         self.item().id
     }
 
-    pure fn name() -> ~str {
+    pure fn name(&self) -> ~str {
         self.item().name
     }
 
-    pure fn path() -> ~[~str] {
+    pure fn path(&self) -> ~[~str] {
         self.item().path
     }
 
-    pure fn brief() -> Option<~str> {
+    pure fn brief(&self) -> Option<~str> {
         self.item().brief
     }
 
-    pure fn desc() -> Option<~str> {
+    pure fn desc(&self) -> Option<~str> {
         self.item().desc
     }
 
-    pure fn sections() -> ~[Section] {
+    pure fn sections(&self) -> ~[Section] {
         self.item().sections
     }
 }
