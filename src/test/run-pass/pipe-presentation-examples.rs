@@ -54,12 +54,12 @@ macro_rules! select (
             $($message:path$(($($x: ident),+))dont_type_this*
               -> $next:ident $e:expr),+
         } )+
-    } => {
+    } => ({
         let index = pipes::selecti([$(($port).header()),+]);
         select_if!(index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+)
-    }
+    })
 )
 
 // Types and protocols
