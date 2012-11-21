@@ -116,7 +116,7 @@ fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     }
 }
 
-fn parse_config(args: &[~str]) -> Result<Config, ~str> {
+pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
     parse_config_(args, run::program_output)
 }
 
