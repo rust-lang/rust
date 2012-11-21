@@ -100,6 +100,9 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"deriving_eq",
                             item_decorator(
                                 ext::deriving::expand_deriving_eq));
+    syntax_expanders.insert(~"deriving_iter_bytes",
+                            item_decorator(
+                                ext::deriving::expand_deriving_iter_bytes));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(~"quote_tokens",
