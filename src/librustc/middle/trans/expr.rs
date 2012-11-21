@@ -392,7 +392,8 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
-        ast::expr_vstore(contents, ast::expr_vstore_box) => {
+        ast::expr_vstore(contents, ast::expr_vstore_box) |
+        ast::expr_vstore(contents, ast::expr_vstore_mut_box) => {
             return tvec::trans_uniq_or_managed_vstore(bcx, heap_shared,
                                                       expr, contents);
         }
