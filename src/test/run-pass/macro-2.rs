@@ -3,10 +3,10 @@
 fn main() {
 
     macro_rules! mylambda_tt(
-        ($x:ident, $body:expr) => {
+        ($x:ident, $body:expr) => ({
             fn f($x: int) -> int { return $body; };
             f
-        }
+        })
     )
 
     assert(mylambda_tt!(y, y * 2)(8) == 16)

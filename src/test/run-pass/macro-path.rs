@@ -2,13 +2,11 @@ mod m {
     pub type t = int;
 }
 
-fn macros() {
-    macro_rules! foo {
-        ($p:path) => {
-            fn f() -> $p { 10 }
-            f()
-        }
-    }
+macro_rules! foo {
+    ($p:path) => ({
+        fn f() -> $p { 10 };
+        f()
+    })
 }
 
 fn main() {
