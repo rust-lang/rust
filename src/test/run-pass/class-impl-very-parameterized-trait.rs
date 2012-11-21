@@ -61,10 +61,17 @@ impl<T: Copy> cat<T> : Map<int, T> {
      else { None }
   }
 
-  fn insert_with_key(ff: fn(+k: int, +v0: T, +v1: T) -> T, +key: int, +val: T) -> bool {
+  fn insert_with_key(+key: int, +val: T, ff: fn(+k: int, +v0: T, +v1: T) -> T) -> bool {
     match self.find(key) {
       None            => return self.insert(key, val),
       Some(copy orig) => return self.insert(key, ff(key, orig, val))
+    }
+  }
+
+  fn insert_with(+key: int, +val: T, ff: fn(+v0: T, +v1: T) -> T) -> bool {
+    match self.find(key) {
+      None            => return self.insert(key, val),
+      Some(copy orig) => return self.insert(key, ff(orig, val))
     }
   }
 
