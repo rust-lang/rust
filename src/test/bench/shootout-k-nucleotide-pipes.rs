@@ -69,7 +69,7 @@ fn find(mm: HashMap<~[u8], uint>, key: ~str) -> uint {
 // given a map, increment the counter for a key
 fn update_freq(mm: HashMap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
-    mm.insert_with_key(|k,v,v1| {v + v1}, key, 1);
+    mm.insert_with(key, 1, |v,v1| { v+v1 });
 }
 
 // given a ~[u8], for each window call a function
