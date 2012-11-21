@@ -2253,7 +2253,8 @@ impl Parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            match self.parse_item_or_view_item(item_attrs, true, false) {
+            match self.parse_item_or_view_item(item_attrs,
+                                               true, false, false) {
               iovi_item(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2333,7 +2334,7 @@ impl Parser {
 
         let {attrs_remaining, view_items, items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            IMPORTS_AND_ITEMS_ALLOWED);
+                                            IMPORTS_AND_ITEMS_ALLOWED, false);
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
@@ -2968,7 +2969,8 @@ impl Parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            VIEW_ITEMS_AND_ITEMS_ALLOWED);
+                                            VIEW_ITEMS_AND_ITEMS_ALLOWED,
+                                            true);
         let mut items: ~[@item] = move starting_items;
 
         let mut first = true;
@@ -2980,7 +2982,7 @@ impl Parser {
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
                    attrs);
-            match self.parse_item_or_view_item(attrs, true, false) {
+            match self.parse_item_or_view_item(attrs, true, false, true) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
                 self.span_fatal(view_item.span, ~"view items must be \
@@ -3168,7 +3170,8 @@ impl Parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: _, foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
-                                        VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED);
+                                         VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
+                                            true);
 
         let mut items: ~[@foreign_item] = move foreign_items;
         let mut initial_attrs = attrs_remaining;
@@ -3472,7 +3475,8 @@ impl Parser {
     }
 
     fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool,
-                               foreign_items_allowed: bool)
+                               foreign_items_allowed: bool,
+                               macros_allowed: bool)
                             -> item_or_view_item {
         assert items_allowed != foreign_items_allowed;
 
@@ -3581,9 +3585,11 @@ impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if items_allowed && (!self.is_any_keyword(copy self.token)
+        } else if macros_allowed && !self.is_any_keyword(copy self.token)
                 && self.look_ahead(1) == token::NOT
-                && is_plain_ident(self.look_ahead(2))) {
+                && (is_plain_ident(self.look_ahead(2))
+                    || self.look_ahead(2) == token::LPAREN
+                    || self.look_ahead(2) == token::LBRACE) {
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
@@ -3591,10 +3597,10 @@ impl Parser {
             // a 'special' identifier (like what `macro_rules!` uses)
             // is optional. We should eventually unify invoc syntax
             // and remove this.
-            let id = if self.token == token::LPAREN {
-                token::special_idents::invalid // no special identifier
-            } else {
+            let id = if is_plain_ident(self.token) {
                 self.parse_ident()
+            } else {
+                token::special_idents::invalid // no special identifier
             };
             let tts = match self.token {
               token::LPAREN | token::LBRACE => {
@@ -3624,7 +3630,7 @@ impl Parser {
     }
 
     fn parse_item(+attrs: ~[attribute]) -> Option<@ast::item> {
-        match self.parse_item_or_view_item(attrs, true, false) {
+        match self.parse_item_or_view_item(attrs, true, false, true) {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
@@ -3762,7 +3768,8 @@ impl Parser {
     }
 
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
-                                  mode: view_item_parse_mode)
+                                  mode: view_item_parse_mode,
+                                  macros_allowed: bool)
                                -> {attrs_remaining: ~[attribute],
                                    view_items: ~[@view_item],
                                    items: ~[@item],
@@ -3789,7 +3796,8 @@ impl Parser {
         let (view_items, items, foreign_items) = (DVec(), DVec(), DVec());
         loop {
             match self.parse_item_or_view_item(attrs, items_allowed,
-                                               foreign_items_allowed) {
+                                               foreign_items_allowed,
+                                               macros_allowed) {
                 iovi_none =>
                     break,
                 iovi_view_item(view_item) => {
