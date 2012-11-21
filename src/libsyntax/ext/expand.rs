@@ -1,7 +1,7 @@
 use std::map::HashMap;
 
 use ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
-          tt_delim, tt_tok, item_mac, stmt_, stmt_mac};
+          tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use fold::*;
 use ext::base::*;
 use ext::qquote::{qq_helper};
@@ -281,16 +281,14 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
     assert(vec::len(pth.idents) == 1u);
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    match exts.find(*extname) {
+    let (fully_expanded, sp) = match exts.find(*extname) {
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
         Some(normal_tt({expander: exp, span: exp_sp})) => {
             let expanded = match exp(cx, mac.span, tts) {
-                mr_expr(e) if !semi =>
-                    @{node: ast::stmt_expr(e, cx.next_id()), span: e.span},
-                mr_expr(e) if semi =>
-                    @{node: ast::stmt_semi(e, cx.next_id()), span: e.span},
+                mr_expr(e) =>
+                    @{node: stmt_expr(e, cx.next_id()), span: e.span},
                 mr_any(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
@@ -303,14 +301,14 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
             let fully_expanded = fld.fold_stmt(expanded).node;
             cx.bt_pop();
 
-            return (fully_expanded, sp)
+            (fully_expanded, sp)
         }
 
         Some(normal({expander: exp, span: exp_sp})) => {
             //convert the new-style invoc for the old-style macro
             let arg = base::tt_args_to_original_flavor(cx, pth.span, tts);
             let exp_expr = exp(cx, mac.span, arg, None);
-            let expanded = @{node: ast::stmt_expr(exp_expr, cx.next_id()),
+            let expanded = @{node: stmt_expr(exp_expr, cx.next_id()),
                              span: exp_expr.span};
 
             cx.bt_push(ExpandedFrom({call_site: sp,
@@ -325,10 +323,14 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
         _ => {
             cx.span_fatal(pth.span,
-                          fmt!("'%s' is not a tt-style macro",
-                               *extname))
+                          fmt!("'%s' is not a tt-style macro", *extname))
         }
-    }
+    };
+
+    return (match fully_expanded {
+        stmt_expr(e, stmt_id) if semi => stmt_semi(e, stmt_id),
+        _ => { fully_expanded } /* might already have a semi */
+    }, sp)
 
 }
 
