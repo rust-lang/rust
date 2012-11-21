@@ -5,12 +5,13 @@ export new_parse_sess, new_parse_sess_special_handler;
 export next_node_id;
 export new_parser_from_file, new_parser_etc_from_file;
 export new_parser_from_source_str;
-export new_parser_from_tt;
+export new_parser_from_tts;
 export new_sub_parser_from_file;
 export parse_crate_from_file, parse_crate_from_crate_file;
 export parse_crate_from_source_str;
 export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_stmt_from_source_str;
+export parse_tts_from_source_str;
 export parse_from_source_str;
 
 use parser::Parser;
@@ -127,6 +128,16 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     return r;
 }
 
+fn parse_tts_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
+                             sess: parse_sess) -> ~[ast::token_tree] {
+    let p = new_parser_from_source_str(sess, cfg, name,
+                                       codemap::FssNone, source);
+    p.quote_depth += 1u;
+    let r = p.parse_all_token_trees();
+    p.abort_if_errors();
+    return r;
+}
+
 fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
                             name: ~str, ss: codemap::FileSubstr,
                             source: @~str, cfg: ast::crate_cfg,
@@ -199,9 +210,9 @@ fn new_sub_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
     }
 }
 
-fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
-                      tt: ~[ast::token_tree]) -> Parser {
+fn new_parser_from_tts(sess: parse_sess, cfg: ast::crate_cfg,
+                       tts: ~[ast::token_tree]) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
-                                    None, tt);
+                                    None, tts);
     return Parser(sess, cfg, trdr as reader)
 }
