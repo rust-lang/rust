@@ -1705,9 +1705,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
           ast::expr_vec(args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
+            let mutability;
+            match vst {
+                ast::expr_vstore_mut_box => mutability = ast::m_mutbl,
+                _ => mutability = mutbl
+            }
             let t: ty::t = fcx.infcx().next_ty_var();
             for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
-            ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
+            ty::mk_evec(tcx, {ty: t, mutbl: mutability}, tt)
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
             let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
@@ -2721,7 +2726,7 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
             ty::vstore_fixed(u)
         }
         ast::expr_vstore_uniq => ty::vstore_uniq,
-        ast::expr_vstore_box => ty::vstore_box,
+        ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
         ast::expr_vstore_slice => {
             let r = fcx.infcx().next_region_var(e.span, e.id);
             ty::vstore_slice(r)

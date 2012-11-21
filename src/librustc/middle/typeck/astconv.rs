@@ -176,13 +176,14 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
         let tcx = self.tcx();
 
         match a_seq_ty.ty.node {
-            // to convert to an e{vec,str}, there can't be a
-            // mutability argument
-            _ if a_seq_ty.mutbl != ast::m_imm => (),
             ast::ty_vec(mt) => {
-                return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
+                let mut mt = ast_mt_to_mt(self, rscope, mt);
+                if a_seq_ty.mutbl == ast::m_mutbl {
+                    mt = { ty: mt.ty, mutbl: ast::m_mutbl };
+                }
+                return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(path, id) => {
+            ast::ty_path(path, id) if a_seq_ty.mutbl == ast::m_imm => {
                 match tcx.def_map.find(id) {
                     Some(ast::def_prim_ty(ast::ty_str)) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
