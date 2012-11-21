@@ -2963,7 +2963,7 @@ impl Parser {
     fn parse_item_mod(outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = self.span;
         let id = self.parse_ident();
-        if self.token == token::SEMI {
+        let info_ = if self.token == token::SEMI {
             self.bump();
             // This mod is in an external file. Let's go get it!
             let eval_ctx = @{
@@ -2972,8 +2972,9 @@ impl Parser {
             };
             let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
             let prefix = prefix.dir_path();
-            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id,
-                                                outer_attrs, id_span);
+            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix,
+                                                outer_attrs,
+                                                id, id_span);
             (id, m, Some(move attrs))
         } else {
             self.expect(token::LBRACE);
@@ -2981,6 +2982,40 @@ impl Parser {
             let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
             self.expect(token::RBRACE);
             (id, item_mod(m), Some(inner_attrs.inner))
+        };
+
+        // XXX: Transitionary hack to do the template work inside core
+        // (int-template, iter-trait). If there's a 'merge' attribute
+        // on the mod, then we'll go and suck in another file and merge
+        // its contents
+        match ::attr::first_attr_value_str_by_name(outer_attrs, ~"merge") {
+            Some(path) => {
+                let eval_ctx = @{
+                    sess: self.sess,
+                    cfg: self.cfg
+                };
+                let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
+                let prefix = prefix.dir_path();
+                let path = Path(path);
+                let (new_mod_item, new_attrs) = eval::eval_src_mod_from_path(
+                    eval_ctx, &prefix, &path, ~[], id_span);
+
+                let (main_id, main_mod_item, main_attrs) = info_;
+                let main_attrs = main_attrs.get();
+
+                let (main_mod, new_mod) = match (main_mod_item, new_mod_item) {
+                    (item_mod(m), item_mod(n)) => (m, n),
+                    _ => self.bug(~"parsed mod item should be mod")
+                };
+                let merged_mod = {
+                    view_items: main_mod.view_items + new_mod.view_items,
+                    items: main_mod.items + new_mod.items
+                };
+
+                let merged_attrs = main_attrs + new_attrs;
+                (main_id, item_mod(merged_mod), Some(merged_attrs))
+            }
+            None => info_
         }
     }
 
