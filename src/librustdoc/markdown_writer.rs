@@ -8,20 +8,20 @@ pub enum WriteInstr {
 }
 
 pub type Writer = fn~(+v: WriteInstr);
-pub type WriterFactory = fn~(page: doc::Page) -> Writer;
+pub type WriterFactory = fn~(+page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
-    fn write_str(str: ~str);
-    fn write_line(str: ~str);
+    fn write_str(+str: ~str);
+    fn write_line(+str: ~str);
     fn write_done();
 }
 
 impl Writer: WriterUtils {
-    fn write_str(str: ~str) {
+    fn write_str(+str: ~str) {
         self(Write(str));
     }
 
-    fn write_line(str: ~str) {
+    fn write_line(+str: ~str) {
         self.write_str(str + ~"\n");
     }
 
@@ -30,7 +30,7 @@ impl Writer: WriterUtils {
     }
 }
 
-pub fn make_writer_factory(config: config::Config) -> WriterFactory {
+pub fn make_writer_factory(+config: config::Config) -> WriterFactory {
     match config.output_format {
       config::Markdown => {
         markdown_writer_factory(config)
@@ -41,21 +41,21 @@ pub fn make_writer_factory(config: config::Config) -> WriterFactory {
     }
 }
 
-fn markdown_writer_factory(config: config::Config) -> WriterFactory {
-    fn~(page: doc::Page) -> Writer {
+fn markdown_writer_factory(+config: config::Config) -> WriterFactory {
+    fn~(+page: doc::Page) -> Writer {
         markdown_writer(config, page)
     }
 }
 
-fn pandoc_writer_factory(config: config::Config) -> WriterFactory {
-    fn~(page: doc::Page) -> Writer {
+fn pandoc_writer_factory(+config: config::Config) -> WriterFactory {
+    fn~(+page: doc::Page) -> Writer {
         pandoc_writer(config, page)
     }
 }
 
 fn markdown_writer(
-    config: config::Config,
-    page: doc::Page
+    +config: config::Config,
+    +page: doc::Page
 ) -> Writer {
     let filename = make_local_filename(config, page);
     do generic_writer |markdown| {
@@ -64,8 +64,8 @@ fn markdown_writer(
 }
 
 fn pandoc_writer(
-    config: config::Config,
-    page: doc::Page
+    +config: config::Config,
+    +page: doc::Page
 ) -> Writer {
     assert config.pandoc_cmd.is_some();
     let pandoc_cmd = config.pandoc_cmd.get();
@@ -140,7 +140,7 @@ fn readclose(fd: libc::c_int) -> ~str {
     str::from_bytes(buf)
 }
 
-fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
+fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
     let ch = do task::spawn_listener
         |move process, po: comm::Port<WriteInstr>| {
         let mut markdown = ~"";
@@ -160,16 +160,16 @@ fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
 }
 
 fn make_local_filename(
-    config: config::Config,
-    page: doc::Page
+    +config: config::Config,
+    +page: doc::Page
 ) -> Path {
     let filename = make_filename(config, page);
     config.output_dir.push_rel(&filename)
 }
 
 pub fn make_filename(
-    config: config::Config,
-    page: doc::Page
+    +config: config::Config,
+    +page: doc::Page
 ) -> Path {
     let filename = {
         match page {
@@ -241,7 +241,7 @@ fn should_name_mod_file_names_by_path() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
-    fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
+    fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);
             let doc = path_pass::mk_pass().f(srv, doc);
@@ -250,7 +250,7 @@ mod test {
     }
 }
 
-fn write_file(path: &Path, s: ~str) {
+fn write_file(path: &Path, +s: ~str) {
     use io::WriterUtil;
 
     match io::file_writer(path, ~[io::Create, io::Truncate]) {
@@ -265,7 +265,7 @@ pub fn future_writer_factory(
 ) -> (WriterFactory, comm::Port<(doc::Page, ~str)>) {
     let markdown_po = comm::Port();
     let markdown_ch = comm::Chan(&markdown_po);
-    let writer_factory = fn~(page: doc::Page) -> Writer {
+    let writer_factory = fn~(+page: doc::Page) -> Writer {
         let writer_po = comm::Port();
         let writer_ch = comm::Chan(&writer_po);
         do task::spawn {

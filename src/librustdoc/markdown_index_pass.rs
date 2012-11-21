@@ -51,8 +51,8 @@ fn fold_nmod(
 }
 
 fn build_mod_index(
-    doc: doc::ModDoc,
-    config: config::Config
+    +doc: doc::ModDoc,
+    +config: config::Config
 ) -> doc::Index {
     {
         entries: par::map(doc.items, |doc| {
@@ -62,8 +62,8 @@ fn build_mod_index(
 }
 
 fn build_nmod_index(
-    doc: doc::NmodDoc,
-    config: config::Config
+    +doc: doc::NmodDoc,
+    +config: config::Config
 ) -> doc::Index {
     {
         entries: par::map(doc.fns, |doc| {
@@ -73,8 +73,8 @@ fn build_nmod_index(
 }
 
 fn item_to_entry(
-    doc: doc::ItemTag,
-    config: config::Config
+    +doc: doc::ItemTag,
+    +config: config::Config
 ) -> doc::IndexEntry {
     let link = match doc {
       doc::ModTag(_) | doc::NmodTag(_)
@@ -94,7 +94,7 @@ fn item_to_entry(
     }
 }
 
-fn pandoc_header_id(header: ~str) -> ~str {
+fn pandoc_header_id(header: &str) -> ~str {
 
     // http://johnmacfarlane.net/pandoc/README.html#headers
 
@@ -106,10 +106,10 @@ fn pandoc_header_id(header: ~str) -> ~str {
     let header = maybe_use_section_id(header);
     return header;
 
-    fn remove_formatting(s: ~str) -> ~str {
+    fn remove_formatting(s: &str) -> ~str {
         str::replace(s, ~"`", ~"")
     }
-    fn remove_punctuation(s: ~str) -> ~str {
+    fn remove_punctuation(s: &str) -> ~str {
         let s = str::replace(s, ~"<", ~"");
         let s = str::replace(s, ~">", ~"");
         let s = str::replace(s, ~"[", ~"");
@@ -124,7 +124,7 @@ fn pandoc_header_id(header: ~str) -> ~str {
         let s = str::replace(s, ~"^", ~"");
         return s;
     }
-    fn replace_with_hyphens(s: ~str) -> ~str {
+    fn replace_with_hyphens(s: &str) -> ~str {
         // Collapse sequences of whitespace to a single dash
         // XXX: Hacky implementation here that only covers
         // one or two spaces.
@@ -132,9 +132,9 @@ fn pandoc_header_id(header: ~str) -> ~str {
         let s = str::replace(s, ~" ", ~"-");
         return s;
     }
-    fn convert_to_lowercase(s: ~str) -> ~str { str::to_lower(s) }
-    fn remove_up_to_first_letter(s: ~str) -> ~str { s }
-    fn maybe_use_section_id(s: ~str) -> ~str { s }
+    fn convert_to_lowercase(s: &str) -> ~str { str::to_lower(s) }
+    fn remove_up_to_first_letter(s: &str) -> ~str { s.to_str() }
+    fn maybe_use_section_id(s: &str) -> ~str { s.to_str() }
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn should_index_foreign_mod_contents() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
-    fn mk_doc(output_style: config::OutputStyle, source: ~str) -> doc::Doc {
+    fn mk_doc(output_style: config::OutputStyle, +source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let config = {
                 output_style: output_style,

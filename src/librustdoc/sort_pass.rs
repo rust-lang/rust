@@ -9,7 +9,7 @@ pub fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
     {
         name: name,
         f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, lteq)
+            run(srv, doc, copy lteq)
         }
     }
 }
@@ -18,11 +18,11 @@ pub fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
 fn run(
     _srv: astsrv::Srv,
     +doc: doc::Doc,
-    lteq: ItemLtEq
+    +lteq: ItemLtEq
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_mod: fold_mod,
-        .. *fold::default_any_fold(lteq)
+        .. *fold::default_any_fold(move lteq)
     });
     fold.fold_doc(&fold, doc)
 }
