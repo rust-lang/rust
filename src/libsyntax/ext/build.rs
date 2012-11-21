@@ -39,6 +39,12 @@ fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
                            rp: None, types: ~[]};
     return p;
 }
+fn mk_raw_path_(sp: span,
+                idents: ~[ast::ident],
+                +types: ~[@ast::Ty])
+             -> @ast::path {
+    @{ span: sp, global: false, idents: idents, rp: None, types: move types }
+}
 fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) ->
     @ast::expr {
     mk_expr(cx, sp, ast::expr_path(mk_raw_path(sp, idents)))
@@ -223,5 +229,11 @@ fn mk_arg(cx: ext_ctxt,
 }
 fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
     { inputs: move inputs, output: output, cf: ast::return_val }
+}
+fn mk_ty_param(cx: ext_ctxt,
+               ident: ast::ident,
+               bounds: @~[ast::ty_param_bound])
+            -> ast::ty_param {
+    { ident: ident, id: cx.next_id(), bounds: bounds }
 }
 
