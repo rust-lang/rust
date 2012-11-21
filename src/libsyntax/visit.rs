@@ -348,7 +348,7 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
       stmt_decl(d, _) => v.visit_decl(d, e, v),
       stmt_expr(ex, _) => v.visit_expr(ex, e, v),
       stmt_semi(ex, _) => v.visit_expr(ex, e, v),
-      stmt_mac(mac) => visit_mac(mac, e, v)
+      stmt_mac(mac, _) => visit_mac(mac, e, v)
     }
 }
 

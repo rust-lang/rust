@@ -310,7 +310,7 @@ fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
       stmt_decl(d, nid) => stmt_decl(fld.fold_decl(d), fld.new_id(nid)),
       stmt_expr(e, nid) => stmt_expr(fld.fold_expr(e), fld.new_id(nid)),
       stmt_semi(e, nid) => stmt_semi(fld.fold_expr(e), fld.new_id(nid)),
-      stmt_mac(mac) => stmt_mac(fold_mac(mac))
+      stmt_mac(mac, semi) => stmt_mac(fold_mac(mac), semi)
     };
 }
 

@@ -2228,7 +2228,7 @@ impl Parser {
 
             if id == token::special_idents::invalid {
                 return @spanned(lo, hi, stmt_mac(
-                    spanned(lo, hi, mac_invoc_tt(pth, tts))));
+                    spanned(lo, hi, mac_invoc_tt(pth, tts)), false));
             } else {
                 // if it has a special ident, it's definitely an item
                 return @spanned(lo, hi, stmt_decl(
@@ -2380,12 +2380,13 @@ impl Parser {
                             }
                         }
 
-                        stmt_mac(m) => {
+                        stmt_mac(m, false) => {
                             // Statement macro; might be an expr
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(stmt);
+                                    stmts.push(@{node: stmt_mac(m, true),
+                                                 ..*stmt});
                                 }
                                 token::RBRACE => {
                                     // if a block ends in `m!(arg)` without
