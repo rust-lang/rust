@@ -13,9 +13,16 @@
 * * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
 * * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
 *
+* Note that any reference to the 1996 revision of POSIX, or any revs
+* between 1990 (when '88 was approved at ISO) and 2001 (when the next
+* actual revision-revision happened), are merely additions of other
+* chapters (1b and 1c) outside the core interfaces.
+*
 * Despite having several names each, these are *reasonably* coherent
 * point-in-time, list-of-definition sorts of specs. You can get each under a
 * variety of names but will wind up with the same definition in each case.
+*
+* See standards(7) in linux-manpages for more details.
 *
 * Our interface to these libraries is complicated by the non-universality of
 * conformance to any of them. About the only thing universally supported is
@@ -124,7 +131,7 @@ pub use open, creat;
 pub use access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
 getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
 
-pub use fstat, lstat, stat;
+pub use fstat, stat;
 
 
 mod types {
@@ -392,6 +399,8 @@ mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
+                // Note: this is the struct called stat64 in win32. Not stat,
+                // nor stati64.
                 pub struct stat {
                     st_dev: dev_t,
                     st_ino: ino_t,
@@ -403,7 +412,7 @@ mod types {
                     st_size: int64_t,
                     st_atime: time64_t,
                     st_mtime: time64_t,
-                    st_c_time: time64_t,
+                    st_ctime: time64_t,
                 }
             }
         }
@@ -479,6 +488,8 @@ mod types {
                 pub type PBOOL = *mut BOOL;
                 pub type WCHAR = wchar_t;
                 pub type WORD = u16;
+
+                pub type time64_t = i64;
             }
         }
     }
@@ -1025,6 +1036,12 @@ pub mod funcs {
 
             #[link_name = "_mkdir"]
             fn mkdir(path: *c_char) -> c_int;
+
+            #[link_name = "_fstat64"]
+            fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+
+            #[link_name = "_stat64"]
+            fn stat(path: *c_char, buf: *mut stat) -> c_int;
         }
 
         #[nolink]

@@ -190,7 +190,7 @@ mod stat {
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(target_os = "win32")]
 mod stat {
     pub mod arch {
         pub fn default_stat() -> libc::stat {
@@ -222,6 +222,7 @@ impl Path {
         }
     }
 
+    #[cfg(unix)]
     fn lstat(&self) -> Option<libc::stat> {
          do str::as_c_str(self.to_str()) |buf| {
             let mut st = stat::arch::default_stat();
