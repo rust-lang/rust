@@ -2041,25 +2041,25 @@ fn remove_copyable(k: Kind) -> Kind {
 }
 
 impl Kind : ops::BitAnd<Kind,Kind> {
-    pure fn bitand(other: &Kind) -> Kind {
+    pure fn bitand(&self, other: &Kind) -> Kind {
         unsafe {
-            lower_kind(self, (*other))
+            lower_kind(*self, *other)
         }
     }
 }
 
 impl Kind : ops::BitOr<Kind,Kind> {
-    pure fn bitor(other: &Kind) -> Kind {
+    pure fn bitor(&self, other: &Kind) -> Kind {
         unsafe {
-            raise_kind(self, (*other))
+            raise_kind(*self, *other)
         }
     }
 }
 
 impl Kind : ops::Sub<Kind,Kind> {
-    pure fn sub(other: &Kind) -> Kind {
+    pure fn sub(&self, other: &Kind) -> Kind {
         unsafe {
-            kind_(*self & !*(*other))
+            kind_(**self & !**other)
         }
     }
 }
@@ -2309,7 +2309,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
     // arbitrary threshold to prevent by-value copying of big records
     if kind_is_safe_for_default_mode(result) {
         if type_size(cx, ty) > 4 {
-            result -= kind_(KIND_MASK_DEFAULT_MODE);
+            result = result - kind_(KIND_MASK_DEFAULT_MODE);
         }
     }
 

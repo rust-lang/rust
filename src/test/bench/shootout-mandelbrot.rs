@@ -24,7 +24,7 @@ struct cmplx {
 }
 
 impl cmplx : ops::Mul<cmplx,cmplx> {
-    pure fn mul(x: &cmplx) -> cmplx {
+    pure fn mul(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re*(*x).re - self.im*(*x).im,
             im: self.re*(*x).im + self.im*(*x).re
