@@ -473,6 +473,7 @@ trait ext_ctxt_parse_utils {
     fn parse_item(s: ~str) -> @ast::item;
     fn parse_expr(s: ~str) -> @ast::expr;
     fn parse_stmt(s: ~str) -> @ast::stmt;
+    fn parse_tts(s: ~str) -> ~[ast::token_tree];
 }
 
 impl ext_ctxt: ext_ctxt_parse_utils {
@@ -503,6 +504,14 @@ impl ext_ctxt: ext_ctxt_parse_utils {
 
     fn parse_expr(s: ~str) -> @ast::expr {
         parse::parse_expr_from_source_str(
+            ~"***protocol expansion***",
+            @(copy s),
+            self.cfg(),
+            self.parse_sess())
+    }
+
+    fn parse_tts(s: ~str) -> ~[ast::token_tree] {
+        parse::parse_tts_from_source_str(
             ~"***protocol expansion***",
             @(copy s),
             self.cfg(),

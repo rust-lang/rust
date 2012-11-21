@@ -19,7 +19,7 @@ use token::*;
 pub mod rt {
     pub use ast::*;
     pub use parse::token::*;
-    pub use parse::new_parser_from_tt;
+    pub use parse::new_parser_from_tts;
     pub use codemap::BytePos;
     pub use codemap::span;
 }
@@ -27,7 +27,7 @@ pub mod rt {
 pub fn expand_quote_tokens(cx: ext_ctxt,
                            sp: span,
                            tts: ~[ast::token_tree]) -> base::mac_result {
-    base::mr_expr(expand_tt(cx, sp, tts))
+    base::mr_expr(expand_tts(cx, sp, tts))
 }
 
 pub fn expand_quote_expr(cx: ext_ctxt,
@@ -121,8 +121,7 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
         }
     };
 
-    let span_path = ids_ext(
-        cx, ~[~"syntax", ~"ext", ~"quote", ~"rt", ~"span"]);
+    let span_path = ids_ext(cx, ~[~"span"]);
 
     build::mk_struct_e(cx, qsp,
                        span_path,
@@ -150,7 +149,7 @@ fn mk_ident(cx: ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
 }
 
 fn mk_bytepos(cx: ext_ctxt, sp: span, bpos: BytePos) -> @ast::expr {
-    let path = ids_ext(cx, ~[~"syntax", ~"ext", ~"quote", ~"rt", ~"BytePos"]);
+    let path = ids_ext(cx, ~[~"BytePos"]);
     let arg = build::mk_uint(cx, sp, bpos.to_uint());
     build::mk_call(cx, sp, path, ~[arg])
 }
@@ -318,17 +317,21 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
 
 fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree) -> @ast::expr {
     match *tt {
-        ast::tt_tok(sp, tok) =>
-        build::mk_call(cx, sp,
-                       ids_ext(cx, ~[~"tt_tok"]),
-                       ~[mk_span(cx, sp, sp),
-                         mk_token(cx, sp, tok)]),
+        ast::tt_tok(sp, tok) => {
+            let e_tok =
+                build::mk_call(cx, sp,
+                               ids_ext(cx, ~[~"tt_tok"]),
+                               ~[mk_span(cx, sp, sp),
+                                 mk_token(cx, sp, tok)]);
+            build::mk_uniq_vec_e(cx, sp, ~[e_tok])
+        }
 
         ast::tt_delim(tts) => {
-            let e_tts = tts.map(|tt| mk_tt(cx, sp, tt));
-            build::mk_call(cx, sp,
-                           ids_ext(cx, ~[~"tt_delim"]),
-                           ~[build::mk_uniq_vec_e(cx, sp, e_tts)])
+            let e_delim =
+                build::mk_call(cx, sp,
+                               ids_ext(cx, ~[~"tt_delim"]),
+                               ~[mk_tts(cx, sp, tts)]);
+            build::mk_uniq_vec_e(cx, sp, ~[e_delim])
         }
 
         ast::tt_seq(*) => fail ~"tt_seq in quote!",
@@ -338,22 +341,25 @@ fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree) -> @ast::expr {
     }
 }
 
+fn mk_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree]) -> @ast::expr {
+    let e_tts = tts.map(|tt| mk_tt(cx, sp, tt));
+    build::mk_call(cx, sp,
+                   ids_ext(cx, ~[~"vec", ~"concat"]),
+                   ~[build::mk_slice_vec_e(cx, sp, e_tts)])
+}
 
-fn expand_tt(cx: ext_ctxt,
-             sp: span,
-             tts: ~[ast::token_tree]) -> @ast::expr {
+fn expand_tts(cx: ext_ctxt,
+              sp: span,
+              tts: ~[ast::token_tree]) -> @ast::expr {
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
     // under quote_depth > 0. This is silly and should go away; the _guess_ is
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.
-    let p = parse::new_parser_from_tt(cx.parse_sess(), cx.cfg(), tts);
+    let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts);
     p.quote_depth += 1u;
-    let tq = dvec::DVec();
-    while p.token != token::EOF {
-        tq.push(p.parse_token_tree());
-    }
-    let tts = tq.get();
+    let tts = p.parse_all_token_trees();
+    p.abort_if_errors();
 
     // We want to emit a block expression that does a sequence of 'use's to
     // import the runtime module, followed by a tt expression.
@@ -361,8 +367,7 @@ fn expand_tt(cx: ext_ctxt,
                                                            ~"ext",
                                                            ~"quote",
                                                            ~"rt"])) ];
-    build::mk_block(cx, sp, uses, ~[],
-                    Some(mk_tt(cx, sp, &ast::tt_delim(tts))))
+    build::mk_block(cx, sp, uses, ~[], Some(mk_tts(cx, sp, tts)))
 }
 
 fn expand_parse_call(cx: ext_ctxt,
@@ -370,7 +375,7 @@ fn expand_parse_call(cx: ext_ctxt,
                      parse_method: ~str,
                      arg_exprs: ~[@ast::expr],
                      tts: ~[ast::token_tree]) -> @ast::expr {
-    let tt_expr = expand_tt(cx, sp, tts);
+    let tts_expr = expand_tts(cx, sp, tts);
 
     let cfg_call = || build::mk_call_(
         cx, sp, build::mk_access(cx, sp, ids_ext(cx, ~[~"ext_cx"]),
@@ -386,10 +391,10 @@ fn expand_parse_call(cx: ext_ctxt,
                                      ~"ext",
                                      ~"quote",
                                      ~"rt",
-                                     ~"new_parser_from_tt"]),
+                                     ~"new_parser_from_tts"]),
                        ~[parse_sess_call(),
                          cfg_call(),
-                         build::mk_uniq_vec_e(cx, sp, ~[tt_expr])]);
+                         tts_expr]);
 
     build::mk_call_(cx, sp,
                     build::mk_access_(cx, sp, new_parser_call,

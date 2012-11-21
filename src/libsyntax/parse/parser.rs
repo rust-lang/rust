@@ -1321,6 +1321,14 @@ impl Parser {
         };
     }
 
+    fn parse_all_token_trees() -> ~[token_tree] {
+        let tts = DVec();
+        while self.token != token::EOF {
+            tts.push(self.parse_token_tree());
+        }
+        tts.get()
+    }
+
     fn parse_matchers() -> ~[matcher] {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
