@@ -34,7 +34,7 @@ type Fold_<T> = {
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
 fn mk_fold<T:Copy>(
-    ctxt: T,
+    +ctxt: T,
     +fold_doc: FoldDoc<T>,
     +fold_crate: FoldCrate<T>,
     +fold_item: FoldItem<T>,
@@ -65,7 +65,7 @@ fn mk_fold<T:Copy>(
     })
 }
 
-pub fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T:Send Copy>(+ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -83,7 +83,7 @@ pub fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
+pub fn default_seq_fold<T:Copy>(+ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -101,7 +101,7 @@ pub fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T:Send Copy>(+ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),

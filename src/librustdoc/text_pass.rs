@@ -6,7 +6,7 @@ pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {
         name: name,
         f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, op)
+            run(srv, doc, copy op)
         }
     }
 }
@@ -17,14 +17,14 @@ type Op = fn~(~str) -> ~str;
 fn run(
     _srv: astsrv::Srv,
     +doc: doc::Doc,
-    op: Op
+    +op: Op
 ) -> doc::Doc {
     let fold = fold::Fold({
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        .. *fold::default_any_fold(op)
+        .. *fold::default_any_fold(move op)
     });
     fold.fold_doc(&fold, doc)
 }

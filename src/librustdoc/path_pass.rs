@@ -25,7 +25,7 @@ fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
         fold_item: fold_item,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. *fold::default_any_fold(ctxt)
+        .. *fold::default_any_fold(move ctxt)
     });
     fold.fold_doc(&fold, doc)
 }
