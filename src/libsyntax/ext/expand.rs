@@ -272,12 +272,12 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
     -> (stmt_, span)
 {
-    let (mac, pth, tts) = biased_match! (
-        (s)        ~ (stmt_mac(mac))          else return orig(s, sp, fld);
+    let (mac, pth, tts, semi) = biased_match! (
+        (s)        ~ (stmt_mac(mac, semi))    else return orig(s, sp, fld);
         (mac.node) ~ (mac_invoc_tt(pth, tts)) else {
             cx.span_bug(mac.span, ~"naked syntactic bit")
         };
-        => (mac, pth, tts));
+        => (mac, pth, tts, semi));
 
     assert(vec::len(pth.idents) == 1u);
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
@@ -287,8 +287,10 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
         Some(normal_tt({expander: exp, span: exp_sp})) => {
             let expanded = match exp(cx, mac.span, tts) {
-                mr_expr(e) =>
+                mr_expr(e) if !semi =>
                     @{node: ast::stmt_expr(e, cx.next_id()), span: e.span},
+                mr_expr(e) if semi =>
+                    @{node: ast::stmt_semi(e, cx.next_id()), span: e.span},
                 mr_any(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
