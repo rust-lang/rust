@@ -5,7 +5,7 @@ use ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
 use fold::*;
 use ext::base::*;
 use ext::qquote::{qq_helper};
-use parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
+use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
 
 
 use codemap::{span, ExpandedFrom};

@@ -1,10 +1,12 @@
+#[allow(non_implicitly_copyable_typarams)];
+
 extern mod syntax;
 
 use syntax::ext::base::ext_ctxt;
 
 fn syntax_extension(ext_cx: @ext_ctxt) {
-    let e_toks : syntax::ast::token_tree = quote_tokens!(1 + 2);
-    let p_toks : syntax::ast::token_tree = quote_tokens!((x, 1 .. 4, *));
+    let e_toks : ~[syntax::ast::token_tree] = quote_tokens!(1 + 2);
+    let p_toks : ~[syntax::ast::token_tree] = quote_tokens!((x, 1 .. 4, *));
 
     let _a: @syntax::ast::expr = quote_expr!(1 + 2);
     let _b: Option<@syntax::ast::item> = quote_item!( const foo : int = $e_toks; );
@@ -14,6 +16,6 @@ fn syntax_extension(ext_cx: @ext_ctxt) {
 }
 
 fn main() {
-    let _x: syntax::ast::token_tree = quote_tokens!(a::Foo::foo());
+    let _x: ~[syntax::ast::token_tree] = quote_tokens!(a::Foo::foo());
 }
 
