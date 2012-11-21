@@ -3153,6 +3153,7 @@ fn expr_kind(tcx: ctxt,
         ast::expr_addr_of(*) |
         ast::expr_binary(*) |
         ast::expr_vstore(_, ast::expr_vstore_box) |
+        ast::expr_vstore(_, ast::expr_vstore_mut_box) |
         ast::expr_vstore(_, ast::expr_vstore_uniq) => {
             RvalueDatumExpr
         }

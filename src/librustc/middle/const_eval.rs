@@ -92,7 +92,8 @@ fn classify(e: @expr,
                       ast::expr_vstore_fixed(_) |
                       ast::expr_vstore_slice => classify(e, def_map, tcx),
                       ast::expr_vstore_uniq |
-                      ast::expr_vstore_box => non_const
+                      ast::expr_vstore_box |
+                      ast::expr_vstore_mut_box => non_const
                   }
               }
 
