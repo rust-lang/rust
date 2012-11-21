@@ -103,11 +103,15 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     pure fn find(key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
 
-    fn insert_with_key(ff: fn(uint, V, V) -> V, key: uint, val: V) -> bool {
+    fn insert_with_key(key: uint, val: V, ff: fn(uint, V, V) -> V) -> bool {
         match self.find(key) {
             None            => return self.insert(key, val),
             Some(copy orig) => return self.insert(key, ff(key, orig, val)),
         }
+    }
+
+    fn insert_with(key: uint, newval: V, ff: fn(V, V) -> V) -> bool {
+        return self.insert_with_key(key, newval, |_k, v, v1| ff(v,v1));
     }
 
     pure fn each(it: fn(key: uint, value: V) -> bool) {
@@ -148,4 +152,38 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
 /// Cast the given smallintmap to a map::map
 pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::Map<uint, V> {
     s as map::Map::<uint, V>
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_insert_with_key() {
+        let map: SmallIntMap<uint> = mk();
+
+        // given a new key, initialize it with this new count, given
+        // given an existing key, add more to its count
+        fn addMoreToCount(_k: uint, v0: uint, v1: uint) -> uint {
+            v0 + v1
+        }
+
+        fn addMoreToCount_simple(v0: uint, v1: uint) -> uint {
+            v0 + v1
+        }
+
+        // count integers
+        map.insert_with(3, 1, addMoreToCount_simple);
+        map.insert_with_key(9, 1, addMoreToCount);
+        map.insert_with(3, 7, addMoreToCount_simple);
+        map.insert_with_key(5, 3, addMoreToCount);
+        map.insert_with_key(3, 2, addMoreToCount);
+
+        // check the total counts
+        assert 10 == option::get(map.find(3));
+        assert  3 == option::get(map.find(5));
+        assert  1 == option::get(map.find(9));
+
+        // sadly, no sevens were counted
+        assert None == map.find(7);
+    }
 }

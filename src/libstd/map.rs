@@ -35,7 +35,16 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      * If the map contains a value for the key, use the function
      * to set a new value.
      */
-    fn insert_with_key(ff: fn(K, V, V) -> V, key: K, value: V) -> bool;
+    fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool;
+
+    /**
+     * Add a value to the map.
+     *
+     * If the map contains a value for the key, use the function
+     * to set a new value.  (Like insert_with_key, but with a function
+     * of only values.)
+     */
+    fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
     pure fn contains_key(key: K) -> bool;
@@ -272,12 +281,57 @@ pub mod chained {
             }
         }
 
-        fn insert_with_key(ff: fn(K, V, V) -> V, key: K, val: V) -> bool {
-            // this can be optimized but first lets see if it compiles...
+        fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
+/*
             match self.find(key) {
                 None            => return self.insert(key, val),
                 Some(copy orig) => return self.insert(key, ff(key, orig, val))
             }
+*/
+
+            let hash = key.hash_keyed(0,0) as uint;
+            match self.search_tbl(&key, hash) {
+              NotFound => {
+                self.count += 1u;
+                let idx = hash % vec::len(self.chains);
+                let old_chain = self.chains[idx];
+                self.chains[idx] = Some(@Entry {
+                    hash: hash,
+                    key: key,
+                    value: newval,
+                    next: old_chain});
+
+                // consider rehashing if more 3/4 full
+                let nchains = vec::len(self.chains);
+                let load = {num: (self.count + 1u) as int,
+                            den: nchains as int};
+                if !util::rational_leq(load, {num:3, den:4}) {
+                    self.rehash();
+                }
+
+                return true;
+              }
+              FoundFirst(idx, entry) => {
+                self.chains[idx] = Some(@Entry {
+                    hash: hash,
+                    key: key,
+                    value: ff(key, entry.value, newval),
+                    next: entry.next});
+                return false;
+              }
+              FoundAfter(prev, entry) => {
+                prev.next = Some(@Entry {
+                    hash: hash,
+                    key: key,
+                    value: ff(key, entry.value, newval),
+                    next: entry.next});
+                return false;
+              }
+            }
+        }
+
+        fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+            return self.insert_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
         pure fn get(k: K) -> V {
@@ -463,12 +517,16 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-     fn insert_with_key(ff: fn(K, V, V) -> V, key: K, val: V) -> bool {
-         match self.find(key) {
-             None            => return self.insert(key, val),
-             Some(copy orig) => return self.insert(key, ff(key, orig, val)),
-         }
-     }
+    fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
+        match self.find(key) {
+            None            => return self.insert(key, newval),
+            Some(copy orig) => return self.insert(key, ff(key, orig, newval))
+        }
+    }
+
+    fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+        return self.insert_with_key(key, newval, |_k, v, v1| ff(v,v1));
+    }
 
     fn remove(key: K) -> bool {
         do self.borrow_mut |p| {
@@ -778,20 +836,30 @@ mod tests {
     fn test_insert_with_key() {
         let map = map::HashMap::<~str, uint>();
 
-        fn inc(k: ~str, v0: uint, v1: uint) -> uint {
+        // given a new key, initialize it with this new count, given
+        // given an existing key, add more to its count
+        fn addMoreToCount(_k: ~str, v0: uint, v1: uint) -> uint {
             v0 + v1
         }
 
-        map.insert_with_key(inc, ~"cat", 1);
-        map.insert_with_key(inc, ~"mongoose", 1);
-        map.insert_with_key(inc, ~"cat", 7);
-        map.insert_with_key(inc, ~"ferret", 3);
-        map.insert_with_key(inc, ~"cat", 2);
+        fn addMoreToCount_simple(v0: uint, v1: uint) -> uint {
+            v0 + v1
+        }
 
+        // count the number of several types of animal,
+        // adding in groups as we go
+        map.insert_with(~"cat",      1, addMoreToCount_simple);
+        map.insert_with_key(~"mongoose", 1, addMoreToCount);
+        map.insert_with(~"cat",      7, addMoreToCount_simple);
+        map.insert_with_key(~"ferret",   3, addMoreToCount);
+        map.insert_with_key(~"cat",      2, addMoreToCount);
+
+        // check the total counts
         assert 10 == option::get(map.find(~"cat"));
         assert  3 == option::get(map.find(~"ferret"));
         assert  1 == option::get(map.find(~"mongoose"));
 
+        // sadly, no mythical animals were counted!
         assert None == map.find(~"unicorn");
     }
 }
