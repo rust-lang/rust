@@ -2197,7 +2197,7 @@ impl Parser {
         fn check_expected_item(p: Parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
             if vec::is_not_empty(current_attrs) {
-                p.fatal(~"expected item");
+                p.fatal(~"expected item after attrs");
             }
         }
 
@@ -2210,6 +2210,9 @@ impl Parser {
         } else if is_ident(self.token)
             && !self.is_any_keyword(copy self.token)
             && self.look_ahead(1) == token::NOT {
+
+            check_expected_item(self, first_item_attrs);
+
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
             let pth = self.parse_value_path();
@@ -2381,7 +2384,7 @@ impl Parser {
                             }
                         }
 
-                        stmt_mac(m, false) => {
+                        stmt_mac(m, _) => {
                             // Statement macro; might be an expr
                             match self.token {
                                 token::SEMI => {
@@ -3590,6 +3593,10 @@ impl Parser {
                 && (is_plain_ident(self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
                     || self.look_ahead(2) == token::LBRACE) {
+            if attrs.len() > 0 {
+                self.fatal(~"attrs on macros are not yet supported");
+            }
+
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);

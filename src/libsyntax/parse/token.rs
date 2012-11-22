@@ -344,7 +344,7 @@ impl ident_interner {
     }
 }
 
-/** Key for thread-local data for sneaking interner information to the
+/* Key for thread-local data for sneaking interner information to the
  * serializer/deserializer. It sounds like a hack because it is one.
  * Bonus ultra-hack: functions as keys don't work across crates,
  * so we have to use a unique number. See taskgroup_key! in task.rs
