@@ -494,7 +494,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 User-defined syntax extensions are called "macros", and they can be defined
 with the `macro_rules!` syntax extension. User-defined macros can currently
-only be invoked in expression position.
+be invoked as expressions, statements, or items.
 
 (A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
 any token other than a delimiter or `$`.)
@@ -510,7 +510,7 @@ For parsing reasons, delimiters must be balanced, but they are otherwise not spe
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the
 Rust syntax named by _designator_. Valid designators are `item`, `block`,
-`stmt`, `pat`, `expr`, `ty` (type), `ident`, `path`, `matchers` (lhs of the `=>` in macro rules), 
+`stmt`, `pat`, `expr`, `ty` (type), `ident`, `path`, `matchers` (lhs of the `=>` in macro rules),
 `tt` (rhs of the `=>` in macro rules). In the transcriber, the designator is already known, and so only
 the name of a matched nonterminal comes after the dollar sign.
 
@@ -2196,7 +2196,7 @@ Records and structures can also be pattern-matched and their fields bound to var
 When matching fields of a record,
 the fields being matched are specified first,
 then a placeholder (`_`) represents the remaining fields.
- 
+
 ~~~~
 # type options = {choose: bool, size: ~str};
 # type player = {player: ~str, stats: (), options: options};
@@ -2726,7 +2726,7 @@ The kinds are:
     structural types containing only other sendable types.
 `Owned`
   : Types of this kind do not contain any borrowed pointers;
-    this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).    
+    this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).
 `Copy`
   : This kind includes all types that can be copied. All types with
     sendable kind are copyable, as are managed boxes, managed closures,
