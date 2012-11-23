@@ -1496,7 +1496,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let tcx = fcx.ccx.tcx;
         let mut bot = false;
 
-        error!("%? %?", ast_fields.len(), field_types.len());
+        debug!("%? %?", ast_fields.len(), field_types.len());
 
         let class_field_map = HashMap();
         let mut fields_found = 0;
