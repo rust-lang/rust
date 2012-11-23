@@ -271,7 +271,7 @@ pub fn future_writer_factory(
         do task::spawn {
             let (writer, future) = future_writer();
             comm::send(writer_ch, move writer);
-            let s = future::get(&future);
+            let s = future.get();
             comm::send(markdown_ch, (page, s));
         }
         comm::recv(writer_po)
