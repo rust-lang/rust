@@ -1,15 +1,13 @@
-extern mod std;
-
 use core::cmp::Eq;
 use send_map::linear::LinearMap;
 use pipes::{recv, oneshot, PortOne, send_one};
 use either::{Right,Left,Either};
 
-use std::json;
-use std::sha1;
-use std::serialization::{Serializer,Serializable,
-                         Deserializer,Deserializable,
-                         deserialize};
+use json;
+use sha1;
+use serialization::{Serializer,Serializable,
+                    Deserializer,Deserializable,
+                    deserialize};
 
 /**
 *
