@@ -661,7 +661,7 @@ fn load_source_packages(c: &Cargo, src: @Source) {
 }
 
 fn build_cargo_options(argv: ~[~str]) -> Options {
-    let matches = match getopts::getopts(argv, opts()) {
+    let matches = &match getopts::getopts(argv, opts()) {
         result::Ok(m) => m,
         result::Err(f) => {
             fail fmt!("%s", getopts::fail_str(f));
