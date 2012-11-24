@@ -99,7 +99,8 @@ pub mod Reader {
             let elt_size = vuint_at(*d.data, elt_tag.next);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
-                return Some(Doc { data: d.data, start: elt_size.next, end: pos });
+                return Some(Doc { data: d.data, start: elt_size.next,
+                                  end: pos });
             }
         }
         None
@@ -135,7 +136,8 @@ pub mod Reader {
             let elt_size = vuint_at(*d.data, elt_tag.next);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
-                let doc = Doc { data: d.data, start: elt_size.next, end: pos };
+                let doc = Doc { data: d.data, start: elt_size.next,
+                                end: pos };
                 if !it(doc) {
                     break;
                 }
@@ -143,7 +145,8 @@ pub mod Reader {
         }
     }
 
-    pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
+    pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start,
+                                                        d.end) }
 
     pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
         f(vec::view(*d.data, d.start, d.end))
@@ -217,8 +220,8 @@ pub mod Reader {
                           exp_tag, r_tag);
             }
             if r_doc.end > self.parent.end {
-                fail fmt!("invalid EBML, child extends to 0x%x, parent to 0x%x",
-                          r_doc.end, self.parent.end);
+                fail fmt!("invalid EBML, child extends to 0x%x, \
+                           parent to 0x%x", r_doc.end, self.parent.end);
             }
             self.pos = r_doc.end;
             r_doc
@@ -277,7 +280,8 @@ pub mod Reader {
             v as int
         }
 
-        fn read_bool(&self) -> bool { doc_as_u8(self.next_doc(EsBool)) as bool }
+        fn read_bool(&self) -> bool { doc_as_u8(self.next_doc(EsBool))
+                                         as bool }
 
         fn read_f64(&self) -> f64 { fail ~"read_f64()"; }
         fn read_f32(&self) -> f32 { fail ~"read_f32()"; }
@@ -557,8 +561,12 @@ pub mod Writer {
         }
 
         // FIXME (#2742): implement these
-        fn emit_f64(&self, _v: f64) { fail ~"Unimplemented: serializing an f64"; }
-        fn emit_f32(&self, _v: f32) { fail ~"Unimplemented: serializing an f32"; }
+        fn emit_f64(&self, _v: f64) {
+            fail ~"Unimplemented: serializing an f64";
+        }
+        fn emit_f32(&self, _v: f32) {
+            fail ~"Unimplemented: serializing an f32";
+        }
         fn emit_float(&self, _v: float) {
             fail ~"Unimplemented: serializing a float";
         }
