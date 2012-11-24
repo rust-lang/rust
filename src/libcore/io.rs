@@ -44,9 +44,6 @@ pub trait Reader {
     /// Read a single byte, returning a negative value for EOF or read error.
     fn read_byte() -> int;
 
-    /// Behaves like the libc function ungetc.
-    fn unread_byte(int);
-
     /// Return whether the stream is currently at EOF position.
     fn eof() -> bool;
 
@@ -413,7 +410,6 @@ impl *libc::FILE: Reader {
         }
     }
     fn read_byte() -> int { return libc::fgetc(self) as int; }
-    fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
     fn eof() -> bool { return libc::feof(self) != 0 as c_int; }
     fn seek(offset: int, whence: SeekStyle) {
         assert libc::fseek(self, offset as c_long, convert_whence(whence))
@@ -430,7 +426,6 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
         self.base.read(bytes, len)
     }
     fn read_byte() -> int { self.base.read_byte() }
-    fn unread_byte(byte: int) { self.base.unread_byte(byte); }
     fn eof() -> bool { self.base.eof() }
     fn seek(off: int, whence: SeekStyle) { self.base.seek(off, whence) }
     fn tell() -> uint { self.base.tell() }
@@ -498,8 +493,6 @@ impl BytesReader: Reader {
         self.pos += 1u;
         return b as int;
     }
-    // FIXME (#2738): implement this
-    fn unread_byte(_byte: int) { error!("Unimplemented: unread_byte"); fail; }
     fn eof() -> bool { self.pos == self.bytes.len() }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
