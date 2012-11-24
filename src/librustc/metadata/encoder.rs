@@ -5,7 +5,7 @@ use util::ppaux::ty_to_str;
 use std::{ebml, map};
 use std::map::HashMap;
 use io::WriterUtil;
-use ebml::Serializer;
+use Writer = ebml::Writer;
 use syntax::ast::*;
 use syntax::print::pprust;
 use syntax::{ast_util, visit};
@@ -40,7 +40,7 @@ export encode_def_id;
 type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
 
 type encode_inlined_item = fn@(ecx: @encode_ctxt,
-                               ebml_w: ebml::Serializer,
+                               ebml_w: Writer::Serializer,
                                path: ast_map::path,
                                ii: ast::inlined_item);
 
@@ -86,21 +86,21 @@ fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
     ecx.reachable.contains_key(id)
 }
 
-fn encode_name(ecx: @encode_ctxt, ebml_w: ebml::Serializer, name: ident) {
+fn encode_name(ecx: @encode_ctxt, ebml_w: Writer::Serializer, name: ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
 }
 
-fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                              name: ident) {
     ebml_w.wr_tagged_str(tag_item_impl_type_basename,
                          ecx.tcx.sess.str_of(name));
 }
 
-fn encode_def_id(ebml_w: ebml::Serializer, id: def_id) {
+fn encode_def_id(ebml_w: Writer::Serializer, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
-fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_region_param(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                        it: @ast::item) {
     let opt_rp = ecx.tcx.region_paramd_items.find(it.id);
     for opt_rp.each |rp| {
@@ -110,7 +110,7 @@ fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     }
 }
 
-fn encode_mutability(ebml_w: ebml::Serializer, mt: class_mutability) {
+fn encode_mutability(ebml_w: Writer::Serializer, mt: class_mutability) {
     do ebml_w.wr_tag(tag_class_mut) {
         let val = match mt {
           class_immutable => 'a',
@@ -122,7 +122,7 @@ fn encode_mutability(ebml_w: ebml::Serializer, mt: class_mutability) {
 
 type entry<T> = {val: T, pos: uint};
 
-fn add_to_index(ecx: @encode_ctxt, ebml_w: ebml::Serializer, path: &[ident],
+fn add_to_index(ecx: @encode_ctxt, ebml_w: Writer::Serializer, path: &[ident],
                 index: &mut ~[entry<~str>], name: ident) {
     let mut full_path = ~[];
     full_path.push_all(path);
@@ -133,7 +133,7 @@ fn add_to_index(ecx: @encode_ctxt, ebml_w: ebml::Serializer, path: &[ident],
          pos: ebml_w.writer.tell()});
 }
 
-fn encode_trait_ref(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
+fn encode_trait_ref(ebml_w: Writer::Serializer, ecx: @encode_ctxt,
                     t: @trait_ref) {
     ebml_w.start_tag(tag_impl_trait);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.ref_id));
@@ -142,7 +142,7 @@ fn encode_trait_ref(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
 
 
 // Item info table encoding
-fn encode_family(ebml_w: ebml::Serializer, c: char) {
+fn encode_family(ebml_w: Writer::Serializer, c: char) {
     ebml_w.start_tag(tag_items_data_item_family);
     ebml_w.writer.write(&[c as u8]);
     ebml_w.end_tag();
@@ -150,7 +150,7 @@ fn encode_family(ebml_w: ebml::Serializer, c: char) {
 
 fn def_to_str(did: def_id) -> ~str { fmt!("%d:%d", did.crate, did.node) }
 
-fn encode_ty_type_param_bounds(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
+fn encode_ty_type_param_bounds(ebml_w: Writer::Serializer, ecx: @encode_ctxt,
                                params: @~[ty::param_bounds]) {
     let ty_str_ctxt = @{diag: ecx.diag,
                         ds: def_to_str,
@@ -164,7 +164,7 @@ fn encode_ty_type_param_bounds(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
     }
 }
 
-fn encode_type_param_bounds(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
+fn encode_type_param_bounds(ebml_w: Writer::Serializer, ecx: @encode_ctxt,
                             params: ~[ty_param]) {
     let ty_param_bounds =
         @params.map(|param| ecx.tcx.ty_param_bounds.get(param.id));
@@ -172,13 +172,13 @@ fn encode_type_param_bounds(ebml_w: ebml::Serializer, ecx: @encode_ctxt,
 }
 
 
-fn encode_variant_id(ebml_w: ebml::Serializer, vid: def_id) {
+fn encode_variant_id(ebml_w: Writer::Serializer, vid: def_id) {
     ebml_w.start_tag(tag_items_data_item_variant);
     ebml_w.writer.write(str::to_bytes(def_to_str(vid)));
     ebml_w.end_tag();
 }
 
-fn write_type(ecx: @encode_ctxt, ebml_w: ebml::Serializer, typ: ty::t) {
+fn write_type(ecx: @encode_ctxt, ebml_w: Writer::Serializer, typ: ty::t) {
     let ty_str_ctxt =
         @{diag: ecx.diag,
           ds: def_to_str,
@@ -188,7 +188,7 @@ fn write_type(ecx: @encode_ctxt, ebml_w: ebml::Serializer, typ: ty::t) {
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
-fn write_vstore(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn write_vstore(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                 vstore: ty::vstore) {
     let ty_str_ctxt =
         @{diag: ecx.diag,
@@ -199,13 +199,13 @@ fn write_vstore(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     tyencode::enc_vstore(ebml_w.writer, ty_str_ctxt, vstore);
 }
 
-fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::Serializer, typ: ty::t) {
+fn encode_type(ecx: @encode_ctxt, ebml_w: Writer::Serializer, typ: ty::t) {
     ebml_w.start_tag(tag_items_data_item_type);
     write_type(ecx, ebml_w, typ);
     ebml_w.end_tag();
 }
 
-fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::Serializer, id: node_id) {
+fn encode_symbol(ecx: @encode_ctxt, ebml_w: Writer::Serializer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     let sym = match ecx.item_symbols.find(id) {
       Some(x) => x,
@@ -218,27 +218,27 @@ fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::Serializer, id: node_id) {
     ebml_w.end_tag();
 }
 
-fn encode_discriminant(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_discriminant(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(id)));
     ebml_w.end_tag();
 }
 
-fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                    disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
     ebml_w.writer.write(str::to_bytes(int::to_str(disr_val,10u)));
     ebml_w.end_tag();
 }
 
-fn encode_parent_item(ebml_w: ebml::Serializer, id: def_id) {
+fn encode_parent_item(ebml_w: Writer::Serializer, id: def_id) {
     ebml_w.start_tag(tag_items_data_parent_item);
     ebml_w.writer.write(str::to_bytes(def_to_str(id)));
     ebml_w.end_tag();
 }
 
-fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                             id: node_id, variants: ~[variant],
                             path: ast_map::path, index: @mut ~[entry<int>],
                             ty_params: ~[ty_param]) {
@@ -275,9 +275,9 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     }
 }
 
-fn encode_path(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_path(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                path: ast_map::path, name: ast_map::path_elt) {
-    fn encode_path_elt(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+    fn encode_path_elt(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                        elt: ast_map::path_elt) {
         let (tag, name) = match elt {
           ast_map::path_mod(name) => (tag_path_elt_mod, name),
@@ -296,8 +296,9 @@ fn encode_path(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     }
 }
 
-fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::Serializer, md: _mod,
-                       id: node_id, path: ast_map::path, name: ident) {
+fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
+                       md: _mod, id: node_id, path: ast_map::path,
+                       name: ident) {
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
@@ -354,7 +355,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::Serializer, md: _mod,
     ebml_w.end_tag();
 }
 
-fn encode_visibility(ebml_w: ebml::Serializer, visibility: visibility) {
+fn encode_visibility(ebml_w: Writer::Serializer, visibility: visibility) {
     encode_family(ebml_w, match visibility {
         public => 'g',
         private => 'j',
@@ -362,7 +363,7 @@ fn encode_visibility(ebml_w: ebml::Serializer, visibility: visibility) {
     });
 }
 
-fn encode_self_type(ebml_w: ebml::Serializer, self_type: ast::self_ty_) {
+fn encode_self_type(ebml_w: Writer::Serializer, self_type: ast::self_ty_) {
     ebml_w.start_tag(tag_item_trait_method_self_ty);
 
     // Encode the base self type.
@@ -394,14 +395,14 @@ fn encode_self_type(ebml_w: ebml::Serializer, self_type: ast::self_ty_) {
     ebml_w.end_tag();
 }
 
-fn encode_method_sort(ebml_w: ebml::Serializer, sort: char) {
+fn encode_method_sort(ebml_w: Writer::Serializer, sort: char) {
     ebml_w.start_tag(tag_item_trait_method_sort);
     ebml_w.writer.write(&[ sort as u8 ]);
     ebml_w.end_tag();
 }
 
 /* Returns an index of items in this class */
-fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                          id: node_id, path: ast_map::path,
                          class_tps: ~[ty_param],
                          fields: ~[@struct_field],
@@ -457,7 +458,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
 }
 
 // This is for encoding info for ctors and dtors
-fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                         id: node_id, ident: ident, path: ast_map::path,
                         item: Option<inlined_item>, tps: ~[ty_param]) {
         ebml_w.start_tag(tag_items_data_item);
@@ -482,7 +483,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         ebml_w.end_tag();
 }
 
-fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                           impl_path: ast_map::path, should_inline: bool,
                           parent_id: node_id,
                           m: @method, all_tps: ~[ty_param]) {
@@ -537,7 +538,7 @@ fn should_inline(attrs: ~[attribute]) -> bool {
 }
 
 
-fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                         item: @item, index: @mut ~[entry<int>],
                         path: ast_map::path) {
 
@@ -550,7 +551,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
         };
     if !must_write && !reachable(ecx, item.id) { return; }
 
-    fn add_to_index_(item: @item, ebml_w: ebml::Serializer,
+    fn add_to_index_(item: @item, ebml_w: Writer::Serializer,
                      index: @mut ~[entry<int>]) {
         index.push({val: item.id, pos: ebml_w.writer.tell()});
     }
@@ -835,7 +836,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     }
 }
 
-fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                                 nitem: @foreign_item,
                                 index: @mut ~[entry<int>],
                                 path: ast_map::path, abi: foreign_abi) {
@@ -868,7 +869,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     ebml_w.end_tag();
 }
 
-fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                          crate: @crate) -> ~[entry<int>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
@@ -923,7 +924,7 @@ fn create_index<T: Copy Hash IterBytes>(index: ~[entry<T>]) ->
     return buckets_frozen;
 }
 
-fn encode_index<T>(ebml_w: ebml::Serializer, buckets: ~[@~[entry<T>]],
+fn encode_index<T>(ebml_w: Writer::Serializer, buckets: ~[@~[entry<T>]],
                    write_fn: fn(io::Writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
@@ -958,7 +959,7 @@ fn write_int(writer: io::Writer, &&n: int) {
     writer.write_be_u32(n as u32);
 }
 
-fn encode_meta_item(ebml_w: ebml::Serializer, mi: meta_item) {
+fn encode_meta_item(ebml_w: Writer::Serializer, mi: meta_item) {
     match mi.node {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
@@ -995,7 +996,7 @@ fn encode_meta_item(ebml_w: ebml::Serializer, mi: meta_item) {
     }
 }
 
-fn encode_attributes(ebml_w: ebml::Serializer, attrs: ~[attribute]) {
+fn encode_attributes(ebml_w: Writer::Serializer, attrs: ~[attribute]) {
     ebml_w.start_tag(tag_attributes);
     for attrs.each |attr| {
         ebml_w.start_tag(tag_attribute);
@@ -1056,7 +1057,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
     return attrs;
 }
 
-fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                      cstore: cstore::CStore) {
 
     fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::CStore)
@@ -1102,7 +1103,7 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     ebml_w.end_tag();
 }
 
-fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
+fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
     ebml_w.start_tag(tag_crate_dep_name);
@@ -1117,7 +1118,7 @@ fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: ebml::Serializer,
     ebml_w.end_tag();
 }
 
-fn encode_hash(ebml_w: ebml::Serializer, hash: ~str) {
+fn encode_hash(ebml_w: Writer::Serializer, hash: ~str) {
     ebml_w.start_tag(tag_crate_hash);
     ebml_w.writer.write(str::to_bytes(hash));
     ebml_w.end_tag();
@@ -1155,7 +1156,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         type_abbrevs: ty::new_ty_hash()
      });
 
-    let ebml_w = ebml::Serializer(wr as io::Writer);
+    let ebml_w = Writer::Serializer(wr as io::Writer);
 
     encode_hash(ebml_w, ecx.link_meta.extras_hash);
 
