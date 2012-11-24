@@ -5,6 +5,8 @@ extern mod std;
 
 use cmp::Eq;
 use std::ebml;
+use EBReader = std::ebml::Reader;
+use EBWriter = std::ebml::Writer;
 use io::Writer;
 use std::serialization::{Serializable, Deserializable, deserialize};
 use std::prettyprint;
@@ -22,15 +24,15 @@ fn test_prettyprint<A: Serializable<prettyprint::Serializer>>(
 
 fn test_ebml<A:
     Eq
-    Serializable<ebml::Serializer>
-    Deserializable<ebml::Deserializer>
+    Serializable<EBWriter::Serializer>
+    Deserializable<EBReader::Deserializer>
 >(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = &ebml::Serializer(wr);
+        let ebml_w = &EBWriter::Serializer(wr);
         a1.serialize(ebml_w)
     };
-    let d = ebml::Doc(@bytes);
-    let a2: A = deserialize(&ebml::Deserializer(d));
+    let d = EBReader::Doc(@bytes);
+    let a2: A = deserialize(&EBReader::Deserializer(d));
     assert *a1 == a2;
 }
 
