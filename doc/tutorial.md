@@ -1540,8 +1540,7 @@ them. In the rare case where the compiler needs assistance, though, the
 arguments and return types may be annotated.
 
 ~~~~
-# type mygoodness = fn(~str) -> ~str; type what_the = int;
-let bloop = |well, oh: mygoodness| -> what_the { fail oh(well) };
+let square = |x: int| -> uint { x * x as uint };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
