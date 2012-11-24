@@ -404,7 +404,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 impl *libc::FILE: Reader {
     fn read(bytes: &[mut u8], len: uint) -> uint {
         do vec::as_mut_buf(bytes) |buf_p, buf_len| {
-            assert buf_len <= len;
+            assert buf_len >= len;
 
             let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
                                     len as size_t, self);
@@ -1206,6 +1206,29 @@ mod tests {
           }
           result::Ok(_) => fail
         }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_read_buffer_too_small() {
+        let path = &Path("tmp/lib-io-test-read-buffer-too-small.tmp");
+        // ensure the file exists
+        io::file_writer(path, [io::Create]).get();
+
+        let file = io::file_reader(path).get();
+        let mut buf = vec::from_elem(5, 0);
+        file.read(buf, 6); // this should fail because buf is too small
+    }
+
+    #[test]
+    fn test_read_buffer_big_enough() {
+        let path = &Path("tmp/lib-io-test-read-buffer-big-enough.tmp");
+        // ensure the file exists
+        io::file_writer(path, [io::Create]).get();
+
+        let file = io::file_reader(path).get();
+        let mut buf = vec::from_elem(5, 0);
+        file.read(buf, 4); // this should succeed because buf is big enough
     }
 
     #[test]
