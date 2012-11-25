@@ -157,7 +157,6 @@ pub mod reader {
 
     pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start,
                                                         d.end) }
-
     pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
         f(vec::view(*d.data, d.start, d.end))
     }
@@ -190,7 +189,7 @@ pub mod reader {
     pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
 
-    struct Deserializer {
+    pub struct Deserializer {
         priv mut parent: Doc,
         priv mut pos: uint,
     }
@@ -388,7 +387,7 @@ pub mod reader {
 pub mod writer {
 
     // ebml writing
-    struct Serializer {
+    pub struct Serializer {
         writer: io::Writer,
         priv mut size_positions: ~[uint],
     }
