@@ -35,16 +35,16 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      * If the map contains a value for the key, use the function
      * to set a new value.
      */
-    fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool;
+    fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool;
 
     /**
      * Add a value to the map.
      *
-     * If the map contains a value for the key, use the function
-     * to set a new value.  (Like insert_with_key, but with a function
-     * of only values.)
+     * If the map contains a value for the key, use the function to
+     * set a new value.  (Like `insert_or_update_with_key`, but with a
+     * function of only values.)
      */
-    fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
+    fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
     pure fn contains_key(key: K) -> bool;
@@ -281,7 +281,7 @@ pub mod chained {
             }
         }
 
-        fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
+        fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
 /*
             match self.find(key) {
                 None            => return self.insert(key, val),
@@ -330,8 +330,8 @@ pub mod chained {
             }
         }
 
-        fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
-            return self.insert_with_key(key, newval, |_k, v, v1| ff(v,v1));
+        fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+            return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
         pure fn get(k: K) -> V {
@@ -517,15 +517,15 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
         }
     }
 
-    fn insert_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
+    fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
         match self.find(key) {
             None            => return self.insert(key, newval),
             Some(copy orig) => return self.insert(key, ff(key, orig, newval))
         }
     }
 
-    fn insert_with(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
-        return self.insert_with_key(key, newval, |_k, v, v1| ff(v,v1));
+    fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
+        return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
     }
 
     fn remove(key: K) -> bool {
@@ -833,7 +833,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_with_key() {
+    fn test_update_with_key() {
         let map = map::HashMap::<~str, uint>();
 
         // given a new key, initialize it with this new count, given
@@ -848,11 +848,11 @@ mod tests {
 
         // count the number of several types of animal,
         // adding in groups as we go
-        map.insert_with(~"cat",      1, addMoreToCount_simple);
-        map.insert_with_key(~"mongoose", 1, addMoreToCount);
-        map.insert_with(~"cat",      7, addMoreToCount_simple);
-        map.insert_with_key(~"ferret",   3, addMoreToCount);
-        map.insert_with_key(~"cat",      2, addMoreToCount);
+        map.update(~"cat",      1, addMoreToCount_simple);
+        map.update_with_key(~"mongoose", 1, addMoreToCount);
+        map.update(~"cat",      7, addMoreToCount_simple);
+        map.update_with_key(~"ferret",   3, addMoreToCount);
+        map.update_with_key(~"cat",      2, addMoreToCount);
 
         // check the total counts
         assert 10 == option::get(map.find(~"cat"));
