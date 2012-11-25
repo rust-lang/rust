@@ -527,7 +527,7 @@ pub pure fn peek<T: Send, Tb: Send>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-impl<T: Send, Tb: Send> RecvPacketBuffered<T, Tb> {
+impl<T: Send, Tb: Send> RecvPacketBuffered<T, Tb>: Peekable<T> {
     pure fn peek() -> bool {
         peek(&self)
     }
@@ -928,32 +928,32 @@ proto! streamp (
 )
 
 /// A trait for things that can send multiple messages.
-pub trait Channel<T: Send> {
-    // It'd be nice to call this send, but it'd conflict with the
-    // built in send kind.
-
+pub trait GenericChan<T> {
     /// Sends a message.
     fn send(x: T);
+}
 
+/// Things that can send multiple messages and can detect when the receiver
+/// is closed
+pub trait GenericSmartChan<T> {
     /// Sends a message, or report if the receiver has closed the connection.
     fn try_send(x: T) -> bool;
 }
 
 /// A trait for things that can receive multiple messages.
-pub trait Recv<T: Send> {
+pub trait GenericPort<T> {
     /// Receives a message, or fails if the connection closes.
     fn recv() -> T;
 
-    /** Receives a message if one is available, or returns `none` if
-    the connection is closed.
-
+    /** Receives a message, or returns `none` if
+    the connection is closed or closes.
     */
     fn try_recv() -> Option<T>;
+}
 
-    /** Returns true if a message is available or the connection is
-    closed.
-
-    */
+/// Ports that can `peek`
+pub trait Peekable<T> {
+    /// Returns true if a message is available
     pure fn peek() -> bool;
 }
 
@@ -984,13 +984,16 @@ pub fn stream<T:Send>() -> (Chan<T>, Port<T>) {
     (Chan_({ mut endp: Some(move c) }), Port_({ mut endp: Some(move s) }))
 }
 
-impl<T: Send> Chan<T>: Channel<T> {
+impl<T: Send> Chan<T>: GenericChan<T> {
     fn send(x: T) {
         let mut endp = None;
         endp <-> self.endp;
         self.endp = Some(
             streamp::client::data(unwrap(move endp), move x))
     }
+}
+
+impl<T: Send> Chan<T>: GenericSmartChan<T> {
 
     fn try_send(x: T) -> bool {
         let mut endp = None;
@@ -1005,7 +1008,7 @@ impl<T: Send> Chan<T>: Channel<T> {
     }
 }
 
-impl<T: Send> Port<T>: Recv<T> {
+impl<T: Send> Port<T>: GenericPort<T> {
     fn recv() -> T {
         let mut endp = None;
         endp <-> self.endp;
@@ -1025,7 +1028,9 @@ impl<T: Send> Port<T>: Recv<T> {
           None => None
         }
     }
+}
 
+impl<T: Send> Port<T>: Peekable<T> {
     pure fn peek() -> bool unsafe {
         let mut endp = None;
         endp <-> self.endp;
@@ -1071,7 +1076,7 @@ impl<T: Send> PortSet<T> {
     }
 }
 
-impl<T: Send> PortSet<T> : Recv<T> {
+impl<T: Send> PortSet<T> : GenericPort<T> {
 
     fn try_recv() -> Option<T> {
         let mut result = None;
@@ -1099,6 +1104,9 @@ impl<T: Send> PortSet<T> : Recv<T> {
         option::unwrap_expect(self.try_recv(), "port_set: endpoints closed")
     }
 
+}
+
+impl<T: Send> PortSet<T> : Peekable<T> {
     pure fn peek() -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
@@ -1112,7 +1120,7 @@ impl<T: Send> PortSet<T> : Recv<T> {
 /// A channel that can be shared between many senders.
 pub type SharedChan<T: Send> = private::Exclusive<Chan<T>>;
 
-impl<T: Send> SharedChan<T>: Channel<T> {
+impl<T: Send> SharedChan<T>: GenericChan<T> {
     fn send(x: T) {
         let mut xx = Some(move x);
         do self.with_imm |chan| {
@@ -1121,7 +1129,9 @@ impl<T: Send> SharedChan<T>: Channel<T> {
             chan.send(option::unwrap(move x))
         }
     }
+}
 
+impl<T: Send> SharedChan<T>: GenericSmartChan<T> {
     fn try_send(x: T) -> bool {
         let mut xx = Some(move x);
         do self.with_imm |chan| {
@@ -1145,7 +1155,9 @@ pub trait Select2<T: Send, U: Send> {
     fn select() -> Either<T, U>;
 }
 
-impl<T: Send, U: Send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
+impl<T: Send, U: Send,
+     Left: Selectable GenericPort<T>,
+     Right: Selectable GenericPort<U>>
     (Left, Right): Select2<T, U> {
 
     fn select() -> Either<T, U> {

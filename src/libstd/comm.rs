@@ -17,25 +17,28 @@ Higher level communication abstractions.
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 
-use pipes::{Channel, Recv, Chan, Port, Selectable};
+use pipes::{GenericChan, GenericSmartChan, GenericPort,
+            Chan, Port, Selectable, Peekable};
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T: Send, U: Send> {
     priv chan: Chan<T>,
-    priv port: Port <U>,
+    priv port: Port<U>,
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : Channel<T> {
+impl<T: Send, U: Send> DuplexStream<T, U> : GenericChan<T> {
     fn send(x: T) {
         self.chan.send(move x)
     }
+}
 
+impl<T: Send, U: Send> DuplexStream<T, U> : GenericSmartChan<T> {
     fn try_send(x: T) -> bool {
         self.chan.try_send(move x)
     }
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : Recv<U> {
+impl<T: Send, U: Send> DuplexStream<T, U> : GenericPort<U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -43,7 +46,9 @@ impl<T: Send, U: Send> DuplexStream<T, U> : Recv<U> {
     fn try_recv() -> Option<U> {
         self.port.try_recv()
     }
+}
 
+impl<T: Send, U: Send> DuplexStream<T, U> : Peekable<U> {
     pure fn peek() -> bool {
         self.port.peek()
     }

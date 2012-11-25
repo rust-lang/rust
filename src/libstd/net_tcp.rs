@@ -35,7 +35,7 @@ extern mod rustrt {
  * underlying libuv data structures when it goes out of scope. This is the
  * data structure that is used for read/write operations over a TCP stream.
  */
-struct TcpSocket {
+pub struct TcpSocket {
   socket_data: @TcpSocketData,
 }
 
@@ -59,7 +59,7 @@ pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  * It is created with a call to `net::tcp::socket_buf()` and has impls that
  * satisfy both the `io::reader` and `io::writer` traits.
  */
-struct TcpSocketBuf {
+pub struct TcpSocketBuf {
     data: @TcpBufferedSocketData,
     mut end_of_stream: bool,
 }
