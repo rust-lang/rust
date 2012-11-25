@@ -419,6 +419,34 @@ pub fn unshift<T>(v: &mut ~[T], x: T) {
     v.push_all_move(move vv);
 }
 
+/// Insert an element at position i within v, shifting all
+/// elements after position i one position to the right.
+pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
+    let len = v.len();
+    assert i <= len;
+
+    v.push(move x);
+    let mut j = len;
+    while j > i {
+        v[j] <-> v[j - 1];
+        j -= 1;
+    }
+}
+
+/// Remove and return the element at position i within v, shifting
+/// all elements after position i one position to the left.
+pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
+    let len = v.len();
+    assert i < len;
+
+    let mut j = i;
+    while j < len - 1 {
+        v[j] <-> v[j + 1];
+        j += 1;
+    }
+    move v.pop()
+}
+
 pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
     let mut v = move v; // FIXME(#3488)
 
@@ -1685,6 +1713,8 @@ pub trait MutableVector<T> {
     fn pop(&mut self) -> T;
     fn shift(&mut self) -> T;
     fn unshift(&mut self, x: T);
+    fn insert(&mut self, i: uint, x:T);
+    fn remove(&mut self, i: uint) -> T;
     fn swap_remove(&mut self, index: uint) -> T;
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: pure fn(t: &T) -> bool);
@@ -1720,6 +1750,14 @@ impl<T> ~[T]: MutableVector<T> {
 
     fn unshift(&mut self, x: T) {
         unshift(self, move x)
+    }
+
+    fn insert(&mut self, i: uint, x:T) {
+        insert(self, i, move x)
+    }
+
+    fn remove(&mut self, i: uint) -> T {
+        remove(self, i)
     }
 
     fn swap_remove(&mut self, index: uint) -> T {
@@ -2923,6 +2961,54 @@ mod tests {
         let mut x = ~[1, 2, 3];
         x.unshift(0);
         assert x == ~[0, 1, 2, 3];
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut a = ~[1, 2, 4];
+        a.insert(2, 3);
+        assert a == ~[1, 2, 3, 4];
+
+        let mut a = ~[1, 2, 3];
+        a.insert(0, 0);
+        assert a == ~[0, 1, 2, 3];
+
+        let mut a = ~[1, 2, 3];
+        a.insert(3, 4);
+        assert a == ~[1, 2, 3, 4];
+
+        let mut a = ~[];
+        a.insert(0, 1);
+        assert a == ~[1];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_insert_oob() {
+        let mut a = ~[1, 2, 3];
+        a.insert(4, 5);
+    }
+
+    #[test]
+    fn test_remove() {
+        let mut a = ~[1, 2, 3, 4];
+        a.remove(2);
+        assert a == ~[1, 2, 4];
+
+        let mut a = ~[1, 2, 3];
+        a.remove(0);
+        assert a == ~[2, 3];
+
+        let mut a = ~[1];
+        a.remove(0);
+        assert a == ~[];
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_remove_oob() {
+        let mut a = ~[1, 2, 3];
+        a.remove(3);
     }
 
     #[test]
