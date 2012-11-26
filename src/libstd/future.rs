@@ -1,8 +1,3 @@
-// NB: transitionary, de-mode-ing.
-// tjc: allowing deprecated modes due to function issue.
-// can re-forbid them after snapshot
-#[forbid(deprecated_pattern)];
-
 /*!
  * A type representing values that may be computed concurrently and
  * operations for working with them.
@@ -34,27 +29,37 @@ impl<A> Future<A> : Drop {
 priv enum FutureState<A> {
     Pending(fn~() -> A),
     Evaluating,
-    Forced(~A)
+    Forced(A)
 }
 
 /// Methods on the `future` type
 impl<A:Copy> Future<A> {
     fn get() -> A {
         //! Get the value of the future
-
-        get(&self)
+        self.with(|a| *a)
     }
 }
 
 impl<A> Future<A> {
-    fn get_ref(&self) -> &self/A {
-        get_ref(self)
-    }
+    pure fn with<B>(&self, blk: pure fn(&A) -> B) -> B {
+        match self.state {
+            Forced(ref v) => { return blk(v); }
+            Evaluating => fail ~"Recursive forcing of future!",
+            Pending(_) => {}
+        }
 
-    fn with<B>(blk: fn(&A) -> B) -> B {
-        //! Work with the value without copying it
-
-        with(&self, blk)
+        // We're lying about purity here, hence unsafe.
+        let mut state = Evaluating;
+        unsafe {
+            self.state <-> state;
+            match move state {
+                Forced(_) | Evaluating => fail ~"Logic error.",
+                Pending(move f) => {
+                    self.state = Forced(move f());
+                    self.with(blk)
+                }
+            }
+        }
     }
 }
 
@@ -66,7 +71,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
      * not block.
      */
 
-    Future {state: Forced(~(move val))}
+    Future {state: Forced(move val)}
 }
 
 pub fn from_port<A:Send>(port: PortOne<A>) ->
@@ -120,62 +125,12 @@ pub fn spawn<A:Send>(blk: fn~() -> A) -> Future<A> {
     return from_port(move port);
 }
 
-pub fn get_ref<A>(future: &r/Future<A>) -> &r/A {
-    /*!
-     * Executes the future's closure and then returns a borrowed
-     * pointer to the result.  The borrowed pointer lasts as long as
-     * the future.
-     */
-
-    // The unsafety here is to hide the aliases from borrowck, which
-    // would otherwise be concerned that someone might reassign
-    // `future.state` and cause the value of the future to be freed.
-    // But *we* know that once `future.state` is `Forced()` it will
-    // never become "unforced"---so we can safely return a pointer
-    // into the interior of the Forced() variant which will last as
-    // long as the future itself.
-
-    match future.state {
-      Forced(ref v) => { // v here has type &A, but with a shorter lifetime.
-        return unsafe{ copy_lifetime(future, &**v) }; // ...extend it.
-      }
-      Evaluating => {
-        fail ~"Recursive forcing of future!";
-      }
-      Pending(_) => {}
-    }
-
-    let mut state = Evaluating;
-    state <-> future.state;
-    match move state {
-      Forced(_) | Evaluating => {
-        fail ~"Logic error.";
-      }
-      Pending(move f) => {
-        future.state = Forced(~f());
-        return get_ref(future);
-      }
-    }
-}
-
-pub fn get<A:Copy>(future: &Future<A>) -> A {
-    //! Get the value of the future
-
-    *get_ref(future)
-}
-
-pub fn with<A,B>(future: &Future<A>, blk: fn(&A) -> B) -> B {
-    //! Work with the value without copying it
-
-    blk(get_ref(future))
-}
-
 #[allow(non_implicitly_copyable_typarams)]
 pub mod test {
     #[test]
     pub fn test_from_value() {
         let f = from_value(~"snail");
-        assert get(&f) == ~"snail";
+        assert f.get() == ~"snail";
     }
 
     #[test]
@@ -183,37 +138,19 @@ pub mod test {
         let (ch, po) = oneshot::init();
         send_one(move ch, ~"whale");
         let f = from_port(move po);
-        assert get(&f) == ~"whale";
+        assert f.get() == ~"whale";
     }
 
     #[test]
     pub fn test_from_fn() {
         let f = from_fn(|| ~"brail");
-        assert get(&f) == ~"brail";
+        assert f.get() == ~"brail";
     }
 
     #[test]
     pub fn test_interface_get() {
         let f = from_value(~"fail");
         assert f.get() == ~"fail";
-    }
-
-    #[test]
-    pub fn test_with() {
-        let f = from_value(~"nail");
-        assert with(&f, |v| copy *v) == ~"nail";
-    }
-
-    #[test]
-    pub fn test_get_ref_method() {
-        let f = from_value(22);
-        assert *f.get_ref() == 22;
-    }
-
-    #[test]
-    pub fn test_get_ref_fn() {
-        let f = from_value(22);
-        assert *get_ref(&f) == 22;
     }
 
     #[test]
@@ -225,7 +162,7 @@ pub mod test {
     #[test]
     pub fn test_spawn() {
         let f = spawn(|| ~"bale");
-        assert get(&f) == ~"bale";
+        assert f.get() == ~"bale";
     }
 
     #[test]
@@ -233,7 +170,7 @@ pub mod test {
     #[ignore(cfg(target_os = "win32"))]
     pub fn test_futurefail() {
         let f = spawn(|| fail);
-        let _x: ~str = get(&f);
+        let _x: ~str = f.get();
     }
 
     #[test]
@@ -241,7 +178,7 @@ pub mod test {
         let expected = ~"schlorf";
         let f = do spawn |copy expected| { copy expected };
         do task::spawn |move f, move expected| {
-            let actual = get(&f);
+            let actual = f.get();
             assert actual == expected;
         }
     }
