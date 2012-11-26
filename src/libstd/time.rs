@@ -4,6 +4,10 @@ use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
 use io::{Reader, ReaderUtil};
 use result::{Result, Ok, Err};
+use serialization::{Serializable,
+                         Deserializable,
+                         Serializer,
+                         Deserializer};
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -75,20 +79,60 @@ pub fn tzset() {
     rustrt::rust_tzset();
 }
 
-type Tm_ = {
-    tm_sec: i32, // seconds after the minute ~[0-60]
-    tm_min: i32, // minutes after the hour ~[0-59]
-    tm_hour: i32, // hours after midnight ~[0-23]
-    tm_mday: i32, // days of the month ~[1-31]
-    tm_mon: i32, // months since January ~[0-11]
-    tm_year: i32, // years since 1900
-    tm_wday: i32, // days since Sunday ~[0-6]
-    tm_yday: i32, // days since January 1 ~[0-365]
-    tm_isdst: i32, // Daylight Savings Time flag
-    tm_gmtoff: i32, // offset from UTC in seconds
-    tm_zone: ~str, // timezone abbreviation
-    tm_nsec: i32, // nanoseconds
-};
+pub struct Tm_ {
+    pub tm_sec: i32, // seconds after the minute ~[0-60]
+    pub tm_min: i32, // minutes after the hour ~[0-59]
+    pub tm_hour: i32, // hours after midnight ~[0-23]
+    pub tm_mday: i32, // days of the month ~[1-31]
+    pub tm_mon: i32, // months since January ~[0-11]
+    pub tm_year: i32, // years since 1900
+    pub tm_wday: i32, // days since Sunday ~[0-6]
+    pub tm_yday: i32, // days since January 1 ~[0-365]
+    pub tm_isdst: i32, // Daylight Savings Time flag
+    pub tm_gmtoff: i32, // offset from UTC in seconds
+    pub tm_zone: ~str, // timezone abbreviation
+    pub tm_nsec: i32, // nanoseconds
+}
+
+impl<S: Serializer> Tm_: Serializable<S> {
+    fn serialize(&self, s: &S) {
+       s.emit_i32(self.tm_sec);
+        s.emit_i32(self.tm_min);
+        s.emit_i32(self.tm_hour);
+        s.emit_i32(self.tm_mday);
+        s.emit_i32(self.tm_mon);
+        s.emit_i32(self.tm_year);
+        s.emit_i32(self.tm_wday);
+        s.emit_i32(self.tm_yday);
+        s.emit_i32(self.tm_isdst);
+        s.emit_i32(self.tm_gmtoff);
+        s.emit_owned_str(self.tm_zone);
+        s.emit_i32(self.tm_nsec);
+    }
+}
+
+pub fn deserialize_tm_<D: Deserializer>(d: &D) -> Tm_ {
+   Tm_ {
+        tm_sec: d.read_i32(),
+        tm_min: d.read_i32(),
+        tm_hour: d.read_i32(),
+        tm_mday: d.read_i32(),
+        tm_mon: d.read_i32(),
+        tm_year: d.read_i32(),
+        tm_wday: d.read_i32(),
+        tm_yday: d.read_i32(),
+        tm_isdst: d.read_i32(),
+        tm_gmtoff: d.read_i32(),
+        tm_zone: d.read_owned_str(),
+        tm_nsec: d.read_i32(),
+   }
+}
+
+impl<D: Deserializer> Tm_: Deserializable<D> {
+    static fn deserialize(d: &D) -> Tm_ {
+       deserialize_tm_(d)
+    }
+}
 
 impl Tm_ : Eq {
     #[cfg(stage0)]
@@ -133,6 +177,23 @@ pub enum Tm {
     Tm_(Tm_)
 }
 
+impl<S: Serializer> Tm: Serializable<S> {
+    fn serialize(&self, s: &S) {
+        let t: Tm_ = **self;
+        t.serialize(s);
+    }
+}
+
+pub fn deserialize_tm<D: Deserializer>(d: &D) -> Tm {
+    Tm_(deserialize_tm_(d))
+}
+
+impl<D: Deserializer> Tm: Deserializable<D> {
+    static fn deserialize(d: &D) -> Tm {
+       deserialize_tm(d)
+    }
+}
+
 impl Tm : Eq {
     #[cfg(stage0)]
     pure fn eq(other: &Tm) -> bool { *self == *(*other) }
@@ -147,7 +208,7 @@ impl Tm : Eq {
 }
 
 pub pure fn empty_tm() -> Tm {
-    Tm_({
+    Tm_(Tm_{
         tm_sec: 0_i32,
         tm_min: 0_i32,
         tm_hour: 0_i32,
@@ -652,7 +713,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     do io::with_str_reader(str::from_slice(format)) |rdr| {
-        let mut tm = {
+        let mut tm = Tm_ {
             tm_sec: 0_i32,
             tm_min: 0_i32,
             tm_hour: 0_i32,
@@ -686,7 +747,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
 
         if pos == len && rdr.eof() {
-            Ok(Tm_({
+            Ok(Tm_(Tm_ {
                 tm_sec: tm.tm_sec,
                 tm_min: tm.tm_min,
                 tm_hour: tm.tm_hour,

@@ -10,6 +10,7 @@ use EBWriter = std::ebml::Writer;
 use io::Writer;
 use std::serialization::{Serializable, Deserializable, deserialize};
 use std::prettyprint;
+use std::time;
 
 fn test_prettyprint<A: Serializable<prettyprint::Serializer>>(
     a: &A,
@@ -183,5 +184,8 @@ fn main() {
 
     let a = &B;
     test_prettyprint(a, &~"B");
+    test_ebml(a);
+
+    let a = &time::now();
     test_ebml(a);
 }
