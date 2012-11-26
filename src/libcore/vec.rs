@@ -2983,6 +2983,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_insert_oob() {
         let mut a = ~[1, 2, 3];
@@ -3005,6 +3006,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_remove_oob() {
         let mut a = ~[1, 2, 3];
