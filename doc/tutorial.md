@@ -2042,8 +2042,9 @@ as in this version of `print_all` that copies elements.
 fn print_all<T: Printable Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
-        let copy_of_thing = printable_things[0];
+        let copy_of_thing = printable_things[i];
         copy_of_thing.print();
+        i += 1;
     }
 }
 ~~~
