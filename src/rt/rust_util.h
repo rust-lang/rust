@@ -154,6 +154,7 @@ inline void isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size)
         amount += (size_t)ret;
     } while (amount < size);
     int ret = close(fd);
+    // FIXME #3697: Why does this fail sometimes?
     if (ret != 0)
         kernel->log(log_warn, "error closing /dev/urandom: %s",
             strerror(errno));
