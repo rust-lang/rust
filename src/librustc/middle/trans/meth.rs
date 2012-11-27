@@ -98,6 +98,12 @@ fn trans_method(ccx: @crate_ctxt,
                 ty::subst_tps(ccx.tcx, *tys, None, self_ty)
             }
         };
+        debug!("calling trans_fn with base_self_ty %s, self_ty %s",
+               match base_self_ty {
+                    None => ~"(none)",
+                    Some(x) => ty_to_str(ccx.tcx, x),
+               },
+               ty_to_str(ccx.tcx, self_ty));
         match method.self_ty.node {
           ast::sty_value => {
             impl_owned_self(self_ty)
