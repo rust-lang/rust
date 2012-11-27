@@ -57,7 +57,7 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
 
 // XXX bad copies. take arg by val
 pub fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
-    -> {lefts: ~[T], rights: ~[U]} {
+    -> (~[T], ~[U]) {
     /*!
      * Extracts from a vector of either all the left values and right values
      *
@@ -73,7 +73,7 @@ pub fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
           Right(copy r) => rights.push(r)
         }
     }
-    return {lefts: move lefts, rights: move rights};
+    return (move lefts, move rights);
 }
 
 // XXX bad copies
@@ -212,36 +212,36 @@ fn test_rights_empty() {
 #[test]
 fn test_partition() {
     let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
-    let result = partition(input);
-    assert (result.lefts[0] == 10);
-    assert (result.lefts[1] == 12);
-    assert (result.lefts[2] == 14);
-    assert (result.rights[0] == 11);
-    assert (result.rights[1] == 13);
+    let (lefts, rights) = partition(input);
+    assert (lefts[0] == 10);
+    assert (lefts[1] == 12);
+    assert (lefts[2] == 14);
+    assert (rights[0] == 11);
+    assert (rights[1] == 13);
 }
 
 #[test]
 fn test_partition_no_lefts() {
     let input: ~[Either<int, int>] = ~[Right(10), Right(11)];
-    let result = partition(input);
-    assert (vec::len(result.lefts) == 0u);
-    assert (vec::len(result.rights) == 2u);
+    let (lefts, rights) = partition(input);
+    assert (vec::len(lefts) == 0u);
+    assert (vec::len(rights) == 2u);
 }
 
 #[test]
 fn test_partition_no_rights() {
     let input: ~[Either<int, int>] = ~[Left(10), Left(11)];
-    let result = partition(input);
-    assert (vec::len(result.lefts) == 2u);
-    assert (vec::len(result.rights) == 0u);
+    let (lefts, rights) = partition(input);
+    assert (vec::len(lefts) == 2u);
+    assert (vec::len(rights) == 0u);
 }
 
 #[test]
 fn test_partition_empty() {
     let input: ~[Either<int, int>] = ~[];
-    let result = partition(input);
-    assert (vec::len(result.lefts) == 0u);
-    assert (vec::len(result.rights) == 0u);
+    let (lefts, rights) = partition(input);
+    assert (vec::len(lefts) == 0u);
+    assert (vec::len(rights) == 0u);
 }
 
 //
