@@ -38,7 +38,8 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac,
              expr_paren, expr_path, expr_rec, expr_repeat, expr_ret,
              expr_swap, expr_struct, expr_tup, expr_unary, expr_unary_move,
-             expr_vec, expr_vstore, expr_while, extern_fn, field, fn_decl,
+             expr_vec, expr_vstore, expr_vstore_mut_box, expr_while,
+             extern_fn, field, fn_decl,
              foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
              ident, impure_fn, infer, inherited,
              item, item_, item_class, item_const, item_enum, item_fn,
@@ -1450,8 +1451,11 @@ impl Parser {
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
-              expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
-              if m == m_imm => expr_vstore(e, expr_vstore_box),
+              expr_vec(*) if m == m_mutbl =>
+                expr_vstore(e, expr_vstore_mut_box),
+              expr_vec(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
+              expr_lit(@{node: lit_str(_), span: _}) if m == m_imm =>
+                expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
             };
           }
