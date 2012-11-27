@@ -192,6 +192,7 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         buffer: [mut {tok: tok0.tok, sp: span0}, ..4],
         buffer_start: 0,
         buffer_end: 0,
+        tokens_consumed: 0u,
         restriction: UNRESTRICTED,
         quote_depth: 0u,
         keywords: token::keyword_table(),
@@ -210,6 +211,7 @@ struct Parser {
     mut buffer: [mut {tok: token::Token, sp: span} * 4],
     mut buffer_start: int,
     mut buffer_end: int,
+    mut tokens_consumed: uint,
     mut restriction: restriction,
     mut quote_depth: uint, // not (yet) related to the quasiquoter
     reader: reader,
@@ -236,6 +238,7 @@ impl Parser {
         };
         self.token = next.tok;
         self.span = next.sp;
+        self.tokens_consumed += 1u;
     }
     fn swap(next: token::Token, +lo: BytePos, +hi: BytePos) {
         self.token = next;
