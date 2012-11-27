@@ -1,3 +1,5 @@
+#[forbid(deprecated_pattern)];
+
 extern mod std;
 
 // These tests used to be separate files, but I wanted to refactor all
@@ -32,7 +34,7 @@ fn test_ebml<A:
         let ebml_w = &EBWriter::Serializer(wr);
         a1.serialize(ebml_w)
     };
-    let d = EBReader::Doc(@bytes);
+    let d = EBReader::Doc(@move bytes);
     let a2: A = deserialize(&EBReader::Deserializer(d));
     assert *a1 == a2;
 }
