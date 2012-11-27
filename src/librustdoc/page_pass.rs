@@ -7,6 +7,7 @@ individual modules, pages for the crate, indexes, etc.
 
 use doc::{ItemUtils, PageUtils};
 use syntax::ast;
+use util::NominalOp;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {
@@ -39,6 +40,8 @@ fn run(
 type PagePort = comm::Port<Option<doc::Page>>;
 type PageChan = comm::Chan<Option<doc::Page>>;
 
+type NominalPageChan = NominalOp<PageChan>;
+
 fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
@@ -59,7 +62,7 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. *fold::default_any_fold(page_chan)
+        .. *fold::default_any_fold(NominalOp { op: page_chan })
     });
     fold.fold_doc(&fold, doc);
 
@@ -67,7 +70,7 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
 }
 
 fn fold_crate(
-    fold: &fold::Fold<PageChan>,
+    fold: &fold::Fold<NominalPageChan>,
     +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
@@ -78,13 +81,13 @@ fn fold_crate(
         .. doc
     });
 
-    comm::send(fold.ctxt, Some(page));
+    comm::send(fold.ctxt.op, Some(page));
 
     doc
 }
 
 fn fold_mod(
-    fold: &fold::Fold<PageChan>,
+    fold: &fold::Fold<NominalPageChan>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
 
@@ -94,7 +97,7 @@ fn fold_mod(
 
         let doc = strip_mod(doc);
         let page = doc::ItemPage(doc::ModTag(doc));
-        comm::send(fold.ctxt, Some(page));
+        comm::send(fold.ctxt.op, Some(page));
     }
 
     doc
@@ -114,12 +117,12 @@ fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
 }
 
 fn fold_nmod(
-    fold: &fold::Fold<PageChan>,
+    fold: &fold::Fold<NominalPageChan>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::ItemPage(doc::NmodTag(doc));
-    comm::send(fold.ctxt, Some(page));
+    comm::send(fold.ctxt.op, Some(page));
     return doc;
 }
 
