@@ -362,7 +362,12 @@ impl check_loan_ctxt {
     }
 
     fn check_assignment(at: assignment_type, ex: @ast::expr) {
-        let cmt = self.bccx.cat_expr(ex);
+        // We don't use cat_expr() here because we don't want to treat
+        // auto-ref'd parameters in overloaded operators as rvalues.
+        let cmt = match self.bccx.tcx.adjustments.find(ex.id) {
+            None => self.bccx.cat_expr_unadjusted(ex),
+            Some(adj) => self.bccx.cat_expr_autoderefd(ex, adj)
+        };
 
         debug!("check_assignment(cmt=%s)",
                self.bccx.cmt_to_repr(cmt));
