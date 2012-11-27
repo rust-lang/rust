@@ -224,8 +224,8 @@ Section: Adding to and removing from a string
 pub fn pop_char(s: &mut ~str) -> char {
     let end = len(*s);
     assert end > 0u;
-    let {ch, prev} = char_range_at_reverse(*s, end);
-    unsafe { raw::set_len(s, prev); }
+    let CharRange {ch, next} = char_range_at_reverse(*s, end);
+    unsafe { raw::set_len(s, next); }
     return ch;
 }
 
@@ -237,7 +237,7 @@ pub fn pop_char(s: &mut ~str) -> char {
  * If the string does not contain any characters
  */
 pub fn shift_char(s: &mut ~str) -> char {
-    let {ch, next} = char_range_at(*s, 0u);
+    let CharRange {ch, next} = char_range_at(*s, 0u);
     *s = unsafe { raw::slice_bytes(*s, next, len(*s)) };
     return ch;
 }
@@ -253,7 +253,7 @@ pub fn shift_char(s: &mut ~str) -> char {
  */
 #[inline]
 pub fn view_shift_char(s: &a/str) -> (char, &a/str) {
-    let {ch, next} = char_range_at(s, 0u);
+    let CharRange {ch, next} = char_range_at(s, 0u);
     let next_s = unsafe { raw::view_bytes(s, next, len(s)) };
     return (ch, next_s);
 }
@@ -296,7 +296,7 @@ pub pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
     match rfind(s, |c| !chars_to_trim.contains(&c)) {
       None => ~"",
       Some(last) => {
-        let {next, _} = char_range_at(s, last);
+        let next = char_range_at(s, last).next;
         unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
@@ -328,7 +328,7 @@ pub pure fn trim_right(s: &str) -> ~str {
     match rfind(s, |c| !char::is_whitespace(c)) {
       None => ~"",
       Some(last) => {
-        let {next, _} = char_range_at(s, last);
+        let next = char_range_at(s, last).next;
         unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
@@ -365,7 +365,7 @@ pub pure fn chars(s: &str) -> ~[char] {
     let mut buf = ~[], i = 0;
     let len = len(s);
     while i < len {
-        let {ch, next} = char_range_at(s, i);
+        let CharRange {ch, next} = char_range_at(s, i);
         unsafe { buf.push(ch); }
         i = next;
     }
@@ -475,7 +475,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
     let l = len(s);
     let mut result = ~[], i = 0u, start = 0u, done = 0u;
     while i < l && done < count {
-        let {ch, next} = char_range_at(s, i);
+        let CharRange {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
             if allow_empty || start < i unsafe {
                 result.push(unsafe { raw::slice_bytes(s, start, i)});
@@ -866,7 +866,7 @@ pub pure fn each_chari(s: &str, it: fn(uint, char) -> bool) {
     let mut pos = 0u, ch_pos = 0u;
     let len = len(s);
     while pos < len {
-        let {ch, next} = char_range_at(s, pos);
+        let CharRange {ch, next} = char_range_at(s, pos);
         pos = next;
         if !it(ch_pos, ch) { break; }
         ch_pos += 1u;
@@ -878,7 +878,7 @@ pub pure fn chars_each(s: &str, it: fn(char) -> bool) {
     let mut pos = 0u;
     let len = len(s);
     while (pos < len) {
-        let {ch, next} = char_range_at(s, pos);
+        let CharRange {ch, next} = char_range_at(s, pos);
         pos = next;
         if !it(ch) { return; }
     }
@@ -1144,7 +1144,7 @@ pub pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
     assert is_char_boundary(s, start);
     let mut i = start;
     while i < end {
-        let {ch, next} = char_range_at(s, i);
+        let CharRange {ch, next} = char_range_at(s, i);
         if f(ch) { return Some(i); }
         i = next;
     }
@@ -1224,7 +1224,7 @@ pub pure fn rfind_between(s: &str, start: uint, end: uint,
     assert is_char_boundary(s, start);
     let mut i = start;
     while i > end {
-        let {ch, prev} = char_range_at_reverse(s, i);
+        let CharRange {ch, next: prev} = char_range_at_reverse(s, i);
         if f(ch) { return Some(prev); }
         i = prev;
     }
@@ -1538,7 +1538,7 @@ pub pure fn count_chars(s: &str, start: uint, end: uint) -> uint {
     assert is_char_boundary(s, end);
     let mut i = start, len = 0u;
     while i < end {
-        let {next, _} = char_range_at(s, i);
+        let next = char_range_at(s, i).next;
         len += 1u;
         i = next;
     }
@@ -1552,7 +1552,7 @@ pub pure fn count_bytes(s: &b/str, start: uint, n: uint) -> uint {
     let l = len(s);
     while cnt > 0u {
         assert end < l;
-        let {next, _} = char_range_at(s, end);
+        let next = char_range_at(s, end).next;
         cnt -= 1u;
         end = next;
     }
@@ -1595,7 +1595,7 @@ pub pure fn is_char_boundary(s: &str, index: uint) -> bool {
  * let s = "中华Việt Nam";
  * let i = 0u;
  * while i < str::len(s) {
- *     let {ch, next} = str::char_range_at(s, i);
+ *     let CharRange {ch, next} = str::char_range_at(s, i);
  *     std::io::println(fmt!("%u: %c",i,ch));
  *     i = next;
  * }
@@ -1631,11 +1631,11 @@ pub pure fn is_char_boundary(s: &str, index: uint) -> bool {
  * If `i` is greater than or equal to the length of the string.
  * If `i` is not the index of the beginning of a valid UTF-8 character.
  */
-pub pure fn char_range_at(s: &str, i: uint) -> {ch: char, next: uint} {
+pub pure fn char_range_at(s: &str, i: uint) -> CharRange {
     let b0 = s[i];
     let w = utf8_char_width(b0);
     assert (w != 0u);
-    if w == 1u { return {ch: b0 as char, next: i + 1u}; }
+    if w == 1u { return CharRange {ch: b0 as char, next: i + 1u}; }
     let mut val = 0u;
     let end = i + w;
     let mut i = i + 1u;
@@ -1650,12 +1650,17 @@ pub pure fn char_range_at(s: &str, i: uint) -> {ch: char, next: uint} {
     // the first to clip off the marker bits at the left of the byte, and then
     // a second (as uint) to get it to the right position.
     val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
-    return {ch: val as char, next: i};
+    return CharRange {ch: val as char, next: i};
 }
 
 /// Pluck a character out of a string
 pub pure fn char_at(s: &str, i: uint) -> char {
     return char_range_at(s, i).ch;
+}
+
+pub struct CharRange {
+    ch: char,
+    next: uint
 }
 
 /**
@@ -1664,7 +1669,7 @@ pub pure fn char_at(s: &str, i: uint) -> char {
  * This function can be used to iterate over a unicode string in reverse.
  */
 pure fn char_range_at_reverse(ss: &str, start: uint)
-    -> {ch: char, prev: uint} {
+    -> CharRange {
 
     let mut prev = start;
 
@@ -1677,7 +1682,7 @@ pure fn char_range_at_reverse(ss: &str, start: uint)
     prev -= 1u;
 
     let ch = char_at(ss, prev);
-    return {ch:ch, prev:prev};
+    return CharRange {ch:ch, next:prev};
 }
 
 /**
@@ -1707,7 +1712,7 @@ pub pure fn all_between(s: &str, start: uint, end: uint,
     assert is_char_boundary(s, start);
     let mut i = start;
     while i < end {
-        let {ch, next} = char_range_at(s, i);
+        let CharRange {ch, next} = char_range_at(s, i);
         if !it(ch) { return false; }
         i = next;
     }

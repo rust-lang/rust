@@ -277,12 +277,12 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let {ch, next} = str::char_range_at(str::from_slice(ss), pos);
-            pos = next;
+            let range = str::char_range_at(str::from_slice(ss), pos);
+            pos = range.next;
 
-            match ch {
+            match range.ch {
               '0' .. '9' => {
-                value = value * 10_i32 + (ch as i32 - '0' as i32);
+                value = value * 10_i32 + (range.ch as i32 - '0' as i32);
               }
               ' ' if ws => (),
               _ => return None
@@ -294,14 +294,14 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
-        let {ch, next} = str::char_range_at(s, pos);
+        let range = str::char_range_at(s, pos);
 
-        if c == ch {
-            Ok(next)
+        if c == range.ch {
+            Ok(range.next)
         } else {
             Err(fmt!("Expected %?, found %?",
                 str::from_char(c),
-                str::from_char(ch)))
+                str::from_char(range.ch)))
         }
     }
 
@@ -619,19 +619,19 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 let mut pos = pos;
                 let len = str::len(s);
                 while pos < len {
-                    let {ch, next} = str::char_range_at(s, pos);
-                    pos = next;
-                    if ch == ' ' { break; }
+                    let range = str::char_range_at(s, pos);
+                    pos = range.next;
+                    if range.ch == ' ' { break; }
                 }
 
                 Ok(pos)
             }
           }
           'z' => {
-            let {ch, next} = str::char_range_at(s, pos);
+            let range = str::char_range_at(s, pos);
 
-            if ch == '+' || ch == '-' {
-                match match_digits(s, next, 4u, false) {
+            if range.ch == '+' || range.ch == '-' {
+                match match_digits(s, range.next, 4u, false) {
                   Some(item) => {
                     let (v, pos) = item;
                     if v == 0_i32 {
@@ -674,7 +674,9 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
-            let {ch, next} = str::char_range_at(s, pos);
+            let range = str::char_range_at(s, pos);
+            let ch = range.ch;
+            let next = range.next;
 
             match rdr.read_char() {
                 '%' => {

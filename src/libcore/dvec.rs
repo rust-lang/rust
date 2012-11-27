@@ -47,32 +47,28 @@ use ptr::null;
  * pointers achieved about 103 million pushes/second.  Using an option
  * type could only produce 47 million pushes/second.
  */
-type DVec_<A> = {
+pub struct DVec<A> {
     mut data: ~[A]
-};
-
-pub enum DVec<A> {
-    DVec_(DVec_<A>)
 }
 
 /// Creates a new, empty dvec
 pub pure fn DVec<A>() -> DVec<A> {
-    DVec_({mut data: ~[]})
+    DVec {mut data: ~[]}
 }
 
 /// Creates a new dvec with a single element
 pub fn from_elem<A>(e: A) -> DVec<A> {
-    DVec_({mut data: ~[move e]})
+    DVec {mut data: ~[move e]}
 }
 
 /// Creates a new dvec with the contents of a vector
 pub fn from_vec<A>(v: ~[A]) -> DVec<A> {
-    DVec_({mut data: move v})
+    DVec {mut data: move v}
 }
 
 /// Consumes the vector and returns its contents
 pub fn unwrap<A>(d: DVec<A>) -> ~[A] {
-    let DVec_({data: v}) = move d;
+    let DVec {data: v} = move d;
     move v
 }
 

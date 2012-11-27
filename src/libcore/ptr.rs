@@ -269,8 +269,8 @@ impl<T:Ord> &const T : Ord {
 #[test]
 pub fn test() {
     unsafe {
-        type Pair = {mut fst: int, mut snd: int};
-        let p = {mut fst: 10, mut snd: 20};
+        struct Pair {mut fst: int, mut snd: int};
+        let p = Pair {mut fst: 10, mut snd: 20};
         let pptr: *mut Pair = mut_addr_of(&p);
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
@@ -278,7 +278,7 @@ pub fn test() {
         assert (*iptr == 30);
         assert (p.fst == 30);;
 
-        *pptr = {mut fst: 50, mut snd: 60};
+        *pptr = Pair {mut fst: 50, mut snd: 60};
         assert (*iptr == 50);
         assert (p.fst == 50);
         assert (p.snd == 60);
