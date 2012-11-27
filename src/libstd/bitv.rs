@@ -290,22 +290,6 @@ impl Bitv {
     #[inline(always)]
     fn assign(v: &Bitv) -> bool { self.do_op(Assign, v) }
 
-    /// Makes a copy of a bitvector
-    #[inline(always)]
-    fn clone() -> ~Bitv {
-        ~match self.rep {
-          Small(ref b) => {
-            Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
-          }
-          Big(ref b) => {
-            let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
-            let len = st.len();
-            for uint::range(0, len) |i| { st[i] = b.storage[i]; };
-            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}
-          }
-        }
-    }
-
     /// Retrieve the value at index `i`
     #[inline(always)]
     pure fn get(i: uint) -> bool {
@@ -507,6 +491,25 @@ impl Bitv {
             if self.get(i) {
                 if !f(i) { break }
             }
+        }
+    }
+
+}
+
+impl Bitv: Clone {
+    /// Makes a copy of a bitvector
+    #[inline(always)]
+    fn clone(&self) -> Bitv {
+        match self.rep {
+          Small(ref b) => {
+            Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
+          }
+          Big(ref b) => {
+            let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
+            let len = st.len();
+            for uint::range(0, len) |i| { st[i] = b.storage[i]; };
+            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}
+          }
         }
     }
 

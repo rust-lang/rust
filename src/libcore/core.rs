@@ -48,6 +48,10 @@ pub use coreops::ops::{BitXor};
 #[cfg(test)]
 pub use coreops::ops::{Shl, Shr, Index};
 
+#[cfg(notest)]
+pub use clone::Clone;
+#[cfg(test)]
+pub use coreops::clone::Clone;
 
 // Export the log levels as global constants. Higher levels mean
 // more-verbosity. Error is the bottom level, default logging level is
