@@ -1572,7 +1572,7 @@ fn trans_assign_op(bcx: block,
     debug!("trans_assign_op(expr=%s)", bcx.expr_to_str(expr));
 
     // Evaluate LHS (destination), which should be an lvalue
-    let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
+    let dst_datum = unpack_datum!(bcx, trans_lvalue_unadjusted(bcx, dst));
 
     // A user-defined operator method
     if bcx.ccx().maps.method_map.find(expr.id).is_some() {

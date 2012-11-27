@@ -513,6 +513,16 @@ impl borrowck_ctxt {
         cat_expr(self.tcx, self.method_map, expr)
     }
 
+    fn cat_expr_unadjusted(expr: @ast::expr) -> cmt {
+        cat_expr_unadjusted(self.tcx, self.method_map, expr)
+    }
+
+    fn cat_expr_autoderefd(expr: @ast::expr,
+                           adj: @ty::AutoAdjustment)
+                        -> cmt {
+        cat_expr_autoderefd(self.tcx, self.method_map, expr, adj)
+    }
+
     fn cat_def(id: ast::node_id,
                span: span,
                ty: ty::t,
