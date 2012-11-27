@@ -15,12 +15,16 @@ fn expand_trace_macros(cx: ext_ctxt, sp: span,
     let rdr = tt_rdr as reader;
     let rust_parser = Parser(sess, cfg, rdr.dup());
 
-    let arg = cx.str_of(rust_parser.parse_ident());
-    match arg {
-      ~"true"  => cx.set_trace_macros(true),
-      ~"false" => cx.set_trace_macros(false),
-      _ => cx.span_fatal(sp, ~"trace_macros! only accepts `true` or `false`")
+    if rust_parser.is_keyword(~"true") {
+        cx.set_trace_macros(true);
+    } else if rust_parser.is_keyword(~"false") {
+        cx.set_trace_macros(false);
+    } else {
+        cx.span_fatal(sp, ~"trace_macros! only accepts `true` or `false`")
     }
+
+    rust_parser.bump();
+
     let rust_parser = Parser(sess, cfg, rdr.dup());
     let result = rust_parser.parse_expr();
     base::mr_expr(result)
