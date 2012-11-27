@@ -368,11 +368,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 }
                 cur_eis.push(move ei);
 
-                /* this would fail if zero-length tokens existed */
-                while rdr.peek().sp.lo < rust_parser.span.lo {
-                    rdr.next_token();
-                } /* except for EOF... */
-                while rust_parser.token == EOF && rdr.peek().tok != EOF {
+                for rust_parser.tokens_consumed.times() || {
                     rdr.next_token();
                 }
             }

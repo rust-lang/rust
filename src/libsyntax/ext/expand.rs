@@ -349,10 +349,15 @@ fn core_macros() -> ~str {
     return
 ~"{
     macro_rules! ignore (($($x:tt)*) => (()))
-    #macro[[#error[f, ...], log(core::error, #fmt[f, ...])]];
-    #macro[[#warn[f, ...], log(core::warn, #fmt[f, ...])]];
-    #macro[[#info[f, ...], log(core::info, #fmt[f, ...])]];
-    #macro[[#debug[f, ...], log(core::debug, #fmt[f, ...])]];
+
+    macro_rules! error ( ($( $arg:expr ),+) => (
+        log(core::error, fmt!( $($arg),+ )) ))
+    macro_rules! warn ( ($( $arg:expr ),+) => (
+        log(core::warn, fmt!( $($arg),+ )) ))
+    macro_rules! info ( ($( $arg:expr ),+) => (
+        log(core::info, fmt!( $($arg),+ )) ))
+    macro_rules! debug ( ($( $arg:expr ),+) => (
+        log(core::debug, fmt!( $($arg),+ )) ))
 
     macro_rules! die(
         ($msg: expr) => (
