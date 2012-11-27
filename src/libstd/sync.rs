@@ -358,10 +358,14 @@ fn semaphore(count: int) -> Semaphore {
     Semaphore { sem: new_sem(count, ()) }
 }
 
-impl &Semaphore {
+impl Semaphore: Clone {
     /// Create a new handle to the semaphore.
-    fn clone() -> Semaphore { Semaphore { sem: Sem((*self.sem).clone()) } }
+    fn clone(&self) -> Semaphore {
+        Semaphore { sem: Sem((*self.sem).clone()) }
+    }
+}
 
+impl &Semaphore {
     /**
      * Acquire a resource represented by the semaphore. Blocks if necessary
      * until resource(s) become available.
@@ -404,10 +408,12 @@ pub fn mutex_with_condvars(num_condvars: uint) -> Mutex {
     Mutex { sem: new_sem_and_signal(1, num_condvars) }
 }
 
-impl &Mutex {
+impl Mutex: Clone {
     /// Create a new handle to the mutex.
-    fn clone() -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
+    fn clone(&self) -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
+}
 
+impl &Mutex {
     /// Run a function with ownership of the mutex.
     fn lock<U>(blk: fn() -> U) -> U { (&self.sem).access(blk) }
 

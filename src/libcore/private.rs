@@ -509,12 +509,14 @@ pub fn exclusive<T:Send >(user_data: T) -> Exclusive<T> {
     Exclusive { x: unsafe { shared_mutable_state(move data) } }
 }
 
-impl<T: Send> Exclusive<T> {
+impl<T: Send> Exclusive<T>: Clone {
     // Duplicate an exclusive ARC, as std::arc::clone.
-    fn clone() -> Exclusive<T> {
+    fn clone(&self) -> Exclusive<T> {
         Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
+}
 
+impl<T: Send> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //

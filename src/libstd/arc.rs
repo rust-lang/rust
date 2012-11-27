@@ -103,6 +103,12 @@ fn unwrap<T: Const Send>(rc: ARC<T>) -> T {
     unsafe { unwrap_shared_mutable_state(move x) }
 }
 
+impl<T: Const Send> ARC<T>: Clone {
+    fn clone(&self) -> ARC<T> {
+        clone(self)
+    }
+}
+
 /****************************************************************************
  * Mutex protected ARC (unsafe)
  ****************************************************************************/
@@ -128,13 +134,16 @@ pub fn mutex_arc_with_condvars<T: Send>(user_data: T,
     MutexARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
-impl<T: Send> &MutexARC<T> {
+impl<T: Send> MutexARC<T>: Clone {
     /// Duplicate a mutex-protected ARC, as arc::clone.
-    fn clone() -> MutexARC<T> {
+    fn clone(&self) -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
         MutexARC { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
+}
+
+impl<T: Send> &MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -265,13 +274,16 @@ pub fn rw_arc_with_condvars<T: Const Send>(user_data: T,
     RWARC { x: unsafe { shared_mutable_state(move data) }, cant_nest: () }
 }
 
-impl<T: Const Send> &RWARC<T> {
+impl<T: Const Send> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
-    fn clone() -> RWARC<T> {
+    fn clone(&self) -> RWARC<T> {
         RWARC { x: unsafe { clone_shared_mutable_state(&self.x) },
                 cant_nest: () }
     }
 
+}
+
+impl<T: Const Send> &RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
