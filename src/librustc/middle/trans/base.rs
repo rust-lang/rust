@@ -1643,7 +1643,7 @@ fn trans_fn(ccx: @crate_ctxt,
             impl_id: Option<ast::def_id>) {
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
-                else { {sec: 0i64, nsec: 0i32} };
+                else { time::Timespec::new(0, 0) };
     debug!("trans_fn(ty_self=%?)", ty_self);
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;

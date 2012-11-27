@@ -4,10 +4,6 @@ use core::cmp::Eq;
 use libc::{c_char, c_int, c_long, size_t, time_t};
 use io::{Reader, ReaderUtil};
 use result::{Result, Ok, Err};
-use serialization::{Serializable,
-                         Deserializable,
-                         Serializer,
-                         Deserializer};
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -25,23 +21,31 @@ extern mod rustrt {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-pub type Timespec = {sec: i64, nsec: i32};
+#[auto_serialize]
+#[auto_deserialize]
+pub struct Timespec { sec: i64, nsec: i32 }
+
+impl Timespec {
+    static fn new(sec: i64, nsec: i32) -> Timespec {
+        Timespec { sec: sec, nsec: nsec }
+    }
+}
 
 impl Timespec : Eq {
     #[cfg(stage0)]
     pure fn eq(other: &Timespec) -> bool {
-        self.sec == (*other).sec && self.nsec == (*other).nsec
+        self.sec == other.sec && self.nsec == other.nsec
     }
     #[cfg(stage1)]
     #[cfg(stage2)]
     pure fn eq(&self, other: &Timespec) -> bool {
-        (*self).sec == (*other).sec && (*self).nsec == (*other).nsec
+        self.sec == other.sec && self.nsec == other.nsec
     }
     #[cfg(stage0)]
     pure fn ne(other: &Timespec) -> bool { !self.eq(other) }
     #[cfg(stage1)]
     #[cfg(stage2)]
-    pure fn ne(&self, other: &Timespec) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
 }
 
 /**
@@ -52,7 +56,7 @@ pub fn get_time() -> Timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
     rustrt::get_time(&mut sec, &mut nsec);
-    return {sec: sec, nsec: nsec};
+    return Timespec::new(sec, nsec);
 }
 
 
@@ -79,64 +83,26 @@ pub fn tzset() {
     rustrt::rust_tzset();
 }
 
-pub struct Tm_ {
-    pub tm_sec: i32, // seconds after the minute ~[0-60]
-    pub tm_min: i32, // minutes after the hour ~[0-59]
-    pub tm_hour: i32, // hours after midnight ~[0-23]
-    pub tm_mday: i32, // days of the month ~[1-31]
-    pub tm_mon: i32, // months since January ~[0-11]
-    pub tm_year: i32, // years since 1900
-    pub tm_wday: i32, // days since Sunday ~[0-6]
-    pub tm_yday: i32, // days since January 1 ~[0-365]
-    pub tm_isdst: i32, // Daylight Savings Time flag
-    pub tm_gmtoff: i32, // offset from UTC in seconds
-    pub tm_zone: ~str, // timezone abbreviation
-    pub tm_nsec: i32, // nanoseconds
+#[auto_serialize]
+#[auto_deserialize]
+pub struct Tm {
+    tm_sec: i32, // seconds after the minute ~[0-60]
+    tm_min: i32, // minutes after the hour ~[0-59]
+    tm_hour: i32, // hours after midnight ~[0-23]
+    tm_mday: i32, // days of the month ~[1-31]
+    tm_mon: i32, // months since January ~[0-11]
+    tm_year: i32, // years since 1900
+    tm_wday: i32, // days since Sunday ~[0-6]
+    tm_yday: i32, // days since January 1 ~[0-365]
+    tm_isdst: i32, // Daylight Savings Time flag
+    tm_gmtoff: i32, // offset from UTC in seconds
+    tm_zone: ~str, // timezone abbreviation
+    tm_nsec: i32, // nanoseconds
 }
 
-impl<S: Serializer> Tm_: Serializable<S> {
-    fn serialize(&self, s: &S) {
-       s.emit_i32(self.tm_sec);
-        s.emit_i32(self.tm_min);
-        s.emit_i32(self.tm_hour);
-        s.emit_i32(self.tm_mday);
-        s.emit_i32(self.tm_mon);
-        s.emit_i32(self.tm_year);
-        s.emit_i32(self.tm_wday);
-        s.emit_i32(self.tm_yday);
-        s.emit_i32(self.tm_isdst);
-        s.emit_i32(self.tm_gmtoff);
-        s.emit_owned_str(self.tm_zone);
-        s.emit_i32(self.tm_nsec);
-    }
-}
-
-pub fn deserialize_tm_<D: Deserializer>(d: &D) -> Tm_ {
-   Tm_ {
-        tm_sec: d.read_i32(),
-        tm_min: d.read_i32(),
-        tm_hour: d.read_i32(),
-        tm_mday: d.read_i32(),
-        tm_mon: d.read_i32(),
-        tm_year: d.read_i32(),
-        tm_wday: d.read_i32(),
-        tm_yday: d.read_i32(),
-        tm_isdst: d.read_i32(),
-        tm_gmtoff: d.read_i32(),
-        tm_zone: d.read_owned_str(),
-        tm_nsec: d.read_i32(),
-   }
-}
-
-impl<D: Deserializer> Tm_: Deserializable<D> {
-    static fn deserialize(d: &D) -> Tm_ {
-       deserialize_tm_(d)
-    }
-}
-
-impl Tm_ : Eq {
+impl Tm : Eq {
     #[cfg(stage0)]
-    pure fn eq(other: &Tm_) -> bool {
+    pure fn eq(other: &Tm) -> bool {
         self.tm_sec == (*other).tm_sec &&
         self.tm_min == (*other).tm_min &&
         self.tm_hour == (*other).tm_hour &&
@@ -152,63 +118,29 @@ impl Tm_ : Eq {
     }
     #[cfg(stage1)]
     #[cfg(stage2)]
-    pure fn eq(&self, other: &Tm_) -> bool {
-        (*self).tm_sec == (*other).tm_sec &&
-        (*self).tm_min == (*other).tm_min &&
-        (*self).tm_hour == (*other).tm_hour &&
-        (*self).tm_mday == (*other).tm_mday &&
-        (*self).tm_mon == (*other).tm_mon &&
-        (*self).tm_year == (*other).tm_year &&
-        (*self).tm_wday == (*other).tm_wday &&
-        (*self).tm_yday == (*other).tm_yday &&
-        (*self).tm_isdst == (*other).tm_isdst &&
-        (*self).tm_gmtoff == (*other).tm_gmtoff &&
-        (*self).tm_zone == (*other).tm_zone &&
-        (*self).tm_nsec == (*other).tm_nsec
+    pure fn eq(&self, other: &Tm) -> bool {
+        self.tm_sec == (*other).tm_sec &&
+        self.tm_min == (*other).tm_min &&
+        self.tm_hour == (*other).tm_hour &&
+        self.tm_mday == (*other).tm_mday &&
+        self.tm_mon == (*other).tm_mon &&
+        self.tm_year == (*other).tm_year &&
+        self.tm_wday == (*other).tm_wday &&
+        self.tm_yday == (*other).tm_yday &&
+        self.tm_isdst == (*other).tm_isdst &&
+        self.tm_gmtoff == (*other).tm_gmtoff &&
+        self.tm_zone == (*other).tm_zone &&
+        self.tm_nsec == (*other).tm_nsec
     }
     #[cfg(stage0)]
-    pure fn ne(other: &Tm_) -> bool { !self.eq(other) }
+    pure fn ne(other: &Tm) -> bool { !self.eq(other) }
     #[cfg(stage1)]
     #[cfg(stage2)]
-    pure fn ne(&self, other: &Tm_) -> bool { !(*self).eq(other) }
-}
-
-pub enum Tm {
-    Tm_(Tm_)
-}
-
-impl<S: Serializer> Tm: Serializable<S> {
-    fn serialize(&self, s: &S) {
-        let t: Tm_ = **self;
-        t.serialize(s);
-    }
-}
-
-pub fn deserialize_tm<D: Deserializer>(d: &D) -> Tm {
-    Tm_(deserialize_tm_(d))
-}
-
-impl<D: Deserializer> Tm: Deserializable<D> {
-    static fn deserialize(d: &D) -> Tm {
-       deserialize_tm(d)
-    }
-}
-
-impl Tm : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Tm) -> bool { *self == *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    pure fn eq(&self, other: &Tm) -> bool { *(*self) == *(*other) }
-    #[cfg(stage0)]
-    pure fn ne(other: &Tm) -> bool { *self != *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    pure fn ne(&self, other: &Tm) -> bool { *(*self) != *(*other) }
+    pure fn ne(&self, other: &Tm) -> bool { !self.eq(other) }
 }
 
 pub pure fn empty_tm() -> Tm {
-    Tm_(Tm_{
+    Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
         tm_hour: 0_i32,
@@ -221,15 +153,15 @@ pub pure fn empty_tm() -> Tm {
         tm_gmtoff: 0_i32,
         tm_zone: ~"",
         tm_nsec: 0_i32,
-    })
+    }
 }
 
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
-    let mut {sec, nsec} = clock;
+    let mut Timespec { sec, nsec } = clock;
     let mut tm = empty_tm();
     rustrt::rust_gmtime(sec, nsec, tm);
-    tm
+    move tm
 }
 
 /// Returns the current time in UTC
@@ -239,10 +171,10 @@ pub fn now_utc() -> Tm {
 
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
-    let mut {sec, nsec} = clock;
+    let mut Timespec { sec, nsec } = clock;
     let mut tm = empty_tm();
     rustrt::rust_localtime(sec, nsec, tm);
-    tm
+    move tm
 }
 
 /// Returns the current time in the local timezone
@@ -258,10 +190,10 @@ pub pure fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 }
 
 /// Formats the time according to the format string.
-pub pure fn strftime(format: &str, tm: Tm) -> ~str {
+pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
     // unsafe only because do_strftime is annoying to make pure
     // (it does IO with a str_reader)
-    unsafe {do_strftime(format, tm)}
+    move unsafe { do_strftime(format, tm) }
 }
 
 impl Tm {
@@ -273,7 +205,7 @@ impl Tm {
         } else {
             rustrt::rust_mktime(self, &mut sec);
         }
-        { sec: sec, nsec: self.tm_nsec }
+        Timespec::new(sec, self.tm_nsec)
     }
 
     /// Convert time to the local timezone
@@ -293,7 +225,9 @@ impl Tm {
     pure fn ctime() -> ~str { self.strftime(~"%c") }
 
     /// Formats the time according to the format string.
-    pure fn strftime(format: &str) -> ~str { strftime(format, self) }
+    pure fn strftime(&self, format: &str) -> ~str {
+        move strftime(format, self)
+    }
 
     /**
      * Returns a time string formatted according to RFC 822.
@@ -354,9 +288,9 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_strs(ss: &str, pos: uint, strs: &[(~str, i32)])
       -> Option<(i32, uint)> {
         let mut i = 0u;
-        let len = vec::len(strs);
+        let len = strs.len();
         while i < len {
-            let (needle, value) = strs[i];
+            let &(needle, value) = &strs[i];
 
             if match_str(ss, pos, needle) {
                 return Some((value, pos + str::len(needle)));
@@ -402,7 +336,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm_)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
@@ -472,22 +406,36 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid year")
           },
           'c' => {
-            parse_type(s, pos, 'a', tm)
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'b', tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'e', tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'T', tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'Y', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'a', tm),
+                    |pos| parse_char(s, pos, ' ')),
+                    |pos| parse_type(s, pos, 'b', tm)),
+                    |pos| parse_char(s, pos, ' ')),
+                    |pos| parse_type(s, pos, 'e', tm)),
+                    |pos| parse_char(s, pos, ' ')),
+                    |pos| parse_type(s, pos, 'T', tm)),
+                    |pos| parse_char(s, pos, ' ')),
+                    |pos| parse_type(s, pos, 'Y', tm))
           }
           'D' | 'x' => {
-            parse_type(s, pos, 'm', tm)
-                .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'd', tm))
-                .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'y', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'm', tm),
+                    |pos| parse_char(s, pos, '/')),
+                    |pos| parse_type(s, pos, 'd', tm)),
+                    |pos| parse_char(s, pos, '/')),
+                    |pos| parse_type(s, pos, 'y', tm))
           }
           'd' => match match_digits(s, pos, 2u, false) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
@@ -498,11 +446,16 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid day of the month")
           },
           'F' => {
-            parse_type(s, pos, 'Y', tm)
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'm', tm))
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'd', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'Y', tm),
+                    |pos| parse_char(s, pos, '-')),
+                    |pos| parse_type(s, pos, 'm', tm)),
+                    |pos| parse_char(s, pos, '-')),
+                    |pos| parse_type(s, pos, 'd', tm))
           }
           'H' => {
             // FIXME (#2350): range check.
@@ -583,18 +536,28 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid hour")
           },
           'R' => {
-            parse_type(s, pos, 'H', tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'H', tm),
+                    |pos| parse_char(s, pos, ':')),
+                    |pos| parse_type(s, pos, 'M', tm))
           }
           'r' => {
-            parse_type(s, pos, 'I', tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'p', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'I', tm),
+                    |pos| parse_char(s, pos, ':')),
+                    |pos| parse_type(s, pos, 'M', tm)),
+                    |pos| parse_char(s, pos, ':')),
+                    |pos| parse_type(s, pos, 'S', tm)),
+                    |pos| parse_char(s, pos, ' ')),
+                    |pos| parse_type(s, pos, 'p', tm))
           }
           'S' => {
             // FIXME (#2350): range check.
@@ -609,11 +572,16 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           //'s' {}
           'T' | 'X' => {
-            parse_type(s, pos, 'H', tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'H', tm),
+                    |pos| parse_char(s, pos, ':')),
+                    |pos| parse_type(s, pos, 'M', tm)),
+                    |pos| parse_char(s, pos, ':')),
+                    |pos| parse_type(s, pos, 'S', tm))
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
@@ -628,11 +596,16 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'v' => {
-            parse_type(s, pos, 'e', tm)
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'b', tm))
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'Y', tm))
+                // FIXME(#3724): cleanup
+                result::chain(
+                result::chain(
+                result::chain(
+                result::chain(
+                    move parse_type(s, pos, 'e', tm),
+                    |pos| parse_char(s, pos, '-')),
+                    |pos| parse_type(s, pos, 'b', tm)),
+                    |pos| parse_char(s, pos, '-')),
+                    |pos| parse_type(s, pos, 'Y', tm))
           }
           //'W' {}
           'w' => {
@@ -713,7 +686,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     do io::with_str_reader(str::from_slice(format)) |rdr| {
-        let mut tm = Tm_ {
+        let mut tm = Tm {
             tm_sec: 0_i32,
             tm_min: 0_i32,
             tm_hour: 0_i32,
@@ -735,19 +708,21 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             let {ch, next} = str::char_range_at(s, pos);
 
             match rdr.read_char() {
-              '%' => match parse_type(s, pos, rdr.read_char(), &mut tm) {
-                Ok(next) => pos = next,
-                  Err(copy e) => { result = Err(e); break; }
-              },
-              c => {
-                if c != ch { break }
-                pos = next;
-              }
+                '%' => {
+                    match parse_type(s, pos, rdr.read_char(), &mut tm) {
+                        Ok(next) => pos = next,
+                        Err(move e) => { result = Err(move e); break; }
+                    }
+                },
+                c => {
+                    if c != ch { break }
+                    pos = next;
+                }
             }
         }
 
         if pos == len && rdr.eof() {
-            Ok(Tm_(Tm_ {
+            Ok(Tm {
                 tm_sec: tm.tm_sec,
                 tm_min: tm.tm_min,
                 tm_hour: tm.tm_hour,
@@ -758,14 +733,14 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm_yday: tm.tm_yday,
                 tm_isdst: tm.tm_isdst,
                 tm_gmtoff: tm.tm_gmtoff,
-                tm_zone: tm.tm_zone,
+                tm_zone: copy tm.tm_zone,
                 tm_nsec: tm.tm_nsec,
-            }))
-        } else { result }
+            })
+        } else { move result }
     }
 }
 
-priv fn do_strftime(format: &str, tm: Tm) -> ~str {
+priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || fmt!("strftime: can't understand this format %c ", ch);
@@ -904,7 +879,7 @@ priv fn do_strftime(format: &str, tm: Tm) -> ~str {
           //'x' {}
           'Y' => int::str(tm.tm_year as int + 1900),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
-          'Z' => tm.tm_zone,
+          'Z' => copy tm.tm_zone,
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
@@ -923,13 +898,13 @@ priv fn do_strftime(format: &str, tm: Tm) -> ~str {
     do io::with_str_reader(str::from_slice(format)) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
-                '%' => buf += parse_type(rdr.read_char(), &tm),
+                '%' => buf += parse_type(rdr.read_char(), tm),
                 ch => str::push_char(&mut buf, ch)
             }
         }
     }
 
-    buf
+    move buf
 }
 
 #[cfg(test)]
@@ -983,7 +958,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.tm_sec == 30_i32;
@@ -1005,7 +980,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
         error!("time_at: %?", local);
@@ -1023,8 +998,8 @@ mod tests {
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
-        let zone = local.tm_zone;
-        assert zone == ~"PST" || zone == ~"Pacific Standard Time";
+        let zone = &local.tm_zone;
+        assert *zone == ~"PST" || *zone == ~"Pacific Standard Time";
 
         assert local.tm_nsec == 54321_i32;
     }
@@ -1034,7 +1009,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.to_timespec() == time;
@@ -1046,7 +1021,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
@@ -1206,10 +1181,10 @@ mod tests {
         assert test(~"6", ~"%w");
         assert test(~"2009", ~"%Y");
         assert test(~"09", ~"%y");
-        assert strptime(~"UTC", ~"%Z").get().tm_zone == ~"UTC";
-        assert strptime(~"PST", ~"%Z").get().tm_zone == ~"";
-        assert strptime(~"-0000", ~"%z").get().tm_gmtoff == 0_i32;
-        assert strptime(~"-0800", ~"%z").get().tm_gmtoff == 0_i32;
+        assert result::unwrap(strptime(~"UTC", ~"%Z")).tm_zone == ~"UTC";
+        assert result::unwrap(strptime(~"PST", ~"%Z")).tm_zone == ~"";
+        assert result::unwrap(strptime(~"-0000", ~"%z")).tm_gmtoff == 0;
+        assert result::unwrap(strptime(~"-0800", ~"%z")).tm_gmtoff == 0;
         assert test(~"%", ~"%%");
     }
 
@@ -1218,7 +1193,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let utc   = at_utc(time);
         let local = at(time);
 
@@ -1233,7 +1208,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = { sec: 1234567890_i64, nsec: 54321_i32 };
+        let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
