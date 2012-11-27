@@ -2,8 +2,8 @@ use common::*;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::ast_map::{path, path_mod, path_name};
-use base::{trans_item, get_item_val, self_arg, trans_fn,
-              impl_self, get_insn_ctxt};
+use base::{trans_item, get_item_val, self_arg, trans_fn, impl_owned_self,
+           impl_self, get_insn_ctxt};
 
 // `translate` will be true if this function is allowed to translate the
 // item and false otherwise. Currently, this parameter is set to false when
@@ -66,15 +66,29 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
           csearch::found(ast::ii_method(impl_did, mth)) => {
             ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
-            let {bounds: impl_bnds, region_param: _, ty: impl_ty} =
+            let {bounds: impl_bnds, region_param: _, ty: _} =
                 ty::lookup_item_type(ccx.tcx, impl_did);
             if translate && (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),
                     ~[path_name(mth.ident)]);
-                trans_fn(ccx, path, mth.decl, mth.body,
-                         llfn, impl_self(impl_ty), None, mth.id,
+                let self_ty = ty::node_id_to_type(ccx.tcx, mth.self_id);
+                debug!("calling inline trans_fn with self_ty %s",
+                       ty_to_str(ccx.tcx, self_ty));
+                let self_kind;
+                match mth.self_ty.node {
+                    ast::sty_value => self_kind = impl_owned_self(self_ty),
+                    _ => self_kind = impl_self(self_ty),
+                }
+                trans_fn(ccx,
+                         path,
+                         mth.decl,
+                         mth.body,
+                         llfn,
+                         self_kind,
+                         None,
+                         mth.id,
                          Some(impl_did));
             }
             local_def(mth.id)

@@ -1644,6 +1644,7 @@ fn trans_fn(ccx: @crate_ctxt,
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { {sec: 0i64, nsec: 0i32} };
+    debug!("trans_fn(ty_self=%?)", ty_self);
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
