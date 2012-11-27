@@ -2,14 +2,17 @@
 
 use doc::ItemUtils;
 use std::sort;
+use util::NominalOp;
 
-pub type ItemLtEq = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
+pub type ItemLtEqOp = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
-pub fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
+type ItemLtEq = NominalOp<ItemLtEqOp>;
+
+pub fn mk_pass(name: ~str, +lteq: ItemLtEqOp) -> Pass {
     {
         name: name,
         f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, copy lteq)
+            run(srv, doc, NominalOp { op: copy lteq })
         }
     }
 }
@@ -34,7 +37,7 @@ fn fold_mod(
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     doc::ModDoc_({
-        items: sort::merge_sort(doc.items, fold.ctxt),
+        items: sort::merge_sort(doc.items, fold.ctxt.op),
         .. *doc
     })
 }

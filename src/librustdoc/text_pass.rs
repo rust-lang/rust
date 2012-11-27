@@ -1,6 +1,7 @@
 //! Generic pass for performing an operation on all descriptions
 
 use doc::ItemUtils;
+use util::NominalOp;
 
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {
@@ -19,6 +20,9 @@ fn run(
     +doc: doc::Doc,
     +op: Op
 ) -> doc::Doc {
+    let op = NominalOp {
+        op: move op
+    };
     let fold = fold::Fold({
         fold_item: fold_item,
         fold_enum: fold_enum,
@@ -29,11 +33,14 @@ fn run(
     fold.fold_doc(&fold, doc)
 }
 
-fn maybe_apply_op(op: Op, s: Option<~str>) -> Option<~str> {
-    s.map(|s| op(*s) )
+fn maybe_apply_op(op: NominalOp<Op>, s: Option<~str>) -> Option<~str> {
+    s.map(|s| op.op(*s) )
 }
 
-fn fold_item(fold: &fold::Fold<Op>, +doc: doc::ItemDoc) -> doc::ItemDoc {
+fn fold_item(
+    fold: &fold::Fold<NominalOp<Op>>,
+    +doc: doc::ItemDoc
+) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     {
@@ -44,14 +51,19 @@ fn fold_item(fold: &fold::Fold<Op>, +doc: doc::ItemDoc) -> doc::ItemDoc {
     }
 }
 
-fn apply_to_sections(op: Op, sections: ~[doc::Section]) -> ~[doc::Section] {
+fn apply_to_sections(
+    op: NominalOp<Op>,
+    sections: ~[doc::Section]
+) -> ~[doc::Section] {
     par::map(sections, |section, copy op| {
-        header: op(section.header),
-        body: op(section.body)
+        header: op.op(section.header),
+        body: op.op(section.body)
     })
 }
 
-fn fold_enum(fold: &fold::Fold<Op>, +doc: doc::EnumDoc) -> doc::EnumDoc {
+fn fold_enum(
+    fold: &fold::Fold<NominalOp<Op>>,
+    +doc: doc::EnumDoc) -> doc::EnumDoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
     let fold_copy = copy *fold;
 
@@ -66,7 +78,10 @@ fn fold_enum(fold: &fold::Fold<Op>, +doc: doc::EnumDoc) -> doc::EnumDoc {
     }
 }
 
-fn fold_trait(fold: &fold::Fold<Op>, +doc: doc::TraitDoc) -> doc::TraitDoc {
+fn fold_trait(
+    fold: &fold::Fold<NominalOp<Op>>,
+    +doc: doc::TraitDoc
+) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
@@ -75,7 +90,10 @@ fn fold_trait(fold: &fold::Fold<Op>, +doc: doc::TraitDoc) -> doc::TraitDoc {
     }
 }
 
-fn apply_to_methods(op: Op, docs: ~[doc::MethodDoc]) -> ~[doc::MethodDoc] {
+fn apply_to_methods(
+    op: NominalOp<Op>,
+    docs: ~[doc::MethodDoc]
+) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc, copy op| {
         {
             brief: maybe_apply_op(op, doc.brief),
@@ -86,7 +104,10 @@ fn apply_to_methods(op: Op, docs: ~[doc::MethodDoc]) -> ~[doc::MethodDoc] {
     }
 }
 
-fn fold_impl(fold: &fold::Fold<Op>, +doc: doc::ImplDoc) -> doc::ImplDoc {
+fn fold_impl(
+    fold: &fold::Fold<NominalOp<Op>>,
+    +doc: doc::ImplDoc
+) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {

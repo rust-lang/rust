@@ -39,6 +39,10 @@ pub enum Srv = {
     ch: comm::Chan<Msg>
 };
 
+impl Srv: Clone {
+    fn clone(&self) -> Srv { copy *self }
+}
+
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
     run(owner, source, parse::from_str_sess)
 }

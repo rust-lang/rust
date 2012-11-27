@@ -1,5 +1,25 @@
 pub enum Fold<T> = Fold_<T>;
 
+impl<T: Clone> Fold<T>: Clone {
+    fn clone(&self) -> Fold<T> {
+        Fold({
+            ctxt: self.ctxt.clone(),
+            fold_doc: copy self.fold_doc,
+            fold_crate: copy self.fold_crate,
+            fold_item: copy self.fold_item,
+            fold_mod: copy self.fold_mod,
+            fold_nmod: copy self.fold_nmod,
+            fold_fn: copy self.fold_fn,
+            fold_const: copy self.fold_const,
+            fold_enum: copy self.fold_enum,
+            fold_trait: copy self.fold_trait,
+            fold_impl: copy self.fold_impl,
+            fold_type: copy self.fold_type,
+            fold_struct: copy self.fold_struct
+        })
+    }
+}
+
 type FoldDoc<T> = fn~(fold: &Fold<T>, +doc: doc::Doc) -> doc::Doc;
 type FoldCrate<T> = fn~(fold: &Fold<T>, +doc: doc::CrateDoc) -> doc::CrateDoc;
 type FoldItem<T> = fn~(fold: &Fold<T>, +doc: doc::ItemDoc) -> doc::ItemDoc;
@@ -33,7 +53,7 @@ type Fold_<T> = {
 
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
-fn mk_fold<T:Copy>(
+fn mk_fold<T:Clone>(
     +ctxt: T,
     +fold_doc: FoldDoc<T>,
     +fold_crate: FoldCrate<T>,
@@ -49,7 +69,7 @@ fn mk_fold<T:Copy>(
     +fold_struct: FoldStruct<T>
 ) -> Fold<T> {
     Fold({
-        ctxt: ctxt,
+        ctxt: move ctxt,
         fold_doc: move fold_doc,
         fold_crate: move fold_crate,
         fold_item: move fold_item,
@@ -65,9 +85,9 @@ fn mk_fold<T:Copy>(
     })
 }
 
-pub fn default_any_fold<T:Send Copy>(+ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T:Send Clone>(+ctxt: T) -> Fold<T> {
     mk_fold(
-        ctxt,
+        move ctxt,
         |f, d| default_seq_fold_doc(f, d),
         |f, d| default_seq_fold_crate(f, d),
         |f, d| default_seq_fold_item(f, d),
@@ -83,9 +103,9 @@ pub fn default_any_fold<T:Send Copy>(+ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_seq_fold<T:Copy>(+ctxt: T) -> Fold<T> {
+pub fn default_seq_fold<T:Clone>(+ctxt: T) -> Fold<T> {
     mk_fold(
-        ctxt,
+        move ctxt,
         |f, d| default_seq_fold_doc(f, d),
         |f, d| default_seq_fold_crate(f, d),
         |f, d| default_seq_fold_item(f, d),
@@ -101,9 +121,9 @@ pub fn default_seq_fold<T:Copy>(+ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_par_fold<T:Send Copy>(+ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T:Send Clone>(+ctxt: T) -> Fold<T> {
     mk_fold(
-        ctxt,
+        move ctxt,
         |f, d| default_seq_fold_doc(f, d),
         |f, d| default_seq_fold_crate(f, d),
         |f, d| default_seq_fold_item(f, d),
@@ -151,11 +171,11 @@ pub fn default_seq_fold_item<T>(
     doc
 }
 
-pub fn default_any_fold_mod<T:Send Copy>(
+pub fn default_any_fold_mod<T:Send Clone>(
     fold: &Fold<T>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
-    let fold_copy = copy *fold;
+    let fold_copy = fold.clone();
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
@@ -178,11 +198,11 @@ pub fn default_seq_fold_mod<T>(
     })
 }
 
-pub fn default_par_fold_mod<T:Send Copy>(
+pub fn default_par_fold_mod<T:Send Clone>(
     fold: &Fold<T>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
-    let fold_copy = copy *fold;
+    let fold_copy = fold.clone();
     doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
@@ -192,11 +212,11 @@ pub fn default_par_fold_mod<T:Send Copy>(
     })
 }
 
-pub fn default_any_fold_nmod<T:Send Copy>(
+pub fn default_any_fold_nmod<T:Send Clone>(
     fold: &Fold<T>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
-    let fold_copy = copy *fold;
+    let fold_copy = fold.clone();
     {
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {
@@ -219,11 +239,11 @@ pub fn default_seq_fold_nmod<T>(
     }
 }
 
-pub fn default_par_fold_nmod<T:Send Copy>(
+pub fn default_par_fold_nmod<T:Send Clone>(
     fold: &Fold<T>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
-    let fold_copy = copy *fold;
+    let fold_copy = fold.clone();
     {
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {

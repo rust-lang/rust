@@ -61,6 +61,10 @@ pub type Config = {
     pandoc_cmd: Option<~str>
 };
 
+impl Config: Clone {
+    fn clone(&self) -> Config { copy *self }
+}
+
 fn opt_output_dir() -> ~str { ~"output-dir" }
 fn opt_output_format() -> ~str { ~"output-format" }
 fn opt_output_style() -> ~str { ~"output-style" }

@@ -10,14 +10,18 @@ pub fn mk_pass() -> Pass {
     }
 }
 
-type Ctxt = {
+struct Ctxt {
     srv: astsrv::Srv,
     mut path: ~[~str]
-};
+}
+
+impl Ctxt: Clone {
+    fn clone(&self) -> Ctxt { copy *self }
+}
 
 #[allow(non_implicitly_copyable_typarams)]
 fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-    let ctxt = {
+    let ctxt = Ctxt {
         srv: srv,
         mut path: ~[]
     };

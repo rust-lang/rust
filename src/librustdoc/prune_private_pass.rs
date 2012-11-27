@@ -44,7 +44,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
             ast_map::node_item(item, _) => {
                 item.vis == ast::public
             }
-            _ => util::unreachable()
+            _ => core::util::unreachable()
         }
     }
 }
