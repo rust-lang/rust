@@ -1330,16 +1330,12 @@ fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
     debug!("find_vtable_in_fn_ctxt(n_param=%u, n_bound=%u, ps=%?)",
            n_param, n_bound, param_substs_to_str(tcx, ps));
 
-    let mut vtable_off = n_bound, i = 0u;
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    for vec::each(*ps.bounds) |bounds| {
-        if i >= n_param { break; }
-        for vec::each(**bounds) |bound| {
-            match *bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
-        }
-        i += 1u;
-    }
+    let first_n_bounds = ps.bounds.view(0, n_param);
+    let vtables_to_skip =
+        ty::count_traits_and_supertraits(tcx, first_n_bounds);
+    let vtable_off = vtables_to_skip + n_bound;
     ps.vtables.get()[vtable_off]
 }
 
