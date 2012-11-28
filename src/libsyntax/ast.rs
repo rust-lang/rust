@@ -50,15 +50,7 @@ impl<D: Deserializer> ident: Deserializable<D> {
 }
 
 impl ident: cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &ident) -> bool { self.repr == other.repr }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &ident) -> bool { (*self).repr == other.repr }
-    #[cfg(stage0)]
-    pure fn ne(other: &ident) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &ident) -> bool { !(*self).eq(other) }
 }
 
@@ -88,19 +80,9 @@ type node_id = int;
 type def_id = {crate: crate_num, node: node_id};
 
 impl def_id : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &def_id) -> bool {
-        self.crate == (*other).crate && self.node == (*other).node
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &def_id) -> bool {
         (*self).crate == (*other).crate && (*self).node == (*other).node
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &def_id) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &def_id) -> bool { !(*self).eq(other) }
 }
 
@@ -149,129 +131,6 @@ enum def {
 }
 
 impl def : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &def) -> bool {
-        match self {
-            def_fn(e0a, e1a) => {
-                match (*other) {
-                    def_fn(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_static_method(e0a, e1a, e2a) => {
-                match (*other) {
-                    def_static_method(e0b, e1b, e2b) =>
-                    e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
-            def_self(e0a) => {
-                match (*other) {
-                    def_self(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_mod(e0a) => {
-                match (*other) {
-                    def_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_foreign_mod(e0a) => {
-                match (*other) {
-                    def_foreign_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_const(e0a) => {
-                match (*other) {
-                    def_const(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_arg(e0a, e1a) => {
-                match (*other) {
-                    def_arg(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_local(e0a, e1a) => {
-                match (*other) {
-                    def_local(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_variant(e0a, e1a) => {
-                match (*other) {
-                    def_variant(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_ty(e0a) => {
-                match (*other) {
-                    def_ty(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_prim_ty(e0a) => {
-                match (*other) {
-                    def_prim_ty(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_ty_param(e0a, e1a) => {
-                match (*other) {
-                    def_ty_param(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_binding(e0a, e1a) => {
-                match (*other) {
-                    def_binding(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_use(e0a) => {
-                match (*other) {
-                    def_use(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_upvar(e0a, e1a, e2a, e3a) => {
-                match (*other) {
-                    def_upvar(e0b, e1b, e2b, e3b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b && e3a == e3b,
-                    _ => false
-                }
-            }
-            def_class(e0a) => {
-                match (*other) {
-                    def_class(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_typaram_binder(e0a) => {
-                match (*other) {
-                    def_typaram_binder(e1a) => e0a == e1a,
-                    _ => false
-                }
-            }
-            def_region(e0a) => {
-                match (*other) {
-                    def_region(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_label(e0a) => {
-                match (*other) {
-                    def_label(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &def) -> bool {
         match (*self) {
             def_fn(e0a, e1a) => {
@@ -392,10 +251,6 @@ impl def : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &def) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &def) -> bool { !(*self).eq(other) }
 }
 
@@ -464,37 +319,6 @@ impl binding_mode : to_bytes::IterBytes {
 }
 
 impl binding_mode : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &binding_mode) -> bool {
-        match self {
-            bind_by_value => {
-                match (*other) {
-                    bind_by_value => true,
-                    _ => false
-                }
-            }
-            bind_by_move => {
-                match (*other) {
-                    bind_by_move => true,
-                    _ => false
-                }
-            }
-            bind_by_ref(e0a) => {
-                match (*other) {
-                    bind_by_ref(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            bind_by_implicit_ref => {
-                match (*other) {
-                    bind_by_implicit_ref => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &binding_mode) -> bool {
         match (*self) {
             bind_by_value => {
@@ -523,10 +347,6 @@ impl binding_mode : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &binding_mode) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &binding_mode) -> bool { !(*self).eq(other) }
 }
 
@@ -565,19 +385,9 @@ impl mutability : to_bytes::IterBytes {
 }
 
 impl mutability : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &mutability) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &mutability) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &mutability) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &mutability) -> bool { !(*self).eq(other) }
 }
 
@@ -591,19 +401,9 @@ pub enum Proto {
 }
 
 impl Proto : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Proto) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Proto) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Proto) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Proto) -> bool { !(*self).eq(other) }
 }
 
@@ -664,19 +464,9 @@ enum binop {
 }
 
 impl binop : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &binop) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &binop) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &binop) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &binop) -> bool { !(*self).eq(other) }
 }
 
@@ -691,43 +481,6 @@ enum unop {
 }
 
 impl unop : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &unop) -> bool {
-        match self {
-            box(e0a) => {
-                match (*other) {
-                    box(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            uniq(e0a) => {
-                match (*other) {
-                    uniq(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            deref => {
-                match (*other) {
-                    deref => true,
-                    _ => false
-                }
-            }
-            not => {
-                match (*other) {
-                    not => true,
-                    _ => false
-                }
-            }
-            neg => {
-                match (*other) {
-                    neg => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &unop) -> bool {
         match (*self) {
             box(e0a) => {
@@ -762,12 +515,6 @@ impl unop : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &unop) -> bool {
-        !self.eq(other)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &unop) -> bool {
         !(*self).eq(other)
     }
@@ -795,25 +542,6 @@ impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
 }
 
 impl<T:cmp::Eq> inferable<T> : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &inferable<T>) -> bool {
-        match self {
-            expl(e0a) => {
-                match (*other) {
-                    expl(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            infer(e0a) => {
-                match (*other) {
-                    infer(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &inferable<T>) -> bool {
         match (*self) {
             expl(e0a) => {
@@ -830,10 +558,6 @@ impl<T:cmp::Eq> inferable<T> : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &inferable<T>) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &inferable<T>) -> bool { !(*self).eq(other) }
 }
 
@@ -850,19 +574,9 @@ impl rmode : to_bytes::IterBytes {
 
 
 impl rmode : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &rmode) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &rmode) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &rmode) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &rmode) -> bool { !(*self).eq(other) }
 }
 
@@ -913,17 +627,6 @@ type field = spanned<field_>;
 enum blk_check_mode { default_blk, unsafe_blk, }
 
 impl blk_check_mode : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &blk_check_mode) -> bool {
-        match (self, (*other)) {
-            (default_blk, default_blk) => true,
-            (unsafe_blk, unsafe_blk) => true,
-            (default_blk, _) => false,
-            (unsafe_blk, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &blk_check_mode) -> bool {
         match ((*self), (*other)) {
             (default_blk, default_blk) => true,
@@ -932,10 +635,6 @@ impl blk_check_mode : cmp::Eq {
             (unsafe_blk, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &blk_check_mode) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &blk_check_mode) -> bool { !(*self).eq(other) }
 }
 
@@ -1152,35 +851,6 @@ enum lit_ {
 }
 
 impl ast::lit_: cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &ast::lit_) -> bool {
-        match (self, *other) {
-            (lit_str(a), lit_str(b)) => a == b,
-            (lit_int(val_a, ty_a), lit_int(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_uint(val_a, ty_a), lit_uint(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_int_unsuffixed(a), lit_int_unsuffixed(b)) => a == b,
-            (lit_float(val_a, ty_a), lit_float(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_float_unsuffixed(a), lit_float_unsuffixed(b)) => a == b,
-            (lit_nil, lit_nil) => true,
-            (lit_bool(a), lit_bool(b)) => a == b,
-            (lit_str(_), _) => false,
-            (lit_int(*), _) => false,
-            (lit_uint(*), _) => false,
-            (lit_int_unsuffixed(*), _) => false,
-            (lit_float(*), _) => false,
-            (lit_float_unsuffixed(*), _) => false,
-            (lit_nil, _) => false,
-            (lit_bool(_), _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &ast::lit_) -> bool {
         match ((*self), *other) {
             (lit_str(a), lit_str(b)) => a == b,
@@ -1207,10 +877,6 @@ impl ast::lit_: cmp::Eq {
             (lit_bool(_), _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &ast::lit_) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &ast::lit_) -> bool { !(*self).eq(other) }
 }
 
@@ -1253,25 +919,6 @@ impl int_ty : to_bytes::IterBytes {
 }
 
 impl int_ty : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &int_ty) -> bool {
-        match (self, (*other)) {
-            (ty_i, ty_i) => true,
-            (ty_char, ty_char) => true,
-            (ty_i8, ty_i8) => true,
-            (ty_i16, ty_i16) => true,
-            (ty_i32, ty_i32) => true,
-            (ty_i64, ty_i64) => true,
-            (ty_i, _) => false,
-            (ty_char, _) => false,
-            (ty_i8, _) => false,
-            (ty_i16, _) => false,
-            (ty_i32, _) => false,
-            (ty_i64, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &int_ty) -> bool {
         match ((*self), (*other)) {
             (ty_i, ty_i) => true,
@@ -1288,10 +935,6 @@ impl int_ty : cmp::Eq {
             (ty_i64, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &int_ty) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &int_ty) -> bool { !(*self).eq(other) }
 }
 
@@ -1306,23 +949,6 @@ impl uint_ty : to_bytes::IterBytes {
 }
 
 impl uint_ty : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &uint_ty) -> bool {
-        match (self, (*other)) {
-            (ty_u, ty_u) => true,
-            (ty_u8, ty_u8) => true,
-            (ty_u16, ty_u16) => true,
-            (ty_u32, ty_u32) => true,
-            (ty_u64, ty_u64) => true,
-            (ty_u, _) => false,
-            (ty_u8, _) => false,
-            (ty_u16, _) => false,
-            (ty_u32, _) => false,
-            (ty_u64, _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &uint_ty) -> bool {
         match ((*self), (*other)) {
             (ty_u, ty_u) => true,
@@ -1337,10 +963,6 @@ impl uint_ty : cmp::Eq {
             (ty_u64, _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &uint_ty) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &uint_ty) -> bool { !(*self).eq(other) }
 }
 
@@ -1354,25 +976,12 @@ impl float_ty : to_bytes::IterBytes {
     }
 }
 impl float_ty : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &float_ty) -> bool {
-        match (self, (*other)) {
-            (ty_f, ty_f) | (ty_f32, ty_f32) | (ty_f64, ty_f64) => true,
-            (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &float_ty) -> bool {
         match ((*self), (*other)) {
             (ty_f, ty_f) | (ty_f32, ty_f32) | (ty_f64, ty_f64) => true,
             (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &float_ty) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &float_ty) -> bool { !(*self).eq(other) }
 }
 
@@ -1392,43 +1001,6 @@ enum prim_ty {
 }
 
 impl prim_ty : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &prim_ty) -> bool {
-        match self {
-            ty_int(e0a) => {
-                match (*other) {
-                    ty_int(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_uint(e0a) => {
-                match (*other) {
-                    ty_uint(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_float(e0a) => {
-                match (*other) {
-                    ty_float(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_str => {
-                match (*other) {
-                    ty_str => true,
-                    _ => false
-                }
-            }
-            ty_bool => {
-                match (*other) {
-                    ty_bool => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &prim_ty) -> bool {
         match (*self) {
             ty_int(e0a) => {
@@ -1463,10 +1035,6 @@ impl prim_ty : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &prim_ty) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &prim_ty) -> bool { !(*self).eq(other) }
 }
 
@@ -1491,27 +1059,12 @@ enum Onceness {
 }
 
 impl Onceness : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Onceness) -> bool {
-        match (self, *other) {
-            (Once, Once) | (Many, Many) => true,
-            _ => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Onceness) -> bool {
         match ((*self), *other) {
             (Once, Once) | (Many, Many) => true,
             _ => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Onceness) -> bool {
-        !self.eq(other)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Onceness) -> bool {
         !(*self).eq(other)
     }
@@ -1553,21 +1106,9 @@ enum ty_ {
 // Equality and byte-iter (hashing) can be quite approximate for AST types.
 // since we only care about this for normalizing them to "real" types.
 impl Ty : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Ty) -> bool {
-        ptr::addr_of(&self) == ptr::addr_of(&(*other))
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Ty) -> bool {
         ptr::addr_of(&(*self)) == ptr::addr_of(&(*other))
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Ty) -> bool {
-        ptr::addr_of(&self) != ptr::addr_of(&(*other))
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Ty) -> bool {
         ptr::addr_of(&(*self)) != ptr::addr_of(&(*other))
     }
@@ -1607,19 +1148,9 @@ impl purity : to_bytes::IterBytes {
 }
 
 impl purity : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &purity) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &purity) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &purity) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &purity) -> bool { !(*self).eq(other) }
 }
 
@@ -1638,17 +1169,6 @@ impl ret_style : to_bytes::IterBytes {
 }
 
 impl ret_style : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &ret_style) -> bool {
-        match (self, (*other)) {
-            (noreturn, noreturn) => true,
-            (return_val, return_val) => true,
-            (noreturn, _) => false,
-            (return_val, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &ret_style) -> bool {
         match ((*self), (*other)) {
             (noreturn, noreturn) => true,
@@ -1657,10 +1177,6 @@ impl ret_style : cmp::Eq {
             (return_val, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &ret_style) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &ret_style) -> bool { !(*self).eq(other) }
 }
 
@@ -1676,49 +1192,6 @@ enum self_ty_ {
 }
 
 impl self_ty_ : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &self_ty_) -> bool {
-        match self {
-            sty_static => {
-                match (*other) {
-                    sty_static => true,
-                    _ => false
-                }
-            }
-            sty_by_ref => {
-                match (*other) {
-                    sty_by_ref => true,
-                    _ => false
-                }
-            }
-            sty_value => {
-                match (*other) {
-                    sty_value => true,
-                    _ => false
-                }
-            }
-            sty_region(e0a) => {
-                match (*other) {
-                    sty_region(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            sty_box(e0a) => {
-                match (*other) {
-                    sty_box(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            sty_uniq(e0a) => {
-                match (*other) {
-                    sty_uniq(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &self_ty_) -> bool {
         match (*self) {
             sty_static => {
@@ -1759,10 +1232,6 @@ impl self_ty_ : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &self_ty_) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &self_ty_) -> bool { !(*self).eq(other) }
 }
 
@@ -1794,36 +1263,13 @@ enum foreign_abi {
 enum foreign_mod_sort { named, anonymous }
 
 impl foreign_mod_sort : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &foreign_mod_sort) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &foreign_mod_sort) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &foreign_mod_sort) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &foreign_mod_sort) -> bool { !(*self).eq(other) }
 }
 
 impl foreign_abi : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &foreign_abi) -> bool {
-        match (self, (*other)) {
-            (foreign_abi_rust_intrinsic, foreign_abi_rust_intrinsic) => true,
-            (foreign_abi_cdecl, foreign_abi_cdecl) => true,
-            (foreign_abi_stdcall, foreign_abi_stdcall) => true,
-            (foreign_abi_rust_intrinsic, _) => false,
-            (foreign_abi_cdecl, _) => false,
-            (foreign_abi_stdcall, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &foreign_abi) -> bool {
         match ((*self), (*other)) {
             (foreign_abi_rust_intrinsic, foreign_abi_rust_intrinsic) => true,
@@ -1834,10 +1280,6 @@ impl foreign_abi : cmp::Eq {
             (foreign_abi_stdcall, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &foreign_abi) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &foreign_abi) -> bool { !(*self).eq(other) }
 }
 
@@ -1886,19 +1328,9 @@ type path_list_ident = spanned<path_list_ident_>;
 enum namespace { module_ns, type_value_ns }
 
 impl namespace : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &namespace) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &namespace) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &namespace) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &namespace) -> bool { !(*self).eq(other) }
 }
 
@@ -1946,19 +1378,9 @@ type attribute = spanned<attribute_>;
 enum attr_style { attr_outer, attr_inner, }
 
 impl attr_style : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &attr_style) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &attr_style) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &attr_style) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &attr_style) -> bool { !(*self).eq(other) }
 }
 
@@ -1985,19 +1407,6 @@ type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 enum visibility { public, private, inherited }
 
 impl visibility : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &visibility) -> bool {
-        match (self, (*other)) {
-            (public, public) => true,
-            (private, private) => true,
-            (inherited, inherited) => true,
-            (public, _) => false,
-            (private, _) => false,
-            (inherited, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &visibility) -> bool {
         match ((*self), (*other)) {
             (public, public) => true,
@@ -2008,10 +1417,6 @@ impl visibility : cmp::Eq {
             (inherited, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &visibility) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &visibility) -> bool { !(*self).eq(other) }
 }
 
@@ -2033,30 +1438,6 @@ enum struct_field_kind {
 }
 
 impl struct_field_kind : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &struct_field_kind) -> bool {
-        match self {
-            named_field(ident_a, class_mutability_a, visibility_a) => {
-                match *other {
-                    named_field(ident_b, class_mutability_b, visibility_b)
-                            => {
-                        ident_a == ident_b &&
-                        class_mutability_a == class_mutability_b &&
-                        visibility_a == visibility_b
-                    }
-                    unnamed_field => false
-                }
-            }
-            unnamed_field => {
-                match *other {
-                    named_field(*) => false,
-                    unnamed_field => true
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &struct_field_kind) -> bool {
         match (*self) {
             named_field(ident_a, class_mutability_a, visibility_a) => {
@@ -2078,12 +1459,6 @@ impl struct_field_kind : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &struct_field_kind) -> bool {
-        !self.eq(other)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &struct_field_kind) -> bool {
         !(*self).eq(other)
     }
@@ -2142,17 +1517,6 @@ impl class_mutability : to_bytes::IterBytes {
 }
 
 impl class_mutability : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &class_mutability) -> bool {
-        match (self, (*other)) {
-            (class_mutable, class_mutable) => true,
-            (class_immutable, class_immutable) => true,
-            (class_mutable, _) => false,
-            (class_immutable, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &class_mutability) -> bool {
         match ((*self), (*other)) {
             (class_mutable, class_mutable) => true,
@@ -2161,10 +1525,6 @@ impl class_mutability : cmp::Eq {
             (class_immutable, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &class_mutability) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &class_mutability) -> bool { !(*self).eq(other) }
 }
 

@@ -29,21 +29,9 @@ pub enum ObsoleteSyntax {
 }
 
 impl ObsoleteSyntax : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &ObsoleteSyntax) -> bool {
-        self as uint == (*other) as uint
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &ObsoleteSyntax) -> bool {
         (*self) as uint == (*other) as uint
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &ObsoleteSyntax) -> bool {
-        !self.eq(other)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &ObsoleteSyntax) -> bool {
         !(*self).eq(other)
     }

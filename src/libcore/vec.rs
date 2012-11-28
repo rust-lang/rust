@@ -1347,47 +1347,23 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
 
 impl<T: Eq> &[T] : Eq {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn eq(other: & &self/[T]) -> bool { eq(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: & &self/[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ne(other: & &self/[T]) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: & &self/[T]) -> bool { !(*self).eq(other) }
 }
 
 
 impl<T: Eq> ~[T] : Eq {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn eq(other: &~[T]) -> bool { eq(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &~[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ne(other: &~[T]) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &~[T]) -> bool { !(*self).eq(other) }
 }
 
 impl<T: Eq> @[T] : Eq {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn eq(other: &@[T]) -> bool { eq(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &@[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ne(other: &@[T]) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &@[T]) -> bool { !(*self).eq(other) }
 }
 
@@ -1414,82 +1390,34 @@ pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 impl<T: Ord> &[T] : Ord {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn lt(other: & &self/[T]) -> bool { lt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: & &self/[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn le(other: & &self/[T]) -> bool { le(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: & &self/[T]) -> bool { le((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ge(other: & &self/[T]) -> bool { ge(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: & &self/[T]) -> bool { ge((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn gt(other: & &self/[T]) -> bool { gt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: & &self/[T]) -> bool { gt((*self), (*other)) }
 }
 
 impl<T: Ord> ~[T] : Ord {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn lt(other: &~[T]) -> bool { lt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: &~[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn le(other: &~[T]) -> bool { le(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: &~[T]) -> bool { le((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ge(other: &~[T]) -> bool { ge(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: &~[T]) -> bool { ge((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn gt(other: &~[T]) -> bool { gt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: &~[T]) -> bool { gt((*self), (*other)) }
 }
 
 impl<T: Ord> @[T] : Ord {
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn lt(other: &@[T]) -> bool { lt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: &@[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn le(other: &@[T]) -> bool { le(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: &@[T]) -> bool { le((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn ge(other: &@[T]) -> bool { ge(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: &@[T]) -> bool { ge((*self), (*other)) }
     #[inline(always)]
-    #[cfg(stage0)]
-    pure fn gt(other: &@[T]) -> bool { gt(self, (*other)) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: &@[T]) -> bool { gt((*self), (*other)) }
 }
 

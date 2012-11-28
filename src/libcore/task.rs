@@ -43,15 +43,7 @@ pub enum Task {
 }
 
 impl Task : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Task) -> bool { *self == *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Task) -> bool { *(*self) == *(*other) }
-    #[cfg(stage0)]
-    pure fn ne(other: &Task) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Task) -> bool { !(*self).eq(other) }
 }
 
@@ -72,25 +64,12 @@ pub enum TaskResult {
 }
 
 impl TaskResult : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &TaskResult) -> bool {
-        match (self, (*other)) {
-            (Success, Success) | (Failure, Failure) => true,
-            (Success, _) | (Failure, _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &TaskResult) -> bool {
         match ((*self), (*other)) {
             (Success, Success) | (Failure, Failure) => true,
             (Success, _) | (Failure, _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &TaskResult) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &TaskResult) -> bool { !(*self).eq(other) }
 }
 
@@ -114,43 +93,6 @@ pub enum SchedMode {
 }
 
 impl SchedMode : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &SchedMode) -> bool {
-        match self {
-            SingleThreaded => {
-                match (*other) {
-                    SingleThreaded => true,
-                    _ => false
-                }
-            }
-            ThreadPerCore => {
-                match (*other) {
-                    ThreadPerCore => true,
-                    _ => false
-                }
-            }
-            ThreadPerTask => {
-                match (*other) {
-                    ThreadPerTask => true,
-                    _ => false
-                }
-            }
-            ManualThreads(e0a) => {
-                match (*other) {
-                    ManualThreads(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            PlatformThread => {
-                match (*other) {
-                    PlatformThread => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &SchedMode) -> bool {
         match (*self) {
             SingleThreaded => {
@@ -185,12 +127,6 @@ impl SchedMode : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &SchedMode) -> bool {
-        !self.eq(other)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &SchedMode) -> bool {
         !(*self).eq(other)
     }

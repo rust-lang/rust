@@ -132,25 +132,6 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
 }
 
 impl<T:Eq,U:Eq> Either<T,U> : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Either<T,U>) -> bool {
-        match self {
-            Left(ref a) => {
-                match (*other) {
-                    Left(ref b) => (*a).eq(b),
-                    Right(_) => false
-                }
-            }
-            Right(ref a) => {
-                match (*other) {
-                    Left(_) => false,
-                    Right(ref b) => (*a).eq(b)
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Either<T,U>) -> bool {
         match (*self) {
             Left(ref a) => {
@@ -167,10 +148,6 @@ impl<T:Eq,U:Eq> Either<T,U> : Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Either<T,U>) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Either<T,U>) -> bool { !(*self).eq(other) }
 }
 
