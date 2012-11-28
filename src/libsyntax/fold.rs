@@ -21,7 +21,6 @@ export extensions;
 
 trait ast_fold {
     fn fold_crate(crate) -> crate;
-    fn fold_crate_directive(&&v: @crate_directive) -> @crate_directive;
     fn fold_view_item(&&v: @view_item) -> @view_item;
     fn fold_foreign_item(&&v: @foreign_item) -> @foreign_item;
     fn fold_item(&&v: @item) -> Option<@item>;
@@ -51,8 +50,6 @@ trait ast_fold {
 type ast_fold_precursor = @{
     //unlike the others, item_ is non-trivial
     fold_crate: fn@(crate_, span, ast_fold) -> (crate_, span),
-    fold_crate_directive: fn@(crate_directive_, span,
-                              ast_fold) -> (crate_directive_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
     fold_foreign_item: fn@(&&v: @foreign_item, ast_fold) -> @foreign_item,
     fold_item: fn@(&&v: @item, ast_fold) -> Option<@item>,
@@ -150,27 +147,10 @@ fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
     return {
-        directives: vec::map(c.directives, |x| fld.fold_crate_directive(*x)),
         module: fld.fold_mod(c.module),
         attrs: vec::map(c.attrs, |x| fold_attribute(*x)),
         config: vec::map(c.config, |x| fold_meta_item(*x))
     };
-}
-
-fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
-   crate_directive_ {
-    return match cd {
-          cdir_src_mod(vis, id, attrs) => {
-            cdir_src_mod(vis, fld.fold_ident(id),
-                         /* FIXME (#2543) */ copy attrs)
-          }
-          cdir_dir_mod(vis, id, cds, attrs) => {
-            cdir_dir_mod(vis, fld.fold_ident(id),
-                         vec::map(cds, |x| fld.fold_crate_directive(*x)),
-                         /* FIXME (#2543) */ copy attrs)
-          }
-          cdir_view_item(vi) => cdir_view_item(fld.fold_view_item(vi)),
-        }
 }
 
 fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
@@ -636,7 +616,6 @@ fn noop_span(sp: span) -> span { return sp; }
 
 fn default_ast_fold() -> ast_fold_precursor {
     return @{fold_crate: wrap(noop_fold_crate),
-          fold_crate_directive: wrap(noop_fold_crate_directive),
           fold_view_item: noop_fold_view_item,
           fold_foreign_item: noop_fold_foreign_item,
           fold_item: noop_fold_item,
@@ -666,12 +645,6 @@ impl ast_fold_precursor: ast_fold {
     fn fold_crate(c: crate) -> crate {
         let (n, s) = self.fold_crate(c.node, c.span, self as ast_fold);
         return {node: n, span: self.new_span(s)};
-    }
-    fn fold_crate_directive(&&c: @crate_directive) -> @crate_directive {
-        let (n, s) = self.fold_crate_directive(c.node, c.span,
-                                               self as ast_fold);
-        return @{node: n,
-              span: self.new_span(s)};
     }
     fn fold_view_item(&&x: @view_item) ->
        @view_item {

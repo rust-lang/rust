@@ -338,19 +338,9 @@ enum inline_attr {
 }
 
 impl inline_attr : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &inline_attr) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &inline_attr) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &inline_attr) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &inline_attr) -> bool { !(*self).eq(other) }
 }
 

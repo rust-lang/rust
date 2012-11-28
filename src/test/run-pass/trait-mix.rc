@@ -1,8 +1,0 @@
-mod trait_mix {
-    #[legacy_exports];
-    #[path = "trait-mix.rs"]
-    #[legacy_exports]
-    mod trait_mix;
-    #[legacy_exports]
-    mod u_trait_mix;
-}

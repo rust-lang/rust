@@ -95,18 +95,6 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 }
 
 impl<A: Eq, B: Eq> (A, B) : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &(A, B)) -> bool {
-        match self {
-            (ref self_a, ref self_b) => match other {
-                &(ref other_a, ref other_b) => {
-                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => match other {
@@ -116,31 +104,10 @@ impl<A: Eq, B: Eq> (A, B) : Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &(A, B)) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
 }
 
 impl<A: Ord, B: Ord> (A, B) : Ord {
-    #[cfg(stage0)]
-    pure fn lt(other: &(A, B)) -> bool {
-        match self {
-            (ref self_a, ref self_b) => {
-                match (*other) {
-                    (ref other_a, ref other_b) => {
-                        if (*self_a).lt(other_a) { return true; }
-                        if (*other_a).lt(self_a) { return false; }
-                        if (*self_b).lt(other_b) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => {
@@ -155,37 +122,12 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn le(other: &(A, B)) -> bool { !(*other).lt(&self) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: &(A, B)) -> bool { !(*other).lt(&(*self)) }
-    #[cfg(stage0)]
-    pure fn ge(other: &(A, B)) -> bool { !self.lt(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: &(A, B)) -> bool { !(*self).lt(other) }
-    #[cfg(stage0)]
-    pure fn gt(other: &(A, B)) -> bool { (*other).lt(&self)  }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
 }
 
 impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &(A, B, C)) -> bool {
-        match self {
-            (ref self_a, ref self_b, ref self_c) => match other {
-                &(ref other_a, ref other_b, ref other_c) => {
-                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
-                        && (*self_c).eq(other_c)
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => match other {
@@ -196,33 +138,10 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &(A, B, C)) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
 }
 
 impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
-    #[cfg(stage0)]
-    pure fn lt(other: &(A, B, C)) -> bool {
-        match self {
-            (ref self_a, ref self_b, ref self_c) => {
-                match (*other) {
-                    (ref other_a, ref other_b, ref other_c) => {
-                        if (*self_a).lt(other_a) { return true; }
-                        if (*other_a).lt(self_a) { return false; }
-                        if (*self_b).lt(other_b) { return true; }
-                        if (*other_b).lt(self_b) { return false; }
-                        if (*self_c).lt(other_c) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => {
@@ -239,20 +158,8 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn le(other: &(A, B, C)) -> bool { !(*other).lt(&self) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: &(A, B, C)) -> bool { !(*other).lt(&(*self)) }
-    #[cfg(stage0)]
-    pure fn ge(other: &(A, B, C)) -> bool { !self.lt(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: &(A, B, C)) -> bool { !(*self).lt(other) }
-    #[cfg(stage0)]
-    pure fn gt(other: &(A, B, C)) -> bool { (*other).lt(&self)  }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: &(A, B, C)) -> bool { (*other).lt(&(*self))  }
 }
 

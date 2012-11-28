@@ -27,9 +27,8 @@ use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
              by_move, by_ref, by_val, capture_clause,
-             capture_item, cdir_dir_mod, cdir_src_mod, cdir_view_item,
-             class_immutable, class_mutable,
-             crate, crate_cfg, crate_directive, decl, decl_item, decl_local,
+             capture_item, class_immutable, class_mutable,
+             crate, crate_cfg, decl, decl_item, decl_local,
              default_blk, deref, div, enum_def, enum_variant_kind, expl, expr,
              expr_, expr_addr_of, expr_match, expr_again, expr_assert,
              expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
@@ -2967,17 +2966,10 @@ impl Parser {
     fn parse_item_mod(outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = self.span;
         let id = self.parse_ident();
-        if self.token == token::SEMI {
+        let info_ = if self.token == token::SEMI {
             self.bump();
             // This mod is in an external file. Let's go get it!
-            let eval_ctx = @{
-                sess: self.sess,
-                cfg: self.cfg
-            };
-            let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
-            let prefix = prefix.dir_path();
-            let (m, attrs) = eval::eval_src_mod(eval_ctx, &prefix, id,
-                                                outer_attrs, id_span);
+            let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span);
             (id, m, Some(move attrs))
         } else {
             self.expect(token::LBRACE);
@@ -2985,6 +2977,83 @@ impl Parser {
             let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
             self.expect(token::RBRACE);
             (id, item_mod(m), Some(inner_attrs.inner))
+        };
+
+        // XXX: Transitionary hack to do the template work inside core
+        // (int-template, iter-trait). If there's a 'merge' attribute
+        // on the mod, then we'll go and suck in another file and merge
+        // its contents
+        match ::attr::first_attr_value_str_by_name(outer_attrs, ~"merge") {
+            Some(path) => {
+                let prefix = Path(
+                    self.sess.cm.span_to_filename(copy self.span));
+                let prefix = prefix.dir_path();
+                let path = Path(path);
+                let (new_mod_item, new_attrs) = self.eval_src_mod_from_path(
+                    prefix, path, ~[], id_span);
+
+                let (main_id, main_mod_item, main_attrs) = info_;
+                let main_attrs = main_attrs.get();
+
+                let (main_mod, new_mod) =
+                    match (main_mod_item, new_mod_item) {
+                    (item_mod(m), item_mod(n)) => (m, n),
+                    _ => self.bug(~"parsed mod item should be mod")
+                };
+                let merged_mod = {
+                    view_items: main_mod.view_items + new_mod.view_items,
+                    items: main_mod.items + new_mod.items
+                };
+
+                let merged_attrs = main_attrs + new_attrs;
+                (main_id, item_mod(merged_mod), Some(merged_attrs))
+            }
+            None => info_
+        }
+    }
+
+    fn eval_src_mod(id: ast::ident,
+                    outer_attrs: ~[ast::attribute],
+                    id_sp: span) -> (ast::item_, ~[ast::attribute]) {
+        let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
+        let prefix = prefix.dir_path();
+        let default_path = self.sess.interner.get(id) + ~".rs";
+        let file_path = match ::attr::first_attr_value_str_by_name(
+            outer_attrs, ~"path") {
+
+            Some(d) => d,
+            None => default_path
+        };
+
+        let file_path = Path(file_path);
+        self.eval_src_mod_from_path(prefix, file_path,
+                                    outer_attrs, id_sp)
+    }
+
+    fn eval_src_mod_from_path(prefix: Path, path: Path,
+                              outer_attrs: ~[ast::attribute],
+                              id_sp: span
+                             ) -> (ast::item_, ~[ast::attribute]) {
+
+        let full_path = if path.is_absolute {
+            path
+        } else {
+            prefix.push_many(path.components)
+        };
+        let p0 =
+            new_sub_parser_from_file(self.sess, self.cfg,
+                                     &full_path, id_sp);
+        let inner_attrs = p0.parse_inner_attrs_and_next();
+        let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
+        let first_item_outer_attrs = inner_attrs.next;
+        let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
+        return (ast::item_mod(m0), mod_attrs);
+
+        fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
+            match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
+                Some(d) => d,
+                None => default
+            }
         }
     }
 
@@ -3702,8 +3771,7 @@ impl Parser {
         let first_item_outer_attrs = crate_attrs.next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
         return @spanned(lo, self.span.lo,
-                     {directives: ~[],
-                      module: m,
+                     {module: m,
                       attrs: crate_attrs.inner,
                       config: self.cfg});
     }
@@ -3714,94 +3782,12 @@ impl Parser {
           _ =>  self.fatal(~"expected string literal")
         }
     }
-
-    // Logic for parsing crate files (.rc)
-    //
-    // Each crate file is a sequence of directives.
-    //
-    // Each directive imperatively extends its environment with 0 or more
-    // items.
-    fn parse_crate_directive(first_outer_attr: ~[attribute]) ->
-        crate_directive {
-
-        // Collect the next attributes
-        let outer_attrs = vec::append(first_outer_attr,
-                                      self.parse_outer_attributes());
-        // In a crate file outer attributes are only going to apply to mods
-        let expect_mod = vec::len(outer_attrs) > 0u;
-
-        let lo = self.span.lo;
-        let vis = self.parse_visibility();
-        if expect_mod || self.is_keyword(~"mod") {
-
-            self.expect_keyword(~"mod");
-
-            let id = self.parse_ident();
-            match self.token {
-              // mod x = "foo.rs";
-              token::SEMI => {
-                let mut hi = self.span.hi;
-                self.bump();
-                return spanned(lo, hi, cdir_src_mod(vis, id, outer_attrs));
-              }
-              // mod x = "foo_dir" { ...directives... }
-              token::LBRACE => {
-                self.bump();
-                let inner_attrs = self.parse_inner_attrs_and_next();
-                let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
-                let next_outer_attr = inner_attrs.next;
-                let cdirs = self.parse_crate_directives(token::RBRACE,
-                                                        next_outer_attr);
-                let mut hi = self.span.hi;
-                self.expect(token::RBRACE);
-                return spanned(lo, hi,
-                            cdir_dir_mod(vis, id, cdirs, mod_attrs));
-              }
-              _ => self.unexpected()
-            }
-        } else if self.is_view_item() {
-            let vi = self.parse_view_item(outer_attrs, vis);
-            return spanned(lo, vi.span.hi, cdir_view_item(vi));
-        }
-        return self.fatal(~"expected crate directive");
-    }
-
-    fn parse_crate_directives(term: token::Token,
-                              first_outer_attr: ~[attribute]) ->
-        ~[@crate_directive] {
-
-        // This is pretty ugly. If we have an outer attribute then we can't
-        // accept seeing the terminator next, so if we do see it then fail the
-        // same way parse_crate_directive would
-        if vec::len(first_outer_attr) > 0u && self.token == term {
-            self.expect_keyword(~"mod");
-        }
-
-        let mut cdirs: ~[@crate_directive] = ~[];
-        let mut first_outer_attr = first_outer_attr;
-        while self.token != term {
-            let cdir = @self.parse_crate_directive(first_outer_attr);
-            cdirs.push(cdir);
-            first_outer_attr = ~[];
-        }
-        return cdirs;
-    }
 }
 
 impl restriction : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &restriction) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &restriction) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &restriction) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &restriction) -> bool { !(*self).eq(other) }
 }
 

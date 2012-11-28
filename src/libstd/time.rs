@@ -24,19 +24,9 @@ extern mod rustrt {
 pub type Timespec = {sec: i64, nsec: i32};
 
 impl Timespec : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Timespec) -> bool {
-        self.sec == (*other).sec && self.nsec == (*other).nsec
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Timespec) -> bool {
         (*self).sec == (*other).sec && (*self).nsec == (*other).nsec
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Timespec) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Timespec) -> bool { !(*self).eq(other) }
 }
 
@@ -91,23 +81,6 @@ type Tm_ = {
 };
 
 impl Tm_ : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Tm_) -> bool {
-        self.tm_sec == (*other).tm_sec &&
-        self.tm_min == (*other).tm_min &&
-        self.tm_hour == (*other).tm_hour &&
-        self.tm_mday == (*other).tm_mday &&
-        self.tm_mon == (*other).tm_mon &&
-        self.tm_year == (*other).tm_year &&
-        self.tm_wday == (*other).tm_wday &&
-        self.tm_yday == (*other).tm_yday &&
-        self.tm_isdst == (*other).tm_isdst &&
-        self.tm_gmtoff == (*other).tm_gmtoff &&
-        self.tm_zone == (*other).tm_zone &&
-        self.tm_nsec == (*other).tm_nsec
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Tm_) -> bool {
         (*self).tm_sec == (*other).tm_sec &&
         (*self).tm_min == (*other).tm_min &&
@@ -122,10 +95,6 @@ impl Tm_ : Eq {
         (*self).tm_zone == (*other).tm_zone &&
         (*self).tm_nsec == (*other).tm_nsec
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Tm_) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Tm_) -> bool { !(*self).eq(other) }
 }
 
@@ -134,15 +103,7 @@ pub enum Tm {
 }
 
 impl Tm : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Tm) -> bool { *self == *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Tm) -> bool { *(*self) == *(*other) }
-    #[cfg(stage0)]
-    pure fn ne(other: &Tm) -> bool { *self != *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Tm) -> bool { *(*self) != *(*other) }
 }
 
