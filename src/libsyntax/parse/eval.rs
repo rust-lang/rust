@@ -5,6 +5,7 @@ use codemap::span;
 
 export eval_crate_directives_to_mod;
 export eval_src_mod;
+export eval_src_mod_from_path;
 
 type ctx =
     @{sess: parse::parse_sess,
@@ -84,15 +85,23 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     }
 }
 
-fn eval_src_mod(cx: ctx, prefix: &Path, id: ast::ident,
+fn eval_src_mod(cx: ctx, prefix: &Path,
                 outer_attrs: ~[ast::attribute],
-                sp: span) -> (ast::item_, ~[ast::attribute]) {
+                id: ast::ident, sp: span
+               ) -> (ast::item_, ~[ast::attribute]) {
     let file_path = Path(cdir_path_opt(
         cx.sess.interner.get(id) + ~".rs", outer_attrs));
-    let full_path = if file_path.is_absolute {
-        copy file_path
+    eval_src_mod_from_path(cx, prefix, &file_path, outer_attrs, sp)
+}
+
+fn eval_src_mod_from_path(cx: ctx, prefix: &Path, path: &Path,
+                          outer_attrs: ~[ast::attribute],
+                          sp: span
+                         ) -> (ast::item_, ~[ast::attribute]) {
+    let full_path = if path.is_absolute {
+        copy *path
     } else {
-        prefix.push_many(file_path.components)
+        prefix.push_many(path.components)
     };
     let p0 =
         new_sub_parser_from_file(cx.sess, cx.cfg,
@@ -121,7 +130,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                         items: &mut ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(vis, id, attrs) => {
-        let (m, mod_attrs) = eval_src_mod(cx, prefix, id, attrs, cdir.span);
+        let (m, mod_attrs) = eval_src_mod(cx, prefix, attrs, id, cdir.span);
         let i = mk_item(cx, cdir.span.lo, cdir.span.hi,
                            /* FIXME (#2543) */ copy id,
                            m, vis, mod_attrs);

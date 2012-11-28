@@ -33,25 +33,6 @@ enum purity_cause {
 }
 
 impl purity_cause : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &purity_cause) -> bool {
-        match self {
-            pc_pure_fn => {
-                match (*other) {
-                    pc_pure_fn => true,
-                    _ => false
-                }
-            }
-            pc_cmt(e0a) => {
-                match (*other) {
-                    pc_cmt(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &purity_cause) -> bool {
         match (*self) {
             pc_pure_fn => {
@@ -68,10 +49,6 @@ impl purity_cause : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &purity_cause) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &purity_cause) -> bool { !(*self).eq(other) }
 }
 
@@ -97,19 +74,9 @@ enum assignment_type {
 }
 
 impl assignment_type : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &assignment_type) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &assignment_type) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &assignment_type) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &assignment_type) -> bool { !(*self).eq(other) }
 }
 

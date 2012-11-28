@@ -1,3 +1,0 @@
-
-
-fn other() { debug!("yes"); }

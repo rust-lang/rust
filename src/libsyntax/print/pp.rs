@@ -56,17 +56,6 @@ use dvec::DVec;
 enum breaks { consistent, inconsistent, }
 
 impl breaks : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &breaks) -> bool {
-        match (self, (*other)) {
-            (consistent, consistent) => true,
-            (inconsistent, inconsistent) => true,
-            (consistent, _) => false,
-            (inconsistent, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &breaks) -> bool {
         match ((*self), (*other)) {
             (consistent, consistent) => true,
@@ -75,10 +64,6 @@ impl breaks : cmp::Eq {
             (inconsistent, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &breaks) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &breaks) -> bool { !(*self).eq(other) }
 }
 

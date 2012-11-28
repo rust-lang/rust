@@ -516,25 +516,12 @@ pub enum FileFlag { Append, Create, Truncate, NoFlag, }
 pub enum WriterType { Screen, File }
 
 pub impl WriterType : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &WriterType) -> bool {
-        match (self, (*other)) {
-            (Screen, Screen) | (File, File) => true,
-            (Screen, _) | (File, _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &WriterType) -> bool {
         match ((*self), (*other)) {
             (Screen, Screen) | (File, File) => true,
             (Screen, _) | (File, _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &WriterType) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &WriterType) -> bool { !(*self).eq(other) }
 }
 

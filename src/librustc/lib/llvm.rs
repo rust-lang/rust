@@ -131,45 +131,6 @@ enum TypeKind {
 }
 
 impl TypeKind : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &TypeKind) -> bool {
-        match (self, (*other)) {
-            (Void, Void) => true,
-            (Half, Half) => true,
-            (Float, Float) => true,
-            (Double, Double) => true,
-            (X86_FP80, X86_FP80) => true,
-            (FP128, FP128) => true,
-            (PPC_FP128, PPC_FP128) => true,
-            (Label, Label) => true,
-            (Integer, Integer) => true,
-            (Function, Function) => true,
-            (Struct, Struct) => true,
-            (Array, Array) => true,
-            (Pointer, Pointer) => true,
-            (Vector, Vector) => true,
-            (Metadata, Metadata) => true,
-            (X86_MMX, X86_MMX) => true,
-            (Void, _) => false,
-            (Half, _) => false,
-            (Float, _) => false,
-            (Double, _) => false,
-            (X86_FP80, _) => false,
-            (FP128, _) => false,
-            (PPC_FP128, _) => false,
-            (Label, _) => false,
-            (Integer, _) => false,
-            (Function, _) => false,
-            (Struct, _) => false,
-            (Array, _) => false,
-            (Pointer, _) => false,
-            (Vector, _) => false,
-            (Metadata, _) => false,
-            (X86_MMX, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &TypeKind) -> bool {
         match ((*self), (*other)) {
             (Void, Void) => true,
@@ -206,10 +167,6 @@ impl TypeKind : cmp::Eq {
             (X86_MMX, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &TypeKind) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &TypeKind) -> bool { !(*self).eq(other) }
 }
 

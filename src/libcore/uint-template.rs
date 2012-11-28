@@ -49,38 +49,14 @@ pub pure fn compl(i: T) -> T {
 }
 
 impl T : Ord {
-    #[cfg(stage0)]
-    pure fn lt(other: &T) -> bool { self < (*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn lt(&self, other: &T) -> bool { (*self) < (*other) }
-    #[cfg(stage0)]
-    pure fn le(other: &T) -> bool { self <= (*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn le(&self, other: &T) -> bool { (*self) <= (*other) }
-    #[cfg(stage0)]
-    pure fn ge(other: &T) -> bool { self >= (*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ge(&self, other: &T) -> bool { (*self) >= (*other) }
-    #[cfg(stage0)]
-    pure fn gt(other: &T) -> bool { self > (*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn gt(&self, other: &T) -> bool { (*self) > (*other) }
 }
 
 impl T : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &T) -> bool { return self == (*other); }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
-    #[cfg(stage0)]
-    pure fn ne(other: &T) -> bool { return self != (*other); }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 

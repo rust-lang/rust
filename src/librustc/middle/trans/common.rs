@@ -296,25 +296,6 @@ enum cleanup {
 }
 
 impl cleantype : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &cleantype) -> bool {
-        match self {
-            normal_exit_only => {
-                match (*other) {
-                    normal_exit_only => true,
-                    _ => false
-                }
-            }
-            normal_exit_and_unwind => {
-                match (*other) {
-                    normal_exit_and_unwind => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &cleantype) -> bool {
         match (*self) {
             normal_exit_only => {
@@ -331,10 +312,6 @@ impl cleantype : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &cleantype) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &cleantype) -> bool { !(*self).eq(other) }
 }
 
@@ -1167,25 +1144,6 @@ type mono_id_ = {
 type mono_id = @mono_id_;
 
 impl mono_param_id : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &mono_param_id) -> bool {
-        match (self, (*other)) {
-            (mono_precise(ty_a, ids_a), mono_precise(ty_b, ids_b)) => {
-                ty_a == ty_b && ids_a == ids_b
-            }
-            (mono_any, mono_any) => true,
-            (mono_repr(size_a, align_a, is_float_a, mode_a),
-             mono_repr(size_b, align_b, is_float_b, mode_b)) => {
-                size_a == size_b && align_a == align_b &&
-                    is_float_a == is_float_b && mode_a == mode_b
-            }
-            (mono_precise(*), _) => false,
-            (mono_any, _) => false,
-            (mono_repr(*), _) => false
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &mono_param_id) -> bool {
         match ((*self), (*other)) {
             (mono_precise(ty_a, ids_a), mono_precise(ty_b, ids_b)) => {
@@ -1202,27 +1160,13 @@ impl mono_param_id : cmp::Eq {
             (mono_repr(*), _) => false
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &mono_param_id) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &mono_param_id) -> bool { !(*self).eq(other) }
 }
 
 impl mono_id_ : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &mono_id_) -> bool {
-        self.def == (*other).def && self.params == (*other).params
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &mono_id_) -> bool {
         (*self).def == (*other).def && (*self).params == (*other).params
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &mono_id_) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &mono_id_) -> bool { !(*self).eq(other) }
 }
 

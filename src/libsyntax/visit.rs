@@ -93,16 +93,6 @@ fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
     v.visit_mod(c.node.module, c.span, crate_node_id, e, v);
 }
 
-fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
-    match cd.node {
-      cdir_src_mod(_, _, _) => (),
-      cdir_dir_mod(_, _, cdirs, _) => for cdirs.each |cdir| {
-        visit_crate_directive(*cdir, e, v);
-      },
-      cdir_view_item(vi) => v.visit_view_item(vi, e, v),
-    }
-}
-
 fn visit_mod<E>(m: _mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
     for m.view_items.each |vi| { v.visit_view_item(*vi, e, v); }
     for m.items.each |i| { v.visit_item(*i, e, v); }
