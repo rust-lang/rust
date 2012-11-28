@@ -204,6 +204,8 @@ export DerivedFieldInfo;
 export AutoAdjustment;
 export AutoRef;
 export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowFn;
+export iter_bound_traits_and_supertraits;
+export count_traits_and_supertraits;
 
 // Data types
 
@@ -4528,6 +4530,64 @@ pure fn determine_inherited_purity(parent_purity: ast::purity,
         ast::ProtoBorrowed if child_purity == ast::impure_fn => parent_purity,
         _ => child_purity
     }
+}
+
+// Iterate over a type parameter's bounded traits and any supertraits
+// of those traits, ignoring kinds.
+fn iter_bound_traits_and_supertraits(tcx: ctxt,
+                                     bounds: param_bounds,
+                                     f: &fn(t) -> bool) {
+    for bounds.each |bound| {
+
+        let bound_trait_ty = match *bound {
+            ty::bound_trait(bound_t) => bound_t,
+
+            ty::bound_copy | ty::bound_send |
+            ty::bound_const | ty::bound_owned => {
+                loop; // skip non-trait bounds
+            }
+        };
+
+        let mut worklist = ~[];
+
+        let init_trait_ty = bound_trait_ty;
+
+        worklist.push(init_trait_ty);
+
+        let mut i = 0;
+        while i < worklist.len() {
+            let init_trait_ty = worklist[i];
+            i += 1;
+
+            let init_trait_id = match ty_to_def_id(init_trait_ty) {
+                Some(id) => id,
+                None => tcx.sess.bug(
+                    ~"trait type should have def_id")
+            };
+
+            // Add supertraits to worklist
+            let supertraits = trait_supertraits(tcx,
+                                                init_trait_id);
+            for supertraits.each |supertrait| {
+                worklist.push(supertrait.tpt.ty);
+            }
+
+            if !f(init_trait_ty) {
+                return;
+            }
+        }
+    }
+}
+
+fn count_traits_and_supertraits(tcx: ctxt,
+                                boundses: &[param_bounds]) -> uint {
+    let mut total = 0;
+    for boundses.each |bounds| {
+        for iter_bound_traits_and_supertraits(tcx, *bounds) |_trait_ty| {
+            total += 1;
+        }
+    }
+    return total;
 }
 
 impl mt : cmp::Eq {

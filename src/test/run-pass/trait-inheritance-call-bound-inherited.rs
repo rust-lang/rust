@@ -6,17 +6,13 @@ struct A { x: int }
 impl A : Foo { fn f() -> int { 10 } }
 impl A : Bar { fn g() -> int { 20 } }
 
-fn ff<T:Foo>(a: &T) -> int {
-    a.f()
-}
-
+// Call a function on Foo, given a T: Bar
 fn gg<T:Bar>(a: &T) -> int {
-    a.g()
+    a.f()
 }
 
 fn main() {
     let a = &A { x: 3 };
-    assert ff(a) == 10;
-    assert gg(a) == 20;
+    assert gg(a) == 10;
 }
 

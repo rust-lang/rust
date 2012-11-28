@@ -1,9 +1,31 @@
-pub trait MyNum : Add<self,self>, Sub<self,self>, Mul<self,self> {
+use cmp::Eq;
+
+pub trait MyNum : Add<self,self>, Sub<self,self>, Mul<self,self>, Eq {
 }
 
-pub impl int : MyNum {
-    pure fn add(other: &int) -> int { self + *other }
-    pure fn sub(&self, other: &int) -> int { *self - *other }
-    pure fn mul(&self, other: &int) -> int { *self * *other }
+pub struct MyInt {
+    val: int
 }
+
+pub impl MyInt : Add<MyInt, MyInt> {
+    pure fn add(other: &MyInt) -> MyInt { mi(self.val + other.val) }
+}
+
+pub impl MyInt : Sub<MyInt, MyInt> {
+    pure fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
+}
+
+pub impl MyInt : Mul<MyInt, MyInt> {
+    pure fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
+}
+
+pub impl MyInt : Eq {
+    pure fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
+
+    pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
+}
+
+pub impl MyInt : MyNum;
+
+pure fn mi(v: int) -> MyInt { MyInt { val: v } }
 

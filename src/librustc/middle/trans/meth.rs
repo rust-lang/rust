@@ -243,17 +243,7 @@ fn trans_static_method_callee(bcx: block,
     // one we are interested in.
     let bound_index = {
         let trait_polyty = ty::lookup_item_type(bcx.tcx(), trait_id);
-        let mut index = 0;
-        for trait_polyty.bounds.each |param_bounds| {
-            for param_bounds.each |param_bound| {
-                match *param_bound {
-                    ty::bound_trait(_) => { index += 1; }
-                    ty::bound_copy | ty::bound_owned |
-                    ty::bound_send | ty::bound_const => {}
-                }
-            }
-        }
-        index
+        ty::count_traits_and_supertraits(bcx.tcx(), *trait_polyty.bounds)
     };
 
     let mname = if method_id.crate == ast::local_crate {
