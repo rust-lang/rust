@@ -136,9 +136,9 @@ priv impl Assign {
 
         match (a_bnd, b_bnd) {
             (Some(a_bnd), Some(b_bnd)) => {
-                // check for a case where a non-region pointer (@, ~) is
-                // being assigned to a region pointer:
                 match (ty::get(a_bnd).sty, ty::get(b_bnd).sty) {
+                    // check for a case where a non-region pointer (@, ~) is
+                    // being assigned to a region pointer:
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_box(self.infcx.tcx,
                                               {ty: mt_b.ty, mutbl: m_const});
@@ -184,8 +184,16 @@ priv impl Assign {
                                         a, nr_b, m_imm, b_f.meta.region)
                     }
 
+                    // check for &T being assigned to *T:
+                    (ty::ty_rptr(_, ref a_t), ty::ty_ptr(ref b_t)) => {
+                        match Sub(*self).mts(*a_t, *b_t) {
+                            Ok(_) => Ok(None),
+                            Err(e) => Err(e)
+                        }
+                    }
+
+                    // otherwise, assignment follows normal subtype rules:
                     _ => {
-                        // otherwise, assignment follows normal subtype rules:
                         to_ares(Sub(*self).tys(a, b))
                     }
                 }
