@@ -20,6 +20,8 @@ use mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
 use preserve::{preserve_condition, pc_ok, pc_if_pure};
 use ty::{ty_region};
 
+use core::send_map::linear::LinearMap;
+
 export gather_loans;
 
 /// Context used while gathering loans:
@@ -53,14 +55,16 @@ export gather_loans;
 enum gather_loan_ctxt = @{bccx: borrowck_ctxt,
                           req_maps: req_maps,
                           mut item_ub: ast::node_id,
-                          mut root_ub: ast::node_id};
+                          mut root_ub: ast::node_id,
+                          mut ignore_adjustments: LinearMap<ast::node_id,()>};
 
 fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
     let glcx = gather_loan_ctxt(@{bccx: bccx,
                                   req_maps: {req_loan_map: HashMap(),
                                              pure_map: HashMap()},
                                   mut item_ub: 0,
-                                  mut root_ub: 0});
+                                  mut root_ub: 0,
+                                  mut ignore_adjustments: LinearMap()});
     let v = visit::mk_vt(@{visit_expr: req_loans_in_expr,
                            visit_fn: req_loans_in_fn,
                            .. *visit::default_visitor()});
@@ -104,8 +108,10 @@ fn req_loans_in_expr(ex: @ast::expr,
            ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
-    for tcx.adjustments.find(ex.id).each |adjustments| {
-        self.guarantee_adjustments(ex, *adjustments);
+    if !self.ignore_adjustments.contains_key(&ex.id) {
+        for tcx.adjustments.find(ex.id).each |adjustments| {
+            self.guarantee_adjustments(ex, *adjustments);
+        }
     }
 
     // Special checks for various kinds of expressions:
@@ -179,7 +185,8 @@ fn req_loans_in_expr(ex: @ast::expr,
 
       ast::expr_index(rcvr, _) |
       ast::expr_binary(_, rcvr, _) |
-      ast::expr_unary(_, rcvr)
+      ast::expr_unary(_, rcvr) |
+      ast::expr_assign_op(_, rcvr, _)
       if self.bccx.method_map.contains_key(ex.id) => {
         // Receivers in method calls are always passed by ref.
         //
@@ -193,6 +200,11 @@ fn req_loans_in_expr(ex: @ast::expr,
         let scope_r = ty::re_scope(ex.id);
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
+
+        // FIXME (#3387): Total hack: Ignore adjustments for the left-hand
+        // side. Their regions will be inferred to be too large.
+        self.ignore_adjustments.insert(rcvr.id, ());
+
         visit::visit_expr(ex, self, vt);
       }
 

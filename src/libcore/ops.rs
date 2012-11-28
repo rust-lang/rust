@@ -18,9 +18,17 @@ pub trait Drop {
     fn finalize(&self);  // XXX: Rename to "drop"? --pcwalton
 }
 
+#[cfg(stage0)]
 #[lang="add"]
 pub trait Add<RHS,Result> {
     pure fn add(rhs: &RHS) -> Result;
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[lang="add"]
+pub trait Add<RHS,Result> {
+    pure fn add(&self, rhs: &RHS) -> Result;
 }
 
 #[lang="sub"]
@@ -73,8 +81,16 @@ pub trait Shr<RHS,Result> {
     pure fn shr(&self, rhs: &RHS) -> Result;
 }
 
+#[cfg(stage0)]
 #[lang="index"]
 pub trait Index<Index,Result> {
     pure fn index(index: Index) -> Result;
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[lang="index"]
+pub trait Index<Index,Result> {
+    pure fn index(&self, index: Index) -> Result;
 }
 
