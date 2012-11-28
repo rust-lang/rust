@@ -191,6 +191,25 @@ impl<A: IterBytes> &[A]: IterBytes {
     }
 }
 
+impl<A: IterBytes, B: IterBytes> (A,B): IterBytes {
+  #[inline(always)]
+  pure fn iter_bytes(lsb0: bool, f: Cb) {
+    let &(ref a, ref b) = &self;
+    a.iter_bytes(lsb0, f);
+    b.iter_bytes(lsb0, f);
+  }
+}
+
+impl<A: IterBytes, B: IterBytes, C: IterBytes> (A,B,C): IterBytes {
+  #[inline(always)]
+  pure fn iter_bytes(lsb0: bool, f: Cb) {
+    let &(ref a, ref b, ref c) = &self;
+    a.iter_bytes(lsb0, f);
+    b.iter_bytes(lsb0, f);
+    c.iter_bytes(lsb0, f);
+  }
+}
+
 // Move this to vec, probably.
 pure fn borrow<A>(a: &x/[A]) -> &x/[A] {
     a
