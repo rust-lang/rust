@@ -139,19 +139,9 @@ impl DatumMode {
 }
 
 impl DatumMode: cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &DatumMode) -> bool {
-        self as uint == (*other as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &DatumMode) -> bool {
         (*self) as uint == (*other as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &DatumMode) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
@@ -817,17 +807,6 @@ impl DatumBlock {
 }
 
 impl CopyAction : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &CopyAction) -> bool {
-        match (self, (*other)) {
-            (INIT, INIT) => true,
-            (DROP_EXISTING, DROP_EXISTING) => true,
-            (INIT, _) => false,
-            (DROP_EXISTING, _) => false,
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &CopyAction) -> bool {
         match ((*self), (*other)) {
             (INIT, INIT) => true,
@@ -836,9 +815,5 @@ impl CopyAction : cmp::Eq {
             (DROP_EXISTING, _) => false,
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &CopyAction) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &CopyAction) -> bool { !(*self).eq(other) }
 }

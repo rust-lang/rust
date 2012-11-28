@@ -140,19 +140,9 @@ enum Family {
 }
 
 impl Family : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Family) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Family) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Family) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Family) -> bool { !(*self).eq(other) }
 }
 

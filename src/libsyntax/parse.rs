@@ -1,5 +1,16 @@
 //! The main parser interface
 
+#[legacy_exports];
+
+export parser;
+export common;
+export lexer;
+export token;
+export comments;
+export prec;
+export classify;
+export attr;
+
 export parse_sess;
 export new_parse_sess, new_parse_sess_special_handler;
 export next_node_id;
@@ -51,40 +62,6 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
                          sess: parse_sess) -> @ast::crate {
-    if input.filetype() == Some(~".rc") {
-        parse_crate_from_crate_file(input, cfg, sess)
-    } else if input.filetype() == Some(~".rs") {
-        parse_crate_from_source_file(input, cfg, sess)
-    } else {
-        sess.span_diagnostic.handler().fatal(~"unknown input file type: " +
-                                             input.to_str())
-    }
-}
-
-fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
-                               sess: parse_sess) -> @ast::crate {
-    let p = new_crate_parser_from_file(sess, cfg, input);
-    let lo = p.span.lo;
-    let prefix = input.dir_path();
-    let leading_attrs = p.parse_inner_attrs_and_next();
-    let { inner: crate_attrs, next: first_cdir_attr } = leading_attrs;
-    let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
-    let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
-    let companionmod = input.filestem().map(|s| Path(*s));
-    let (m, attrs) = eval::eval_crate_directives_to_mod(
-        cx, cdirs, &prefix, &companionmod);
-    let mut hi = p.span.hi;
-    p.expect(token::EOF);
-    p.abort_if_errors();
-    return @ast_util::respan(ast_util::mk_sp(lo, hi),
-                          {directives: cdirs,
-                           module: m,
-                           attrs: vec::append(crate_attrs, attrs),
-                           config: /* FIXME (#2543) */ copy p.cfg});
-}
-
-fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
-                                sess: parse_sess) -> @ast::crate {
     let p = new_crate_parser_from_file(sess, cfg, input);
     let r = p.parse_crate_mod(cfg);
     return r;
@@ -175,6 +152,18 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
                         path: &Path) -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
       result::Ok(move src) => {
+
+          // HACK: If the file contains a special token use a different
+          // source file. Used to send the stage1+ parser (the stage0 parser
+          // doesn't have this hack) to a different crate file.
+          // Transitional. Remove me.
+          let src = if src.starts_with("// DIVERT") {
+              let actual_path = &path.with_filestem("alternate_crate");
+              result::unwrap(io::read_whole_file_str(actual_path))
+          } else {
+              move src
+          };
+
           let filemap = sess.cm.new_filemap(path.to_str(), @move src);
           let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                               sess.interner);

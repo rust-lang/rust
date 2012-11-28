@@ -13,38 +13,18 @@ use middle::lint;
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
 impl os : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &os) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &os) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &os) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &os) -> bool { !(*self).eq(other) }
 }
 
 enum arch { arch_x86, arch_x86_64, arch_arm, }
 
 impl arch : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &arch) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &arch) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &arch) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &arch) -> bool { !(*self).eq(other) }
 }
 
@@ -111,19 +91,9 @@ enum OptLevel {
 }
 
 impl OptLevel : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &OptLevel) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &OptLevel) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &OptLevel) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &OptLevel) -> bool { !(*self).eq(other) }
 }
 
@@ -357,7 +327,6 @@ mod test {
         if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
         if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
         @ast_util::respan(ast_util::dummy_sp(), {
-            directives: ~[],
             module: {view_items: ~[], items: ~[]},
             attrs: attrs,
             config: ~[]

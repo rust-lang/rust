@@ -43,245 +43,445 @@ mod middle {
     mod trans {
         #[legacy_exports];
         #[legacy_exports]
+        #[path = "middle/trans/inline.rs"]
         mod inline;
         #[legacy_exports]
+        #[path = "middle/trans/monomorphize.rs"]
         mod monomorphize;
         #[legacy_exports]
+        #[path = "middle/trans/controlflow.rs"]
         mod controlflow;
         #[legacy_exports]
+        #[path = "middle/trans/glue.rs"]
         mod glue;
         #[legacy_exports]
+        #[path = "middle/trans/datum.rs"]
         mod datum;
         #[legacy_exports]
+        #[path = "middle/trans/callee.rs"]
         mod callee;
         #[legacy_exports]
+        #[path = "middle/trans/expr.rs"]
         mod expr;
         #[legacy_exports]
+        #[path = "middle/trans/common.rs"]
         mod common;
         #[legacy_exports]
+        #[path = "middle/trans/consts.rs"]
         mod consts;
         #[legacy_exports]
+        #[path = "middle/trans/type_of.rs"]
         mod type_of;
         #[legacy_exports]
+        #[path = "middle/trans/build.rs"]
         mod build;
         #[legacy_exports]
+        #[path = "middle/trans/base.rs"]
         mod base;
         #[legacy_exports]
+        #[path = "middle/trans/alt.rs"]
         mod alt;
         #[legacy_exports]
+        #[path = "middle/trans/uniq.rs"]
         mod uniq;
         #[legacy_exports]
+        #[path = "middle/trans/closure.rs"]
         mod closure;
         #[legacy_exports]
+        #[path = "middle/trans/tvec.rs"]
         mod tvec;
         #[legacy_exports]
+        #[path = "middle/trans/meth.rs"]
         mod meth;
         #[legacy_exports]
+        #[path = "middle/trans/foreign.rs"]
         mod foreign;
         #[legacy_exports]
+        #[path = "middle/trans/reflect.rs"]
         mod reflect;
         #[legacy_exports]
+        #[path = "middle/trans/shape.rs"]
         mod shape;
         #[legacy_exports]
+        #[path = "middle/trans/debuginfo.rs"]
         mod debuginfo;
         #[legacy_exports]
+        #[path = "middle/trans/type_use.rs"]
         mod type_use;
         #[legacy_exports]
+        #[path = "middle/trans/reachable.rs"]
         mod reachable;
+        #[path = "middle/trans/machine.rs"]
         mod machine;
+        #[path = "middle/trans/deriving.rs"]
         mod deriving;
     }
     #[legacy_exports]
+    #[path = "middle/ty.rs"]
     mod ty;
     #[legacy_exports]
+    #[path = "middle/resolve.rs"]
     mod resolve;
-    pub mod typeck {
-        #[legacy_exports];
-        #[legacy_exports]
-        pub mod check {
-            #[legacy_exports]
-            mod alt;
-            #[legacy_exports]
-            mod vtable;
-            #[legacy_exports]
-            mod writeback;
-            #[legacy_exports]
-            mod regionmanip;
-            #[legacy_exports]
-            mod regionck;
-            #[legacy_exports]
-            mod demand;
-            #[legacy_exports]
-            pub mod method;
-        }
-        #[legacy_exports]
-        mod rscope;
-        #[legacy_exports]
-        mod astconv;
-        mod infer {
-            #[legacy_exports];
-            #[legacy_exports]
-            mod assignment;
-            #[legacy_exports]
-            mod combine;
-            #[legacy_exports]
-            mod glb;
-            #[legacy_exports]
-            mod integral;
-            mod floating;
-            #[legacy_exports]
-            mod lattice;
-            #[legacy_exports]
-            mod lub;
-            #[legacy_exports]
-            mod region_inference;
-            #[legacy_exports]
-            mod resolve;
-            #[legacy_exports]
-            mod sub;
-            #[legacy_exports]
-            mod to_str;
-            #[legacy_exports]
-            mod unify;
-            #[cfg(test)]
-            #[legacy_exports]
-            mod test;
-        }
-        #[legacy_exports]
-        mod collect;
-        #[legacy_exports]
-        mod coherence;
-        mod deriving;
-    }
+    #[path = "middle/typeck.rs"]
+    #[merge = "middle/typeck/mod.rs"]
+    pub mod typeck;
     #[legacy_exports]
+    #[path = "middle/check_loop.rs"]
     mod check_loop;
     #[legacy_exports]
+    #[path = "middle/check_alt.rs"]
     mod check_alt;
     #[legacy_exports]
+    #[path = "middle/check_const.rs"]
     mod check_const;
     #[legacy_exports]
+    #[path = "middle/lint.rs"]
     mod lint;
-    mod borrowck {
-        #[legacy_exports];
-        #[legacy_exports]
-        mod check_loans;
-        #[legacy_exports]
-        mod gather_loans;
-        #[legacy_exports]
-        mod loan;
-        #[legacy_exports]
-        mod preserve;
-    }
+    #[path = "middle/borrowck.rs"]
+    #[merge = "middle/borrowck/mod.rs"]
+    mod borrowck;
     #[legacy_exports]
+    #[path = "middle/mem_categorization.rs"]
     mod mem_categorization;
     #[legacy_exports]
+    #[path = "middle/liveness.rs"]
     mod liveness;
     #[legacy_exports]
+    #[path = "middle/kind.rs"]
     mod kind;
     #[legacy_exports]
+    #[path = "middle/freevars.rs"]
     mod freevars;
     #[legacy_exports]
+    #[path = "middle/capture.rs"]
     mod capture;
     #[legacy_exports]
+    #[path = "middle/pat_util.rs"]
     mod pat_util;
     #[legacy_exports]
+    #[path = "middle/region.rs"]
     mod region;
     #[legacy_exports]
+    #[path = "middle/const_eval.rs"]
     mod const_eval;
     #[legacy_exports]
+    #[path = "middle/astencode.rs"]
     mod astencode;
     #[legacy_exports]
+    #[path = "middle/lang_items.rs"]
     mod lang_items;
     #[legacy_exports]
+    #[path = "middle/privacy.rs"]
     mod privacy;
 }
 
 mod front {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "front/config.rs"]
     mod config;
     #[legacy_exports]
+    #[path = "front/test.rs"]
     mod test;
     #[legacy_exports]
+    #[path = "front/core_inject.rs"]
     mod core_inject;
     #[legacy_exports]
+    #[path = "front/intrinsic_inject.rs"]
     mod intrinsic_inject;
 }
 
 mod back {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "back/link.rs"]
     mod link;
     #[legacy_exports]
+    #[path = "back/abi.rs"]
     mod abi;
     #[legacy_exports]
+    #[path = "back/upcall.rs"]
     mod upcall;
     #[legacy_exports]
+    #[path = "back/x86.rs"]
     mod x86;
     #[legacy_exports]
+    #[path = "back/x86_64.rs"]
     mod x86_64;
     #[legacy_exports]
+    #[path = "back/rpath.rs"]
     mod rpath;
     #[legacy_exports]
+    #[path = "back/target_strs.rs"]
     mod target_strs;
 }
 
-mod metadata {
-    #[legacy_exports];
-    export encoder;
-    export creader;
-    export cstore;
-    export csearch;
-    export common;
-    export decoder;
-    export tyencode;
-    export tydecode;
-    export loader;
-    export filesearch;
+#[merge = "metadata/mod.rs"]
+mod metadata;
 
-    #[legacy_exports]
-    mod common;
-    #[legacy_exports]
-    mod tyencode;
-    #[legacy_exports]
-    mod tydecode;
-    #[legacy_exports]
-    mod encoder;
-    #[legacy_exports]
-    mod decoder;
-    #[legacy_exports]
-    mod creader;
-    #[legacy_exports]
-    mod cstore;
-    #[legacy_exports]
-    mod csearch;
-    #[legacy_exports]
-    mod loader;
-    #[legacy_exports]
-    mod filesearch;
-}
-
-mod driver {
-    #[legacy_exports];
-    #[legacy_exports]
-    mod driver;
-    #[legacy_exports]
-    mod session;
-}
+#[merge = "driver/mod.rs"]
+mod driver;
 
 mod util {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "util/common.rs"]
     mod common;
     #[legacy_exports]
+    #[path = "util/ppaux.rs"]
     mod ppaux;
 }
 
 mod lib {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "lib/llvm.rs"]
     mod llvm;
 }
+
+use result::{Ok, Err};
+use io::ReaderUtil;
+use std::getopts;
+use std::map::HashMap;
+use getopts::{opt_present};
+use getopts::groups;
+use syntax::codemap;
+use syntax::diagnostic;
+use driver::driver::{host_triple, optgroups, early_error,
+                     str_input, file_input, build_session_options,
+                     build_session, build_configuration, parse_pretty,
+                     pp_mode, pretty_print_input, list_metadata,
+                     compile_input};
+use driver::session;
+use middle::lint;
+
+fn version(argv0: &str) {
+    let mut vers = ~"unknown version";
+    let env_vers = env!("CFG_VERSION");
+    if env_vers.len() != 0 { vers = env_vers; }
+    io::println(fmt!("%s %s", argv0, vers));
+    io::println(fmt!("host: %s", host_triple()));
+}
+
+fn usage(argv0: &str) {
+    let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
+    io::println(groups::usage(message, optgroups()) +
+                ~"Additional help:
+    -W help             Print 'lint' options and default settings
+    -Z help             Print internal options for debugging rustc
+");
+}
+
+fn describe_warnings() {
+    io::println(fmt!("
+Available lint options:
+    -W <foo>           Warn about <foo>
+    -A <foo>           Allow <foo>
+    -D <foo>           Deny <foo>
+    -F <foo>           Forbid <foo> (deny, and deny all overrides)
+"));
+
+    let lint_dict = lint::get_lint_dict();
+    let mut max_key = 0;
+    for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
+    fn padded(max: uint, s: &str) -> ~str {
+        str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
+    }
+    io::println(fmt!("\nAvailable lint checks:\n"));
+    io::println(fmt!("    %s  %7.7s  %s",
+                     padded(max_key, ~"name"), ~"default", ~"meaning"));
+    io::println(fmt!("    %s  %7.7s  %s\n",
+                     padded(max_key, ~"----"), ~"-------", ~"-------"));
+    for lint_dict.each |k, v| {
+        let k = str::replace(k, ~"_", ~"-");
+        io::println(fmt!("    %s  %7.7s  %s",
+                         padded(max_key, k),
+                         match v.default {
+                             lint::allow => ~"allow",
+                             lint::warn => ~"warn",
+                             lint::deny => ~"deny",
+                             lint::forbid => ~"forbid"
+                         },
+                         v.desc));
+    }
+    io::println(~"");
+}
+
+fn describe_debug_flags() {
+    io::println(fmt!("\nAvailable debug options:\n"));
+    for session::debugging_opts_map().each |pair| {
+        let (name, desc, _) = *pair;
+        io::println(fmt!("    -Z %-20s -- %s", name, desc));
+    }
+}
+
+fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
+    // Don't display log spew by default. Can override with RUST_LOG.
+    logging::console_off();
+
+    let mut args = *args;
+    let binary = args.shift();
+
+    if args.is_empty() { usage(binary); return; }
+
+    let matches =
+        &match getopts::groups::getopts(args, optgroups()) {
+          Ok(m) => m,
+          Err(f) => {
+            early_error(demitter, getopts::fail_str(f))
+          }
+        };
+
+    if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
+        usage(binary);
+        return;
+    }
+
+    let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
+                                 getopts::opt_strs(matches, ~"warn"));
+    if lint_flags.contains(&~"help") {
+        describe_warnings();
+        return;
+    }
+
+    if getopts::opt_strs(matches, ~"Z").contains(&~"help") {
+        describe_debug_flags();
+        return;
+    }
+
+    if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
+        version(binary);
+        return;
+    }
+    let input = match vec::len(matches.free) {
+      0u => early_error(demitter, ~"no input filename given"),
+      1u => {
+        let ifile = matches.free[0];
+        if ifile == ~"-" {
+            let src = str::from_bytes(io::stdin().read_whole_stream());
+            str_input(src)
+        } else {
+            file_input(Path(ifile))
+        }
+      }
+      _ => early_error(demitter, ~"multiple input filenames provided")
+    };
+
+    let sopts = build_session_options(binary, matches, demitter);
+    let sess = build_session(sopts, demitter);
+    let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let odir = odir.map(|o| Path(*o));
+    let ofile = getopts::opt_maybe_str(matches, ~"o");
+    let ofile = ofile.map(|o| Path(*o));
+    let cfg = build_configuration(sess, binary, input);
+    let pretty =
+        option::map(&getopts::opt_default(matches, ~"pretty",
+                                         ~"normal"),
+                    |a| parse_pretty(sess, *a) );
+    match pretty {
+      Some::<pp_mode>(ppm) => {
+        pretty_print_input(sess, cfg, input, ppm);
+        return;
+      }
+      None::<pp_mode> => {/* continue */ }
+    }
+    let ls = opt_present(matches, ~"ls");
+    if ls {
+        match input {
+          file_input(ifile) => {
+            list_metadata(sess, &ifile, io::stdout());
+          }
+          str_input(_) => {
+            early_error(demitter, ~"can not list metadata for stdin");
+          }
+        }
+        return;
+    }
+
+    compile_input(sess, cfg, input, &odir, &ofile);
+}
+
+enum monitor_msg {
+    fatal,
+    done,
+}
+
+impl monitor_msg : cmp::Eq {
+    pure fn eq(&self, other: &monitor_msg) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    pure fn ne(&self, other: &monitor_msg) -> bool { !(*self).eq(other) }
+}
+
+/*
+This is a sanity check that any failure of the compiler is performed
+through the diagnostic module and reported properly - we shouldn't be calling
+plain-old-fail on any execution path that might be taken. Since we have
+console logging off by default, hitting a plain fail statement would make the
+compiler silently exit, which would be terrible.
+
+This method wraps the compiler in a subtask and injects a function into the
+diagnostic emitter which records when we hit a fatal error. If the task
+fails without recording a fatal error then we've encountered a compiler
+bug and need to present an error.
+*/
+fn monitor(+f: fn~(diagnostic::emitter)) {
+    let p = comm::Port();
+    let ch = comm::Chan(&p);
+
+    match do task::try |move f| {
+
+        // The 'diagnostics emitter'. Every error, warning, etc. should
+        // go through this function.
+        let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
+                           msg: &str, lvl: diagnostic::level) {
+            if lvl == diagnostic::fatal {
+                comm::send(ch, fatal);
+            }
+            diagnostic::emit(cmsp, msg, lvl);
+        };
+
+        struct finally {
+            ch: comm::Chan<monitor_msg>,
+            drop { comm::send(self.ch, done); }
+        }
+
+        let _finally = finally { ch: ch };
+
+        f(demitter)
+    } {
+        result::Ok(_) => { /* fallthrough */ }
+        result::Err(_) => {
+            // Task failed without emitting a fatal diagnostic
+            if comm::recv(p) == done {
+                diagnostic::emit(
+                    None,
+                    diagnostic::ice_msg(~"unexpected failure"),
+                    diagnostic::error);
+
+                for [
+                    ~"the compiler hit an unexpected failure path. \
+                     this is a bug",
+                    ~"try running with RUST_LOG=rustc=1,::rt::backtrace \
+                     to get further details and report the results \
+                     to github.com/mozilla/rust/issues"
+                ].each |note| {
+                    diagnostic::emit(None, *note, diagnostic::note)
+                }
+            }
+            // Fail so the process returns a failure code
+            fail;
+        }
+    }
+}
+
+fn main() {
+    let mut args = os::args();
+    do monitor |move args, demitter| {
+        run_compiler(&args, demitter);
+    }
+}
+
 
 // Local Variables:
 // fill-column: 78;

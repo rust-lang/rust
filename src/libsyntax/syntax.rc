@@ -40,118 +40,89 @@ mod fold;
 mod util {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "util/interner.rs"]
     mod interner;
 }
 
-mod parse {
-    #[legacy_exports];
-    export parser;
-    export common;
-    export lexer;
-    export token;
-    export comments;
-    export prec;
-    export classify;
-    export attr;
-
-    #[legacy_exports]
-    mod eval;
-    #[legacy_exports]
-    mod lexer;
-    #[legacy_exports]
-    mod parser;
-    #[legacy_exports]
-    mod token;
-    #[legacy_exports]
-    mod comments;
-    #[legacy_exports]
-    mod attr;
-    #[legacy_exports]
-
-    /// Common routines shared by parser mods
-    #[legacy_exports]
-    mod common;
-
-    /// Functions dealing with operator precedence
-    #[legacy_exports]
-    mod prec;
-
-    /// Routines the parser uses to classify AST nodes
-    #[legacy_exports]
-    mod classify;
-
-    /// Reporting obsolete syntax
-    #[legacy_exports]
-    mod obsolete;
-}
+#[merge = "parse/mod.rs"]
+mod parse;
 
 mod print {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "print/pp.rs"]
     mod pp;
     #[legacy_exports]
+    #[path = "print/pprust.rs"]
     mod pprust;
 }
 
 mod ext {
     #[legacy_exports];
     #[legacy_exports]
+    #[path = "ext/base.rs"]
     mod base;
     #[legacy_exports]
+    #[path = "ext/expand.rs"]
     mod expand;
     #[legacy_exports]
+    #[path = "ext/qquote.rs"]
     mod qquote;
 
+    #[path = "ext/quote.rs"]
     mod quote;
+    #[path = "ext/deriving.rs"]
     mod deriving;
 
     #[legacy_exports]
+    #[path = "ext/build.rs"]
     mod build;
 
     mod tt {
         #[legacy_exports];
         #[legacy_exports]
+        #[path = "ext/tt/transcribe.rs"]
         mod transcribe;
         #[legacy_exports]
+        #[path = "ext/tt/macro_parser.rs"]
         mod macro_parser;
         #[legacy_exports]
+        #[path = "ext/tt/macro_rules.rs"]
         mod macro_rules;
     }
 
 
     #[legacy_exports]
+    #[path = "ext/simplext.rs"]
     mod simplext;
     #[legacy_exports]
+    #[path = "ext/fmt.rs"]
     mod fmt;
     #[legacy_exports]
+    #[path = "ext/env.rs"]
     mod env;
     #[legacy_exports]
+    #[path = "ext/concat_idents.rs"]
     mod concat_idents;
     #[legacy_exports]
+    #[path = "ext/ident_to_str.rs"]
     mod ident_to_str;
     #[legacy_exports]
+    #[path = "ext/log_syntax.rs"]
     mod log_syntax;
     #[legacy_exports]
+    #[path = "ext/auto_serialize.rs"]
     mod auto_serialize;
     #[legacy_exports]
+    #[path = "ext/source_util.rs"]
     mod source_util;
 
-    mod pipes {
-        #[legacy_exports];
-        #[legacy_exports]
-        mod ast_builder;
-        #[legacy_exports]
-        mod parse_proto;
-        #[legacy_exports]
-        mod pipec;
-        #[legacy_exports]
-        mod proto;
-        #[legacy_exports]
-        mod check;
-        #[legacy_exports]
-        mod liveness;
-    }
+    #[legacy_exports]
+    #[path = "ext/pipes.rs"]
+    #[merge = "ext/pipes/mod.rs"]
+    mod pipes;
 
     #[legacy_exports]
+    #[path = "ext/trace_macros.rs"]
     mod trace_macros;
 }

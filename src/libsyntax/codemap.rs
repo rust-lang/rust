@@ -37,29 +37,11 @@ impl BytePos: Pos {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-#[cfg(stage0)]
-impl BytePos: cmp::Eq {
-    pure fn eq(other: &BytePos) -> bool { *self == **other }
-    pure fn ne(other: &BytePos) -> bool { !self.eq(other) }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl BytePos: cmp::Eq {
     pure fn eq(&self, other: &BytePos) -> bool { **self == **other }
     pure fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(stage0)]
-impl BytePos: cmp::Ord {
-    pure fn lt(other: &BytePos) -> bool { *self < **other }
-    pure fn le(other: &BytePos) -> bool { *self <= **other }
-    pure fn ge(other: &BytePos) -> bool { *self >= **other }
-    pure fn gt(other: &BytePos) -> bool { *self > **other }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl BytePos: cmp::Ord {
     pure fn lt(&self, other: &BytePos) -> bool { **self < **other }
     pure fn le(&self, other: &BytePos) -> bool { **self <= **other }
@@ -110,29 +92,11 @@ impl CharPos: Pos {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-#[cfg(stage0)]
-impl CharPos: cmp::Eq {
-    pure fn eq(other: &CharPos) -> bool { *self == **other }
-    pure fn ne(other: &CharPos) -> bool { !self.eq(other) }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl CharPos: cmp::Eq {
     pure fn eq(&self, other: &CharPos) -> bool { **self == **other }
     pure fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(stage0)]
-impl CharPos: cmp::Ord {
-    pure fn lt(other: &CharPos) -> bool { *self < **other }
-    pure fn le(other: &CharPos) -> bool { *self <= **other }
-    pure fn ge(other: &CharPos) -> bool { *self >= **other }
-    pure fn gt(other: &CharPos) -> bool { *self > **other }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl CharPos: cmp::Ord {
     pure fn lt(&self, other: &CharPos) -> bool { **self < **other }
     pure fn le(&self, other: &CharPos) -> bool { **self <= **other }
@@ -190,19 +154,9 @@ pub struct span {
 }
 
 impl span : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &span) -> bool {
-        return self.lo == (*other).lo && self.hi == (*other).hi;
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &span) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 

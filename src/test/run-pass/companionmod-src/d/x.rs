@@ -1,1 +1,0 @@
-fn f() -> ~str { ~"nelson" }
