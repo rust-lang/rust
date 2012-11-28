@@ -144,9 +144,6 @@ struct CoherenceInfo {
     // the associated trait must be imported at the call site.
     extension_methods: HashMap<def_id,@DVec<@Impl>>,
 
-    // A mapping from a supertrait to its subtraits.
-    supertrait_to_subtraits: HashMap<def_id,@DVec<def_id>>,
-
     // A mapping from an implementation ID to the method info and trait method
     // ID of the provided (a.k.a. default) methods in the traits that that
     // implementation implements.
@@ -157,7 +154,6 @@ fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
         inherent_methods: HashMap(),
         extension_methods: HashMap(),
-        supertrait_to_subtraits: HashMap(),
         provided_methods: HashMap(),
     }
 }
@@ -204,9 +200,6 @@ impl CoherenceChecker {
                     item_class(struct_def, _) => {
                         self.check_implementation(item, struct_def.traits);
                     }
-                    item_trait(_, supertraits, _) => {
-                        self.register_inherited_trait(item, supertraits);
-                    }
                     _ => {
                         // Nothing to do.
                     }
@@ -215,12 +208,8 @@ impl CoherenceChecker {
             .. *default_simple_visitor()
         }));
 
-        // Check trait coherence.
-        for self.crate_context.coherence_info.extension_methods.each
-                |def_id, items| {
-
-            self.check_implementation_coherence(def_id, items);
-        }
+        // Check that there are no overlapping trait instances
+        self.check_implementation_coherence();
 
         // Check whether traits with base types are in privileged scopes.
         self.check_privileged_scopes(crate);
@@ -377,27 +366,6 @@ impl CoherenceChecker {
         }
     }
 
-    fn register_inherited_trait(item: @item, supertraits: ~[@trait_ref]) {
-        // XXX: This is wrong. We need to support substitutions; e.g.
-        // trait Foo : Bar<int>.
-        let supertrait_to_subtraits =
-            self.crate_context.coherence_info.supertrait_to_subtraits;
-        let subtrait_id = local_def(item.id);
-        for supertraits.each |supertrait| {
-            let supertrait_id = self.trait_ref_to_trait_def_id(*supertrait);
-            match supertrait_to_subtraits.find(supertrait_id) {
-                None => {
-                    let new_vec = @dvec::DVec();
-                    new_vec.push(subtrait_id);
-                    supertrait_to_subtraits.insert(supertrait_id, new_vec);
-                }
-                Some(existing_vec) => {
-                    existing_vec.push(subtrait_id);
-                }
-            }
-        }
-    }
-
     fn add_inherent_method(base_def_id: def_id, implementation: @Impl) {
         let implementation_list;
         match self.crate_context.coherence_info.inherent_methods
@@ -432,29 +400,57 @@ impl CoherenceChecker {
         implementation_list.push(implementation);
     }
 
-    fn check_implementation_coherence(_trait_def_id: def_id,
-                                      implementations: @DVec<@Impl>) {
+    fn check_implementation_coherence() {
+        let coherence_info = &self.crate_context.coherence_info;
+        let extension_methods = &coherence_info.extension_methods;
+
+        for extension_methods.each_key |trait_id| {
+            self.check_implementation_coherence_of(trait_id);
+        }
+    }
+
+    fn check_implementation_coherence_of(trait_def_id: def_id) {
 
         // Unify pairs of polytypes.
-        for range(0, implementations.len()) |i| {
-            let implementation_a = implementations.get_elt(i);
+        do self.iter_impls_of_trait(trait_def_id) |a| {
+            let implementation_a = a;
             let polytype_a =
                 self.get_self_type_for_implementation(implementation_a);
-            for range(i + 1, implementations.len()) |j| {
-                let implementation_b = implementations.get_elt(j);
-                let polytype_b =
-                    self.get_self_type_for_implementation(implementation_b);
+            do self.iter_impls_of_trait(trait_def_id) |b| {
+                let implementation_b = b;
 
-                if self.polytypes_unify(polytype_a, polytype_b) {
-                    let session = self.crate_context.tcx.sess;
-                    session.span_err(self.span_of_impl(implementation_b),
-                                     ~"conflicting implementations for a \
-                                       trait");
-                    session.span_note(self.span_of_impl(implementation_a),
-                                      ~"note conflicting implementation \
-                                        here");
+                // An impl is coherent with itself
+                if a.did != b.did {
+                    let polytype_b = self.get_self_type_for_implementation(
+                            implementation_b);
+
+                    if self.polytypes_unify(polytype_a, polytype_b) {
+                        let session = self.crate_context.tcx.sess;
+                        session.span_err(self.span_of_impl(implementation_b),
+                                         ~"conflicting implementations for a \
+                                           trait");
+                        session.span_note(self.span_of_impl(implementation_a),
+                                          ~"note conflicting implementation \
+                                            here");
+                    }
                 }
             }
+        }
+    }
+
+    fn iter_impls_of_trait(trait_def_id: def_id,
+                           f: &fn(@Impl)) {
+
+        let coherence_info = &self.crate_context.coherence_info;
+        let extension_methods = &coherence_info.extension_methods;
+
+        match extension_methods.find(trait_def_id) {
+            Some(impls) => {
+                for uint::range(0, impls.len()) |i| {
+                    f(impls[i]);
+                }
+            }
+            None => { /* no impls? */ }
         }
     }
 
