@@ -34,7 +34,7 @@ struct RH {
 }
 
 fn setup_env(test_name: &str, source_string: &str) -> Env {
-    let matches = getopts(~[~"-Z", ~"verbose"], optgroups()).get();
+    let matches = &getopts(~[~"-Z", ~"verbose"], optgroups()).get();
     let sessopts = build_session_options(~"rustc", matches, diagnostic::emit);
     let sess = build_session(sessopts, diagnostic::emit);
     let cfg = build_configuration(sess, ~"whatever", str_input(~""));

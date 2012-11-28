@@ -35,12 +35,12 @@ fn parse_config(args: ~[~str]) -> config {
     assert (vec::is_not_empty(args));
     let args_ = vec::tail(args);
     let matches =
-        match getopts::getopts(args_, opts) {
+        &match getopts::getopts(args_, opts) {
           Ok(m) => m,
           Err(f) => fail getopts::fail_str(f)
         };
 
-    fn opt_path(m: getopts::Matches, nm: ~str) -> Path {
+    fn opt_path(m: &getopts::Matches, nm: ~str) -> Path {
         Path(getopts::opt_str(m, nm))
     }
 

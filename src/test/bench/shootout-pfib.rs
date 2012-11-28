@@ -53,7 +53,7 @@ fn parse_opts(argv: ~[~str]) -> config {
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
     match getopts::getopts(opt_args, opts) {
-      Ok(m) => { return {stress: getopts::opt_present(m, ~"stress")} }
+      Ok(ref m) => { return {stress: getopts::opt_present(m, ~"stress")} }
       Err(_) => { fail; }
     }
 }
