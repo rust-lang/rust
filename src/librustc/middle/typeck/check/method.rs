@@ -241,7 +241,7 @@ impl LookupContext {
         loop {
             match get(self_ty).sty {
                 ty_param(p) => {
-                    self.push_inherent_candidates_from_param(p);
+                    self.push_inherent_candidates_from_param(self_ty, p);
                 }
                 ty_trait(did, ref substs, vstore) => {
                     self.push_inherent_candidates_from_trait(
@@ -305,7 +305,8 @@ impl LookupContext {
         }
     }
 
-    fn push_inherent_candidates_from_param(&self, param_ty: param_ty) {
+    fn push_inherent_candidates_from_param(&self, rcvr_ty: ty::t,
+                                           param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty=%?)",
                param_ty);
         let _indenter = indenter();
@@ -313,8 +314,9 @@ impl LookupContext {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(param_ty.def_id.node);
+
         for vec::each(*bounds) |bound| {
-            let bound_t = match *bound {
+            let bound_trait_ty = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
                 ty::bound_copy | ty::bound_send |
@@ -323,56 +325,64 @@ impl LookupContext {
                 }
             };
 
-            let this_bound_idx = next_bound_idx;
-            next_bound_idx += 1;
 
-            let (trait_id, bound_substs) = match ty::get(bound_t).sty {
-                ty::ty_trait(i, substs, _) => (i, substs),
+            let bound_substs = match ty::get(bound_trait_ty).sty {
+                ty::ty_trait(_, substs, _) => substs,
                 _ => {
                     self.bug(fmt!("add_candidates_from_param: \
                                    non-trait bound %s",
-                                  self.ty_to_str(bound_t)));
+                                  self.ty_to_str(bound_trait_ty)));
                 }
             };
 
+
             // Loop over the trait and all of its supertraits.
-            let worklist = dvec::DVec();
-            worklist.push((trait_id, move bound_substs));
+            let mut worklist = ~[];
+
+            let init_trait_ty = bound_trait_ty;
+            let init_substs = bound_substs;
+
+            // Replace any appearance of `self` with the type of the
+            // generic parameter itself.  Note that this is the only
+            // case where this replacement is necessary: in all other
+            // cases, we are either invoking a method directly from an
+            // impl or class (where the self type is not permitted),
+            // or from a trait type (in which case methods that refer
+            // to self are not permitted).
+            let init_substs = {self_ty: Some(rcvr_ty), ..init_substs};
+
+            worklist.push((init_trait_ty, init_substs));
 
             let mut i = 0;
             while i < worklist.len() {
-                let (trait_id, bound_substs) = worklist[i];
+                let (init_trait_ty, init_substs) = worklist[i];
                 i += 1;
 
-                // Replace any appearance of `self` with the type of the
-                // generic parameter itself.  Note that this is the only
-                // case where this replacement is necessary: in all other
-                // cases, we are either invoking a method directly from an
-                // impl or class (where the self type is not permitted),
-                // or from a trait type (in which case methods that refer
-                // to self are not permitted).
-                let rcvr_ty = ty::mk_param(tcx, param_ty.idx,
-                                           param_ty.def_id);
-                let rcvr_substs = {self_ty: Some(rcvr_ty), ..bound_substs};
+                let init_trait_id = ty::ty_to_def_id(init_trait_ty).get();
 
                 // Add all the supertraits of this trait to the worklist.
-                debug!("finding supertraits for %d:%d", trait_id.crate,
-                       trait_id.node);
-                let instantiated_trait_refs = ty::trait_supertraits(
-                    tcx, trait_id);
-                for instantiated_trait_refs.each |instantiated_trait_ref| {
-                    debug!("adding supertrait");
+                let supertraits = ty::trait_supertraits(tcx,
+                                                        init_trait_id);
+                for supertraits.each |supertrait| {
+                    debug!("adding supertrait: %?",
+                           supertrait.def_id);
 
                     let new_substs = ty::subst_substs(
                         tcx,
-                        &instantiated_trait_ref.tpt.substs,
-                        &rcvr_substs);
+                        &supertrait.tpt.substs,
+                        &init_substs);
 
-                    worklist.push(
-                        (instantiated_trait_ref.def_id, new_substs));
+                    // Again replacing the self type
+                    let new_substs = {self_ty: Some(rcvr_ty), ..new_substs};
+
+                    worklist.push((supertrait.tpt.ty, new_substs));
                 }
 
-                let trait_methods = ty::trait_methods(tcx, trait_id);
+
+                let this_bound_idx = next_bound_idx;
+                next_bound_idx += 1;
+
+                let trait_methods = ty::trait_methods(tcx, init_trait_id);
                 let pos = {
                     // FIXME #3453 can't use trait_methods.position
                     match vec::position(*trait_methods,
@@ -381,6 +391,8 @@ impl LookupContext {
                     {
                         Some(pos) => pos,
                         None => {
+                            debug!("trait doesn't contain method: %?",
+                                   init_trait_id);
                             loop; // check next trait or bound
                         }
                     }
@@ -389,18 +401,21 @@ impl LookupContext {
 
                 let (rcvr_ty, rcvr_substs) =
                     self.create_rcvr_ty_and_substs_for_method(
-                        method.self_ty, rcvr_ty, move rcvr_substs);
+                        method.self_ty, rcvr_ty, move init_substs);
 
-                self.inherent_candidates.push(Candidate {
+                let cand = Candidate {
                     rcvr_ty: rcvr_ty,
                     rcvr_substs: rcvr_substs,
                     num_method_tps: method.tps.len(),
                     self_mode: get_mode_from_self_type(method.self_ty),
-                    origin: method_param({trait_id:trait_id,
+                    origin: method_param({trait_id:init_trait_id,
                                           method_num:pos,
                                           param_num:param_ty.idx,
                                           bound_num:this_bound_idx})
-                });
+                };
+
+                debug!("pushing inherent candidate for param: %?", cand);
+                self.inherent_candidates.push(cand);
             }
         }
     }
@@ -775,6 +790,8 @@ impl LookupContext {
         let relevant_candidates =
             candidates.filter_to_vec(|c| self.is_relevant(self_ty, &c));
 
+        let relevant_candidates = self.merge_candidates(relevant_candidates);
+
         if relevant_candidates.len() == 0 {
             return None;
         }
@@ -789,6 +806,52 @@ impl LookupContext {
         }
 
         Some(self.confirm_candidate(self_ty, &relevant_candidates[0]))
+    }
+
+    fn merge_candidates(&self, candidates: &[Candidate]) -> ~[Candidate] {
+        let mut merged = ~[];
+        let mut i = 0;
+        while i < candidates.len() {
+            let candidate_a = candidates[i];
+
+            let mut skip = false;
+
+            let mut j = i + 1;
+            while j < candidates.len() {
+                let candidate_b = candidates[j];
+                debug!("attempting to merge %? and %?",
+                       candidate_a, candidate_b);
+                let candidates_same = match (&candidate_a.origin,
+                                             &candidate_b.origin) {
+                    (&method_param(p1), &method_param(p2)) => {
+                        let same_trait = p1.trait_id == p2.trait_id;
+                        let same_method = p1.method_num == p2.method_num;
+                        let same_param = p1.param_num == p2.param_num;
+                        // The bound number may be different because
+                        // multiple bounds may lead to the same trait
+                        // impl
+                        same_trait && same_method && same_param
+                    }
+                    _ => false
+                };
+                if candidates_same {
+                    skip = true;
+                    break;
+                }
+                j += 1;
+            }
+
+            i += 1;
+
+            if skip {
+                // There are more than one of these and we need only one
+                loop;
+            } else {
+                merged.push(candidate_a);
+            }
+        }
+
+        return merged;
     }
 
     fn confirm_candidate(&self,
