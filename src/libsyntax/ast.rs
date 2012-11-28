@@ -897,6 +897,9 @@ enum stmt_ {
 
     // expr with trailing semi-colon (may have any type):
     stmt_semi(@expr, node_id),
+
+    // bool: is there a trailing sem-colon?
+    stmt_mac(mac, bool),
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be

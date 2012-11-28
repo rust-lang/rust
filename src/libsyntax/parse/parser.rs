@@ -54,12 +54,12 @@ use ast::{_mod, add, arg, arm, attribute,
              pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare,
              ProtoBorrowed, ProtoBox, ProtoUniq, provided, public, pure_fn,
              purity, re_static, re_self, re_anon, re_named, region,
-             rem, required, ret_style,
-             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, struct_def, struct_field, struct_variant_kind,
-             subtract, sty_box, sty_by_ref, sty_region, sty_static, sty_uniq,
-             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
+             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
+             stmt_decl, stmt_expr, stmt_semi, stmt_mac, struct_def,
+             struct_field, struct_variant_kind, subtract, sty_box, sty_by_ref,
+             sty_region, sty_static, sty_uniq, sty_value, token_tree,
+             trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
              ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
              ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
              ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length_vec,
@@ -122,7 +122,7 @@ enum view_item_parse_mode {
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
-    ($p:expr) => { match copy $p.token {
+    ($p:expr) => ( match copy $p.token {
       INTERPOLATED(token::nt_expr(e)) => {
         $p.bump();
         return e;
@@ -133,33 +133,33 @@ macro_rules! maybe_whole_expr (
                        expr_path(pt));
       }
       _ => ()
-    }}
+    })
 )
 
 macro_rules! maybe_whole (
-    ($p:expr, $constructor:ident) => { match copy $p.token {
+    ($p:expr, $constructor:ident) => ( match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return x; }
       _ => ()
-    }} ;
-    (deref $p:expr, $constructor:ident) => { match copy $p.token {
+    }) ;
+    (deref $p:expr, $constructor:ident) => ( match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return *x; }
       _ => ()
-    }} ;
-    (Some $p:expr, $constructor:ident) => { match copy $p.token {
+    }) ;
+    (Some $p:expr, $constructor:ident) => ( match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return Some(x); }
       _ => ()
-    }} ;
-    (iovi $p:expr, $constructor:ident) => { match copy $p.token {
+    }) ;
+    (iovi $p:expr, $constructor:ident) => ( match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => {
         $p.bump();
         return iovi_item(x);
       }
       _ => ()
-    }} ;
-    (pair_empty $p:expr, $constructor:ident) => { match copy $p.token {
+    }) ;
+    (pair_empty $p:expr, $constructor:ident) => ( match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return (~[], x); }
       _ => ()
-    }}
+    })
 
 )
 
@@ -2201,7 +2201,7 @@ impl Parser {
         fn check_expected_item(p: Parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
             if vec::is_not_empty(current_attrs) {
-                p.fatal(~"expected item");
+                p.fatal(~"expected item after attrs");
             }
         }
 
@@ -2211,6 +2211,42 @@ impl Parser {
             self.expect_keyword(~"let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
+        } else if is_ident(self.token)
+            && !self.is_any_keyword(copy self.token)
+            && self.look_ahead(1) == token::NOT {
+
+            check_expected_item(self, first_item_attrs);
+
+            // Potential trouble: if we allow macros with paths instead of
+            // idents, we'd need to look ahead past the whole path here...
+            let pth = self.parse_value_path();
+            self.bump();
+
+            let id = if self.token == token::LPAREN {
+                token::special_idents::invalid // no special identifier
+            } else {
+                self.parse_ident()
+            };
+
+            let tts = self.parse_unspanned_seq(
+                token::LPAREN, token::RPAREN, seq_sep_none(),
+                |p| p.parse_token_tree());
+            let hi = self.span.hi;
+
+            if id == token::special_idents::invalid {
+                return @spanned(lo, hi, stmt_mac(
+                    spanned(lo, hi, mac_invoc_tt(pth, tts)), false));
+            } else {
+                // if it has a special ident, it's definitely an item
+                return @spanned(lo, hi, stmt_decl(
+                    @spanned(lo, hi, decl_item(
+                        self.mk_item(
+                            lo, hi, id /*id is good here*/,
+                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts))),
+                            inherited, ~[/*no attrs*/]))),
+                    self.get_id()));
+            }
+
         } else {
             let mut item_attrs;
             match self.parse_outer_attrs_or_ext(first_item_attrs) {
@@ -2224,7 +2260,8 @@ impl Parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            match self.parse_item_or_view_item(item_attrs, true, false) {
+            match self.parse_item_or_view_item(item_attrs,
+                                               true, false, false) {
               iovi_item(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2304,7 +2341,7 @@ impl Parser {
 
         let {attrs_remaining, view_items, items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            IMPORTS_AND_ITEMS_ALLOWED);
+                                            IMPORTS_AND_ITEMS_ALLOWED, false);
 
         for items.each |item| {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
@@ -2348,6 +2385,26 @@ impl Parser {
                                     }
                                     stmts.push(stmt);
                                 }
+                            }
+                        }
+
+                        stmt_mac(m, _) => {
+                            // Statement macro; might be an expr
+                            match self.token {
+                                token::SEMI => {
+                                    self.bump();
+                                    stmts.push(@{node: stmt_mac(m, true),
+                                                 ..*stmt});
+                                }
+                                token::RBRACE => {
+                                    // if a block ends in `m!(arg)` without
+                                    // a `;`, it must be an expr
+                                    expr = Some(
+                                        self.mk_mac_expr(stmt.span.lo,
+                                                         stmt.span.hi,
+                                                         m.node));
+                                }
+                                _ => { stmts.push(stmt); }
                             }
                         }
 
@@ -2919,7 +2976,8 @@ impl Parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
-                                            VIEW_ITEMS_AND_ITEMS_ALLOWED);
+                                            VIEW_ITEMS_AND_ITEMS_ALLOWED,
+                                            true);
         let mut items: ~[@item] = move starting_items;
 
         let mut first = true;
@@ -2931,7 +2989,7 @@ impl Parser {
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
                    attrs);
-            match self.parse_item_or_view_item(attrs, true, false) {
+            match self.parse_item_or_view_item(attrs, true, false, true) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
                 self.span_fatal(view_item.span, ~"view items must be \
@@ -3048,7 +3106,8 @@ impl Parser {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: _, foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
-                                        VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED);
+                                         VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
+                                            true);
 
         let mut items: ~[@foreign_item] = move foreign_items;
         let mut initial_attrs = attrs_remaining;
@@ -3319,7 +3378,8 @@ impl Parser {
     }
 
     fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool,
-                               foreign_items_allowed: bool)
+                               foreign_items_allowed: bool,
+                               macros_allowed: bool)
                             -> item_or_view_item {
         assert items_allowed != foreign_items_allowed;
 
@@ -3428,13 +3488,27 @@ impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if items_allowed && (!self.is_any_keyword(copy self.token)
+        } else if macros_allowed && !self.is_any_keyword(copy self.token)
                 && self.look_ahead(1) == token::NOT
-                && is_plain_ident(self.look_ahead(2))) {
+                && (is_plain_ident(self.look_ahead(2))
+                    || self.look_ahead(2) == token::LPAREN
+                    || self.look_ahead(2) == token::LBRACE) {
+            if attrs.len() > 0 {
+                self.fatal(~"attrs on macros are not yet supported");
+            }
+
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
-            let id = self.parse_ident();
+
+            // a 'special' identifier (like what `macro_rules!` uses)
+            // is optional. We should eventually unify invoc syntax
+            // and remove this.
+            let id = if is_plain_ident(self.token) {
+                self.parse_ident()
+            } else {
+                token::special_idents::invalid // no special identifier
+            };
             let tts = match self.token {
               token::LPAREN | token::LBRACE => {
                 let ket = token::flip_delimiter(copy self.token);
@@ -3463,7 +3537,7 @@ impl Parser {
     }
 
     fn parse_item(+attrs: ~[attribute]) -> Option<@ast::item> {
-        match self.parse_item_or_view_item(attrs, true, false) {
+        match self.parse_item_or_view_item(attrs, true, false, true) {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
@@ -3601,7 +3675,8 @@ impl Parser {
     }
 
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
-                                  mode: view_item_parse_mode)
+                                  mode: view_item_parse_mode,
+                                  macros_allowed: bool)
                                -> {attrs_remaining: ~[attribute],
                                    view_items: ~[@view_item],
                                    items: ~[@item],
@@ -3628,7 +3703,8 @@ impl Parser {
         let (view_items, items, foreign_items) = (DVec(), DVec(), DVec());
         loop {
             match self.parse_item_or_view_item(attrs, items_allowed,
-                                               foreign_items_allowed) {
+                                               foreign_items_allowed,
+                                               macros_allowed) {
                 iovi_none =>
                     break,
                 iovi_view_item(view_item) => {

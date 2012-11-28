@@ -881,6 +881,11 @@ fn print_stmt(s: ps, st: ast::stmt) {
         print_expr(s, expr);
         word(s.s, ~";");
       }
+      ast::stmt_mac(mac, semi) => {
+        space_if_not_bol(s);
+        print_mac(s, mac);
+        if semi { word(s.s, ~";"); }
+      }
     }
     if parse::classify::stmt_ends_with_semi(st) { word(s.s, ~";"); }
     maybe_print_trailing_comment(s, st.span, None);

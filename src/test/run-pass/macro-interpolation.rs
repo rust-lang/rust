@@ -1,7 +1,7 @@
 
 macro_rules! overly_complicated (
     ($fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path) =>
-    {
+    ({
         fn $fnname($arg: $ty) -> Option<$ty> $body
         match $fnname($val) {
           Some($pat) => {
@@ -9,7 +9,7 @@ macro_rules! overly_complicated (
           }
           _ => { fail; }
         }
-    }
+    })
 
 )
 fn main() {

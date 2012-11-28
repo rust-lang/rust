@@ -1,4 +1,4 @@
-use base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
+use base::{ext_ctxt, mac_result, mr_any, mr_def, normal_tt};
 use codemap::span;
 use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
@@ -81,16 +81,27 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   success(named_matches) => {
                     let rhs = match rhses[i] {
                         // okay, what's your transcriber?
-                      @matched_nonterminal(nt_tt(@tt)) => tt,
-                      _ => cx.span_bug(sp, ~"bad thing in rhs")
+                        @matched_nonterminal(nt_tt(@tt)) => {
+                            match tt {
+                                // cut off delimiters; don't parse 'em
+                                tt_delim(tts) => tts.slice(1u,tts.len()-1u),
+                                _ => cx.span_fatal(
+                                    sp, ~"macro rhs must be delimited")
+                            }
+                        },
+                        _ => cx.span_bug(sp, ~"bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
-                                               ~[rhs]);
-                    let p = Parser(cx.parse_sess(), cx.cfg(),
-                                   trncbr as reader);
-                    let e = p.parse_expr();
-                    return mr_expr(e);
+                                               rhs);
+                    let p = @Parser(cx.parse_sess(), cx.cfg(),
+                                    trncbr as reader);
+
+                    // Let the context choose how to interpret the result.
+                    // Weird, but useful for X-macros.
+                    return mr_any(|| p.parse_expr(),
+                                  || p.parse_item(~[/* no attrs*/]),
+                                  || p.parse_stmt(~[/* no attrs*/]));
                   }
                   failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
@@ -110,6 +121,6 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     return mr_def({
         name: *cx.parse_sess().interner.get(name),
-        ext: expr_tt({expander: exp, span: Some(sp)})
+        ext: normal_tt({expander: exp, span: Some(sp)})
     });
 }
