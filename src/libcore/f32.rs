@@ -138,6 +138,18 @@ pub pure fn logarithm(n: f32, b: f32) -> f32 {
     return log2(n) / log2(b);
 }
 
+impl f32 : cmp::Eq {
+    pure fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
+    pure fn ne(&self, other: &f32) -> bool { (*self) != (*other) }
+}
+
+impl f32 : cmp::Ord {
+    pure fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
+    pure fn le(&self, other: &f32) -> bool { (*self) <= (*other) }
+    pure fn ge(&self, other: &f32) -> bool { (*self) >= (*other) }
+    pure fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
+}
+
 impl f32: num::Num {
     pure fn add(other: &f32)    -> f32 { return self + *other; }
     pure fn sub(other: &f32)    -> f32 { return self - *other; }
