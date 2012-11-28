@@ -3,7 +3,7 @@ struct Bar {
 }
 
 impl Bar : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         io::println("Goodbye, cruel world");
     }
 }

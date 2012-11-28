@@ -6,7 +6,7 @@ struct test {
 }
 
 impl test : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn test(f: int) -> test {

@@ -8,7 +8,7 @@ struct rsrc {
 }
 
 impl rsrc : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         foo(self.x);
     }
 }

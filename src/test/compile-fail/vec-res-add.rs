@@ -7,7 +7,7 @@ struct r {
 fn r(i:int) -> r { r { i: i } }
 
 impl r : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn main() {

@@ -69,7 +69,7 @@ struct Buffer {
 }
 
 impl Buffer : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 proto! double_buffer (

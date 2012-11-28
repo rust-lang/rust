@@ -3,7 +3,7 @@ struct socket {
 }
 
 impl socket : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 impl socket {

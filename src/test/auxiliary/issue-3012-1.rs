@@ -12,7 +12,7 @@ struct socket_handle {
 }
 
 impl socket_handle : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         /* c::close(self.sockfd); */
     }
 }

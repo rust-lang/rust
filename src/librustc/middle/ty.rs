@@ -75,6 +75,7 @@ export enum_variants, substd_enum_variants, enum_is_univariant;
 export trait_methods, store_trait_methods, impl_traits;
 export enum_variant_with_id;
 export ty_dtor;
+export DtorKind, NoDtor, LegacyDtor, TraitDtor;
 export ty_param_bounds_and_ty;
 export ty_param_substs_and_ty;
 export ty_bool, mk_bool, type_is_bool;
@@ -1868,7 +1869,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_class(did, ref substs) => {
          // Any class with a dtor needs a drop
-         ty_dtor(cx, did).is_some() || {
+         ty_dtor(cx, did).is_present() || {
              for vec::each(ty::class_items_as_fields(cx, did, substs)) |f| {
                  if type_needs_drop(cx, f.mt.ty) { accum = true; }
              }
@@ -3954,11 +3955,29 @@ fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
     ast_map::path_to_str(item_path(cx, id), cx.sess.parse_sess.interner)
 }
 
+enum DtorKind {
+    NoDtor,
+    LegacyDtor(def_id),
+    TraitDtor(def_id)
+}
+
+impl DtorKind {
+    pure fn is_not_present(&const self) -> bool {
+        match *self {
+            NoDtor => true,
+            _ => false
+        }
+    }
+    pure fn is_present(&const self) -> bool {
+        !self.is_not_present()
+    }
+}
+
 /* If class_id names a class with a dtor, return Some(the dtor's id).
    Otherwise return none. */
-fn ty_dtor(cx: ctxt, class_id: def_id) -> Option<def_id> {
+fn ty_dtor(cx: ctxt, class_id: def_id) -> DtorKind {
     match cx.destructor_for_type.find(class_id) {
-        Some(method_def_id) => return Some(method_def_id),
+        Some(method_def_id) => return TraitDtor(method_def_id),
         None => {}  // Continue.
     }
 
@@ -3968,18 +3987,21 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> Option<def_id> {
                node: ast::item_class(@{ dtor: Some(dtor), _ }, _),
                _
            }, _)) =>
-               Some(local_def(dtor.node.id)),
+               LegacyDtor(local_def(dtor.node.id)),
            _ =>
-               None
+               NoDtor
        }
     }
     else {
-      csearch::class_dtor(cx.sess.cstore, class_id)
+      match csearch::class_dtor(cx.sess.cstore, class_id) {
+        None => NoDtor,
+        Some(did) => LegacyDtor(did),
+      }
     }
 }
 
 fn has_dtor(cx: ctxt, class_id: def_id) -> bool {
-    ty_dtor(cx, class_id).is_some()
+    ty_dtor(cx, class_id).is_present()
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {

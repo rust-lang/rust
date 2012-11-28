@@ -3,7 +3,7 @@
 struct foo { x: int, }
 
 impl foo : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn foo(x: int) -> foo {

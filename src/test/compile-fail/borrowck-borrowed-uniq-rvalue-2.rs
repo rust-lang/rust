@@ -3,7 +3,7 @@ struct defer {
 }
 
 impl defer : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("%?", self.x);
     }
 }

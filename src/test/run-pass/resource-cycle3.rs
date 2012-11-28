@@ -15,7 +15,7 @@ struct r {
 }
 
 impl r : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             let _v2: ~int = cast::reinterpret_cast(&self.v.c);
             // let _v3: ~int = unsafe::reinterpret_cast(self.x);

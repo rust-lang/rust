@@ -4,7 +4,7 @@ struct defer {
 }
 
 impl defer : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         *(self.b) = true;
     }
 }

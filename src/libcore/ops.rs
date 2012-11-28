@@ -25,7 +25,7 @@ pub trait Owned {
 
 #[lang="drop"]
 pub trait Drop {
-    fn finalize();  // XXX: Rename to "drop"? --pcwalton
+    fn finalize(&self);  // XXX: Rename to "drop"? --pcwalton
 }
 
 #[lang="add"]

@@ -8,7 +8,7 @@ struct r {
 // failed has no effect and the process exits with the
 // runtime's exit code
 impl r : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         os::set_exit_status(50);
     }
 }

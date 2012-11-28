@@ -5,7 +5,7 @@ struct r {
 }
 
 impl r : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
               cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&self)),

@@ -5,7 +5,7 @@ fn foo<T>() {
     }
 
     impl<T> foo<T> : Drop {
-        fn finalize() {}
+        fn finalize(&self) {}
     }
 }
 fn main() { }

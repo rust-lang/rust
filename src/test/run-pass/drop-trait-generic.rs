@@ -3,7 +3,7 @@ struct S<T> {
 }
 
 impl<T> S<T> : core::ops::Drop {
-    fn finalize() {
+    fn finalize(&self) {
         io::println("bye");
     }
 }

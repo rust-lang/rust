@@ -3,7 +3,7 @@ struct C {
 }
 
 impl C : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("dropping: %?", self.x);
     }
 }

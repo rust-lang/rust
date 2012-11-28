@@ -8,7 +8,7 @@ struct faily_box {
 fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
 
 impl faily_box : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         fail ~"quux";
     }
 }
