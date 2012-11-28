@@ -1137,7 +1137,7 @@ mod big_tests {
     }
 
     impl LVal : Drop {
-        fn finalize() {
+        fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
                 Some(@y) => {

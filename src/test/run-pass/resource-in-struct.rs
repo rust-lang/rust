@@ -9,7 +9,7 @@ struct close_res {
 }
 
 impl close_res : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         *(self.i) = false;
     }
 }

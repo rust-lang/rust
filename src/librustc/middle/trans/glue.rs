@@ -397,8 +397,14 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_class(did, ref substs) => {
         // Call the dtor if there is one
-        do option::map_default(&ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
-            trans_class_drop(bcx, v, *dt_id, did, substs)
+        match ty::ty_dtor(bcx.tcx(), did) {
+            ty::NoDtor => bcx,
+            ty::LegacyDtor(ref dt_id) => {
+                trans_class_drop(bcx, v, *dt_id, did, substs, false)
+            }
+            ty::TraitDtor(ref dt_id) => {
+                trans_class_drop(bcx, v, *dt_id, did, substs, true)
+            }
         }
       }
       _ => bcx
@@ -410,7 +416,8 @@ fn trans_class_drop(bcx: block,
                     v0: ValueRef,
                     dtor_did: ast::def_id,
                     class_did: ast::def_id,
-                    substs: &ty::substs) -> block {
+                    substs: &ty::substs,
+                    take_ref: bool) -> block {
     let drop_flag = GEPi(bcx, v0, struct_dtor());
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
         let mut bcx = cx;
@@ -427,7 +434,18 @@ fn trans_class_drop(bcx: block,
         // just consist of the output pointer and the environment
         // (self)
         assert(params.len() == 2);
-        let self_arg = PointerCast(bcx, v0, params[1]);
+
+        // If we need to take a reference to the class (because it's using
+        // the Drop trait), do so now.
+        let llval;
+        if take_ref {
+            llval = alloca(bcx, val_ty(v0));
+            Store(bcx, v0, llval);
+        } else {
+            llval = v0;
+        }
+
+        let self_arg = PointerCast(bcx, llval, params[1]);
         let args = ~[bcx.fcx.llretptr, self_arg];
         Call(bcx, dtor_addr, args);
 
@@ -465,10 +483,13 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_class(did, ref substs) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
-          Some(dtor) => {
-            trans_class_drop(bcx, v0, dtor, did, substs)
+          ty::TraitDtor(dtor) => {
+            trans_class_drop(bcx, v0, dtor, did, substs, true)
           }
-          None => {
+          ty::LegacyDtor(dtor) => {
+            trans_class_drop(bcx, v0, dtor, did, substs, false)
+          }
+          ty::NoDtor => {
             // No dtor? Just the default case
             iter_structural_ty(bcx, v0, t, drop_ty)
           }

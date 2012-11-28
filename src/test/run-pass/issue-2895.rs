@@ -10,7 +10,7 @@ struct Kitty {
 }
 
 impl Kitty : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 #[cfg(target_arch = "x86_64")]

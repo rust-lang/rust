@@ -229,7 +229,7 @@ struct PoisonOnFail {
 }
 
 impl PoisonOnFail : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         /* assert !*self.failed; -- might be false in case of cond.wait() */
         if task::failing() { *self.failed = true; }
     }

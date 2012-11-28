@@ -32,7 +32,7 @@ struct port_ptr<T:Send> {
 }
 
 impl<T:Send> port_ptr<T> : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             debug!("in the port_ptr destructor");
                do task::unkillable {

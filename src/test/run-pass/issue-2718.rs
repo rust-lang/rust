@@ -144,7 +144,7 @@ mod pipes {
     }
 
     impl<T: Send> send_packet<T> : Drop {
-        fn finalize() {
+        fn finalize(&self) {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;
@@ -172,7 +172,7 @@ mod pipes {
     }
 
     impl<T: Send> recv_packet<T> : Drop {
-        fn finalize() {
+        fn finalize(&self) {
             if self.p != None {
                 let mut p = None;
                 p <-> self.p;

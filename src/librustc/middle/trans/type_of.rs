@@ -199,7 +199,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
         // include a byte flag if there is a dtor so that we know when we've
         // been dropped
-        if ty::ty_dtor(cx.tcx, did) != None {
+        if ty::ty_dtor(cx.tcx, did).is_present() {
             common::set_struct_body(llty, ~[T_struct(tys), T_i8()]);
         } else {
             common::set_struct_body(llty, ~[T_struct(tys)]);

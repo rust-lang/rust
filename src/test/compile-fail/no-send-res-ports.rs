@@ -4,7 +4,7 @@ fn main() {
     }
 
     impl foo : Drop {
-        fn finalize() {}
+        fn finalize(&self) {}
     }
 
     fn foo(x: comm::Port<()>) -> foo {

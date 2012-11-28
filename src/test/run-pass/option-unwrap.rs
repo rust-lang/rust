@@ -4,7 +4,7 @@ struct dtor {
 }
 
 impl dtor : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         // abuse access to shared mutable state to write this code
         *self.x -= 1;
     }

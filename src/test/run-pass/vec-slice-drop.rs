@@ -4,7 +4,7 @@ struct foo {
 }
 
 impl foo : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         *self.x += 1;
     }
 }

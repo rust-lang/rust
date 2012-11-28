@@ -30,10 +30,10 @@ struct TcpSocket {
 }
 
 impl TcpSocket : Drop {
-    fn finalize() {
-    unsafe {
-        tear_down_socket_data(self.socket_data)
-    }
+    fn finalize(&self) {
+        unsafe {
+            tear_down_socket_data(self.socket_data)
+        }
     }
 }
 

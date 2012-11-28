@@ -3,7 +3,7 @@ struct yes0 {
 }
 
 impl yes0 : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 struct yes1 {
@@ -11,7 +11,7 @@ struct yes1 {
 }
 
 impl yes1 : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 struct yes2 {
@@ -19,7 +19,7 @@ struct yes2 {
 }
 
 impl yes2 : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn main() {}

@@ -7,7 +7,7 @@ struct Bar {
 }
 
 impl Bar : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 impl Bar : Foo {

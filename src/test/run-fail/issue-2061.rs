@@ -5,7 +5,7 @@ struct R {
 }
 
 impl R : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         let _y = R { b: self.b };
     }
 }

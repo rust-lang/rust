@@ -5,7 +5,7 @@ struct my_resource {
 }
 
 impl my_resource : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         log(error, self.x);
     }
 }
