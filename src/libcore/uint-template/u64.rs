@@ -1,2 +1,4 @@
-pub type T = u64;
-pub const bits: uint = 64;
+mod inst {
+    pub type T = u64;
+    pub const bits: uint = 64;
+}
