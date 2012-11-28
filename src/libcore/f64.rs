@@ -157,6 +157,18 @@ pub pure fn logarithm(n: f64, b: f64) -> f64 {
     return log2(n) / log2(b);
 }
 
+impl f64 : cmp::Eq {
+    pure fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
+    pure fn ne(&self, other: &f64) -> bool { (*self) != (*other) }
+}
+
+impl f64 : cmp::Ord {
+    pure fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
+    pure fn le(&self, other: &f64) -> bool { (*self) <= (*other) }
+    pure fn ge(&self, other: &f64) -> bool { (*self) >= (*other) }
+    pure fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
+}
+
 impl f64: num::Num {
     pure fn add(other: &f64)    -> f64 { return self + *other; }
     pure fn sub(other: &f64)    -> f64 { return self - *other; }
