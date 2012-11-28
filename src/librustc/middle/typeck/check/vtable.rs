@@ -124,46 +124,8 @@ fn lookup_vtable_covariant(vcx: &VtableContext,
            vcx.infcx.ty_to_str(ty),
            vcx.infcx.ty_to_str(trait_ty));
 
-    let worklist = dvec::DVec();
-    worklist.push(trait_ty);
-    while worklist.len() > 0 {
-        let trait_ty = worklist.pop();
-        let result = lookup_vtable_invariant(vcx, location_info, ty, trait_ty,
-                                             allow_unsafe, is_early);
-        if result.is_some() {
-            return result;
-        }
-
-        // Add subtraits to the worklist, if applicable.
-        match ty::get(trait_ty).sty {
-            ty::ty_trait(trait_id, _, _) => {
-                let table = vcx.ccx.coherence_info.supertrait_to_subtraits;
-                match table.find(trait_id) {
-                    None => {}
-                    Some(subtraits) => {
-                        for subtraits.each |subtrait_id| {
-                            // XXX: This is wrong; subtraits should themselves
-                            // have substs.
-                            let substs =
-                                { self_r: None, self_ty: None, tps: ~[] };
-                            let trait_ty = ty::mk_trait(vcx.tcx(),
-                                                        *subtrait_id,
-                                                        substs,
-                                                        ty::vstore_box);
-                            worklist.push(trait_ty);
-                        }
-                    }
-                }
-            }
-            _ => {
-                vcx.tcx().sess.impossible_case(location_info.span,
-                                               "lookup_vtable_covariant: \
-                                                non-trait in worklist");
-            }
-        }
-    }
-
-    return None;
+    lookup_vtable_invariant(vcx, location_info, ty, trait_ty,
+                            allow_unsafe, is_early)
 }
 
 // Look up the vtable to use when treating an item of type `t` as if it has
