@@ -429,8 +429,18 @@ pub mod chained {
         }
     }
 
+    #[cfg(stage0)]
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
         pure fn index(k: K) -> V {
+            unsafe {
+                self.get(k)
+            }
+        }
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
+        pure fn index(&self, k: K) -> V {
             unsafe {
                 self.get(k)
             }
