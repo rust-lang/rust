@@ -88,25 +88,6 @@ fn mkname(nm: &str) -> Name {
 }
 
 impl Name : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Name) -> bool {
-        match self {
-            Long(ref e0a) => {
-                match (*other) {
-                    Long(ref e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            Short(e0a) => {
-                match (*other) {
-                    Short(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Name) -> bool {
         match (*self) {
             Long(ref e0a) => {
@@ -123,65 +104,29 @@ impl Name : Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Name) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Name) -> bool { !(*self).eq(other) }
 }
 
 impl Occur : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Occur) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Occur) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Occur) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Occur) -> bool { !(*self).eq(other) }
 }
 
 impl HasArg : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &HasArg) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &HasArg) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &HasArg) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &HasArg) -> bool { !(*self).eq(other) }
 }
 
 impl Opt : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Opt) -> bool {
-        self.name   == (*other).name   &&
-        self.hasarg == (*other).hasarg &&
-        self.occur  == (*other).occur
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Opt) -> bool {
         (*self).name   == (*other).name   &&
         (*self).hasarg == (*other).hasarg &&
         (*self).occur  == (*other).occur
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Opt) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Opt) -> bool { !(*self).eq(other) }
 }
 
@@ -227,17 +172,6 @@ enum Optval { Val(~str), Given, }
 pub type Matches = {opts: ~[Opt], vals: ~[~[Optval]], free: ~[~str]};
 
 impl Optval : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Optval) -> bool {
-        match self {
-            Val(ref s) => match *other { Val (ref os) => s == os,
-                                          Given => false },
-            Given       => match *other { Val(_) => false,
-                                          Given => true }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Optval) -> bool {
         match (*self) {
             Val(ref s) => match *other { Val (ref os) => s == os,
@@ -246,31 +180,15 @@ impl Optval : Eq {
                                           Given => true }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Optval) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Optval) -> bool { !(*self).eq(other) }
 }
 
 impl Matches : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Matches) -> bool {
-        self.opts == (*other).opts &&
-        self.vals == (*other).vals &&
-        self.free == (*other).free
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Matches) -> bool {
         (*self).opts == (*other).opts &&
         (*self).vals == (*other).vals &&
         (*self).free == (*other).free
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Matches) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Matches) -> bool { !(*self).eq(other) }
 }
 
@@ -303,33 +221,6 @@ pub enum Fail_ {
 
 impl Fail_ : Eq {
     // this whole thing should be easy to infer...
-    #[cfg(stage0)]
-    pure fn eq(other: &Fail_) -> bool {
-        match self {
-            ArgumentMissing(ref s) => {
-                match *other { ArgumentMissing(ref so)    => s == so,
-                               _                          => false }
-            }
-            UnrecognizedOption(ref s) => {
-                match *other { UnrecognizedOption(ref so) => s == so,
-                               _                          => false }
-            }
-            OptionMissing(ref s) => {
-                match *other { OptionMissing(ref so)      => s == so,
-                               _                          => false }
-            }
-            OptionDuplicated(ref s) => {
-                match *other { OptionDuplicated(ref so)   => s == so,
-                               _                          => false }
-            }
-            UnexpectedArgument(ref s) => {
-                match *other { UnexpectedArgument(ref so) => s == so,
-                               _                          => false }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Fail_) -> bool {
         match (*self) {
             ArgumentMissing(ref s) => {
@@ -354,10 +245,6 @@ impl Fail_ : Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &Fail_) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Fail_) -> bool { !(*self).eq(other) }
 }
 
@@ -627,19 +514,9 @@ enum FailType {
 }
 
 impl FailType : Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &FailType) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &FailType) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &FailType) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &FailType) -> bool { !(*self).eq(other) }
 }
 
@@ -661,17 +538,6 @@ pub mod groups {
     };
 
     impl OptGroup : Eq {
-        #[cfg(stage0)]
-        pure fn eq(other: &OptGroup) -> bool {
-            self.short_name == (*other).short_name &&
-            self.long_name  == (*other).long_name  &&
-            self.hint       == (*other).hint       &&
-            self.desc       == (*other).desc       &&
-            self.hasarg     == (*other).hasarg     &&
-            self.occur      == (*other).occur
-        }
-        #[cfg(stage1)]
-        #[cfg(stage2)]
         pure fn eq(&self, other: &OptGroup) -> bool {
             (*self).short_name == (*other).short_name &&
             (*self).long_name  == (*other).long_name  &&
@@ -680,11 +546,9 @@ pub mod groups {
             (*self).hasarg     == (*other).hasarg     &&
             (*self).occur      == (*other).occur
         }
-        #[cfg(stage0)]
-        pure fn ne(other: &OptGroup) -> bool { !self.eq(other) }
-        #[cfg(stage1)]
-        #[cfg(stage2)]
-        pure fn ne(&self, other: &OptGroup) -> bool { !(*self).eq(other) }
+        pure fn ne(&self, other: &OptGroup) -> bool {
+            !self.eq(other)
+        }
     }
 
     /// Create a long option that is required and takes an argument
