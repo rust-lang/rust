@@ -1861,6 +1861,7 @@ impl foreign_abi : cmp::Eq {
 #[auto_deserialize]
 type foreign_mod =
     {sort: foreign_mod_sort,
+     abi: ident,
      view_items: ~[@view_item],
      items: ~[@foreign_item]};
 

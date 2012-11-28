@@ -75,6 +75,7 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
                                               |a| filter_view_item(cx, *a));
     return {
         sort: nm.sort,
+        abi: nm.abi,
         view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         items: filtered_items
     };
