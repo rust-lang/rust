@@ -322,6 +322,7 @@ mod special_idents {
     const intrinsic : ident = ident { repr: 32u };
     const clownshoes_foreign_mod: ident = ident { repr: 33 };
     const unnamed_field: ident = ident { repr: 34 };
+    const c_abi: ident = ident { repr: 35 };
 }
 
 struct ident_interner {
@@ -368,7 +369,8 @@ fn mk_ident_interner() -> @ident_interner {
                     @~"str", @~"TyVisitor", @~"arg", @~"descrim",
                     @~"__rust_abi", @~"__rust_stack_shim", @~"TyDesc",
                     @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
-                    @~"intrinsic", @~"__foreign_mod__"
+                    @~"intrinsic", @~"__foreign_mod__", @~"__field__",
+                    @~"C"
                 ];
 
                 let rv = @ident_interner {

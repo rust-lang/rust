@@ -573,6 +573,29 @@ fn cat_expr(
     return mcx.cat_expr(expr);
 }
 
+fn cat_expr_unadjusted(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    expr: @ast::expr) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_expr_unadjusted(expr);
+}
+
+fn cat_expr_autoderefd(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    expr: @ast::expr,
+    adj: @ty::AutoAdjustment) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_expr_autoderefd(expr, adj);
+}
+
 fn cat_def(
     tcx: ty::ctxt,
     method_map: typeck::method_map,

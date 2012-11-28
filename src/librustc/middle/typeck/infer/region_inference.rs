@@ -511,9 +511,26 @@ impl Constraint : cmp::Eq {
     pure fn ne(&self, other: &Constraint) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(stage0)]
 impl Constraint : to_bytes::IterBytes {
    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
+          ConstrainVarSubVar(ref v0, ref v1) =>
+          to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
+
+          ConstrainRegSubVar(ref ra, ref va) =>
+          to_bytes::iter_bytes_3(&1u8, ra, va, lsb0, f),
+
+          ConstrainVarSubReg(ref va, ref ra) =>
+          to_bytes::iter_bytes_3(&2u8, va, ra, lsb0, f)
+        }
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Constraint : to_bytes::IterBytes {
+   pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        match *self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
 
@@ -548,8 +565,16 @@ impl TwoRegions : cmp::Eq {
     pure fn ne(&self, other: &TwoRegions) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(stage0)]
 impl TwoRegions : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl TwoRegions : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
     }
 }

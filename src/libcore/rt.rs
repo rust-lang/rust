@@ -34,9 +34,12 @@ extern mod rustrt {
 // 'rt_', otherwise the compiler won't find it. To fix this, see
 // gather_rust_rtcalls.
 #[rt(fail_)]
-pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) {
-    cleanup_stack_for_failure();
-    rustrt::rust_upcall_fail(expr, file, line);
+pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
+    unsafe {
+        cleanup_stack_for_failure();
+        rustrt::rust_upcall_fail(expr, file, line);
+        cast::transmute(())
+    }
 }
 
 #[rt(fail_bounds_check)]

@@ -483,8 +483,16 @@ impl root_map_key : cmp::Eq {
     }
 }
 
+#[cfg(stage0)]
 impl root_map_key : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl root_map_key : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
@@ -511,6 +519,16 @@ impl borrowck_ctxt {
 
     fn cat_expr(expr: @ast::expr) -> cmt {
         cat_expr(self.tcx, self.method_map, expr)
+    }
+
+    fn cat_expr_unadjusted(expr: @ast::expr) -> cmt {
+        cat_expr_unadjusted(self.tcx, self.method_map, expr)
+    }
+
+    fn cat_expr_autoderefd(expr: @ast::expr,
+                           adj: @ty::AutoAdjustment)
+                        -> cmt {
+        cat_expr_autoderefd(self.tcx, self.method_map, expr, adj)
     }
 
     fn cat_def(id: ast::node_id,
