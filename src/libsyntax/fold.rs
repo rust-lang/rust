@@ -546,8 +546,9 @@ fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
 
 fn noop_fold_foreign_mod(nm: foreign_mod, fld: ast_fold) -> foreign_mod {
     return {sort: nm.sort,
-         view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
-         items: vec::map(nm.items, |x| fld.fold_foreign_item(*x))}
+            abi: nm.abi,
+            view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
+            items: vec::map(nm.items, |x| fld.fold_foreign_item(*x))}
 }
 
 fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {

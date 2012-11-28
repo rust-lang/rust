@@ -3043,8 +3043,9 @@ impl Parser {
     }
 
     fn parse_foreign_mod_items(sort: ast::foreign_mod_sort,
-                               +first_item_attrs: ~[attribute]) ->
-        foreign_mod {
+                               +abi: ast::ident,
+                               +first_item_attrs: ~[attribute])
+                            -> foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: _, foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
@@ -3058,8 +3059,12 @@ impl Parser {
             initial_attrs = ~[];
             items.push(self.parse_foreign_item(attrs));
         }
-        return {sort: sort, view_items: view_items,
-            items: items};
+        return {
+            sort: sort,
+            abi: move abi,
+            view_items: view_items,
+            items: items
+        };
     }
 
     fn parse_item_foreign_mod(lo: BytePos,
@@ -3067,6 +3072,18 @@ impl Parser {
                               attrs: ~[attribute],
                               items_allowed: bool)
                            -> item_or_view_item {
+
+        // Parse the ABI.
+        let abi_opt;
+        match self.token {
+            token::LIT_STR(copy found_abi) => {
+                self.bump();
+                abi_opt = Some(found_abi);
+            }
+            _ => {
+                abi_opt = None;
+            }
+        }
 
         let mut must_be_named_mod = false;
         if self.is_keyword(~"mod") {
@@ -3096,14 +3113,31 @@ impl Parser {
 
         // extern mod { ... }
         if items_allowed && self.eat(token::LBRACE) {
+            let abi;
+            match move abi_opt {
+                Some(move found_abi) => abi = move found_abi,
+                None => abi = special_idents::c_abi,
+            }
+
             let extra_attrs = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(sort, extra_attrs.next);
+            let m = self.parse_foreign_mod_items(sort,
+                                                 move abi,
+                                                 extra_attrs.next);
             self.expect(token::RBRACE);
+
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
                                           item_foreign_mod(m), visibility,
                                           maybe_append(attrs,
                                                        Some(extra_attrs.
                                                             inner))));
+        }
+
+        match abi_opt {
+            None => {}  // OK.
+            Some(_) => {
+                self.span_err(copy self.span, ~"an ABI may not be specified \
+                                                here");
+            }
         }
 
         // extern mod foo;
