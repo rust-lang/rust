@@ -153,17 +153,6 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
     match io::read_whole_file_str(path) {
       result::Ok(move src) => {
 
-          // HACK: If the file contains a special token use a different
-          // source file. Used to send the stage1+ parser (the stage0 parser
-          // doesn't have this hack) to a different crate file.
-          // Transitional. Remove me.
-          let src = if src.starts_with("// DIVERT") {
-              let actual_path = &path.with_filestem("alternate_crate");
-              result::unwrap(io::read_whole_file_str(actual_path))
-          } else {
-              move src
-          };
-
           let filemap = sess.cm.new_filemap(path.to_str(), @move src);
           let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                               sess.interner);
