@@ -46,52 +46,52 @@ Implicitly, all crates behave as if they included the following prologue:
 
 /// Operations and constants for `int`
 #[path = "int-template.rs"]
-#[merge = "int-template/intb.rs"]
+#[merge = "int-template/int.rs"]
 pub mod int;
 
 /// Operations and constants for `i8`
 #[path = "int-template.rs"]
-#[merge = "int-template/i8b.rs"]
+#[merge = "int-template/i8.rs"]
 pub mod i8;
 
 /// Operations and constants for `i16`
 #[path = "int-template.rs"]
-#[merge = "int-template/i16b.rs"]
+#[merge = "int-template/i16.rs"]
 pub mod i16;
 
 /// Operations and constants for `i32`
 #[path = "int-template.rs"]
-#[merge = "int-template/i32b.rs"]
+#[merge = "int-template/i32.rs"]
 pub mod i32;
 
 /// Operations and constants for `i64`
 #[path = "int-template.rs"]
-#[merge = "int-template/i64b.rs"]
+#[merge = "int-template/i64.rs"]
 pub mod i64;
 
 /// Operations and constants for `uint`
 #[path = "uint-template.rs"]
-#[merge = "uint-template/uintb.rs"]
+#[merge = "uint-template/uint.rs"]
 pub mod uint;
 
 /// Operations and constants for `u8`
 #[path = "uint-template.rs"]
-#[merge = "uint-template/u8b.rs"]
+#[merge = "uint-template/u8.rs"]
 pub mod u8;
 
 /// Operations and constants for `u16`
 #[path = "uint-template.rs"]
-#[merge = "uint-template/u16b.rs"]
+#[merge = "uint-template/u16.rs"]
 pub mod u16;
 
 /// Operations and constants for `u32`
 #[path = "uint-template.rs"]
-#[merge = "uint-template/u32b.rs"]
+#[merge = "uint-template/u32.rs"]
 pub mod u32;
 
 /// Operations and constants for `u64`
 #[path = "uint-template.rs"]
-#[merge = "uint-template/u64b.rs"]
+#[merge = "uint-template/u64.rs"]
 pub mod u64;
 
 
@@ -121,7 +121,7 @@ pub mod iter;
 pub mod logging;
 pub mod option;
 #[path="iter-trait.rs"]
-#[merge = "iter-trait/optionb.rs"]
+#[merge = "iter-trait/option.rs"]
 pub mod option_iter;
 pub mod result;
 pub mod to_str;
@@ -134,11 +134,11 @@ pub mod clone;
 
 pub mod dvec;
 #[path="iter-trait.rs"]
-#[merge = "iter-trait/dvecb.rs"]
+#[merge = "iter-trait/dvec.rs"]
 pub mod dvec_iter;
 pub mod dlist;
 #[path="iter-trait.rs"]
-#[merge = "iter-trait/dlistb.rs"]
+#[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;
 pub mod send_map;
 
