@@ -155,9 +155,17 @@ impl DatumMode: cmp::Eq {
     pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(stage0)]
 impl DatumMode: to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl DatumMode: to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f)
     }
 }
 

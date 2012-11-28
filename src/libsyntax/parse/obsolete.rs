@@ -49,10 +49,19 @@ impl ObsoleteSyntax : cmp::Eq {
     }
 }
 
+#[cfg(stage0)]
 impl ObsoleteSyntax: to_bytes::IterBytes {
     #[inline(always)]
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f);
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ObsoleteSyntax: to_bytes::IterBytes {
+    #[inline(always)]
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f);
     }
 }
 
