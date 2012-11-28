@@ -458,7 +458,7 @@ fn host_triple() -> ~str {
 }
 
 fn build_session_options(binary: ~str,
-                         matches: getopts::Matches,
+                         matches: &getopts::Matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -807,7 +807,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            match getopts(~[~"--test"], optgroups()) {
+            &match getopts(~[~"--test"], optgroups()) {
               Ok(m) => m,
               Err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
@@ -824,7 +824,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
+            &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(m) => m,
               Err(f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
