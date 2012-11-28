@@ -11,19 +11,9 @@ pub enum OutputFormat {
 }
 
 impl OutputFormat : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &OutputFormat) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &OutputFormat) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &OutputFormat) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &OutputFormat) -> bool { !(*self).eq(other) }
 }
 
@@ -36,19 +26,9 @@ pub enum OutputStyle {
 }
 
 impl OutputStyle : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &OutputStyle) -> bool {
-        (self as uint) == ((*other) as uint)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &OutputStyle) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &OutputStyle) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &OutputStyle) -> bool { !(*self).eq(other) }
 }
 

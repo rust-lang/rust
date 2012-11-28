@@ -45,80 +45,54 @@ Implicitly, all crates behave as if they included the following prologue:
 // Built-in-type support modules
 
 /// Operations and constants for `int`
-#[path = "int-template"]
-pub mod int {
-    pub use inst::{ pow };
-    #[path = "int.rs"]
-    pub mod inst;
-}
+#[path = "int-template.rs"]
+#[merge = "int-template/intb.rs"]
+pub mod int;
 
 /// Operations and constants for `i8`
-#[path = "int-template"]
-pub mod i8 {
-    #[path = "i8.rs"]
-    pub mod inst;
-}
+#[path = "int-template.rs"]
+#[merge = "int-template/i8b.rs"]
+pub mod i8;
 
 /// Operations and constants for `i16`
-#[path = "int-template"]
-pub mod i16 {
-    #[path = "i16.rs"]
-    pub mod inst;
-}
+#[path = "int-template.rs"]
+#[merge = "int-template/i16b.rs"]
+pub mod i16;
 
 /// Operations and constants for `i32`
-#[path = "int-template"]
-pub mod i32 {
-    #[path = "i32.rs"]
-    pub mod inst;
-}
+#[path = "int-template.rs"]
+#[merge = "int-template/i32b.rs"]
+pub mod i32;
 
 /// Operations and constants for `i64`
-#[path = "int-template"]
-pub mod i64 {
-    #[path = "i64.rs"]
-    pub mod inst;
-}
+#[path = "int-template.rs"]
+#[merge = "int-template/i64b.rs"]
+pub mod i64;
 
 /// Operations and constants for `uint`
-#[path = "uint-template"]
-pub mod uint {
-    pub use inst::{
-        div_ceil, div_round, div_floor, iterate,
-        next_power_of_two
-    };
-    #[path = "uint.rs"]
-    pub mod inst;
-}
+#[path = "uint-template.rs"]
+#[merge = "uint-template/uintb.rs"]
+pub mod uint;
 
 /// Operations and constants for `u8`
-#[path = "uint-template"]
-pub mod u8 {
-    pub use inst::is_ascii;
-    #[path = "u8.rs"]
-    pub mod inst;
-}
+#[path = "uint-template.rs"]
+#[merge = "uint-template/u8b.rs"]
+pub mod u8;
 
 /// Operations and constants for `u16`
-#[path = "uint-template"]
-pub mod u16 {
-    #[path = "u16.rs"]
-    pub mod inst;
-}
+#[path = "uint-template.rs"]
+#[merge = "uint-template/u16b.rs"]
+pub mod u16;
 
 /// Operations and constants for `u32`
-#[path = "uint-template"]
-pub mod u32 {
-    #[path = "u32.rs"]
-    pub mod inst;
-}
+#[path = "uint-template.rs"]
+#[merge = "uint-template/u32b.rs"]
+pub mod u32;
 
 /// Operations and constants for `u64`
-#[path = "uint-template"]
-pub mod u64 {
-    #[path = "u64.rs"]
-    pub mod inst;
-}
+#[path = "uint-template.rs"]
+#[merge = "uint-template/u64b.rs"]
+pub mod u64;
 
 
 pub mod box;
@@ -146,11 +120,9 @@ pub mod either;
 pub mod iter;
 pub mod logging;
 pub mod option;
-#[path="iter-trait"]
-pub mod option_iter {
-    #[path = "option.rs"]
-    pub mod inst;
-}
+#[path="iter-trait.rs"]
+#[merge = "iter-trait/optionb.rs"]
+pub mod option_iter;
 pub mod result;
 pub mod to_str;
 pub mod to_bytes;
@@ -161,27 +133,19 @@ pub mod clone;
 // Data structure modules
 
 pub mod dvec;
-#[path="iter-trait"]
-pub mod dvec_iter {
-    #[path = "dvec.rs"]
-    pub mod inst;
-}
+#[path="iter-trait.rs"]
+#[merge = "iter-trait/dvecb.rs"]
+pub mod dvec_iter;
 pub mod dlist;
-#[path="iter-trait"]
-pub mod dlist_iter {
-    #[path ="dlist.rs"]
-    pub mod inst;
-}
+#[path="iter-trait.rs"]
+#[merge = "iter-trait/dlistb.rs"]
+pub mod dlist_iter;
 pub mod send_map;
 
 // Concurrency
 pub mod comm;
-pub mod task {
-    pub mod local_data;
-    mod local_data_priv;
-    pub mod spawn;
-    pub mod rt;
-}
+#[merge = "task/mod.rs"]
+pub mod task;
 pub mod pipes;
 
 // Runtime and language-primitive support
@@ -218,6 +182,92 @@ pub mod private;
 mod unicode;
 mod cmath;
 mod stackwalk;
+
+// Top-level, visible-everywhere definitions.
+
+// Export various ubiquitous types, constructors, methods.
+
+pub use option::{Some, None};
+pub use Option = option::Option;
+pub use result::{Result, Ok, Err};
+
+pub use Path = path::Path;
+pub use GenericPath = path::GenericPath;
+pub use WindowsPath = path::WindowsPath;
+pub use PosixPath = path::PosixPath;
+
+pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use str::{StrSlice, Trimmable};
+pub use vec::{ConstVector, CopyableVector, ImmutableVector};
+pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
+pub use vec::{MutableVector, MutableCopyableVector};
+pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use num::Num;
+pub use ptr::Ptr;
+pub use to_str::ToStr;
+
+// The following exports are the core operators and kinds
+// The compiler has special knowlege of these so we must not duplicate them
+// when compiling for testing
+#[cfg(notest)]
+pub use ops::{Const, Copy, Send, Owned};
+#[cfg(notest)]
+pub use ops::{Drop};
+#[cfg(notest)]
+pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
+#[cfg(notest)]
+pub use ops::{Shl, Shr, Index};
+
+#[cfg(test)]
+extern mod coreops(name = "core", vers = "0.5");
+
+#[cfg(test)]
+pub use coreops::ops::{Const, Copy, Send, Owned};
+#[cfg(test)]
+pub use coreops::ops::{Drop};
+#[cfg(test)]
+pub use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr};
+#[cfg(test)]
+pub use coreops::ops::{BitXor};
+#[cfg(test)]
+pub use coreops::ops::{Shl, Shr, Index};
+
+#[cfg(notest)]
+pub use clone::Clone;
+#[cfg(test)]
+pub use coreops::clone::Clone;
+
+// Export the log levels as global constants. Higher levels mean
+// more-verbosity. Error is the bottom level, default logging level is
+// warn-and-below.
+
+/// The error log level
+pub const error : u32 = 1_u32;
+/// The warning log level
+pub const warn : u32 = 2_u32;
+/// The info log level
+pub const info : u32 = 3_u32;
+/// The debug log level
+pub const debug : u32 = 4_u32;
+
+// A curious inner-module that's not exported that contains the binding
+// 'core' so that macro-expanded references to core::error and such
+// can be resolved within libcore.
+#[doc(hidden)] // FIXME #3538
+mod core {
+    pub const error : u32 = 1_u32;
+    pub const warn : u32 = 2_u32;
+    pub const info : u32 = 3_u32;
+    pub const debug : u32 = 4_u32;
+}
+
+// Similar to above. Some magic to make core testable.
+#[cfg(test)]
+mod std {
+    extern mod std(vers = "0.5");
+    pub use std::test;
+}
 
 // Local Variables:
 // mode: rust;

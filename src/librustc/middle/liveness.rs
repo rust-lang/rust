@@ -119,28 +119,12 @@ enum Variable = uint;
 enum LiveNode = uint;
 
 impl Variable : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &Variable) -> bool { *self == *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
-    #[cfg(stage0)]
-    pure fn ne(other: &Variable) -> bool { *self != *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &Variable) -> bool { *(*self) != *(*other) }
 }
 
 impl LiveNode : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &LiveNode) -> bool { *self == *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &LiveNode) -> bool { *(*self) == *(*other) }
-    #[cfg(stage0)]
-    pure fn ne(other: &LiveNode) -> bool { *self != *(*other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &LiveNode) -> bool { *(*self) != *(*other) }
 }
 
@@ -152,37 +136,6 @@ enum LiveNodeKind {
 }
 
 impl LiveNodeKind : cmp::Eq {
-    #[cfg(stage0)]
-    pure fn eq(other: &LiveNodeKind) -> bool {
-        match self {
-            FreeVarNode(e0a) => {
-                match (*other) {
-                    FreeVarNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ExprNode(e0a) => {
-                match (*other) {
-                    ExprNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            VarDefNode(e0a) => {
-                match (*other) {
-                    VarDefNode(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ExitNode => {
-                match (*other) {
-                    ExitNode => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn eq(&self, other: &LiveNodeKind) -> bool {
         match (*self) {
             FreeVarNode(e0a) => {
@@ -211,10 +164,6 @@ impl LiveNodeKind : cmp::Eq {
             }
         }
     }
-    #[cfg(stage0)]
-    pure fn ne(other: &LiveNodeKind) -> bool { !self.eq(other) }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pure fn ne(&self, other: &LiveNodeKind) -> bool { !(*self).eq(other) }
 }
 

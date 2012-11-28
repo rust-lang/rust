@@ -30,17 +30,6 @@ mod nounittest {
      * default implementations.
      */
     #[lang="ord"]
-    #[cfg(stage0)]
-    pub trait Ord {
-        pure fn lt(other: &self) -> bool;
-        pure fn le(other: &self) -> bool;
-        pure fn ge(other: &self) -> bool;
-        pure fn gt(other: &self) -> bool;
-    }
-
-    #[lang="ord"]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub trait Ord {
         pure fn lt(&self, other: &self) -> bool;
         pure fn le(&self, other: &self) -> bool;
@@ -58,15 +47,6 @@ mod nounittest {
      * a default implementation.
      */
     #[lang="eq"]
-    #[cfg(stage0)]
-    pub trait Eq {
-        pure fn eq(other: &self) -> bool;
-        pure fn ne(other: &self) -> bool;
-    }
-
-    #[lang="eq"]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub trait Eq {
         pure fn eq(&self, other: &self) -> bool;
         pure fn ne(&self, other: &self) -> bool;
@@ -81,16 +61,6 @@ mod nounittest {
 mod unittest {
     #[legacy_exports];
 
-    #[cfg(stage0)]
-    pub trait Ord {
-        pure fn lt(other: &self) -> bool;
-        pure fn le(other: &self) -> bool;
-        pure fn ge(other: &self) -> bool;
-        pure fn gt(other: &self) -> bool;
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub trait Ord {
         pure fn lt(&self, other: &self) -> bool;
         pure fn le(&self, other: &self) -> bool;
@@ -98,14 +68,6 @@ mod unittest {
         pure fn gt(&self, other: &self) -> bool;
     }
 
-    #[cfg(stage0)]
-    pub trait Eq {
-        pure fn eq(other: &self) -> bool;
-        pure fn ne(other: &self) -> bool;
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     pub trait Eq {
         pure fn eq(&self, other: &self) -> bool;
         pure fn ne(&self, other: &self) -> bool;
