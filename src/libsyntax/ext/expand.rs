@@ -248,6 +248,26 @@ fn core_macros() -> ~str {
     #macro[[#warn[f, ...], log(core::warn, #fmt[f, ...])]];
     #macro[[#info[f, ...], log(core::info, #fmt[f, ...])]];
     #macro[[#debug[f, ...], log(core::debug, #fmt[f, ...])]];
+
+    macro_rules! die(
+        ($msg: expr) => (
+            {
+                do core::str::as_buf($msg) |msg_buf, _msg_len| {
+                    do core::str::as_buf(file!()) |file_buf, _file_len| {
+                        unsafe {
+                            let msg_buf = core::cast::transmute(msg_buf);
+                            let file_buf = core::cast::transmute(file_buf);
+                            let line = line!() as core::libc::size_t;
+                            core::rt::rt_fail_(msg_buf, file_buf, line)
+                        }
+                    }
+                }
+            }
+        );
+        () => (
+            die!(\"explicit failure\")
+        )
+    )
 }";
 }
 
