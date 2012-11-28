@@ -265,7 +265,7 @@ priv impl ext_ctxt {
         let path = @{span: span, global: false, idents: ~[nm],
                      rp: None, types: ~[]};
         @{id: self.next_id(),
-          node: ast::pat_ident(ast::bind_by_implicit_ref,
+          node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
                                path,
                                None),
           span: span}
@@ -887,7 +887,7 @@ fn ser_variant(
 
     let pat_node = if pats.is_empty() {
         ast::pat_ident(
-            ast::bind_by_implicit_ref,
+            ast::bind_by_ref(ast::m_imm),
             cx.path(span, ~[v_name]),
             None
         )
