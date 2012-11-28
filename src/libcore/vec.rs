@@ -1495,17 +1495,35 @@ impl<T: Ord> @[T] : Ord {
 
 #[cfg(notest)]
 pub mod traits {
+    #[cfg(stage0)]
     impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
         pure fn add(rhs: & &self/[const T]) -> ~[T] {
             append(copy self, (*rhs))
         }
     }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
+        #[inline(always)]
+        pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
+            append(copy *self, (*rhs))
+        }
+    }
 
+    #[cfg(stage0)]
     impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
         #[inline(always)]
         pure fn add(rhs: & &self/[const T]) -> ~[mut T] {
             append_mut(copy self, (*rhs))
+        }
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
+        #[inline(always)]
+        pure fn add(&self, rhs: & &self/[const T]) -> ~[mut T] {
+            append_mut(copy *self, (*rhs))
         }
     }
 }
