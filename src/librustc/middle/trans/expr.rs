@@ -888,7 +888,7 @@ fn with_field_tys<R>(tcx: ty::ctxt,
         }
 
         ty::ty_class(did, ref substs) => {
-            let has_dtor = ty::ty_dtor(tcx, did).is_some();
+            let has_dtor = ty::ty_dtor(tcx, did).is_present();
             op(has_dtor, class_items_as_mutable_fields(tcx, did, substs))
         }
 

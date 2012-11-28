@@ -9,7 +9,7 @@ struct S {
 }
 
 impl S : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn S(x: int) -> S { S { x: x } }

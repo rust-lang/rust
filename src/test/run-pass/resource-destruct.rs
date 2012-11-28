@@ -3,7 +3,7 @@ struct shrinky_pointer {
 }
 
 impl shrinky_pointer : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         log(error, ~"Hello!"); **(self.i) -= 1;
     }
 }

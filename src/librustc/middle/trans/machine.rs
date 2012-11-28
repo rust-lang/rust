@@ -27,7 +27,7 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           // Reduce a class type to a record type in which all the fields are
           // simplified
           ty::ty_class(did, ref substs) => {
-            let simpl_fields = (if ty::ty_dtor(tcx, did).is_some() {
+            let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
                 // remember the drop flag
                   ~[{ident: syntax::parse::token::special_idents::dtor,
                      mt: {ty: ty::mk_u8(tcx),

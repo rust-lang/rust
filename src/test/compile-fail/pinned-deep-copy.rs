@@ -5,7 +5,7 @@ struct r {
 }
 
 impl r : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         *(self.i) = *(self.i) + 1;
     }
 }

@@ -3,7 +3,7 @@ struct noncopyable {
 }
 
 impl noncopyable : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("dropped");
     }
 }

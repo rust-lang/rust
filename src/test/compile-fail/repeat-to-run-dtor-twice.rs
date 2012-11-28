@@ -7,7 +7,7 @@ struct Foo {
 }
 
 impl Foo : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         io::println("Goodbye!");
     }
 }

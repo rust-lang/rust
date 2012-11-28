@@ -153,7 +153,7 @@ struct SemRelease {
 }
 
 impl SemRelease : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         self.sem.release();
     }
 }
@@ -170,7 +170,7 @@ struct SemAndSignalRelease {
 }
 
 impl SemAndSignalRelease : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         self.sem.release();
     }
 }
@@ -185,7 +185,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]> }
 
-impl Condvar : Drop { fn finalize() {} }
+impl Condvar : Drop { fn finalize(&self) {} }
 
 impl &Condvar {
     /**
@@ -257,7 +257,7 @@ impl &Condvar {
         }
 
         impl SemAndSignalReacquire : Drop {
-            fn finalize() {
+            fn finalize(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
                     do task::unkillable {
@@ -607,7 +607,7 @@ struct RWlockReleaseRead {
 }
 
 impl RWlockReleaseRead : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             do task::unkillable {
                 let mut last_reader = false;
@@ -641,7 +641,7 @@ struct RWlockReleaseDowngrade {
 }
 
 impl RWlockReleaseDowngrade : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             do task::unkillable {
                 let mut writer_or_last_reader = false;
@@ -678,10 +678,10 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 
 /// The "write permission" token used for rwlock.write_downgrade().
 pub struct RWlockWriteMode { /* priv */ lock: &RWlock }
-impl RWlockWriteMode : Drop { fn finalize() {} }
+impl RWlockWriteMode : Drop { fn finalize(&self) {} }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &RWlock }
-impl RWlockReadMode : Drop { fn finalize() {} }
+impl RWlockReadMode : Drop { fn finalize(&self) {} }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
@@ -993,7 +993,7 @@ mod tests {
         }
 
         impl SendOnFailure : Drop {
-            fn finalize() {
+            fn finalize(&self) {
                 self.c.send(());
             }
         }

@@ -18,7 +18,7 @@ struct and_then_get_big_again {
 }
 
 impl and_then_get_big_again : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         fn getbig(i: int) {
             if i != 0 {
                 getbig(i - 1);

@@ -1,7 +1,7 @@
 struct thing { x: int, }
 
 impl thing : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn thing() -> thing {

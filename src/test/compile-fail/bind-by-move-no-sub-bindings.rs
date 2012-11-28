@@ -1,7 +1,7 @@
 struct X { x: (), }
 
 impl X : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("destructor runs");
     }
 }

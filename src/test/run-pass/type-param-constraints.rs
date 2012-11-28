@@ -10,7 +10,7 @@ struct r {
 }
 
 impl r : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn r(i:int) -> r {

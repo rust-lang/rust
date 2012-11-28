@@ -7,7 +7,7 @@ impl cat : Drop {
     /**
        Actually, cats don't always land on their feet when you drop them.
     */
-    fn finalize() {
+    fn finalize(&self) {
         error!("%s landed on hir feet", self.name);
     }
 }

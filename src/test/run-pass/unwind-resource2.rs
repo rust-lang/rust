@@ -6,7 +6,7 @@ struct complainer {
 }
 
 impl complainer : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn complainer(c: @int) -> complainer {

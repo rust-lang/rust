@@ -10,7 +10,7 @@ struct notify {
 }
 
 impl notify : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
                ptr::addr_of(&(*(self.v))) as uint,

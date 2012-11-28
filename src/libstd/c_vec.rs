@@ -42,11 +42,11 @@ struct DtorRes {
 }
 
 impl DtorRes : Drop {
-    fn finalize() {
-    match self.dtor {
-      option::None => (),
-      option::Some(f) => f()
-    }
+    fn finalize(&self) {
+        match self.dtor {
+          option::None => (),
+          option::Some(f) => f()
+        }
     }
 }
 

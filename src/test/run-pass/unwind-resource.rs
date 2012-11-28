@@ -6,7 +6,7 @@ struct complainer {
 }
 
 impl complainer : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         error!("About to send!");
         comm::send(self.c, true);
         error!("Sent!");

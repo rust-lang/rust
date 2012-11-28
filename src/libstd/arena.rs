@@ -58,7 +58,7 @@ pub struct Arena {
 }
 
 impl Arena : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         unsafe {
             destroy_chunk(&self.head);
             for list::each(self.chunks) |chunk| {

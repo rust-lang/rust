@@ -7,7 +7,7 @@ struct r {
 }
 
 impl r : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn r(x:int) -> r {
@@ -21,7 +21,7 @@ struct r2 {
 }
 
 impl r2 : Drop {
-    fn finalize() {}
+    fn finalize(&self) {}
 }
 
 fn r2(x:@mut int) -> r2 {
