@@ -292,7 +292,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     let body_block = build::mk_block_(cx, span, move statements);
 
     // Create the method.
-    let self_ty = { node: sty_by_ref, span: span };
+    let self_ty = { node: sty_region(m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
     return @{
         ident: method_ident,
@@ -806,6 +806,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
     // Create the method body.
     let self_ident = cx.ident_of(~"self");
     let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
+    let self_expr = build::mk_unary(cx, span, deref, self_expr);
     let arms = dvec::unwrap(move arms);
     let self_match_expr = expr_match(self_expr, move arms);
     let self_match_expr = build::mk_expr(cx, span, move self_match_expr);

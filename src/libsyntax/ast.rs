@@ -62,8 +62,17 @@ impl ident: cmp::Eq {
     pure fn ne(&self, other: &ident) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(stage0)]
 impl ident: to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        self.repr.iter_bytes(lsb0, f)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ident: to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.repr.iter_bytes(lsb0, f)
     }
 }
@@ -462,9 +471,28 @@ enum binding_mode {
     bind_by_implicit_ref
 }
 
+#[cfg(stage0)]
 impl binding_mode : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
+          bind_by_value => 0u8.iter_bytes(lsb0, f),
+
+          bind_by_move => 1u8.iter_bytes(lsb0, f),
+
+          bind_by_ref(ref m) =>
+          to_bytes::iter_bytes_2(&2u8, m, lsb0, f),
+
+          bind_by_implicit_ref =>
+          3u8.iter_bytes(lsb0, f),
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl binding_mode : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        match *self {
           bind_by_value => 0u8.iter_bytes(lsb0, f),
 
           bind_by_move => 1u8.iter_bytes(lsb0, f),
@@ -573,9 +601,18 @@ enum pat_ {
 #[auto_deserialize]
 enum mutability { m_mutbl, m_imm, m_const, }
 
+#[cfg(stage0)]
 impl mutability : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl mutability : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -622,9 +659,18 @@ impl Proto : cmp::Eq {
     pure fn ne(&self, other: &Proto) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(stage0)]
 impl Proto : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as uint).iter_bytes(lsb0, f);
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Proto : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f);
     }
 }
 
@@ -798,9 +844,24 @@ enum inferable<T> {
     infer(node_id)
 }
 
+#[cfg(stage0)]
 impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         match self {
+          expl(ref t) =>
+          to_bytes::iter_bytes_2(&0u8, t, lsb0, f),
+
+          infer(ref n) =>
+          to_bytes::iter_bytes_2(&1u8, n, lsb0, f),
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        match *self {
           expl(ref t) =>
           to_bytes::iter_bytes_2(&0u8, t, lsb0, f),
 
@@ -858,9 +919,17 @@ impl<T:cmp::Eq> inferable<T> : cmp::Eq {
 #[auto_deserialize]
 enum rmode { by_ref, by_val, by_move, by_copy }
 
+#[cfg(stage0)]
 impl rmode : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl rmode : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -1262,9 +1331,17 @@ enum trait_method {
 #[auto_deserialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
+#[cfg(stage0)]
 impl int_ty : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl int_ty : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -1315,9 +1392,17 @@ impl int_ty : cmp::Eq {
 #[auto_deserialize]
 enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
+#[cfg(stage0)]
 impl uint_ty : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl uint_ty : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -1364,11 +1449,20 @@ impl uint_ty : cmp::Eq {
 #[auto_deserialize]
 enum float_ty { ty_f, ty_f32, ty_f64, }
 
+#[cfg(stage0)]
 impl float_ty : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
     }
 }
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl float_ty : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 impl float_ty : cmp::Eq {
     #[cfg(stage0)]
     pure fn eq(other: &float_ty) -> bool {
@@ -1589,8 +1683,17 @@ impl Ty : cmp::Eq {
     }
 }
 
+#[cfg(stage0)]
 impl Ty : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Ty : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
     }
 }
@@ -1616,9 +1719,18 @@ enum purity {
     extern_fn, // declared with "extern fn"
 }
 
+#[cfg(stage0)]
 impl purity : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl purity : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -1647,9 +1759,17 @@ enum ret_style {
     return_val, // everything else
 }
 
+#[cfg(stage0)]
 impl ret_style : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ret_style : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
@@ -2152,9 +2272,17 @@ enum item_ {
 #[auto_deserialize]
 enum class_mutability { class_mutable, class_immutable }
 
+#[cfg(stage0)]
 impl class_mutability : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl class_mutability : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
     }
 }
 

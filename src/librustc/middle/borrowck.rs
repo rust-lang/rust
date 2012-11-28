@@ -483,8 +483,16 @@ impl root_map_key : cmp::Eq {
     }
 }
 
+#[cfg(stage0)]
 impl root_map_key : to_bytes::IterBytes {
     pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl root_map_key : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
