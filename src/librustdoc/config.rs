@@ -128,14 +128,14 @@ fn parse_config_(
     args: &[~str],
     +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
-    let args = vec::tail(args);
+    let args = args.tail();
     let opts = vec::unzip(opts()).first();
     match getopts::getopts(args, opts) {
         result::Ok(matches) => {
-            if vec::len(matches.free) == 1u {
+            if matches.free.len() == 1 {
                 let input_crate = Path(vec::head(matches.free));
-                config_from_opts(&input_crate, matches, move program_output)
-            } else if vec::is_empty(matches.free) {
+                config_from_opts(&input_crate, &matches, move program_output)
+            } else if matches.free.is_empty() {
                 result::Err(~"no crates specified")
             } else {
                 result::Err(~"multiple crates specified")
@@ -149,7 +149,7 @@ fn parse_config_(
 
 fn config_from_opts(
     input_crate: &Path,
-    +matches: getopts::Matches,
+    matches: &getopts::Matches,
     +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
 

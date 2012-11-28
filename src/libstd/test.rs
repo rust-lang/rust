@@ -73,8 +73,8 @@ fn parse_opts(args: &[~str]) -> OptRes {
             option::Some(matches.free[0])
         } else { option::None };
 
-    let run_ignored = getopts::opt_present(matches, ~"ignored");
-    let logfile = getopts::opt_maybe_str(matches, ~"logfile");
+    let run_ignored = getopts::opt_present(&matches, ~"ignored");
+    let logfile = getopts::opt_maybe_str(&matches, ~"logfile");
 
     let test_opts = {filter: filter, run_ignored: run_ignored,
                      logfile: logfile};

@@ -85,7 +85,7 @@ fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        match getopts::groups::getopts(args, optgroups()) {
+        &match getopts::groups::getopts(args, optgroups()) {
           Ok(m) => m,
           Err(f) => {
             early_error(demitter, getopts::fail_str(f))
