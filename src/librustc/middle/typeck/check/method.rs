@@ -130,6 +130,7 @@ struct LookupContext {
 struct Candidate {
     rcvr_ty: ty::t,
     rcvr_substs: ty::substs,
+    explicit_self: ast::self_ty_,
 
     // FIXME #3446---these two fields should be easily derived from
     // origin, yet are not
@@ -394,6 +395,7 @@ impl LookupContext {
                 self.inherent_candidates.push(Candidate {
                     rcvr_ty: rcvr_ty,
                     rcvr_substs: rcvr_substs,
+                    explicit_self: method.self_ty,
                     num_method_tps: method.tps.len(),
                     self_mode: get_mode_from_self_type(method.self_ty),
                     origin: method_param({trait_id:trait_id,
@@ -450,6 +452,7 @@ impl LookupContext {
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
             rcvr_substs: move rcvr_substs,
+            explicit_self: method.self_ty,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
             origin: method_trait(did, index, vstore)
@@ -477,6 +480,7 @@ impl LookupContext {
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
             rcvr_substs: move rcvr_substs,
+            explicit_self: method.self_ty,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
             origin: method_self(did, index)
@@ -528,6 +532,7 @@ impl LookupContext {
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
             rcvr_substs: move impl_substs,
+            explicit_self: method.self_type,
             num_method_tps: method.n_tps,
             self_mode: get_mode_from_self_type(method.self_type),
             origin: method_static(method.did)
@@ -562,6 +567,7 @@ impl LookupContext {
             candidates.push(Candidate {
                 rcvr_ty: impl_ty,
                 rcvr_substs: move impl_substs,
+                explicit_self: provided_method_info.method_info.self_type,
                 num_method_tps: provided_method_info.method_info.n_tps,
                 self_mode: get_mode_from_self_type(
                     provided_method_info.method_info.self_type),
@@ -724,12 +730,22 @@ impl LookupContext {
             match self.search_for_method(autoref_ty) {
                 None => {}
                 Some(move mme) => {
-                    self.fcx.write_adjustment(
-                        self.self_expr.id,
-                        @{autoderefs: autoderefs,
-                          autoref: Some({kind: kind,
-                                         region: region,
-                                         mutbl: *mutbl})});
+                    match mme.origin {
+                        method_trait(*) => {
+                            // Do not write adjustments; they make no sense
+                            // here since the adjustments are to be performed
+                            // on the self element of the object pair/triple,
+                            // not the object itself.
+                        }
+                        _ => {
+                            self.fcx.write_adjustment(
+                                self.self_expr.id,
+                                @{autoderefs: autoderefs,
+                                  autoref: Some({kind: kind,
+                                                 region: region,
+                                                 mutbl: *mutbl})});
+                        }
+                    }
                     return Some(mme);
                 }
             }
@@ -848,6 +864,7 @@ impl LookupContext {
         self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
         return {self_arg: {mode: ast::expl(candidate.self_mode),
                            ty: candidate.rcvr_ty},
+                explicit_self: candidate.explicit_self,
                 origin: candidate.origin};
     }
 
