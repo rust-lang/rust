@@ -546,40 +546,85 @@ fn trans_trait_callee_from_llval(bcx: block,
     let mut llself;
     debug!("(translating trait callee) loading second index from pair");
     let llbox = Load(bcx, GEPi(bcx, llpair, [0u, 1u]));
-    match vstore {
-        ty::vstore_box | ty::vstore_uniq => {
-            llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
-        }
-        ty::vstore_slice(_) => {
-            llself = llbox;
-        }
-        ty::vstore_fixed(*) => {
-            bcx.tcx().sess.bug(~"vstore_fixed trait");
-        }
-    }
 
     // Munge `llself` appropriately for the type of `self` in the method.
+    let self_mode;
     match explicit_self {
         ast::sty_static => {
             bcx.tcx().sess.bug(~"shouldn't see static method here");
         }
-        ast::sty_by_ref => {}   // Nothing to do.
+        ast::sty_by_ref => {
+            // We need to pass a pointer to a pointer to the payload.
+            match vstore {
+                ty::vstore_box | ty::vstore_uniq => {
+                    llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+                }
+                ty::vstore_slice(_) => {
+                    llself = llbox;
+                }
+                ty::vstore_fixed(*) => {
+                    bcx.tcx().sess.bug(~"vstore_fixed trait");
+                }
+            }
+
+            self_mode = ast::by_ref;
+        }
         ast::sty_value => {
             bcx.tcx().sess.bug(~"methods with by-value self should not be \
                                called on objects");
         }
         ast::sty_region(_) => {
+            // As before, we need to pass a pointer to a pointer to the
+            // payload.
+            match vstore {
+                ty::vstore_box | ty::vstore_uniq => {
+                    llself = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+                }
+                ty::vstore_slice(_) => {
+                    llself = llbox;
+                }
+                ty::vstore_fixed(*) => {
+                    bcx.tcx().sess.bug(~"vstore_fixed trait");
+                }
+            }
+
             let llscratch = alloca(bcx, val_ty(llself));
             Store(bcx, llself, llscratch);
             llself = llscratch;
+
+            self_mode = ast::by_ref;
         }
         ast::sty_box(_) => {
             // Bump the reference count on the box.
             debug!("(translating trait callee) callee type is `%s`",
                    bcx.ty_to_str(callee_ty));
-            bcx = glue::take_ty(bcx, llself, callee_ty);
+            bcx = glue::take_ty(bcx, llbox, callee_ty);
+
+            // Pass a pointer to the box.
+            match vstore {
+                ty::vstore_box => llself = llbox,
+                _ => bcx.tcx().sess.bug(~"@self receiver with non-@Trait")
+            }
+
+            let llscratch = alloca(bcx, val_ty(llself));
+            Store(bcx, llself, llscratch);
+            llself = llscratch;
+
+            self_mode = ast::by_ref;
         }
-        ast::sty_uniq(_) => {}  // Nothing to do here.
+        ast::sty_uniq(_) => {
+            // Pass the unique pointer.
+            match vstore {
+                ty::vstore_uniq => llself = llbox,
+                _ => bcx.tcx().sess.bug(~"~self receiver with non-~Trait")
+            }
+
+            let llscratch = alloca(bcx, val_ty(llself));
+            Store(bcx, llself, llscratch);
+            llself = llscratch;
+
+            self_mode = ast::by_ref;
+        }
     }
 
     // Load the function from the vtable and cast it to the expected type.
@@ -594,7 +639,7 @@ fn trans_trait_callee_from_llval(bcx: block,
             llfn: mptr,
             llself: llself,
             self_ty: ty::mk_opaque_box(bcx.tcx()),
-            self_mode: ast::by_ref, // XXX: is this bogosity?
+            self_mode: self_mode,
             /* XXX: Some(llbox) */
         })
     };

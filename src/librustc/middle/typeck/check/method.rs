@@ -140,6 +140,15 @@ struct Candidate {
     origin: method_origin,
 }
 
+/**
+ * Whether the self type should be transformed according to the form of
+ * explicit self provided by the method.
+ */
+enum TransformTypeFlag {
+    DontTransformType,
+    TransformType
+}
+
 impl LookupContext {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
@@ -402,7 +411,10 @@ impl LookupContext {
 
                 let (rcvr_ty, rcvr_substs) =
                     self.create_rcvr_ty_and_substs_for_method(
-                        method.self_ty, rcvr_ty, move init_substs);
+                        method.self_ty,
+                        rcvr_ty,
+                        move init_substs,
+                        TransformType);
 
                 let cand = Candidate {
                     rcvr_ty: rcvr_ty,
@@ -461,8 +473,10 @@ impl LookupContext {
         let rcvr_substs = {self_ty: Some(self_ty), ..*substs};
 
         let (rcvr_ty, rcvr_substs) =
-            self.create_rcvr_ty_and_substs_for_method(
-                method.self_ty, self_ty, move rcvr_substs);
+            self.create_rcvr_ty_and_substs_for_method(method.self_ty,
+                                                      self_ty,
+                                                      move rcvr_substs,
+                                                      DontTransformType);
 
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
@@ -490,7 +504,10 @@ impl LookupContext {
         let rcvr_substs = { self_ty: Some(self_ty), ..*substs };
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(
-                method.self_ty, self_ty, move rcvr_substs);
+                method.self_ty,
+                self_ty,
+                move rcvr_substs,
+                TransformType);
 
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
@@ -542,7 +559,10 @@ impl LookupContext {
 
         let (impl_ty, impl_substs) =
             self.create_rcvr_ty_and_substs_for_method(
-                method.self_type, impl_ty, move impl_substs);
+                method.self_type,
+                impl_ty,
+                move impl_substs,
+                TransformType);
 
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
@@ -577,7 +597,8 @@ impl LookupContext {
                 self.create_rcvr_ty_and_substs_for_method(
                     provided_method_info.method_info.self_type,
                     self_ty,
-                    dummy_substs);
+                    dummy_substs,
+                    TransformType);
 
             candidates.push(Candidate {
                 rcvr_ty: impl_ty,
@@ -594,8 +615,9 @@ impl LookupContext {
     fn create_rcvr_ty_and_substs_for_method(&self,
                                             self_decl: ast::self_ty_,
                                             self_ty: ty::t,
-                                            +self_substs: ty::substs)
-        -> (ty::t, ty::substs) {
+                                            +self_substs: ty::substs,
+                                            transform_type: TransformTypeFlag)
+                                         -> (ty::t, ty::substs) {
         // If the self type includes a region (like &self), we need to
         // ensure that the receiver substitutions have a self region.
         // If the receiver type does not itself contain borrowed
@@ -624,10 +646,18 @@ impl LookupContext {
             }
         };
 
-        let rcvr_ty =
-            transform_self_type_for_method(
-                self.tcx(), rcvr_substs.self_r,
-                self_ty, self_decl);
+        let rcvr_ty;
+        match transform_type {
+            TransformType => {
+                rcvr_ty = transform_self_type_for_method(self.tcx(),
+                                                         rcvr_substs.self_r,
+                                                         self_ty,
+                                                         self_decl);
+            }
+            DontTransformType => {
+                rcvr_ty = self_ty;
+            }
+        }
 
         (rcvr_ty, rcvr_substs)
     }
