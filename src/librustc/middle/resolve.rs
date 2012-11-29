@@ -54,7 +54,7 @@ use syntax::visit::{visit_mod, visit_ty, vt};
 
 use box::ptr_eq;
 use dvec::DVec;
-use option::{get, is_some};
+use option::{Some, get, is_some, is_none};
 use str::{connect, split_str};
 use vec::pop;
 use syntax::parse::token::ident_interner;
@@ -141,9 +141,19 @@ enum Namespace {
     ValueNS
 }
 
+/// A NamespaceResult represents the result of resolving an import in a
+/// particular namespace. The result is either definitely-resolved, definitely-
+/// unresolved, or unknown.
 enum NamespaceResult {
+    /// Means that resolve hasn't gathered enough information yet to determine
+    /// whether the name is bound in this namespace. (That is, it hasn't
+    /// resolved all `use` directives yet.)
     UnknownResult,
+    /// Means that resolve has determined that the name is definitely not bound in
+    /// the namespace.
     UnboundResult,
+    /// Means that resolve has determined that the name is bound in the Module
+    /// argument, and specified by the NameBindings argument.
     BoundResult(@Module, @NameBindings)
 }
 
@@ -398,7 +408,10 @@ fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
     }
 }
 
+/// An ImportResolution represents a particular `use` directive.
 struct ImportResolution {
+    /// The privacy of this `use` directive (whether it's `use` or
+    /// `pub use`.
     privacy: Privacy,
     span: span,
 
@@ -408,7 +421,9 @@ struct ImportResolution {
 
     mut outstanding_references: uint,
 
+    /// The value that this `use` directive names, if there is one.
     mut value_target: Option<Target>,
+    /// The type that this `use` directive names, if there is one.
     mut type_target: Option<Target>,
 
     mut used: bool,
@@ -418,7 +433,7 @@ fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
         span: span,
-        outstanding_references: 0u,
+        outstanding_references: 0,
         value_target: None,
         type_target: None,
         used: false
@@ -503,24 +518,14 @@ fn Module(parent_link: ParentLink,
         exported_names: HashMap(),
         legacy_exports: legacy_exports,
         import_resolutions: HashMap(),
-        glob_count: 0u,
-        resolved_import_count: 0u
+        glob_count: 0,
+        resolved_import_count: 0
     }
 }
 
 impl Module {
     fn all_imports_resolved() -> bool {
         return self.imports.len() == self.resolved_import_count;
-    }
-}
-
-// XXX: This is a workaround due to is_none in the standard library mistakenly
-// requiring a T:copy.
-
-pure fn is_none<T>(x: Option<T>) -> bool {
-    match x {
-        None => return true,
-        Some(_) => return false
     }
 }
 
@@ -814,7 +819,7 @@ fn Resolver(session: Session, lang_items: LanguageItems,
         trait_info: HashMap(),
         structs: HashMap(),
 
-        unresolved_imports: 0u,
+        unresolved_imports: 0,
 
         current_module: current_module,
         value_ribs: @DVec(),
@@ -1069,7 +1074,7 @@ impl Resolver {
 
     fn block_needs_anonymous_module(block: blk) -> bool {
         // If the block has view items, we need an anonymous module.
-        if block.node.view_items.len() > 0u {
+        if block.node.view_items.len() > 0 {
             return true;
         }
 
@@ -1198,10 +1203,10 @@ impl Resolver {
 
                 for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant,
-                                                         local_def(item.id),
-                                                         privacy,
-                                                         new_parent,
-                                                         visitor);
+                        local_def(item.id),
+                        // inherited => privacy of the enum item
+                        self.visibility_to_privacy(variant.node.vis, privacy == Public),
+                        new_parent, visitor);
                 }
             }
 
@@ -1461,10 +1466,10 @@ impl Resolver {
                     match view_path.node {
                         view_path_simple(_, full_path, _, _) => {
                             let path_len = full_path.idents.len();
-                            assert path_len != 0u;
+                            assert path_len != 0;
 
                             for full_path.idents.eachi |i, ident| {
-                                if i != path_len - 1u {
+                                if i != path_len - 1 {
                                     (*module_path).push(*ident);
                                 }
                             }
@@ -1551,7 +1556,7 @@ impl Resolver {
 
                         view_path_list(path, path_list_idents, _) => {
                             if path.idents.len() == 1u &&
-                                    path_list_idents.len() == 0u {
+                                    path_list_idents.len() == 0 {
 
                                 self.session.span_warn(view_item.span,
                                                        ~"this syntax for \
@@ -1561,7 +1566,7 @@ impl Resolver {
                                                         variants \
                                                         individually");
                             } else {
-                                if path.idents.len() != 0u {
+                                if path.idents.len() != 0 {
                                     self.session.span_err(view_item.span,
                                                           ~"cannot export an \
                                                            item that is not \
@@ -1624,7 +1629,7 @@ impl Resolver {
 
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, foreign_item.id,
-                                           0u, NormalRibKind)) {
+                                           0, NormalRibKind)) {
                     visit_foreign_item(foreign_item, new_parent, visitor);
                 }
             }
@@ -1971,12 +1976,12 @@ impl Resolver {
                     Some(resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
-                        resolution.outstanding_references += 1u;
+                        resolution.outstanding_references += 1;
                     }
                     None => {
                         debug!("(building import directive) creating new");
                         let resolution = @ImportResolution(privacy, span);
-                        resolution.outstanding_references = 1u;
+                        resolution.outstanding_references = 1;
                         module_.import_resolutions.insert(target, resolution);
                     }
                 }
@@ -1985,11 +1990,11 @@ impl Resolver {
                 // Set the glob flag. This tells us that we don't know the
                 // module's exports ahead of time.
 
-                module_.glob_count += 1u;
+                module_.glob_count += 1;
             }
         }
 
-        self.unresolved_imports += 1u;
+        self.unresolved_imports += 1;
     }
 
     // Import resolution
@@ -2005,8 +2010,8 @@ impl Resolver {
      * point iteration.
      */
     fn resolve_imports() {
-        let mut i = 0u;
-        let mut prev_unresolved_imports = 0u;
+        let mut i = 0;
+        let mut prev_unresolved_imports = 0;
         loop {
             debug!("(resolving imports) iteration %u, %u imports left",
                    i, self.unresolved_imports);
@@ -2014,7 +2019,7 @@ impl Resolver {
             let module_root = (*self.graph_root).get_module();
             self.resolve_imports_for_module_subtree(module_root);
 
-            if self.unresolved_imports == 0u {
+            if self.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
                 break;
             }
@@ -2025,7 +2030,7 @@ impl Resolver {
                 break;
             }
 
-            i += 1u;
+            i += 1;
             prev_unresolved_imports = self.unresolved_imports;
         }
     }
@@ -2083,7 +2088,7 @@ impl Resolver {
                 }
             }
 
-            module_.resolved_import_count += 1u;
+            module_.resolved_import_count += 1;
         }
     }
 
@@ -2124,7 +2129,7 @@ impl Resolver {
         // One-level renaming imports of the form `import foo = bar;` are
         // handled specially.
 
-        if (*module_path).len() == 0u {
+        if (*module_path).len() == 0 {
             resolution_result =
                 self.resolve_one_level_renaming_import(module_,
                                                        import_directive);
@@ -2176,8 +2181,8 @@ impl Resolver {
         // Decrement the count of unresolved imports.
         match resolution_result {
             Success(()) => {
-                assert self.unresolved_imports >= 1u;
-                self.unresolved_imports -= 1u;
+                assert self.unresolved_imports >= 1;
+                self.unresolved_imports -= 1;
             }
             _ => {
                 // Nothing to do here; just return the error.
@@ -2192,8 +2197,8 @@ impl Resolver {
         if !resolution_result.indeterminate() {
             match *import_directive.subclass {
                 GlobImport => {
-                    assert module_.glob_count >= 1u;
-                    module_.glob_count -= 1u;
+                    assert module_.glob_count >= 1;
+                    module_.glob_count -= 1;
                 }
                 SingleImport(*) => {
                     // Ignore.
@@ -2259,7 +2264,7 @@ impl Resolver {
                 // containing module, bail out. We don't know enough to be
                 // able to resolve this import.
 
-                if containing_module.glob_count > 0u {
+                if containing_module.glob_count > 0 {
                     debug!("(resolving single import) unresolved glob; \
                             bailing out");
                     return Indeterminate;
@@ -2284,11 +2289,12 @@ impl Resolver {
                     }
                     Some(import_resolution)
                             if import_resolution.outstanding_references
-                                == 0u => {
+                                == 0 => {
 
                         fn get_binding(import_resolution: @ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
+
                             // Import resolutions must be declared with "pub"
                             // in order to be exported.
                             if import_resolution.privacy == Private {
@@ -2356,14 +2362,44 @@ impl Resolver {
 
         let i = import_resolution;
         match (i.value_target, i.type_target) {
-          // If this name wasn't found in either namespace, it's definitely
-          // unresolved.
-          (None, None) => { return Failed; }
-          _ => {}
+            // If this name wasn't found in either namespace, it's definitely
+            // unresolved.
+            (None, None) => { return Failed; }
+            // If it's private, it's also unresolved.
+            (Some(t), None) | (None, Some(t)) => {
+                match t.bindings.type_def {
+                    Some(ref type_def) => {
+                        if type_def.privacy == Private {
+                            return Failed;
+                        }
+                    }
+                    _ => ()
+                }
+                match t.bindings.value_def {
+                    Some(ref value_def) => {
+                        if value_def.privacy == Private {
+                            return Failed;
+                        }
+                    }
+                    _ => ()
+                }
+            }
+            // It's also an error if there's both a type and a value with this
+            // name, but both are private
+            (Some(val), Some(ty)) => {
+                match (val.bindings.value_def, ty.bindings.value_def) {
+                    (Some(ref value_def), Some(ref type_def)) =>
+                        if value_def.privacy == Private
+                            && type_def.privacy == Private {
+                            return Failed;
+                        },
+                    _ => ()
+                }
+            }
         }
 
-        assert import_resolution.outstanding_references >= 1u;
-        import_resolution.outstanding_references -= 1u;
+        assert import_resolution.outstanding_references >= 1;
+        import_resolution.outstanding_references -= 1;
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -2414,7 +2450,7 @@ impl Resolver {
                 // containing module, bail out. We don't know enough to be
                 // able to resolve this import.
 
-                if containing_module.glob_count > 0u {
+                if containing_module.glob_count > 0 {
                     debug!("(resolving single module import) unresolved \
                             glob; bailing out");
                     return Indeterminate;
@@ -2422,7 +2458,6 @@ impl Resolver {
 
                 // Now search the exported imports within the containing
                 // module.
-
                 match containing_module.import_resolutions.find(source) {
                     None => {
                         // The containing module definitely doesn't have an
@@ -2436,7 +2471,7 @@ impl Resolver {
                     }
                     Some(import_resolution)
                             if import_resolution.outstanding_references
-                                == 0u => {
+                                == 0 => {
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
 
@@ -2491,8 +2526,8 @@ impl Resolver {
           return Failed;
         }
 
-        assert import_resolution.outstanding_references >= 1u;
-        import_resolution.outstanding_references -= 1u;
+        assert import_resolution.outstanding_references >= 1;
+        import_resolution.outstanding_references -= 1;
 
         debug!("(resolving single module import) successfully resolved \
                import");
@@ -2523,7 +2558,7 @@ impl Resolver {
             return Indeterminate;
         }
 
-        assert containing_module.glob_count == 0u;
+        assert containing_module.glob_count == 0;
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
@@ -2537,7 +2572,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
-                   is_none(target_import_resolution.type_target),
+                   is_none(&target_import_resolution.type_target),
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
@@ -2688,7 +2723,7 @@ impl Resolver {
                 }
             }
 
-            index += 1u;
+            index += 1;
         }
 
         return Success(search_module);
@@ -2705,7 +2740,7 @@ impl Resolver {
                                    -> ResolveResult<@Module> {
 
         let module_path_len = (*module_path).len();
-        assert module_path_len > 0u;
+        assert module_path_len > 0;
 
         debug!("(resolving module path for import) processing `%s` rooted at \
                `%s`",
@@ -2715,7 +2750,7 @@ impl Resolver {
         // The first element of the module path must be in the current scope
         // chain.
 
-        let first_element = (*module_path).get_elt(0u);
+        let first_element = (*module_path).get_elt(0);
         let mut search_module;
         match self.resolve_module_in_lexical_scope(module_, first_element) {
             Failed => {
@@ -2734,7 +2769,7 @@ impl Resolver {
 
         return self.resolve_module_path_from_root(search_module,
                                                module_path,
-                                               1u,
+                                               1,
                                                xray,
                                                span);
     }
@@ -2865,7 +2900,7 @@ impl Resolver {
 
     fn name_is_exported(module_: @Module, name: ident) -> bool {
         return !module_.legacy_exports ||
-            module_.exported_names.size() == 0u ||
+            module_.exported_names.size() == 0 ||
             module_.exported_names.contains_key(name);
     }
 
@@ -2906,7 +2941,7 @@ impl Resolver {
         // Next, check the module's imports. If the module has a glob, then
         // we bail out; we don't know its imports yet.
 
-        if module_.glob_count > 0u {
+        if module_.glob_count > 0 {
             debug!("(resolving name in module) module has glob; bailing out");
             return Indeterminate;
         }
@@ -2914,7 +2949,7 @@ impl Resolver {
         // Otherwise, we check the list of resolved imports.
         match module_.import_resolutions.find(name) {
             Some(import_resolution) => {
-                if import_resolution.outstanding_references != 0u {
+                if import_resolution.outstanding_references != 0 {
                     debug!("(resolving name in module) import unresolved; \
                             bailing out");
                     return Indeterminate;
@@ -3069,9 +3104,9 @@ impl Resolver {
         //
 
         // If nothing at all was found, that's an error.
-        if is_none(module_result) &&
-                is_none(value_result) &&
-                is_none(type_result) {
+        if is_none(&module_result) &&
+                is_none(&value_result) &&
+                is_none(&type_result) {
 
             self.session.span_err(import_directive.span,
                                   ~"unresolved import");
@@ -3088,15 +3123,15 @@ impl Resolver {
             Some(import_resolution) => {
                 debug!("(resolving one-level renaming import) writing module \
                         result %? for `%s` into `%s`",
-                       is_none(module_result),
+                       is_none(&module_result),
                        self.session.str_of(target_name),
                        self.module_to_str(module_));
 
                 import_resolution.value_target = value_result;
                 import_resolution.type_target = type_result;
 
-                assert import_resolution.outstanding_references >= 1u;
-                import_resolution.outstanding_references -= 1u;
+                assert import_resolution.outstanding_references >= 1;
+                import_resolution.outstanding_references -= 1;
             }
         }
 
@@ -3393,7 +3428,7 @@ impl Resolver {
             }
         }
 
-        let mut rib_index = rib_index + 1u;
+        let mut rib_index = rib_index + 1;
         while rib_index < (*ribs).len() {
             let rib = (*ribs).get_elt(rib_index);
             match rib.kind {
@@ -3559,7 +3594,7 @@ impl Resolver {
 
             item_ty(_, type_parameters) => {
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, item.id, 0u,
+                        (HasTypeParameters(&type_parameters, item.id, 0,
                                            NormalRibKind))
                         || {
 
@@ -3589,7 +3624,7 @@ impl Resolver {
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, item.id, 0u,
+                        (HasTypeParameters(&type_parameters, item.id, 0,
                                            NormalRibKind)) {
 
                     self.resolve_type_parameters(type_parameters, visitor);
@@ -3680,7 +3715,7 @@ impl Resolver {
                                 do self.with_type_parameter_rib
                                     (HasTypeParameters(&type_parameters,
                                                        foreign_item.id,
-                                                       0u,
+                                                       0,
                                                        OpaqueFunctionRibKind))
                                         || {
 
@@ -3705,7 +3740,7 @@ impl Resolver {
                 // of conditionals.
 
                 if !self.session.building_library &&
-                    is_none(self.session.main_fn) &&
+                    is_none(&self.session.main_fn) &&
                     item.ident == syntax::parse::token::special_idents::main {
 
                     self.session.main_fn = Some((item.id, item.span));
@@ -3716,7 +3751,7 @@ impl Resolver {
                                       HasTypeParameters
                                         (&ty_params,
                                          item.id,
-                                         0u,
+                                         0,
                                          OpaqueFunctionRibKind),
                                       block,
                                       NoSelfBinding,
@@ -4010,7 +4045,7 @@ impl Resolver {
         let outer_type_parameter_count = type_parameters.len();
         let borrowed_type_parameters: &~[ty_param] = &type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
-                                        (borrowed_type_parameters, id, 0u,
+                                        (borrowed_type_parameters, id, 0,
                                          NormalRibKind)) {
             // Resolve the type parameters.
             self.resolve_type_parameters(type_parameters, visitor);
@@ -4291,7 +4326,7 @@ impl Resolver {
         do walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, path, _)
-                        if !path.global && path.idents.len() == 1u => {
+                        if !path.global && path.idents.len() == 1 => {
 
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant or unit-like struct
@@ -4633,7 +4668,7 @@ impl Resolver {
     fn intern_module_part_of_path(path: @path) -> @DVec<ident> {
         let module_path_idents = @DVec();
         for path.idents.eachi |index, ident| {
-            if index == path.idents.len() - 1u {
+            if index == path.idents.len() - 1 {
                 break;
             }
 
@@ -4700,7 +4735,7 @@ impl Resolver {
         let mut containing_module;
         match self.resolve_module_path_from_root(root_module,
                                                module_path_idents,
-                                               0u,
+                                               0,
                                                xray,
                                                path.span) {
 
@@ -5262,22 +5297,22 @@ impl Resolver {
             }
         }
 
-        if idents.len() == 0u {
+        if idents.len() == 0 {
             return ~"???";
         }
 
         let mut string = ~"";
-        let mut i = idents.len() - 1u;
+        let mut i = idents.len() - 1;
         loop {
-            if i < idents.len() - 1u {
+            if i < idents.len() - 1 {
                 string += ~"::";
             }
             string += self.session.str_of(idents.get_elt(i));
 
-            if i == 0u {
+            if i == 0 {
                 break;
             }
-            i -= 1u;
+            i -= 1;
         }
 
         return string;
