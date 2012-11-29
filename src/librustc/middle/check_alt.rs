@@ -250,6 +250,7 @@ fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> Option<ctor> {
       pat_region(*) => {
         Some(single)
       }
+      pat_vec(*) => None
     }
 }
 
@@ -469,6 +470,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
                     compare_const_vals(c_hi, v_hi) <= 0;
         if match_ { Some(vec::tail(r)) } else { None }
       }
+      pat_vec(*) => None
     }
 }
 
@@ -534,6 +536,7 @@ fn is_refutable(tcx: ty::ctxt, pat: &pat) -> bool {
         args.any(|a| is_refutable(tcx, *a))
       }
       pat_enum(_,_) => { false }
+      pat_vec(*) => { true }
     }
 }
 
