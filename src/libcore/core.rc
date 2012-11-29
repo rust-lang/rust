@@ -144,7 +144,7 @@ pub mod send_map;
 
 // Concurrency
 pub mod comm;
-#[merge = "task/mod.rs"]
+#[path = "task/mod.rs"]
 pub mod task;
 pub mod pipes;
 

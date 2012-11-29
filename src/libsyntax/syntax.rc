@@ -44,7 +44,7 @@ mod util {
     mod interner;
 }
 
-#[merge = "parse/mod.rs"]
+#[path = "parse/mod.rs"]
 mod parse;
 
 mod print {
@@ -118,8 +118,7 @@ mod ext {
     mod source_util;
 
     #[legacy_exports]
-    #[path = "ext/pipes.rs"]
-    #[merge = "ext/pipes/mod.rs"]
+    #[path = "ext/pipes/mod.rs"]
     mod pipes;
 
     #[legacy_exports]
