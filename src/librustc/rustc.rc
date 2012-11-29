@@ -122,8 +122,7 @@ mod middle {
     #[legacy_exports]
     #[path = "middle/resolve.rs"]
     mod resolve;
-    #[path = "middle/typeck.rs"]
-    #[merge = "middle/typeck/mod.rs"]
+    #[path = "middle/typeck/mod.rs"]
     pub mod typeck;
     #[legacy_exports]
     #[path = "middle/check_loop.rs"]
@@ -137,8 +136,7 @@ mod middle {
     #[legacy_exports]
     #[path = "middle/lint.rs"]
     mod lint;
-    #[path = "middle/borrowck.rs"]
-    #[merge = "middle/borrowck/mod.rs"]
+    #[path = "middle/borrowck/mod.rs"]
     mod borrowck;
     #[legacy_exports]
     #[path = "middle/mem_categorization.rs"]
@@ -216,10 +214,10 @@ mod back {
     mod target_strs;
 }
 
-#[merge = "metadata/mod.rs"]
+#[path = "metadata/mod.rs"]
 mod metadata;
 
-#[merge = "driver/mod.rs"]
+#[path = "driver/mod.rs"]
 mod driver;
 
 mod util {
