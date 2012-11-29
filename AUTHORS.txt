@@ -4,6 +4,7 @@ Graydon Hoare <graydon@mozilla.com>
 
 Other authors:
 
+
 Adam Bozanich <adam.boz@gmail.com>
 Aleksander Balicki <balicki.aleksander@gmail.com>
 Alex Rønne Petersen <alex@lycus.org>
@@ -29,6 +30,7 @@ Chris Peterson <cpeterson@mozilla.com>
 Chris Pressey <cpressey@gmail.com>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
+Damien Schoof <damien.schoof@gmail.com>
 Daniel Brooks <db48x@db48x.net>
 Daniel Luz <dev@mernen.com>
 Daniel Patterson <dbp@riseup.net>
@@ -72,7 +74,7 @@ Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
-Lennart Kudling
+Lennart Kudling <github@kudling.de>
 Lindsey Kuper <lindsey@rockstargirl.org>
 Luca Bruno <lucab@debian.org>
 Luqman Aden <laden@csclub.uwaterloo.ca>
@@ -91,6 +93,7 @@ Orphée Lafond-Lummis <o@orftz.com>
 Patrick Walton <pwalton@mozilla.com>
 Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Stansifer <paul.stansifer@gmail.com>
+Paul Woolcock <pwoolcoc+github@gmail.com>
 Peter Hull <peterhull90@gmail.com>
 Philipp Brüschweiler <blei42@gmail.com>
 Rafael Ávila de Espíndola <respindola@mozilla.com>
@@ -102,7 +105,7 @@ Roland Tanglao <roland@rolandtanglao.com>
 Roy Frostig <rfrostig@mozilla.com>
 Ryan Scheel <ryan.havvy@gmail.com>
 Sean Stangl <sstangl@mozilla.com>
-Simon BD
+Simon Barber-Dueck <sbarberdueck@gmail.com>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
 Taras Shpot <mrshpot@gmail.com>
@@ -110,6 +113,7 @@ Ted Horst <ted.horst@earthlink.net>
 Tim Chevalier <chevalier@alum.wellesley.edu>
 Tom Lee <github@tomlee.co>
 Tomoki Aonuma <uasi@99cm.org>
+Tony Young <tony@rfw.name>
 Tycho Sci <tychosci@gmail.com>
 Viktor Dahl <pazaconyoman@gmail.com>
 Vincent Belliard <vincent@famillebelliard.fr>
