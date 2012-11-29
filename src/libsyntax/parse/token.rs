@@ -150,14 +150,12 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
         ~"'" + char::escape_default(c as char) + ~"'"
       }
       LIT_INT(i, t) => {
-        int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t)
+          i.to_str() + ast_util::int_ty_to_str(t)
       }
       LIT_UINT(u, t) => {
-        uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t)
+          u.to_str() + ast_util::uint_ty_to_str(t)
       }
-      LIT_INT_UNSUFFIXED(i) => {
-        int::to_str(i as int, 10u)
-      }
+      LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(s, t) => {
         let mut body = *in.get(s);
         if body.ends_with(~".") {
