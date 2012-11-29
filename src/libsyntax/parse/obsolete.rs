@@ -23,7 +23,6 @@ pub enum ObsoleteSyntax {
     ObsoleteClassTraits,
     ObsoletePrivSection,
     ObsoleteModeInFnType,
-    ObsoleteByMutRefMode,
     ObsoleteMoveInit,
     ObsoleteBinaryMove
 }
@@ -105,10 +104,6 @@ impl Parser : ObsoleteReporter {
                 "mode without identifier in fn type",
                 "to use a (deprecated) mode in a fn type, you should \
                  give the argument an explicit name (like `&&v: int`)"
-            ),
-            ObsoleteByMutRefMode => (
-                "by-mutable-reference mode",
-                "Declare an argument of type &mut T instead"
             ),
             ObsoleteMoveInit => (
                 "initializer-by-move",

@@ -20,8 +20,7 @@ use obsolete::{
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
     ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
-    ObsoleteModeInFnType, ObsoleteByMutRefMode,
-    ObsoleteMoveInit, ObsoleteBinaryMove,
+    ObsoleteModeInFnType, ObsoleteMoveInit, ObsoleteBinaryMove,
 };
 use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
@@ -627,12 +626,7 @@ impl Parser {
     }
 
     fn parse_arg_mode() -> mode {
-        if self.eat(token::BINOP(token::AND)) {
-            self.obsolete(copy self.span,
-                          ObsoleteByMutRefMode);
-            // Bogus mode, but doesn't matter since it's an error
-            expl(by_ref)
-        } else if self.eat(token::BINOP(token::MINUS)) {
+        if self.eat(token::BINOP(token::MINUS)) {
             expl(by_move)
         } else if self.eat(token::ANDAND) {
             expl(by_ref)
@@ -642,7 +636,9 @@ impl Parser {
             } else {
                 expl(by_copy)
             }
-        } else { infer(self.get_id()) }
+        } else {
+            infer(self.get_id())
+        }
     }
 
     fn is_named_argument() -> bool {
