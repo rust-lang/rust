@@ -202,7 +202,12 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
             }
         }
         typeck::method_trait(_, off, vstore) => {
-            trans_trait_callee(bcx, callee_id, off, self, vstore)
+            trans_trait_callee(bcx,
+                               callee_id,
+                               off,
+                               self,
+                               vstore,
+                               mentry.explicit_self)
         }
         typeck::method_self(*) => {
             fail ~"method_self should have been handled above"
@@ -378,7 +383,12 @@ fn trans_monomorphized_callee(bcx: block,
           }
       }
       typeck::vtable_trait(_, _) => {
-          trans_trait_callee(bcx, callee_id, n_method, base, ty::vstore_box)
+          trans_trait_callee(bcx,
+                             callee_id,
+                             n_method,
+                             base,
+                             ty::vstore_box,
+                             mentry.explicit_self)
       }
       typeck::vtable_param(*) => {
           fail ~"vtable_param left in monomorphized function's vtable substs";
@@ -480,8 +490,9 @@ fn trans_trait_callee(bcx: block,
                       callee_id: ast::node_id,
                       n_method: uint,
                       self_expr: @ast::expr,
-                      vstore: ty::vstore)
-    -> Callee
+                      vstore: ty::vstore,
+                      explicit_self: ast::self_ty_)
+                   -> Callee
 {
     //!
     //
@@ -497,15 +508,21 @@ fn trans_trait_callee(bcx: block,
     let self_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr));
     let llpair = self_datum.to_ref_llval(bcx);
     let callee_ty = node_id_type(bcx, callee_id);
-    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llpair, vstore)
+    trans_trait_callee_from_llval(bcx,
+                                  callee_ty,
+                                  n_method,
+                                  llpair,
+                                  vstore,
+                                  explicit_self)
 }
 
 fn trans_trait_callee_from_llval(bcx: block,
                                  callee_ty: ty::t,
                                  n_method: uint,
                                  llpair: ValueRef,
-                                 vstore: ty::vstore)
-    -> Callee
+                                 vstore: ty::vstore,
+                                 explicit_self: ast::self_ty_)
+                              -> Callee
 {
     //!
     //
@@ -517,6 +534,8 @@ fn trans_trait_callee_from_llval(bcx: block,
     let mut bcx = bcx;
 
     // Load the vtable from the @Trait pair
+    debug!("(translating trait callee) loading vtable from pair %s",
+           val_str(bcx.ccx().tn, llpair));
     let llvtable = Load(bcx,
                       PointerCast(bcx,
                                   GEPi(bcx, llpair, [0u, 0u]),
@@ -524,7 +543,8 @@ fn trans_trait_callee_from_llval(bcx: block,
 
     // Load the box from the @Trait pair and GEP over the box header if
     // necessary:
-    let llself;
+    let mut llself;
+    debug!("(translating trait callee) loading second index from pair");
     let llbox = Load(bcx, GEPi(bcx, llpair, [0u, 1u]));
     match vstore {
         ty::vstore_box | ty::vstore_uniq => {
@@ -538,7 +558,32 @@ fn trans_trait_callee_from_llval(bcx: block,
         }
     }
 
+    // Munge `llself` appropriately for the type of `self` in the method.
+    match explicit_self {
+        ast::sty_static => {
+            bcx.tcx().sess.bug(~"shouldn't see static method here");
+        }
+        ast::sty_by_ref => {}   // Nothing to do.
+        ast::sty_value => {
+            bcx.tcx().sess.bug(~"methods with by-value self should not be \
+                               called on objects");
+        }
+        ast::sty_region(_) => {
+            let llscratch = alloca(bcx, val_ty(llself));
+            Store(bcx, llself, llscratch);
+            llself = llscratch;
+        }
+        ast::sty_box(_) => {
+            // Bump the reference count on the box.
+            debug!("(translating trait callee) callee type is `%s`",
+                   bcx.ty_to_str(callee_ty));
+            bcx = glue::take_ty(bcx, llself, callee_ty);
+        }
+        ast::sty_uniq(_) => {}  // Nothing to do here.
+    }
+
     // Load the function from the vtable and cast it to the expected type.
+    debug!("(translating trait callee) loading method");
     let llcallee_ty = type_of::type_of_fn_from_ty(ccx, callee_ty);
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method]));
     let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
@@ -622,8 +667,12 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
     make_vtable(ccx, vec::map(*ty::trait_methods(tcx, trt_id), |im| {
         let fty = ty::subst_tps(tcx, substs, None, ty::mk_fn(tcx, im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
+            debug!("(making impl vtable) method has self or type params: %s",
+                   tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))
         } else {
+            debug!("(making impl vtable) adding method to vtable: %s",
+                   tcx.sess.str_of(im.ident));
             let mut m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
                 // If the method is in another crate, need to make an inlined
