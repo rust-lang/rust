@@ -134,6 +134,9 @@ type method_map_entry = {
     // in the fn type (FIXME #3446)
     self_arg: ty::arg,
 
+    // the type of explicit self on the method
+    explicit_self: ast::self_ty_,
+
     // method details being invoked
     origin: method_origin
 };

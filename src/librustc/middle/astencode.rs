@@ -451,6 +451,9 @@ fn serialize_method_map_entry(ecx: @e::encode_ctxt,
         do ebml_w.emit_field(~"self_arg", 0u) {
             ebml_w.emit_arg(ecx, mme.self_arg);
         }
+        do ebml_w.emit_field(~"explicit_self", 2u) {
+            mme.explicit_self.serialize(&ebml_w);
+        }
         do ebml_w.emit_field(~"origin", 1u) {
             mme.origin.serialize(&ebml_w);
         }
@@ -463,6 +466,11 @@ impl Reader::Deserializer: read_method_map_entry_helper {
             {self_arg:
                  self.read_field(~"self_arg", 0u, || {
                      self.read_arg(xcx)
+                 }),
+             explicit_self:
+                 self.read_field(~"explicit_self", 2u, || {
+                    let self_type: ast::self_ty_ = deserialize(&self);
+                    self_type
                  }),
              origin:
                  self.read_field(~"origin", 1u, || {

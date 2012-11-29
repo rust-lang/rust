@@ -72,9 +72,12 @@ impl reflector {
         // XXX: Should not be vstore_box!
         let bcx = callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
-            |bcx| meth::trans_trait_callee_from_llval(bcx, mth_ty,
-                                                      mth_idx, v,
-                                                      ty::vstore_box),
+            |bcx| meth::trans_trait_callee_from_llval(bcx,
+                                                      mth_ty,
+                                                      mth_idx,
+                                                      v,
+                                                      ty::vstore_box,
+                                                      ast::sty_by_ref),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
         let next_bcx = sub_block(bcx, ~"next");
