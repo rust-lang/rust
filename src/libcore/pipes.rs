@@ -416,7 +416,7 @@ pub fn recv<T: Send, Tbuffer: Send>(p: RecvPacketBuffered<T, Tbuffer>) -> T {
 
 /** Attempts to receive a message from a pipe.
 
-Returns `none` if the sender has closed the connection without sending
+Returns `None` if the sender has closed the connection without sending
 a message, or `Some(T)` if a message was received.
 
 */
@@ -1149,7 +1149,7 @@ pub fn SharedChan<T:Send>(c: Chan<T>) -> SharedChan<T> {
 
 /// Receive a message from one of two endpoints.
 pub trait Select2<T: Send, U: Send> {
-    /// Receive a message or return `none` if a connection closes.
+    /// Receive a message or return `None` if a connection closes.
     fn try_select() -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
     fn select() -> Either<T, U>;
