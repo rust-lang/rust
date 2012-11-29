@@ -8,7 +8,7 @@ impl r : Drop {
     fn finalize(&self) {
         unsafe {
             debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
-              cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&self)),
+              cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
               cast::reinterpret_cast::<**int, uint>(&ptr::addr_of(&(self.v))),
               cast::reinterpret_cast::<*int, uint>(&self.v));
             let v2: ~int = cast::reinterpret_cast(&self.v);
