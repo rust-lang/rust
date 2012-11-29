@@ -141,16 +141,16 @@ enum Namespace {
     ValueNS
 }
 
-/// A NamespaceResult represents the result of resolving an import in a
-/// particular namespace. The result is either definitely-resolved, definitely-
-/// unresolved, or unknown.
+/// A NamespaceResult represents the result of resolving an import in
+/// a particular namespace. The result is either definitely-resolved,
+/// definitely- unresolved, or unknown.
 enum NamespaceResult {
     /// Means that resolve hasn't gathered enough information yet to determine
     /// whether the name is bound in this namespace. (That is, it hasn't
     /// resolved all `use` directives yet.)
     UnknownResult,
-    /// Means that resolve has determined that the name is definitely not bound in
-    /// the namespace.
+    /// Means that resolve has determined that the name is definitely
+    /// not bound in the namespace.
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
     /// argument, and specified by the NameBindings argument.
@@ -1205,7 +1205,8 @@ impl Resolver {
                     self.build_reduced_graph_for_variant(*variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
-                        self.visibility_to_privacy(variant.node.vis, privacy == Public),
+                        self.visibility_to_privacy(variant.node.vis,
+                                                   privacy == Public),
                         new_parent, visitor);
                 }
             }
