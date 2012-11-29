@@ -72,7 +72,7 @@ last_os_error() {
         task->fail();
         return NULL;
     }
-#elif defined(_GNU_SOURCE)
+#elif defined(_GNU_SOURCE) && !defined(__ANDROID__)
     char cbuf[BUF_BYTES];
     char *buf = strerror_r(errno, cbuf, sizeof(cbuf));
     if (!buf) {

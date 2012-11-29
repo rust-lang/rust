@@ -9,8 +9,12 @@
 // except according to those terms.
 
 
-#ifndef __WIN32__
+#ifndef __WIN32_
+#ifdef __ANDROID__
+#include "rust_android_dummy.h"
+#else
 #include <execinfo.h>
+#endif
 #endif
 #include <iostream>
 #include <algorithm>

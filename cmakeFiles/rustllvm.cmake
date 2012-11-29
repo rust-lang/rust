@@ -99,21 +99,43 @@ ADD_DEPENDENCIES(
 	rustllvmobj
 	)
 
-# copy to stage 0
+# copy to stage 
+MACRO(doCopyRustllvm triple)
+	SET(out0Dir ${BuildStageDir}/stage0/lib/rustc/${triple}/lib)
+	SET(out1Dir ${BuildStageDir}/stage1/lib/rustc/${triple}/lib)
+	SET(out2Dir ${BuildStageDir}/stage2/lib/rustc/${triple}/lib)
 
-SET(outDir ${BuildStageDir}/stage0/lib/rustc/${HostTriple}/lib)
-SET(rustllvmPath ${rustllvmso})
-GET_FILENAME_COMPONENT(rustllvmName ${rustllvmPath} NAME)
-SET(rustllvmOut ${outDir}/${rustllvmName})
+	SET(rustllvmPath ${rustllvmso})
+	GET_FILENAME_COMPONENT(rustllvmName ${rustllvmPath} NAME)
+	SET(${triple}rustllvmOut0 ${out0Dir}/${rustllvmName})
+	SET(${triple}rustllvmOut1 ${out1Dir}/${rustllvmName})
+	SET(${triple}rustllvmOut2 ${out2Dir}/${rustllvmName})
 
-ADD_CUSTOM_COMMAND(
-	OUTPUT ${rustllvmOut}
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${outDir}
-	COMMAND ${CMAKE_COMMAND} -E copy ${rustllvmPath} ${outDir}
-	DEPENDS rustllvm
-	)
-ADD_CUSTOM_TARGET(
-	rustllvmCopy0
-	DEPENDS ${rustllvmOut}
-	)
+	ADD_CUSTOM_COMMAND(
+		OUTPUT ${${triple}rustllvmOut0}
+			${${triple}rustllvmOut1}
+			${${triple}rustllvmOut2}
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${out0Dir}
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${out1Dir}
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${out2Dir}
+		COMMAND ${CMAKE_COMMAND} -E copy 
+			${rustllvmPath} ${${triple}rustllvmOut0}
+		COMMAND ${CMAKE_COMMAND} -E copy 
+			${rustllvmPath} ${${triple}rustllvmOut1}
+		COMMAND ${CMAKE_COMMAND} -E copy 
+			${rustllvmPath} ${${triple}rustllvmOut2}
+		DEPENDS rustllvm
+		)
+	ADD_CUSTOM_TARGET(
+		${triple}_rustllvmCopy
+		DEPENDS 
+			${${triple}rustllvmOut0}
+			${${triple}rustllvmOut1}
+			${${triple}rustllvmOut2}
+		)
+ENDMACRO(doCopyRustllvm)
 
+doCopyRustllvm(${HostTriple})
+IF(${IsCrossCompile})
+	doCopyRustllvm(${TargetTriple})
+ENDIF()
