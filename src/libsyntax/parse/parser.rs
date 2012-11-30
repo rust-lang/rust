@@ -34,10 +34,10 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_call, expr_cast, expr_copy, expr_do_body, expr_fail,
              expr_field, expr_fn, expr_fn_block, expr_if, expr_index,
              expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac,
-             expr_paren, expr_path, expr_rec, expr_repeat, expr_ret,
-             expr_swap, expr_struct, expr_tup, expr_unary, expr_unary_move,
-             expr_vec, expr_vstore, expr_vstore_mut_box, expr_while,
-             extern_fn, field, fn_decl,
+             expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat,
+             expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
+             expr_unary_move, expr_vec, expr_vstore, expr_vstore_mut_box,
+             expr_while, extern_fn, field, fn_decl,
              foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
              ident, impure_fn, infer, inherited,
              item, item_, item_class, item_const, item_enum, item_fn,
@@ -1212,8 +1212,26 @@ impl Parser {
                         self.expect(token::LT);
                         self.parse_seq_to_gt(Some(token::COMMA),
                                              |p| p.parse_ty(false))
-                    } else { ~[] };
-                    e = self.mk_expr(lo, hi, expr_field(e, i, tys));
+                    } else {
+                        ~[]
+                    };
+
+                    // expr.f() method call
+                    match copy self.token {
+                        token::LPAREN if self.permits_call() => {
+                            let es = self.parse_unspanned_seq(
+                                token::LPAREN, token::RPAREN,
+                                seq_sep_trailing_disallowed(token::COMMA),
+                                |p| p.parse_expr());
+                            hi = self.span.hi;
+
+                            let nd = expr_method_call(e, i, tys, es, false);
+                            e = self.mk_expr(lo, hi, move nd);
+                        }
+                        _ => {
+                            e = self.mk_expr(lo, hi, expr_field(e, i, tys));
+                        }
+                    }
                   }
                   _ => self.unexpected()
                 }
@@ -1674,7 +1692,23 @@ impl Parser {
             @{node: expr_call(f, args, true),
               .. *e}
           }
-          expr_path(*) | expr_field(*) | expr_call(*) | expr_paren(*) => {
+          expr_method_call(f, i, tps, args, false) => {
+            let block = self.parse_lambda_block_expr();
+            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                    ctor(block));
+            let args = vec::append(args, ~[last_arg]);
+            @{node: expr_method_call(f, i, tps, args, true),
+              .. *e}
+          }
+          expr_field(f, i, tps) => {
+            let block = self.parse_lambda_block_expr();
+            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                    ctor(block));
+            @{node: expr_method_call(f, i, tps, ~[last_arg], true),
+              .. *e}
+          }
+          expr_path(*) | expr_call(*) | expr_method_call(*) |
+          expr_paren(*) => {
             let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));

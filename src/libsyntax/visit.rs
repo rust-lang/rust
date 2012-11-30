@@ -408,6 +408,11 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         visit_exprs(args, e, v);
         (v.visit_expr)(callee, e, v);
       }
+      expr_method_call(callee, _, tys, args, _) => {
+        visit_exprs(args, e, v);
+        for tys.each |tp| { (v.visit_ty)(*tp, e, v); }
+        (v.visit_expr)(callee, e, v);
+      }
       expr_binary(_, a, b) => {
         (v.visit_expr)(a, e, v); (v.visit_expr)(b, e, v);
       }

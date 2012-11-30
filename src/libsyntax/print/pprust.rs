@@ -1041,6 +1041,50 @@ fn print_expr_vstore(s: ps, t: ast::expr_vstore) {
     }
 }
 
+fn print_call_pre(s: ps,
+                  has_block: bool,
+                  base_args: &mut ~[@ast::expr])
+               -> Option<@ast::expr> {
+    if has_block {
+        let blk_arg = base_args.pop();
+        match blk_arg.node {
+          ast::expr_loop_body(_) => { head(s, ~"for"); }
+          ast::expr_do_body(_) => { head(s, ~"do"); }
+          _ => {}
+        }
+        Some(blk_arg)
+    } else {
+        None
+    }
+}
+
+fn print_call_post(s: ps,
+                   has_block: bool,
+                   blk: &Option<@ast::expr>,
+                   base_args: &mut ~[@ast::expr]) {
+    if !has_block || base_args.is_not_empty() {
+        popen(s);
+        commasep_exprs(s, inconsistent, *base_args);
+        pclose(s);
+    }
+    if has_block {
+        nbsp(s);
+        match blk.get().node {
+          // need to handle closures specifically
+          ast::expr_do_body(e) | ast::expr_loop_body(e) => {
+            end(s); // we close our head box; closure
+                    // will create it's own.
+            print_expr(s, e);
+            end(s); // close outer box, as closures don't
+          }
+          _ => {
+            // not sure if this can happen.
+            print_expr(s, blk.get());
+          }
+        }
+    }
+}
+
 fn print_expr(s: ps, &&expr: @ast::expr) {
     fn print_field(s: ps, field: ast::field) {
         ibox(s, indent_unit);
@@ -1135,38 +1179,23 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         pclose(s);
       }
       ast::expr_call(func, args, has_block) => {
-        let mut base_args = args;
-        let blk = if has_block {
-            let blk_arg = base_args.pop();
-            match blk_arg.node {
-              ast::expr_loop_body(_) => { head(s, ~"for"); }
-              ast::expr_do_body(_) => { head(s, ~"do"); }
-              _ => {}
-            }
-            Some(blk_arg)
-        } else { None };
+        let mut base_args = copy args;
+        let blk = print_call_pre(s, has_block, &mut base_args);
         print_expr(s, func);
-        if !has_block || base_args.is_not_empty() {
-            popen(s);
-            commasep_exprs(s, inconsistent, base_args);
-            pclose(s);
+        print_call_post(s, has_block, &blk, &mut base_args);
+      }
+      ast::expr_method_call(func, ident, tys, args, has_block) => {
+        let mut base_args = copy args;
+        let blk = print_call_pre(s, has_block, &mut base_args);
+        print_expr(s, func);
+        word(s.s, ~".");
+        print_ident(s, ident);
+        if vec::len(tys) > 0u {
+            word(s.s, ~"::<");
+            commasep(s, inconsistent, tys, print_type);
+            word(s.s, ~">");
         }
-        if has_block {
-            nbsp(s);
-            match blk.get().node {
-              // need to handle closures specifically
-              ast::expr_do_body(e) | ast::expr_loop_body(e) => {
-                end(s); // we close our head box; closure
-                        // will create it's own.
-                print_expr(s, e);
-                end(s); // close outer box, as closures don't
-              }
-              _ => {
-                // not sure if this can happen.
-                print_expr(s, blk.get());
-              }
-            }
-        }
+        print_call_post(s, has_block, &blk, &mut base_args);
       }
       ast::expr_binary(op, lhs, rhs) => {
         print_expr(s, lhs);

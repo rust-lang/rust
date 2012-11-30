@@ -521,7 +521,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       // Must resolve bounds on methods with bounded params
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
-      ast::expr_index(*) => {
+      ast::expr_index(*) | ast::expr_method_call(*) => {
         match ty::method_call_bounds(cx.tcx, cx.method_map, ex.id) {
           Some(bounds) => {
             if has_trait_bounds(*bounds) {

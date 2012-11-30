@@ -592,6 +592,13 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return callee::trans_call(
                 bcx, expr, f, callee::ArgExprs(args), expr.id, dest);
         }
+        ast::expr_method_call(rcvr, _, _, args, _) => {
+            return callee::trans_method_call(bcx,
+                                             expr,
+                                             rcvr,
+                                             callee::ArgExprs(args),
+                                             dest);
+        }
         ast::expr_binary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
             return trans_overloaded_op(bcx, expr, lhs, ~[rhs], dest,
