@@ -14,69 +14,34 @@ and `Eq` to overload the `==` and `!=` operators.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-pub use nounittest::*;
-pub use unittest::*;
-
-/// Interfaces used for comparison.
-
-// Awful hack to work around duplicate lang items in core test.
-#[cfg(notest)]
-mod nounittest {
-    /**
-     * Trait for values that can be compared for a sort-order.
-     *
-     * Eventually this may be simplified to only require
-     * an `le` method, with the others generated from
-     * default implementations.
-     */
-    #[lang="ord"]
-    pub trait Ord {
-        pure fn lt(&self, other: &self) -> bool;
-        pure fn le(&self, other: &self) -> bool;
-        pure fn ge(&self, other: &self) -> bool;
-        pure fn gt(&self, other: &self) -> bool;
-    }
-
-    #[lang="eq"]
-    /**
-     * Trait for values that can be compared for equality
-     * and inequality.
-     *
-     * Eventually this may be simplified to only require
-     * an `eq` method, with the other generated from
-     * a default implementation.
-     */
-    #[lang="eq"]
-    pub trait Eq {
-        pure fn eq(&self, other: &self) -> bool;
-        pure fn ne(&self, other: &self) -> bool;
-    }
+/**
+* Trait for values that can be compared for equality
+* and inequality.
+*
+* Eventually this may be simplified to only require
+* an `eq` method, with the other generated from
+* a default implementation.
+*/
+#[lang="eq"]
+pub trait Eq {
+    pure fn eq(&self, other: &self) -> bool;
+    pure fn ne(&self, other: &self) -> bool;
 }
 
-#[cfg(test)]
-mod nounittest {
-    #[legacy_exports];}
-
-#[cfg(test)]
-mod unittest {
-    #[legacy_exports];
-
-    pub trait Ord {
-        pure fn lt(&self, other: &self) -> bool;
-        pure fn le(&self, other: &self) -> bool;
-        pure fn ge(&self, other: &self) -> bool;
-        pure fn gt(&self, other: &self) -> bool;
-    }
-
-    pub trait Eq {
-        pure fn eq(&self, other: &self) -> bool;
-        pure fn ne(&self, other: &self) -> bool;
-    }
+/**
+* Trait for values that can be compared for a sort-order.
+*
+* Eventually this may be simplified to only require
+* an `le` method, with the others generated from
+* default implementations.
+*/
+#[lang="ord"]
+pub trait Ord {
+    pure fn lt(&self, other: &self) -> bool;
+    pure fn le(&self, other: &self) -> bool;
+    pure fn ge(&self, other: &self) -> bool;
+    pure fn gt(&self, other: &self) -> bool;
 }
-
-#[cfg(notest)]
-mod unittest {
-    #[legacy_exports];}
 
 pub pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2)

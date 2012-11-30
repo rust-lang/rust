@@ -399,11 +399,13 @@ pub pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
 pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
+#[cfg(notest)]
 impl float : Eq {
     pure fn eq(&self, other: &float) -> bool { (*self) == (*other) }
     pure fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
+#[cfg(notest)]
 impl float : Ord {
     pure fn lt(&self, other: &float) -> bool { (*self) < (*other) }
     pure fn le(&self, other: &float) -> bool { (*self) <= (*other) }

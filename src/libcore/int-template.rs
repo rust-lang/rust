@@ -54,6 +54,7 @@ pub pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
+#[cfg(notest)]
 impl T : Ord {
     pure fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
     pure fn le(&self, other: &T) -> bool { return (*self) <= (*other); }
@@ -61,6 +62,7 @@ impl T : Ord {
     pure fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
 }
 
+#[cfg(notest)]
 impl T : Eq {
     pure fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }

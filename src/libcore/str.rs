@@ -735,6 +735,7 @@ pure fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
+#[cfg(notest)]
 impl &str : Eq {
     #[inline(always)]
     pure fn eq(&self, other: & &self/str) -> bool {
@@ -744,6 +745,7 @@ impl &str : Eq {
     pure fn ne(&self, other: & &self/str) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(notest)]
 impl ~str : Eq {
     #[inline(always)]
     pure fn eq(&self, other: &~str) -> bool {
@@ -753,6 +755,7 @@ impl ~str : Eq {
     pure fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(notest)]
 impl @str : Eq {
     #[inline(always)]
     pure fn eq(&self, other: &@str) -> bool {
@@ -762,6 +765,7 @@ impl @str : Eq {
     pure fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(notest)]
 impl ~str : Ord {
     #[inline(always)]
     pure fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
@@ -773,6 +777,7 @@ impl ~str : Ord {
     pure fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
 }
 
+#[cfg(notest)]
 impl &str : Ord {
     #[inline(always)]
     pure fn lt(&self, other: & &self/str) -> bool { lt((*self), (*other)) }
@@ -784,6 +789,7 @@ impl &str : Ord {
     pure fn gt(&self, other: & &self/str) -> bool { gt((*self), (*other)) }
 }
 
+#[cfg(notest)]
 impl @str : Ord {
     #[inline(always)]
     pure fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }

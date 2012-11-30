@@ -180,6 +180,7 @@ pub pure fn cmp(a: char, b: char) -> int {
     else { 0 }
 }
 
+#[cfg(notest)]
 impl char : Eq {
     pure fn eq(&self, other: &char) -> bool { (*self) == (*other) }
     pure fn ne(&self, other: &char) -> bool { (*self) != (*other) }
