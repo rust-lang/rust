@@ -85,7 +85,7 @@ pub mod par;
 pub mod cmp;
 pub mod base64;
 pub mod rl;
-// pub mod workcache;
+pub mod workcache;
 
 #[cfg(unicode)]
 mod unicode;
