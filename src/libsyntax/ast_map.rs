@@ -391,6 +391,16 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
     }
 }
+
+fn node_item_query<Result>(items: map, id: node_id,
+                           query: fn(@item) -> Result,
+                           error_msg: ~str) -> Result {
+    match items.find(id) {
+        Some(node_item(it, _)) => query(it),
+        _ => fail(error_msg)
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

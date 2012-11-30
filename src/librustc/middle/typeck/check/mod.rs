@@ -68,7 +68,7 @@ type parameter).
 
 use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 use astconv::{ast_region_to_region};
-use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig};
+use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
 use regionmanip::{replace_bound_regions_in_fn_ty};
 use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 use rscope::{in_binding_rscope, region_scope, type_rscope,
@@ -78,6 +78,7 @@ use typeck::infer::{resolve_type, force_tvar};
 use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use syntax::parse::token::special_idents;
+use syntax::ast_util::{is_local, visibility_to_privacy, Private, Public};
 use vtable::{LocationInfo, VtableContext};
 
 use std::map::HashMap;
@@ -1785,9 +1786,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           ast::deref => {
             let sty = structure_of(fcx, expr.span, oprnd_t);
 
-            // deref'ing an unsafe pointer requires that we be in an unsafe
-            // context
             match sty {
+              // deref'ing an unsafe pointer requires that we be in an unsafe
+              // context
               ty::ty_ptr(*) => {
                 fcx.require_unsafe(
                     expr.span,
@@ -1796,8 +1797,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               _ => { /*ok*/ }
             }
 
-            match ty::deref_sty(tcx, &sty, true) {
-              Some(mt) => { oprnd_t = mt.ty }
+            let operand_ty = ty::deref_sty(tcx, &sty, true);
+
+            match operand_ty {
+              Some(mt) => {
+                  oprnd_t = mt.ty
+              }
               None => {
                 match sty {
                   ty::ty_enum(*) => {
@@ -2460,7 +2465,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                        id: ast::node_id) {
     fn do_check(ccx: @crate_ctxt, sp: span, vs: ~[ast::variant],
                 id: ast::node_id, disr_vals: &mut ~[int], disr_val: &mut int,
-                variants: &mut ~[ty::variant_info]) {
+                variants: &mut ~[ty::VariantInfo]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
         for vs.each |v| {
             do v.node.disr_expr.iter |e_ref| {
@@ -2522,9 +2527,9 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 None => {}
                 Some(arg_tys) => {
                     variants.push(
-                        @{args: arg_tys, ctor_ty: ctor_ty,
+                        @VariantInfo_{args: arg_tys, ctor_ty: ctor_ty,
                           name: v.node.name, id: local_def(v.node.id),
-                          disr_val: this_disr_val});
+                          disr_val: this_disr_val, vis: v.node.vis});
                 }
             }
         }

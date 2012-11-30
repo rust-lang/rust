@@ -517,7 +517,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let _icx = cx.insn_ctxt("iter_structural_ty");
 
     fn iter_variant(cx: block, a_tup: ValueRef,
-                    variant: ty::variant_info,
+                    variant: ty::VariantInfo,
                     tps: ~[ty::t], tid: ast::def_id,
                     f: val_and_ty_fn) -> block {
         let _icx = cx.insn_ctxt("iter_variant");
@@ -1802,7 +1802,7 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
 
 fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                   id: ast::node_id, tps: ~[ast::ty_param], degen: bool,
-                  path: @ast_map::path, vi: @~[ty::variant_info],
+                  path: @ast_map::path, vi: @~[ty::VariantInfo],
                   i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
