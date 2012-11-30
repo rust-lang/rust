@@ -1,7 +1,7 @@
 /*!
 The kind traits
 
-Rust types can be classified in vairous useful ways according to
+Rust types can be classified in various useful ways according to
 intrinsic properties of the type. These classifications, often called
 'kinds', are represented as traits.
 
