@@ -824,9 +824,6 @@ impl TcpSocketBuf: io::Reader {
             bytes[0] as int
         }
     }
-    fn unread_byte(amt: int) {
-        self.data.buf.unshift(amt as u8);
-    }
     fn eof() -> bool {
         self.end_of_stream
     }
