@@ -64,7 +64,7 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
         fold_nmod: fold_nmod,
         .. *fold::default_any_fold(NominalOp { op: page_chan })
     });
-    fold.fold_doc(&fold, doc);
+    (fold.fold_doc)(&fold, doc);
 
     comm::send(page_chan, None);
 }

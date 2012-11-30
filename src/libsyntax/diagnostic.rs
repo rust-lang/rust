@@ -74,11 +74,11 @@ impl codemap_t: span_handler {
 
 impl handler_t: handler {
     fn fatal(msg: &str) -> ! {
-        self.emit(None, msg, fatal);
+        (self.emit)(None, msg, fatal);
         fail;
     }
     fn err(msg: &str) {
-        self.emit(None, msg, error);
+        (self.emit)(None, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count() {
@@ -98,17 +98,17 @@ impl handler_t: handler {
         self.fatal(s);
     }
     fn warn(msg: &str) {
-        self.emit(None, msg, warning);
+        (self.emit)(None, msg, warning);
     }
     fn note(msg: &str) {
-        self.emit(None, msg, note);
+        (self.emit)(None, msg, note);
     }
     fn bug(msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
     fn unimpl(msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
     fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
-        self.emit(cmsp, msg, lvl);
+        (self.emit)(cmsp, msg, lvl);
     }
 }
 

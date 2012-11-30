@@ -31,7 +31,7 @@ fn run(
         fold_impl: fold_impl,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn fold_crate(

@@ -369,8 +369,8 @@ impl inlined_item: inlined_item_utils {
 
     fn accept<E>(e: E, v: visit::vt<E>) {
         match self {
-          ii_item(i) => v.visit_item(i, e, v),
-          ii_foreign(i) => v.visit_foreign_item(i, e, v),
+          ii_item(i) => (v.visit_item)(i, e, v),
+          ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
           ii_method(_, m) => visit::visit_method_helper(m, e, v),
           ii_dtor(dtor, _, tps, parent_id) => {
               visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);

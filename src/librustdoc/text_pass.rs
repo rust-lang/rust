@@ -30,11 +30,11 @@ fn run(
         fold_impl: fold_impl,
         .. *fold::default_any_fold(move op)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn maybe_apply_op(op: NominalOp<Op>, s: Option<~str>) -> Option<~str> {
-    s.map(|s| op.op(*s) )
+    s.map(|s| (op.op)(*s) )
 }
 
 fn fold_item(
@@ -56,8 +56,8 @@ fn apply_to_sections(
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| {
-        header: op.op(section.header),
-        body: op.op(section.body)
+        header: (op.op)(section.header),
+        body: (op.op)(section.body)
     })
 }
 

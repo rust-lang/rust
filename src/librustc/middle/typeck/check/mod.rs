@@ -415,7 +415,7 @@ fn check_fn(ccx: @crate_ctxt,
                                    visit_block: visit_block,
                                    .. *visit::default_visitor()});
 
-        visit.visit_block(body, (), visit);
+        (visit.visit_block)(body, (), visit);
     }
 }
 

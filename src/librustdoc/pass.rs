@@ -15,7 +15,7 @@ pub fn run_passes(
         passno += 1;
         log(debug, doc);
         do time(pass.name) {
-            pass.f(srv, doc)
+            (pass.f)(srv, doc)
         }
     }
 }

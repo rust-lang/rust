@@ -1059,7 +1059,7 @@ extern fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
     let kill_ch = (*server_data_ptr).kill_ch;
     if (*server_data_ptr).active {
         match status {
-          0i32 => (*server_data_ptr).on_connect_cb(handle),
+          0i32 => ((*server_data_ptr).on_connect_cb)(handle),
           _ => {
             let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
             core::comm::send(kill_ch,

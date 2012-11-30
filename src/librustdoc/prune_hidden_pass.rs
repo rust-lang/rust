@@ -15,7 +15,7 @@ fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
         fold_mod: fold_mod,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn fold_mod(

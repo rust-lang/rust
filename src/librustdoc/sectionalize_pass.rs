@@ -16,7 +16,7 @@ fn run(_srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
         fold_impl: fold_impl,
         .. *fold::default_any_fold(())
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn fold_item(fold: &fold::Fold<()>, +doc: doc::ItemDoc) -> doc::ItemDoc {

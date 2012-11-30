@@ -125,7 +125,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(*pt,
-                         ~[path_name(ccx.names(ccx.sess.str_of(name)))]);
+                         ~[path_name((ccx.names)(ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, pt, mono_ty);
 
     let mk_lldecl = || {

@@ -235,7 +235,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                                     given '%s'", *extname,
                                    *cx.parse_sess().interner.get(it.ident)));
             }
-            (expand.expander(cx, it.span, tts), expand.span)
+            ((expand.expander)(cx, it.span, tts), expand.span)
         }
         Some(item_tt(expand)) => {
             if it.ident == parse::token::special_idents::invalid {
@@ -243,7 +243,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                               fmt!("macro %s! expects an ident argument",
                                    *extname));
             }
-            (expand.expander(cx, it.span, it.ident, tts), expand.span)
+            ((expand.expander)(cx, it.span, it.ident, tts), expand.span)
         }
         _ => cx.span_fatal(
             it.span, fmt!("%s! is not legal in item position", *extname))

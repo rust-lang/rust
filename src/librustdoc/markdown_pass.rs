@@ -38,9 +38,9 @@ fn run(
     // Sort the items so mods come last. All mods will be
     // output at the same header level so sorting mods last
     // makes the headers come out nested correctly.
-    let sorted_doc = sort_pass::mk_pass(
+    let sorted_doc = (sort_pass::mk_pass(
         ~"mods last", mods_last
-    ).f(srv, doc);
+    ).f)(srv, doc);
 
     write_markdown(sorted_doc, move writer_factory);
 

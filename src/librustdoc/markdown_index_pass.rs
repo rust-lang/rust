@@ -21,7 +21,7 @@ fn run(
         fold_nmod: fold_nmod,
         .. *fold::default_any_fold(config)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn fold_mod(

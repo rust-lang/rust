@@ -584,11 +584,13 @@ fn determine_rp_in_fn(fk: visit::fn_kind,
                       visitor: visit::vt<determine_rp_ctxt>) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
-            for decl.inputs.each |a| { visitor.visit_ty(a.ty, cx, visitor); }
+            for decl.inputs.each |a| {
+                (visitor.visit_ty)(a.ty, cx, visitor);
+            }
         }
-        visitor.visit_ty(decl.output, cx, visitor);
-        visitor.visit_ty_params(visit::tps_of_fn(fk), cx, visitor);
-        visitor.visit_block(body, cx, visitor);
+        (visitor.visit_ty)(decl.output, cx, visitor);
+        (visitor.visit_ty_params)(visit::tps_of_fn(fk), cx, visitor);
+        (visitor.visit_block)(body, cx, visitor);
     }
 }
 
@@ -695,7 +697,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.each |tp| {
-                visitor.visit_ty(*tp, cx, visitor);
+                (visitor.visit_ty)(*tp, cx, visitor);
             }
         }
       }
@@ -707,11 +709,11 @@ fn determine_rp_in_ty(ty: @ast::Ty,
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for f.decl.inputs.each |a| {
-                    visitor.visit_ty(a.ty, cx, visitor);
+                    (visitor.visit_ty)(a.ty, cx, visitor);
                 }
             }
             visit::visit_ty_param_bounds(f.bounds, cx, visitor);
-            visitor.visit_ty(f.decl.output, cx, visitor);
+            (visitor.visit_ty)(f.decl.output, cx, visitor);
         }
       }
 
@@ -725,10 +727,10 @@ fn determine_rp_in_ty(ty: @ast::Ty,
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
             do cx.with_ambient_variance(rv_invariant) {
-                visitor.visit_ty(mt.ty, cx, visitor);
+                (visitor.visit_ty)(mt.ty, cx, visitor);
             }
         } else {
-            visitor.visit_ty(mt.ty, cx, visitor);
+            (visitor.visit_ty)(mt.ty, cx, visitor);
         }
     }
 }

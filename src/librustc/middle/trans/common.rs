@@ -1049,7 +1049,7 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(fmt!("str%u", cx.names(~"str").repr),
+        str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -1111,7 +1111,7 @@ fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes_plus_null(bytes);
-    let name = fmt!("shape%u", ccx.names(~"shape").repr);
+    let name = fmt!("shape%u", (ccx.names)(~"shape").repr);
     let llglobal = str::as_c_str(name, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });

@@ -414,7 +414,7 @@ impl TaskBuilder {
             mut notify_chan: move notify_chan,
             sched: x.opts.sched
         };
-        spawn::spawn_raw(move opts, x.gen_body(move f));
+        spawn::spawn_raw(move opts, (x.gen_body)(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A: Send>(arg: A, f: fn~(v: A)) {

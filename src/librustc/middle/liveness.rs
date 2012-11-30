@@ -449,7 +449,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         visit_arm: check_arm,
         .. *visit::default_visitor()
     });
-    check_vt.visit_block(body, lsets, check_vt);
+    (check_vt.visit_block)(body, lsets, check_vt);
     lsets.check_ret(id, sp, fk, entry_ln);
     lsets.warn_about_unused_args(decl, entry_ln);
 }
@@ -1512,7 +1512,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
       expr_assign(l, r) => {
         self.check_lvalue(l, vt);
-        vt.visit_expr(r, self, vt);
+        (vt.visit_expr)(r, self, vt);
 
         visit::visit_expr(expr, self, vt);
       }

@@ -1039,7 +1039,7 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
     -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
-        cx.ccx.names(name)
+        (cx.ccx.names)(name)
     } else { special_idents::invalid };
     let llbb: BasicBlockRef = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
@@ -2067,7 +2067,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
      None if substs.is_none() => {
        let s = mangle_exported_name(
            ccx,
-           vec::append(path, ~[path_name(ccx.names(~"dtor"))]),
+           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
            t);
        ccx.item_symbols.insert(id, s);
        s
@@ -2081,7 +2081,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
            mangle_exported_name(
                ccx,
                vec::append(path,
-                           ~[path_name(ccx.names(~"dtor"))]),
+                           ~[path_name((ccx.names)(~"dtor"))]),
                mono_ty)
          }
          None => {
@@ -2253,7 +2253,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
 fn register_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
                 m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
-    let pth = vec::append(*pth, ~[path_name(ccx.names(~"meth")),
+    let pth = vec::append(*pth, ~[path_name((ccx.names)(~"meth")),
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, mty);
     set_inline_hint_if_appr(m.attrs, llfn);

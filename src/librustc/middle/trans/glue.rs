@@ -605,7 +605,7 @@ fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
         // already correctly tagged with addrspaces.
         return default_addrspace;
     } else {
-        return ccx.next_addrspace();
+        return (ccx.next_addrspace)();
     }
 }
 
