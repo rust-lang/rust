@@ -325,6 +325,7 @@ pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     unsafe {
         use libc::funcs::posix01::unistd::*;
@@ -449,6 +450,7 @@ pub fn self_exe_path() -> Option<Path> {
     }
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     fn load_self() -> Option<~str> {
         unsafe {
             use libc::funcs::posix01::unistd::readlink;
@@ -876,6 +878,7 @@ pub fn real_args() -> ~[~str] {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
     unsafe {
@@ -976,7 +979,6 @@ pub mod consts {
         pub const FAMILY: &str = "windows";
     }
 
-
     #[cfg(target_os = "macos")]
     use os::consts::macos::*;
 
@@ -985,6 +987,9 @@ pub mod consts {
 
     #[cfg(target_os = "linux")]
     use os::consts::linux::*;
+
+    #[cfg(target_os = "android")]
+    use os::consts::android::*;
 
     #[cfg(target_os = "win32")]
     use os::consts::win32::*;
@@ -1005,6 +1010,13 @@ pub mod consts {
 
     pub mod linux {
         pub const SYSNAME: &str = "linux";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod android {
+        pub const SYSNAME: &str = "android";
         pub const DLL_PREFIX: &str = "lib";
         pub const DLL_SUFFIX: &str = ".so";
         pub const EXE_SUFFIX: &str = "";

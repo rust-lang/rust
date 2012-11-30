@@ -717,7 +717,7 @@ do
     then
         msg "configuring LLVM for $t"
 
-        LLVM_TARGETS="--enable-targets=x86,x86_64"
+        LLVM_TARGETS="--enable-targets=x86,x86_64,arm"
         LLVM_BUILD="--build=$t"
         LLVM_HOST="--host=$t"
         LLVM_TARGET="--target=$t"

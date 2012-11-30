@@ -162,6 +162,8 @@ mod back {
     #[legacy_exports]
     mod upcall;
     #[legacy_exports]
+    mod arm;
+    #[legacy_exports]
     mod x86;
     #[legacy_exports]
     mod x86_64;
