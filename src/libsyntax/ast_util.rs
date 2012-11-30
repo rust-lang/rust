@@ -602,6 +602,46 @@ fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
     struct_def.ctor_id.is_some()
 }
 
+
+fn visibility_to_privacy(visibility: visibility,
+                         legacy_exports: bool) -> Privacy {
+    if legacy_exports {
+        match visibility {
+            inherited | public => Public,
+            private => Private
+        }
+    } else {
+        match visibility {
+            public => Public,
+            inherited | private => Private
+        }
+    }
+}
+
+enum Privacy {
+    Private,
+    Public
+}
+
+impl Privacy : cmp::Eq {
+    pure fn eq(&self, other: &Privacy) -> bool {
+        ((*self) as uint) == ((*other) as uint)
+    }
+    pure fn ne(&self, other: &Privacy) -> bool { !(*self).eq(other) }
+}
+
+fn has_legacy_export_attr(attrs: &[attribute]) -> bool {
+    for attrs.each |attribute| {
+        match attribute.node.value.node {
+          meta_word(w) if w == ~"legacy_exports" => {
+            return true;
+          }
+          _ => {}
+        }
+    }
+    return false;
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
