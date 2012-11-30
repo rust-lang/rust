@@ -94,6 +94,7 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
     }
 }
 
+#[cfg(notest)]
 impl<A: Eq, B: Eq> (A, B) : Eq {
     pure fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -107,6 +108,7 @@ impl<A: Eq, B: Eq> (A, B) : Eq {
     pure fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(notest)]
 impl<A: Ord, B: Ord> (A, B) : Ord {
     pure fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -127,6 +129,7 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
     pure fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
 }
 
+#[cfg(notest)]
 impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
     pure fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
@@ -141,6 +144,7 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
     pure fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
 }
 
+#[cfg(notest)]
 impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
     pure fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {

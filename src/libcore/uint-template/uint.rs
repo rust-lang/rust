@@ -1,3 +1,5 @@
+//! Operations and constants for `uint`
+
 pub use inst::{
     div_ceil, div_round, div_floor, iterate,
     next_power_of_two

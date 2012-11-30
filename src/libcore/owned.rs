@@ -6,11 +6,13 @@
 
 use cmp::{Eq, Ord};
 
+#[cfg(notest)]
 impl<T:Eq> ~const T : Eq {
     pure fn eq(&self, other: &~const T) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &~const T) -> bool { *(*self) != *(*other) }
 }
 
+#[cfg(notest)]
 impl<T:Ord> ~const T : Ord {
     pure fn lt(&self, other: &~const T) -> bool { *(*self) < *(*other) }
     pure fn le(&self, other: &~const T) -> bool { *(*self) <= *(*other) }

@@ -1,3 +1,5 @@
+//! Operations and constants for `int`
+
 pub use inst::pow;
 
 mod inst {

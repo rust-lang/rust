@@ -1,27 +1,7 @@
-// Core operators and kinds.
+// Core operators
 
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-
-#[lang="const"]
-pub trait Const {
-    // Empty.
-}
-
-#[lang="copy"]
-pub trait Copy {
-    // Empty.
-}
-
-#[lang="send"]
-pub trait Send {
-    // Empty.
-}
-
-#[lang="owned"]
-pub trait Owned {
-    // Empty.
-}
 
 #[lang="drop"]
 pub trait Drop {

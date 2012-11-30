@@ -1,3 +1,5 @@
+//! Operations and constants for `u8`
+
 pub use inst::is_ascii;
 
 mod inst {

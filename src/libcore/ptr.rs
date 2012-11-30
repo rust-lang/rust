@@ -207,6 +207,7 @@ impl<T> *mut T: Ptr<T> {
 }
 
 // Equality for pointers
+#[cfg(notest)]
 impl<T> *const T : Eq {
     pure fn eq(&self, other: &*const T) -> bool unsafe {
         let a: uint = cast::reinterpret_cast(&(*self));
@@ -217,6 +218,7 @@ impl<T> *const T : Eq {
 }
 
 // Comparison for pointers
+#[cfg(notest)]
 impl<T> *const T : Ord {
     pure fn lt(&self, other: &*const T) -> bool unsafe {
         let a: uint = cast::reinterpret_cast(&(*self));
@@ -241,6 +243,7 @@ impl<T> *const T : Ord {
 }
 
 // Equality for region pointers
+#[cfg(notest)]
 impl<T:Eq> &const T : Eq {
     pure fn eq(&self, other: & &self/const T) -> bool {
         return *(*self) == *(*other);
@@ -251,6 +254,7 @@ impl<T:Eq> &const T : Eq {
 }
 
 // Comparison for region pointers
+#[cfg(notest)]
 impl<T:Ord> &const T : Ord {
     pure fn lt(&self, other: & &self/const T) -> bool {
         *(*self) < *(*other)

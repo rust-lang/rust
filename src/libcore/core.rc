@@ -1,6 +1,6 @@
 /*!
 
-The Rust core library.
+The Rust core library
 
 The Rust core library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
@@ -24,6 +24,7 @@ Implicitly, all crates behave as if they included the following prologue:
 
 */
 
+
 #[link(name = "core",
        vers = "0.5",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
@@ -33,125 +34,110 @@ Implicitly, all crates behave as if they included the following prologue:
 #[license = "MIT"];
 #[crate_type = "lib"];
 
+
 // Don't link to core. We are core.
 #[no_core];
 
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
-
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
-// Built-in-type support modules
 
-/// Operations and constants for `int`
-#[path = "int-template.rs"]
-#[merge = "int-template/int.rs"]
+/* Primitive types */
+
+#[path = "int-template.rs"] #[merge = "int-template/int.rs"]
 pub mod int;
-
-/// Operations and constants for `i8`
-#[path = "int-template.rs"]
-#[merge = "int-template/i8.rs"]
+#[path = "int-template.rs"] #[merge = "int-template/i8.rs"]
 pub mod i8;
-
-/// Operations and constants for `i16`
-#[path = "int-template.rs"]
-#[merge = "int-template/i16.rs"]
+#[path = "int-template.rs"] #[merge = "int-template/i16.rs"]
 pub mod i16;
-
-/// Operations and constants for `i32`
-#[path = "int-template.rs"]
-#[merge = "int-template/i32.rs"]
+#[path = "int-template.rs"] #[merge = "int-template/i32.rs"]
 pub mod i32;
-
-/// Operations and constants for `i64`
-#[path = "int-template.rs"]
-#[merge = "int-template/i64.rs"]
+#[path = "int-template.rs"] #[merge = "int-template/i64.rs"]
 pub mod i64;
-
-/// Operations and constants for `uint`
-#[path = "uint-template.rs"]
-#[merge = "uint-template/uint.rs"]
+#[path = "uint-template.rs"] #[merge = "uint-template/uint.rs"]
 pub mod uint;
 
-/// Operations and constants for `u8`
-#[path = "uint-template.rs"]
-#[merge = "uint-template/u8.rs"]
+#[path = "uint-template.rs"] #[merge = "uint-template/u8.rs"]
 pub mod u8;
-
-/// Operations and constants for `u16`
-#[path = "uint-template.rs"]
-#[merge = "uint-template/u16.rs"]
+#[path = "uint-template.rs"] #[merge = "uint-template/u16.rs"]
 pub mod u16;
-
-/// Operations and constants for `u32`
-#[path = "uint-template.rs"]
-#[merge = "uint-template/u32.rs"]
+#[path = "uint-template.rs"] #[merge = "uint-template/u32.rs"]
 pub mod u32;
-
-/// Operations and constants for `u64`
-#[path = "uint-template.rs"]
-#[merge = "uint-template/u64.rs"]
+#[path = "uint-template.rs"] #[merge = "uint-template/u64.rs"]
 pub mod u64;
 
-
-pub mod box;
-pub mod char;
 pub mod float;
 pub mod f32;
 pub mod f64;
-pub mod str;
-pub mod ptr;
+
+pub mod unit;
+pub mod bool;
+pub mod char;
+pub mod tuple;
+
 pub mod vec;
 pub mod at_vec;
-pub mod bool;
-pub mod tuple;
-pub mod unit;
+pub mod str;
+
+pub mod ptr;
+pub mod box; // FIXME #4079 Rename to 'managed' to match 'owned'
 pub mod owned;
 
-// Ubiquitous-utility-type modules
 
-#[cfg(notest)]
-pub mod ops;
-pub mod cmp;
+/* Core language traits */
+
+#[cfg(notest)] pub mod kinds;
+#[cfg(notest)] pub mod ops;
+#[cfg(notest)] pub mod cmp;
+
+// Make core testable by not duplicating lang items. See #2912
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.5");
+#[cfg(test)] pub use kinds = realcore::kinds;
+#[cfg(test)] pub use ops = realcore::ops;
+#[cfg(test)] pub use cmp = realcore::cmp;
+
+
+/* Common traits */
+
+pub mod from_str;
 pub mod num;
-pub mod hash;
-pub mod either;
 pub mod iter;
-pub mod logging;
-pub mod option;
-#[path="iter-trait.rs"]
-#[merge = "iter-trait/option.rs"]
-pub mod option_iter;
-pub mod result;
 pub mod to_str;
 pub mod to_bytes;
-pub mod from_str;
-pub mod util;
 pub mod clone;
+pub mod io;
+pub mod hash;
 
-// Data structure modules
 
+/* Common data structures */
+
+pub mod option;
+#[path="iter-trait.rs"] #[merge = "iter-trait/option.rs"]
+pub mod option_iter;
+pub mod result;
+pub mod either;
 pub mod dvec;
-#[path="iter-trait.rs"]
-#[merge = "iter-trait/dvec.rs"]
+#[path="iter-trait.rs"] #[merge = "iter-trait/dvec.rs"]
 pub mod dvec_iter;
 pub mod dlist;
-#[path="iter-trait.rs"]
-#[merge = "iter-trait/dlist.rs"]
+#[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;
 pub mod send_map;
 
-// Concurrency
+
+/* Tasks and communication */
+
 pub mod comm;
 #[path = "task/mod.rs"]
 pub mod task;
 pub mod pipes;
 
-// Runtime and language-primitive support
+
+/* Runtime and platform support */
 
 pub mod gc;
-pub mod io;
 pub mod libc;
 pub mod os;
 pub mod path;
@@ -165,36 +151,28 @@ pub mod repr;
 pub mod cleanup;
 pub mod reflect;
 pub mod condition;
+pub mod logging;
+pub mod util;
 
-// Modules supporting compiler-generated code
-// Exported but not part of the public interface
 
-pub mod extfmt;
-// The test harness links against core, so don't include runtime in tests.
-#[cfg(notest)]
-#[legacy_exports]
-pub mod rt;
+/* Reexported core operators */
 
-// Ideally not exported, but currently is.
-pub mod private;
+pub use kinds::{Const, Copy, Send, Owned};
+pub use ops::{Drop};
+pub use ops::{Add, Sub, Mul, Div, Modulo, Neg};
+pub use ops::{BitAnd, BitOr, BitXor};
+pub use ops::{Shl, Shr, Index};
 
-// For internal use, not exported.
-mod unicode;
-mod cmath;
-mod stackwalk;
 
-// Top-level, visible-everywhere definitions.
+/* Reexported types and traits */
 
-// Export various ubiquitous types, constructors, methods.
-
-pub use option::{Some, None};
-pub use Option = option::Option;
+pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
-pub use Path = path::Path;
-pub use GenericPath = path::GenericPath;
-pub use WindowsPath = path::WindowsPath;
-pub use PosixPath = path::PosixPath;
+pub use path::Path;
+pub use path::GenericPath;
+pub use path::WindowsPath;
+pub use path::PosixPath;
 
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use str::{StrSlice, Trimmable};
@@ -203,44 +181,18 @@ pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{MutableVector, MutableCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+
 pub use num::Num;
 pub use ptr::Ptr;
 pub use to_str::ToStr;
-
-// The following exports are the core operators and kinds
-// The compiler has special knowlege of these so we must not duplicate them
-// when compiling for testing
-#[cfg(notest)]
-pub use ops::{Const, Copy, Send, Owned};
-#[cfg(notest)]
-pub use ops::{Drop};
-#[cfg(notest)]
-pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
-#[cfg(notest)]
-pub use ops::{Shl, Shr, Index};
-
-#[cfg(test)]
-extern mod coreops(name = "core", vers = "0.5");
-
-#[cfg(test)]
-pub use coreops::ops::{Const, Copy, Send, Owned};
-#[cfg(test)]
-pub use coreops::ops::{Drop};
-#[cfg(test)]
-pub use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr};
-#[cfg(test)]
-pub use coreops::ops::{BitXor};
-#[cfg(test)]
-pub use coreops::ops::{Shl, Shr, Index};
-
-#[cfg(notest)]
 pub use clone::Clone;
-#[cfg(test)]
-pub use coreops::clone::Clone;
 
-// Export the log levels as global constants. Higher levels mean
-// more-verbosity. Error is the bottom level, default logging level is
-// warn-and-below.
+
+/*
+ * Export the log levels as global constants. Higher levels mean
+ * more-verbosity. Error is the bottom level, default logging level is
+ * warn-and-below.
+ */
 
 /// The error log level
 pub const error : u32 = 1_u32;
@@ -250,6 +202,24 @@ pub const warn : u32 = 2_u32;
 pub const info : u32 = 3_u32;
 /// The debug log level
 pub const debug : u32 = 4_u32;
+
+
+/* Unsupported interfaces */
+
+// The runtime interface used by the compiler
+#[cfg(notest)] pub mod rt;
+// The runtime and compiler interface to fmt!
+pub mod extfmt;
+// Private APIs
+pub mod private;
+
+
+/* For internal use, not exported */
+
+mod unicode;
+mod cmath;
+mod stackwalk;
+
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
@@ -262,12 +232,14 @@ mod core {
     pub const debug : u32 = 4_u32;
 }
 
+
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
     extern mod std(vers = "0.5");
     pub use std::test;
 }
+
 
 // Local Variables:
 // mode: rust;
