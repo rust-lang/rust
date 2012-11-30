@@ -12,7 +12,7 @@
 use core::prelude::*;
 
 use back::link;
-use back::{x86, x86_64};
+use back::{arm, x86, x86_64};
 use front;
 use lib::llvm::llvm;
 use metadata::{creader, cstore, filesearch};
@@ -74,7 +74,16 @@ fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
       session::os_win32 => ~"msvcrt.dll",
       session::os_macos => ~"libc.dylib",
       session::os_linux => ~"libc.so.6",
+      session::os_android => ~"libc.so",
       session::os_freebsd => ~"libc.so.7"
+      // _ { "libc.so" }
+    };
+    let tos = match sess.targ_cfg.os {
+      session::os_win32 => ~"win32",
+      session::os_macos => ~"macos",
+      session::os_linux => ~"linux",
+      session::os_android => ~"android",
+      session::os_freebsd => ~"freebsd"
       // _ { "libc.so" }
     };
 
@@ -88,7 +97,7 @@ fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
 
     return ~[ // Target bindings.
          attr::mk_word_item(str::from_slice(os::FAMILY)),
-         mk(~"target_os", str::from_slice(os::SYSNAME)),
+         mk(~"target_os", tos),
          mk(~"target_family", str::from_slice(os::FAMILY)),
          mk(~"target_arch", arch),
          mk(~"target_word_size", wordsz),
@@ -424,6 +433,8 @@ fn get_os(triple: ~str) -> Option<session::os> {
             Some(session::os_macos)
         } else if str::contains(triple, ~"linux") {
             Some(session::os_linux)
+        } else if str::contains(triple, ~"android") {
+            Some(session::os_android)
         } else if str::contains(triple, ~"freebsd") {
             Some(session::os_freebsd)
         } else { None }
@@ -463,7 +474,7 @@ fn build_target_config(sopts: @session::options,
     let target_strs = match arch {
       session::arch_x86 => x86::get_target_strs(os),
       session::arch_x86_64 => x86_64::get_target_strs(os),
-      session::arch_arm => x86::get_target_strs(os)
+      session::arch_arm => arm::get_target_strs(os)
     };
     let target_cfg: @session::config =
         @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,

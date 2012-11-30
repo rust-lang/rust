@@ -1291,6 +1291,7 @@ pub mod test {
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
+    #[cfg(target_os="android")]
     pub mod tcp_ipv4_server_and_client_test {
         #[cfg(target_arch="x86_64")]
         pub mod impl64 {
@@ -1329,6 +1330,7 @@ pub mod test {
             }
         }
         #[cfg(target_arch="x86")]
+        #[cfg(target_arch="arm")]
         pub mod impl32 {
             use net::tcp::test::*;
 

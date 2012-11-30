@@ -130,7 +130,8 @@ fn get_rpath_relative_to_output(os: session::os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
-        session::os_linux | session::os_freebsd => "$ORIGIN",
+        session::os_android |session::os_linux | session::os_freebsd
+                          => "$ORIGIN",
         session::os_macos => "@executable_path",
         session::os_win32 => util::unreachable()
     };
@@ -331,6 +332,7 @@ mod test {
 
     #[test]
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "andorid")]
     fn test_rpath_relative() {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,

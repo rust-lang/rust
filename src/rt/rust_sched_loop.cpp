@@ -28,6 +28,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
+    extra_c_stack(NULL),
     dead_task(NULL),
     killed(killed),
     pump_signal(NULL),

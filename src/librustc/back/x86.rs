@@ -35,6 +35,9 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_linux => {
             ~"e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32"
           }
+          session::os_android => {
+            ~"e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32"
+          }
 
           session::os_freebsd => {
             ~"e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32"
@@ -45,6 +48,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_macos => ~"i686-apple-darwin",
           session::os_win32 => ~"i686-pc-mingw32",
           session::os_linux => ~"i686-unknown-linux-gnu",
+          session::os_android => ~"i686-unknown-android-gnu",
           session::os_freebsd => ~"i686-unknown-freebsd"
         },
 

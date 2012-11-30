@@ -40,11 +40,13 @@ struct AllocHeader { priv opaque: () }
 struct MemoryRegion { priv opaque: () }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Registers {
     data: [u32 * 16]
 }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Context {
     regs: Registers,
     next: *Context,
@@ -70,6 +72,7 @@ struct BoxedRegion {
 }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Task {
     // Public fields
     refcount: intptr_t,                 // 0

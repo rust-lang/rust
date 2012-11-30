@@ -89,8 +89,10 @@ pub pure fn Path(s: &str) -> Path {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 mod stat {
     #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "arm")]
     pub mod arch {
         use libc;
 

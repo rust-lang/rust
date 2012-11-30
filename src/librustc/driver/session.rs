@@ -29,7 +29,7 @@ use syntax::parse::parse_sess;
 use syntax::{ast, codemap};
 use syntax;
 
-enum os { os_win32, os_macos, os_linux, os_freebsd, }
+enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
 impl os : cmp::Eq {
     pure fn eq(&self, other: &os) -> bool {
@@ -326,6 +326,7 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
     match os {
       os_win32 => loader::os_win32,
       os_linux => loader::os_linux,
+      os_android => loader::os_android,
       os_macos => loader::os_macos,
       os_freebsd => loader::os_freebsd
     }

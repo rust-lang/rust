@@ -30,7 +30,7 @@ use core::cmp;
 use core::hash;
 use core::io::{Writer, WriterUtil};
 use core::libc::{c_int, c_uint, c_char};
-use core::os::consts::{macos, freebsd, linux, win32};
+use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::os;
 use core::ptr;
 use core::run;
@@ -43,7 +43,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
 
-pub enum output_type {
+enum output_type {
     output_type_none,
     output_type_bitcode,
     output_type_assembly,
@@ -712,6 +712,7 @@ fn output_dll_filename(os: session::os, lm: &link_meta) -> ~str {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
         session::os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
         session::os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        session::os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
     return str::from_slice(dll_prefix) + libname +
@@ -758,7 +759,10 @@ fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str =
-        if sess.targ_cfg.os == session::os_win32 { ~"gcc" } else { ~"cc" };
+        if sess.targ_cfg.os == session::os_android {
+            ~"arm-linux-androideabi-g++"
+        } else if sess.targ_cfg.os == session::os_win32 { ~"gcc" }
+        else { ~"cc" };
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
@@ -831,6 +835,11 @@ fn link_binary(sess: Session,
         // have to be explicit about linking to it. See #2510
         cc_args.push(~"-lm");
     }
+    else if sess.targ_cfg.os == session::os_android {
+        cc_args.push_all(~[~"-ldl", ~"-llog",  ~"-lsupc++",
+                           ~"-lgnustl_shared"]);
+        cc_args.push(~"-lm");
+    }
 
     if sess.targ_cfg.os == session::os_freebsd {
         cc_args.push_all(~[~"-pthread", ~"-lrt",
@@ -851,7 +860,9 @@ fn link_binary(sess: Session,
     }
 
     // Stack growth requires statically linking a __morestack function
+    if sess.targ_cfg.os != session::os_android {
     cc_args.push(~"-lmorestack");
+    }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths

@@ -28,7 +28,7 @@ use core::cast;
 use core::flate;
 use core::io::WriterUtil;
 use core::io;
-use core::os::consts::{macos, freebsd, linux, win32};
+use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::option;
 use core::ptr;
 use core::str;
@@ -36,7 +36,7 @@ use core::uint;
 use core::vec;
 
 export os;
-export os_macos, os_win32, os_linux, os_freebsd;
+export os_macos, os_win32, os_linux, os_freebsd, os_android;
 export ctxt;
 export load_library_crate;
 export list_file_metadata;
@@ -49,6 +49,7 @@ enum os {
     os_macos,
     os_win32,
     os_linux,
+    os_android,
     os_freebsd
 }
 
@@ -86,6 +87,7 @@ fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
         os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
         os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
         os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
     return {
@@ -251,6 +253,7 @@ fn meta_section_name(os: os) -> ~str {
       os_macos => ~"__DATA,__note.rustc",
       os_win32 => ~".note.rustc",
       os_linux => ~".note.rustc",
+      os_android => ~".note.rustc",
       os_freebsd => ~".note.rustc"
     }
 }
