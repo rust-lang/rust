@@ -2,7 +2,7 @@ This is a preliminary version of the Rust compiler, libraries and tools
 
 Source layout:
 
-rustc/             The self-hosted compiler
+librustc/          The self-hosted compiler
 
 libcore/           The core library (imported and linked by default)
 libstd/            The standard library (slightly more peripheral code)
@@ -28,11 +28,11 @@ test/auxiliary     - Dependencies of tests
 
 compiletest/       The test runner
 
-cargo/             The package manager
+libcargo/          The package manager
 
-rusti/             The JIT REPL
+librusti/          The JIT REPL
 
-rustdoc/           The Rust API documentation tool
+librustdoc/        The Rust API documentation tool
 
 llvm/              The LLVM submodule
 
@@ -40,6 +40,6 @@ libuv/             The libuv submodule
 
 rustllvm/          LLVM support code
 
-fuzzer/            A collection of fuzz testers
+libfuzzer/         A collection of fuzz testers
 
 etc/               Scripts, editor support, misc
