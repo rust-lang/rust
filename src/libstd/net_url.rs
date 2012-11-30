@@ -737,15 +737,6 @@ impl Url : Eq {
     }
 }
 
-#[cfg(stage0)]
-impl Url: IterBytes {
-    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
-        unsafe { self.to_str() }.iter_bytes(lsb0, f)
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Url: IterBytes {
     pure fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         unsafe { self.to_str() }.iter_bytes(lsb0, f)

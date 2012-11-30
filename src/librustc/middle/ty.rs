@@ -258,14 +258,6 @@ impl creader_cache_key : cmp::Eq {
     }
 }
 
-#[cfg(stage0)]
-impl creader_cache_key : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl creader_cache_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
@@ -281,14 +273,6 @@ impl intern_key : cmp::Eq {
     pure fn ne(&self, other: &intern_key) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(stage0)]
-impl intern_key : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl intern_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
@@ -531,14 +515,6 @@ impl param_ty : cmp::Eq {
     pure fn ne(&self, other: &param_ty) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(stage0)]
-impl param_ty : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl param_ty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
@@ -725,18 +701,6 @@ enum InferTy {
     FloatVar(FloatVid)
 }
 
-#[cfg(stage0)]
-impl InferTy : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
-          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
-          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl InferTy : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -754,17 +718,6 @@ enum InferRegion {
     ReSkolemized(uint, bound_region)
 }
 
-#[cfg(stage0)]
-impl InferRegion : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-            ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
-            ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl InferRegion : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -791,21 +744,6 @@ impl InferRegion : cmp::Eq {
     }
 }
 
-#[cfg(stage0)]
-impl param_bound : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          bound_copy => 0u8.iter_bytes(lsb0, f),
-          bound_owned => 1u8.iter_bytes(lsb0, f),
-          bound_send => 2u8.iter_bytes(lsb0, f),
-          bound_const => 3u8.iter_bytes(lsb0, f),
-          bound_trait(ref t) =>
-          to_bytes::iter_bytes_2(&4u8, t, lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl param_bound : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -877,70 +815,30 @@ impl purity: purity_to_str {
     }
 }
 
-#[cfg(stage0)]
-impl RegionVid : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl RegionVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl TyVid : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl TyVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl IntVid : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl IntVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl FloatVid : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl FloatVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl FnVid : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl FnVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
@@ -2756,25 +2654,6 @@ fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     }
 }
 
-#[cfg(stage0)]
-impl bound_region : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          ty::br_self => 0u8.iter_bytes(lsb0, f),
-
-          ty::br_anon(ref idx) =>
-          to_bytes::iter_bytes_2(&1u8, idx, lsb0, f),
-
-          ty::br_named(ref ident) =>
-          to_bytes::iter_bytes_2(&2u8, ident, lsb0, f),
-
-          ty::br_cap_avoid(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl bound_region : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -2792,28 +2671,6 @@ impl bound_region : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl Region : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          re_bound(ref br) =>
-          to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
-
-          re_free(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&1u8, id, br, lsb0, f),
-
-          re_scope(ref id) =>
-          to_bytes::iter_bytes_2(&2u8, id, lsb0, f),
-
-          re_infer(ref id) =>
-          to_bytes::iter_bytes_2(&3u8, id, lsb0, f),
-
-          re_static => 4u8.iter_bytes(lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Region : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -2834,23 +2691,6 @@ impl Region : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl vstore : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          vstore_fixed(ref u) =>
-          to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
-
-          vstore_uniq => 1u8.iter_bytes(lsb0, f),
-          vstore_box => 2u8.iter_bytes(lsb0, f),
-
-          vstore_slice(ref r) =>
-          to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl vstore : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -2866,16 +2706,6 @@ impl vstore : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl substs : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_3(&self.self_r,
-                                 &self.self_ty,
-                                 &self.tps, lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl substs : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
@@ -2884,15 +2714,6 @@ impl substs : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl mt : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_2(&self.ty,
-                                 &self.mutbl, lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl mt : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
@@ -2900,15 +2721,6 @@ impl mt : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl field : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_2(&self.ident,
-                                 &self.mt, lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl field : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
@@ -2916,15 +2728,6 @@ impl field : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl arg : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.mode,
-                               &self.ty, lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl arg : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.mode,
@@ -2932,19 +2735,6 @@ impl arg : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl FnMeta : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_5(&self.purity,
-                               &self.proto,
-                               &self.region,
-                               &self.bounds,
-                               &self.ret_style,
-                               lsb0, f);
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl FnMeta : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_5(&self.purity,
@@ -2956,16 +2746,6 @@ impl FnMeta : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl FnSig : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.inputs,
-                               &self.output,
-                               lsb0, f);
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl FnSig : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.inputs,
@@ -2974,86 +2754,6 @@ impl FnSig : to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl sty : to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        match self {
-          ty_nil => 0u8.iter_bytes(lsb0, f),
-          ty_bool => 1u8.iter_bytes(lsb0, f),
-
-          ty_int(ref t) =>
-          to_bytes::iter_bytes_2(&2u8, t, lsb0, f),
-
-          ty_uint(ref t) =>
-          to_bytes::iter_bytes_2(&3u8, t, lsb0, f),
-
-          ty_float(ref t) =>
-          to_bytes::iter_bytes_2(&4u8, t, lsb0, f),
-
-          ty_estr(ref v) =>
-          to_bytes::iter_bytes_2(&5u8, v, lsb0, f),
-
-          ty_enum(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&6u8, did, substs, lsb0, f),
-
-          ty_box(ref mt) =>
-          to_bytes::iter_bytes_2(&7u8, mt, lsb0, f),
-
-          ty_evec(ref mt, ref v) =>
-          to_bytes::iter_bytes_3(&8u8, mt, v, lsb0, f),
-
-          ty_unboxed_vec(ref mt) =>
-          to_bytes::iter_bytes_2(&9u8, mt, lsb0, f),
-
-          ty_tup(ref ts) =>
-          to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
-
-          ty_rec(ref fs) =>
-          to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
-
-          ty_fn(ref ft) =>
-          to_bytes::iter_bytes_3(&12u8,
-                                 &ft.meta,
-                                 &ft.sig,
-                                 lsb0, f),
-
-          ty_self => 13u8.iter_bytes(lsb0, f),
-
-          ty_infer(ref v) =>
-          to_bytes::iter_bytes_2(&14u8, v, lsb0, f),
-
-          ty_param(ref p) =>
-          to_bytes::iter_bytes_2(&15u8, p, lsb0, f),
-
-          ty_type => 16u8.iter_bytes(lsb0, f),
-          ty_bot => 17u8.iter_bytes(lsb0, f),
-
-          ty_ptr(ref mt) =>
-          to_bytes::iter_bytes_2(&18u8, mt, lsb0, f),
-
-          ty_uniq(ref mt) =>
-          to_bytes::iter_bytes_2(&19u8, mt, lsb0, f),
-
-          ty_trait(ref did, ref substs, ref v) =>
-          to_bytes::iter_bytes_4(&20u8, did, substs, v, lsb0, f),
-
-          ty_opaque_closure_ptr(ref ck) =>
-          to_bytes::iter_bytes_2(&21u8, ck, lsb0, f),
-
-          ty_opaque_box => 22u8.iter_bytes(lsb0, f),
-
-          ty_class(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
-
-          ty_rptr(ref r, ref mt) =>
-          to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
-
-          ty_err => 25u8.iter_bytes(lsb0, f)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl sty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
