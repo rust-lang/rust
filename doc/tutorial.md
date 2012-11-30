@@ -1913,7 +1913,7 @@ struct TimeBomb {
 }
 
 impl TimeBomb : Drop {
-    fn finalize() {
+    fn finalize(&self) {
         for iter::repeat(self.explosivity) {
             io::println("blam!");
         }
