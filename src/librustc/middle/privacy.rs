@@ -3,10 +3,15 @@
 
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
-use syntax::ast::{def_variant, expr_field, expr_struct, ident, item_class};
-use syntax::ast::{item_impl, item_trait, local_crate, node_id, pat_struct};
+use syntax::ast_map;
+use syntax::ast::{def_variant, expr_field, expr_struct, expr_unary, ident,
+                  item_class};
+use syntax::ast::{item_impl, item_trait, item_enum, local_crate, node_id,
+                  pat_struct};
 use syntax::ast::{private, provided, required};
 use syntax::ast_map::{node_item, node_method};
+use syntax::ast_util::{has_legacy_export_attr, is_local,
+                       visibility_to_privacy, Private, Public};
 use ty::{ty_class, ty_enum};
 use typeck::{method_map, method_origin, method_param, method_self};
 use typeck::{method_static, method_trait};
@@ -16,13 +21,15 @@ use dvec::DVec;
 
 fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     let privileged_items = @DVec();
+    let legacy_exports = has_legacy_export_attr(crate.node.attrs);
 
     // Adds structs that are privileged to this scope.
     let add_privileged_items = |items: &[@ast::item]| {
         let mut count = 0;
         for items.each |item| {
             match item.node {
-                item_class(*) | item_trait(*) | item_impl(*) => {
+                item_class(*) | item_trait(*) | item_impl(*)
+                | item_enum(*) => {
                     privileged_items.push(item.id);
                     count += 1;
                 }
@@ -30,6 +37,34 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
             }
         }
         count
+    };
+
+    // Checks that an enum variant is in scope
+    let check_variant = |span, enum_id| {
+        let variant_info = ty::enum_variants(tcx, enum_id)[0];
+        let parental_privacy = if is_local(enum_id) {
+            let parent_vis = ast_map::node_item_query(tcx.items, enum_id.node,
+                                   |it| { it.vis },
+                                   ~"unbound enum parent when checking \
+                                    dereference of enum type");
+            visibility_to_privacy(parent_vis, legacy_exports)
+        }
+        else {
+            // WRONG
+            Public
+        };
+        debug!("parental_privacy = %?", parental_privacy);
+        debug!("vis = %?, priv = %?, legacy_exports = %?",
+               variant_info.vis,
+               visibility_to_privacy(variant_info.vis, legacy_exports),
+               legacy_exports);
+        // inherited => privacy of the enum item
+        if visibility_to_privacy(variant_info.vis,
+                                 parental_privacy == Public) == Private {
+            tcx.sess.span_err(span,
+                ~"can only dereference enums \
+                  with a single, public variant");
+        }
     };
 
     // Checks that a private field is in scope.
@@ -220,6 +255,21 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                                            didn't have \
                                                            struct type?!");
                         }
+                    }
+                }
+                expr_unary(ast::deref, operand) => {
+                    // In *e, we need to check that if e's type is an
+                    // enum type t, then t's first variant is public or
+                    // privileged. (We can assume it has only one variant
+                    // since typeck already happened.)
+                    match ty::get(ty::expr_ty(tcx, operand)).sty {
+                        ty_enum(id, _) => {
+                            if id.crate != local_crate ||
+                                !privileged_items.contains(&(id.node)) {
+                                check_variant(expr.span, id);
+                            }
+                        }
+                        _ => { /* No check needed */ }
                     }
                 }
                 _ => {}

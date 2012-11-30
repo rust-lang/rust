@@ -612,11 +612,11 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
 }
 
 fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                     tcx: ty::ctxt) -> ~[ty::variant_info] {
+                     tcx: ty::ctxt) -> ~[ty::VariantInfo] {
     let data = cdata.data;
     let items = Reader::get_doc(Reader::Doc(data), tag_items);
     let item = find_item(id, items);
-    let mut infos: ~[ty::variant_info] = ~[];
+    let mut infos: ~[ty::VariantInfo] = ~[];
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
     for variant_ids.each |did| {
@@ -634,8 +634,11 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
           Some(val) => { disr_val = val; }
           _         => { /* empty */ }
         }
-        infos.push(@{args: arg_tys, ctor_ty: ctor_ty, name: name,
-                           id: *did, disr_val: disr_val});
+        infos.push(@ty::VariantInfo_{args: arg_tys,
+                       ctor_ty: ctor_ty, name: name,
+                  // I'm not even sure if we encode visibility
+                  // for variants -- TEST -- tjc
+                  id: *did, disr_val: disr_val, vis: ast::inherited});
         disr_val += 1;
     }
     return infos;

@@ -45,7 +45,8 @@ use syntax::{ast, ast_util, ast_map};
 use ast::spanned;
 use ast::{required, provided};
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{local_def, respan, split_trait_methods};
+use syntax::ast_util::{local_def, respan, split_trait_methods,
+                       has_legacy_export_attr};
 use syntax::visit;
 use metadata::csearch;
 use util::common::{block_query, loop_query};
@@ -372,7 +373,8 @@ fn check_crate(tcx: ty::ctxt,
                             method_map: std::map::HashMap(),
                             vtable_map: std::map::HashMap(),
                             coherence_info: @coherence::CoherenceInfo(),
-                            tcx: tcx});
+                            tcx: tcx
+                           });
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
     deriving::check_deriving(ccx, crate);

@@ -1,4 +1,3 @@
-// #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
 use std::{map, smallintmap};
@@ -158,7 +157,7 @@ export resolved_mode;
 export arg_mode;
 export unify_mode;
 export set_default_mode;
-export variant_info;
+export VariantInfo, VariantInfo_;
 export walk_ty, maybe_walk_ty;
 export occurs_check;
 export param_ty;
@@ -388,7 +387,7 @@ type ctxt =
       needs_unwind_cleanup_cache: HashMap<t, bool>,
       kind_cache: HashMap<t, Kind>,
       ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
-      enum_var_cache: HashMap<def_id, @~[variant_info]>,
+      enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
       trait_method_cache: HashMap<def_id, @~[method]>,
       ty_param_bounds: HashMap<ast::node_id, param_bounds>,
       inferred_modes: HashMap<ast::node_id, ast::mode>,
@@ -3638,19 +3637,28 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 }
 
 // Enum information
-type variant_info = @{args: ~[t], ctor_ty: t, name: ast::ident,
-                      id: ast::def_id, disr_val: int};
+struct VariantInfo_ {
+    args: ~[t],
+    ctor_ty: t,
+    name: ast::ident,
+    id: ast::def_id,
+    disr_val: int,
+    vis: visibility
+}
+
+type VariantInfo = @VariantInfo_;
 
 fn substd_enum_variants(cx: ctxt,
                         id: ast::def_id,
-                        substs: &substs) -> ~[variant_info] {
+                        substs: &substs) -> ~[VariantInfo] {
     do vec::map(*enum_variants(cx, id)) |variant_info| {
         let substd_args = vec::map(variant_info.args,
                                    |aty| subst(cx, substs, *aty));
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @{args: substd_args, ctor_ty: substd_ctor_ty, ..**variant_info}
+        @VariantInfo_{args: substd_args, ctor_ty: substd_ctor_ty,
+                      ..**variant_info}
     }
 }
 
@@ -3761,7 +3769,7 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
 }
 
 fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
-    vec::len(*enum_variants(cx, id)) == 1u
+    enum_variants(cx, id).len() == 1
 }
 
 fn type_is_empty(cx: ctxt, t: t) -> bool {
@@ -3771,7 +3779,7 @@ fn type_is_empty(cx: ctxt, t: t) -> bool {
      }
 }
 
-fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
+fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
     match cx.enum_var_cache.find(id) {
       Some(variants) => return variants,
       _ => { /* fallthrough */ }
@@ -3811,11 +3819,12 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                           }
                           _ => disr_val += 1
                         }
-                        @{args: arg_tys,
+                        @VariantInfo_{args: arg_tys,
                           ctor_ty: ctor_ty,
                           name: variant.node.name,
                           id: ast_util::local_def(variant.node.id),
-                          disr_val: disr_val
+                          disr_val: disr_val,
+                          vis: variant.node.vis
                          }
                     }
                     ast::struct_variant_kind(_) => {
@@ -3837,13 +3846,13 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
 
 // Returns information about the enum variant with the given ID:
 fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
-                        variant_id: ast::def_id) -> variant_info {
+                        variant_id: ast::def_id) -> VariantInfo {
     let variants = enum_variants(cx, enum_id);
-    let mut i = 0u;
-    while i < vec::len::<variant_info>(*variants) {
+    let mut i = 0;
+    while i < variants.len() {
         let variant = variants[i];
         if variant.id == variant_id { return variant; }
-        i += 1u;
+        i += 1;
     }
     cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");
 }

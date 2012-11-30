@@ -44,6 +44,8 @@ use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named};
 use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
+use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
+use syntax::ast_util::has_legacy_export_attr;
 use syntax::attr::{attr_metas, contains_name};
 use syntax::print::pprust::{pat_to_str, path_to_str};
 use syntax::codemap::span;
@@ -539,18 +541,6 @@ fn unused_import_lint_level(session: Session) -> level {
     return allow;
 }
 
-enum Privacy {
-    Private,
-    Public
-}
-
-impl Privacy : cmp::Eq {
-    pure fn eq(&self, other: &Privacy) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Privacy) -> bool { !(*self).eq(other) }
-}
-
 // Records a possibly-private type definition.
 struct TypeNsDef {
     mut privacy: Privacy,
@@ -780,18 +770,6 @@ fn namespace_to_str(ns: Namespace) -> ~str {
     }
 }
 
-fn has_legacy_export_attr(attrs: &[syntax::ast::attribute]) -> bool {
-    for attrs.each |attribute| {
-        match attribute.node.value.node {
-          syntax::ast::meta_word(w) if w == ~"legacy_exports" => {
-            return true;
-          }
-          _ => {}
-        }
-    }
-    return false;
-}
-
 fn Resolver(session: Session, lang_items: LanguageItems,
             crate: @crate) -> Resolver {
     let graph_root = @NameBindings();
@@ -950,21 +928,6 @@ impl Resolver {
         }));
     }
 
-    fn visibility_to_privacy(visibility: visibility,
-                             legacy_exports: bool) -> Privacy {
-        if legacy_exports {
-            match visibility {
-              inherited | public => Public,
-              private => Private
-            }
-        } else {
-            match visibility {
-              public => Public,
-              inherited | private => Private
-            }
-        }
-    }
-
     /// Returns the current module tracked by the reduced graph parent.
     fn get_module_from_parent(reduced_graph_parent: ReducedGraphParent)
                            -> @Module {
@@ -1121,7 +1084,7 @@ impl Resolver {
         let legacy = match parent {
           ModuleReducedGraphParent(m) => m.legacy_exports
         };
-        let privacy = self.visibility_to_privacy(item.vis, legacy);
+        let privacy = visibility_to_privacy(item.vis, legacy);
 
         match item.node {
             item_mod(module_) => {
@@ -1205,8 +1168,8 @@ impl Resolver {
                     self.build_reduced_graph_for_variant(*variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
-                        self.visibility_to_privacy(variant.node.vis,
-                                                   privacy == Public),
+                        visibility_to_privacy(variant.node.vis,
+                                              privacy == Public),
                         new_parent, visitor);
                 }
             }
@@ -1455,7 +1418,7 @@ impl Resolver {
         let legacy = match parent {
           ModuleReducedGraphParent(m) => m.legacy_exports
         };
-        let privacy = self.visibility_to_privacy(view_item.vis, legacy);
+        let privacy = visibility_to_privacy(view_item.vis, legacy);
         match view_item.node {
             view_item_import(view_paths) => {
                 for view_paths.each |view_path| {
