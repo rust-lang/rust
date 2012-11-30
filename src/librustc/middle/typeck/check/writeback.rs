@@ -158,6 +158,11 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
         maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
       }
 
+      ast::expr_method_call(*) => {
+        // We must always have written in a callee ID type for these.
+        resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+      }
+
       _ => ()
     }
     visit::visit_expr(e, wbcx, v);

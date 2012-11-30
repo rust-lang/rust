@@ -170,6 +170,18 @@ fn traverse_inline_body(cx: ctx, body: blk) {
               _ => ()
             }
           }
+          expr_method_call(*) => {
+            match cx.method_map.find(e.id) {
+              Some({origin: typeck::method_static(did), _}) => {
+                traverse_def_id(cx, did);
+              }
+              Some(_) => {}
+              None => {
+                cx.tcx.sess.span_bug(e.span, ~"expr_method_call not in \
+                                               method map");
+              }
+            }
+          }
           _ => ()
         }
         visit::visit_expr(e, cx, v);

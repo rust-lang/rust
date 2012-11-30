@@ -258,7 +258,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
       // FIXME #3387
       // ast::expr_index(*) | ast::expr_binary(*) |
       // ast::expr_unary(*) |
-      ast::expr_call(*) => {
+      ast::expr_call(*) | ast::expr_method_call(*) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));
         new_cx.parent = Some(expr.id);
