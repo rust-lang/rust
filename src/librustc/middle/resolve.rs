@@ -16,12 +16,11 @@ use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_typaram_binder, def_static_method};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
-use syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
-use syntax::ast::{expr_fn_block, expr_index, expr_path};
+use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
+use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
 use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
-use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
 use syntax::ast::{expr_fn_block, expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
@@ -4968,6 +4967,10 @@ impl Resolver {
     fn record_candidate_traits_for_expr_if_necessary(expr: @expr) {
         match expr.node {
             expr_field(_, ident, _) => {
+                let traits = self.search_for_traits_containing_method(ident);
+                self.trait_map.insert(expr.id, traits);
+            }
+            expr_method_call(_, ident, _, _, _) => {
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, traits);
             }

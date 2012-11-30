@@ -94,7 +94,8 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
             }
             match def_map.find(e.id) {
               Some(def_const(def_id)) |
-                Some(def_fn(def_id, _)) => {
+                Some(def_fn(def_id, _)) |
+                Some(def_variant(_, def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \

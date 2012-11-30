@@ -75,10 +75,9 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
 
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         let n = llvm::LLVMCountStructElementTypes(ty);
-        let elts = vec::from_elem(n as uint, ptr::null());
-        do vec::as_imm_buf(elts) |buf, _len| {
-            llvm::LLVMGetStructElementTypes(ty, buf);
-        }
+        let mut elts = vec::from_elem(n as uint, ptr::null());
+        llvm::LLVMGetStructElementTypes(ty,
+                                        ptr::to_mut_unsafe_ptr(&mut elts[0]));
         return elts;
     }
 

@@ -199,6 +199,17 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
             }
         }
 
+        ast::expr_method_call(rcvr, _, _, args, _) => {
+            // Check for a.b() where b is a method.  Ensure that
+            // any types in the callee are valid for the entire
+            // method call.
+
+            constrain_auto_ref(rcx, rcvr);
+            for args.each |arg| {
+                constrain_auto_ref(rcx, *arg);
+            }
+        }
+
         ast::expr_cast(source, _) => {
             // Determine if we are casting `source` to an trait
             // instance.  If so, we have to be sure that the type of

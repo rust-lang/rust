@@ -1047,7 +1047,7 @@ pub mod fsync {
             option::None => (),
             option::Some(level) => {
               // fail hard if not succesful
-              assert(self.arg.fsync_fn(self.arg.val, level) != -1);
+              assert((self.arg.fsync_fn)(self.arg.val, level) != -1);
             }
           }
         }
