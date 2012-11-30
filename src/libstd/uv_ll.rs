@@ -108,6 +108,7 @@ pub type uv_tcp_t_32bit_unix_riders = {
     a29: *u8
 };
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 pub type uv_tcp_t_32bit_unix_riders = {
     a29: *u8, a30: *u8, a31: *u8,
     a32: *u8, a33: *u8, a34: *u8,
@@ -164,6 +165,7 @@ pub type uv_write_t_32bit_unix_riders = {
     a13: *u8
 };
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 pub type uv_write_t_32bit_unix_riders = {
     a13: *u8, a14: *u8
 };
@@ -191,6 +193,7 @@ pub type uv_async_t_32bit_unix_riders = {
     a10: *u8
 };
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 pub type uv_async_t_32bit_unix_riders = {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8
 };
@@ -219,6 +222,7 @@ pub type uv_timer_t_32bit_unix_riders = {
     a10: *u8, a11: *u8
 };
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 pub type uv_timer_t_32bit_unix_riders = {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8,
     a14: *u8, a15: *u8, a16: *u8
@@ -248,6 +252,7 @@ pub type sockaddr_in6 = {
     a2: *u8, a3: *u8
 };
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 pub type sockaddr_in6 = {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
@@ -266,6 +271,7 @@ pub mod addr_in_impl {
         a2: *u8, a3: *u8
     };
     #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
     pub type addr_in = {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8,
@@ -284,6 +290,7 @@ pub mod addr_in_impl {
 // unix size: 48, 32bit: 32
 pub type addrinfo = addrinfo_impl::addrinfo;
 #[cfg(target_os="linux")]
+#[cfg(target_os="android")]
 pub mod addrinfo_impl {
     #[cfg(target_arch="x86_64")]
     pub type addrinfo = {
@@ -291,6 +298,7 @@ pub mod addrinfo_impl {
         a04: *u8, a05: *u8
     };
     #[cfg(target_arch="x86")]
+    #[cfg(target_arch="arm")]
     pub type addrinfo = {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8, a06: *u8, a07: *u8
@@ -324,6 +332,7 @@ pub mod uv_ll_struct_stubgen {
     pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         return gen_stub_os();
         #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "freebsd")]
         pub fn gen_stub_os() -> uv_tcp_t {
@@ -354,6 +363,7 @@ pub mod uv_ll_struct_stubgen {
                 };
             }
             #[cfg(target_arch="x86")]
+            #[cfg(target_arch="arm")]
             pub fn gen_stub_arch() -> uv_tcp_t {
                 return { fields: { loop_handle: ptr::null(), type_: 0u32,
                                 close_cb: ptr::null(),
@@ -439,6 +449,7 @@ pub mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch = "x86")]
+        #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_async_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
@@ -488,6 +499,7 @@ pub mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch = "x86")]
+        #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_timer_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
@@ -537,6 +549,7 @@ pub mod uv_ll_struct_stubgen {
             };
         }
         #[cfg(target_arch="x86")]
+        #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_write_t {
             return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
@@ -1548,6 +1561,7 @@ pub mod test {
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
+    #[cfg(target_os="android")]
     pub mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
         pub mod impl64 {
@@ -1557,6 +1571,7 @@ pub mod test {
             }
         }
         #[cfg(target_arch="x86")]
+        #[cfg(target_arch="arm")]
         pub mod impl32 {
             #[test]
             #[ignore(cfg(target_os = "linux"))]

@@ -13,6 +13,7 @@
 
 use back::{link, abi};
 use driver::session::arch_x86_64;
+use driver::session::arch_arm;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{Struct, Array, ModuleRef, CallConv, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
@@ -472,6 +473,8 @@ fn c_stack_tys(ccx: @crate_ctxt,
     let bundle_ty = T_struct(vec::append_one(llargtys, T_ptr(llretty)));
     let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
     let x86_64 = if ccx.sess.targ_cfg.arch == arch_x86_64 {
+        option::Some(x86_64_tys(llargtys, llretty, ret_def))
+    } else if ccx.sess.targ_cfg.arch == arch_arm {
         option::Some(x86_64_tys(llargtys, llretty, ret_def))
     } else {
         option::None
@@ -1465,6 +1468,14 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
             register_fn_fuller(ccx, sp, path, node_id,
                                t, lib::llvm::CCallConv, fnty)
         }
+    } else if ccx.sess.targ_cfg.arch == arch_arm {
+        let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
+        let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
+        do decl_x86_64_fn(x86_64) |fnty| {
+            register_fn_fuller(ccx, sp, path, node_id,
+                               t, lib::llvm::CCallConv, fnty)
+        }
+
     } else {
         let llfty = T_fn(llargtys, llretty);
         register_fn_fuller(ccx, sp, path, node_id,

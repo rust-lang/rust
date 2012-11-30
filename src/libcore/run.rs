@@ -385,6 +385,7 @@ pub fn waitpid(pid: pid_t) -> int {
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
         #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
         fn WIFEXITED(status: i32) -> bool {
             (status & 0xffi32) == 0i32
         }
@@ -396,6 +397,7 @@ pub fn waitpid(pid: pid_t) -> int {
         }
 
         #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
         fn WEXITSTATUS(status: i32) -> i32 {
             (status >> 8i32) & 0xffi32
         }
