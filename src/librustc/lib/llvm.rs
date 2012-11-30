@@ -312,7 +312,7 @@ extern mod llvm {
     fn LLVMStructType(ElementTypes: *TypeRef, ElementCount: c_uint,
                       Packed: Bool) -> TypeRef;
     fn LLVMCountStructElementTypes(StructTy: TypeRef) -> c_uint;
-    fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *TypeRef);
+    fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *mut TypeRef);
     fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
     /* Operations on array, pointer, and vector types (sequence types) */
@@ -1123,10 +1123,9 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
       Struct => {
         let mut s: ~str = ~"{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
-        let elts = vec::from_elem(n_elts, 0 as TypeRef);
-        unsafe {
-            llvm::LLVMGetStructElementTypes(ty, vec::raw::to_ptr(elts));
-        }
+        let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
+        llvm::LLVMGetStructElementTypes(ty,
+                                        ptr::to_mut_unsafe_ptr(&mut elts[0]));
         s += tys_str(names, outer, elts);
         s += ~"}";
         return s;
@@ -1177,6 +1176,18 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
                              0 as TypeRef);
     llvm::LLVMGetParamTypes(fn_ty, vec::raw::to_ptr(args));
     return args;
+}
+
+fn struct_element_types(struct_ty: TypeRef) -> ~[TypeRef] {
+    unsafe {
+        let count = llvm::LLVMCountStructElementTypes(struct_ty);
+        let mut buf: ~[TypeRef] =
+            vec::from_elem(count as uint,
+                           cast::transmute::<uint,TypeRef>(0));
+        llvm::LLVMGetStructElementTypes(struct_ty,
+                                        ptr::to_mut_unsafe_ptr(&mut buf[0]));
+        return move buf;
+    }
 }
 
 
