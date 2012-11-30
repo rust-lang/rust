@@ -79,13 +79,13 @@ export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 
 #[legacy_exports]
-#[merge = "check/mod.rs"]
+#[path = "check/mod.rs"]
 pub mod check;
 #[legacy_exports]
 mod rscope;
 #[legacy_exports]
 mod astconv;
-#[merge = "infer/mod.rs"]
+#[path = "infer/mod.rs"]
 mod infer;
 #[legacy_exports]
 mod collect;
