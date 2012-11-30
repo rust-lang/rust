@@ -369,15 +369,51 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_path(pth) => {
         assert pth.types.len() == 0;
         match cx.tcx.def_map.find(e.id) {
-          Some(ast::def_fn(def_id, _)) => {
-              assert ast_util::is_local(def_id);
-              let f = base::get_item_val(cx, def_id.node);
-              C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
-          }
-          Some(ast::def_const(def_id)) => {
-            get_const_val(cx, def_id)
-          }
-          _ => cx.sess.span_bug(e.span, ~"expected a const or fn def")
+            Some(ast::def_fn(def_id, _)) => {
+                assert ast_util::is_local(def_id);
+                let f = base::get_item_val(cx, def_id.node);
+                C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+            }
+            Some(ast::def_const(def_id)) => {
+                get_const_val(cx, def_id)
+            }
+            Some(ast::def_variant(enum_did, variant_did)) => {
+                // Note that we know this is a C-like (nullary) enum variant,
+                // or we wouldn't have gotten here -- the constant checker
+                // forbids paths that don't map to C-like enum variants.
+                let ety = ty::expr_ty(cx.tcx, e);
+                let llty = type_of::type_of(cx, ety);
+                let llstructtys = lib::llvm::struct_element_types(llty);
+
+                // Can't use `discrims` from the crate context here because
+                // those discriminants have an extra level of indirection,
+                // and there's no LLVM constant load instruction.
+                let mut lldiscrim_opt = None;
+                for ty::enum_variants(cx.tcx, enum_did).each |variant_info| {
+                    if variant_info.id == variant_did {
+                        lldiscrim_opt = Some(C_int(cx,
+                                                   variant_info.disr_val));
+                        break;
+                    }
+                }
+
+                let lldiscrim;
+                match lldiscrim_opt {
+                    None => {
+                        cx.tcx.sess.span_bug(e.span,
+                                             ~"didn't find discriminant?!");
+                    }
+                    Some(found_lldiscrim) => {
+                        lldiscrim = found_lldiscrim;
+                    }
+                }
+
+                C_named_struct(llty, ~[ lldiscrim, C_null(llstructtys[1]) ])
+            }
+            _ => {
+                cx.sess.span_bug(e.span,
+                                 ~"expected a const, fn, or variant def")
+            }
         }
       }
         ast::expr_paren(e) => { return const_expr(cx, e); }
