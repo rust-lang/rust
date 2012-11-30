@@ -27,7 +27,6 @@ export parse_from_source_str;
 
 use parser::Parser;
 use attr::parser_attr;
-use common::parser_common;
 use ast::node_id;
 use util::interner;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};

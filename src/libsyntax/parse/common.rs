@@ -22,41 +22,7 @@ fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
     token::to_str(reader.interner(), token)
 }
 
-trait parser_common {
-    fn unexpected_last(t: token::Token) -> !;
-    fn unexpected() -> !;
-    fn expect(t: token::Token);
-    fn parse_ident() -> ast::ident;
-    fn parse_path_list_ident() -> ast::path_list_ident;
-    fn parse_value_ident() -> ast::ident;
-    fn eat(tok: token::Token) -> bool;
-    // A sanity check that the word we are asking for is a known keyword
-    fn require_keyword(word: ~str);
-    fn token_is_keyword(word: ~str, ++tok: token::Token) -> bool;
-    fn is_keyword(word: ~str) -> bool;
-    fn is_any_keyword(tok: token::Token) -> bool;
-    fn eat_keyword(word: ~str) -> bool;
-    fn expect_keyword(word: ~str);
-    fn expect_gt();
-    fn parse_seq_to_before_gt<T: Copy>(sep: Option<token::Token>,
-                                       f: fn(Parser) -> T) -> ~[T];
-    fn parse_seq_to_gt<T: Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> ~[T];
-    fn parse_seq_lt_gt<T: Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> spanned<~[T]>;
-    fn parse_seq_to_end<T: Copy>(ket: token::Token, sep: seq_sep,
-                                 f: fn(Parser) -> T) -> ~[T];
-    fn parse_seq_to_before_end<T: Copy>(ket: token::Token, sep: seq_sep,
-                                        f: fn(Parser) -> T) -> ~[T];
-    fn parse_unspanned_seq<T: Copy>(bra: token::Token,
-                                    ket: token::Token,
-                                    sep: seq_sep,
-                                    f: fn(Parser) -> T) -> ~[T];
-    fn parse_seq<T: Copy>(bra: token::Token, ket: token::Token, sep: seq_sep,
-                          f: fn(Parser) -> T) -> spanned<~[T]>;
-}
-
-impl Parser: parser_common {
+impl Parser {
     fn unexpected_last(t: token::Token) -> ! {
         self.span_fatal(
             copy self.last_span,

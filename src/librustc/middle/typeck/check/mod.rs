@@ -549,7 +549,6 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
 }
 
 impl @fn_ctxt: ast_conv {
-    fn infcx() -> infer::infer_ctxt { self.inh.infcx }
     fn tcx() -> ty::ctxt { self.ccx.tcx }
     fn ccx() -> @crate_ctxt { self.ccx }
 
@@ -563,6 +562,7 @@ impl @fn_ctxt: ast_conv {
 }
 
 impl @fn_ctxt {
+    fn infcx() -> infer::infer_ctxt { self.inh.infcx }
     fn search_in_scope_regions(br: ty::bound_region)
         -> Result<ty::Region, ~str>
     {

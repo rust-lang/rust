@@ -8,6 +8,7 @@ use pipec::*;
 trait proto_parser {
     fn parse_proto(id: ~str) -> protocol;
     fn parse_state(proto: protocol);
+    fn parse_message(state: state);
 }
 
 impl parser::Parser: proto_parser {

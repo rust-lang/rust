@@ -465,22 +465,27 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
         }
     }
 
-    for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
-        match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
-            Some(ref cm) => {
+    // Check that each method we impl is a method on the trait
+    // Trait methods we don't implement must be default methods, but if not
+    // we'll catch it in coherence
+    let trait_ms = ty::trait_methods(tcx, did);
+    for impl_ms.each |impl_m| {
+        match trait_ms.find(|trait_m| trait_m.ident == impl_m.mty.ident) {
+            Some(ref trait_m) => {
                 compare_impl_method(
-                    ccx.tcx, vec::len(tps), cm, trait_m,
+                    ccx.tcx, tps.len(), impl_m, trait_m,
                     &tpt.substs, selfty);
             }
             None => {
-                // If we couldn't find an implementation for trait_m in
-                // the impl, then either this method has a default
-                // implementation or we're using the trait-provided
-                // version. Either way, we handle this later, during the
-                // coherence phase.
+                // This method is not part of the trait
+                tcx.sess.span_err(
+                    impl_m.span,
+                    fmt!("method `%s` is not a member of trait `%s`",
+                         tcx.sess.str_of(impl_m.mty.ident),
+                         path_to_str(a_trait_ty.path, tcx.sess.intr())));
             }
-        } // match
-    } // |trait_m|
+        }
+    }
 } // fn
 
 fn convert_field(ccx: @crate_ctxt,

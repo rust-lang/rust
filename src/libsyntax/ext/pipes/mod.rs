@@ -38,7 +38,6 @@ use ext::base::ext_ctxt;
 use ast::tt_delim;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
-use parse::common::parser_common;
 
 use pipes::parse_proto::proto_parser;
 

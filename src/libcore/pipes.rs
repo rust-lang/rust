@@ -811,13 +811,22 @@ pub struct RecvPacketBuffered<T: Send, Tbuffer: Send> {
     }
 }
 
-impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> : Selectable {
+impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
         option::unwrap(move p)
     }
 
+    fn reuse_buffer() -> BufferResource<Tbuffer> {
+        //error!("recv reuse_buffer");
+        let mut tmp = None;
+        tmp <-> self.buffer;
+        option::unwrap(move tmp)
+    }
+}
+
+impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> : Selectable {
     pure fn header() -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
@@ -828,13 +837,6 @@ impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> : Selectable {
           },
           None => fail ~"packet already consumed"
         }
-    }
-
-    fn reuse_buffer() -> BufferResource<Tbuffer> {
-        //error!("recv reuse_buffer");
-        let mut tmp = None;
-        tmp <-> self.buffer;
-        option::unwrap(move tmp)
     }
 }
 
@@ -1046,7 +1048,7 @@ pub fn PortSet<T: Send>() -> PortSet<T>{
     }
 }
 
-impl<T: Send> PortSet<T> : Recv<T> {
+impl<T: Send> PortSet<T> {
 
     fn add(port: pipes::Port<T>) {
         self.ports.push(move port)
@@ -1057,6 +1059,9 @@ impl<T: Send> PortSet<T> : Recv<T> {
         self.add(move po);
         move ch
     }
+}
+
+impl<T: Send> PortSet<T> : Recv<T> {
 
     fn try_recv() -> Option<T> {
         let mut result = None;

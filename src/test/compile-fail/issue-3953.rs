@@ -9,9 +9,11 @@ trait Hahaha: Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, Eq, //
 
 enum Lol = int;
 
-pub impl Lol: Hahaha {
-    pure fn eq(other: &Lol) -> bool { *self != **other }
-    pure fn ne(other: &Lol) -> bool { *self == **other }
+pub impl Lol: Hahaha { }
+
+impl Lol: Eq {
+    pure fn eq(&self, other: &Lol) -> bool { **self != **other }
+    pure fn ne(&self, other: &Lol) -> bool { **self == **other }
 }
 
 fn main() {
