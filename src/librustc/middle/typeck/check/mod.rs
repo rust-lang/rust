@@ -1101,24 +1101,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         return bot;
     }
 
-    // A generic function for doing all of the checking for call expressions
-    fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
-                  f: @ast::expr, args: ~[@ast::expr]) -> bool {
-
-        // Index expressions need to be handled seperately, to inform
-        // them that they appear in call position.
-        let mut bot = match f.node {
-          ast::expr_field(base, field, tys) => {
-            check_field(fcx, f, true, base, field, tys)
-          }
-          _ => check_expr(fcx, f, None)
-        };
-        let fn_ty = fcx.expr_ty(f);
+    // A generic function for doing all of the checking for call or
+    // method expressions
+    fn check_call_or_method(fcx: @fn_ctxt,
+                            sp: span,
+                            call_expr_id: ast::node_id,
+                            fn_ty: ty::t,
+                            expr: @ast::expr,
+                            args: ~[@ast::expr],
+                            bot: bool)
+                         -> bool {
+        let mut bot = bot;
 
         // Call the generic checker.
         let fty = {
             let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, f, args, DontDerefArgs);
+                                     fn_ty, expr, args, DontDerefArgs);
             bot |= r.bot;
             r.fty
         };
@@ -1137,6 +1135,79 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               return bot;
           }
         }
+    }
+
+    // A generic function for doing all of the checking for call expressions
+    fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
+                  f: @ast::expr, args: ~[@ast::expr]) -> bool {
+
+        // Index expressions need to be handled separately, to inform them
+        // that they appear in call position.
+        let mut bot = match f.node {
+            ast::expr_field(base, field, tys) => {
+                check_field(fcx, f, true, base, field, tys)
+            }
+            _ => check_expr(fcx, f, None)
+        };
+
+        check_call_or_method(fcx,
+                             sp,
+                             call_expr_id,
+                             fcx.expr_ty(f),
+                             f,
+                             args,
+                             bot)
+    }
+
+    // Checks a method call.
+    fn check_method_call(fcx: @fn_ctxt,
+                         expr: @ast::expr,
+                         rcvr: @ast::expr,
+                         method_name: ast::ident,
+                         args: ~[@ast::expr],
+                         tps: ~[@ast::Ty])
+                      -> bool {
+        let bot = check_expr(fcx, rcvr, None);
+        let expr_t = structurally_resolved_type(fcx,
+                                                expr.span,
+                                                fcx.expr_ty(rcvr));
+
+        let tps = tps.map(|ast_ty| fcx.to_ty(*ast_ty));
+        match method::lookup(fcx,
+                             expr,
+                             rcvr,
+                             expr.callee_id,
+                             method_name,
+                             expr_t,
+                             tps,
+                             DontDerefArgs) {
+            Some(entry) => {
+                fcx.ccx.method_map.insert(expr.id, entry);
+            }
+            None => {
+                fcx.type_error_message(expr.span,
+                  |actual| {
+                      fmt!("type `%s` does not implement any method in scope \
+                            named `%s`",
+                           actual,
+                           fcx.ccx.tcx.sess.str_of(method_name))
+                  },
+                  expr_t,
+                  None);
+
+                // Add error type for the result
+                fcx.write_ty(expr.id, ty::mk_err(fcx.ccx.tcx));
+                fcx.write_ty(expr.callee_id, ty::mk_err(fcx.ccx.tcx));
+            }
+        }
+
+        check_call_or_method(fcx,
+                             expr.span,
+                             expr.id,
+                             fcx.node_ty(expr.callee_id),
+                             expr,
+                             args,
+                             bot)
     }
 
     // A generic function for checking for or for-each loops
@@ -2091,6 +2162,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_call(f, args, _) => {
         bot = check_call(fcx, expr.span, expr.id, f, args);
+      }
+      ast::expr_method_call(rcvr, ident, tps, args, _) => {
+        bot = check_method_call(fcx, expr, rcvr, ident, args, tps);
       }
       ast::expr_cast(e, t) => {
         bot = check_expr(fcx, e, None);
