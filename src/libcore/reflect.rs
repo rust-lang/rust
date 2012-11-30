@@ -34,9 +34,7 @@ pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: move v }
 }
 
-/// Abstract type-directed pointer-movement using the MovePtr trait
-impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
-
+impl<V: TyVisitor MovePtr> MovePtrAdaptor<V> {
     #[inline(always)]
     fn bump(sz: uint) {
       do self.inner.move_ptr() |p| {
@@ -60,7 +58,10 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
     fn bump_past<T>() {
         self.bump(sys::size_of::<T>());
     }
+}
 
+/// Abstract type-directed pointer-movement using the MovePtr trait
+impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
     fn visit_bot() -> bool {
         self.align_to::<()>();
         if ! self.inner.visit_bot() { return false; }

@@ -37,6 +37,7 @@ pub trait Times {
 pub trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(pred: fn(a: A) -> bool) -> ~[A];
     pure fn map_to_vec<B>(op: fn(v: A) -> B) -> ~[B];
+    pure fn flat_map_to_vec<B:Copy,IB: BaseIter<B>>(op: fn(A) -> IB) -> ~[B];
     pure fn to_vec() -> ~[A];
     pure fn find(p: fn(a: A) -> bool) -> Option<A>;
 }

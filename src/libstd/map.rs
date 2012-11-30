@@ -390,7 +390,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V>: ToStr {
+    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V> {
         fn to_writer(wr: io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
@@ -410,7 +410,9 @@ pub mod chained {
             };
             wr.write_str(~" }");
         }
+    }
 
+    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V>: ToStr {
         pure fn to_str() -> ~str unsafe {
             // Meh -- this should be safe
             do io::with_str_writer |wr| { self.to_writer(wr) }
