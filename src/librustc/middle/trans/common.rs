@@ -581,8 +581,9 @@ fn val_str(tn: type_names, v: ValueRef) -> ~str {
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
     let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
     assert (n < elt_count);
-    let elt_tys = vec::from_elem(elt_count, T_nil());
-    llvm::LLVMGetStructElementTypes(llstructty, to_ptr(elt_tys));
+    let mut elt_tys = vec::from_elem(elt_count, T_nil());
+    llvm::LLVMGetStructElementTypes(llstructty,
+                                    ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
     return llvm::LLVMGetElementType(elt_tys[n]);
 }
 
@@ -822,11 +823,12 @@ fn T_task(targ_cfg: @session::config) -> TypeRef {
 fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
-    let tydesc_elts: ~[TypeRef] =
+    let mut tydesc_elts: ~[TypeRef] =
         vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
                                  T_nil());
-    llvm::LLVMGetStructElementTypes(cx.tydesc_type,
-                                    to_ptr::<TypeRef>(tydesc_elts));
+    llvm::LLVMGetStructElementTypes(
+        cx.tydesc_type,
+        ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
     let t = llvm::LLVMGetElementType(tydesc_elts[field]);
     return t;
 }
