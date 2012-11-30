@@ -7,6 +7,11 @@ fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
 enum Lub = combine_fields;  // "subtype", "subregion" etc
 
+impl Lub {
+    fn bot_ty(b: ty::t) -> cres<ty::t> { Ok(b) }
+    fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
+}
+
 impl Lub: combine {
     fn infcx() -> infer_ctxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
@@ -15,9 +20,6 @@ impl Lub: combine {
     fn sub() -> Sub { Sub(*self) }
     fn lub() -> Lub { Lub(*self) }
     fn glb() -> Glb { Glb(*self) }
-
-    fn bot_ty(b: ty::t) -> cres<ty::t> { Ok(b) }
-    fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;

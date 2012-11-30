@@ -101,7 +101,6 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     }
     pure fn get(key: uint) -> V { get(self, key) }
     pure fn find(key: uint) -> Option<V> { find(self, key) }
-    fn rehash() { fail }
 
     fn update_with_key(key: uint, val: V, ff: fn(uint, V, V) -> V) -> bool {
         match self.find(key) {

@@ -72,6 +72,10 @@ trait tr {
     fn tr(xcx: extended_decode_ctxt) -> self;
 }
 
+trait tr_intern {
+    fn tr_intern(xcx: extended_decode_ctxt) -> ast::def_id;
+}
+
 // ______________________________________________________________________
 // Top-level methods.
 
@@ -168,12 +172,15 @@ impl extended_decode_ctxt {
     }
 }
 
+impl ast::def_id: tr_intern {
+    fn tr_intern(xcx: extended_decode_ctxt) -> ast::def_id {
+        xcx.tr_intern_def_id(self)
+    }
+}
+
 impl ast::def_id: tr {
     fn tr(xcx: extended_decode_ctxt) -> ast::def_id {
         xcx.tr_def_id(self)
-    }
-    fn tr_intern(xcx: extended_decode_ctxt) -> ast::def_id {
-        xcx.tr_intern_def_id(self)
     }
 }
 

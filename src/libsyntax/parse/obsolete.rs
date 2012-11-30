@@ -52,12 +52,7 @@ impl ObsoleteSyntax: to_bytes::IterBytes {
     }
 }
 
-pub trait ObsoleteReporter {
-    fn obsolete(sp: span, kind: ObsoleteSyntax);
-    fn obsolete_expr(sp: span, kind: ObsoleteSyntax) -> @expr;
-}
-
-impl Parser : ObsoleteReporter {
+impl Parser {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {

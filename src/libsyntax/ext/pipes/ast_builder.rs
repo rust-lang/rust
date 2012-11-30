@@ -79,7 +79,10 @@ trait ext_ctxt_ast_builder {
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
     fn block_expr(b: ast::blk) -> @ast::expr;
+    fn move_expr(e: @ast::expr) -> @ast::expr;
     fn ty_option(ty: @ast::Ty) -> @ast::Ty;
+    fn ty_infer() -> @ast::Ty;
+    fn ty_nil_ast_builder() -> @ast::Ty;
 }
 
 impl ext_ctxt: ext_ctxt_ast_builder {

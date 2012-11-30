@@ -44,6 +44,9 @@ pub trait GenericPath {
     pure fn with_filestem((&str)) -> self;
     pure fn with_filetype((&str)) -> self;
 
+    pure fn dir_path() -> self;
+    pure fn file_path() -> self;
+
     pure fn push((&str)) -> self;
     pure fn push_rel((&self)) -> self;
     pure fn push_many((&[~str])) -> self;

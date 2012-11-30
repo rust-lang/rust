@@ -24,6 +24,7 @@ mod syntax {
 
 trait gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item;
+    fn to_ty(cx: ext_ctxt) -> @ast::Ty;
 }
 
 trait to_type_decls {
@@ -34,6 +35,10 @@ trait to_type_decls {
 trait gen_init {
     fn gen_init(cx: ext_ctxt) -> @ast::item;
     fn compile(cx: ext_ctxt) -> @ast::item;
+    fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty;
+    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item;
+    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr;
+    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr;
 }
 
 impl message: gen_send {

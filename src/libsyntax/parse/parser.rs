@@ -16,7 +16,7 @@ use common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
 use dvec::DVec;
 use vec::{push};
 use obsolete::{
-    ObsoleteReporter, ObsoleteSyntax,
+    ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
     ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
