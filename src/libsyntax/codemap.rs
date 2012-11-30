@@ -72,15 +72,6 @@ impl BytePos: Num {
     static pure fn from_int(+n: int) -> BytePos { BytePos(n as uint) }
 }
 
-#[cfg(stage0)]
-impl BytePos: to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl BytePos: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
@@ -127,14 +118,6 @@ impl CharPos: Num {
     static pure fn from_int(+n: int) -> CharPos { CharPos(n as uint) }
 }
 
-#[cfg(stage0)]
-impl CharPos: to_bytes::IterBytes {
-    pure fn iter_bytes(+lsb0: bool, f: to_bytes::Cb) {
-        (*self).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl CharPos: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)

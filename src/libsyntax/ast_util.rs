@@ -252,15 +252,6 @@ pure fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-#[cfg(stage0)]
-impl def_id : core::to_bytes::IterBytes {
-    #[inline(always)]
-    pure fn iter_bytes(+lsb0: bool, f: core::to_bytes::Cb) {
-        core::to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl def_id : core::to_bytes::IterBytes {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: core::to_bytes::Cb) {
