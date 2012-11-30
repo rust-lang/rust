@@ -27,7 +27,7 @@ fn run(
         fold_mod: fold_mod,
         .. *fold::default_any_fold(move lteq)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 #[allow(non_implicitly_copyable_typarams)]

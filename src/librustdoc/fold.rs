@@ -144,7 +144,7 @@ pub fn default_seq_fold_doc<T>(fold: &Fold<T>, +doc: doc::Doc) -> doc::Doc {
         pages: do vec::map(doc.pages) |page| {
             match *page {
               doc::CratePage(doc) => {
-                doc::CratePage(fold.fold_crate(fold, doc))
+                doc::CratePage((fold.fold_crate)(fold, doc))
               }
               doc::ItemPage(doc) => {
                 doc::ItemPage(fold_ItemTag(fold, doc))
@@ -160,7 +160,7 @@ pub fn default_seq_fold_crate<T>(
     +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
     {
-        topmod: fold.fold_mod(fold, doc.topmod)
+        topmod: (fold.fold_mod)(fold, doc.topmod)
     }
 }
 
@@ -177,7 +177,7 @@ pub fn default_any_fold_mod<T:Send Clone>(
 ) -> doc::ModDoc {
     let fold_copy = fold.clone();
     doc::ModDoc_({
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
             fold_ItemTag(&fold_copy, *ItemTag)
         }),
@@ -190,7 +190,7 @@ pub fn default_seq_fold_mod<T>(
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
     doc::ModDoc_({
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         items: vec::map(doc.items, |ItemTag| {
             fold_ItemTag(fold, *ItemTag)
         }),
@@ -204,7 +204,7 @@ pub fn default_par_fold_mod<T:Send Clone>(
 ) -> doc::ModDoc {
     let fold_copy = fold.clone();
     doc::ModDoc_({
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
             fold_ItemTag(&fold_copy, *ItemTag)
         }),
@@ -218,9 +218,9 @@ pub fn default_any_fold_nmod<T:Send Clone>(
 ) -> doc::NmodDoc {
     let fold_copy = fold.clone();
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {
-            fold_copy.fold_fn(&fold_copy, *FnDoc)
+            (fold_copy.fold_fn)(&fold_copy, *FnDoc)
         }),
         .. doc
     }
@@ -231,9 +231,9 @@ pub fn default_seq_fold_nmod<T>(
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         fns: vec::map(doc.fns, |FnDoc| {
-            fold.fold_fn(fold, *FnDoc)
+            (fold.fold_fn)(fold, *FnDoc)
         }),
         .. doc
     }
@@ -245,9 +245,9 @@ pub fn default_par_fold_nmod<T:Send Clone>(
 ) -> doc::NmodDoc {
     let fold_copy = fold.clone();
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {
-            fold_copy.fold_fn(&fold_copy, *FnDoc)
+            (fold_copy.fold_fn)(&fold_copy, *FnDoc)
         }),
         .. doc
     }
@@ -256,31 +256,31 @@ pub fn default_par_fold_nmod<T:Send Clone>(
 pub fn fold_ItemTag<T>(fold: &Fold<T>, +doc: doc::ItemTag) -> doc::ItemTag {
     match doc {
       doc::ModTag(ModDoc) => {
-        doc::ModTag(fold.fold_mod(fold, ModDoc))
+        doc::ModTag((fold.fold_mod)(fold, ModDoc))
       }
       doc::NmodTag(nModDoc) => {
-        doc::NmodTag(fold.fold_nmod(fold, nModDoc))
+        doc::NmodTag((fold.fold_nmod)(fold, nModDoc))
       }
       doc::FnTag(FnDoc) => {
-        doc::FnTag(fold.fold_fn(fold, FnDoc))
+        doc::FnTag((fold.fold_fn)(fold, FnDoc))
       }
       doc::ConstTag(ConstDoc) => {
-        doc::ConstTag(fold.fold_const(fold, ConstDoc))
+        doc::ConstTag((fold.fold_const)(fold, ConstDoc))
       }
       doc::EnumTag(EnumDoc) => {
-        doc::EnumTag(fold.fold_enum(fold, EnumDoc))
+        doc::EnumTag((fold.fold_enum)(fold, EnumDoc))
       }
       doc::TraitTag(TraitDoc) => {
-        doc::TraitTag(fold.fold_trait(fold, TraitDoc))
+        doc::TraitTag((fold.fold_trait)(fold, TraitDoc))
       }
       doc::ImplTag(ImplDoc) => {
-        doc::ImplTag(fold.fold_impl(fold, ImplDoc))
+        doc::ImplTag((fold.fold_impl)(fold, ImplDoc))
       }
       doc::TyTag(TyDoc) => {
-        doc::TyTag(fold.fold_type(fold, TyDoc))
+        doc::TyTag((fold.fold_type)(fold, TyDoc))
       }
       doc::StructTag(StructDoc) => {
-        doc::StructTag(fold.fold_struct(fold, StructDoc))
+        doc::StructTag((fold.fold_struct)(fold, StructDoc))
       }
     }
 }
@@ -290,7 +290,7 @@ pub fn default_seq_fold_fn<T>(
     +doc: doc::FnDoc
 ) -> doc::FnDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -300,7 +300,7 @@ pub fn default_seq_fold_const<T>(
     +doc: doc::ConstDoc
 ) -> doc::ConstDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -310,7 +310,7 @@ pub fn default_seq_fold_enum<T>(
     +doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -320,7 +320,7 @@ pub fn default_seq_fold_trait<T>(
     +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -330,7 +330,7 @@ pub fn default_seq_fold_impl<T>(
     +doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -340,7 +340,7 @@ pub fn default_seq_fold_type<T>(
     +doc: doc::TyDoc
 ) -> doc::TyDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -350,7 +350,7 @@ pub fn default_seq_fold_struct<T>(
     +doc: doc::StructDoc
 ) -> doc::StructDoc {
     {
-        item: fold.fold_item(fold, doc.item),
+        item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
 }
@@ -361,7 +361,7 @@ fn default_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(&fld, doc);
+    let folded = (fld.fold_doc)(&fld, doc);
     assert doc == folded;
 }
 
@@ -371,7 +371,7 @@ fn default_fold_should_produce_same_consts() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(&fld, doc);
+    let folded = (fld.fold_doc)(&fld, doc);
     assert doc == folded;
 }
 
@@ -381,7 +381,7 @@ fn default_fold_should_produce_same_enums() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
-    let folded = fld.fold_doc(&fld, doc);
+    let folded = (fld.fold_doc)(&fld, doc);
     assert doc == folded;
 }
 
@@ -391,6 +391,6 @@ fn default_parallel_fold_should_produce_same_doc() {
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());
-    let folded = fld.fold_doc(&fld, doc);
+    let folded = (fld.fold_doc)(&fld, doc);
     assert doc == folded;
 }

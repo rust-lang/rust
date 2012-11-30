@@ -90,7 +90,7 @@ impl @rcx {
 fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
-    v.visit_expr(e, @(move rcx), v);
+    (v.visit_expr)(e, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 
@@ -99,7 +99,7 @@ fn regionck_fn(fcx: @fn_ctxt,
                blk: ast::blk) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
-    v.visit_block(blk, @(move rcx), v);
+    (v.visit_block)(blk, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 
@@ -132,7 +132,7 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     // ref pattern, the variable is created with a suitable lower
     // bound.
     let e = rcx.errors_reported;
-    v.visit_pat(l.node.pat, rcx, v);
+    (v.visit_pat)(l.node.pat, rcx, v);
     let def_map = rcx.fcx.ccx.tcx.def_map;
     do pat_bindings(def_map, l.node.pat) |_bm, id, sp, _path| {
         visit_node(id, sp, rcx);
@@ -141,9 +141,9 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
         return; // if decl has errors, skip initializer expr
     }
 
-    v.visit_ty(l.node.ty, rcx, v);
+    (v.visit_ty)(l.node.ty, rcx, v);
     for l.node.init.each |i| {
-        v.visit_expr(*i, rcx, v);
+        (v.visit_expr)(*i, rcx, v);
     }
 }
 

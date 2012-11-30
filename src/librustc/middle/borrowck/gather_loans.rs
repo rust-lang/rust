@@ -189,11 +189,11 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_while(cond, body) => {
         // during the condition, can only root for the condition
         self.root_ub = cond.id;
-        vt.visit_expr(cond, self, vt);
+        (vt.visit_expr)(cond, self, vt);
 
         // during body, can only root for the body
         self.root_ub = body.node.id;
-        vt.visit_block(body, self, vt);
+        (vt.visit_block)(body, self, vt);
       }
 
       // see explanation attached to the `root_ub` field:

@@ -142,7 +142,7 @@ fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
           None    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| {
-            v.visit_ty(*t, cx, v);
+            (v.visit_ty)(*t, cx, v);
         }
       }
       _ => visit::visit_ty(ty, cx, v)

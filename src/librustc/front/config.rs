@@ -126,25 +126,25 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
 }
 
 fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
-    return cx.in_cfg(item.attrs);
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
-    return cx.in_cfg(item.attrs);
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn view_item_in_cfg(cx: ctxt, item: @ast::view_item) -> bool {
-    return cx.in_cfg(item.attrs);
+    return (cx.in_cfg)(item.attrs);
 }
 
 fn method_in_cfg(cx: ctxt, meth: @ast::method) -> bool {
-    return cx.in_cfg(meth.attrs);
+    return (cx.in_cfg)(meth.attrs);
 }
 
 fn trait_method_in_cfg(cx: ctxt, meth: &ast::trait_method) -> bool {
     match *meth {
-        ast::required(ref meth) => cx.in_cfg(meth.attrs),
-        ast::provided(@ref meth) => cx.in_cfg(meth.attrs)
+        ast::required(ref meth) => (cx.in_cfg)(meth.attrs),
+        ast::provided(@ref meth) => (cx.in_cfg)(meth.attrs)
     }
 }
 

@@ -28,7 +28,7 @@ fn run(
         fold_struct: fold_struct,
         .. *fold::default_any_fold(srv)
     });
-    fold.fold_doc(&fold, doc)
+    (fold.fold_doc)(&fold, doc)
 }
 
 fn fold_fn(

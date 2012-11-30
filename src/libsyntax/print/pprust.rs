@@ -453,7 +453,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
-    s.ann.pre(ann_node);
+    (s.ann.pre)(ann_node);
     match item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
@@ -581,7 +581,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         fail ~"invalid item-position syntax bit"
       }
     }
-    s.ann.post(ann_node);
+    (s.ann.post)(ann_node);
 }
 
 fn print_enum_def(s: ps, enum_definition: ast::enum_def,
@@ -928,7 +928,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
     }
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
-    s.ann.pre(ann_node);
+    (s.ann.pre)(ann_node);
     match embedded {
       block_block_fn => end(s),
       block_normal => bopen(s)
@@ -949,7 +949,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
       _ => ()
     }
     bclose_maybe_open(s, blk.span, indented, close_box);
-    s.ann.post(ann_node);
+    (s.ann.post)(ann_node);
 }
 
 fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
@@ -1055,7 +1055,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
-    s.ann.pre(ann_node);
+    (s.ann.pre)(ann_node);
     match expr.node {
         ast::expr_vstore(e, v) => match v {
             ast::expr_vstore_fixed(_) => {
@@ -1415,7 +1415,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           pclose(s);
       }
     }
-    s.ann.post(ann_node);
+    (s.ann.post)(ann_node);
     end(s);
 }
 
@@ -1500,7 +1500,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
 fn print_pat(s: ps, &&pat: @ast::pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
-    s.ann.pre(ann_node);
+    (s.ann.pre)(ann_node);
     /* Pat isn't normalized, but the beauty of it
      is that it doesn't matter */
     match pat.node {
@@ -1590,7 +1590,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         print_expr(s, end);
       }
     }
-    s.ann.post(ann_node);
+    (s.ann.post)(ann_node);
 }
 
 // Returns whether it printed anything

@@ -610,7 +610,7 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: ~str) -> ~str {
     return mangle(ccx.sess,
-                  vec::append_one(path, path_name(ccx.names(flav))));
+                  vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
 fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
@@ -618,7 +618,7 @@ fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
 }
 
 fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
-    return fmt!("%s_%u", flav, ccx.names(flav).repr);
+    return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
 // If the user wants an exe generated we need to invoke

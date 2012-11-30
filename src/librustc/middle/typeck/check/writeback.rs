@@ -217,7 +217,7 @@ fn mk_visitor() -> visit::vt<wb_ctxt> {
 fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
-    visit.visit_expr(e, wbcx, visit);
+    (visit.visit_expr)(e, wbcx, visit);
     return wbcx.success;
 }
 
@@ -227,7 +227,7 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
                            self_info: Option<self_info>) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
-    visit.visit_block(blk, wbcx, visit);
+    (visit.visit_block)(blk, wbcx, visit);
     for self_info.each |self_info| {
         if self_info.explicit_self.node == ast::sty_static { break; }
         resolve_type_vars_for_node(wbcx, self_info.explicit_self.span,

@@ -67,9 +67,9 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
                 // Do not emit node ids that map to unexported names.  Those
                 // are not helpful.
                 if def_id.crate != local_crate ||
-                    cx.reachable(def_id.node) {
+                    (cx.reachable)(def_id.node) {
                     w.write_char('"');
-                    w.write_str(cx.ds(def_id));
+                    w.write_str((cx.ds)(def_id));
                     w.write_char('|');
                 }
               }
@@ -229,14 +229,14 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_enum(def, substs) => {
         w.write_str(&"t[");
-        w.write_str(cx.ds(def));
+        w.write_str((cx.ds)(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
       ty::ty_trait(def, substs, vstore) => {
         w.write_str(&"x[");
-        w.write_str(cx.ds(def));
+        w.write_str((cx.ds)(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         enc_vstore(w, cx, vstore);
@@ -293,7 +293,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_param({idx: id, def_id: did}) => {
         w.write_char('p');
-        w.write_str(cx.ds(did));
+        w.write_str((cx.ds)(did));
         w.write_char('|');
         w.write_str(uint::str(id));
       }
@@ -309,7 +309,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       ty::ty_class(def, substs) => {
           debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
-          let s = cx.ds(def);
+          let s = (cx.ds)(def);
           debug!("~~~~ %s", s);
           w.write_str(s);
           debug!("~~~~ %s", ~"|");

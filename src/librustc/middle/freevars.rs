@@ -76,7 +76,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
 
     let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr,
                            .. *visit::default_visitor()});
-    v.visit_block(blk, 1, v);
+    (v.visit_block)(blk, 1, v);
     return @*refs;
 }
 

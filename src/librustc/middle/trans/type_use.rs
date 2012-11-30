@@ -297,5 +297,5 @@ fn handle_body(cx: ctx, body: blk) {
         visit_item: |_i, _cx, _v| { },
         ..*visit::default_visitor()
     });
-    v.visit_block(body, cx, v);
+    (v.visit_block)(body, cx, v);
 }

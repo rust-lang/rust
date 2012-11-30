@@ -474,7 +474,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
         match item {
            Some(it) => {
-             ecx.encode_inlined_item(ecx, ebml_w, path, it);
+             (ecx.encode_inlined_item)(ecx, ebml_w, path, it);
            }
            None => {
              encode_symbol(ecx, ebml_w, id);
@@ -503,7 +503,7 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
     encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
     encode_self_type(ebml_w, m.self_ty.node);
     if all_tps.len() > 0u || should_inline {
-        ecx.encode_inlined_item(
+        (ecx.encode_inlined_item)(
            ecx, ebml_w, impl_path,
            ii_method(local_def(parent_id), m));
     } else {
@@ -581,7 +581,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_attributes(ebml_w, item.attrs);
         if tps.len() > 0u || should_inline(item.attrs) {
-            ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
@@ -623,7 +623,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
             for enum_definition.variants.each |v| {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
-            ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
             encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
             encode_region_param(ecx, ebml_w, item);
         }
@@ -851,8 +851,8 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         if abi == foreign_abi_rust_intrinsic {
-            ecx.encode_inlined_item(ecx, ebml_w, path,
-                                    ii_foreign(nitem));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path,
+                                      ii_foreign(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }

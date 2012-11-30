@@ -22,13 +22,13 @@ fn check_item(sess: Session, ast_map: ast_map::map,
               it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     match it.node {
       item_const(_, ex) => {
-        v.visit_expr(ex, true, v);
+        (v.visit_expr)(ex, true, v);
         check_item_recursion(sess, ast_map, def_map, it);
       }
       item_enum(enum_definition, _) => {
         for enum_definition.variants.each |var| {
             do option::iter(&var.node.disr_expr) |ex| {
-                v.visit_expr(*ex, true, v);
+                (v.visit_expr)(*ex, true, v);
             }
         }
       }
@@ -46,10 +46,10 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
     match p.node {
       // Let through plain ~-string literals here
-      pat_lit(a) => if !is_str(a) { v.visit_expr(a, true, v); },
+      pat_lit(a) => if !is_str(a) { (v.visit_expr)(a, true, v); },
       pat_range(a, b) => {
-        if !is_str(a) { v.visit_expr(a, true, v); }
-        if !is_str(b) { v.visit_expr(b, true, v); }
+        if !is_str(a) { (v.visit_expr)(a, true, v); }
+        if !is_str(b) { (v.visit_expr)(b, true, v); }
       }
       _ => visit::visit_pat(p, false, v)
     }
@@ -179,7 +179,7 @@ fn check_item_recursion(sess: Session, ast_map: ast_map::map,
         visit_expr: visit_expr,
         .. *visit::default_visitor()
     });
-    visitor.visit_item(it, env, visitor);
+    (visitor.visit_item)(it, env, visitor);
 
     fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
         if (*env.idstack).contains(&(it.id)) {
@@ -197,7 +197,7 @@ fn check_item_recursion(sess: Session, ast_map: ast_map::map,
               Some(def_const(def_id)) => {
                 match env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
-                    v.visit_item(it, env, v);
+                    (v.visit_item)(it, env, v);
                   }
                   _ => fail ~"const not bound to an item"
                 }
