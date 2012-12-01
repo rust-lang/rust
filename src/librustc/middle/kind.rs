@@ -339,6 +339,18 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
+      expr_method_call(_, _, _, args, _) => {
+        for ty::ty_fn_args(ty::node_id_to_type(cx.tcx, e.callee_id)).eachi
+                |i, arg_t| {
+            match ty::arg_mode(cx.tcx, *arg_t) {
+              by_copy => maybe_copy(cx, args[i],
+                     Some(("function arguments must be copyable",
+                           "try changing the function to take a \
+                            reference instead"))),
+              by_ref | by_val | by_move => ()
+            }
+        }
+      }
       expr_field(lhs, _, _) => {
         // If this is a method call with a by-val argument, we need
         // to check the copy

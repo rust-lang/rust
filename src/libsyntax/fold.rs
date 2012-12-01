@@ -409,6 +409,13 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                       fld.map_exprs(|x| fld.fold_expr(x), args),
                       blk)
           }
+          expr_method_call(f, i, tps, args, blk) => {
+            expr_method_call(fld.fold_expr(f),
+                             fld.fold_ident(i),
+                             vec::map(tps, |x| fld.fold_ty(*x)),
+                             fld.map_exprs(|x| fld.fold_expr(x), args),
+                             blk)
+          }
           expr_binary(binop, lhs, rhs) => {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
           }
