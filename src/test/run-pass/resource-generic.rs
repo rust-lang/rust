@@ -7,7 +7,7 @@ struct finish<T: Copy> {
 
 impl<T: Copy> finish<T> : Drop {
     fn finalize(&self) {
-        self.arg.fin(self.arg.val);
+        (self.arg.fin)(self.arg.val);
     }
 }
 

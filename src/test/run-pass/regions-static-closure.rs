@@ -7,7 +7,7 @@ fn box_it(+x: &r/fn()) -> closure_box/&r {
 }
 
 fn call_static_closure(cl: closure_box/&static) {
-    cl.cl();
+    (cl.cl)();
 }
 
 fn main() {

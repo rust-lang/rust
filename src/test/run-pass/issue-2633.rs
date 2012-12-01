@@ -12,7 +12,7 @@ type kitty_info = {kitty: cat};
 
 // Code compiles and runs successfully if we add a + before the first arg
 fn nyan(kitty: cat, _kitty_info: kitty_info) {
-    kitty.meow();
+    (kitty.meow)();
 }
 
 fn main() {
