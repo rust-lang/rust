@@ -5,7 +5,7 @@ struct cat {
 
 impl cat : Drop {
     fn finalize(&self) {
-        self.done(self.meows);
+        (self.done)(self.meows);
     }
 }
 
