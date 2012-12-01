@@ -550,8 +550,8 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
 
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) |
-      expr_vec(*) | expr_rec(*) | expr_call(*) | expr_tup(*) |
-      expr_log(*) | expr_binary(*) |
+      expr_vec(*) | expr_rec(*) | expr_call(*) | expr_method_call(*) |
+      expr_tup(*) | expr_log(*) | expr_binary(*) |
       expr_assert(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
@@ -1237,6 +1237,17 @@ impl Liveness {
             self.propagate_through_expr(f, succ)
           }
 
+          expr_method_call(rcvr, _, _, args, _) => {
+            // calling a method with bot return type means that the method
+            // will fail, and hence the successors can be ignored
+            let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx,
+                                                          expr.callee_id));
+            let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
+                       else {succ};
+            let succ = self.propagate_through_exprs(args, succ);
+            self.propagate_through_expr(rcvr, succ)
+          }
+
           expr_tup(exprs) => {
             self.propagate_through_exprs(exprs, succ)
           }
@@ -1486,6 +1497,26 @@ fn check_arm(arm: arm, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_arm(arm, self, vt);
 }
 
+fn check_call(args: &[@expr],
+              targs: &[ty::arg],
+              &&self: @Liveness) {
+    for vec::each2(args, targs) |arg_expr, arg_ty| {
+        match ty::resolved_mode(self.tcx, arg_ty.mode) {
+            by_val | by_copy | by_ref => {}
+            by_move => {
+                if ty::expr_is_lval(self.tcx, self.ir.method_map, *arg_expr) {
+                    // Probably a bad error message (what's an rvalue?)
+                    // but I can't think of anything better
+                    self.tcx.sess.span_err(arg_expr.span,
+                      fmt!("move mode argument must be an rvalue: try (move \
+                            %s) instead",
+                           expr_to_str(*arg_expr, self.tcx.sess.intr())));
+                }
+            }
+        }
+    }
+}
+
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
       expr_path(_) => {
@@ -1531,23 +1562,14 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
       expr_call(f, args, _) => {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
-        for vec::each2(args, targs) |arg_expr, arg_ty| {
-            match ty::resolved_mode(self.tcx, arg_ty.mode) {
-                by_val | by_copy | by_ref => {}
-                by_move => {
-                    if ty::expr_is_lval(self.tcx, self.ir.method_map,
-                                        *arg_expr) {
-                        // Probably a bad error message (what's an rvalue?)
-                        // but I can't think of anything better
-                        self.tcx.sess.span_err(arg_expr.span,
-                          fmt!("Move mode argument must be an rvalue: try \
-                          (move %s) instead", expr_to_str(*arg_expr,
-                                                self.tcx.sess.intr())));
-                    }
-                }
-            }
-        }
+        check_call(args, targs, self);
+        visit::visit_expr(expr, self, vt);
+      }
 
+      expr_method_call(_, _, _, args, _) => {
+        let targs = ty::ty_fn_args(ty::node_id_to_type(self.tcx,
+                                                       expr.callee_id));
+        check_call(args, targs, self);
         visit::visit_expr(expr, self, vt);
       }
 

@@ -645,7 +645,7 @@ impl blk_check_mode : cmp::Eq {
 #[auto_serialize]
 #[auto_deserialize]
 type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
-// Extra node ID is only used for index, assign_op, unary, binary
+// Extra node ID is only used for index, assign_op, unary, binary, method call
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -659,6 +659,7 @@ enum expr_ {
     expr_vec(~[@expr], mutability),
     expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], bool), // True iff last argument is a block
+    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], bool), // Ditto
     expr_tup(~[@expr]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),

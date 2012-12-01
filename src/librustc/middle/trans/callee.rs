@@ -292,6 +292,38 @@ fn trans_call(in_cx: block,
         |cx| trans(cx, f), args, dest, DontAutorefArg)
 }
 
+fn trans_method_call(in_cx: block,
+                     call_ex: @ast::expr,
+                     rcvr: @ast::expr,
+                     args: CallArgs,
+                     dest: expr::Dest)
+                  -> block {
+    let _icx = in_cx.insn_ctxt("trans_method_call");
+    trans_call_inner(
+        in_cx,
+        call_ex.info(),
+        node_id_type(in_cx, call_ex.callee_id),
+        expr_ty(in_cx, call_ex),
+        |cx| {
+            match cx.ccx().maps.method_map.find(call_ex.id) {
+                Some(origin) => {
+                    meth::trans_method_callee(cx,
+                                              call_ex.callee_id,
+                                              rcvr,
+                                              origin)
+                }
+                None => {
+                    cx.tcx().sess.span_bug(call_ex.span,
+                                           ~"method call expr wasn't in \
+                                             method map")
+                }
+            }
+        },
+        args,
+        dest,
+        DontAutorefArg)
+}
+
 fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: expr::Dest)
     -> block
 {

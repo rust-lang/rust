@@ -125,6 +125,25 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
+      ast::expr_method_call(_, _, _, args, _) => {
+        let arg_tys = ty::ty_fn_args(ty::node_id_to_type(self.tcx(),
+                                                         ex.callee_id));
+        let scope_r = ty::re_scope(ex.id);
+        for vec::each2(args, arg_tys) |arg, arg_ty| {
+            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
+              ast::by_ref => {
+                let arg_cmt = self.bccx.cat_expr(*arg);
+                self.guarantee_valid(arg_cmt, m_imm,  scope_r);
+              }
+               ast::by_val | ast::by_move | ast::by_copy => {}
+            }
+        }
+
+        // XXX: Do something with the method receiver?
+
+        visit::visit_expr(ex, self, vt);
+      }
+
       ast::expr_match(ex_v, arms) => {
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
