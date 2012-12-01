@@ -410,6 +410,11 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
                 C_named_struct(llty, ~[ lldiscrim, C_null(llstructtys[1]) ])
             }
+            Some(ast::def_class(_)) => {
+                let ety = ty::expr_ty(cx.tcx, e);
+                let llty = type_of::type_of(cx, ety);
+                C_null(llty)
+            }
             _ => {
                 cx.sess.span_bug(e.span,
                                  ~"expected a const, fn, or variant def")
