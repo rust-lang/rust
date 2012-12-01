@@ -11,5 +11,5 @@ fn main() {
         let mut i = 3;
         box_it(|| i += 1) //~ ERROR cannot infer an appropriate lifetime
     };
-    cl_box.cl();
+    (cl_box.cl)();
 }

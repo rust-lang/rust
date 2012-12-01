@@ -4,7 +4,7 @@ fn main() {
   let f = 42;
 
   let _g = if f < 5 {
-      f.honk() //~ ERROR attempted access of field `honk`
+      f.honk() //~ ERROR does not implement any method in scope named `honk`
   }
   else {
       ()
