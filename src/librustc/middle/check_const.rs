@@ -95,19 +95,36 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
             match def_map.find(e.id) {
               Some(def_const(def_id)) |
                 Some(def_fn(def_id, _)) |
-                Some(def_variant(_, def_id)) => {
+                Some(def_variant(_, def_id)) |
+                Some(def_class(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
-                                 crate-local constants or functions");
+                                 crate-local constants, functions, or \
+                                 structs");
                 }
               }
-              _ => {
+              Some(def) => {
+                debug!("(checking const) found bad def: %?", def);
                 sess.span_err(
                     e.span,
-                    ~"paths in constants may only refer to \
-                      constants or functions");
+                    fmt!("paths in constants may only refer to \
+                          constants or functions"));
               }
+              None => {
+                sess.span_bug(e.span, ~"unbound path in const?!");
+              }
+            }
+          }
+          expr_call(callee, _, false) => {
+            match def_map.find(callee.id) {
+                Some(def_class(*)) => {}    // OK.
+                _ => {
+                    sess.span_err(
+                        e.span,
+                        ~"function calls in constants are limited to \
+                          structure constructors");
+                }
             }
           }
           expr_paren(e) => { check_expr(sess, def_map, method_map,
