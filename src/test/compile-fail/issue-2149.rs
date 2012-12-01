@@ -11,5 +11,5 @@ impl<A> ~[A]: vec_monad<A> {
    }
 }
 fn main() {
-    ["hi"].bind({|x| [x] }); //~ ERROR attempted access of field `bind`
+    ["hi"].bind({|x| [x] }); //~ ERROR type `[&static/str]/1` does not implement any method in scope named `bind`
 }

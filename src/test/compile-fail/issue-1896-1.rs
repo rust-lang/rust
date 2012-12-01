@@ -7,7 +7,7 @@ fn createClosure (closedUint: uint) -> boxedFn {
 fn main () {
     let aFn: boxedFn = createClosure(10);
 
-    let myInt: uint = aFn.theFn();
+    let myInt: uint = (aFn.theFn)();
 
     assert myInt == 10;
 }
