@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::ast_map::{path, path_mod, path_name};
 use base::{trans_item, get_item_val, self_arg, trans_fn, impl_owned_self,
-           impl_self, get_insn_ctxt};
+           impl_self, no_self, get_insn_ctxt};
 
 // `translate` will be true if this function is allowed to translate the
 // item and false otherwise. Currently, this parameter is set to false when
@@ -83,14 +83,18 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),
                     ~[path_name(mth.ident)]);
-                let self_ty = ty::node_id_to_type(ccx.tcx, mth.self_id);
-                debug!("calling inline trans_fn with self_ty %s",
-                       ty_to_str(ccx.tcx, self_ty));
-                let self_kind;
-                match mth.self_ty.node {
-                    ast::sty_value => self_kind = impl_owned_self(self_ty),
-                    _ => self_kind = impl_self(self_ty),
-                }
+                let self_kind = match mth.self_ty.node {
+                    ast::sty_static => no_self,
+                    _ => {
+                        let self_ty = ty::node_id_to_type(ccx.tcx, mth.self_id);
+                        debug!("calling inline trans_fn with self_ty %s",
+                               ty_to_str(ccx.tcx, self_ty));
+                        match mth.self_ty.node {
+                            ast::sty_value => impl_owned_self(self_ty),
+                            _ => impl_self(self_ty),
+                        }
+                    }
+                };
                 trans_fn(ccx,
                          path,
                          mth.decl,
