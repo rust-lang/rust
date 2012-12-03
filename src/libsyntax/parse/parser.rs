@@ -1860,10 +1860,14 @@ impl Parser {
             if first { first = false; }
             else { self.expect(token::COMMA); }
 
-            let subpat = self.parse_pat(refutable);
-
-            if self.token == token::ELLIPSIS {
+            let mut is_tail = false;
+            if self.token == token::DOTDOT {
                 self.bump();
+                is_tail = true;
+            }
+
+            let subpat = self.parse_pat(refutable);
+            if is_tail {
                 match subpat {
                     @{ node: pat_wild, _ } => (),
                     @{ node: pat_ident(_, _, _), _ } => (),

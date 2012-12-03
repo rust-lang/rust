@@ -4,7 +4,7 @@ fn foldl<T, U: Copy>(
     function: &fn(partial: U, element: &T) -> U
 ) -> U {
     match values {
-        [head, tail...] =>
+        [head, ..tail] =>
             foldl(tail, function(initial, &head), function),
         _ => copy initial
     }

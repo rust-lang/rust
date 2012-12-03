@@ -1594,8 +1594,8 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         commasep(s, inconsistent, elts, print_pat);
         do option::iter(&tail) |tail| {
             if vec::len(elts) != 0u { word_space(s, ~","); }
+            word(s.s, ~"..");
             print_pat(s, *tail);
-            word(s.s, ~"...");
         }
         word(s.s, ~"]");
       }

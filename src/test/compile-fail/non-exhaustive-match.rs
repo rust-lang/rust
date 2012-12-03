@@ -26,13 +26,13 @@ fn main() {
       (b, b) => {}
     }
     match ~[Some(42), None, Some(21)] { //~ ERROR non-exhaustive patterns
-        [Some(*), None, tail...] => {}
-        [Some(*), Some(*), tail...] => {}
+        [Some(*), None, ..tail] => {}
+        [Some(*), Some(*), ..tail] => {}
         [None] => {}
     }
     match ~[Some(42), None, Some(21)] {
-        [Some(*), None, tail...] => {}
-        [Some(*), Some(*), tail...] => {}
+        [Some(*), None, ..tail] => {}
+        [Some(*), Some(*), ..tail] => {}
         [None] => {}
         [] => {}
     }
