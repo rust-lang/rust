@@ -196,8 +196,7 @@ impl<A: IterBytes, B: IterBytes> (A,B): IterBytes {
   pure fn iter_bytes(lsb0: bool, f: Cb) {
     match self {
       (ref a, ref b) => {
-        a.iter_bytes(lsb0, f);
-        b.iter_bytes(lsb0, f);
+        iter_bytes_2(a, b, lsb0, f);
       }
     }
   }
@@ -208,9 +207,7 @@ impl<A: IterBytes, B: IterBytes, C: IterBytes> (A,B,C): IterBytes {
   pure fn iter_bytes(lsb0: bool, f: Cb) {
     match self {
       (ref a, ref b, ref c) => {
-        a.iter_bytes(lsb0, f);
-        b.iter_bytes(lsb0, f);
-        c.iter_bytes(lsb0, f);
+        iter_bytes_3(a, b, c, lsb0, f);
       }
     }
   }
