@@ -239,7 +239,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
     let id_to_use = match e.node {
         expr_index(*)|expr_assign_op(*)|
-        expr_unary(*)|expr_binary(*) => e.callee_id,
+        expr_unary(*)|expr_binary(*)|expr_method_call(*) => e.callee_id,
         _ => e.id
     };
 

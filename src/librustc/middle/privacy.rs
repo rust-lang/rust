@@ -4,14 +4,13 @@
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
 use syntax::ast_map;
-use syntax::ast::{def_variant, expr_field, expr_struct, expr_unary, ident,
-                  item_class};
-use syntax::ast::{item_impl, item_trait, item_enum, local_crate, node_id,
-                  pat_struct};
-use syntax::ast::{private, provided, required};
+use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
+use syntax::ast::{expr_unary, ident, item_class, item_enum, item_impl};
+use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
+use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
-use syntax::ast_util::{has_legacy_export_attr, is_local,
-                       visibility_to_privacy, Private, Public};
+use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
+use syntax::ast_util::{visibility_to_privacy};
 use ty::{ty_class, ty_enum};
 use typeck::{method_map, method_origin, method_param, method_self};
 use typeck::{method_static, method_trait};
@@ -202,6 +201,27 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                     debug!("(privacy checking) checking \
                                             field access");
                                     check_field(expr.span, id, ident);
+                                }
+                                Some(entry) => {
+                                    debug!("(privacy checking) checking \
+                                            impl method");
+                                    check_method(expr.span, &entry.origin);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                expr_method_call(base, _, _, _, _) => {
+                    match ty::get(ty::expr_ty(tcx, base)).sty {
+                        ty_class(id, _)
+                        if id.crate != local_crate ||
+                           !privileged_items.contains(&(id.node)) => {
+                            match method_map.find(expr.id) {
+                                None => {
+                                    tcx.sess.span_bug(expr.span,
+                                                      ~"method call not in \
+                                                        method map");
                                 }
                                 Some(entry) => {
                                     debug!("(privacy checking) checking \
