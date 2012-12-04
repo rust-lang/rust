@@ -1,8 +1,8 @@
 fn main() {
     let x: ~[(int, int)] = ~[];
     match x {
-        [(1, 2), (2, 3), _] => (),
-        [a, _, (3, 4)] => (), //~ ERROR unreachable pattern
+        [a, (2, 3), _] => (),
+        [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
         _ => ()
     }
 
