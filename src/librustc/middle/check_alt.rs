@@ -201,6 +201,21 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
                 }
                 not_useful
               }
+              ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+                let max_len = do m.foldr(0) |r, max_len| {
+                  match r[0].node {
+                    pat_vec(elems, _) => uint::max(elems.len(), max_len),
+                    _ => max_len
+                  }
+                };
+                for uint::range(0, max_len + 1) |n| {
+                  match is_useful_specialized(tcx, m, v, vec(n), n, left_ty) {
+                    not_useful => (),
+                    u => return u
+                  }
+                }
+                not_useful
+              }
               _ => {
                 let arity = ctor_arity(tcx, single, left_ty);
                 is_useful_specialized(tcx, m, v, single, arity, left_ty)
@@ -370,6 +385,9 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
             break;
           }
         };
+        if missing.is_none() && min_len_with_tail > max_len {
+          missing = Some(min_len_with_tail);
+        }
         match missing {
           Some(k) => Some(vec(k)),
           None => None
