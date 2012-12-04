@@ -429,10 +429,7 @@ type ctxt =
       destructor_for_type: HashMap<ast::def_id, ast::def_id>,
 
       // A method will be in this list if and only if it is a destructor.
-      destructors: HashMap<ast::def_id, ()>,
-
-      // Records the value mode (read, copy, or move) for every value.
-      value_modes: HashMap<ast::node_id, ValueMode>,
+      destructors: HashMap<ast::def_id, ()>
       };
 
 enum tbox_flag {
@@ -971,8 +968,7 @@ fn mk_ctxt(s: session::Session,
       automatically_derived_methods: HashMap(),
       automatically_derived_methods_for_impl: HashMap(),
       destructor_for_type: HashMap(),
-      destructors: HashMap(),
-      value_modes: HashMap()}
+      destructors: HashMap()}
 }
 
 

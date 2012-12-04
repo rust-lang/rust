@@ -782,7 +782,6 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
                     span,
                     fmt!("binding `%s` should use ref or copy mode",
                          tcx.sess.str_of(path_to_ident(path))));
-                tcx.bad_bindings.insert(id, ());
             }
           }
         }
