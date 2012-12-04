@@ -1,13 +1,26 @@
 Short version for non-lawyers:
 
-This work licensed under MIT-like terms.
+The Rust Project is dual-licensed under Apache 2.0 and MIT
+terms.
 
 
-Long version follows:
+Longer version:
 
-The collective work presented here includes packages written
-by third parties.  The following third party packages are
-included:
+The Rust Project is copyright 2012, The Rust Project
+Developers (given in the file AUTHORS.txt).
+
+Licensed under the Apache License, Version 2.0
+<LICENSE-APACHE or
+http://www.apache.org/licenses/LICENSE-2.0> or the MIT
+license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
+at your option. All files in the project carrying such
+notice may not be copied, modified, or distributed except
+according to those terms.
+
+
+The Rust Project includes packages written by third parties.
+The following third party packages are included, and carry
+their own copyright notices and license terms:
 
 
 * The ISAAC pseudo random number generation package. Code
@@ -334,12 +347,12 @@ included:
 
 
 * Additional copyright may be retained by contributors other
-  than Mozilla or the parties enumerated in this file. Such
-  copyright can be determined on a case-by-case basis by
-  examining the author of each portion of a file in the
-  revision-control commit records of the project, or by
-  consulting representative comments claiming copyright
-  ownership for a file.
+  than Mozilla, the Rust Project Authors, or the parties
+  enumerated in this file. Such copyright can be determined
+  on a case-by-case basis by examining the author of each
+  portion of a file in the revision-control commit records
+  of the project, or by consulting representative comments
+  claiming copyright ownership for a file.
 
   For example, the text:
 
@@ -349,40 +362,9 @@ included:
   that their author and copyright-holder is Google Inc.
 
   In all such cases, the absence of explicit licensing text
-  indicates that the contributor chose to license their
-  work for distribution under identical terms to those
-  Mozilla has chosen for the collective work, enumerated
-  below.  The only difference is the retention of copyright
-  itself, held by the contributor.
+  indicates that the contributor chose to license their work
+  for distribution under identical terms to those Mozilla
+  has chosen for the collective work, enumerated at the top
+  of this file. The only difference is the retention of
+  copyright itself, held by the contributor.
 
-
-The remaining code and documentation in the collective work
-presented here, as well as the collective work itslf, is
-distributed under the following terms ("The Rust License"):
-
-    Copyright (c) 2006-2012 Graydon Hoare
-    Copyright (c) 2009-2012 Mozilla Foundation
-
-    Permission is hereby granted, free of charge, to any
-    person obtaining a copy of this software and associated
-    documentation files (the "Software"), to deal in the
-    Software without restriction, including without
-    limitation the rights to use, copy, modify, merge,
-    publish, distribute, sublicense, and/or sell copies of
-    the Software, and to permit persons to whom the Software
-    is furnished to do so, subject to the following
-    conditions:
-
-    The above copyright notice and this permission notice
-    shall be included in all copies or substantial portions
-    of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-    DEALINGS IN THE SOFTWARE.
