@@ -856,6 +856,15 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             ebml_w.id(id);
         }
     }
+
+    do option::iter(&tcx.value_modes.find(id)) |vm| {
+        do ebml_w.tag(c::tag_table_value_mode) {
+            ebml_w.id(id);
+            do ebml_w.tag(c::tag_table_val) {
+                (*vm).serialize(&ebml_w)
+            }
+        }
+    }
 }
 
 trait doc_decoder_helpers {
@@ -990,6 +999,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let adj: @ty::AutoAdjustment = @deserialize(val_dsr);
                 adj.tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
+            } else if tag == (c::tag_table_value_mode as uint) {
+                let vm: ty::ValueMode = deserialize(val_dsr);
+                dcx.tcx.value_modes.insert(id, vm);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));

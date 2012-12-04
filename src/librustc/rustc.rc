@@ -181,6 +181,8 @@ mod middle {
     #[legacy_exports]
     #[path = "middle/privacy.rs"]
     mod privacy;
+    #[path = "middle/mode.rs"]
+    mod mode;
 }
 
 mod front {

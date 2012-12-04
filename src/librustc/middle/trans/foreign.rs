@@ -65,7 +65,7 @@ fn is_sse(++c: x86_64_reg_class) -> bool {
     };
 }
 
-fn is_ymm(cls: ~[x86_64_reg_class]) -> bool {
+fn is_ymm(cls: &[x86_64_reg_class]) -> bool {
     let len = vec::len(cls);
     return (len > 2u &&
          is_sse(cls[0]) &&
@@ -136,13 +136,13 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         };
     }
 
-    fn all_mem(cls: ~[mut x86_64_reg_class]) {
+    fn all_mem(cls: &[mut x86_64_reg_class]) {
         for uint::range(0, cls.len()) |i| {
             cls[i] = memory_class;
         }
     }
 
-    fn unify(cls: ~[mut x86_64_reg_class],
+    fn unify(cls: &[mut x86_64_reg_class],
              i: uint,
              newv: x86_64_reg_class) {
         if cls[i] == newv {
@@ -167,8 +167,8 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         }
     }
 
-    fn classify_struct(tys: ~[TypeRef],
-                       cls: ~[mut x86_64_reg_class], i: uint,
+    fn classify_struct(tys: &[TypeRef],
+                       cls: &[mut x86_64_reg_class], i: uint,
                        off: uint) {
         if vec::is_empty(tys) {
             classify(T_i64(), cls, i, off);
@@ -183,7 +183,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn classify(ty: TypeRef,
-                cls: ~[mut x86_64_reg_class], ix: uint,
+                cls: &[mut x86_64_reg_class], ix: uint,
                 off: uint) {
         let t_align = ty_align(ty);
         let t_size = ty_size(ty);
@@ -231,7 +231,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         }
     }
 
-    fn fixup(ty: TypeRef, cls: ~[mut x86_64_reg_class]) {
+    fn fixup(ty: TypeRef, cls: &[mut x86_64_reg_class]) {
         let mut i = 0u;
         let llty = llvm::LLVMGetTypeKind(ty) as int;
         let e = vec::len(cls);
@@ -289,8 +289,8 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     return vec::from_mut(move cls);
 }
 
-fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
-    fn llvec_len(cls: ~[x86_64_reg_class]) -> uint {
+fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {
+    fn llvec_len(cls: &[x86_64_reg_class]) -> uint {
         let mut len = 1u;
         for vec::each(cls) |c| {
             if *c != sseup_class {
@@ -342,7 +342,7 @@ type x86_64_tys = {
     sret: bool
 };
 
-fn x86_64_tys(atys: ~[TypeRef],
+fn x86_64_tys(atys: &[TypeRef],
               rty: TypeRef,
               ret_def: bool) -> x86_64_tys {
     fn is_reg_ty(ty: TypeRef) -> bool {
@@ -355,18 +355,18 @@ fn x86_64_tys(atys: ~[TypeRef],
         };
     }
 
-    fn is_pass_byval(cls: ~[x86_64_reg_class]) -> bool {
+    fn is_pass_byval(cls: &[x86_64_reg_class]) -> bool {
         return cls[0] == memory_class ||
             cls[0] == x87_class ||
             cls[0] == complex_x87_class;
     }
 
-    fn is_ret_bysret(cls: ~[x86_64_reg_class]) -> bool {
+    fn is_ret_bysret(cls: &[x86_64_reg_class]) -> bool {
         return cls[0] == memory_class;
     }
 
     fn x86_64_ty(ty: TypeRef,
-                 is_mem_cls: fn(cls: ~[x86_64_reg_class]) -> bool,
+                 is_mem_cls: fn(cls: &[x86_64_reg_class]) -> bool,
                  attr: Attribute) -> (x86_64_llty, Option<Attribute>) {
         let mut cast = false;
         let mut ty_attr = option::None;

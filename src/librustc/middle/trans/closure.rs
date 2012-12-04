@@ -270,7 +270,7 @@ fn build_closure(bcx0: block,
     let mut env_vals = ~[];
     for vec::each(cap_vars) |cap_var| {
         debug!("Building closure: captured variable %?", *cap_var);
-        let datum = expr::trans_local_var(bcx, cap_var.def);
+        let datum = expr::trans_local_var(bcx, cap_var.def, None);
         match cap_var.mode {
             capture::cap_ref => {
                 assert proto == ast::ProtoBorrowed;
