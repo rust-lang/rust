@@ -53,11 +53,11 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
                 make_target_lib_path(&self.sysroot,
                                      self.target_triple));
             match get_cargo_lib_path_nearest() {
-              result::Ok(p) => paths.push(p),
+              result::Ok(ref p) => paths.push((*p)),
               result::Err(_) => ()
             }
             match get_cargo_lib_path() {
-              result::Ok(p) => paths.push(p),
+              result::Ok(ref p) => paths.push((*p)),
               result::Err(_) => ()
             }
             paths
@@ -110,14 +110,14 @@ fn make_target_lib_path(sysroot: &Path,
 
 fn get_default_sysroot() -> Path {
     match os::self_exe_path() {
-      option::Some(p) => p.pop(),
+      option::Some(ref p) => (*p).pop(),
       option::None => fail ~"can't determine value for sysroot"
     }
 }
 
 fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     match maybe_sysroot {
-      option::Some(sr) => sr,
+      option::Some(ref sr) => (*sr),
       option::None => get_default_sysroot()
     }
 }
@@ -128,9 +128,9 @@ fn get_cargo_sysroot() -> Result<Path, ~str> {
 
 fn get_cargo_root() -> Result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
-        Some(_p) => result::Ok(Path(_p)),
+        Some(ref _p) => result::Ok(Path((*_p))),
         None => match os::homedir() {
-          Some(_q) => result::Ok(_q.push(".cargo")),
+          Some(ref _q) => result::Ok((*_q).push(".cargo")),
           None => result::Err(~"no CARGO_ROOT or home directory")
         }
     }

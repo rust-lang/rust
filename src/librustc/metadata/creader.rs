@@ -125,7 +125,7 @@ fn visit_item(e: env, i: @ast::item) {
             if abi != ast::foreign_abi_cdecl &&
                abi != ast::foreign_abi_stdcall { return; }
           }
-          either::Left(msg) => e.diag.span_fatal(i.span, msg)
+          either::Left(ref msg) => e.diag.span_fatal(i.span, (*msg))
         }
 
         let cstore = e.cstore;
@@ -137,13 +137,13 @@ fn visit_item(e: env, i: @ast::item) {
             let foreign_name =
                match attr::first_attr_value_str_by_name(i.attrs,
                                                         ~"link_name") {
-                 Some(nn) => {
-                   if nn == ~"" {
+                 Some(ref nn) => {
+                   if (*nn) == ~"" {
                       e.diag.span_fatal(
                           i.span,
                           ~"empty #[link_name] not allowed; use #[nolink].");
                    }
-                   nn
+                   (*nn)
                  }
                 None => *e.intr.get(i.ident)
             };
@@ -161,8 +161,8 @@ fn visit_item(e: env, i: @ast::item) {
 
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
-              Some(linkarg) => {
-                cstore::add_used_link_args(cstore, linkarg);
+              Some(ref linkarg) => {
+                cstore::add_used_link_args(cstore, (*linkarg));
               }
               None => {/* fallthrough */ }
             }
@@ -236,7 +236,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
 
         let cname =
             match attr::last_meta_item_value_str_by_name(metas, ~"name") {
-              option::Some(v) => v,
+              option::Some(ref v) => (*v),
               option::None => *e.intr.get(ident)
             };
         let cmeta = @{name: cname, data: cdata,

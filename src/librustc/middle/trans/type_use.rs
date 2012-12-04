@@ -80,14 +80,14 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         return uses;
     }
     let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
-        Some(x) => x,
+        Some(ref x) => (*x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
     };
     match map_node {
-      ast_map::node_item(@{node: item_fn(_, _, _, body), _}, _) |
-      ast_map::node_method(@{body, _}, _, _) => {
-        handle_body(cx, body);
+      ast_map::node_item(@{node: item_fn(_, _, _, ref body), _}, _) |
+      ast_map::node_method(@{body: ref body, _}, _, _) => {
+        handle_body(cx, (*body));
       }
       ast_map::node_trait_method(*) => {
         // This will be a static trait method. For now, we just assume
@@ -157,12 +157,12 @@ fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
                  */
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_trait(_, _, _) => false,
-              ty::ty_enum(did, substs) => {
+              ty::ty_enum(did, ref substs) => {
                 if option::is_none(&list::find(enums_seen, |id| *id == did)) {
                     let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
-                            let t = ty::subst(cx.ccx.tcx, &substs, *aty);
+                            let t = ty::subst(cx.ccx.tcx, &(*substs), *aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
                     }

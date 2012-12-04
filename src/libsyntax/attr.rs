@@ -124,9 +124,9 @@ fn get_attr_name(attr: ast::attribute) -> ~str {
 
 fn get_meta_item_name(meta: @ast::meta_item) -> ~str {
     match meta.node {
-      ast::meta_word(n) => n,
-      ast::meta_name_value(n, _) => n,
-      ast::meta_list(n, _) => n
+      ast::meta_word(ref n) => (*n),
+      ast::meta_name_value(ref n, _) => (*n),
+      ast::meta_list(ref n, _) => (*n)
     }
 }
 
@@ -158,9 +158,9 @@ fn get_meta_item_list(meta: @ast::meta_item) -> Option<~[@ast::meta_item]> {
  */
 fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
     match attr::get_meta_item_value_str(item) {
-      Some(value) => {
+      Some(ref value) => {
         let name = attr::get_meta_item_name(item);
-        Some((name, value))
+        Some((name, (*value)))
       }
       None => None
     }
@@ -206,12 +206,12 @@ fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
 
 fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
     return match a.node {
-          ast::meta_word(na) => match b.node {
-            ast::meta_word(nb) => na == nb,
+          ast::meta_word(ref na) => match b.node {
+            ast::meta_word(ref nb) => (*na) == (*nb),
             _ => false
           },
-          ast::meta_name_value(na, va) => match b.node {
-            ast::meta_name_value(nb, vb) => na == nb && va.node == vb.node,
+          ast::meta_name_value(ref na, va) => match b.node {
+            ast::meta_name_value(ref nb, vb) => (*na) == (*nb) && va.node == vb.node,
             _ => false
           },
           ast::meta_list(*) => {
@@ -256,7 +256,7 @@ fn last_meta_item_value_str_by_name(items: ~[@ast::meta_item], name: ~str)
 
     match last_meta_item_by_name(items, name) {
       Some(item) => match attr::get_meta_item_value_str(item) {
-        Some(value) => Some(value),
+        Some(ref value) => Some((*value)),
         None => None
       },
       None => None
@@ -281,9 +281,9 @@ fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     pure fn lteq(ma: &@ast::meta_item, mb: &@ast::meta_item) -> bool {
         pure fn key(m: &ast::meta_item) -> ~str {
             match m.node {
-              ast::meta_word(name) => name,
-              ast::meta_name_value(name, _) => name,
-              ast::meta_list(name, _) => name
+              ast::meta_word(ref name) => (*name),
+              ast::meta_name_value(ref name, _) => (*name),
+              ast::meta_list(ref name, _) => (*name)
             }
         }
         key(*ma) <= key(*mb)
@@ -334,8 +334,8 @@ fn foreign_abi(attrs: ~[ast::attribute]) -> Either<~str, ast::foreign_abi> {
       option::Some(~"stdcall") => {
         either::Right(ast::foreign_abi_stdcall)
       }
-      option::Some(t) => {
-        either::Left(~"unsupported abi: " + t)
+      option::Some(ref t) => {
+        either::Left(~"unsupported abi: " + (*t))
       }
     };
 }

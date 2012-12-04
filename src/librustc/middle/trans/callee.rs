@@ -62,9 +62,9 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
         }
         ast::expr_field(base, _, _) => {
             match bcx.ccx().maps.method_map.find(expr.id) {
-                Some(origin) => { // An impl method
+                Some(ref origin) => { // An impl method
                     return meth::trans_method_callee(bcx, expr.id,
-                                                     base, origin);
+                                                     base, (*origin));
                 }
                 None => {} // not a method, just a field
             }
@@ -316,11 +316,11 @@ fn trans_method_call(in_cx: block,
         expr_ty(in_cx, call_ex),
         |cx| {
             match cx.ccx().maps.method_map.find(call_ex.id) {
-                Some(origin) => {
+                Some(ref origin) => {
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
                                               rcvr,
-                                              origin)
+                                              (*origin))
                 }
                 None => {
                     cx.tcx().sess.span_bug(call_ex.span,
@@ -427,9 +427,9 @@ fn trans_call_inner(
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {
               ast::expr_loop_body(@{
-                node: ast::expr_fn_block(_, body, _),
+                node: ast::expr_fn_block(_, ref body, _),
                 _
-              }) =>  body_contains_ret(body),
+              }) =>  body_contains_ret((*body)),
               _ => false
             }
           }
@@ -622,14 +622,14 @@ fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    blk @ @{node:ast::expr_fn_block(decl, body, cap), _}) =>
+                    blk @ @{node:ast::expr_fn_block(decl, ref body, cap), _}) =>
                 {
                     let scratch_ty = expr_ty(bcx, blk);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let proto = ty::ty_fn_proto(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, body, blk.id,
+                        bcx, proto, decl, (*body), blk.id,
                         cap, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,

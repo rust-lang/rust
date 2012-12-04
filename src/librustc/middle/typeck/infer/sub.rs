@@ -48,7 +48,7 @@ impl Sub: combine {
         do indent {
             match self.infcx.region_vars.make_subregion(self.span, a, b) {
               Ok(()) => Ok(a),
-              Err(e) => Err(e)
+              Err(ref e) => Err((*e))
             }
         }
     }

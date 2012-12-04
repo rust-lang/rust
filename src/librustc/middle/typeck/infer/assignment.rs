@@ -64,7 +64,7 @@ use combine::combine_fields;
 fn to_ares(+c: cres<ty::t>) -> ares {
     match c {
         Ok(_) => Ok(None),
-        Err(e) => Err(e)
+        Err(ref e) => Err((*e))
     }
 }
 
@@ -198,7 +198,7 @@ priv impl Assign {
                     (ty::ty_rptr(_, ref a_t), ty::ty_ptr(ref b_t)) => {
                         match Sub(*self).mts(*a_t, *b_t) {
                             Ok(_) => Ok(None),
-                            Err(e) => Err(e)
+                            Err(ref e) => Err((*e))
                         }
                     }
 

@@ -26,7 +26,7 @@ fn replace_bound_regions_in_fn_ty(
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let (self_ty, rebuild_self_info) = match self_info {
-      Some(s) => (Some(s.self_ty), |t| Some({self_ty: t,.. s})),
+      Some(copy s) => (Some(s.self_ty), |t| Some({self_ty: t,.. s})),
       None => (None, |_t| None)
     };
 
@@ -76,7 +76,7 @@ fn replace_bound_regions_in_fn_ty(
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: match ty::get(t_fn).sty { ty::ty_fn(o) => o,
+         fn_ty: match ty::get(t_fn).sty { ty::ty_fn(ref o) => (*o),
           _ => tcx.sess.bug(~"replace_bound_regions_in_fn_ty: impossible")}};
 
 

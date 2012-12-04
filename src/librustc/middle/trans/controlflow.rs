@@ -75,8 +75,8 @@ fn trans_if(bcx: block,
             let elseif_blk = ast_util::block_from_expr(elexpr);
             trans_block(else_bcx_in, elseif_blk, dest)
           }
-          ast::expr_block(blk) => {
-            trans_block(else_bcx_in, blk, dest)
+          ast::expr_block(ref blk) => {
+            trans_block(else_bcx_in, (*blk), dest)
           }
           // would be nice to have a constraint on ifs
           _ => bcx.tcx().sess.bug(~"strange alternative in if")

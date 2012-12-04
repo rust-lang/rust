@@ -332,7 +332,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
-        ty::ty_fn(fn_ty) => {
+        ty::ty_fn(ref fn_ty) => {
             match tcx.items.find(main_id) {
                 Some(ast_map::node_item(it,_)) => {
                     match it.node {
@@ -348,8 +348,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
                 }
                 _ => ()
             }
-            let mut ok = ty::type_is_nil(fn_ty.sig.output);
-            let num_args = vec::len(fn_ty.sig.inputs);
+            let mut ok = ty::type_is_nil((*fn_ty).sig.output);
+            let num_args = vec::len((*fn_ty).sig.inputs);
             ok &= num_args == 0u;
             if !ok {
                 tcx.sess.span_err(

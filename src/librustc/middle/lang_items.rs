@@ -153,10 +153,10 @@ impl LanguageItemCollector {
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {
         match meta_item.node {
-            meta_name_value(key, literal) => {
+            meta_name_value(ref key, literal) => {
                 match literal.node {
                     lit_str(value) => {
-                        self.match_and_collect_item(item_def_id, key, *value);
+                        self.match_and_collect_item(item_def_id, (*key), *value);
                     }
                     _ => {} // Skip.
                 }

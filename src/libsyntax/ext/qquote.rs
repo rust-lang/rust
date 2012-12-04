@@ -69,7 +69,7 @@ impl @ast::expr: qq_helper {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
     fn extract_mac() -> Option<ast::mac_> {
         match (self.node) {
-          ast::expr_mac({node: mac, _}) => Some(mac),
+          ast::expr_mac({node: ref mac, _}) => Some((*mac)),
           _ => None
         }
     }
@@ -84,7 +84,7 @@ impl @ast::Ty: qq_helper {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
     fn extract_mac() -> Option<ast::mac_> {
         match (self.node) {
-          ast::ty_mac({node: mac, _}) => Some(mac),
+          ast::ty_mac({node: ref mac, _}) => Some((*mac)),
           _ => None
         }
     }

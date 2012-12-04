@@ -150,8 +150,8 @@ fn req_loans_in_expr(ex: @ast::expr,
         }
 
         match self.bccx.method_map.find(ex.id) {
-            Some(method_map_entry) => {
-                match method_map_entry.explicit_self {
+            Some(ref method_map_entry) => {
+                match (*method_map_entry).explicit_self {
                     ast::sty_by_ref => {
                         let rcvr_cmt = self.bccx.cat_expr(rcvr);
                         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
@@ -167,9 +167,9 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_match(ex_v, arms) => {
+      ast::expr_match(ex_v, ref arms) => {
         let cmt = self.bccx.cat_expr(ex_v);
-        for arms.each |arm| {
+        for (*arms).each |arm| {
             for arm.pats.each |pat| {
                 self.gather_pat(cmt, *pat, arm.body.node.id, ex.id);
             }
@@ -228,19 +228,19 @@ fn req_loans_in_expr(ex: @ast::expr,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_while(cond, body) => {
+      ast::expr_while(cond, ref body) => {
         // during the condition, can only root for the condition
         self.root_ub = cond.id;
         (vt.visit_expr)(cond, self, vt);
 
         // during body, can only root for the body
-        self.root_ub = body.node.id;
-        (vt.visit_block)(body, self, vt);
+        self.root_ub = (*body).node.id;
+        (vt.visit_block)((*body), self, vt);
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_loop(body, _) => {
-        self.root_ub = body.node.id;
+      ast::expr_loop(ref body, _) => {
+        self.root_ub = (*body).node.id;
         visit::visit_expr(ex, self, vt);
       }
 
@@ -331,7 +331,7 @@ impl gather_loan_ctxt {
           // error will be reported.
           Some(_) => {
               match self.bccx.loan(cmt, scope_r, req_mutbl) {
-                  Err(e) => { self.bccx.report(e); }
+                  Err(ref e) => { self.bccx.report((*e)); }
                   Ok(move loans) => {
                       self.add_loans(cmt, req_mutbl, scope_r, move loans);
                   }
@@ -364,8 +364,8 @@ impl gather_loan_ctxt {
                     // rooted.  good.
                     self.bccx.stable_paths += 1;
                 }
-                Ok(pc_if_pure(e)) => {
-                    debug!("result of preserve: %?", pc_if_pure(e));
+                Ok(pc_if_pure(ref e)) => {
+                    debug!("result of preserve: %?", pc_if_pure((*e)));
 
                     // we are only able to guarantee the validity if
                     // the scope is pure
@@ -374,7 +374,7 @@ impl gather_loan_ctxt {
                             // if the scope is some block/expr in the
                             // fn, then just require that this scope
                             // be pure
-                            self.req_maps.pure_map.insert(pure_id, e);
+                            self.req_maps.pure_map.insert(pure_id, (*e));
                             self.bccx.req_pure_paths += 1;
 
                             debug!("requiring purity for scope %?",
@@ -390,14 +390,14 @@ impl gather_loan_ctxt {
                             // otherwise, we can't enforce purity for
                             // that scope, so give up and report an
                             // error
-                            self.bccx.report(e);
+                            self.bccx.report((*e));
                         }
                     }
                 }
-                Err(e) => {
+                Err(ref e) => {
                     // we cannot guarantee the validity of this pointer
                     debug!("result of preserve: error");
-                    self.bccx.report(e);
+                    self.bccx.report((*e));
                 }
             }
           }

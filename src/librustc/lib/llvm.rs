@@ -1086,7 +1086,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     match type_has_name(names, ty) {
-      option::Some(n) => return n,
+      option::Some(ref n) => return (*n),
       _ => {}
     }
 

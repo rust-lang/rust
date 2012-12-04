@@ -55,7 +55,7 @@ enum message {
 impl message {
     fn name() -> ~str {
         match self {
-          message(id, _, _, _, _) => id
+          message(ref id, _, _, _, _) => (*id)
         }
     }
 
@@ -113,8 +113,8 @@ impl state {
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
             match *m {
-              message(_, _, _, _, Some({state: id, _})) => {
-                let state = self.proto.get_state(id);
+              message(_, _, _, _, Some({state: ref id, _})) => {
+                let state = self.proto.get_state((*id));
                 if !f(state) { break }
               }
               _ => ()

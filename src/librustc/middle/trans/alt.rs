@@ -765,7 +765,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
-      ty::ty_enum(id, substs) => { assert id == vdefs.enm; substs.tps }
+      ty::ty_enum(id, ref substs) => { assert id == vdefs.enm; (*substs).tps }
       _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
     };
     let mut blobptr = val;

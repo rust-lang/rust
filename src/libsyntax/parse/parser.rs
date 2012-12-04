@@ -136,7 +136,7 @@ macro_rules! maybe_whole_expr (
 
 macro_rules! maybe_whole (
     ($p:expr, $constructor:ident) => ( match copy $p.token {
-      INTERPOLATED(token::$constructor(x)) => { $p.bump(); return x; }
+      INTERPOLATED(token::$constructor(ref x)) => { $p.bump(); return (*x); }
       _ => ()
     }) ;
     (deref $p:expr, $constructor:ident) => ( match copy $p.token {
@@ -155,7 +155,7 @@ macro_rules! maybe_whole (
       _ => ()
     }) ;
     (pair_empty $p:expr, $constructor:ident) => ( match copy $p.token {
-      INTERPOLATED(token::$constructor(x)) => { $p.bump(); return (~[], x); }
+      INTERPOLATED(token::$constructor(ref x)) => { $p.bump(); return (~[], (*x)); }
       _ => ()
     })
 
@@ -166,7 +166,7 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
                   -> ~[attribute] {
     match rhs {
         None => lhs,
-        Some(attrs) => vec::append(lhs, attrs)
+        Some(ref attrs) => vec::append(lhs, (*attrs))
     }
 }
 
@@ -510,9 +510,9 @@ impl Parser {
         let lo = self.span.lo;
 
         match self.maybe_parse_dollar_mac() {
-          Some(e) => {
+          Some(ref e) => {
             return @{id: self.get_id(),
-                  node: ty_mac(spanned(lo, self.span.hi, e)),
+                  node: ty_mac(spanned(lo, self.span.hi, (*e))),
                   span: mk_sp(lo, self.span.hi)};
           }
           None => ()
@@ -928,7 +928,7 @@ impl Parser {
         let mut ex: expr_;
 
         match self.maybe_parse_dollar_mac() {
-          Some(x) => return self.mk_mac_expr(lo, self.span.hi, x),
+          Some(ref x) => return self.mk_mac_expr(lo, self.span.hi, (*x)),
           _ => ()
         }
 
@@ -2022,7 +2022,7 @@ impl Parser {
                 pat = pat_tup(fields);
             }
           }
-          tok => {
+          copy tok => {
             if !is_ident_or_path(tok)
                 || self.is_keyword(~"true")
                 || self.is_keyword(~"false")
@@ -2284,7 +2284,7 @@ impl Parser {
             let mut item_attrs;
             match self.parse_outer_attrs_or_ext(first_item_attrs) {
               None => item_attrs = ~[],
-              Some(Left(attrs)) => item_attrs = attrs,
+              Some(Left(ref attrs)) => item_attrs = (*attrs),
               Some(Right(ext)) => {
                 return @spanned(lo, ext.span.hi,
                                 stmt_expr(ext, self.get_id()));
@@ -2346,8 +2346,8 @@ impl Parser {
         let lo = self.span.lo;
         let us = self.eat_keyword(~"unsafe");
         self.expect(token::LBRACE);
-        let {inner, next} = maybe_parse_inner_attrs_and_next(self,
-                                                             parse_attrs);
+        let {inner: move inner, next: move next} =
+            maybe_parse_inner_attrs_and_next(self, parse_attrs);
         let blk_check_mode = if us { unsafe_blk } else { default_blk };
         return (inner, self.parse_block_tail_(lo, blk_check_mode, next));
     }
@@ -2372,7 +2372,9 @@ impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
-        let {attrs_remaining, view_items, items: items, _} =
+        let {attrs_remaining: move attrs_remaining,
+             view_items: move view_items,
+             items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             IMPORTS_AND_ITEMS_ALLOWED, false);
 
@@ -2408,7 +2410,7 @@ impl Parser {
                                 token::RBRACE => {
                                     expr = Some(e);
                                 }
-                                t => {
+                                copy t => {
                                     if classify::stmt_ends_with_semi(*stmt) {
                                         self.fatal(
                                             ~"expected `;` or `}` after \
@@ -2421,12 +2423,12 @@ impl Parser {
                             }
                         }
 
-                        stmt_mac(m, _) => {
+                        stmt_mac(ref m, _) => {
                             // Statement macro; might be an expr
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@{node: stmt_mac(m, true),
+                                    stmts.push(@{node: stmt_mac((*m), true),
                                                  ..*stmt});
                                 }
                                 token::RBRACE => {
@@ -2435,7 +2437,7 @@ impl Parser {
                                     expr = Some(
                                         self.mk_mac_expr(stmt.span.lo,
                                                          stmt.span.hi,
-                                                         m.node));
+                                                         (*m).node));
                                 }
                                 _ => { stmts.push(stmt); }
                             }
@@ -2847,7 +2849,7 @@ impl Parser {
             fields = ~[];
             while self.token != token::RBRACE {
                 match self.parse_class_item() {
-                  dtor_decl(blk, attrs, s) => {
+                  dtor_decl(ref blk, ref attrs, s) => {
                       match the_dtor {
                         Some((_, _, s_first)) => {
                           self.span_note(s, fmt!("Duplicate destructor \
@@ -2857,7 +2859,7 @@ impl Parser {
                                                           declared here");
                         }
                         None => {
-                          the_dtor = Some((blk, attrs, s));
+                          the_dtor = Some(((*blk), (*attrs), s));
                         }
                       }
                   }
@@ -3007,7 +3009,9 @@ impl Parser {
     fn parse_mod_items(term: token::Token,
                        +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items, items: starting_items, _} =
+        let {attrs_remaining: move attrs_remaining,
+             view_items: move view_items,
+             items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             VIEW_ITEMS_AND_ITEMS_ALLOWED,
                                             true);
@@ -3076,11 +3080,11 @@ impl Parser {
         // on the mod, then we'll go and suck in another file and merge
         // its contents
         match ::attr::first_attr_value_str_by_name(outer_attrs, ~"merge") {
-            Some(path) => {
+            Some(ref path) => {
                 let prefix = Path(
                     self.sess.cm.span_to_filename(copy self.span));
                 let prefix = prefix.dir_path();
-                let path = Path(path);
+                let path = Path((*path));
                 let (new_mod_item, new_attrs) = self.eval_src_mod_from_path(
                     prefix, path, ~[], id_span);
 
@@ -3113,7 +3117,7 @@ impl Parser {
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
 
-            Some(d) => d,
+            Some(ref d) => (*d),
             None => default_path
         };
 
@@ -3143,7 +3147,7 @@ impl Parser {
 
         fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
             match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
-                Some(d) => d,
+                Some(ref d) => (*d),
                 None => default
             }
         }
@@ -3208,7 +3212,10 @@ impl Parser {
                                +first_item_attrs: ~[attribute])
                             -> foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items, items: _, foreign_items} =
+        let {attrs_remaining: move attrs_remaining,
+             view_items: move view_items,
+             items: _,
+             foreign_items: move foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
                                          VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
                                             true);
@@ -3341,7 +3348,7 @@ impl Parser {
         let mut methods: ~[@method] = ~[];
         while self.token != token::RBRACE {
             match self.parse_class_item() {
-                dtor_decl(blk, attrs, s) => {
+                dtor_decl(ref blk, ref attrs, s) => {
                     match the_dtor {
                         Some((_, _, s_first)) => {
                             self.span_note(s, ~"duplicate destructor \
@@ -3351,7 +3358,7 @@ impl Parser {
                                               declared here");
                         }
                         None => {
-                            the_dtor = Some((blk, attrs, s));
+                            the_dtor = Some(((*blk), (*attrs), s));
                         }
                     }
                 }

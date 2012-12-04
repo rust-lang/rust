@@ -429,7 +429,10 @@ type ctxt =
       destructor_for_type: HashMap<ast::def_id, ast::def_id>,
 
       // A method will be in this list if and only if it is a destructor.
-      destructors: HashMap<ast::def_id, ()>
+      destructors: HashMap<ast::def_id, ()>,
+
+      // Records the value mode (read, copy, or move) for every value.
+      value_modes: HashMap<ast::node_id, ValueMode>,
       };
 
 enum tbox_flag {
@@ -918,7 +921,7 @@ fn mk_ctxt(s: session::Session,
     let mut legacy_modes = false;
     for crate.node.attrs.each |attribute| {
         match attribute.node.value.node {
-            ast::meta_word(w) if w == ~"legacy_modes" => {
+            ast::meta_word(ref w) if (*w) == ~"legacy_modes" => {
                 legacy_modes = true;
                 break;
             }
@@ -968,7 +971,8 @@ fn mk_ctxt(s: session::Session,
       automatically_derived_methods: HashMap(),
       automatically_derived_methods_for_impl: HashMap(),
       destructor_for_type: HashMap(),
-      destructors: HashMap()}
+      destructors: HashMap(),
+      value_modes: HashMap()}
 }
 
 
@@ -1182,7 +1186,7 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
       ty_int(ast::ty_i) => ty_int(cfg.int_type),
       ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
       ty_float(ast::ty_f) => ty_float(cfg.float_type),
-      s => s
+      ref s => (*s)
     }
 }
 
@@ -1255,9 +1259,9 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_ptr(tm) | ty_rptr(_, tm) => {
         maybe_walk_ty(tm.ty, f);
       }
-      ty_enum(_, substs) | ty_class(_, substs) |
-      ty_trait(_, substs, _) => {
-        for substs.tps.each |subty| { maybe_walk_ty(*subty, f); }
+      ty_enum(_, ref substs) | ty_class(_, ref substs) |
+      ty_trait(_, ref substs, _) => {
+        for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
       ty_rec(fields) => {
         for fields.each |fl| { maybe_walk_ty(fl.mt.ty, f); }
@@ -2913,7 +2917,7 @@ fn is_fn_ty(fty: t) -> bool {
 fn ty_region(ty: t) -> Region {
     match get(ty).sty {
       ty_rptr(r, _) => r,
-      s => fail fmt!("ty_region() invoked on non-rptr: %?", s)
+      ref s => fail fmt!("ty_region() invoked on non-rptr: %?", (*s))
     }
 }
 
@@ -3246,10 +3250,10 @@ fn canon<T:Copy cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
     match m0 {
       ast::infer(id) => match tbl.find(id) {
         None => m0,
-        Some(m1) => {
-            let cm1 = canon(tbl, m1);
+        Some(ref m1) => {
+            let cm1 = canon(tbl, (*m1));
             // path compression:
-            if cm1 != m1 { tbl.insert(id, cm1); }
+            if cm1 != (*m1) { tbl.insert(id, cm1); }
             cm1
         }
       },
@@ -3440,11 +3444,11 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                   but found bound lifetime parameter %s",
                  bound_region_to_str(cx, br))
         }
-        terr_vstores_differ(k, values) => {
+        terr_vstores_differ(k, ref values) => {
             fmt!("%s storage differs: expected %s but found %s",
                  terr_vstore_kind_to_str(k),
-                 vstore_to_str(cx, values.expected),
-                 vstore_to_str(cx, values.found))
+                 vstore_to_str(cx, (*values).expected),
+                 vstore_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
             fmt!("in field `%s`, %s", cx.sess.str_of(fname),
@@ -3515,8 +3519,8 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(id.node) {
-            Some(ast_map::node_item(@{node: item_trait(_, _, ms),_}, _)) =>
-                match ast_util::split_trait_methods(ms) {
+            Some(ast_map::node_item(@{node: item_trait(_, _, ref ms),_}, _)) =>
+                match ast_util::split_trait_methods((*ms)) {
                    (_, p) => p.map(|method| method.ident)
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
@@ -3543,10 +3547,10 @@ fn trait_supertraits(cx: ctxt, id: ast::def_id) -> @~[InstantiatedTraitRef] {
     let result = dvec::DVec();
     for csearch::get_supertraits(cx, id).each |trait_type| {
         match get(*trait_type).sty {
-            ty_trait(def_id, substs, _) => {
+            ty_trait(def_id, ref substs, _) => {
                 result.push(InstantiatedTraitRef {
                     def_id: def_id,
-                    tpt: { substs: substs, ty: *trait_type }
+                    tpt: { substs: (*substs), ty: *trait_type }
                 });
             }
             _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
@@ -3583,7 +3587,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
     fn vstoreify(cx: ctxt, ty: t, vstore: vstore) -> t {
         match ty::get(ty).sty {
             ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
-            ty::ty_trait(did, substs, _) => mk_trait(cx, did, substs, vstore),
+            ty::ty_trait(did, ref substs, _) => mk_trait(cx, did, (*substs), vstore),
             _ => cx.sess.bug(~"impl_traits: not a trait")
         }
     }
@@ -3706,10 +3710,10 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> DtorKind {
     if is_local(class_id) {
        match cx.items.find(class_id.node) {
            Some(ast_map::node_item(@{
-               node: ast::item_class(@{ dtor: Some(dtor), _ }, _),
+               node: ast::item_class(@{ dtor: Some(ref dtor), _ }, _),
                _
            }, _)) =>
-               LegacyDtor(local_def(dtor.node.id)),
+               LegacyDtor(local_def((*dtor).node.id)),
            _ =>
                NoDtor
        }
@@ -3756,9 +3760,9 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(*path, ast_map::path_name(method.ident))
           }
 
-          ast_map::node_variant(variant, _, path) => {
+          ast_map::node_variant(ref variant, _, path) => {
             vec::append_one(vec::init(*path),
-                            ast_map::path_name(variant.node.name))
+                            ast_map::path_name((*variant).node.name))
           }
 
           ast_map::node_dtor(_, _, _, path) => {
@@ -3805,9 +3809,9 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         match cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_enum(enum_definition, _), _},
+          ast_map::node_item(@{node: ast::item_enum(ref enum_definition, _), _},
                              _) => {
-            let variants = enum_definition.variants;
+            let variants = (*enum_definition).variants;
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 match variant.node.kind {
@@ -3921,8 +3925,8 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             _ => cx.sess.bug(~"class ID bound to non-class")
          }
        }
-       Some(ast_map::node_variant(variant, _, _)) => {
-          match variant.node.kind {
+       Some(ast_map::node_variant(ref variant, _, _)) => {
+          match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
               class_field_tys(struct_def.fields)
             }
@@ -4180,24 +4184,24 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             })
         }
 
-        ty_enum(did, r) =>
-            match r.self_r {
+        ty_enum(did, ref r) =>
+            match (*r).self_r {
                 Some(_) =>
                     // Use re_static since trans doesn't care about regions
                     mk_enum(cx, did,
                      {self_r: Some(ty::re_static),
                       self_ty: None,
-                      tps: r.tps}),
+                      tps: (*r).tps}),
                 None =>
                     t
             },
 
-        ty_class(did, r) =>
-            match r.self_r {
+        ty_class(did, ref r) =>
+            match (*r).self_r {
               Some(_) =>
                 // Ditto.
                 mk_class(cx, did, {self_r: Some(ty::re_static), self_ty: None,
-                                   tps: r.tps}),
+                                   tps: (*r).tps}),
               None =>
                 t
             },
@@ -4544,9 +4548,9 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
-            ty_enum(e0a, e1a) => {
+            ty_enum(e0a, ref e1a) => {
                 match (*other) {
-                    ty_enum(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    ty_enum(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
                     _ => false
                 }
             }
@@ -4586,22 +4590,22 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
-            ty_fn(e0a) => {
+            ty_fn(ref e0a) => {
                 match (*other) {
-                    ty_fn(e0b) => e0a == e0b,
+                    ty_fn(ref e0b) => (*e0a) == (*e0b),
                     _ => false
                 }
             }
-            ty_trait(e0a, e1a, e2a) => {
+            ty_trait(e0a, ref e1a, e2a) => {
                 match (*other) {
-                    ty_trait(e0b, e1b, e2b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b,
+                    ty_trait(e0b, ref e1b, e2b) =>
+                        e0a == e0b && (*e1a) == (*e1b) && e2a == e2b,
                     _ => false
                 }
             }
-            ty_class(e0a, e1a) => {
+            ty_class(e0a, ref e1a) => {
                 match (*other) {
-                    ty_class(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    ty_class(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
                     _ => false
                 }
             }

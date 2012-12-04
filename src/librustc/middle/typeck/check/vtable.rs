@@ -125,7 +125,7 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
-          ty::ty_trait(_, substs_f, _) => substs_f,
+          ty::ty_trait(_, ref substs_f, _) => (*substs_f),
           _ => fail ~"t_f should be a trait"
         }
     }
@@ -151,7 +151,7 @@ fn lookup_vtable(vcx: &VtableContext,
 
     let tcx = vcx.tcx();
     let (trait_id, trait_substs, trait_vstore) = match ty::get(trait_ty).sty {
-        ty::ty_trait(did, substs, vstore) => (did, substs, vstore),
+        ty::ty_trait(did, ref substs, vstore) => (did, (*substs), vstore),
         _ => tcx.sess.impossible_case(location_info.span,
                                       "lookup_vtable: \
                                        don't know how to handle a non-trait")
@@ -203,7 +203,7 @@ fn lookup_vtable(vcx: &VtableContext,
             }
         }
 
-        ty::ty_trait(did, substs, _) if trait_id == did => {
+        ty::ty_trait(did, ref substs, _) if trait_id == did => {
             debug!("(checking vtable) @1 relating ty to trait ty with did %?",
                    did);
 
@@ -224,7 +224,7 @@ fn lookup_vtable(vcx: &VtableContext,
                     }
                 }
             }
-            return Some(vtable_trait(did, substs.tps));
+            return Some(vtable_trait(did, (*substs).tps));
         }
 
         _ => {
@@ -357,7 +357,7 @@ fn lookup_vtable(vcx: &VtableContext,
                                                               trait_id,
                                                               substs,
                                                               is_early) {
-                                Some(substs) => substs,
+                                Some(ref substs) => (*substs),
                                 None => {
                                     assert is_early;
                                     // Bail out with a bogus answer
@@ -468,8 +468,8 @@ fn connect_trait_tps(vcx: &VtableContext,
     debug!("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).sty, impl_did);
     match ty::get(trait_ty).sty {
-     ty::ty_trait(_, substs, _) => {
-         for vec::each2(substs.tps, trait_tys) |a, b| {
+     ty::ty_trait(_, ref substs, _) => {
+         for vec::each2((*substs).tps, trait_tys) |a, b| {
             demand_suptype(vcx, location_info.span, *a, *b);
          }
       }

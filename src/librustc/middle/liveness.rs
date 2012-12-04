@@ -1058,7 +1058,7 @@ impl Liveness {
               self.propagate_through_expr(e, succ)
           }
 
-          expr_fn(_, _, blk, _) | expr_fn_block(_, blk, _) => {
+          expr_fn(_, _, ref blk, _) | expr_fn_block(_, ref blk, _) => {
               debug!("%s is an expr_fn or expr_fn_block",
                    expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -1066,7 +1066,7 @@ impl Liveness {
               The next-node for a break is the successor of the entire
               loop. The next-node for a continue is the top of this loop.
               */
-              self.with_loop_nodes(blk.node.id, succ,
+              self.with_loop_nodes((*blk).node.id, succ,
                   self.live_node(expr.id, expr.span), || {
 
                  // the construction of a closure itself is not important,
@@ -1081,7 +1081,7 @@ impl Liveness {
               })
           }
 
-          expr_if(cond, then, els) => {
+          expr_if(cond, ref then, els) => {
             //
             //     (cond)
             //       |
@@ -1096,24 +1096,24 @@ impl Liveness {
             //   (  succ  )
             //
             let else_ln = self.propagate_through_opt_expr(els, succ);
-            let then_ln = self.propagate_through_block(then, succ);
+            let then_ln = self.propagate_through_block((*then), succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
             self.merge_from_succ(ln, then_ln, false);
             self.propagate_through_expr(cond, ln)
           }
 
-          expr_while(cond, blk) => {
-            self.propagate_through_loop(expr, Some(cond), blk, succ)
+          expr_while(cond, ref blk) => {
+            self.propagate_through_loop(expr, Some(cond), (*blk), succ)
           }
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
-          expr_loop(blk, _) => {
-            self.propagate_through_loop(expr, None, blk, succ)
+          expr_loop(ref blk, _) => {
+            self.propagate_through_loop(expr, None, (*blk), succ)
           }
 
-          expr_match(e, arms) => {
+          expr_match(e, ref arms) => {
             //
             //      (e)
             //       |
@@ -1131,7 +1131,7 @@ impl Liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            for arms.each |arm| {
+            for (*arms).each |arm| {
                 let body_succ =
                     self.propagate_through_block(arm.body, succ);
                 let guard_succ =
@@ -1223,16 +1223,16 @@ impl Liveness {
             self.propagate_through_expr(element, succ)
           }
 
-          expr_rec(fields, with_expr) => {
+          expr_rec(ref fields, with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            do fields.foldr(succ) |field, succ| {
+            do (*fields).foldr(succ) |field, succ| {
                 self.propagate_through_expr(field.node.expr, succ)
             }
           }
 
-          expr_struct(_, fields, with_expr) => {
+          expr_struct(_, ref fields, with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            do fields.foldr(succ) |field, succ| {
+            do (*fields).foldr(succ) |field, succ| {
                 self.propagate_through_expr(field.node.expr, succ)
             }
           }
@@ -1294,8 +1294,8 @@ impl Liveness {
             succ
           }
 
-          expr_block(blk) => {
-            self.propagate_through_block(blk, succ)
+          expr_block(ref blk) => {
+            self.propagate_through_block((*blk), succ)
           }
 
           expr_mac(*) => {

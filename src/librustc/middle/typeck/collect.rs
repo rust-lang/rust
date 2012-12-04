@@ -108,9 +108,9 @@ impl @crate_ctxt: ast_conv {
               Some(ast_map::node_foreign_item(foreign_item, _, _)) => {
                 ty_of_foreign_item(self, foreign_item)
               }
-              x => {
+              ref x => {
                 self.tcx.sess.bug(fmt!("unexpected sort of item \
-                                        in get_item_ty(): %?", x));
+                                        in get_item_ty(): %?", (*x)));
               }
             }
         }
@@ -164,8 +164,8 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 convert_struct(
                     ccx, rp, struct_def, ty_params, tpt, variant.node.id);
             }
-            ast::enum_variant_kind(enum_definition) => {
-                get_enum_variant_types(ccx, enum_ty, enum_definition.variants,
+            ast::enum_variant_kind(ref enum_definition) => {
+                get_enum_variant_types(ccx, enum_ty, (*enum_definition).variants,
                                        ty_params, rp);
                 result_ty = None;
             }
@@ -232,11 +232,11 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(id);
     match tcx.items.get(id) {
-      ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
-        store_methods::<ast::trait_method>(ccx, id, ms, |m| {
+      ast_map::node_item(@{node: ast::item_trait(params, _, ref ms), _}, _) => {
+        store_methods::<ast::trait_method>(ccx, id, (*ms), |m| {
             let def_id;
             match *m {
-                ast::required(ty_method) => def_id = local_def(ty_method.id),
+                ast::required(ref ty_method) => def_id = local_def((*ty_method).id),
                 ast::provided(method) => def_id = local_def(method.id)
             }
 
@@ -550,10 +550,10 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     match it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
-      ast::item_enum(enum_definition, ty_params) => {
+      ast::item_enum(ref enum_definition, ty_params) => {
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
+        get_enum_variant_types(ccx, tpt.ty, (*enum_definition).variants,
                                ty_params, rp);
       }
       ast::item_impl(tps, trait_ref, selfty, ms) => {
@@ -570,7 +570,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         }
       }
-      ast::item_trait(tps, supertraits, trait_methods) => {
+      ast::item_trait(tps, supertraits, ref trait_methods) => {
         let tpt = ty_of_item(ccx, it);
         debug!("item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty));
@@ -578,7 +578,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_trait_methods(ccx, it.id, tpt.ty);
         ensure_supertraits(ccx, it.id, it.span, rp, supertraits);
 
-        let (_, provided_methods) = split_trait_methods(trait_methods);
+        let (_, provided_methods) = split_trait_methods((*trait_methods));
         let {bounds, _} = mk_substs(ccx, tps, rp);
         let _cms = convert_methods(ccx, provided_methods, rp, bounds);
         // FIXME (#2616): something like this, when we start having
@@ -634,7 +634,7 @@ fn convert_struct(ccx: @crate_ctxt,
     for struct_def.fields.each |f| {
        convert_field(ccx, rp, tpt.bounds, *f);
     }
-    let {bounds, substs} = mk_substs(ccx, tps, rp);
+    let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
     let selfty = ty::mk_class(tcx, local_def(id), substs);
     let cms = convert_methods(ccx, struct_def.methods, rp, bounds);
     for struct_def.traits.each |trait_ref| {
@@ -813,7 +813,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_enum(_, tps) => {
         // Create a new generic polytype.
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
+        let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_enum(tcx, local_def(it.id), substs);
         let tpt = {bounds: bounds,
                    region_param: rp,
@@ -822,7 +822,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         return tpt;
       }
       ast::item_trait(tps, _, _) => {
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
+        let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
         let tpt = {bounds: bounds,
                    region_param: rp,
@@ -831,7 +831,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         return tpt;
       }
       ast::item_class(_, tps) => {
-          let {bounds,substs} = mk_substs(ccx, tps, rp);
+          let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
           let t = ty::mk_class(tcx, local_def(it.id), substs);
           let tpt = {bounds: bounds,
                      region_param: rp,

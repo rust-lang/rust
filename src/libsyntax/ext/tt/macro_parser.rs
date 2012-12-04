@@ -117,8 +117,8 @@ type matcher_pos = ~{
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
-    match mpu {
-      matcher_pos_up(Some(mp)) => copy mp,
+    match &mpu {
+      &matcher_pos_up(Some(ref mp)) => copy (*mp),
       _ => fail
     }
 }
@@ -127,7 +127,7 @@ fn count_names(ms: &[matcher]) -> uint {
     vec::foldl(0u, ms, |ct, m| {
         ct + match m.node {
           match_tok(_) => 0u,
-          match_seq(more_ms, _, _, _, _) => count_names(more_ms),
+          match_seq(ref more_ms, _, _, _, _) => count_names((*more_ms)),
           match_nonterminal(_,_,_) => 1u
         }})
 }
@@ -184,8 +184,8 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
              ret_val: HashMap<ident, @named_match>) {
         match m {
           {node: match_tok(_), span: _} => (),
-          {node: match_seq(more_ms, _, _, _, _), span: _} => {
-            for more_ms.each() |next_m| { n_rec(p_s, *next_m, res, ret_val) };
+          {node: match_seq(ref more_ms, _, _, _, _), span: _} => {
+            for (*more_ms).each() |next_m| { n_rec(p_s, *next_m, res, ret_val) };
           }
           {node: match_nonterminal(bind_name, _, idx), span: sp} => {
             if ret_val.contains_key(bind_name) {
@@ -211,8 +211,8 @@ fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
                  ms: ~[matcher]) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
-      failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
-      error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
+      failure(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str)),
+      error(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str))
     }
 }
 
@@ -274,8 +274,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
                     // the *_t vars are workarounds for the lack of unary move
                     match copy ei.sep {
-                      Some(t) if idx == len => { // we need a separator
-                        if tok == t { //pass the separator
+                      Some(ref t) if idx == len => { // we need a separator
+                        if tok == (*t) { //pass the separator
                             let ei_t = move ei;
                             ei_t.idx += 1;
                             next_eis.push(move ei_t);
@@ -293,7 +293,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             } else {
                 match copy ei.elts[idx].node {
                   /* need to descend into sequence */
-                  match_seq(matchers, sep, zero_ok,
+                  match_seq(ref matchers, ref sep, zero_ok,
                             match_idx_lo, match_idx_hi) => {
                     if zero_ok {
                         let new_ei = copy ei;
@@ -310,7 +310,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                                            |_m| DVec::<@named_match>());
                     let ei_t = move ei;
                     cur_eis.push(~{
-                        elts: matchers, sep: sep, mut idx: 0u,
+                        elts: (*matchers), sep: (*sep), mut idx: 0u,
                         mut up: matcher_pos_up(Some(move ei_t)),
                         matches: move matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
@@ -318,9 +318,9 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     });
                   }
                   match_nonterminal(_,_,_) => { bb_eis.push(move ei) }
-                  match_tok(t) => {
+                  match_tok(ref t) => {
                     let ei_t = move ei;
-                    if t == tok {
+                    if (*t) == tok {
                         ei_t.idx += 1;
                         next_eis.push(move ei_t);
                     }

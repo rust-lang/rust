@@ -25,7 +25,7 @@ impl borrowck_ctxt {
             loans: ~[]
         };
         match lc.loan(cmt, mutbl) {
-          Err(e) => Err(e),
+          Err(ref e) => Err((*e)),
           Ok(()) => {
               let LoanContext {loans, _} = move lc;
               Ok(loans)

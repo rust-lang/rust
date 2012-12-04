@@ -100,9 +100,9 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
                id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         match fcx.opt_node_ty_substs(id) {
-          Some(substs) => {
+          Some(ref substs) => {
             let mut new_tps = ~[];
-            for substs.tps.each |subst| {
+            for (*substs).tps.each |subst| {
                 match resolve_type_vars_in_type(fcx, sp, *subst) {
                   Some(t) => new_tps.push(t),
                   None => { wbcx.success = false; return None; }

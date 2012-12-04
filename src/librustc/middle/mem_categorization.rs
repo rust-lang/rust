@@ -315,7 +315,7 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(uniq_ptr))
       }
 
-      ty::ty_fn(f) if f.meta.proto == ast::ProtoUniq => {
+      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoUniq => {
         Some(deref_ptr(uniq_ptr))
       }
 
@@ -325,8 +325,8 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(region_ptr(r)))
       }
 
-      ty::ty_fn(f) if f.meta.proto == ast::ProtoBorrowed => {
-        Some(deref_ptr(region_ptr(f.meta.region)))
+      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBorrowed => {
+        Some(deref_ptr(region_ptr((*f).meta.region)))
       }
 
       ty::ty_box(*) |
@@ -335,7 +335,7 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(gc_ptr))
       }
 
-      ty::ty_fn(f) if f.meta.proto == ast::ProtoBox => {
+      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBox => {
         Some(deref_ptr(gc_ptr))
       }
 

@@ -45,8 +45,8 @@ fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
 fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
     let mut found_export = false;
     match cx.exp_map2.find(mod_id) {
-      Some(exp2s) => {
-        for exp2s.each |e2| {
+      Some(ref exp2s) => {
+        for (*exp2s).each |e2| {
             found_export = true;
             traverse_def_id(cx, e2.def_id)
         };
@@ -60,7 +60,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
     let n = match cx.tcx.items.find(did.node) {
         None => return, // This can happen for self, for example
-        Some(n) => n
+        Some(ref n) => (*n)
     };
     match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
@@ -68,7 +68,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
       ast_map::node_foreign_item(item, _, _) => {
         cx.rmap.insert(item.id, ());
       }
-      ast_map::node_variant(v, _, _) => { cx.rmap.insert(v.node.id, ()); }
+      ast_map::node_variant(ref v, _, _) => { cx.rmap.insert((*v).node.id, ()); }
       _ => ()
     }
 }
@@ -94,10 +94,10 @@ fn traverse_public_item(cx: ctx, item: @item) {
               }
           }
       }
-      item_fn(_, _, tps, blk) => {
+      item_fn(_, _, tps, ref blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
-            traverse_inline_body(cx, blk);
+            traverse_inline_body(cx, (*blk));
         }
       }
       item_impl(tps, _, _, ms) => {

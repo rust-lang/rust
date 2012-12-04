@@ -130,8 +130,8 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
         }
     }
     match t {
-      tt_delim(tts) | tt_seq(_, tts, _, _) => {
-        vec::foldl(lis_unconstrained, tts, |lis, tt|
+      tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
+        vec::foldl(lis_unconstrained, (*tts), |lis, tt|
             lis_merge(lis, lockstep_iter_size(*tt, r), r))
       }
       tt_tok(*) => lis_unconstrained,
@@ -170,8 +170,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
             match r.cur.sep {
-              Some(tk) => {
-                r.cur_tok = tk; /* repeat same span, I guess */
+              Some(ref tk) => {
+                r.cur_tok = (*tk); /* repeat same span, I guess */
                 return ret_val;
               }
               None => ()
@@ -181,27 +181,27 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         match r.cur.readme[r.cur.idx] {
-          tt_delim(tts) => {
-            r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
+          tt_delim(ref tts) => {
+            r.cur = @{readme: (*tts), mut idx: 0u, dotdotdoted: false,
                       sep: None, up: tt_frame_up(option::Some(r.cur)) };
             // if this could be 0-length, we'd need to potentially recur here
           }
-          tt_tok(sp, tok) => {
-            r.cur_span = sp; r.cur_tok = tok;
+          tt_tok(sp, ref tok) => {
+            r.cur_span = sp; r.cur_tok = (*tok);
             r.cur.idx += 1u;
             return ret_val;
           }
-          tt_seq(sp, tts, sep, zerok) => {
-            match lockstep_iter_size(tt_seq(sp, tts, sep, zerok), r) {
+          tt_seq(sp, ref tts, ref sep, zerok) => {
+            match lockstep_iter_size(tt_seq(sp, (*tts), (*sep), zerok), r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
                     ~"attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
-              lis_contradiction(msg) => { /* FIXME #2887 blame macro invoker
+              lis_contradiction(ref msg) => { /* FIXME #2887 blame macro invoker
                                           instead*/
-                r.sp_diag.span_fatal(sp, msg);
+                r.sp_diag.span_fatal(sp, (*msg));
               }
               lis_constraint(len, _) => {
                 if len == 0 {
@@ -217,8 +217,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
                 } else {
                     r.repeat_len.push(len);
                     r.repeat_idx.push(0u);
-                    r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
-                              sep: sep, up: tt_frame_up(option::Some(r.cur))};
+                    r.cur = @{readme: (*tts), mut idx: 0u, dotdotdoted: true,
+                              sep: (*sep), up: tt_frame_up(option::Some(r.cur))};
                 }
               }
             }
@@ -234,8 +234,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
                 r.cur.idx += 1u;
                 return ret_val;
               }
-              matched_nonterminal(other_whole_nt) => {
-                r.cur_span = sp; r.cur_tok = INTERPOLATED(other_whole_nt);
+              matched_nonterminal(ref other_whole_nt) => {
+                r.cur_span = sp; r.cur_tok = INTERPOLATED((*other_whole_nt));
                 r.cur.idx += 1u;
                 return ret_val;
               }

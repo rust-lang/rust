@@ -50,18 +50,18 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_message(name: ~str, _span: span, _tys: &[@ast::Ty],
                      this: state, next: next_state) {
         match next {
-          Some({state: next, tys: next_tys}) => {
+          Some({state: ref next, tys: next_tys}) => {
             let proto = this.proto;
-            if !proto.has_state(next) {
+            if !proto.has_state((*next)) {
                 // This should be a span fatal, but then we need to
                 // track span information.
                 self.span_err(
-                    proto.get_state(next).span,
+                    proto.get_state((*next)).span,
                     fmt!("message %s steps to undefined state, %s",
-                         name, next));
+                         name, (*next)));
             }
             else {
-                let next = proto.get_state(next);
+                let next = proto.get_state((*next));
 
                 if next.ty_params.len() != next_tys.len() {
                     self.span_err(

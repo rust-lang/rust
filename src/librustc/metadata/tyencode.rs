@@ -118,11 +118,11 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
 }
 
 fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: fn(T)) {
-    match t {
-      None => w.write_char('n'),
-      Some(v) => {
+    match &t {
+      &None => w.write_char('n'),
+      &Some(ref v) => {
         w.write_char('s');
-        enc_f(v);
+        enc_f((*v));
       }
     }
 }
@@ -237,18 +237,18 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
           ty_f64 => w.write_str(&"MF"),
         }
       }
-      ty::ty_enum(def, substs) => {
+      ty::ty_enum(def, ref substs) => {
         w.write_str(&"t[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, substs);
+        enc_substs(w, cx, (*substs));
         w.write_char(']');
       }
-      ty::ty_trait(def, substs, vstore) => {
+      ty::ty_trait(def, ref substs, vstore) => {
         w.write_str(&"x[");
         w.write_str((cx.ds)(def));
         w.write_char('|');
-        enc_substs(w, cx, substs);
+        enc_substs(w, cx, (*substs));
         enc_vstore(w, cx, vstore);
         w.write_char(']');
       }
@@ -284,8 +284,8 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
         }
         w.write_char(']');
       }
-      ty::ty_fn(f) => {
-        enc_ty_fn(w, cx, f);
+      ty::ty_fn(ref f) => {
+        enc_ty_fn(w, cx, (*f));
       }
       ty::ty_infer(ty::TyVar(id)) => {
         w.write_char('X');
@@ -316,7 +316,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
           enc_proto(w, p);
       }
       ty::ty_opaque_box => w.write_char('B'),
-      ty::ty_class(def, substs) => {
+      ty::ty_class(def, ref substs) => {
           debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
@@ -324,7 +324,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
           w.write_str(s);
           debug!("~~~~ %s", ~"|");
           w.write_char('|');
-          enc_substs(w, cx, substs);
+          enc_substs(w, cx, (*substs));
           debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }

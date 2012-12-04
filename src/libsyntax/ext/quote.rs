@@ -104,15 +104,15 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
 
     let e_expn_info = match sp.expn_info {
         None => build::mk_path(cx, qsp, ids_ext(cx, ~[~"None"])),
-        Some(@codemap::ExpandedFrom(cr)) => {
+        Some(@codemap::ExpandedFrom(ref cr)) => {
             let e_callee =
                 build::mk_rec_e(
                     cx, qsp,
                     ~[{ident: id_ext(cx, ~"name"),
                        ex: build::mk_uniq_str(cx, qsp,
-                                              cr.callie.name)},
+                                              (*cr).callie.name)},
                       {ident: id_ext(cx, ~"span"),
-                       ex: mk_option_span(cx, qsp, cr.callie.span)}]);
+                       ex: mk_option_span(cx, qsp, (*cr).callie.span)}]);
 
             let e_expn_info_ =
                 build::mk_call(
@@ -121,7 +121,7 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
                     ~[build::mk_rec_e(
                         cx, qsp,
                         ~[{ident: id_ext(cx, ~"call_site"),
-                           ex: mk_span(cx, qsp, cr.call_site)},
+                           ex: mk_span(cx, qsp, (*cr).call_site)},
                           {ident: id_ext(cx, ~"callie"),
                            ex: e_callee}])]);
 
@@ -327,20 +327,20 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
 
 fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree) -> @ast::expr {
     match *tt {
-        ast::tt_tok(sp, tok) => {
+        ast::tt_tok(sp, ref tok) => {
             let e_tok =
                 build::mk_call(cx, sp,
                                ids_ext(cx, ~[~"tt_tok"]),
                                ~[mk_span(cx, sp, sp),
-                                 mk_token(cx, sp, tok)]);
+                                 mk_token(cx, sp, (*tok))]);
             build::mk_uniq_vec_e(cx, sp, ~[e_tok])
         }
 
-        ast::tt_delim(tts) => {
+        ast::tt_delim(ref tts) => {
             let e_delim =
                 build::mk_call(cx, sp,
                                ids_ext(cx, ~[~"tt_delim"]),
-                               ~[mk_tts(cx, sp, tts)]);
+                               ~[mk_tts(cx, sp, (*tts))]);
             build::mk_uniq_vec_e(cx, sp, ~[e_delim])
         }
 

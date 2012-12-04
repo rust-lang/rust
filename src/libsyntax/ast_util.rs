@@ -205,8 +205,8 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each |it| {
         if it.ident == i { local = true; }
         match it.node {
-          item_enum(enum_definition, _) =>
-            for enum_definition.variants.each |v| {
+          item_enum(ref enum_definition, _) =>
+            for (*enum_definition).variants.each |v| {
                 if v.node.name == i {
                     local = true;
                     parent_enum = Some(/* FIXME (#2543) */ copy it.ident);
@@ -233,10 +233,10 @@ fn is_exported(i: ident, m: _mod) -> bool {
                     }
                   }
 
-                  ast::view_path_list(path, ids, _) => {
+                  ast::view_path_list(path, ref ids, _) => {
                     if vec::len(path.idents) == 1u {
                         if i == path.idents[0] { return true; }
-                        for ids.each |id| {
+                        for (*ids).each |id| {
                             if id.node.name == i { return true; }
                         }
                     } else {
@@ -314,7 +314,7 @@ fn public_methods(ms: ~[@method]) -> ~[@method] {
 // a default, pull out the useful fields to make a ty_method
 fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
-      required(m) => m,
+      required(ref m) => (*m),
       provided(m) => {
         {ident: m.ident, attrs: m.attrs,
          purity: m.purity, decl: m.decl,
@@ -329,7 +329,7 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
-          required(tm) => reqd.push(tm),
+          required(ref tm) => reqd.push((*tm)),
           provided(m) => provd.push(m)
         }
     };
@@ -364,7 +364,7 @@ impl inlined_item: inlined_item_utils {
           ii_item(i) => i.id,
           ii_foreign(i) => i.id,
           ii_method(_, m) => m.id,
-          ii_dtor(dtor, _, _, _) => dtor.node.id
+          ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
         }
     }
 
@@ -373,8 +373,8 @@ impl inlined_item: inlined_item_utils {
           ii_item(i) => (v.visit_item)(i, e, v),
           ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
           ii_method(_, m) => visit::visit_method_helper(m, e, v),
-          ii_dtor(dtor, _, tps, parent_id) => {
-              visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
+          ii_dtor(ref dtor, _, tps, parent_id) => {
+              visit::visit_class_dtor_helper((*dtor), tps, parent_id, e, v);
           }
         }
     }
@@ -453,8 +453,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             match i.node {
-              item_enum(enum_definition, _) =>
-                for enum_definition.variants.each |v| { vfn(v.node.id); },
+              item_enum(ref enum_definition, _) =>
+                for (*enum_definition).variants.each |v| { vfn(v.node.id); },
               _ => ()
             }
         },
@@ -643,7 +643,7 @@ impl Privacy : cmp::Eq {
 fn has_legacy_export_attr(attrs: &[attribute]) -> bool {
     for attrs.each |attribute| {
         match attribute.node.value.node {
-          meta_word(w) if w == ~"legacy_exports" => {
+          meta_word(ref w) if (*w) == ~"legacy_exports" => {
             return true;
           }
           _ => {}

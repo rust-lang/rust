@@ -635,7 +635,7 @@ impl NameBindings {
     /// Returns the module node if applicable.
     fn get_module_if_available() -> Option<@Module> {
         match self.type_def {
-            Some(type_def) => type_def.module_def,
+            Some(ref type_def) => (*type_def).module_def,
             None => None
         }
     }
@@ -666,14 +666,14 @@ impl NameBindings {
             TypeNS => {
                 match self.type_def {
                     None => None,
-                    Some(type_def) => {
+                    Some(ref type_def) => {
                         // FIXME (#3784): This is reallllly questionable.
                         // Perhaps the right thing to do is to merge def_mod
                         // and def_ty.
-                        match type_def.type_def {
+                        match (*type_def).type_def {
                             Some(type_def) => Some(type_def),
                             None => {
-                                match type_def.module_def {
+                                match (*type_def).module_def {
                                     Some(module_def) => {
                                         module_def.def_id.map(|def_id|
                                             def_mod(*def_id))
@@ -699,7 +699,7 @@ impl NameBindings {
             TypeNS => {
                 match self.type_def {
                     None => None,
-                    Some(type_def) => Some(type_def.privacy)
+                    Some(ref type_def) => Some((*type_def).privacy)
                 }
             }
             ValueNS => {
@@ -1166,14 +1166,14 @@ impl Resolver {
                     (privacy, def_ty(local_def(item.id)), sp);
             }
 
-            item_enum(enum_definition, _) => {
+            item_enum(ref enum_definition, _) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 (*name_bindings).define_type
                     (privacy, def_ty(local_def(item.id)), sp);
 
-                for enum_definition.variants.each |variant| {
+                for (*enum_definition).variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
@@ -1277,7 +1277,7 @@ impl Resolver {
                 visit_item(item, parent, visitor);
             }
 
-            item_trait(_, _, methods) => {
+            item_trait(_, _, ref methods) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
@@ -1287,7 +1287,7 @@ impl Resolver {
                 // We only need to create the module if the trait has static
                 // methods, so check that first.
                 let mut has_static_methods = false;
-                for methods.each |method| {
+                for (*methods).each |method| {
                     let ty_m = trait_method_to_ty_method(*method);
                     match ty_m.self_ty.node {
                         sty_static => {
@@ -1315,7 +1315,7 @@ impl Resolver {
 
                 // Add the names of all the methods to the trait info.
                 let method_names = @HashMap();
-                for methods.each |method| {
+                for (*methods).each |method| {
                     let ty_m = trait_method_to_ty_method(*method);
 
                     let ident = ty_m.ident;
@@ -1403,11 +1403,11 @@ impl Resolver {
                                      variant.span);
                 self.structs.insert(local_def(variant.node.id), ());
             }
-            enum_variant_kind(enum_definition) => {
+            enum_variant_kind(ref enum_definition) => {
                 (*child).define_type(privacy,
                                      def_ty(local_def(variant.node.id)),
                                      variant.span);
-                for enum_definition.variants.each |variant| {
+                for (*enum_definition).variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant, item_id,
                                                          parent_privacy,
                                                          parent, visitor);
@@ -1475,8 +1475,8 @@ impl Resolver {
                                                         subclass,
                                                         view_path.span);
                         }
-                        view_path_list(_, source_idents, _) => {
-                            for source_idents.each |source_ident| {
+                        view_path_list(_, ref source_idents, _) => {
+                            for (*source_idents).each |source_ident| {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name,
                                                              name,
@@ -1527,9 +1527,9 @@ impl Resolver {
                                                    unsupported");
                         }
 
-                        view_path_list(path, path_list_idents, _) => {
+                        view_path_list(path, ref path_list_idents, _) => {
                             if path.idents.len() == 1u &&
-                                    path_list_idents.len() == 0 {
+                                    (*path_list_idents).len() == 0 {
 
                                 self.session.span_warn(view_item.span,
                                                        ~"this syntax for \
@@ -1546,7 +1546,7 @@ impl Resolver {
                                                            in this module");
                                 }
 
-                                for path_list_idents.each |path_list_ident| {
+                                for (*path_list_idents).each |path_list_ident| {
                                     let ident = path_list_ident.node.name;
                                     let id = path_list_ident.node.id;
                                     module_.exported_names.insert(ident, id);
@@ -2838,8 +2838,8 @@ impl Resolver {
         match self.resolve_item_in_lexical_scope(module_, name, TypeNS) {
             Success(target) => {
                 match target.bindings.type_def {
-                    Some(type_def) => {
-                        match type_def.module_def {
+                    Some(ref type_def) => {
+                        match (*type_def).module_def {
                             None => {
                                 error!("!!! (resolving module in lexical \
                                         scope) module wasn't actually a \
@@ -3541,9 +3541,9 @@ impl Resolver {
 
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
-            item_enum(enum_def, type_parameters) => {
+            item_enum(ref enum_def, type_parameters) => {
 
-                for enum_def.variants.each() |variant| {
+                for (*enum_def).variants.each() |variant| {
                     do variant.node.disr_expr.iter() |dis_expr| {
                         // resolve the discriminator expr
                         // as a constant
@@ -3588,7 +3588,7 @@ impl Resolver {
                                             visitor);
             }
 
-            item_trait(type_parameters, traits, methods) => {
+            item_trait(type_parameters, traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -3623,30 +3623,30 @@ impl Resolver {
                         }
                     }
 
-                    for methods.each |method| {
+                    for (*methods).each |method| {
                         // Create a new rib for the method-specific type
                         // parameters.
                         //
                         // XXX: Do we need a node ID here?
 
                         match *method {
-                          required(ty_m) => {
+                          required(ref ty_m) => {
                             do self.with_type_parameter_rib
-                                (HasTypeParameters(&ty_m.tps,
+                                (HasTypeParameters(&(*ty_m).tps,
                                                    item.id,
                                                    type_parameters.len(),
                                         MethodRibKind(item.id, Required))) {
 
                                 // Resolve the method-specific type
                                 // parameters.
-                                self.resolve_type_parameters(ty_m.tps,
+                                self.resolve_type_parameters((*ty_m).tps,
                                                              visitor);
 
-                                for ty_m.decl.inputs.each |argument| {
+                                for (*ty_m).decl.inputs.each |argument| {
                                     self.resolve_type(argument.ty, visitor);
                                 }
 
-                                self.resolve_type(ty_m.decl.output, visitor);
+                                self.resolve_type((*ty_m).decl.output, visitor);
                             }
                           }
                           provided(m) => {
@@ -3705,7 +3705,7 @@ impl Resolver {
                 }
             }
 
-            item_fn(fn_decl, _, ty_params, block) => {
+            item_fn(fn_decl, _, ty_params, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
                 //
@@ -3726,7 +3726,7 @@ impl Resolver {
                                          item.id,
                                          0,
                                          OpaqueFunctionRibKind),
-                                      block,
+                                      (*block),
                                       NoSelfBinding,
                                       NoCaptureClause,
                                       visitor);
@@ -3966,13 +3966,13 @@ impl Resolver {
                 None => {
                     // Nothing to do.
                 }
-                Some(destructor) => {
+                Some(ref destructor) => {
                     self.resolve_function(NormalRibKind,
                                           None,
                                           NoTypeParameters,
-                                          destructor.node.body,
+                                          (*destructor).node.body,
                                           HasSelfBinding
-                                            (destructor.node.self_id),
+                                            ((*destructor).node.self_id),
                                           NoCaptureClause,
                                           visitor);
                 }
@@ -4892,12 +4892,12 @@ impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, fn_decl, block, capture_clause) |
-            expr_fn_block(fn_decl, block, capture_clause) => {
-                self.resolve_function(FunctionRibKind(expr.id, block.node.id),
+            expr_fn(_, fn_decl, ref block, capture_clause) |
+            expr_fn_block(fn_decl, ref block, capture_clause) => {
+                self.resolve_function(FunctionRibKind(expr.id, (*block).node.id),
                                       Some(@fn_decl),
                                       NoTypeParameters,
-                                      block,
+                                      (*block),
                                       NoSelfBinding,
                                       HasCaptureClause(capture_clause),
                                       visitor);

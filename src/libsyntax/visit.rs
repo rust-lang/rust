@@ -125,10 +125,10 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty)(t, e, v);
         (v.visit_expr)(ex, e, v);
       }
-      item_fn(decl, purity, tp, body) => {
+      item_fn(decl, purity, tp, ref body) => {
         (v.visit_fn)(fk_item_fn(/* FIXME (#2543) */ copy i.ident,
                               /* FIXME (#2543) */ copy tp,
-                              purity), decl, body,
+                              purity), decl, (*body),
                    i.span, i.id, e, v);
       }
       item_mod(m) => (v.visit_mod)(m, i.span, i.id, e, v),
@@ -140,9 +140,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty)(t, e, v);
         (v.visit_ty_params)(tps, e, v);
       }
-      item_enum(enum_definition, tps) => {
+      item_enum(ref enum_definition, tps) => {
         (v.visit_ty_params)(tps, e, v);
-        visit_enum_def(enum_definition, tps, e, v);
+        visit_enum_def((*enum_definition), tps, e, v);
       }
       item_impl(tps, traits, ty, methods) => {
         (v.visit_ty_params)(tps, e, v);
@@ -158,14 +158,14 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty_params)(tps, e, v);
         (v.visit_struct_def)(struct_def, i.ident, tps, i.id, e, v);
       }
-      item_trait(tps, traits, methods) => {
+      item_trait(tps, traits, ref methods) => {
         (v.visit_ty_params)(tps, e, v);
         for traits.each |p| { visit_path(p.path, e, v); }
-        for methods.each |m| {
+        for (*methods).each |m| {
             (v.visit_trait_method)(*m, e, v);
         }
       }
-      item_mac(m) => visit_mac(m, e, v)
+      item_mac(ref m) => visit_mac((*m), e, v)
     }
 }
 
@@ -180,8 +180,8 @@ fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
                 (v.visit_struct_def)(struct_def, vr.node.name, tps,
                                    vr.node.id, e, v);
             }
-            enum_variant_kind(enum_definition) => {
-                visit_enum_def(enum_definition, tps, e, v);
+            enum_variant_kind(ref enum_definition) => {
+                visit_enum_def((*enum_definition), tps, e, v);
             }
         }
         // Visit the disr expr if it exists
@@ -197,7 +197,7 @@ fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
       ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
         (v.visit_ty)(mt.ty, e, v);
       }
-      ty_rec(flds) => for flds.each |f| {
+      ty_rec(ref flds) => for (*flds).each |f| {
         (v.visit_ty)(f.node.mt.ty, e, v);
       },
       ty_tup(ts) => for ts.each |tt| {
@@ -320,7 +320,7 @@ fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
 
 fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     match m {
-      required(ty_m) => (v.visit_ty_method)(ty_m, e, v),
+      required(ref ty_m) => (v.visit_ty_method)((*ty_m), e, v),
       provided(m) => visit_method_helper(m, e, v)
     }
 }
@@ -364,7 +364,7 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
       stmt_decl(d, _) => (v.visit_decl)(d, e, v),
       stmt_expr(ex, _) => (v.visit_expr)(ex, e, v),
       stmt_semi(ex, _) => (v.visit_expr)(ex, e, v),
-      stmt_mac(mac, _) => visit_mac(mac, e, v)
+      stmt_mac(ref mac, _) => visit_mac((*mac), e, v)
     }
 }
 
@@ -404,13 +404,13 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(element, e, v);
         (v.visit_expr)(count, e, v);
       }
-      expr_rec(flds, base) => {
-        for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }
+      expr_rec(ref flds, base) => {
+        for (*flds).each |f| { (v.visit_expr)(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
       }
-      expr_struct(p, flds, base) => {
+      expr_struct(p, ref flds, base) => {
         visit_path(p, e, v);
-        for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }
+        for (*flds).each |f| { (v.visit_expr)(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
       }
       expr_tup(elts) => for elts.each |el| { (v.visit_expr)(*el, e, v); },
@@ -431,29 +431,29 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_assert(x) => (v.visit_expr)(x, e, v),
       expr_lit(_) => (),
       expr_cast(x, t) => { (v.visit_expr)(x, e, v); (v.visit_ty)(t, e, v); }
-      expr_if(x, b, eo) => {
+      expr_if(x, ref b, eo) => {
         (v.visit_expr)(x, e, v);
-        (v.visit_block)(b, e, v);
+        (v.visit_block)((*b), e, v);
         visit_expr_opt(eo, e, v);
       }
-      expr_while(x, b) => {
+      expr_while(x, ref b) => {
         (v.visit_expr)(x, e, v);
-        (v.visit_block)(b, e, v);
+        (v.visit_block)((*b), e, v);
       }
-      expr_loop(b, _) => (v.visit_block)(b, e, v),
-      expr_match(x, arms) => {
+      expr_loop(ref b, _) => (v.visit_block)((*b), e, v),
+      expr_match(x, ref arms) => {
         (v.visit_expr)(x, e, v);
-        for arms.each |a| { (v.visit_arm)(*a, e, v); }
+        for (*arms).each |a| { (v.visit_arm)(*a, e, v); }
       }
-      expr_fn(proto, decl, body, cap_clause) => {
-        (v.visit_fn)(fk_anon(proto, cap_clause), decl, body,
+      expr_fn(proto, decl, ref body, cap_clause) => {
+        (v.visit_fn)(fk_anon(proto, cap_clause), decl, (*body),
                      ex.span, ex.id, e, v);
       }
-      expr_fn_block(decl, body, cap_clause) => {
-        (v.visit_fn)(fk_fn_block(cap_clause), decl, body,
+      expr_fn_block(decl, ref body, cap_clause) => {
+        (v.visit_fn)(fk_fn_block(cap_clause), decl, (*body),
                      ex.span, ex.id, e, v);
       }
-      expr_block(b) => (v.visit_block)(b, e, v),
+      expr_block(ref b) => (v.visit_block)((*b), e, v),
       expr_assign(a, b) => {
         (v.visit_expr)(b, e, v);
         (v.visit_expr)(a, e, v);
@@ -482,7 +482,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(lv, e, v);
         (v.visit_expr)(x, e, v);
       }
-      expr_mac(mac) => visit_mac(mac, e, v),
+      expr_mac(ref mac) => visit_mac((*mac), e, v),
       expr_paren(x) => (v.visit_expr)(x, e, v),
     }
     (v.visit_expr_post)(ex, e, v);

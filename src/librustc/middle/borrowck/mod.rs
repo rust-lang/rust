@@ -500,7 +500,7 @@ impl borrowck_ctxt {
     fn report_if_err(bres: bckres<()>) {
         match bres {
           Ok(()) => (),
-          Err(e) => self.report(e)
+          Err(ref e) => self.report((*e))
         }
     }
 

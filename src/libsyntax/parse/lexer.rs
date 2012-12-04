@@ -406,9 +406,9 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
         num_str += ~"." + dec_part;
     }
     match scan_exponent(rdr) {
-      Some(s) => {
+      Some(ref s) => {
         is_float = true;
-        num_str += s;
+        num_str += (*s);
       }
       None => ()
     }

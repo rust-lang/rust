@@ -35,13 +35,13 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
-      expr_match(scrut, arms) => {
-        check_arms(tcx, arms);
+      expr_match(scrut, ref arms) => {
+        check_arms(tcx, (*arms));
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
          // types.
        let pat_ty = node_id_to_type(tcx, scrut.id);
-       if arms.is_empty() {
+       if (*arms).is_empty() {
            if !type_is_empty(tcx, pat_ty) {
                // We know the type is inhabited, so this must be wrong
                tcx.sess.span_err(ex.span, fmt!("non-exhaustive patterns: \
@@ -52,14 +52,14 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
        }
        match ty::get(pat_ty).sty {
           ty_enum(did, _) => {
-              if (*enum_variants(tcx, did)).is_empty() && arms.is_empty() {
+              if (*enum_variants(tcx, did)).is_empty() && (*arms).is_empty() {
 
                return;
             }
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-       let arms = vec::concat(vec::filter_map(arms, unguarded_pat));
+       let arms = vec::concat(vec::filter_map((*arms), unguarded_pat));
        check_exhaustive(tcx, ex.span, arms);
      }
      _ => ()
@@ -95,17 +95,17 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
     let ext = match is_useful(tcx, vec::map(pats, |p| ~[*p]), ~[wild()]) {
       not_useful => return, // This is good, wildcard pattern isn't reachable
       useful_ => None,
-      useful(ty, ctor) => {
+      useful(ty, ref ctor) => {
         match ty::get(ty).sty {
           ty::ty_bool => {
-            match ctor {
+            match (*ctor) {
               val(const_bool(true)) => Some(~"true"),
               val(const_bool(false)) => Some(~"false"),
               _ => None
             }
           }
           ty::ty_enum(id, _) => {
-              let vid = match ctor { variant(id) => id,
+              let vid = match (*ctor) { variant(id) => id,
               _ => fail ~"check_exhaustive: non-variant ctor" };
             match vec::find(*ty::enum_variants(tcx, id),
                                 |v| v.id == vid) {
@@ -118,7 +118,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
       }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-      Some(s) => ~": " + s + ~" not covered",
+      Some(ref s) => ~": " + (*s) + ~" not covered",
       None => ~""
     };
     tcx.sess.span_err(sp, msg);
@@ -140,9 +140,9 @@ impl ctor : cmp::Eq {
         match ((*self), (*other)) {
             (single, single) => true,
             (variant(did_self), variant(did_other)) => did_self == did_other,
-            (val(cv_self), val(cv_other)) => cv_self == cv_other,
-            (range(cv0_self, cv1_self), range(cv0_other, cv1_other)) => {
-                cv0_self == cv0_other && cv1_self == cv1_other
+            (val(ref cv_self), val(ref cv_other)) => (*cv_self) == (*cv_other),
+            (range(ref cv0_self, ref cv1_self), range(ref cv0_other, ref cv1_other)) => {
+                (*cv0_self) == (*cv0_other) && (*cv1_self) == (*cv1_other)
             }
             (single, _) | (variant(_), _) | (val(_), _) | (range(*), _) => {
                 false
@@ -186,7 +186,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
                     is_useful_specialized(tcx, m, v, val(const_bool(false)),
                                           0u, left_ty)
                   }
-                  u => u
+                  ref u => (*u)
                 }
               }
               ty::ty_enum(eid, _) => {
@@ -194,7 +194,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
                     match is_useful_specialized(tcx, m, v, variant(va.id),
                                               va.args.len(), left_ty) {
                       not_useful => (),
-                      u => return u
+                      ref u => return (*u)
                     }
                 }
                 not_useful
@@ -205,18 +205,18 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
               }
             }
           }
-          Some(ctor) => {
+          Some(ref ctor) => {
             match is_useful(tcx, vec::filter_map(m, |r| default(tcx, *r) ),
                           vec::tail(v)) {
-              useful_ => useful(left_ty, ctor),
-              u => u
+              useful_ => useful(left_ty, (*ctor)),
+              ref u => (*u)
             }
           }
         }
       }
-      Some(v0_ctor) => {
-        let arity = ctor_arity(tcx, v0_ctor, left_ty);
-        is_useful_specialized(tcx, m, v, v0_ctor, arity, left_ty)
+      Some(ref v0_ctor) => {
+        let arity = ctor_arity(tcx, (*v0_ctor), left_ty);
+        is_useful_specialized(tcx, m, v, (*v0_ctor), arity, left_ty)
       }
     }
 }
@@ -228,7 +228,7 @@ fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: ~[@pat], ctor: ctor,
         tcx, ms, specialize(tcx, v, ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
-      u => u
+      ref u => (*u)
     }
 }
 
@@ -362,10 +362,10 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             let const_expr = lookup_const_by_id(tcx, did).get();
             let e_v = eval_const_expr(tcx, const_expr);
             let match_ = match ctor_id {
-                val(v) => compare_const_vals(e_v, v) == 0,
-                range(c_lo, c_hi) => {
-                    compare_const_vals(c_lo, e_v) >= 0 &&
-                        compare_const_vals(c_hi, e_v) <= 0
+                val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                range(ref c_lo, ref c_hi) => {
+                    compare_const_vals((*c_lo), e_v) >= 0 &&
+                        compare_const_vals((*c_hi), e_v) <= 0
                 }
                 single => true,
                 _ => fail ~"type error"
@@ -456,10 +456,10 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       pat_lit(expr) => {
         let e_v = eval_const_expr(tcx, expr);
         let match_ = match ctor_id {
-          val(v) => compare_const_vals(e_v, v) == 0,
-          range(c_lo, c_hi) => {
-            compare_const_vals(c_lo, e_v) >= 0 &&
-                compare_const_vals(c_hi, e_v) <= 0
+          val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+          range(ref c_lo, ref c_hi) => {
+            compare_const_vals((*c_lo), e_v) >= 0 &&
+                compare_const_vals((*c_hi), e_v) <= 0
           }
           single => true,
           _ => fail ~"type error"
@@ -468,8 +468,8 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       }
       pat_range(lo, hi) => {
         let (c_lo, c_hi) = match ctor_id {
-          val(v) => (v, v),
-          range(lo, hi) => (lo, hi),
+          val(ref v) => ((*v), (*v)),
+          range(ref lo, ref hi) => ((*lo), (*hi)),
           single => return Some(vec::tail(r)),
           _ => fail ~"type error"
         };

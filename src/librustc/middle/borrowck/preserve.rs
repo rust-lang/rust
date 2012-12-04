@@ -178,9 +178,9 @@ priv impl &preserve_ctxt {
                     debug!("must root @T, otherwise purity req'd");
                     self.attempt_root(cmt, base, derefs)
                   }
-                  Err(e) => {
+                  Err(ref e) => {
                     debug!("must root @T, err: %s",
-                           self.bccx.bckerr_to_str(e));
+                           self.bccx.bckerr_to_str((*e)));
                     self.attempt_root(cmt, base, derefs)
                   }
                 }
@@ -274,13 +274,13 @@ priv impl &preserve_ctxt {
           }
 
           // the base requires purity too, that's fine
-          Ok(pc_if_pure(e)) => {
-            Ok(pc_if_pure(e))
+          Ok(pc_if_pure(ref e)) => {
+            Ok(pc_if_pure((*e)))
           }
 
           // base is not stable, doesn't matter
-          Err(e) => {
-            Err(e)
+          Err(ref e) => {
+            Err((*e))
           }
         }
     }

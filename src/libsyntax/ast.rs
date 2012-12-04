@@ -555,9 +555,9 @@ impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
 impl<T:cmp::Eq> inferable<T> : cmp::Eq {
     pure fn eq(&self, other: &inferable<T>) -> bool {
         match (*self) {
-            expl(e0a) => {
+            expl(ref e0a) => {
                 match (*other) {
-                    expl(e0b) => e0a == e0b,
+                    expl(ref e0b) => (*e0a) == (*e0b),
                     _ => false
                 }
             }
