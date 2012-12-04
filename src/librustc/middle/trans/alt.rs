@@ -825,17 +825,17 @@ fn extract_vec_elems(bcx: block, pat_id: ast::node_id,
         GEPi(bcx, base, ~[i])
     };
     if tail {
-        let slice_offset = Mul(bcx, vt.llunit_size,
+        let tail_offset = Mul(bcx, vt.llunit_size,
             C_int(bcx.ccx(), elem_count as int)
         );
-        let slice_begin = tvec::pointer_add(bcx, base, slice_offset);
-        let tail_len = Sub(bcx, len, slice_offset);
-        let slice_ty = ty::mk_evec(bcx.tcx(),
+        let tail_begin = tvec::pointer_add(bcx, base, tail_offset);
+        let tail_len = Sub(bcx, len, tail_offset);
+        let tail_ty = ty::mk_evec(bcx.tcx(),
             {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
         );
-        let scratch = scratch_datum(bcx, slice_ty, false);
-        Store(bcx, slice_begin,
+        let scratch = scratch_datum(bcx, tail_ty, false);
+        Store(bcx, tail_begin,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
         );
         Store(bcx, tail_len,
