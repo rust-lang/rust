@@ -82,7 +82,7 @@ pub mod float;
 pub mod f32;
 pub mod f64;
 
-pub mod unit;
+pub mod nil;
 pub mod bool;
 pub mod char;
 pub mod tuple;
