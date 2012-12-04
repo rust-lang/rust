@@ -111,6 +111,7 @@ use syntax::codemap::span;
 use syntax::ast::*;
 use io::WriterUtil;
 use capture::{cap_move, cap_drop, cap_copy, cap_ref};
+use middle::ty::MoveValue;
 
 export check_crate;
 export last_use_map;
@@ -1533,6 +1534,22 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = self.live_node(expr.id, expr.span);
             self.consider_last_use(expr, ln, *var);
+
+            match self.tcx.value_modes.find(expr.id) {
+                Some(MoveValue) => {
+                    debug!("(checking expr) is a move: `%s`",
+                           expr_to_str(expr, self.tcx.sess.intr()));
+                    self.check_move_from_var(expr.span, ln, *var);
+                }
+                Some(v) => {
+                    debug!("(checking expr) not a move (%?): `%s`",
+                           v,
+                           expr_to_str(expr, self.tcx.sess.intr()));
+                }
+                None => {
+                    fail ~"no mode for lval";
+                }
+            }
         }
 
         visit::visit_expr(expr, self, vt);

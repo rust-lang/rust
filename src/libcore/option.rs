@@ -150,8 +150,8 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost some() value, or none if both are none.
      */
-    match opta {
-        Some(_) => move opta,
+    match move opta {
+        Some(move opta) => Some(move opta),
         _ => move optb
     }
 }

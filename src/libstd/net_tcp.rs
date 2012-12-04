@@ -610,9 +610,9 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
         kill_ch: kill_ch,
         on_connect_cb: move on_connect_cb,
         iotask: iotask,
-        ipv6: match host_ip {
-            ip::Ipv4(_) => { false }
-            ip::Ipv6(_) => { true }
+        ipv6: match &host_ip {
+            &ip::Ipv4(_) => { false }
+            &ip::Ipv6(_) => { true }
         },
         mut active: true
     };
