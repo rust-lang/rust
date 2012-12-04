@@ -63,7 +63,7 @@ use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
 use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 use syntax::visit::{visit_mod, visit_ty, vt};
 
-use box::ptr_eq;
+use managed::ptr_eq;
 use dvec::DVec;
 use option::{Some, get, is_some, is_none};
 use str::{connect, split_str};

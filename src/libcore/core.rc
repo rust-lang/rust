@@ -19,12 +19,12 @@ used features.
 
 `core` includes modules corresponding to each of the integer types, each of
 the floating point types, the `bool` type, tuples, characters, strings,
-vectors (`vec`), shared boxes (`box`), and unsafe and borrowed pointers
-(`ptr`).  Additionally, `core` provides task management and creation (`task`),
-communication primitives (`comm` and `pipes`), an efficient vector builder
-(`dvec`), platform abstractions (`os` and `path`), basic I/O abstractions
-(`io`), common traits (`cmp`, `num`, `to_str`), and complete bindings
-to the C standard library (`libc`).
+vectors (`vec`), managed boxes (`managed`), owned boxes (`owned`), and unsafe
+and borrowed pointers (`ptr`).  Additionally, `core` provides task management
+and creation (`task`), communication primitives (`comm` and `pipes`), an
+efficient vector builder (`dvec`), platform abstractions (`os` and `path`),
+basic I/O abstractions (`io`), common traits (`cmp`, `num`, `to_str`), and
+complete bindings to the C standard library (`libc`).
 
 `core` is linked to all crates by default and its contents imported.
 Implicitly, all crates behave as if they included the following prologue:
@@ -92,7 +92,7 @@ pub mod at_vec;
 pub mod str;
 
 pub mod ptr;
-pub mod box; // FIXME #4079 Rename to 'managed' to match 'owned'
+pub mod managed;
 pub mod owned;
 
 

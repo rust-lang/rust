@@ -27,8 +27,8 @@ use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use reflect::{MovePtr, MovePtrAdaptor};
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
-pub use box::raw::BoxRepr;
-use box::raw::BoxHeaderRepr;
+pub use managed::raw::BoxRepr;
+use managed::raw::BoxHeaderRepr;
 
 /// Helpers
 
@@ -279,7 +279,7 @@ impl ReprVisitor : TyVisitor {
     fn visit_box(mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('@');
         self.write_mut_qualifier(mtbl);
-        do self.get::<&box::raw::BoxRepr> |b| {
+        do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, inner);
         }
@@ -288,7 +288,7 @@ impl ReprVisitor : TyVisitor {
     fn visit_uniq(mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('~');
         self.write_mut_qualifier(mtbl);
-        do self.get::<&box::raw::BoxRepr> |b| {
+        do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, inner);
         }
@@ -446,7 +446,7 @@ impl ReprVisitor : TyVisitor {
 
     fn visit_opaque_box() -> bool {
         self.writer.write_char('@');
-        do self.get::<&box::raw::BoxRepr> |b| {
+        do self.get::<&managed::raw::BoxRepr> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, b.header.type_desc);
         }

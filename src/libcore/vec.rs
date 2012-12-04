@@ -1763,7 +1763,7 @@ mod raw {
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
-        box_header: box::raw::BoxHeaderRepr,
+        box_header: managed::raw::BoxHeaderRepr,
         unboxed: UnboxedVecRepr
     }
 
