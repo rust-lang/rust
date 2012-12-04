@@ -43,7 +43,7 @@ priv impl<T> DListNode<T> {
     pure fn assert_links() {
         match self.next {
             Some(neighbour) => match neighbour.prev {
-              Some(me) => if !box::ptr_eq(*self, *me) {
+              Some(me) => if !managed::ptr_eq(*self, *me) {
                   fail ~"Asymmetric next-link in dlist node."
               },
               None => fail ~"One-way next-link in dlist node."
@@ -52,7 +52,7 @@ priv impl<T> DListNode<T> {
         }
         match self.prev {
             Some(neighbour) => match neighbour.next {
-              Some(me) => if !box::ptr_eq(*me, *self) {
+              Some(me) => if !managed::ptr_eq(*me, *self) {
                   fail ~"Asymmetric prev-link in dlist node."
               },
               None => fail ~"One-way prev-link in dlist node."
@@ -137,9 +137,11 @@ priv impl<T> DList<T> {
         }
         if !nobe.linked { fail ~"That node isn't linked to any dlist." }
         if !((nobe.prev.is_some()
-              || box::ptr_eq(*self.hd.expect(~"headless dlist?"), *nobe)) &&
+              || managed::ptr_eq(*self.hd.expect(~"headless dlist?"),
+                                 *nobe)) &&
              (nobe.next.is_some()
-              || box::ptr_eq(*self.tl.expect(~"tailless dlist?"), *nobe))) {
+              || managed::ptr_eq(*self.tl.expect(~"tailless dlist?"),
+                                 *nobe))) {
             fail ~"That node isn't on this dlist."
         }
     }
@@ -322,7 +324,7 @@ impl<T> DList<T> {
      * to the other list's head. O(1).
      */
     fn append(them: DList<T>) {
-        if box::ptr_eq(*self, *them) {
+        if managed::ptr_eq(*self, *them) {
             fail ~"Cannot append a dlist to itself!"
         }
         if them.len() > 0 {
@@ -339,7 +341,7 @@ impl<T> DList<T> {
      * list's tail to this list's head. O(1).
      */
     fn prepend(them: DList<T>) {
-        if box::ptr_eq(*self, *them) {
+        if managed::ptr_eq(*self, *them) {
             fail ~"Cannot prepend a dlist to itself!"
         }
         if them.len() > 0 {
@@ -405,7 +407,7 @@ impl<T> DList<T> {
                 rabbit = option::get(rabbit).next;
             }
             if option::is_some(&rabbit) {
-                assert !box::ptr_eq(*option::get(rabbit), *nobe);
+                assert !managed::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
             link = nobe.next_link();
@@ -426,7 +428,7 @@ impl<T> DList<T> {
                 rabbit = option::get(rabbit).prev;
             }
             if option::is_some(&rabbit) {
-                assert !box::ptr_eq(*option::get(rabbit), *nobe);
+                assert !managed::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
             link = nobe.prev_link();

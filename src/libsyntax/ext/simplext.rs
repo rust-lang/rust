@@ -476,7 +476,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                match_result {
                 return match m {
                       match_expr(e) => {
-                        if box::ptr_eq(e, pat) {
+                        if managed::ptr_eq(e, pat) {
                             // XXX: Is this right?
                             Some(leaf(match_exact))
                         } else {
