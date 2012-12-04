@@ -108,9 +108,9 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
 }
 
 fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: fn(T)) {
-    match t {
-      None => w.write_char('n'),
-      Some(v) => {
+    match &t {
+      &None => w.write_char('n'),
+      &Some(v) => {
         w.write_char('s');
         enc_f(v);
       }

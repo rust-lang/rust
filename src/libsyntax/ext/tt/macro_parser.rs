@@ -90,8 +90,8 @@ enum matcher_pos_up { /* to break a circularity */
 }
 
 fn is_some(&&mpu: matcher_pos_up) -> bool {
-    match mpu {
-      matcher_pos_up(None) => false,
+    match &mpu {
+      &matcher_pos_up(None) => false,
       _ => true
     }
 }
@@ -107,8 +107,8 @@ type matcher_pos = ~{
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
-    match mpu {
-      matcher_pos_up(Some(mp)) => copy mp,
+    match &mpu {
+      &matcher_pos_up(Some(mp)) => copy mp,
       _ => fail
     }
 }
