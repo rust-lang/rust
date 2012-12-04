@@ -117,6 +117,7 @@ export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
 export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var, mk_float_var;
 export InferTy, TyVar, IntVar, FloatVar;
+export ValueMode, ReadValue, CopyValue, MoveValue;
 export ty_self, mk_self, type_has_self;
 export ty_class;
 export Region, bound_region, encl_region;
@@ -134,6 +135,7 @@ export ty_region;
 export Kind, kind_implicitly_copyable, kind_send_copy, kind_copyable;
 export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
+export type_implicitly_moves;
 export kind_is_safe_for_default_mode;
 export kind_is_owned;
 export meta_kind, kind_lteq, type_kind;
@@ -250,6 +252,15 @@ type field_ty = {
   vis: ast::visibility,
   mutability: ast::class_mutability
 };
+
+/// How an lvalue is to be used.
+#[auto_serialize]
+#[auto_deserialize]
+pub enum ValueMode {
+    ReadValue,  // Non-destructively read the value; do not copy or move.
+    CopyValue,  // Copy the value.
+    MoveValue,  // Move the value.
+}
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
@@ -429,7 +440,10 @@ type ctxt =
       destructor_for_type: HashMap<ast::def_id, ast::def_id>,
 
       // A method will be in this list if and only if it is a destructor.
-      destructors: HashMap<ast::def_id, ()>
+      destructors: HashMap<ast::def_id, ()>,
+
+      // Records the value mode (read, copy, or move) for every value.
+      value_modes: HashMap<ast::node_id, ValueMode>,
       };
 
 enum tbox_flag {
@@ -968,7 +982,8 @@ fn mk_ctxt(s: session::Session,
       automatically_derived_methods: HashMap(),
       automatically_derived_methods_for_impl: HashMap(),
       destructor_for_type: HashMap(),
-      destructors: HashMap()}
+      destructors: HashMap(),
+      value_modes: HashMap()}
 }
 
 
@@ -2256,6 +2271,11 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
 
     cx.kind_cache.insert(ty, result);
     return result;
+}
+
+fn type_implicitly_moves(cx: ctxt, ty: t) -> bool {
+    let kind = type_kind(cx, ty);
+    !(kind_can_be_copied(kind) && kind_can_be_implicitly_copied(kind))
 }
 
 /// gives a rough estimate of how much space it takes to represent

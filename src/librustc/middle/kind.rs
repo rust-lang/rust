@@ -12,6 +12,7 @@ use syntax::{visit, ast_util};
 use syntax::ast::*;
 use syntax::codemap::span;
 use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
+use middle::ty::{CopyValue, MoveValue, ReadValue};
 use std::map::HashMap;
 use util::ppaux::{ty_to_str, tys_to_str};
 use syntax::print::pprust::expr_to_str;
@@ -480,8 +481,16 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
         // borrowed unique value isn't really a copy
         !is_autorefd(cx, ex)
     {
-        let ty = ty::expr_ty(cx.tcx, ex);
-        check_copy(cx, ex.id, ty, ex.span, implicit_copy, why);
+        match cx.tcx.value_modes.find(ex.id) {
+            None => cx.tcx.sess.span_bug(ex.span, ~"no value mode for lval"),
+            Some(MoveValue) | Some(ReadValue) => {} // Won't be a copy.
+            Some(CopyValue) => {
+                debug!("(kind checking) is a copy value: `%s`",
+                       expr_to_str(ex, cx.tcx.sess.intr()));
+                let ty = ty::expr_ty(cx.tcx, ex);
+                check_copy(cx, ex.id, ty, ex.span, implicit_copy, why);
+            }
+        }
     }
 
     fn is_autorefd(cx: ctx, ex: @expr) -> bool {

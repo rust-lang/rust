@@ -509,13 +509,17 @@ impl Datum {
         }
     }
 
-    fn GEPi(bcx: block, ixs: &[uint], ty: ty::t) -> Datum {
+    fn GEPi(bcx: block,
+            ixs: &[uint],
+            ty: ty::t,
+            source: DatumSource)
+         -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
             val: GEPi(bcx, base_val, ixs),
             mode: ByRef,
             ty: ty,
-            source: FromLvalue
+            source: source
         }
     }
 

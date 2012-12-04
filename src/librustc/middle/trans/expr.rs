@@ -121,6 +121,7 @@ use util::ppaux::ty_to_str;
 use util::common::indenter;
 use ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::ty::MoveValue;
 
 // The primary two functions for translating expressions:
 export trans_to_datum, trans_into;
@@ -736,7 +737,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 return trans_def_lvalue(bcx, expr, bcx.def(expr.id));
             }
             ast::expr_field(base, ident, _) => {
-                return trans_rec_field(bcx, base, ident);
+                return trans_rec_field(bcx, base, ident, expr.id);
             }
             ast::expr_index(base, idx) => {
                 return trans_index(bcx, expr, base, idx);
@@ -756,8 +757,10 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     }
 }
 
-fn trans_def_lvalue(bcx: block, ref_expr: @ast::expr,
-                    def: ast::def) -> DatumBlock {
+fn trans_def_lvalue(bcx: block,
+                    ref_expr: @ast::expr,
+                    def: ast::def)
+                 -> DatumBlock {
     let _icx = bcx.insn_ctxt("trans_def_lvalue");
     let ccx = bcx.ccx();
     match def {
@@ -779,17 +782,21 @@ fn trans_def_lvalue(bcx: block, ref_expr: @ast::expr,
         _ => {
             DatumBlock {
                 bcx: bcx,
-                datum: trans_local_var(bcx, def)
+                datum: trans_local_var(bcx, def, Some(ref_expr.id))
             }
         }
     }
 }
 
-fn trans_local_var(bcx: block, def: ast::def) -> Datum {
+fn trans_local_var(bcx: block,
+                   def: ast::def,
+                   expr_id_opt: Option<ast::node_id>)
+                -> Datum {
     let _icx = bcx.insn_ctxt("trans_local_var");
 
     return match def {
         ast::def_upvar(nid, _, _, _) => {
+            // Can't move upvars, so this is never a FromLvalueLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.find(nid) {
                 Some(val) => {
@@ -807,10 +814,10 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             }
         }
         ast::def_arg(nid, _) => {
-            take_local(bcx, bcx.fcx.llargs, nid)
+            take_local(bcx, bcx.fcx.llargs, nid, expr_id_opt)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
-            take_local(bcx, bcx.fcx.lllocals, nid)
+            take_local(bcx, bcx.fcx.lllocals, nid, expr_id_opt)
         }
         ast::def_self(nid) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
@@ -832,7 +839,7 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                 val: casted_val,
                 ty: self_info.t,
                 mode: ByRef,
-                source: FromLvalue
+                source: source_from_opt_lvalue_type(bcx.tcx(), expr_id_opt)
             }
         }
         _ => {
@@ -843,8 +850,8 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 
     fn take_local(bcx: block,
                   table: HashMap<ast::node_id, local_val>,
-                  nid: ast::node_id) -> Datum {
-
+                  nid: ast::node_id,
+                  expr_id_opt: Option<ast::node_id>) -> Datum {
         let (v, mode) = match table.find(nid) {
             Some(local_mem(v)) => (v, ByRef),
             Some(local_imm(v)) => (v, ByValue),
@@ -858,7 +865,12 @@ fn trans_local_var(bcx: block, def: ast::def) -> Datum {
         debug!("take_local(nid=%?, v=%s, mode=%?, ty=%s)",
                nid, bcx.val_str(v), mode, bcx.ty_to_str(ty));
 
-        Datum { val: v, ty: ty, mode: mode, source: FromLvalue }
+        Datum {
+            val: v,
+            ty: ty,
+            mode: mode,
+            source: source_from_opt_lvalue_type(bcx.tcx(), expr_id_opt)
+        }
     }
 }
 
@@ -943,7 +955,8 @@ fn with_field_tys<R>(tcx: ty::ctxt,
 
 fn trans_rec_field(bcx: block,
                    base: @ast::expr,
-                   field: ast::ident) -> DatumBlock {
+                   field: ast::ident,
+                   expr_id: ast::node_id) -> DatumBlock {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_rec_field");
 
@@ -951,8 +964,26 @@ fn trans_rec_field(bcx: block,
     do with_field_tys(bcx.tcx(), base_datum.ty, None) |_dtor, field_tys| {
         let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
         DatumBlock {
-            datum: base_datum.GEPi(bcx, [0u, 0u, ix], field_tys[ix].mt.ty),
+            datum: base_datum.GEPi(bcx,
+                                   [0u, 0u, ix],
+                                   field_tys[ix].mt.ty,
+                                   source_from_opt_lvalue_type(
+                                        bcx.tcx(), Some(expr_id))),
             bcx: bcx
+        }
+    }
+}
+
+fn source_from_opt_lvalue_type(tcx: ty::ctxt,
+                               expr_id_opt: Option<ast::node_id>)
+                            -> DatumSource {
+    match expr_id_opt {
+        None => FromLvalue,
+        Some(expr_id) => {
+            match tcx.value_modes.find(expr_id) {
+                Some(MoveValue) => FromLastUseLvalue,
+                Some(_) | None => FromLvalue,
+            }
         }
     }
 }
@@ -1010,8 +1041,11 @@ fn trans_index(bcx: block,
     let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
     return DatumBlock {
         bcx: bcx,
-        datum: Datum {val: elt, ty: vt.unit_ty,
-                      mode: ByRef, source: FromLvalue}
+        datum: Datum {val: elt,
+                      ty: vt.unit_ty,
+                      mode: ByRef,
+                      source: source_from_opt_lvalue_type(
+                            bcx.tcx(), Some(index_expr.id))}
     };
 }
 
@@ -1101,7 +1135,10 @@ fn trans_rec_or_struct(bcx: block,
                 if !fields.any(|f| f.node.ident == field_ty.ident) {
                     let dest = GEPi(bcx, addr, struct_field(i));
                     let base_field =
-                        base_datum.GEPi(bcx, struct_field(i), field_ty.mt.ty);
+                        base_datum.GEPi(bcx,
+                                        struct_field(i),
+                                        field_ty.mt.ty,
+                                        FromLvalue);
                     bcx = base_field.store_to(bcx, INIT, dest);
                 }
             }

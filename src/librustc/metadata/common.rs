@@ -131,7 +131,8 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_method_map = 0x60,
     tag_table_vtable_map = 0x61,
     tag_table_adjustments = 0x62,
-    tag_table_legacy_boxed_trait = 0x63
+    tag_table_legacy_boxed_trait = 0x63,
+    tag_table_value_mode = 0x64
 }
 
 const tag_item_trait_method_sort: uint = 0x70;
