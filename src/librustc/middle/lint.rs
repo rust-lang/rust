@@ -303,8 +303,8 @@ impl ctxt {
                   ast::meta_list(_, metas) => {
                     for metas.each |meta| {
                         match meta.node {
-                          ast::meta_word(lintname) => {
-                            triples.push((*meta, *level, lintname));
+                          ast::meta_word(ref lintname) => {
+                            triples.push((*meta, *level, *lintname));
                           }
                           _ => {
                             self.sess.span_err(
@@ -547,9 +547,9 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_expr: fn@(e: @ast::expr) {
             match e.node {
-                ast::expr_binary(binop, @l, @r) => {
-                    if is_comparison(binop)
-                       && !check_limits(cx, binop, &l, &r) {
+                ast::expr_binary(ref binop, @ref l, @ref r) => {
+                    if is_comparison(*binop)
+                       && !check_limits(cx, *binop, l, r) {
                         cx.sess.span_lint(
                             type_limits, e.id, it.id, e.span,
                             ~"comparison is useless due to type limits");
@@ -756,7 +756,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
       ast::item_trait(*) => {
         check_case(cx, it.ident, it.id, it.id, it.span)
       }
-      ast::item_enum(enum_definition, _) => {
+      ast::item_enum(ref enum_definition, _) => {
         check_case(cx, it.ident, it.id, it.id, it.span);
         for enum_definition.variants.each |variant| {
             check_case(cx, variant.node.name,
@@ -782,6 +782,7 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
                     span,
                     fmt!("binding `%s` should use ref or copy mode",
                          tcx.sess.str_of(path_to_ident(path))));
+                tcx.bad_bindings.insert(id, ());
             }
           }
         }
@@ -806,7 +807,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
 fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                              span: span, id: ast::node_id) {
     match ty::get(fn_ty).sty {
-        ty::ty_fn(fn_ty) => {
+        ty::ty_fn(ref fn_ty) => {
             let mut counter = 0;
             for vec::each2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
                 counter += 1;

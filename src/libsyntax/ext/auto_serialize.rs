@@ -120,12 +120,12 @@ fn expand_auto_serialize(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_serialize) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
+                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
                     let ser_impl = mk_rec_ser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        fields,
+                        (*fields),
                         tps
                     );
 
@@ -142,12 +142,12 @@ fn expand_auto_serialize(
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_enum(enum_def, tps) => {
+                ast::item_enum(ref enum_def, tps) => {
                     let ser_impl = mk_enum_ser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        enum_def,
+                        (*enum_def),
                         tps
                     );
 
@@ -184,12 +184,12 @@ fn expand_auto_deserialize(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_deserialize) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(fields), _}, tps) => {
+                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
                     let deser_impl = mk_rec_deser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        fields,
+                        (*fields),
                         tps
                     );
 
@@ -206,12 +206,12 @@ fn expand_auto_deserialize(
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_enum(enum_def, tps) => {
+                ast::item_enum(ref enum_def, tps) => {
                     let deser_impl = mk_enum_deser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        enum_def,
+                        (*enum_def),
                         tps
                     );
 

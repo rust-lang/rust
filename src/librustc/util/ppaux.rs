@@ -39,14 +39,14 @@ fn note_and_explain_region(cx: ctxt,
                            region: ty::Region,
                            suffix: ~str) {
     match explain_region_and_span(cx, region) {
-      (str, Some(span)) => {
+      (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            fmt!("%s%s%s", prefix, str, suffix));
+            fmt!("%s%s%s", prefix, (*str), suffix));
       }
-      (str, None) => {
+      (ref str, None) => {
         cx.sess.note(
-            fmt!("%s%s%s", prefix, str, suffix));
+            fmt!("%s%s%s", prefix, (*str), suffix));
       }
     }
 }
@@ -65,8 +65,8 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
     return match region {
       re_scope(node_id) => {
         match cx.items.find(node_id) {
-          Some(ast_map::node_block(blk)) => {
-            explain_span(cx, ~"block", blk.span)
+          Some(ast_map::node_block(ref blk)) => {
+            explain_span(cx, ~"block", (*blk).span)
           }
           Some(ast_map::node_expr(expr)) => {
             match expr.node {
@@ -95,8 +95,8 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
         };
 
         match cx.items.find(id) {
-          Some(ast_map::node_block(blk)) => {
-            let (msg, opt_span) = explain_span(cx, ~"block", blk.span);
+          Some(ast_map::node_block(ref blk)) => {
+            let (msg, opt_span) = explain_span(cx, ~"block", (*blk).span);
             (fmt!("%s %s", prefix, msg), opt_span)
           }
           Some(_) | None => {
@@ -143,9 +143,9 @@ fn bound_region_to_str_adorned(cx: ctxt, prefix: ~str,
 
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(node_id) {
-      Some(ast_map::node_block(blk)) => {
+      Some(ast_map::node_block(ref blk)) => {
         fmt!("<block at %s>",
-             cx.sess.codemap.span_to_str(blk.span))
+             cx.sess.codemap.span_to_str((*blk).span))
       }
       Some(ast_map::node_expr(expr)) => {
         match expr.node {
@@ -408,15 +408,15 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }
       ty_self => ~"self",
-      ty_enum(did, substs) | ty_class(did, substs) => {
+      ty_enum(did, ref substs) | ty_class(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        parameterized(cx, base, substs.self_r, substs.tps)
+        parameterized(cx, base, (*substs).self_r, (*substs).tps)
       }
-      ty_trait(did, substs, vs) => {
+      ty_trait(did, ref substs, vs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        let result = parameterized(cx, base, substs.self_r, substs.tps);
+        let result = parameterized(cx, base, (*substs).self_r, (*substs).tps);
         vstore_ty_to_str(cx, result, vs)
       }
       ty_evec(mt, vs) => {

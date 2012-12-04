@@ -103,9 +103,9 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
             }
             local_def(mth.id)
           }
-          csearch::found(ast::ii_dtor(dtor, _, _, _)) => {
-              ccx.external.insert(fn_id, Some(dtor.node.id));
-              local_def(dtor.node.id)
+          csearch::found(ast::ii_dtor(ref dtor, _, _, _)) => {
+              ccx.external.insert(fn_id, Some((*dtor).node.id));
+              local_def((*dtor).node.id)
           }
         }
       }

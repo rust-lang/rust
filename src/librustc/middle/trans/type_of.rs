@@ -113,13 +113,13 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_estr(ty::vstore_uniq) => {
         T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
       }
-      ty::ty_enum(did, substs) => {
+      ty::ty_enum(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We
         // fill it in *after* placing it into the type cache. This
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
 
-        common::T_named_struct(llvm_type_name(cx, an_enum, did, substs.tps))
+        common::T_named_struct(llvm_type_name(cx, an_enum, did, (*substs).tps))
       }
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
@@ -179,12 +179,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(tys)
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We fill it
         // in *after* placing it into the type cache. This prevents
         // infinite recursion with recursive class types.
 
-        common::T_named_struct(llvm_type_name(cx, a_class, did, substs.tps))
+        common::T_named_struct(llvm_type_name(cx, a_class, did, (*substs).tps))
       }
       ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),

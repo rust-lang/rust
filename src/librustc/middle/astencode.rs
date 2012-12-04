@@ -282,11 +282,11 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(dtor, nm, tps, parent_id) => {
-        let dtor_body = fld.fold_block(dtor.node.body);
+      ast::ii_dtor(ref dtor, nm, tps, parent_id) => {
+        let dtor_body = fld.fold_block((*dtor).node.body);
         ast::ii_dtor({node: {body: dtor_body,
-                              .. dtor.node},
-            .. dtor}, nm, tps, parent_id)
+                              .. (*dtor).node},
+            .. (*dtor)}, nm, tps, parent_id)
       }
     }
 }
@@ -315,16 +315,16 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(dtor, nm, tps, parent_id) => {
-        let dtor_body = fld.fold_block(dtor.node.body);
-        let dtor_attrs = fld.fold_attributes(dtor.node.attrs);
+      ast::ii_dtor(ref dtor, nm, tps, parent_id) => {
+        let dtor_body = fld.fold_block((*dtor).node.body);
+        let dtor_attrs = fld.fold_attributes((*dtor).node.attrs);
         let new_params = fold::fold_ty_params(tps, fld);
-        let dtor_id = fld.new_id(dtor.node.id);
+        let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
-        let new_self = fld.new_id(dtor.node.self_id);
+        let new_self = fld.new_id((*dtor).node.self_id);
         ast::ii_dtor({node: {id: dtor_id, attrs: dtor_attrs,
                 self_id: new_self, body: dtor_body},
-                        .. dtor},
+                        .. (*dtor)},
           nm, new_params, new_parent)
       }
      }
@@ -497,8 +497,8 @@ impl method_origin: tr {
           typeck::method_static(did) => {
             typeck::method_static(did.tr(xcx))
           }
-          typeck::method_param(mp) => {
-            typeck::method_param({trait_id:mp.trait_id.tr(xcx),.. mp})
+          typeck::method_param(ref mp) => {
+            typeck::method_param({trait_id:(*mp).trait_id.tr(xcx),.. (*mp)})
           }
           typeck::method_trait(did, m, vstore) => {
             typeck::method_trait(did.tr(xcx), m, vstore)

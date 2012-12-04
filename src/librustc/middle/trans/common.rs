@@ -444,7 +444,7 @@ fn revoke_clean(cx: block, val: ValueRef) {
 fn block_cleanups(bcx: block) -> ~[cleanup] {
     match bcx.kind {
        block_non_scope  => ~[],
-       block_scope(inf) => inf.cleanups
+       block_scope(ref inf) => (*inf).cleanups
     }
 }
 
@@ -601,10 +601,10 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
     let mut cur = cx;
     loop {
         match cur.kind {
-          block_scope(inf) => {
+          block_scope(ref inf) => {
               debug!("in_scope_cx: selected cur=%s (cx=%s)",
                      cur.to_str(), cx.to_str());
-              f(inf);
+              f((*inf));
               return;
           }
           _ => ()

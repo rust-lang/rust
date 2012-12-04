@@ -521,8 +521,8 @@ trait ToUres {
 impl<T> cres<T>: ToUres {
     fn to_ures() -> ures {
         match self {
-          Ok(_v) => Ok(()),
-          Err(e) => Err(e)
+          Ok(ref _v) => Ok(()),
+          Err(ref e) => Err((*e))
         }
     }
 }
@@ -761,7 +761,7 @@ impl infer_ctxt {
         &self, span: span,
         fty: &ty::FnTy) -> (ty::FnTy, isr_alist)
     {
-        let {fn_ty, isr, _} =
+        let {fn_ty: fn_ty, isr: isr, _} =
             replace_bound_regions_in_fn_ty(self.tcx, @Nil, None, fty, |br| {
                 // N.B.: The name of the bound region doesn't have anything to
                 // do with the region variable that's created for it.  The

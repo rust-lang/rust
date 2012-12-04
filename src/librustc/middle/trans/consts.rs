@@ -323,9 +323,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_tup(es) => {
         C_struct(es.map(|e| const_expr(cx, *e)))
       }
-      ast::expr_rec(fs, None) => {
+      ast::expr_rec(ref fs, None) => {
           C_struct([C_struct(
-              fs.map(|f| const_expr(cx, f.node.expr)))])
+              (*fs).map(|f| const_expr(cx, f.node.expr)))])
       }
       ast::expr_struct(_, ref fs, _) => {
           let ety = ty::expr_ty(cx.tcx, e);
@@ -334,7 +334,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                            None) |_hd, field_tys| {
               field_tys.map(|field_ty| {
                   match fs.find(|f| field_ty.ident == f.node.ident) {
-                      Some(f) => const_expr(cx, f.node.expr),
+                      Some(ref f) => const_expr(cx, (*f).node.expr),
                       None => {
                           cx.tcx.sess.span_bug(
                               e.span, ~"missing struct field");

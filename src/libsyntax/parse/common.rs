@@ -199,9 +199,9 @@ impl Parser {
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
             match sep {
-              Some(t) => {
+              Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(t); }
+                else { self.expect((*t)); }
               }
               _ => ()
             }
@@ -243,9 +243,9 @@ impl Parser {
         let mut v: ~[T] = ~[];
         while self.token != ket {
             match sep.sep {
-              Some(t) => {
+              Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(t); }
+                else { self.expect((*t)); }
               }
               _ => ()
             }

@@ -73,7 +73,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     // Get the path so that we can create a symbol
     let (pt, name, span) = match map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
-      ast_map::node_variant(v, enm, pt) => (pt, v.node.name, enm.span),
+      ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
       ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, pt)
       => (pt, i.ident, i.span),
@@ -152,10 +152,10 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     });
 
     let lldecl = match map_node {
-      ast_map::node_item(i@@{node: ast::item_fn(decl, _, _, body), _}, _) => {
+      ast_map::node_item(i@@{node: ast::item_fn(decl, _, _, ref body), _}, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(i.attrs, d);
-        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node, None);
+        trans_fn(ccx, pt, decl, (*body), d, no_self, psubsts, fn_id.node, None);
         d
       }
       ast_map::node_item(*) => {
@@ -167,15 +167,15 @@ fn monomorphic_fn(ccx: @crate_ctxt,
                                 ref_id);
           d
       }
-      ast_map::node_variant(v, enum_item, _) => {
+      ast_map::node_variant(ref v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
         let this_tv = option::get(vec::find(*tvs, |tv| {
             tv.id.node == fn_id.node}));
         let d = mk_lldecl();
         set_inline_hint(d);
-        match v.node.kind {
+        match (*v).node.kind {
             ast::tuple_variant_kind(args) => {
-                trans_enum_variant(ccx, enum_item.id, v, args,
+                trans_enum_variant(ccx, enum_item.id, (*v), args,
                                    this_tv.disr_val, (*tvs).len() == 1u,
                                    psubsts, d);
             }

@@ -697,8 +697,8 @@ fn determine_rp_in_ty(ty: @ast::Ty,
         visit_mt(mt, cx, visitor);
       }
 
-      ast::ty_rec(fields) => {
-        for fields.each |field| {
+      ast::ty_rec(ref fields) => {
+        for (*fields).each |field| {
             visit_mt(field.node.mt, cx, visitor);
         }
       }

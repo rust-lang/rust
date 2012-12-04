@@ -43,7 +43,7 @@ impl ty::FnTy: ToStr {
 impl<V:Copy ToStr> bound<V>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
-          Some(v) => v.to_str(cx),
+          Some(ref v) => (*v).to_str(cx),
           None => ~"none"
         }
     }
@@ -76,8 +76,8 @@ impl float_ty_set: ToStr {
 impl<V:Copy vid, T:Copy ToStr> var_value<V, T>: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
-          redirect(vid) => fmt!("redirect(%s)", vid.to_str()),
-          root(pt, rk) => fmt!("root(%s, %s)", pt.to_str(cx),
+          redirect(ref vid) => fmt!("redirect(%s)", (*vid).to_str()),
+          root(ref pt, rk) => fmt!("root(%s, %s)", (*pt).to_str(cx),
                                uint::to_str(rk, 10u))
         }
     }

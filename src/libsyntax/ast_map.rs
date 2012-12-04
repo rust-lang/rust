@@ -163,8 +163,8 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     match fk {
-      visit::fk_dtor(tps, attrs, self_id, parent_id) => {
-          let dt = @{node: {id: id, attrs: attrs, self_id: self_id,
+      visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
+          let dt = @{node: {id: id, attrs: (*attrs), self_id: self_id,
                      body: /* FIXME (#2543) */ copy body}, span: sp};
           cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
                                       parent_id,
@@ -219,8 +219,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             map_method(impl_did, extend(cx, i.ident), *m, cx);
         }
       }
-      item_enum(enum_definition, _) => {
-        for enum_definition.variants.each |v| {
+      item_enum(ref enum_definition, _) => {
+        for (*enum_definition).variants.each |v| {
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME (#2543) */ copy *v, i,
                 extend(cx, i.ident)));
@@ -228,7 +228,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       }
       item_foreign_mod(nm) => {
         let abi = match attr::foreign_abi(i.attrs) {
-          either::Left(msg) => cx.diag.span_fatal(i.span, msg),
+          either::Left(ref msg) => cx.diag.span_fatal(i.span, (*msg)),
           either::Right(abi) => abi
         };
         for nm.items.each |nitem| {
@@ -249,7 +249,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         map_struct_def(struct_def, node_item(i, item_path), i.ident, i.id, cx,
                        v);
       }
-      item_trait(_, traits, methods) => {
+      item_trait(_, traits, ref methods) => {
         // Map trait refs to their parent classes. This is
         // so we can find the self_ty
         for traits.each |p| {
@@ -258,7 +258,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             // encoding/decoding
             cx.map.insert(p.impl_id, node_item(i, item_path));
         }
-        for methods.each |tm| {
+        for (*methods).each |tm| {
             let id = ast_util::trait_method_to_ty_method(*tm).id;
             let d_id = ast_util::local_def(i.id);
             cx.map.insert(id, node_trait_method(@*tm, d_id, item_path));
@@ -368,9 +368,9 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_variant(variant, _, path)) => {
+      Some(node_variant(ref variant, _, path)) => {
         fmt!("variant %s in %s (id=%?)",
-             *itr.get(variant.node.name), path_to_str(*path, itr), id)
+             *itr.get((*variant).node.name), path_to_str(*path, itr), id)
       }
       Some(node_expr(expr)) => {
         fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)

@@ -190,9 +190,9 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
       /* Other */
       DOC_COMMENT(s) => *in.get(s),
       EOF => ~"<eof>",
-      INTERPOLATED(nt) => {
+      INTERPOLATED(ref nt) => {
         ~"an interpolated " +
-            match nt {
+            match (*nt) {
               nt_item(*) => ~"item",
               nt_block(*) => ~"block",
               nt_stmt(*) => ~"statement",

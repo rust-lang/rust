@@ -72,8 +72,8 @@ fn get_region_reporting_err(tcx: ty::ctxt,
 
     match res {
       result::Ok(r) => r,
-      result::Err(e) => {
-        tcx.sess.span_err(span, e);
+      result::Err(ref e) => {
+        tcx.sess.span_err(span, (*e));
         ty::re_static
       }
     }
@@ -204,7 +204,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
                             self, rscope,
                             type_def_id, path);
                         match ty::get(result.ty).sty {
-                            ty::ty_trait(trait_def_id, substs, _) => {
+                            ty::ty_trait(trait_def_id, ref substs, _) => {
                                 match vst {
                                     ty::vstore_box | ty::vstore_slice(*) |
                                     ty::vstore_uniq => {}
@@ -218,7 +218,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
                                     }
                                 }
                                 return ty::mk_trait(tcx, trait_def_id,
-                                                    substs, vst);
+                                                    (*substs), vst);
 
                             }
                             _ => {}
@@ -297,8 +297,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
         let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, *t));
         ty::mk_tup(tcx, flds)
       }
-      ast::ty_rec(fields) => {
-        let flds = do fields.map |f| {
+      ast::ty_rec(ref fields) => {
+        let flds = do (*fields).map |f| {
             let tm = ast_mt_to_mt(self, rscope, f.node.mt);
             {ident: f.node.ident, mt: tm}
         };

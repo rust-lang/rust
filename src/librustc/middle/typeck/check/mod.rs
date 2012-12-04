@@ -230,7 +230,7 @@ fn check_fn(ccx: @crate_ctxt,
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
 
-    let {isr, self_info, fn_ty} = {
+    let {isr: isr, self_info: self_info, fn_ty: fn_ty} = {
         let old_isr = option::map_default(&old_fcx, @Nil,
                                          |fcx| fcx.in_scope_regions);
         replace_bound_regions_in_fn_ty(tcx, old_isr, self_info, fn_ty,
@@ -495,11 +495,11 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
 
     match it.node {
       ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
-      ast::item_enum(enum_definition, _) => {
-        check_enum_variants(ccx, it.span, enum_definition.variants, it.id);
+      ast::item_enum(ref enum_definition, _) => {
+        check_enum_variants(ccx, it.span, (*enum_definition).variants, it.id);
       }
-      ast::item_fn(decl, _, _, body) => {
-        check_bare_fn(ccx, decl, body, it.id, None);
+      ast::item_fn(decl, _, _, ref body) => {
+        check_bare_fn(ccx, decl, (*body), it.id, None);
       }
       ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(it.id);
@@ -510,8 +510,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
             check_method(ccx, *m, self_ty, local_def(it.id));
         }
       }
-      ast::item_trait(_, _, trait_methods) => {
-        for trait_methods.each |trait_method| {
+      ast::item_trait(_, _, ref trait_methods) => {
+        for (*trait_methods).each |trait_method| {
             match *trait_method {
               required(*) => {
                 // Nothing to do, since required methods don't have
@@ -531,8 +531,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_bounds_are_used(ccx, t.span, tps, tpt_ty);
         // If this is a record ty, check for duplicate fields
         match t.node {
-            ast::ty_rec(fields) => {
-              check_no_duplicate_fields(ccx.tcx, fields.map(|f|
+            ast::ty_rec(ref fields) => {
+              check_no_duplicate_fields(ccx.tcx, (*fields).map(|f|
                                               (f.node.ident, f.span)));
             }
             _ => ()
@@ -690,7 +690,7 @@ impl @fn_ctxt {
     }
     fn node_ty_substs(id: ast::node_id) -> ty::substs {
         match self.inh.node_type_substs.find(id) {
-            Some(ts) => ts,
+            Some(ref ts) => (*ts),
             None => {
                 self.tcx().sess.bug(
                     fmt!("no type substs for node %d: %s in fcx %s",
@@ -720,7 +720,7 @@ impl @fn_ctxt {
     {
         match infer::mk_assignty(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
-            Err(e) => result::Err(e),
+            Err(ref e) => result::Err((*e)),
             Ok(Some(adjustment)) => {
                 self.write_adjustment(expr.id, adjustment);
                 Ok(())
@@ -1191,8 +1191,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                              expr_t,
                              tps,
                              DontDerefArgs) {
-            Some(entry) => {
-                fcx.ccx.method_map.insert(expr.id, entry);
+            Some(ref entry) => {
+                fcx.ccx.method_map.insert(expr.id, (*entry));
             }
             None => {
                 fcx.type_error_message(expr.span,
@@ -1267,13 +1267,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match method::lookup(fcx, op_ex, self_ex,
                              op_ex.callee_id, opname, self_t, ~[],
                              deref_args) {
-          Some(origin) => {
+          Some(ref origin) => {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
                                  method_ty, op_ex, args, deref_args)
             };
-            fcx.ccx.method_map.insert(op_ex.id, origin);
+            fcx.ccx.method_map.insert(op_ex.id, (*origin));
             Some((ty::ty_fn_ret(method_ty), bot))
           }
           _ => None
@@ -1341,9 +1341,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     {
         let tcx = fcx.ccx.tcx;
         match ast_util::binop_to_method_name(op) {
-          Some(name) => {
+          Some(ref name) => {
             match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
-                                   fcx.tcx().sess.ident_of(name),
+                                   fcx.tcx().sess.ident_of((*name)),
                                    ~[rhs], DoDerefArgs) {
               Some(pair) => return pair,
               _ => ()
@@ -1434,7 +1434,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             match expected_sty {
                 Some(ty::ty_fn(ref fn_ty)) => {
                     let id = expr.id;
-                    let {fn_ty, _} =
+                    let {fn_ty: fn_ty, _} =
                         replace_bound_regions_in_fn_ty(
                             tcx, @Nil, None, fn_ty,
                             |br| ty::re_bound(ty::br_cap_avoid(id, @br)));
@@ -1506,7 +1506,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     _ => ()
                 }
             }
-            ty::ty_class(base_id, substs) => {
+            ty::ty_class(base_id, ref substs) => {
                 // This is just for fields -- the same code handles
                 // methods in both classes and traits
 
@@ -1515,7 +1515,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 debug!("class named %s", ty_to_str(tcx, base_t));
                 let cls_items = ty::lookup_class_fields(tcx, base_id);
                 match lookup_field_ty(tcx, base_id, cls_items,
-                                      field, &substs) {
+                                      field, &(*substs)) {
                     Some(field_ty) => {
                         // (2) look up what field's type is, and return it
                         fcx.write_ty(expr.id, field_ty);
@@ -1532,8 +1532,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         match method::lookup(fcx, expr, base, expr.id,
                              field, expr_t, tps, DontDerefArgs) {
-            Some(entry) => {
-                fcx.ccx.method_map.insert(expr.id, entry);
+            Some(ref entry) => {
+                fcx.ccx.method_map.insert(expr.id, (*entry));
 
                 // If we have resolved to a method but this is not in
                 // a callee position, error
@@ -2020,32 +2020,32 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_swap(lhs, rhs) => {
         bot = check_assignment(fcx, lhs, rhs, id);
       }
-      ast::expr_if(cond, thn, elsopt) => {
+      ast::expr_if(cond, ref thn, elsopt) => {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx)) |
-            check_then_else(fcx, thn, elsopt, id, expr.span);
+            check_then_else(fcx, (*thn), elsopt, id, expr.span);
       }
-      ast::expr_while(cond, body) => {
+      ast::expr_while(cond, ref body) => {
         bot = check_expr_with(fcx, cond, ty::mk_bool(tcx));
-        check_block_no_value(fcx, body);
+        check_block_no_value(fcx, (*body));
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
-      ast::expr_loop(body, _) => {
-        check_block_no_value(fcx, body);
+      ast::expr_loop(ref body, _) => {
+        check_block_no_value(fcx, (*body));
         fcx.write_ty(id, ty::mk_nil(tcx));
-        bot = !may_break(tcx, expr.id, body);
+        bot = !may_break(tcx, expr.id, (*body));
       }
-      ast::expr_match(discrim, arms) => {
-        bot = alt::check_alt(fcx, expr, discrim, arms);
+      ast::expr_match(discrim, ref arms) => {
+        bot = alt::check_alt(fcx, expr, discrim, (*arms));
       }
-      ast::expr_fn(proto, decl, body, cap_clause) => {
+      ast::expr_fn(proto, decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, Some(proto),
-                      decl, body, false,
+                      decl, (*body), false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
-      ast::expr_fn_block(decl, body, cap_clause) => {
+      ast::expr_fn_block(decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, None,
-                      decl, body, false,
+                      decl, (*body), false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
@@ -2058,9 +2058,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // 2. the closure that was given returns unit
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
         let inner_ty = match expected_sty {
-          Some(ty::ty_fn(fty)) => {
+          Some(ty::ty_fn(ref fty)) => {
             match fcx.mk_subty(false, expr.span,
-                               fty.sig.output, ty::mk_bool(tcx)) {
+                               (*fty).sig.output, ty::mk_bool(tcx)) {
               result::Ok(_) => (),
               result::Err(_) => {
                    fcx.type_error_message(expr.span,
@@ -2068,15 +2068,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                           fmt!("a `loop` function's last argument \
                                 should return `bool`, not `%s`", actual)
                       },
-                      fty.sig.output, None);
+                      (*fty).sig.output, None);
                 fcx.write_ty(id, ty::mk_err(tcx));
                 return true;
               }
             }
             ty::mk_fn(tcx, FnTyBase {
-                meta: fty.meta,
+                meta: (*fty).meta,
                 sig: FnSig {output: ty::mk_nil(tcx),
-                            ..fty.sig}
+                            ..(*fty).sig}
             })
           }
           _ =>
@@ -2097,9 +2097,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
         };
         match b.node {
-          ast::expr_fn_block(decl, body, cap_clause) => {
+          ast::expr_fn_block(decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          decl, body, true,
+                          decl, (*body), true,
                           Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
@@ -2110,11 +2110,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
         match ty::get(block_ty).sty {
-          ty::ty_fn(fty) => {
+          ty::ty_fn(ref fty) => {
             fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
-                meta: fty.meta,
+                meta: (*fty).meta,
                 sig: FnSig {output: ty::mk_bool(tcx),
-                            ..fty.sig}
+                            ..(*fty).sig}
             }))
           }
           _ => fail ~"expected fn type"
@@ -2123,8 +2123,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_do_body(b) => {
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
         let inner_ty = match expected_sty {
-          Some(ty::ty_fn(fty)) => {
-              ty::mk_fn(tcx, fty)
+          Some(ty::ty_fn(ref fty)) => {
+              ty::mk_fn(tcx, (*fty))
           }
           _ => match expected {
                   Some(expected_t) => {
@@ -2141,9 +2141,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
         };
         match b.node {
-          ast::expr_fn_block(decl, body, cap_clause) => {
+          ast::expr_fn_block(decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          decl, body, true,
+                          decl, (*body), true,
                           Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
@@ -2154,17 +2154,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
         match ty::get(block_ty).sty {
-          ty::ty_fn(fty) => {
-            fcx.write_ty(expr.id, ty::mk_fn(tcx, fty));
+          ty::ty_fn(ref fty) => {
+            fcx.write_ty(expr.id, ty::mk_fn(tcx, (*fty)));
           }
           _ => fail ~"expected fn ty"
         }
       }
-      ast::expr_block(b) => {
+      ast::expr_block(ref b) => {
         // If this is an unchecked block, turn off purity-checking
-        bot = check_block(fcx, b);
+        bot = check_block(fcx, (*b));
         let typ =
-            match b.node.expr {
+            match (*b).node.expr {
               Some(expr) => fcx.expr_ty(expr),
               None => ty::mk_nil(tcx)
             };
@@ -2246,7 +2246,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let typ = ty::mk_tup(tcx, elt_ts);
         fcx.write_ty(id, typ);
       }
-      ast::expr_rec(fields, base) => {
+      ast::expr_rec(ref fields, base) => {
         option::iter(&base, |b| { check_expr(fcx, *b, expected); });
         let expected = if expected.is_none() && base.is_some() {
             Some(fcx.expr_ty(base.get()))
@@ -2254,7 +2254,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let flds = unpack_expected(fcx, expected, |sty|
             match sty { ty::ty_rec(flds) => Some(flds), _ => None }
         );
-        let fields_t = vec::map(fields, |f| {
+        let fields_t = vec::map((*fields), |f| {
             bot |= check_expr(fcx, f.node.expr, flds.chain_ref(|flds|
                 vec::find(*flds, |tf| tf.ident == f.node.ident)
             ).map(|tf| tf.mt.ty));
@@ -2274,7 +2274,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                that we're extending a record we know has no dup fields, and
                it would be ill-typed anyway if we duplicated one of its
                fields */
-            check_no_duplicate_fields(tcx, fields.map(|f|
+            check_no_duplicate_fields(tcx, (*fields).map(|f|
                                                     (f.node.ident, f.span)));
           }
           Some(bexpr) => {
@@ -2309,16 +2309,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
-      ast::expr_struct(path, fields, base_expr) => {
+      ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.
         match tcx.def_map.find(id) {
             Some(ast::def_class(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
-                                         fields, base_expr);
+                                         (*fields), base_expr);
             }
             Some(ast::def_variant(enum_id, variant_id)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
-                                          variant_id, fields);
+                                          variant_id, (*fields));
             }
             _ => {
                 tcx.sess.span_bug(path.span, ~"structure constructor does \
@@ -2571,9 +2571,9 @@ fn check_enum_variants(ccx: @crate_ctxt,
                     ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
                                                     constant");
                   }
-                  Err(err) => {
+                  Err(ref err) => {
                     ccx.tcx.sess.span_err(e.span,
-                     fmt!("expected constant: %s", err));
+                     fmt!("expected constant: %s", (*err)));
 
                   }
                 }
@@ -2977,9 +2977,9 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"morestack_addr" => {
         (0u, ~[], ty::mk_nil_ptr(tcx))
       }
-      other => {
+      ref other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
-                          other + ~"`");
+                          (*other) + ~"`");
         return;
       }
     };

@@ -27,7 +27,7 @@
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
-#[allow(deprecated_pattern)];
+#[warn(deprecated_pattern)];
 
 extern mod core(vers = "0.5");
 extern mod std(vers = "0.5");
@@ -334,9 +334,9 @@ fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
 
     let matches =
         &match getopts::groups::getopts(args, optgroups()) {
-          Ok(m) => m,
-          Err(f) => {
-            early_error(demitter, getopts::fail_str(f))
+          Ok(ref m) => (*m),
+          Err(ref f) => {
+            early_error(demitter, getopts::fail_str((*f)))
           }
         };
 
@@ -396,8 +396,8 @@ fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     let ls = opt_present(matches, ~"ls");
     if ls {
         match input {
-          file_input(ifile) => {
-            list_metadata(sess, &ifile, io::stdout());
+          file_input(ref ifile) => {
+            list_metadata(sess, &(*ifile), io::stdout());
           }
           str_input(_) => {
             early_error(demitter, ~"can not list metadata for stdin");

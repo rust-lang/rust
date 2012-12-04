@@ -255,8 +255,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     let nargs = args.len();
     for pieces.each |pc| {
         match *pc {
-          PieceString(s) => {
-            piece_exprs.push(mk_uniq_str(cx, fmt_sp, s))
+          PieceString(ref s) => {
+            piece_exprs.push(mk_uniq_str(cx, fmt_sp, (*s)))
           }
           PieceConv(conv) => {
             n += 1u;

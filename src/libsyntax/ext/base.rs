@@ -202,12 +202,12 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::ExpnInfo) {
             match ei {
-              ExpandedFrom({call_site: cs, callie: callie}) => {
+              ExpandedFrom({call_site: cs, callie: ref callie}) => {
                 self.backtrace =
                     Some(@ExpandedFrom({
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: self.backtrace},
-                        callie: callie}));
+                        callie: (*callie)}));
               }
             }
         }

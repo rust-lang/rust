@@ -435,7 +435,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
 fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
-        option::Some(ln) => ln
+        option::Some(ref ln) => (*ln)
     }
 }
 
@@ -608,10 +608,10 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let n = vec::len(tys.arg_tys);
 
             match tys.x86_64_tys {
-                Some(x86_64) => {
-                    let mut atys = x86_64.arg_tys;
-                    let mut attrs = x86_64.attrs;
-                    if x86_64.sret {
+                Some(ref x86_64) => {
+                    let mut atys = (*x86_64).arg_tys;
+                    let mut attrs = (*x86_64).attrs;
+                    if (*x86_64).sret {
                         let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         let llretloc = Load(bcx, llretptr);
                         llargvals = ~[llretloc];
@@ -649,8 +649,8 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                      llargbundle: ValueRef, llretval: ValueRef)  {
             let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             match tys.x86_64_tys {
-                Some(x86_64) => {
-                  for vec::eachi(x86_64.attrs) |i, a| {
+                Some(ref x86_64) => {
+                  for vec::eachi((*x86_64).attrs) |i, a| {
                         match *a {
                             Some(attr) => {
                                 llvm::LLVMAddInstrAttribute(
@@ -660,15 +660,15 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                             _ => ()
                         }
                     }
-                    if x86_64.sret || !tys.ret_def {
+                    if (*x86_64).sret || !tys.ret_def {
                         return;
                     }
                     let n = vec::len(tys.arg_tys);
                     let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                     let llretloc = Load(bcx, llretptr);
-                    if x86_64.ret_ty.cast {
+                    if (*x86_64).ret_ty.cast {
                         let tmp_ptr = BitCast(bcx, llretloc,
-                                                   T_ptr(x86_64.ret_ty.ty));
+                                                   T_ptr((*x86_64).ret_ty.ty));
                         Store(bcx, llretval, tmp_ptr);
                     } else {
                         Store(bcx, llretval, llretloc);
@@ -700,8 +700,8 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         match tys.x86_64_tys {
-          Some(x86_64) => {
-            do decl_x86_64_fn(x86_64) |fnty| {
+          Some(ref x86_64) => {
+            do decl_x86_64_fn((*x86_64)) |fnty| {
                 decl_fn(ccx.llmod, lname, cc, fnty)
             }
           }
@@ -1110,17 +1110,17 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
             match tys.x86_64_tys {
-                option::Some(x86_64) => {
-                    let mut atys = x86_64.arg_tys;
-                    let mut attrs = x86_64.attrs;
+                option::Some(ref x86_64) => {
+                    let mut atys = (*x86_64).arg_tys;
+                    let mut attrs = (*x86_64).attrs;
                     let mut j = 0u;
-                    let llretptr = if x86_64.sret {
+                    let llretptr = if (*x86_64).sret {
                         atys = vec::tail(atys);
                         attrs = vec::tail(attrs);
                         j = 1u;
                         get_param(llwrapfn, 0u)
-                    } else if x86_64.ret_ty.cast {
-                        let retptr = alloca(bcx, x86_64.ret_ty.ty);
+                    } else if (*x86_64).ret_ty.cast {
+                        let retptr = alloca(bcx, (*x86_64).ret_ty.ty);
                         BitCast(bcx, retptr, T_ptr(tys.ret_ty))
                     } else {
                         alloca(bcx, tys.ret_ty)
@@ -1164,16 +1164,16 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                      llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
             match tys.x86_64_tys {
-                option::Some(x86_64) => {
-                    if x86_64.sret || !tys.ret_def {
+                option::Some(ref x86_64) => {
+                    if (*x86_64).sret || !tys.ret_def {
                         RetVoid(bcx);
                         return;
                     }
                     let n = vec::len(tys.arg_tys);
                     let llretval = load_inbounds(bcx, llargbundle, ~[0u, n]);
-                    let llretval = if x86_64.ret_ty.cast {
+                    let llretval = if (*x86_64).ret_ty.cast {
                         let retptr = BitCast(bcx, llretval,
-                                                  T_ptr(x86_64.ret_ty.ty));
+                                                  T_ptr((*x86_64).ret_ty.ty));
                         Load(bcx, retptr)
                     } else {
                         Load(bcx, llretval)
@@ -1233,7 +1233,7 @@ fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
       },
       Some(_) => match attr::foreign_abi(i.attrs) {
         either::Right(abi) => abi,
-        either::Left(msg) => ccx.sess.span_fatal(i.span, msg)
+        either::Left(ref msg) => ccx.sess.span_fatal(i.span, (*msg))
       }
     }
 }

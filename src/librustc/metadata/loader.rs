@@ -50,7 +50,7 @@ type ctxt = {
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     match find_library_crate(cx) {
-      Some(t) => return t,
+      Some(ref t) => return (*t),
       None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
@@ -135,7 +135,7 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
     match vec::last_opt(name_items) {
       Some(i) => {
         match attr::get_meta_item_value_str(i) {
-          Some(n) => n,
+          Some(ref n) => (*n),
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
           _ => fail

@@ -603,7 +603,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(intr, item_doc));
     match decode_inlined_item(cdata, tcx, path, item_doc) {
-      Some(ii) => csearch::found(ii),
+      Some(ref ii) => csearch::found((*ii)),
       None => {
         match item_parent_item(item_doc) {
           Some(did) => {
@@ -611,7 +611,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
             let parent_item = lookup_item(did.node, cdata.data);
             match decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
-              Some(ii) => csearch::found_parent(did, ii),
+              Some(ref ii) => csearch::found_parent(did, (*ii)),
               None => csearch::not_found
             }
           }
@@ -635,7 +635,7 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_fn(f) => f.sig.inputs.map(|a| a.ty),
+          ty::ty_fn(ref f) => (*f).sig.inputs.map(|a| a.ty),
 
           // Nullary enum variant.
           _ => ~[],
@@ -750,7 +750,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ty = doc_type(mth, tcx, cdata);
         let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
-          ty::ty_fn(f) => f,
+          ty::ty_fn(ref f) => (*f),
           _ => {
             tcx.diag.handler().bug(
                 ~"get_trait_methods: id has non-function type");
@@ -781,7 +781,7 @@ fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         let fty;
         match ty::get(ty).sty {
-            ty::ty_fn(f) => fty = f,
+            ty::ty_fn(ref f) => fty = (*f),
             _ => {
                 tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
                                          has non-function type");
@@ -1104,7 +1104,7 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ver) => ver,
+      Some(ref ver) => (*ver),
       None => ~"0.0"
     };
 }

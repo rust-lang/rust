@@ -39,18 +39,18 @@ impl infer_ctxt {
           None => {
             self.tcx.sess.bug(fmt!("failed lookup of vid `%u`", vid_u));
           }
-          Some(var_val) => {
-            match var_val {
-              redirect(vid) => {
-                let node = self.get(vb, vid);
-                if node.root != vid {
+          Some(ref var_val) => {
+            match (*var_val) {
+              redirect(ref vid) => {
+                let node = self.get(vb, (*vid));
+                if node.root != (*vid) {
                     // Path compression
-                    vb.vals.insert(vid.to_uint(), redirect(node.root));
+                    vb.vals.insert((*vid).to_uint(), redirect(node.root));
                 }
                 node
               }
-              root(pt, rk) => {
-                node {root: vid, possible_types: pt, rank: rk}
+              root(ref pt, rk) => {
+                node {root: vid, possible_types: (*pt), rank: rk}
               }
             }
           }

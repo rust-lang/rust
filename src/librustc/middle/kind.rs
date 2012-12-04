@@ -308,8 +308,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         check_copy_ex(cx, ls, false, reason);
         check_copy_ex(cx, rs, false, reason);
       }
-      expr_rec(fields, def) | expr_struct(_, fields, def) => {
-        for fields.each |field| { maybe_copy(cx, field.node.expr,
+      expr_rec(ref fields, def) | expr_struct(_, ref fields, def) => {
+        for (*fields).each |field| { maybe_copy(cx, field.node.expr,
                                    Some(("record or struct fields require \
                                           copyable arguments", ""))); }
         match def {
@@ -318,13 +318,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = match ty::get(t).sty {
               ty::ty_rec(f) => f,
-              ty::ty_class(did, substs) =>
-                  ty::class_items_as_fields(cx.tcx, did, &substs),
+              ty::ty_class(did, ref substs) =>
+                  ty::class_items_as_fields(cx.tcx, did, &(*substs)),
               _ => cx.tcx.sess.span_bug(ex.span,
                                         ~"bad base expr type in record")
             };
             for ty_fields.each |tf| {
-                if !vec::any(fields, |f| f.node.ident == tf.ident ) &&
+                if !vec::any((*fields), |f| f.node.ident == tf.ident ) &&
                     !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty)) {
                     cx.tcx.sess.span_err(e.span,
                                          ~"copying a noncopyable value");
@@ -593,7 +593,7 @@ fn check_cast_for_escaping_regions(
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = match ty::get(target_ty).sty {
-      ty::ty_trait(_, substs, _) => {substs}
+      ty::ty_trait(_, ref substs, _) => {(*substs)}
       _ => { return; /* not a cast to a trait */ }
     };
 

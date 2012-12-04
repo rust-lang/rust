@@ -412,12 +412,12 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
         for linkage_metas.each |meta| {
             if attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { name = Some(v); }
+                  Some(ref v) => { name = Some((*v)); }
                   None => cmh_items.push(*meta)
                 }
             } else if attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { vers = Some(v); }
+                  Some(ref v) => { vers = Some((*v)); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
@@ -443,12 +443,12 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
         symbol_hasher.reset();
         for cmh_items.each |m| {
             match m.node {
-              ast::meta_name_value(key, value) => {
-                symbol_hasher.write_str(len_and_str(key));
+              ast::meta_name_value(ref key, value) => {
+                symbol_hasher.write_str(len_and_str((*key)));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) => {
-                symbol_hasher.write_str(len_and_str(name));
+              ast::meta_word(ref name) => {
+                symbol_hasher.write_str(len_and_str((*name)));
               }
               ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
@@ -473,13 +473,13 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
     fn crate_meta_name(sess: Session, _crate: ast::crate,
                        output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
-              Some(v) => v,
+              Some(ref v) => (*v),
               None => {
                 let name = match output.filestem() {
                   None => sess.fatal(fmt!("output file name `%s` doesn't\
                                            appear to have a stem",
                                           output.to_str())),
-                  Some(s) => s
+                  Some(ref s) => (*s)
                 };
                 warn_missing(sess, ~"name", name);
                 name
@@ -490,7 +490,7 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
     fn crate_meta_vers(sess: Session, _crate: ast::crate,
                        metas: provided_metas) -> ~str {
         return match metas.vers {
-              Some(v) => v,
+              Some(ref v) => (*v),
               None => {
                 let vers = ~"0.0";
                 warn_missing(sess, ~"vers", vers);
@@ -534,7 +534,7 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     match ccx.type_hashcodes.find(t) {
-      Some(h) => return h,
+      Some(ref h) => return (*h),
       None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);

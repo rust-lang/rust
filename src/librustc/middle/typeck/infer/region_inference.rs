@@ -620,8 +620,8 @@ impl RegionVarBindings {
               AddConstraint(constraint) => {
                 self.constraints.remove(constraint);
               }
-              AddCombination(map, regions) => {
-                map.remove(regions);
+              AddCombination(map, ref regions) => {
+                map.remove((*regions));
               }
             }
         }

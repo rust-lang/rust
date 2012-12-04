@@ -452,11 +452,11 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_assert(a) => {
             return controlflow::trans_check_expr(bcx, expr, a, ~"Assertion");
         }
-        ast::expr_while(cond, body) => {
-            return controlflow::trans_while(bcx, cond, body);
+        ast::expr_while(cond, ref body) => {
+            return controlflow::trans_while(bcx, cond, (*body));
         }
-        ast::expr_loop(body, opt_label) => {
-            return controlflow::trans_loop(bcx, body, opt_label);
+        ast::expr_loop(ref body, opt_label) => {
+            return controlflow::trans_loop(bcx, (*body), opt_label);
         }
         ast::expr_assign(dst, src) => {
             let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));
@@ -504,20 +504,20 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return trans_def_dps_unadjusted(bcx, expr,
                                             bcx.def(expr.id), dest);
         }
-        ast::expr_if(cond, thn, els) => {
-            return controlflow::trans_if(bcx, cond, thn, els, dest);
+        ast::expr_if(cond, ref thn, els) => {
+            return controlflow::trans_if(bcx, cond, (*thn), els, dest);
         }
-        ast::expr_match(discr, arms) => {
-            return alt::trans_alt(bcx, expr, discr, arms, dest);
+        ast::expr_match(discr, ref arms) => {
+            return alt::trans_alt(bcx, expr, discr, (*arms), dest);
         }
-        ast::expr_block(blk) => {
-            return do base::with_scope(bcx, blk.info(),
+        ast::expr_block(ref blk) => {
+            return do base::with_scope(bcx, (*blk).info(),
                                        ~"block-expr body") |bcx| {
-                controlflow::trans_block(bcx, blk, dest)
+                controlflow::trans_block(bcx, (*blk), dest)
             };
         }
-        ast::expr_rec(fields, base) | ast::expr_struct(_, fields, base) => {
-            return trans_rec_or_struct(bcx, fields, base, expr.id, dest);
+        ast::expr_rec(ref fields, base) | ast::expr_struct(_, ref fields, base) => {
+            return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
         }
         ast::expr_tup(args) => {
             return trans_tup(bcx, args, dest);
@@ -534,14 +534,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::expr_fn(proto, decl, body, cap_clause) => {
+        ast::expr_fn(proto, decl, ref body, cap_clause) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
             return closure::trans_expr_fn(bcx, proto,
-                                          decl, body, expr.id, cap_clause,
+                                          decl, (*body), expr.id, cap_clause,
                                           None, dest);
         }
-        ast::expr_fn_block(decl, body, cap_clause) => {
+        ast::expr_fn_block(decl, ref body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
             match ty::get(expr_ty).sty {
                 ty::ty_fn(ref fn_ty) => {
@@ -549,7 +549,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                            expr_to_str(expr, tcx.sess.intr()),
                            ty_to_str(tcx, expr_ty));
                     return closure::trans_expr_fn(
-                        bcx, fn_ty.meta.proto, decl, body,
+                        bcx, fn_ty.meta.proto, decl, (*body),
                         expr.id, cap_clause, None,
                         dest);
                 }
@@ -563,9 +563,9 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             match ty::get(expr_ty(bcx, expr)).sty {
                 ty::ty_fn(ref fn_ty) => {
                     match blk.node {
-                        ast::expr_fn_block(decl, body, cap) => {
+                        ast::expr_fn_block(decl, ref body, cap) => {
                             return closure::trans_expr_fn(
-                                bcx, fn_ty.meta.proto, decl, body, blk.id,
+                                bcx, fn_ty.meta.proto, decl, (*body), blk.id,
                                 cap, Some(None), dest);
                         }
                         _ => {

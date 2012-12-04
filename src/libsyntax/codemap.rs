@@ -308,10 +308,10 @@ pub impl CodeMap {
                 self.lookup_char_pos_adj(
                     sp.lo + (pos - loc.file.start_pos))
             }
-            FssExternal(eloc) => {
-                {filename: /* FIXME (#2543) */ copy eloc.filename,
-                 line: eloc.line + loc.line - 1u,
-                 col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
+            FssExternal(ref eloc) => {
+                {filename: /* FIXME (#2543) */ copy (*eloc).filename,
+                 line: (*eloc).line + loc.line - 1u,
+                 col: if loc.line == 1u {(*eloc).col + loc.col} else {loc.col},
                  file: None}
             }
         }

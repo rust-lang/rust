@@ -218,7 +218,7 @@ fn encode_type(ecx: @encode_ctxt, ebml_w: Writer::Serializer, typ: ty::t) {
 fn encode_symbol(ecx: @encode_ctxt, ebml_w: Writer::Serializer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     let sym = match ecx.item_symbols.find(id) {
-      Some(x) => x,
+      Some(ref x) => (*x),
       None => {
         ecx.diag.handler().bug(
             fmt!("encode_symbol: id not found %d", id));
@@ -341,9 +341,9 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
     // Encode the reexports of this module.
     debug!("(encoding info for module) encoding reexports for %d", id);
     match ecx.reexports2.find(id) {
-        Some(exports) => {
+        Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
-            for exports.each |exp| {
+            for (*exports).each |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
                        exp.name, id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
@@ -483,8 +483,8 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
         match item {
-           Some(it) => {
-             (ecx.encode_inlined_item)(ecx, ebml_w, path, it);
+           Some(ref it) => {
+             (ecx.encode_inlined_item)(ecx, ebml_w, path, (*it));
            }
            None => {
              encode_symbol(ecx, ebml_w, id);
@@ -622,7 +622,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_region_param(ecx, ebml_w, item);
         ebml_w.end_tag();
       }
-      item_enum(enum_definition, tps) => {
+      item_enum(ref enum_definition, tps) => {
         add_to_index();
         do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
@@ -630,7 +630,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
             encode_type_param_bounds(ebml_w, ecx, tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
             encode_name(ecx, ebml_w, item.ident);
-            for enum_definition.variants.each |v| {
+            for (*enum_definition).variants.each |v| {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
@@ -638,7 +638,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
             encode_region_param(ecx, ebml_w, item);
         }
         encode_enum_variant_info(ecx, ebml_w, item.id,
-                                 enum_definition.variants, path, index, tps);
+                                 (*enum_definition).variants, path, index, tps);
       }
       item_class(struct_def, tps) => {
         /* First, encode the fields and methods
@@ -764,7 +764,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
                                    vec::append(tps, m.tps));
         }
       }
-      item_trait(tps, traits, ms) => {
+      item_trait(tps, traits, ref ms) => {
         let provided_methods = dvec::DVec();
 
         add_to_index();
@@ -778,12 +778,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
-            match ms[i] {
-              required(ty_m) => {
+            match (*ms)[i] {
+              required(ref ty_m) => {
                 ebml_w.start_tag(tag_item_trait_method);
-                encode_def_id(ebml_w, local_def(ty_m.id));
+                encode_def_id(ebml_w, local_def((*ty_m).id));
                 encode_name(ecx, ebml_w, mty.ident);
-                encode_type_param_bounds(ebml_w, ecx, ty_m.tps);
+                encode_type_param_bounds(ebml_w, ecx, (*ty_m).tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
@@ -816,7 +816,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
         // method info, we output static methods with type signatures as
         // written. Here, we output the *real* type signatures. I feel like
         // maybe we should only ever handle the real type signatures.
-        for vec::each(ms) |m| {
+        for vec::each((*ms)) |m| {
             let ty_m = ast_util::trait_method_to_ty_method(*m);
             if ty_m.self_ty.node != ast::sty_static { loop; }
 
@@ -971,19 +971,19 @@ fn write_int(writer: io::Writer, &&n: int) {
 
 fn encode_meta_item(ebml_w: Writer::Serializer, mi: meta_item) {
     match mi.node {
-      meta_word(name) => {
+      meta_word(ref name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes(name));
+        ebml_w.writer.write(str::to_bytes((*name)));
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
-      meta_name_value(name, value) => {
+      meta_name_value(ref name, value) => {
         match value.node {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
-            ebml_w.writer.write(str::to_bytes(name));
+            ebml_w.writer.write(str::to_bytes((*name)));
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
             ebml_w.writer.write(str::to_bytes(*value));
@@ -993,10 +993,10 @@ fn encode_meta_item(ebml_w: Writer::Serializer, mi: meta_item) {
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      meta_list(name, items) => {
+      meta_list(ref name, items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes(name));
+        ebml_w.writer.write(str::to_bytes((*name)));
         ebml_w.end_tag();
         for items.each |inner_item| {
             encode_meta_item(ebml_w, **inner_item);

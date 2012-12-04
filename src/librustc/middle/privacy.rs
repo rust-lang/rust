@@ -131,14 +131,14 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     match tcx.items.find(trait_id.node) {
                         Some(node_item(item, _)) => {
                             match item.node {
-                                item_trait(_, _, methods) => {
-                                    if method_num >= methods.len() {
+                                item_trait(_, _, ref methods) => {
+                                    if method_num >= (*methods).len() {
                                         tcx.sess.span_bug(span, ~"method \
                                                                   number \
                                                                   out of \
                                                                   range?!");
                                     }
-                                    match methods[method_num] {
+                                    match (*methods)[method_num] {
                                         provided(method)
                                              if method.vis == private &&
                                              !privileged_items
@@ -212,10 +212,10 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                             field access");
                                     check_field(expr.span, id, ident);
                                 }
-                                Some(entry) => {
+                                Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &entry.origin);
+                                    check_method(expr.span, &(*entry).origin);
                                 }
                             }
                         }
@@ -233,22 +233,22 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                                       ~"method call not in \
                                                         method map");
                                 }
-                                Some(entry) => {
+                                Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &entry.origin);
+                                    check_method(expr.span, &(*entry).origin);
                                 }
                             }
                         }
                         _ => {}
                     }
                 }
-                expr_struct(_, fields, _) => {
+                expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
                         ty_class(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
-                                for fields.each |field| {
+                                for (*fields).each |field| {
                                         debug!("(privacy checking) checking \
                                                 field in struct literal");
                                     check_field(expr.span, id,
@@ -261,7 +261,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                                     !privileged_items.contains(&(id.node)) {
                                 match tcx.def_map.get(expr.id) {
                                     def_variant(_, variant_id) => {
-                                        for fields.each |field| {
+                                        for (*fields).each |field| {
                                                 debug!("(privacy checking) \
                                                         checking field in \
                                                         struct variant \

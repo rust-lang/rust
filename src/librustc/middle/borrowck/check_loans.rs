@@ -51,9 +51,9 @@ impl purity_cause : cmp::Eq {
                     _ => false
                 }
             }
-            pc_cmt(e0a) => {
+            pc_cmt(ref e0a) => {
                 match (*other) {
-                    pc_cmt(e0b) => e0a == e0b,
+                    pc_cmt(ref e0b) => (*e0a) == (*e0b),
                     _ => false
                 }
             }
@@ -131,7 +131,7 @@ impl check_loan_ctxt {
         loop {
             match pure_map.find(scope_id) {
               None => (),
-              Some(e) => return Some(pc_cmt(e))
+              Some(ref e) => return Some(pc_cmt((*e)))
             }
 
             match region_map.find(scope_id) {
@@ -224,14 +224,14 @@ impl check_loan_ctxt {
 
         let callee_ty = ty::node_id_to_type(tcx, callee_id);
         match ty::get(callee_ty).sty {
-          ty::ty_fn(fn_ty) => {
-            match fn_ty.meta.purity {
+          ty::ty_fn(ref fn_ty) => {
+            match (*fn_ty).meta.purity {
               ast::pure_fn => return, // case (c) above
               ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
                 self.report_purity_error(
                     pc, callee_span,
                     fmt!("access to %s function",
-                         pprust::purity_to_str(fn_ty.meta.purity)));
+                         pprust::purity_to_str((*fn_ty).meta.purity)));
               }
             }
           }
@@ -369,7 +369,7 @@ impl check_loan_ctxt {
         // is not visible from the outside
         match self.purity(ex.id) {
           None => (),
-          Some(pc @ pc_cmt(_)) => {
+          Some(pc_cmt(_)) => {
             // Subtle: Issue #3162.  If we are enforcing purity
             // because there is a reference to aliasable, mutable data
             // that we require to be immutable, we can't allow writes
@@ -377,7 +377,9 @@ impl check_loan_ctxt {
             // because that aliasable data might have been located on
             // the current stack frame, we don't know.
             self.report_purity_error(
-                pc, ex.span, at.ing_form(self.bccx.cmt_to_str(cmt)));
+                self.purity(ex.id).get(),
+                ex.span,
+                at.ing_form(self.bccx.cmt_to_str(cmt)));
           }
           Some(pc_pure_fn) => {
             if cmt.lp.is_none() {
@@ -446,13 +448,13 @@ impl check_loan_ctxt {
                 sp,
                 fmt!("%s prohibited in pure context", msg));
           }
-          pc_cmt(e) => {
-            if self.reported.insert(e.cmt.id, ()) {
+          pc_cmt(ref e) => {
+            if self.reported.insert((*e).cmt.id, ()) {
                 self.tcx().sess.span_err(
-                    e.cmt.span,
+                    (*e).cmt.span,
                     fmt!("illegal borrow unless pure: %s",
-                         self.bccx.bckerr_to_str(e)));
-                self.bccx.note_and_explain_bckerr(e);
+                         self.bccx.bckerr_to_str((*e))));
+                self.bccx.note_and_explain_bckerr((*e));
                 self.tcx().sess.span_note(
                     sp,
                     fmt!("impure due to %s", msg));
@@ -538,12 +540,12 @@ impl check_loan_ctxt {
                   args: ~[@ast::expr]) {
         match self.purity(expr.id) {
           None => {}
-          Some(pc) => {
+          Some(ref pc) => {
             self.check_pure_callee_or_arg(
-                pc, callee, callee_id, callee_span);
+                (*pc), callee, callee_id, callee_span);
             for args.each |arg| {
                 self.check_pure_callee_or_arg(
-                    pc, Some(*arg), arg.id, arg.span);
+                    (*pc), Some(*arg), arg.id, arg.span);
             }
           }
         }

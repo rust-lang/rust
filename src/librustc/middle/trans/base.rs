@@ -576,14 +576,14 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             cx = f(cx, llfld_a, *arg);
         }
       }
-      ty::ty_enum(tid, substs) => {
+      ty::ty_enum(tid, ref substs) => {
         let variants = ty::enum_variants(cx.tcx(), tid);
         let n_variants = (*variants).len();
 
         // Cast the enums to types we can GEP into.
         if n_variants == 1u {
             return iter_variant(cx, av, variants[0],
-                             substs.tps, tid, f);
+                             (*substs).tps, tid, f);
         }
 
         let ccx = cx.ccx();
@@ -608,7 +608,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             let variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, *variant,
-                             substs.tps, tid, f);
+                             (*substs).tps, tid, f);
             Br(variant_cx, next_cx.llbb);
         }
         return next_cx;
@@ -754,8 +754,8 @@ fn need_invoke(bcx: block) -> bool {
     let mut cur = bcx;
     loop {
         match cur.kind {
-          block_scope(inf) => {
-            for vec::each(inf.cleanups) |cleanup| {
+          block_scope(ref inf) => {
+            for vec::each((*inf).cleanups) |cleanup| {
                 match *cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                     if cleanup_type == normal_exit_and_unwind {
@@ -789,9 +789,9 @@ fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
     let mut bcx = bcx;
     loop {
         match bcx.kind {
-          block_scope(inf) => {
-            if inf.cleanups.len() > 0u || bcx.parent.is_none() {
-                f(inf); return;
+          block_scope(ref inf) => {
+            if (*inf).cleanups.len() > 0u || bcx.parent.is_none() {
+                f((*inf)); return;
             }
           }
           _ => ()
@@ -1159,15 +1159,15 @@ fn cleanup_and_leave(bcx: block, upto: Option<BasicBlockRef>,
         }
 
         match cur.kind {
-          block_scope(inf) if inf.cleanups.len() > 0u => {
-            for vec::find(inf.cleanup_paths,
+          block_scope(ref inf) if (*inf).cleanups.len() > 0u => {
+            for vec::find((*inf).cleanup_paths,
                           |cp| cp.target == leave).each |cp| {
                 Br(bcx, cp.dest);
                 return;
             }
             let sub_cx = sub_block(bcx, ~"cleanup");
             Br(bcx, sub_cx.llbb);
-            inf.cleanup_paths.push({target: leave, dest: sub_cx.llbb});
+            (*inf).cleanup_paths.push({target: leave, dest: sub_cx.llbb});
             bcx = trans_block_cleanups_(sub_cx, block_cleanups(cur), is_lpad);
           }
           _ => ()
@@ -1831,8 +1831,8 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                 trans_struct_def(ccx, struct_def, tps, path,
                                  variant.node.name, variant.node.id);
             }
-            ast::enum_variant_kind(enum_definition) => {
-                trans_enum_def(ccx, enum_definition, id, tps, degen, path, vi,
+            ast::enum_variant_kind(ref enum_definition) => {
+                trans_enum_def(ccx, (*enum_definition), id, tps, degen, path, vi,
                                i);
             }
         }
@@ -1847,21 +1847,21 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         _ => fail ~"trans_item",
     };
     match item.node {
-      ast::item_fn(decl, purity, tps, body) => {
+      ast::item_fn(decl, purity, tps, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
                                      vec::append(
                                          *path,
                                          ~[path_name(item.ident)]),
-                                     decl, body, llfndecl, item.id);
+                                     decl, (*body), llfndecl, item.id);
         } else if tps.is_empty() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(*path, ~[path_name(item.ident)]),
-                     decl, body, llfndecl, no_self, None, item.id, None);
+                     decl, (*body), llfndecl, no_self, None, item.id, None);
         } else {
-            for vec::each(body.node.stmts) |stmt| {
+            for vec::each((*body).node.stmts) |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@{node: ast::decl_item(i), _}, _) => {
                     trans_item(ccx, *i);
@@ -1882,12 +1882,12 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_mod(m) => {
         trans_mod(ccx, m);
       }
-      ast::item_enum(enum_definition, tps) => {
+      ast::item_enum(ref enum_definition, tps) => {
         if tps.len() == 0u {
-            let degen = enum_definition.variants.len() == 1u;
+            let degen = (*enum_definition).variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id, tps, degen, path,
+            trans_enum_def(ccx, (*enum_definition), item.id, tps, degen, path,
                            vi, &mut i);
         }
       }
@@ -1895,7 +1895,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_foreign_mod(foreign_mod) => {
         let abi = match attr::foreign_abi(item.attrs) {
           either::Right(abi_) => abi_,
-          either::Left(msg) => ccx.sess.span_fatal(item.span, msg)
+          either::Left(ref msg) => ccx.sess.span_fatal(item.span, (*msg))
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
@@ -2073,7 +2073,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
                    substs: Option<param_substs>) -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(id) {
-     Some(s) => s,
+     Some(ref s) => (*s),
      None if substs.is_none() => {
        let s = mangle_exported_name(
            ccx,
@@ -2205,17 +2205,17 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             llfn
           }
 
-          ast_map::node_variant(v, enm, pth) => {
+          ast_map::node_variant(ref v, enm, pth) => {
             let llfn;
-            match v.node.kind {
+            match (*v).node.kind {
                 ast::tuple_variant_kind(args) => {
                     assert args.len() != 0u;
                     let pth = vec::append(*pth,
                                           ~[path_name(enm.ident),
-                                            path_name(v.node.name)]);
+                                            path_name((*v).node.name)]);
                     llfn = match enm.node {
                       ast::item_enum(_, _) => {
-                        register_fn(ccx, v.span, pth, id)
+                        register_fn(ccx, (*v).span, pth, id)
                       }
                       _ => fail ~"node_variant, shouldn't happen"
                     };
@@ -2302,12 +2302,12 @@ fn register_deriving_method(ccx: @crate_ctxt,
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     let _icx = ccx.insn_ctxt("trans_constant");
     match it.node {
-      ast::item_enum(enum_definition, _) => {
+      ast::item_enum(ref enum_definition, _) => {
         let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
                                              node: it.id});
         let mut i = 0;
         let path = item_path(ccx, it);
-        for vec::each(enum_definition.variants) |variant| {
+        for vec::each((*enum_definition).variants) |variant| {
             let p = vec::append(path, ~[path_name(variant.node.name),
                                         path_name(special_idents::descrim)]);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));

@@ -107,9 +107,9 @@ fn classify(e: @expr,
                   }
               }
 
-              ast::expr_struct(_, fs, None) |
-              ast::expr_rec(fs, None) => {
-                let cs = do vec::map(fs) |f| {
+              ast::expr_struct(_, ref fs, None) |
+              ast::expr_rec(ref fs, None) => {
+                let cs = do vec::map((*fs)) |f| {
                     if f.node.mutbl == ast::m_imm {
                         classify(f.node.expr, def_map, tcx)
                     } else {
@@ -222,7 +222,7 @@ impl const_val : cmp::Eq {
             (const_float(a), const_float(b)) => a == b,
             (const_int(a), const_int(b)) => a == b,
             (const_uint(a), const_uint(b)) => a == b,
-            (const_str(a), const_str(b)) => a == b,
+            (const_str(ref a), const_str(ref b)) => (*a) == (*b),
             (const_bool(a), const_bool(b)) => a == b,
             (const_float(_), _) | (const_int(_), _) | (const_uint(_), _) |
             (const_str(_), _) | (const_bool(_), _) => false
@@ -233,8 +233,8 @@ impl const_val : cmp::Eq {
 
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
-        Ok(r) => r,
-        Err(s) => fail s
+        Ok(ref r) => (*r),
+        Err(ref s) => fail (*s)
     }
 }
 
@@ -250,7 +250,7 @@ fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           Ok(const_uint(i)) => Ok(const_uint(-i)),
           Ok(const_str(_)) => Err(~"Negate on string"),
           Ok(const_bool(_)) => Err(~"Negate on boolean"),
-          err => err
+          ref err => (*err)
         }
       }
       expr_unary(not, inner) => {
@@ -438,10 +438,10 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_str(a), const_str(b)) => {
-        if a == b {
+    (const_str(ref a), const_str(ref b)) => {
+        if (*a) == (*b) {
             0
-        } else if a < b {
+        } else if (*a) < (*b) {
             -1
         } else {
             1

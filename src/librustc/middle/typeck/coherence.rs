@@ -627,8 +627,8 @@ impl CoherenceChecker {
             match self.crate_context.tcx.items.find(method_def_id.node) {
                 Some(ast_map::node_trait_method(trait_method, _, _)) => {
                     match *trait_method {
-                        ast::required(ty_method) => {
-                            attr::attrs_contains_name(ty_method.attrs,
+                        ast::required(ref ty_method) => {
+                            attr::attrs_contains_name((*ty_method).attrs,
                                                       ~"derivable")
                         }
                         ast::provided(method) => {
@@ -1028,8 +1028,8 @@ impl CoherenceChecker {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::local_crate {
                         match tcx.items.find(impl_info.did.node) {
-                            Some(ast_map::node_item(@item, _)) => {
-                                tcx.sess.span_err(item.span,
+                            Some(ast_map::node_item(@ref item, _)) => {
+                                tcx.sess.span_err((*item).span,
                                                   ~"the Drop trait may only \
                                                     be implemented on \
                                                     structures");

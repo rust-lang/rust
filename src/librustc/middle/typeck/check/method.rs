@@ -347,7 +347,7 @@ impl LookupContext {
 
 
             let bound_substs = match ty::get(bound_trait_ty).sty {
-                ty::ty_trait(_, substs, _) => substs,
+                ty::ty_trait(_, ref substs, _) => (*substs),
                 _ => {
                     self.bug(fmt!("add_candidates_from_param: \
                                    non-trait bound %s",
@@ -882,10 +882,10 @@ impl LookupContext {
                        candidate_a, candidate_b);
                 let candidates_same = match (&candidate_a.origin,
                                              &candidate_b.origin) {
-                    (&method_param(p1), &method_param(p2)) => {
-                        let same_trait = p1.trait_id == p2.trait_id;
-                        let same_method = p1.method_num == p2.method_num;
-                        let same_param = p1.param_num == p2.param_num;
+                    (&method_param(ref p1), &method_param(ref p2)) => {
+                        let same_trait = (*p1).trait_id == (*p2).trait_id;
+                        let same_method = (*p1).method_num == (*p2).method_num;
+                        let same_param = (*p1).param_num == (*p2).param_num;
                         // The bound number may be different because
                         // multiple bounds may lead to the same trait
                         // impl
@@ -1059,8 +1059,8 @@ impl LookupContext {
             method_static(impl_did) => {
                 self.report_static_candidate(idx, impl_did)
             }
-            method_param(mp) => {
-                self.report_param_candidate(idx, mp.trait_id)
+            method_param(ref mp) => {
+                self.report_param_candidate(idx, (*mp).trait_id)
             }
             method_trait(trait_did, _, _) | method_self(trait_did, _) => {
                 self.report_param_candidate(idx, trait_did)

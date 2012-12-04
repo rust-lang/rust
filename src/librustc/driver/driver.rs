@@ -39,7 +39,7 @@ fn anon_src() -> ~str { ~"<anon>" }
 
 fn source_name(input: input) -> ~str {
     match input {
-      file_input(ifile) => ifile.to_str(),
+      file_input(ref ifile) => (*ifile).to_str(),
       str_input(_) => anon_src()
     }
 }
@@ -121,13 +121,13 @@ enum input {
 fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
-      file_input(file) => {
-        parse::parse_crate_from_file(&file, cfg, sess.parse_sess)
+      file_input(ref file) => {
+        parse::parse_crate_from_file(&(*file), cfg, sess.parse_sess)
       }
-      str_input(src) => {
+      str_input(ref src) => {
         // FIXME (#2319): Don't really want to box the source string
         parse::parse_crate_from_source_str(
-            anon_src(), @src, cfg, sess.parse_sess)
+            anon_src(), @(*src), cfg, sess.parse_sess)
       }
     }
 }
@@ -337,10 +337,10 @@ fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
             pp::space(s.s);
             pprust::synth_comment(s, int::to_str(item.id, 10u));
           }
-          pprust::node_block(s, blk) => {
+          pprust::node_block(s, ref blk) => {
             pp::space(s.s);
             pprust::synth_comment(s,
-                                  ~"block " + int::to_str(blk.node.id, 10u));
+                                  ~"block " + int::to_str((*blk).node.id, 10u));
           }
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
@@ -563,7 +563,7 @@ fn build_session_options(binary: ~str,
     let target =
         match target_opt {
             None => host_triple(),
-            Some(s) => s
+            Some(ref s) => (*s)
         };
 
     let addl_lib_search_paths =
@@ -743,15 +743,15 @@ fn build_output_filenames(input: input,
         // have to make up a name
         // We want to toss everything after the final '.'
         let dirpath = match *odir {
-          Some(d) => d,
+          Some(ref d) => (*d),
           None => match input {
             str_input(_) => os::getcwd(),
-            file_input(ifile) => ifile.dir_path()
+            file_input(ref ifile) => (*ifile).dir_path()
           }
         };
 
         let stem = match input {
-          file_input(ifile) => ifile.filestem().get(),
+          file_input(ref ifile) => (*ifile).filestem().get(),
           str_input(_) => ~"rust_out"
         };
 
@@ -764,12 +764,12 @@ fn build_output_filenames(input: input,
         }
       }
 
-      Some(out_file) => {
-        out_path = out_file;
+      Some(ref out_file) => {
+        out_path = (*out_file);
         obj_path = if stop_after_codegen {
-            out_file
+            (*out_file)
         } else {
-            out_file.with_filetype(obj_suffix)
+            (*out_file).with_filetype(obj_suffix)
         };
 
         if sess.building_library {

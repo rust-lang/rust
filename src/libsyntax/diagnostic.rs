@@ -285,7 +285,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
 fn expect<T: Copy>(diag: span_handler,
                    opt: Option<T>, msg: fn() -> ~str) -> T {
     match opt {
-       Some(t) => t,
+       Some(ref t) => (*t),
        None => diag.handler().bug(msg())
     }
 }
