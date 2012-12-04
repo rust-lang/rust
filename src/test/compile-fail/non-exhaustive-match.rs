@@ -33,6 +33,9 @@ fn main() {
     match ~[Some(42), None, Some(21)] {
         [Some(*), None, ..tail] => {}
         [Some(*), Some(*), ..tail] => {}
+        [None, None, ..tail] => {}
+        [None, Some(*), ..tail] => {}
+        [Some(_)] => {}
         [None] => {}
         [] => {}
     }
