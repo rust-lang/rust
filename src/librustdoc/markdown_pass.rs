@@ -115,7 +115,7 @@ fn should_request_new_writer_for_each_page() {
     let (writer_factory, po) = markdown_writer::future_writer_factory();
     let (srv, doc) = test::create_doc_srv(~"mod a { }");
     // Split the document up into pages
-    let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
+    let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
     write_markdown(doc, move writer_factory);
     // We expect two pages to have been written
     for iter::repeat(2) {
@@ -147,7 +147,7 @@ fn should_write_title_for_each_page() {
     let (writer_factory, po) = markdown_writer::future_writer_factory();
     let (srv, doc) = test::create_doc_srv(
         ~"#[link(name = \"core\")]; mod a { }");
-    let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
+    let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
     write_markdown(doc, move writer_factory);
     for iter::repeat(2) {
         let (page, markdown) = comm::recv(po);
@@ -814,21 +814,21 @@ mod test {
 
             let doc = extract::from_srv(srv, ~"");
             debug!("doc (extract): %?", doc);
-            let doc = tystr_pass::mk_pass().f(srv, doc);
+            let doc = (tystr_pass::mk_pass().f)(srv, doc);
             debug!("doc (tystr): %?", doc);
-            let doc = path_pass::mk_pass().f(srv, doc);
+            let doc = (path_pass::mk_pass().f)(srv, doc);
             debug!("doc (path): %?", doc);
-            let doc = attr_pass::mk_pass().f(srv, doc);
+            let doc = (attr_pass::mk_pass().f)(srv, doc);
             debug!("doc (attr): %?", doc);
-            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
+            let doc = (desc_to_brief_pass::mk_pass().f)(srv, doc);
             debug!("doc (desc_to_brief): %?", doc);
-            let doc = unindent_pass::mk_pass().f(srv, doc);
+            let doc = (unindent_pass::mk_pass().f)(srv, doc);
             debug!("doc (unindent): %?", doc);
-            let doc = sectionalize_pass::mk_pass().f(srv, doc);
+            let doc = (sectionalize_pass::mk_pass().f)(srv, doc);
             debug!("doc (trim): %?", doc);
-            let doc = trim_pass::mk_pass().f(srv, doc);
+            let doc = (trim_pass::mk_pass().f)(srv, doc);
             debug!("doc (sectionalize): %?", doc);
-            let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
+            let doc = (markdown_index_pass::mk_pass(config).f)(srv, doc);
             debug!("doc (index): %?", doc);
             (srv, doc)
         }
@@ -853,7 +853,7 @@ mod test {
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(move writer_factory);
-        pass.f(srv, doc);
+        (pass.f)(srv, doc);
         return comm::recv(po).second();
     }
 
