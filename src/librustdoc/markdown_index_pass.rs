@@ -239,9 +239,9 @@ mod test {
                 .. config::default_config(&Path("whatever"))
             };
             let doc = extract::from_srv(srv, ~"");
-            let doc = attr_pass::mk_pass().f(srv, doc);
-            let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
-            let doc = path_pass::mk_pass().f(srv, doc);
+            let doc = (attr_pass::mk_pass().f)(srv, doc);
+            let doc = (desc_to_brief_pass::mk_pass().f)(srv, doc);
+            let doc = (path_pass::mk_pass().f)(srv, doc);
             run(srv, doc, config)
         }
     }

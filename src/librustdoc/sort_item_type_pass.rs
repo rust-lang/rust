@@ -39,7 +39,7 @@ fn test() {
          struct istruct { f: () }";
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, ~"");
-        let doc = mk_pass().f(srv, doc);
+        let doc = (mk_pass().f)(srv, doc);
         assert doc.cratemod().items[0].name() == ~"iconst";
         assert doc.cratemod().items[1].name() == ~"itype";
         assert doc.cratemod().items[2].name() == ~"ienum";
