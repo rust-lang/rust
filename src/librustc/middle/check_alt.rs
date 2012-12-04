@@ -144,7 +144,9 @@ impl ctor : cmp::Eq {
                 cv0_self == cv0_other && cv1_self == cv1_other
             }
             (vec(n_self), vec(n_other)) => n_self == n_other,
-            (vec_with_tail(n_self), vec_with_tail(n_other)) => n_self == n_other,
+            (vec_with_tail(n_self), vec_with_tail(n_other)) => {
+                n_self == n_other
+            }
             (single, _) | (variant(_), _) | (val(_), _) |
             (range(*), _) | (vec(*), _) | (vec_with_tail(*), _) => {
                 false
@@ -570,7 +572,9 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
           vec(_) => {
             if elems.len() < arity && tail.is_some() {
               Some(vec::append(
-                vec::append(elems, vec::from_elem(arity - elems.len(), wild())),
+                vec::append(elems, vec::from_elem(
+                    arity - elems.len(), wild())
+                ),
                 vec::tail(r)
               ))
             } else if elems.len() == arity {
