@@ -1123,7 +1123,7 @@ mod tests {
         log(debug, tmpfile);
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
-        log(debug, frood);
+        log(debug, copy frood);
         {
             let out: io::Writer =
                 result::get(
@@ -1132,7 +1132,7 @@ mod tests {
         }
         let inp: io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
-        log(debug, frood2);
+        log(debug, copy frood2);
         assert frood == frood2;
     }
 

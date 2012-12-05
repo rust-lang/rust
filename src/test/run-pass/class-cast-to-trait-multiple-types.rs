@@ -76,8 +76,8 @@ fn annoy_neighbors<T: noisy>(critter: T) {
 fn main() {
   let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
-  annoy_neighbors(nyan as noisy);
-  annoy_neighbors(whitefang as noisy);
+  annoy_neighbors((copy nyan) as noisy);
+  annoy_neighbors((copy whitefang) as noisy);
   assert(nyan.meow_count() == 10u);
   assert(*whitefang.volume == 1);
 }

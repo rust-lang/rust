@@ -42,7 +42,7 @@ mod map_reduce {
         fn emit(im: map::HashMap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
-            match im.find(key) {
+            match im.find(copy key) {
               Some(_c) => { c = _c }
               None => {
                 let p = Port();
@@ -70,7 +70,7 @@ mod map_reduce {
 
         reducers = map::HashMap();
 
-        start_mappers(Chan(&ctrl), inputs);
+        start_mappers(Chan(&ctrl), copy inputs);
 
         let mut num_mappers = vec::len(inputs) as int;
 

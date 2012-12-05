@@ -440,8 +440,8 @@ mod tests {
         readclose(pipe_err.in);
         os::waitpid(pid);
 
-        log(debug, expected);
-        log(debug, actual);
+        log(debug, copy expected);
+        log(debug, copy actual);
         assert (expected == actual);
     }
 
