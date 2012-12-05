@@ -199,8 +199,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
                     ~"attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
-              lis_contradiction(ref msg) => { /* FIXME #2887 blame macro invoker
-                                          instead*/
+              lis_contradiction(ref msg) => {
+                /* FIXME #2887 blame macro invoker instead*/
                 r.sp_diag.span_fatal(sp, (*msg));
               }
               lis_constraint(len, _) => {
@@ -217,8 +217,13 @@ fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
                 } else {
                     r.repeat_len.push(len);
                     r.repeat_idx.push(0u);
-                    r.cur = @{readme: (*tts), mut idx: 0u, dotdotdoted: true,
-                              sep: (*sep), up: tt_frame_up(option::Some(r.cur))};
+                    r.cur = @{
+                        readme: (*tts),
+                        mut idx: 0u,
+                        dotdotdoted: true,
+                        sep: (*sep),
+                        up: tt_frame_up(option::Some(r.cur))
+                    };
                 }
               }
             }

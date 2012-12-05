@@ -637,8 +637,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: Writer::Serializer,
             encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
             encode_region_param(ecx, ebml_w, item);
         }
-        encode_enum_variant_info(ecx, ebml_w, item.id,
-                                 (*enum_definition).variants, path, index, tps);
+        encode_enum_variant_info(ecx,
+                                 ebml_w,
+                                 item.id,
+                                 (*enum_definition).variants,
+                                 path,
+                                 index,
+                                 tps);
       }
       item_class(struct_def, tps) => {
         /* First, encode the fields and methods

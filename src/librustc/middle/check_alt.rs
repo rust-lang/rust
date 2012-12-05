@@ -140,8 +140,10 @@ impl ctor : cmp::Eq {
         match ((*self), (*other)) {
             (single, single) => true,
             (variant(did_self), variant(did_other)) => did_self == did_other,
-            (val(ref cv_self), val(ref cv_other)) => (*cv_self) == (*cv_other),
-            (range(ref cv0_self, ref cv1_self), range(ref cv0_other, ref cv1_other)) => {
+            (val(ref cv_self), val(ref cv_other)) =>
+                (*cv_self) == (*cv_other),
+            (range(ref cv0_self, ref cv1_self),
+             range(ref cv0_other, ref cv1_other)) => {
                 (*cv0_self) == (*cv0_other) && (*cv1_self) == (*cv1_other)
             }
             (single, _) | (variant(_), _) | (val(_), _) | (range(*), _) => {

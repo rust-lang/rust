@@ -667,8 +667,9 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                     let llretloc = Load(bcx, llretptr);
                     if (*x86_64).ret_ty.cast {
-                        let tmp_ptr = BitCast(bcx, llretloc,
-                                                   T_ptr((*x86_64).ret_ty.ty));
+                        let tmp_ptr = BitCast(bcx,
+                                              llretloc,
+                                              T_ptr((*x86_64).ret_ty.ty));
                         Store(bcx, llretval, tmp_ptr);
                     } else {
                         Store(bcx, llretval, llretloc);

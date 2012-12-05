@@ -152,10 +152,13 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     });
 
     let lldecl = match map_node {
-      ast_map::node_item(i@@{node: ast::item_fn(decl, _, _, ref body), _}, _) => {
+      ast_map::node_item(i@@{
+                node: ast::item_fn(decl, _, _, ref body),
+                _
+            }, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(i.attrs, d);
-        trans_fn(ccx, pt, decl, (*body), d, no_self, psubsts, fn_id.node, None);
+        trans_fn(ccx, pt, decl, *body, d, no_self, psubsts, fn_id.node, None);
         d
       }
       ast_map::node_item(*) => {

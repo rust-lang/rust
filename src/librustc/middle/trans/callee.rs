@@ -622,7 +622,7 @@ fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    blk @ @{node:ast::expr_fn_block(decl, ref body, cap), _}) =>
+                    blk@@{node:ast::expr_fn_block(decl, ref body, cap), _}) =>
                 {
                     let scratch_ty = expr_ty(bcx, blk);
                     let scratch = alloc_ty(bcx, scratch_ty);

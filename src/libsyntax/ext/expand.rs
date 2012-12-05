@@ -283,7 +283,7 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
     -> (stmt_, span)
 {
     let (mac, pth, tts, semi) = biased_match! (
-        (s)        ~ (stmt_mac(ref mac, semi))    else return orig(s, sp, fld);
+        (s)        ~ (stmt_mac(ref mac, semi))   else return orig(s, sp, fld);
         ((*mac).node) ~ (mac_invoc_tt(pth, ref tts)) else {
             cx.span_bug((*mac).span, ~"naked syntactic bit")
         };

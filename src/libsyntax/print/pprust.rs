@@ -744,7 +744,8 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
 /// expression arguments as expressions). It can be done! I think.
 fn print_tt(s: ps, tt: ast::token_tree) {
     match tt {
-      ast::tt_delim(ref tts) => for (*tts).each() |tt_elt| { print_tt(s, *tt_elt); },
+      ast::tt_delim(ref tts) =>
+        for (*tts).each() |tt_elt| { print_tt(s, *tt_elt); },
       ast::tt_tok(_, ref tk) => {
         match (*tk) {
           parse::token::IDENT(*) => { // don't let idents run together

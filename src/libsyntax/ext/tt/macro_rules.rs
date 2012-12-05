@@ -94,7 +94,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                         @matched_nonterminal(nt_tt(@ref tt)) => {
                             match (*tt) {
                                 // cut off delimiters; don't parse 'em
-                                tt_delim(ref tts) => (*tts).slice(1u,(*tts).len()-1u),
+                                tt_delim(ref tts) => {
+                                    (*tts).slice(1u,(*tts).len()-1u)
+                                }
                                 _ => cx.span_fatal(
                                     sp, ~"macro rhs must be delimited")
                             }

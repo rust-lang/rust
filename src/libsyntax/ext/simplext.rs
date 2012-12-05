@@ -422,7 +422,9 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
     return match block_to_ident(blk) {
           Some(id) => {
             match follow_for_trans(cx, b.find(id), idx_path) {
-              Some(match_block(ref new_blk)) => ((*new_blk).node, (*new_blk).span),
+              Some(match_block(ref new_blk)) => {
+                ((*new_blk).node, (*new_blk).span)
+              }
 
               // possibly allow promotion of ident/path/expr to blocks?
               Some(ref m) => match_error(cx, (*m), ~"a block"),

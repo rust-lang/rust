@@ -3535,7 +3535,10 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(id.node) {
-            Some(ast_map::node_item(@{node: item_trait(_, _, ref ms),_}, _)) =>
+            Some(ast_map::node_item(@{
+                        node: item_trait(_, _, ref ms),
+                        _
+                    }, _)) =>
                 match ast_util::split_trait_methods((*ms)) {
                    (_, p) => p.map(|method| method.ident)
                 },
@@ -3603,7 +3606,9 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
     fn vstoreify(cx: ctxt, ty: t, vstore: vstore) -> t {
         match ty::get(ty).sty {
             ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
-            ty::ty_trait(did, ref substs, _) => mk_trait(cx, did, (*substs), vstore),
+            ty::ty_trait(did, ref substs, _) => {
+                mk_trait(cx, did, (*substs), vstore)
+            }
             _ => cx.sess.bug(~"impl_traits: not a trait")
         }
     }
@@ -3825,8 +3830,10 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         match cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_enum(ref enum_definition, _), _},
-                             _) => {
+          ast_map::node_item(@{
+                    node: ast::item_enum(ref enum_definition, _),
+                    _
+                }, _) => {
             let variants = (*enum_definition).variants;
             let mut disr_val = -1;
             @vec::map(variants, |variant| {

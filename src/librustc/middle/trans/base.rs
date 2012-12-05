@@ -1832,7 +1832,13 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                                  variant.node.name, variant.node.id);
             }
             ast::enum_variant_kind(ref enum_definition) => {
-                trans_enum_def(ccx, (*enum_definition), id, tps, degen, path, vi,
+                trans_enum_def(ccx,
+                               *enum_definition,
+                               id,
+                               tps,
+                               degen,
+                               path,
+                               vi,
                                i);
             }
         }
