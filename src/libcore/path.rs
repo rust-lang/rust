@@ -502,7 +502,7 @@ impl PosixPath : GenericPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
         unsafe { v.push_all_move(move ss); }
-        PosixPath { components: move v, ..self }
+        PosixPath { components: move v, ..copy self }
     }
 
     pure fn pop() -> PosixPath {
@@ -707,7 +707,7 @@ impl WindowsPath : GenericPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
         unsafe { v.push_all_move(move ss); }
-        return WindowsPath { components: move v, ..self }
+        return WindowsPath { components: move v, ..copy self }
     }
 
     pure fn pop() -> WindowsPath {

@@ -8,11 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub enum Fold<T> = Fold_<T>;
+pub struct Fold<T> {
+    ctxt: T,
+    fold_doc: FoldDoc<T>,
+    fold_crate: FoldCrate<T>,
+    fold_item: FoldItem<T>,
+    fold_mod: FoldMod<T>,
+    fold_nmod: FoldNmod<T>,
+    fold_fn: FoldFn<T>,
+    fold_const: FoldConst<T>,
+    fold_enum: FoldEnum<T>,
+    fold_trait: FoldTrait<T>,
+    fold_impl: FoldImpl<T>,
+    fold_type: FoldType<T>,
+    fold_struct: FoldStruct<T>
+}
 
 impl<T: Clone> Fold<T>: Clone {
     fn clone(&self) -> Fold<T> {
-        Fold({
+        Fold {
             ctxt: self.ctxt.clone(),
             fold_doc: copy self.fold_doc,
             fold_crate: copy self.fold_crate,
@@ -26,7 +40,7 @@ impl<T: Clone> Fold<T>: Clone {
             fold_impl: copy self.fold_impl,
             fold_type: copy self.fold_type,
             fold_struct: copy self.fold_struct
-        })
+        }
     }
 }
 
@@ -43,23 +57,6 @@ type FoldImpl<T> = fn~(fold: &Fold<T>, +doc: doc::ImplDoc) -> doc::ImplDoc;
 type FoldType<T> = fn~(fold: &Fold<T>, +doc: doc::TyDoc) -> doc::TyDoc;
 type FoldStruct<T> = fn~(fold: &Fold<T>,
                          +doc: doc::StructDoc) -> doc::StructDoc;
-
-type Fold_<T> = {
-    ctxt: T,
-    fold_doc: FoldDoc<T>,
-    fold_crate: FoldCrate<T>,
-    fold_item: FoldItem<T>,
-    fold_mod: FoldMod<T>,
-    fold_nmod: FoldNmod<T>,
-    fold_fn: FoldFn<T>,
-    fold_const: FoldConst<T>,
-    fold_enum: FoldEnum<T>,
-    fold_trait: FoldTrait<T>,
-    fold_impl: FoldImpl<T>,
-    fold_type: FoldType<T>,
-    fold_struct: FoldStruct<T>
-};
-
 
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
@@ -78,7 +75,7 @@ fn mk_fold<T:Clone>(
     +fold_type: FoldType<T>,
     +fold_struct: FoldStruct<T>
 ) -> Fold<T> {
-    Fold({
+    Fold {
         ctxt: move ctxt,
         fold_doc: move fold_doc,
         fold_crate: move fold_crate,
@@ -92,7 +89,7 @@ fn mk_fold<T:Clone>(
         fold_impl: move fold_impl,
         fold_type: move fold_type,
         fold_struct: move fold_struct
-    })
+    }
 }
 
 pub fn default_any_fold<T:Send Clone>(+ctxt: T) -> Fold<T> {

@@ -215,12 +215,12 @@ pub type TaskOpts = {
 // the run function move them in.
 
 // FIXME (#3724): Replace the 'consumed' bit with move mode on self
-pub enum TaskBuilder = {
+pub struct TaskBuilder {
     opts: TaskOpts,
     gen_body: fn@(v: fn~()) -> fn~(),
     can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
-};
+}
 
 /**
  * Generate the base configuration for spawning a task, off of which more
@@ -228,12 +228,12 @@ pub enum TaskBuilder = {
  * For example, task().unlinked().spawn is equivalent to spawn_unlinked.
  */
 pub fn task() -> TaskBuilder {
-    TaskBuilder({
+    TaskBuilder {
         opts: default_task_opts(),
         gen_body: |body| move body, // Identity function
         can_not_copy: None,
         mut consumed: false,
-    })
+    }
 }
 
 #[doc(hidden)] // FIXME #3538
@@ -244,7 +244,7 @@ priv impl TaskBuilder {
         }
         self.consumed = true;
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
@@ -254,7 +254,7 @@ priv impl TaskBuilder {
             gen_body: self.gen_body,
             can_not_copy: None,
             mut consumed: false
-        })
+        }
     }
 }
 
@@ -265,7 +265,7 @@ impl TaskBuilder {
      */
     fn unlinked() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: false,
                 supervised: self.opts.supervised,
@@ -273,8 +273,8 @@ impl TaskBuilder {
                 sched: self.opts.sched
             },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
     /**
      * Unidirectionally link the child task's failure with the parent's. The
@@ -283,7 +283,7 @@ impl TaskBuilder {
      */
     fn supervised() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: false,
                 supervised: true,
@@ -291,8 +291,8 @@ impl TaskBuilder {
                 sched: self.opts.sched
             },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
     /**
      * Link the child task's and parent task's failures. If either fails, the
@@ -300,7 +300,7 @@ impl TaskBuilder {
      */
     fn linked() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: true,
                 supervised: false,
@@ -308,8 +308,8 @@ impl TaskBuilder {
                 sched: self.opts.sched
             },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
 
     /**
@@ -345,7 +345,7 @@ impl TaskBuilder {
         blk(move notify_pipe_po);
 
         // Reconfigure self to use a notify channel.
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
@@ -353,13 +353,13 @@ impl TaskBuilder {
                 sched: self.opts.sched
             },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
     /// Configure a custom scheduler mode for the task.
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
@@ -367,8 +367,8 @@ impl TaskBuilder {
                 sched: Some({ mode: mode, foreign_stack_size: None})
             },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
 
     /**
@@ -386,7 +386,7 @@ impl TaskBuilder {
     fn add_wrapper(wrapper: fn@(v: fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
         let notify_chan = replace(&mut self.opts.notify_chan, None);
-        TaskBuilder({
+        TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
@@ -399,8 +399,8 @@ impl TaskBuilder {
             gen_body: |move prev_gen_body,
                        body| { wrapper(prev_gen_body(move body)) },
             can_not_copy: None,
-            .. *self.consume()
-        })
+            .. self.consume()
+        }
     }
 
     /**
@@ -782,11 +782,11 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     };
 
     let b0 = task();
-    let b1 = TaskBuilder({
+    let b1 = TaskBuilder {
         opts: move opts,
         can_not_copy: None,
         .. *b0
-    });
+    };
     do b1.spawn { fail; }
     comm::recv(po); // We should get punted awake
 }
@@ -802,11 +802,11 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     };
 
     let b0 = task();
-    let b1 = TaskBuilder({
+    let b1 = TaskBuilder {
         opts: move opts,
         can_not_copy: None,
         .. *b0
-    });
+    };
     do b1.spawn { loop { task::yield(); } }
     fail; // *both* mechanisms would be wrong if this didn't kill the child...
 }

@@ -461,7 +461,11 @@ impl printer {
     fn print(x: token, L: int) {
         debug!("print %s %d (remaining line space=%d)", tok_str(x), L,
                self.space);
-        log(debug, buf_str(self.token, self.size, self.left, self.right, 6u));
+        log(debug, buf_str(copy self.token,
+                           copy self.size,
+                           self.left,
+                           self.right,
+                           6u));
         match x {
           BEGIN(b) => {
             if L > self.space {

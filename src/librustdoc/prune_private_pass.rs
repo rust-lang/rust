@@ -12,6 +12,8 @@
 
 #[legacy_exports];
 
+use fold::Fold;
+
 export mk_pass;
 
 fn mk_pass() -> Pass {
@@ -22,10 +24,10 @@ fn mk_pass() -> Pass {
 }
 
 fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_mod: fold_mod,
-        .. *fold::default_any_fold(srv)
-    });
+        .. fold::default_any_fold(srv)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

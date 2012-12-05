@@ -11,6 +11,7 @@
 //! Breaks rustdocs into sections according to their headers
 
 use doc::ItemUtils;
+use fold::Fold;
 
 pub fn mk_pass() -> Pass {
     {
@@ -20,12 +21,12 @@ pub fn mk_pass() -> Pass {
 }
 
 fn run(_srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_item: fold_item,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        .. *fold::default_any_fold(())
-    });
+        .. fold::default_any_fold(())
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

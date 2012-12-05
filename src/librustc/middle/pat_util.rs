@@ -19,6 +19,7 @@ use std::map::HashMap;
 export pat_binding_ids, pat_bindings, pat_id_map, PatIdMap;
 export pat_is_variant_or_struct, pat_is_binding, pat_is_binding_or_wild;
 export pat_is_const;
+export arms_have_by_move_bindings;
 
 type PatIdMap = std::map::HashMap<ident, node_id>;
 
@@ -91,3 +92,22 @@ fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[node_id] {
     pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;
 }
+
+fn arms_have_by_move_bindings(dm: resolve::DefMap, +arms: &[arm]) -> bool {
+    for arms.each |arm| {
+        for arm.pats.each |pat| {
+            let mut found = false;
+            do pat_bindings(dm, *pat) |binding_mode, _node_id, _span, _path| {
+                match binding_mode {
+                    bind_by_move => found = true,
+                    bind_by_implicit_ref |
+                    bind_by_ref(*) |
+                    bind_by_value => {}
+                }
+            }
+            if found { return true; }
+        }
+    }
+    return false;
+}
+

@@ -11,6 +11,7 @@
 //! Records the full path to items
 
 use doc::ItemUtils;
+use fold::Fold;
 use syntax::ast;
 
 pub fn mk_pass() -> Pass {
@@ -35,12 +36,12 @@ fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
         srv: srv,
         mut path: ~[]
     };
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_item: fold_item,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. *fold::default_any_fold(move ctxt)
-    });
+        .. fold::default_any_fold(move ctxt)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 
