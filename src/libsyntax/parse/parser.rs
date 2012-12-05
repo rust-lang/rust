@@ -155,7 +155,9 @@ macro_rules! maybe_whole (
       _ => ()
     }) ;
     (pair_empty $p:expr, $constructor:ident) => ( match copy $p.token {
-      INTERPOLATED(token::$constructor(ref x)) => { $p.bump(); return (~[], (*x)); }
+      INTERPOLATED(token::$constructor(ref x)) => {
+        $p.bump(); return (~[], (*x));
+      }
       _ => ()
     })
 

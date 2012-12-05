@@ -311,7 +311,7 @@ pub impl CodeMap {
             FssExternal(ref eloc) => {
                 {filename: /* FIXME (#2543) */ copy (*eloc).filename,
                  line: (*eloc).line + loc.line - 1u,
-                 col: if loc.line == 1u {(*eloc).col + loc.col} else {loc.col},
+                 col: if loc.line == 1 {eloc.col + loc.col} else {loc.col},
                  file: None}
             }
         }

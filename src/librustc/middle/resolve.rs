@@ -1546,7 +1546,7 @@ impl Resolver {
                                                            in this module");
                                 }
 
-                                for (*path_list_idents).each |path_list_ident| {
+                                for path_list_idents.each |path_list_ident| {
                                     let ident = path_list_ident.node.name;
                                     let id = path_list_ident.node.id;
                                     module_.exported_names.insert(ident, id);
@@ -3646,7 +3646,7 @@ impl Resolver {
                                     self.resolve_type(argument.ty, visitor);
                                 }
 
-                                self.resolve_type((*ty_m).decl.output, visitor);
+                                self.resolve_type(ty_m.decl.output, visitor);
                             }
                           }
                           provided(m) => {
@@ -4894,7 +4894,7 @@ impl Resolver {
 
             expr_fn(_, fn_decl, ref block, capture_clause) |
             expr_fn_block(fn_decl, ref block, capture_clause) => {
-                self.resolve_function(FunctionRibKind(expr.id, (*block).node.id),
+                self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@fn_decl),
                                       NoTypeParameters,
                                       (*block),

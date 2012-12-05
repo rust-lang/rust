@@ -883,9 +883,9 @@ impl LookupContext {
                 let candidates_same = match (&candidate_a.origin,
                                              &candidate_b.origin) {
                     (&method_param(ref p1), &method_param(ref p2)) => {
-                        let same_trait = (*p1).trait_id == (*p2).trait_id;
-                        let same_method = (*p1).method_num == (*p2).method_num;
-                        let same_param = (*p1).param_num == (*p2).param_num;
+                        let same_trait = p1.trait_id == p2.trait_id;
+                        let same_method = p1.method_num == p2.method_num;
+                        let same_param = p1.param_num == p2.param_num;
                         // The bound number may be different because
                         // multiple bounds may lead to the same trait
                         // impl

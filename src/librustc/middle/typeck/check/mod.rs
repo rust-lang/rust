@@ -3048,7 +3048,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
      ~"log10f32" => {
         (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
          ty::mk_f32(tcx))
-     }      
+     }
      ~"log10f64" => {
         (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
          ty::mk_f64(tcx))

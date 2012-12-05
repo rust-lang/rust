@@ -165,8 +165,11 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                     ccx, rp, struct_def, ty_params, tpt, variant.node.id);
             }
             ast::enum_variant_kind(ref enum_definition) => {
-                get_enum_variant_types(ccx, enum_ty, (*enum_definition).variants,
-                                       ty_params, rp);
+                get_enum_variant_types(ccx,
+                                       enum_ty,
+                                       enum_definition.variants,
+                                       ty_params,
+                                       rp);
                 result_ty = None;
             }
         };
@@ -232,11 +235,16 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(id);
     match tcx.items.get(id) {
-      ast_map::node_item(@{node: ast::item_trait(params, _, ref ms), _}, _) => {
+      ast_map::node_item(@{
+                node: ast::item_trait(params, _, ref ms),
+                _
+            }, _) => {
         store_methods::<ast::trait_method>(ccx, id, (*ms), |m| {
             let def_id;
             match *m {
-                ast::required(ref ty_method) => def_id = local_def((*ty_method).id),
+                ast::required(ref ty_method) => {
+                    def_id = local_def((*ty_method).id)
+                }
                 ast::provided(method) => def_id = local_def(method.id)
             }
 

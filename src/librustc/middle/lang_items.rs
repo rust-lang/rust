@@ -156,7 +156,9 @@ impl LanguageItemCollector {
             meta_name_value(ref key, literal) => {
                 match literal.node {
                     lit_str(value) => {
-                        self.match_and_collect_item(item_def_id, (*key), *value);
+                        self.match_and_collect_item(item_def_id,
+                                                    (*key),
+                                                    *value);
                     }
                     _ => {} // Skip.
                 }
