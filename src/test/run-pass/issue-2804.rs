@@ -31,9 +31,9 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 
 fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, object)
 {
-    match data
+    match &data
     {
-        std::json::Object(interface) =>
+        &std::json::Object(interface) =>
         {
             let name = lookup(interface, ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);

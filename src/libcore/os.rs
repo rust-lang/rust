@@ -946,7 +946,7 @@ mod tests {
         while i < 100 { s += ~"aaaaaaaaaa"; i += 1; }
         let n = make_rand_name();
         setenv(n, s);
-        log(debug, s);
+        log(debug, copy s);
         assert getenv(n) == option::Some(move s);
     }
 
@@ -955,7 +955,7 @@ mod tests {
         let path = os::self_exe_path();
         assert path.is_some();
         let path = path.get();
-        log(debug, path);
+        log(debug, copy path);
 
         // Hard to test this function
         assert path.is_absolute;

@@ -60,7 +60,7 @@ fn main() {
     assert x.quux() == 10;
 
     let y = ~thing({mut a: @10});
-    assert y.bar() == 10;
+    assert (copy y).bar() == 10;
     assert y.quux() == 10;
 
     let z = thing({mut a: @11});

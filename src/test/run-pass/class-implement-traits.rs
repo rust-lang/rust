@@ -44,7 +44,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,
-        name: in_name
+        name: copy in_name
     }
 }
 
