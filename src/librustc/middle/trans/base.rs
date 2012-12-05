@@ -2380,6 +2380,67 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let frameaddress = decl_cdecl_fn(llmod, ~"llvm.frameaddress",
                                      T_fn(T_frameaddress_args,
                                           T_ptr(T_i8())));
+    let sqrtf32 = decl_cdecl_fn(llmod, ~"llvm.sqrt.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let sqrtf64 = decl_cdecl_fn(llmod, ~"llvm.sqrt.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let powif32 = decl_cdecl_fn(llmod, ~"llvm.powi.f32",
+                                T_fn(~[T_f32(), T_i32()], T_f32()));
+    let powif64 = decl_cdecl_fn(llmod, ~"llvm.powi.f64",
+                                T_fn(~[T_f64(), T_i32()], T_f64()));
+    let sinf32 = decl_cdecl_fn(llmod, ~"llvm.sin.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let sinf64 = decl_cdecl_fn(llmod, ~"llvm.sin.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let cosf32 = decl_cdecl_fn(llmod, ~"llvm.cos.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let cosf64 = decl_cdecl_fn(llmod, ~"llvm.cos.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let powf32 = decl_cdecl_fn(llmod, ~"llvm.pow.f32",
+                                T_fn(~[T_f32(), T_f32()], T_f32()));
+    let powf64 = decl_cdecl_fn(llmod, ~"llvm.pow.f64",
+                                T_fn(~[T_f64(), T_f64()], T_f64()));
+    let expf32 = decl_cdecl_fn(llmod, ~"llvm.exp.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let expf64 = decl_cdecl_fn(llmod, ~"llvm.exp.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let exp2f32 = decl_cdecl_fn(llmod, ~"llvm.exp2.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let exp2f64 = decl_cdecl_fn(llmod, ~"llvm.exp2.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let logf32 = decl_cdecl_fn(llmod, ~"llvm.log.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let logf64 = decl_cdecl_fn(llmod, ~"llvm.log.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let log10f32 = decl_cdecl_fn(llmod, ~"llvm.log10.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let log10f64 = decl_cdecl_fn(llmod, ~"llvm.log10.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let log2f32 = decl_cdecl_fn(llmod, ~"llvm.log2.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let log2f64 = decl_cdecl_fn(llmod, ~"llvm.log2.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let fmaf32 = decl_cdecl_fn(llmod, ~"llvm.fma.f32",
+                                T_fn(~[T_f32(), T_f32(), T_f32()], T_f32()));
+    let fmaf64 = decl_cdecl_fn(llmod, ~"llvm.fma.f64",
+                                T_fn(~[T_f64(), T_f64(), T_f64()], T_f64()));
+    let fabsf32 = decl_cdecl_fn(llmod, ~"llvm.fabs.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let fabsf64 = decl_cdecl_fn(llmod, ~"llvm.fabs.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let floorf32 = decl_cdecl_fn(llmod, ~"llvm.floor.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let floorf64 = decl_cdecl_fn(llmod, ~"llvm.floor.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let ceilf32 = decl_cdecl_fn(llmod, ~"llvm.ceil.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let ceilf64 = decl_cdecl_fn(llmod, ~"llvm.ceil.f64",
+                                T_fn(~[T_f64()], T_f64()));
+    let truncf32 = decl_cdecl_fn(llmod, ~"llvm.trunc.f32",
+                                T_fn(~[T_f32()], T_f32()));
+    let truncf64 = decl_cdecl_fn(llmod, ~"llvm.trunc.f64",
+                                T_fn(~[T_f64()], T_f64()));
+
     let intrinsics = HashMap();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
@@ -2389,6 +2450,37 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
     intrinsics.insert(~"llvm.trap", trap);
     intrinsics.insert(~"llvm.frameaddress", frameaddress);
+    intrinsics.insert(~"llvm.sqrt.f32", sqrtf32);
+    intrinsics.insert(~"llvm.sqrt.f64", sqrtf64);
+    intrinsics.insert(~"llvm.powi.f32", powif32);
+    intrinsics.insert(~"llvm.powi.f64", powif64);
+    intrinsics.insert(~"llvm.sin.f32", sinf32);
+    intrinsics.insert(~"llvm.sin.f64", sinf64);
+    intrinsics.insert(~"llvm.cos.f32", cosf32);
+    intrinsics.insert(~"llvm.cos.f64", cosf64);
+    intrinsics.insert(~"llvm.pow.f32", powf32);
+    intrinsics.insert(~"llvm.pow.f64", powf64);
+    intrinsics.insert(~"llvm.exp.f32", expf32);
+    intrinsics.insert(~"llvm.exp.f64", expf64);
+    intrinsics.insert(~"llvm.exp2.f32", exp2f32);
+    intrinsics.insert(~"llvm.exp2.f64", exp2f64);
+    intrinsics.insert(~"llvm.log.f32", logf32);
+    intrinsics.insert(~"llvm.log.f64", logf64);
+    intrinsics.insert(~"llvm.log10.f32", log10f32);
+    intrinsics.insert(~"llvm.log10.f64", log10f64);
+    intrinsics.insert(~"llvm.log2.f32", log2f32);
+    intrinsics.insert(~"llvm.log2.f64", log2f64);
+    intrinsics.insert(~"llvm.fma.f32", fmaf32);
+    intrinsics.insert(~"llvm.fma.f64", fmaf64);
+    intrinsics.insert(~"llvm.fabs.f32", fabsf32);
+    intrinsics.insert(~"llvm.fabs.f64", fabsf64);
+    intrinsics.insert(~"llvm.floor.f32", floorf32);
+    intrinsics.insert(~"llvm.floor.f64", floorf64);
+    intrinsics.insert(~"llvm.ceil.f32", ceilf32);
+    intrinsics.insert(~"llvm.ceil.f64", ceilf64);
+    intrinsics.insert(~"llvm.trunc.f32", truncf32);
+    intrinsics.insert(~"llvm.trunc.f64", truncf64);
+
     return intrinsics;
 }
 

@@ -982,7 +982,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
               let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
               call_memcpy(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
           }
-      }
+        }
         ~"addr_of" => {
             Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
         }
@@ -1032,6 +1032,164 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let morestack_addr = PointerCast(bcx, morestack_addr,
                                              T_ptr(T_nil()));
             Store(bcx, morestack_addr, fcx.llretptr);
+        }
+        ~"sqrtf32" => {
+            let x = get_param(decl, first_real_arg);
+            let sqrtf = ccx.intrinsics.get(~"llvm.sqrt.f32");
+            Store(bcx, Call(bcx, sqrtf, ~[x]), fcx.llretptr);
+        }
+        ~"sqrtf64" => {
+            let x = get_param(decl, first_real_arg);
+            let sqrtf = ccx.intrinsics.get(~"llvm.sqrt.f64");
+            Store(bcx, Call(bcx, sqrtf, ~[x]), fcx.llretptr);
+        }
+        ~"powif32" => {
+            let a = get_param(decl, first_real_arg);
+            let x = get_param(decl, first_real_arg + 1u);
+            let powif = ccx.intrinsics.get(~"llvm.powi.f32");
+            Store(bcx, Call(bcx, powif, ~[a, x]), fcx.llretptr);
+        }
+        ~"powif64" => {
+            let a = get_param(decl, first_real_arg);
+            let x = get_param(decl, first_real_arg + 1u);
+            let powif = ccx.intrinsics.get(~"llvm.powi.f64");
+            Store(bcx, Call(bcx, powif, ~[a, x]), fcx.llretptr);
+        }
+        ~"sinf32" => {
+            let x = get_param(decl, first_real_arg);
+            let sinf = ccx.intrinsics.get(~"llvm.sin.f32");
+            Store(bcx, Call(bcx, sinf, ~[x]), fcx.llretptr);
+        }
+        ~"sinf64" => {
+            let x = get_param(decl, first_real_arg);
+            let sinf = ccx.intrinsics.get(~"llvm.sin.f64");
+            Store(bcx, Call(bcx, sinf, ~[x]), fcx.llretptr);
+        }
+        ~"cosf32" => {
+            let x = get_param(decl, first_real_arg);
+            let cosf = ccx.intrinsics.get(~"llvm.cos.f32");
+            Store(bcx, Call(bcx, cosf, ~[x]), fcx.llretptr);
+        }
+        ~"cosf64" => {
+            let x = get_param(decl, first_real_arg);
+            let cosf = ccx.intrinsics.get(~"llvm.cos.f64");
+            Store(bcx, Call(bcx, cosf, ~[x]), fcx.llretptr);
+        }
+        ~"powf32" => {
+            let a = get_param(decl, first_real_arg);
+            let x = get_param(decl, first_real_arg + 1u);
+            let powf = ccx.intrinsics.get(~"llvm.pow.f32");
+            Store(bcx, Call(bcx, powf, ~[a, x]), fcx.llretptr);
+        }
+        ~"powf64" => {
+            let a = get_param(decl, first_real_arg);
+            let x = get_param(decl, first_real_arg + 1u);
+            let powf = ccx.intrinsics.get(~"llvm.pow.f64");
+            Store(bcx, Call(bcx, powf, ~[a, x]), fcx.llretptr);
+        }
+        ~"expf32" => {
+            let x = get_param(decl, first_real_arg);
+            let expf = ccx.intrinsics.get(~"llvm.exp.f32");
+            Store(bcx, Call(bcx, expf, ~[x]), fcx.llretptr);
+        }
+        ~"expf64" => {
+            let x = get_param(decl, first_real_arg);
+            let expf = ccx.intrinsics.get(~"llvm.exp.f64");
+            Store(bcx, Call(bcx, expf, ~[x]), fcx.llretptr);
+        }
+        ~"exp2f32" => {
+            let x = get_param(decl, first_real_arg);
+            let exp2f = ccx.intrinsics.get(~"llvm.exp2.f32");
+            Store(bcx, Call(bcx, exp2f, ~[x]), fcx.llretptr);
+        }
+        ~"exp2f64" => {
+            let x = get_param(decl, first_real_arg);
+            let exp2f = ccx.intrinsics.get(~"llvm.exp2.f64");
+            Store(bcx, Call(bcx, exp2f, ~[x]), fcx.llretptr);
+        }
+        ~"logf32" => {
+            let x = get_param(decl, first_real_arg);
+            let logf = ccx.intrinsics.get(~"llvm.log.f32");
+            Store(bcx, Call(bcx, logf, ~[x]), fcx.llretptr);
+        }
+        ~"logf64" => {
+            let x = get_param(decl, first_real_arg);
+            let logf = ccx.intrinsics.get(~"llvm.log.f64");
+            Store(bcx, Call(bcx, logf, ~[x]), fcx.llretptr);
+        }
+        ~"log10f32" => {
+            let x = get_param(decl, first_real_arg);
+            let log10f = ccx.intrinsics.get(~"llvm.log10.f32");
+            Store(bcx, Call(bcx, log10f, ~[x]), fcx.llretptr);
+        }
+        ~"log10f64" => {
+            let x = get_param(decl, first_real_arg);
+            let log10f = ccx.intrinsics.get(~"llvm.log10.f64");
+            Store(bcx, Call(bcx, log10f, ~[x]), fcx.llretptr);
+        }
+        ~"log2f32" => {
+            let x = get_param(decl, first_real_arg);
+            let log2f = ccx.intrinsics.get(~"llvm.log2.f32");
+            Store(bcx, Call(bcx, log2f, ~[x]), fcx.llretptr);
+        }
+        ~"log2f64" => {
+            let x = get_param(decl, first_real_arg);
+            let log2f = ccx.intrinsics.get(~"llvm.log2.f64");
+            Store(bcx, Call(bcx, log2f, ~[x]), fcx.llretptr);
+        }
+        ~"fmaf32" => {
+            let a = get_param(decl, first_real_arg);
+            let b = get_param(decl, first_real_arg + 1u);
+            let c = get_param(decl, first_real_arg + 2u);
+            let fmaf = ccx.intrinsics.get(~"llvm.fma.f32");
+            Store(bcx, Call(bcx, fmaf, ~[a, b, c]), fcx.llretptr);
+        }
+        ~"fmaf64" => {
+            let a = get_param(decl, first_real_arg);
+            let b = get_param(decl, first_real_arg + 1u);
+            let c = get_param(decl, first_real_arg + 2u);
+            let fmaf = ccx.intrinsics.get(~"llvm.fma.f64");
+            Store(bcx, Call(bcx, fmaf, ~[a, b, c]), fcx.llretptr);
+        }
+        ~"fabsf32" => {
+            let x = get_param(decl, first_real_arg);
+            let fabsf = ccx.intrinsics.get(~"llvm.fabs.f32");
+            Store(bcx, Call(bcx, fabsf, ~[x]), fcx.llretptr);
+        }
+        ~"fabsf64" => {
+            let x = get_param(decl, first_real_arg);
+            let fabsf = ccx.intrinsics.get(~"llvm.fabs.f64");
+            Store(bcx, Call(bcx, fabsf, ~[x]), fcx.llretptr);
+        }
+        ~"floorf32" => {
+            let x = get_param(decl, first_real_arg);
+            let floorf = ccx.intrinsics.get(~"llvm.floor.f32");
+            Store(bcx, Call(bcx, floorf, ~[x]), fcx.llretptr);
+        }
+        ~"floorf64" => {
+            let x = get_param(decl, first_real_arg);
+            let floorf = ccx.intrinsics.get(~"llvm.floor.f64");
+            Store(bcx, Call(bcx, floorf, ~[x]), fcx.llretptr);
+        }
+        ~"ceilf32" => {
+            let x = get_param(decl, first_real_arg);
+            let ceilf = ccx.intrinsics.get(~"llvm.ceil.f32");
+            Store(bcx, Call(bcx, ceilf, ~[x]), fcx.llretptr);
+        }
+        ~"ceilf64" => {
+            let x = get_param(decl, first_real_arg);
+            let ceilf = ccx.intrinsics.get(~"llvm.ceil.f64");
+            Store(bcx, Call(bcx, ceilf, ~[x]), fcx.llretptr);
+        }
+        ~"truncf32" => {
+            let x = get_param(decl, first_real_arg);
+            let truncf = ccx.intrinsics.get(~"llvm.trunc.f32");
+            Store(bcx, Call(bcx, truncf, ~[x]), fcx.llretptr);
+        }
+        ~"truncf64" => {
+            let x = get_param(decl, first_real_arg);
+            let truncf = ccx.intrinsics.get(~"llvm.trunc.f64");
+            Store(bcx, Call(bcx, truncf, ~[x]), fcx.llretptr);
         }
         _ => {
             // Could we make this an enum rather than a string? does it get

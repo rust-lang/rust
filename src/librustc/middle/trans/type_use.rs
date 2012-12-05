@@ -118,6 +118,15 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                 ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
                 ~"frame_address" | ~"morestack_addr" => 0,
 
+                ~"sqrtf32" | ~"sqrtf64" | ~"powif32" | ~"powif64" |
+                ~"sinf32"  | ~"sinf64"  | ~"cosf32"  | ~"cosf64"  |
+                ~"powf32"  | ~"powf64"  | ~"expf32"  | ~"expf64"  |
+                ~"exp2f32" | ~"exp2f64" | ~"logf32"  | ~"logf64"  |
+                ~"log10f32"| ~"log10f64"| ~"log2f32" | ~"log2f64" |
+                ~"fmaf32"  | ~"fmaf64"  | ~"fabsf32" | ~"fabsf64" |
+                ~"floorf32"| ~"floorf64"| ~"ceilf32" | ~"ceilf64" |
+                ~"truncf32"| ~"truncf64" => 0,
+
                 // would be cool to make these an enum instead of strings!
                 _ => fail ~"unknown intrinsic in type_use"
             };

@@ -2977,6 +2977,134 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"morestack_addr" => {
         (0u, ~[], ty::mk_nil_ptr(tcx))
       }
+     ~"sqrtf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"sqrtf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"powif32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
+               arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"powif64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
+               arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"sinf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"sinf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"cosf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"cosf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"powf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
+               arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"powf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
+               arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"expf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"expf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"exp2f32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"exp2f64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"logf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"logf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"log10f32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }      
+     ~"log10f64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"log2f32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"log2f64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"fmaf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx)),
+               arg(ast::by_copy, ty::mk_f32(tcx)),
+               arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"fmaf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx)),
+               arg(ast::by_copy, ty::mk_f64(tcx)),
+               arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"fabsf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"fabsf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"floorf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"floorf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"ceilf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"ceilf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
+     ~"truncf32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f32(tcx))],
+         ty::mk_f32(tcx))
+     }
+     ~"truncf64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
+         ty::mk_f64(tcx))
+     }
       ref other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
                           (*other) + ~"`");
