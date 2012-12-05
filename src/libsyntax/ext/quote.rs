@@ -19,7 +19,7 @@ use token::*;
 *
 * Quasiquoting works via token trees.
 *
-* This is registered as a expression syntax extension called quote! that lifts
+* This is registered as a set of expression syntax extension called quote! that lifts
 * its argument token-tree to an AST representing the construction of the same
 * token tree, with ast::tt_nonterminal nodes interpreted as antiquotes
 * (splices).
@@ -146,16 +146,12 @@ fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
 }
 
 // Lift an ident to the expr that evaluates to that ident.
-//
-// NB: this identifies the interner used when re-parsing the token tree
-// with the interner used during initial parse. This is _wrong_ and we
-// should be emitting a &str here and the token type should be ok with
-// &static/str or &session/str. Longer-term issue.
 fn mk_ident(cx: ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
-    build::mk_struct_e(cx, sp,
-                       ids_ext(cx, ~[~"ident"]),
-                       ~[{ident: id_ext(cx, ~"repr"),
-                          ex: build::mk_uint(cx, sp, ident.repr) }])
+    let e_meth = build::mk_access(cx, sp,
+                                  ids_ext(cx, ~[~"ext_cx"]),
+                                  id_ext(cx, ~"ident_of"));
+    let e_str = build::mk_uniq_str(cx, sp, cx.str_of(ident));
+    build::mk_call_(cx, sp, e_meth, ~[e_str])
 }
 
 fn mk_bytepos(cx: ext_ctxt, sp: span, bpos: BytePos) -> @ast::expr {
