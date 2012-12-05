@@ -496,6 +496,7 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_foreign_mod(nmod) => {
         head(s, visibility_qualified(item.vis, ~"extern"));
         print_string(s, *s.intr.get(nmod.abi));
+        nbsp(s);
         match nmod.sort {
             ast::named => {
                 word_nbsp(s, ~"mod");
