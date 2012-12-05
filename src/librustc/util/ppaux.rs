@@ -13,7 +13,8 @@ use middle::ty;
 use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
         bound_trait};
-use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
+use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
+                 br_fresh};
 use middle::ty::{ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
@@ -94,6 +95,7 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
         let prefix = match br {
           br_anon(idx) => fmt!("the anonymous lifetime #%u defined on",
                                idx + 1),
+          br_fresh(_) => fmt!("an anonymous lifetime defined on"),
           _ => fmt!("the lifetime %s as defined on",
                     bound_region_to_str(cx, br))
         };
@@ -140,6 +142,7 @@ fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
       br_named(id)         => fmt!("%s%s%s", prefix, cx.sess.str_of(id), sep),
       br_self              => fmt!("%sself%s", prefix, sep),
       br_anon(_)           => prefix.to_str(),
+      br_fresh(_)          => prefix.to_str(),
       br_cap_avoid(_, br)  => bound_region_to_str_adorned(cx, prefix,
                                                           *br, sep)
     }

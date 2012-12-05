@@ -31,6 +31,7 @@ impl Lub: combine {
     fn infcx() -> infer_ctxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }
+    fn span() -> span { self.span }
 
     fn sub() -> Sub { Sub(*self) }
     fn lub() -> Lub { Lub(*self) }
@@ -139,12 +140,10 @@ impl Lub: combine {
         let new_vars =
             self.infcx.region_vars.vars_created_since_snapshot(snapshot);
         let fn_ty1 =
-            ty::apply_op_on_t_to_ty_fn(
-                self.infcx.tcx, &fn_ty0,
-                |t| ty::fold_regions(
-                    self.infcx.tcx, t,
-                    |r, _in_fn| generalize_region(&self, snapshot,
-                                                  new_vars, a_isr, r)));
+            self.infcx.fold_regions_in_sig(
+                &fn_ty0,
+                |r, _in_fn| generalize_region(&self, snapshot, new_vars,
+                                              a_isr, r));
         return Ok(move fn_ty1);
 
         fn generalize_region(self: &Lub,
@@ -153,7 +152,7 @@ impl Lub: combine {
                              a_isr: isr_alist,
                              r0: ty::Region) -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
-            if !is_new_var(new_vars, r0) {
+            if !is_var_in_set(new_vars, r0) {
                 debug!("generalize_region(r0=%?): not new variable", r0);
                 return r0;
             }
@@ -163,7 +162,7 @@ impl Lub: combine {
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
-            if !tainted.all(|r| is_new_var(new_vars, *r)) {
+            if !tainted.all(|r| is_var_in_set(new_vars, *r)) {
                 debug!("generalize_region(r0=%?): \
                         non-new-variables found in %?",
                        r0, tainted);
@@ -189,13 +188,6 @@ impl Lub: combine {
                 self.span,
                 fmt!("Region %? is not associated with \
                       any bound region from A!", r0));
-        }
-
-        fn is_new_var(new_vars: &[RegionVid], r: ty::Region) -> bool {
-            match r {
-                ty::re_infer(ty::ReVar(ref v)) => new_vars.contains(v),
-                _ => false
-            }
         }
     }
 

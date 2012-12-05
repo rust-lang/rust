@@ -337,6 +337,61 @@ therefore considering subtyping and in particular does not consider
 LUB or GLB computation.  We have to consider this.  Here is the
 algorithm I implemented.
 
+First though, let's discuss what we are trying to compute in more
+detail.  The LUB is basically the "common supertype" and the GLB is
+"common subtype"; one catch is that the LUB should be the
+*most-specific* common supertype and the GLB should be *most general*
+common subtype (as opposed to any common supertype or any common
+subtype).
+
+Anyway, to help clarify, here is a table containing some
+function pairs and their LUB/GLB:
+
+```
+Type 1              Type 2              LUB               GLB
+fn<a>(&a)           fn(&X)              fn(&X)            fn<a>(&a)
+fn(&A)              fn(&X)              --                fn<a>(&a)
+fn<a,b>(&a, &b)     fn<x>(&x, &x)       fn<a>(&a, &a)     fn<a,b>(&a, &b)
+fn<a,b>(&a, &b, &a) fn<x,y>(&x, &y, &y) fn<a>(&a, &a, &a) fn<a,b,c>(&a,&b,&c)
+```
+
+### Conventions
+
+I use lower-case letters (e.g., `&a`) for bound regions and upper-case
+letters for free regions (`&A`).  Region variables written with a
+dollar-sign (e.g., `$a`).  I will try to remember to enumerate the
+bound-regions on the fn type as well (e.g., `fn<a>(&a)`).
+
+### High-level summary
+
+Both the LUB and the GLB algorithms work in a similar fashion.  They
+begin by replacing all bound regions (on both sides) with fresh region
+inference variables.  Therefore, both functions are converted to types
+that contain only free regions.  We can then compute the LUB/GLB in a
+straightforward way, as described in `combine.rs`.  This results in an
+interim type T.  The algorithms then examine the regions that appear
+in T and try to, in some cases, replace them with bound regions to
+yield the final result.
+
+To decide whether to replace a region `R` that appears in `T` with a
+bound region, the algorithms make use of two bits of information.
+First is a set `V` that contains all region variables created as part
+of the LUB/GLB computation. `V` will contain the region variables
+created to replace the bound regions in the input types, but it also
+contains 'intermediate' variables created to represent the LUB/GLB of
+individual regions.  Basically, when asked to compute the LUB/GLB of a
+region variable with another region, the inferencer cannot oblige
+immediately since the valuese of that variables are not known.
+Therefore, it creates a new variable that is related to the two
+regions.  For example, the LUB of two variables `$x` and `$y` is a
+fresh variable `$z` that is constrained such that `$x <= $z` and `$y
+<= $z`.  So `V` will contain these intermediate variables as well.
+
+The other important factor in deciding how to replace a region in T is
+the function `Tainted($r)` which, for a region variable, identifies
+all regions that the region variable is related to in some way
+(`Tainted()` made an appearance in the subtype computation as well).
+
 ### LUB
 
 The LUB algorithm proceeds in three steps:
@@ -345,47 +400,28 @@ The LUB algorithm proceeds in three steps:
    inference variables.
 2. Compute the LUB "as normal", meaning compute the GLB of each
    pair of argument types and the LUB of the return types and
-   so forth.  Combine those to a new function type F.
-3. Map the regions appearing in `F` using the procedure described below.
+   so forth.  Combine those to a new function type `F`.
+3. Replace each region `R` that appears in `F` as follows:
+   - Let `V` be the set of variables created during the LUB
+     computational steps 1 and 2, as described in the previous section.
+   - If `R` is not in `V`, replace `R` with itself.
+   - If `Tainted(R)` contains a region that is not in `V`,
+     replace `R` with itself.
+   - Otherwise, select the earliest variable in `Tainted(R)` that originates
+     from the left-hand side and replace `R` with the bound region that
+     this variable was a replacement for.
 
-For each region `R` that appears in `F`, we may need to replace it
-with a bound region.  Let `V` be the set of fresh variables created as
-part of the LUB procedure (either in step 1 or step 2).  You may be
-wondering how variables can be created in step 2.  The answer is that
-when we are asked to compute the LUB or GLB of two region variables,
-we do so by producing a new region variable that is related to those
-two variables.  i.e., The LUB of two variables `$x` and `$y` is a
-fresh variable `$z` that is constrained such that `$x <= $z` and `$y
-<= $z`.
+So, let's work through the simplest example: `fn(&A)` and `fn<a>(&a)`.
+In this case, `&a` will be replaced with `$a` and the interim LUB type
+`fn($b)` will be computed, where `$b=GLB(&A,$a)`.  Therefore, `V =
+{$a, $b}` and `Tainted($b) = { $b, $a, &A }`.  When we go to replace
+`$b`, we find that since `&A \in Tainted($b)` is not a member of `V`,
+we leave `$b` as is.  When region inference happens, `$b` will be
+resolved to `&A`, as we wanted.
 
-To decide how to replace a region `R`, we must examine `Tainted(R)`.
-This function searches through the constraints which were generated
-when computing the bounds of all the argument and return types and
-produces a list of all regions to which `R` is related, directly or
-indirectly.
-
-If `R` is not in `V` or `Tainted(R)` contains any region that is not
-in `V`, then `R` is not replaced (that is, `R` is mapped to itself).
-Otherwise, if `Tainted(R)` is a subset of `V`, then we select the
-earliest variable in `Tainted(R)` that originates from the left-hand
-side and replace `R` with a bound version of that variable.
-
-So, let's work through the simplest example: `fn(&A)` and `fn(&a)`.
-In this case, `&a` will be replaced with `$a` (the $ indicates an
-inference variable) which will be linked to the free region `&A`, and
-hence `V = { $a }` and `Tainted($a) = { &A }`.  Since `$a` is not a
-member of `V`, we leave `$a` as is.  When region inference happens,
-`$a` will be resolved to `&A`, as we wanted.
-
-So, let's work through the simplest example: `fn(&A)` and `fn(&a)`.
-In this case, `&a` will be replaced with `$a` (the $ indicates an
-inference variable) which will be linked to the free region `&A`, and
-hence `V = { $a }` and `Tainted($a) = { $a, &A }`.  Since `&A` is not a
-member of `V`, we leave `$a` as is.  When region inference happens,
-`$a` will be resolved to `&A`, as we wanted.
-
-Let's look at a more complex one: `fn(&a, &b)` and `fn(&x, &x)`.
-In this case, we'll end up with a graph that looks like:
+Let's look at a more complex one: `fn(&a, &b)` and `fn(&x, &x)`.  In
+this case, we'll end up with a (pre-replacement) LUB type of `fn(&g,
+&h)` and a graph that looks like:
 
 ```
      $a        $b     *--$x
@@ -399,8 +435,8 @@ the LUB/GLB of things requiring inference.  This means that `V` and
 `Tainted` will look like:
 
 ```
-V = {$a, $b, $x}
-Tainted($g) = Tainted($h) = { $a, $b, $h, $x }
+V = {$a, $b, $g, $h, $x}
+Tainted($g) = Tainted($h) = { $a, $b, $h, $g, $x }
 ```
 
 Therefore we replace both `$g` and `$h` with `$a`, and end up
@@ -413,40 +449,90 @@ in computing the replacements for the various variables. For each
 region `R` that appears in the type `F`, we again compute `Tainted(R)`
 and examine the results:
 
-1. If `Tainted(R) = {R}` is a singleton set, replace `R` with itself.
+1. If `R` is not in `V`, it is not replaced.
 2. Else, if `Tainted(R)` contains only variables in `V`, and it
    contains exactly one variable from the LHS and one variable from
    the RHS, then `R` can be mapped to the bound version of the
    variable from the LHS.
-3. Else, `R` is mapped to a fresh bound variable.
+3. Else, if `Tainted(R)` contains no variable from the LHS and no
+   variable from the RHS, then `R` can be mapped to itself.
+4. Else, `R` is mapped to a fresh bound variable.
 
 These rules are pretty complex.  Let's look at some examples to see
 how they play out.
 
-Out first example was `fn(&a)` and `fn(&X)`---in
-this case, the LUB will be a variable `$g`, and `Tainted($g) =
-{$g,$a,$x}`.  By these rules, we'll replace `$g` with a fresh bound
-variable, so the result is `fn(&z)`, which is fine.
+Out first example was `fn(&a)` and `fn(&X)`.  In this case, `&a` will
+be replaced with `$a` and we will ultimately compute a
+(pre-replacement) GLB type of `fn($g)` where `$g=LUB($a,&X)`.
+Therefore, `V={$a,$g}` and `Tainted($g)={$g,$a,&X}.  To find the
+replacement for `$g` we consult the rules above:
+- Rule (1) does not apply because `$g \in V`
+- Rule (2) does not apply because `&X \in Tainted($g)`
+- Rule (3) does not apply because `$a \in Tainted($g)`
+- Hence, by rule (4), we replace `$g` with a fresh bound variable `&z`.
+So our final result is `fn(&z)`, which is correct.
 
-The next example is `fn(&A)` and `fn(&Z)`. XXX
+The next example is `fn(&A)` and `fn(&Z)`. In this case, we will again
+have a (pre-replacement) GLB of `fn(&g)`, where `$g = LUB(&A,&Z)`.
+Therefore, `V={$g}` and `Tainted($g) = {$g, &A, &Z}`.  In this case,
+by rule (3), `$g` is mapped to itself, and hence the result is
+`fn($g)`.  This result is correct (in this case, at least), but it is
+indicative of a case that *can* lead us into concluding that there is
+no GLB when in fact a GLB does exist.  See the section "Questionable
+Results" below for more details.
 
-The next example is `fn(&a, &b)` and `fn(&x, &x)`. In this case, as
-before, we'll end up with `F=fn(&g, &h)` where `Tainted($g) =
-Tainted($h) = {$g, $a, $b, $x}`.  This means that we'll select fresh
-bound varibales `g` and `h` and wind up with `fn(&g, &h)`.
+The next example is `fn(&a, &b)` and `fn(&c, &c)`. In this case, as
+before, we'll end up with `F=fn($g, $h)` where `Tainted($g) =
+Tainted($h) = {$g, $h, $a, $b, $c}`.  Only rule (4) applies and hence
+we'll select fresh bound variables `y` and `z` and wind up with
+`fn(&y, &z)`.
 
 For the last example, let's consider what may seem trivial, but is
-not: `fn(&a, &a)` and `fn(&x, &x)`.  In this case, we'll get `F=fn(&g,
-&h)` where `Tainted($g) = {$g, $a, $x}` and `Tainted($h) = {$h, $a,
+not: `fn(&a, &a)` and `fn(&b, &b)`.  In this case, we'll get `F=fn($g,
+$h)` where `Tainted($g) = {$g, $a, $x}` and `Tainted($h) = {$h, $a,
 $x}`.  Both of these sets contain exactly one bound variable from each
-side, so we'll map them both to `&a`, resulting in `fn(&a, &a)`.
-Horray!
+side, so we'll map them both to `&a`, resulting in `fn(&a, &a)`, which
+is the desired result.
 
-### Why are these correct?
+### Shortcomings and correctness
 
-You may be wondering whether this algorithm is correct.  So am I.  But
-I believe it is.  (Justification forthcoming, haven't had time to
-write it)
+You may be wondering whether this algorithm is correct.  The answer is
+"sort of".  There are definitely cases where they fail to compute a
+result even though a correct result exists.  I believe, though, that
+if they succeed, then the result is valid, and I will attempt to
+convince you.  The basic argument is that the "pre-replacement" step
+computes a set of constraints.  The replacements, then, attempt to
+satisfy those constraints, using bound identifiers where needed.
+
+For now I will briefly go over the cases for LUB/GLB and identify
+their intent:
+
+- LUB:
+  - The region variables that are substituted in place of bound regions
+    are intended to collect constraints on those bound regions.
+  - If Tainted(R) contains only values in V, then this region is unconstrained
+    and can therefore be generalized, otherwise it cannot.
+- GLB:
+  - The region variables that are substituted in place of bound regions
+    are intended to collect constraints on those bound regions.
+  - If Tainted(R) contains exactly one variable from each side, and
+    only variables in V, that indicates that those two bound regions
+    must be equated.
+  - Otherwise, if Tainted(R) references any variables from left or right
+    side, then it is trying to combine a bound region with a free one or
+    multiple bound regions, so we need to select fresh bound regions.
+
+Sorry this is more of a shorthand to myself.  I will try to write up something
+more convincing in the future.
+
+#### Where are the algorithms wrong?
+
+- The pre-replacement computation can fail even though using a
+  bound-region would have succeeded.
+- We will compute GLB(fn(fn($a)), fn(fn($b))) as fn($c) where $c is the
+  GLB of $a and $b.  But if inference finds that $a and $b must be mapped
+  to regions without a GLB, then this is effectively a failure to compute
+  the GLB.  However, the result `fn<$c>(fn($c))` is a valid GLB.
 
 */
 
@@ -457,7 +543,7 @@ use middle::region::is_subregion_of;
 use middle::region;
 use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
-use middle::ty::{re_scope, ReVar, ReSkolemized};
+use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
 use middle::typeck::infer::to_str::ToStr;
 use syntax::codemap;
 use util::ppaux::note_and_explain_region;
@@ -553,6 +639,7 @@ struct RegionVarBindings {
     lubs: CombineMap,
     glbs: CombineMap,
     mut skolemization_count: uint,
+    mut bound_count: uint,
 
     // The undo log records actions that might later be undone.
     //
@@ -579,6 +666,7 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         lubs: CombineMap(),
         glbs: CombineMap(),
         skolemization_count: 0,
+        bound_count: 0,
         undo_log: ~[]
     }
 }
@@ -655,6 +743,26 @@ impl RegionVarBindings {
         re_infer(ReSkolemized(sc, br))
     }
 
+    fn new_bound(&self) -> Region {
+        // Creates a fresh bound variable for use in GLB computations.
+        // See discussion of GLB computation in the large comment at
+        // the top of this file for more details.
+        //
+        // This computation is mildly wrong in the face of rollover.
+        // It's conceivable, if unlikely, that one might wind up with
+        // accidental capture for nested functions in that case, if
+        // the outer function had bound regions created a very long
+        // time before and the inner function somehow wound up rolling
+        // over such that supposedly fresh identifiers were in fact
+        // shadowed.  We should convert our bound_region
+        // representation to use deBruijn indices or something like
+        // that to eliminate that possibility.
+
+        let sc = self.bound_count;
+        self.bound_count += 1;
+        re_bound(br_fresh(sc))
+    }
+
     fn add_constraint(&self, +constraint: Constraint, span: span) {
         // cannot add constraints once regions are resolved
         assert self.values.is_empty();
@@ -686,6 +794,16 @@ impl RegionVarBindings {
           (re_infer(ReVar(sub_id)), r) => {
             self.add_constraint(ConstrainVarSubReg(sub_id, r), span);
             Ok(())
+          }
+          (re_bound(br), _) => {
+            self.tcx.sess.span_bug(
+                span,
+                fmt!("Cannot relate bound region as subregion: %?", br));
+          }
+          (_, re_bound(br)) => {
+            self.tcx.sess.span_bug(
+                span,
+                fmt!("Cannot relate bound region as superregion: %?", br));
           }
           _ => {
             if self.is_subregion_of(sub, sup) {

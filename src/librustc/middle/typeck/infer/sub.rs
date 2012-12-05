@@ -24,6 +24,7 @@ impl Sub: combine {
     fn infcx() -> infer_ctxt { self.infcx }
     fn tag() -> ~str { ~"sub" }
     fn a_is_expected() -> bool { self.a_is_expected }
+    fn span() -> span { self.span }
 
     fn sub() -> Sub { Sub(*self) }
     fn lub() -> Lub { Lub(*self) }

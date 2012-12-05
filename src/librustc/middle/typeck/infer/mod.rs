@@ -799,5 +799,16 @@ impl infer_ctxt {
         (fn_ty, isr)
     }
 
+    fn fold_regions_in_sig(
+        &self,
+        fn_ty: &ty::FnTy,
+        fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnTy
+    {
+        let sig = do ty::fold_sig(&fn_ty.sig) |t| {
+            ty::fold_regions(self.tcx, t, fldr)
+        };
+        ty::FnTyBase {meta: fn_ty.meta, sig: sig}
+    }
+
 }
 

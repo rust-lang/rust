@@ -72,7 +72,7 @@ export expr_ty_params_and_ty;
 export expr_is_lval, expr_kind;
 export ExprKind, LvalueExpr, RvalueDatumExpr, RvalueDpsExpr, RvalueStmtExpr;
 export field_ty;
-export fold_ty, fold_sty_to_ty, fold_region, fold_regions;
+export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_sig;
 export apply_op_on_t_to_ty_fn;
 export fold_regions_and_ty, walk_regions_and_ty;
 export field;
@@ -145,7 +145,7 @@ export ty_struct;
 export Region, bound_region, encl_region;
 export re_bound, re_free, re_scope, re_static, re_infer;
 export ReVar, ReSkolemized;
-export br_self, br_anon, br_named, br_cap_avoid;
+export br_self, br_anon, br_named, br_cap_avoid, br_fresh;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_is_region_ptr;
 export type_id;
@@ -605,6 +605,9 @@ enum bound_region {
 
     /// Named region parameters for functions (a in &a/T)
     br_named(ast::ident),
+
+    /// Fresh bound identifiers created during GLB computations.
+    br_fresh(uint),
 
     /**
      * Handles capture-avoiding substitution in a rather subtle case.  If you
@@ -1311,6 +1314,17 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
     mk_t(tcx, fold_sty(sty, foldop))
 }
 
+fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
+    let args = do sig.inputs.map |arg| {
+        { mode: arg.mode, ty: fldop(arg.ty) }
+    };
+
+    FnSig {
+        inputs: move args,
+        output: fldop(sig.output)
+    }
+}
+
 fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
@@ -1489,8 +1503,8 @@ fn apply_op_on_t_to_ty_fn(
 fn fold_regions(
     cx: ctxt,
     ty: t,
-    fldr: fn(r: Region, in_fn: bool) -> Region) -> t {
-
+    fldr: fn(r: Region, in_fn: bool) -> Region) -> t
+{
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
                fldr: fn(Region, bool) -> Region) -> t {
         if !type_has_regions(ty) { return ty; }
@@ -2744,7 +2758,10 @@ impl bound_region : to_bytes::IterBytes {
           to_bytes::iter_bytes_2(&2u8, ident, lsb0, f),
 
           ty::br_cap_avoid(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f)
+          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f),
+
+          ty::br_fresh(ref x) =>
+          to_bytes::iter_bytes_2(&4u8, x, lsb0, f)
         }
     }
 }
@@ -4490,6 +4507,12 @@ impl bound_region : cmp::Eq {
             br_cap_avoid(e0a, e1a) => {
                 match (*other) {
                     br_cap_avoid(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            br_fresh(e0a) => {
+                match (*other) {
+                    br_fresh(e0b) => e0a == e0b,
                     _ => false
                 }
             }

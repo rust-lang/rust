@@ -315,6 +315,10 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
+        if self.files.len() == 0 && sp == ast_util::dummy_sp() {
+            return ~"no-location";
+        }
+
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.filename,

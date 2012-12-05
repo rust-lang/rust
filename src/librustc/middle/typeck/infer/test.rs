@@ -16,7 +16,7 @@ Note: This module is only compiled when doing unit testing.
 
 */
 
-
+use dvec::DVec;
 use std::getopts;
 use std::map::HashMap;
 use std::getopts;
@@ -36,7 +36,8 @@ use middle::ty::{FnTyBase, FnMeta, FnSig};
 struct Env {
     crate: @ast::crate,
     tcx: ty::ctxt,
-    infcx: infer::infer_ctxt
+    infcx: infer::infer_ctxt,
+    err_messages: @DVec<~str>
 }
 
 struct RH {
@@ -44,10 +45,14 @@ struct RH {
     sub: &[RH]
 }
 
+const EMPTY_SOURCE_STR: &str = "/* Hello, world! */";
+
 fn setup_env(test_name: &str, source_string: &str) -> Env {
-    let matches = &getopts(~[~"-Z", ~"verbose"], optgroups()).get();
-    let sessopts = build_session_options(~"rustc", matches, diagnostic::emit);
-    let sess = build_session(sessopts, diagnostic::emit);
+    let messages = @DVec();
+    let matches = getopts(~[~"-Z", ~"verbose"], optgroups()).get();
+    let diag = diagnostic::collect(messages);
+    let sessopts = build_session_options(~"rustc", &matches, diag);
+    let sess = build_session(sessopts, diag);
     let cfg = build_configuration(sess, ~"whatever", str_input(~""));
     let dm = HashMap();
     let amap = HashMap();
@@ -66,7 +71,10 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
 
     let infcx = infer::new_infer_ctxt(tcx);
 
-    return Env { crate: crate, tcx: tcx, infcx: infcx };
+    return Env {crate: crate,
+                tcx: tcx,
+                infcx: infcx,
+                err_messages: messages};
 }
 
 impl Env {
@@ -210,6 +218,22 @@ impl Env {
 
     fn lub() -> Lub { Lub(self.infcx.combine_fields(true, dummy_sp())) }
 
+    fn glb() -> Glb { Glb(self.infcx.combine_fields(true, dummy_sp())) }
+
+    fn resolve_regions(exp_count: uint) {
+        debug!("resolve_regions(%u)", exp_count);
+
+        self.infcx.resolve_regions();
+        if self.err_messages.len() != exp_count {
+            for self.err_messages.each |msg| {
+                debug!("Error encountered: %s", *msg);
+            }
+            fmt!("Resolving regions encountered %u errors but expected %u!",
+                 self.err_messages.len(),
+                 exp_count);
+        }
+    }
+
     /// Checks that `LUB(t1,t2) == t_lub`
     fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
         match self.lub().tys(t1, t2) {
@@ -222,6 +246,30 @@ impl Env {
                 // sanity check for good measure:
                 self.assert_subtype(t1, t);
                 self.assert_subtype(t2, t);
+
+                self.resolve_regions(0);
+            }
+        }
+    }
+
+    /// Checks that `GLB(t1,t2) == t_glb`
+    fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
+        debug!("check_glb(t1=%s, t2=%s, t_glb=%s)",
+               self.ty_to_str(t1),
+               self.ty_to_str(t2),
+               self.ty_to_str(t_glb));
+        match self.glb().tys(t1, t2) {
+            Err(e) => {
+                fail fmt!("Unexpected error computing LUB: %?", e)
+            }
+            Ok(t) => {
+                self.assert_eq(t, t_glb);
+
+                // sanity check for good measure:
+                self.assert_subtype(t, t1);
+                self.assert_subtype(t, t2);
+
+                self.resolve_regions(0);
             }
         }
     }
@@ -236,11 +284,22 @@ impl Env {
             }
         }
     }
+
+    /// Checks that `GLB(t1,t2)` is undefined
+    fn check_no_glb(&self, t1: ty::t, t2: ty::t) {
+        match self.glb().tys(t1, t2) {
+            Err(_) => {}
+            Ok(t) => {
+                fail fmt!("Unexpected success computing GLB: %?",
+                          self.ty_to_str(t))
+            }
+        }
+    }
 }
 
 #[test]
 fn contravariant_region_ptr() {
-    let env = setup_env("contravariant_region_ptr", "");
+    let env = setup_env("contravariant_region_ptr", EMPTY_SOURCE_STR);
     env.create_simple_region_hierarchy();
     let t_rptr1 = env.t_rptr_scope(1);
     let t_rptr10 = env.t_rptr_scope(10);
@@ -251,7 +310,7 @@ fn contravariant_region_ptr() {
 
 #[test]
 fn lub_bound_bound() {
-    let env = setup_env("lub_bound_bound", "");
+    let env = setup_env("lub_bound_bound", EMPTY_SOURCE_STR);
     let t_rptr_bound1 = env.t_rptr_bound(1);
     let t_rptr_bound2 = env.t_rptr_bound(2);
     env.check_lub(env.t_fn([t_rptr_bound1], env.t_int()),
@@ -261,7 +320,7 @@ fn lub_bound_bound() {
 
 #[test]
 fn lub_bound_free() {
-    let env = setup_env("lub_bound_free", "");
+    let env = setup_env("lub_bound_free", EMPTY_SOURCE_STR);
     let t_rptr_bound1 = env.t_rptr_bound(1);
     let t_rptr_free1 = env.t_rptr_free(0, 1);
     env.check_lub(env.t_fn([t_rptr_bound1], env.t_int()),
@@ -271,7 +330,7 @@ fn lub_bound_free() {
 
 #[test]
 fn lub_bound_static() {
-    let env = setup_env("lub_bound_static", "");
+    let env = setup_env("lub_bound_static", EMPTY_SOURCE_STR);
     let t_rptr_bound1 = env.t_rptr_bound(1);
     let t_rptr_static = env.t_rptr_static();
     env.check_lub(env.t_fn([t_rptr_bound1], env.t_int()),
@@ -281,7 +340,7 @@ fn lub_bound_static() {
 
 #[test]
 fn lub_bound_bound_inverse_order() {
-    let env = setup_env("lub_bound_bound_inverse_order", "");
+    let env = setup_env("lub_bound_bound_inverse_order", EMPTY_SOURCE_STR);
     let t_rptr_bound1 = env.t_rptr_bound(1);
     let t_rptr_bound2 = env.t_rptr_bound(2);
     env.check_lub(env.t_fn([t_rptr_bound1, t_rptr_bound2], t_rptr_bound1),
@@ -291,7 +350,7 @@ fn lub_bound_bound_inverse_order() {
 
 #[test]
 fn lub_free_free() {
-    let env = setup_env("lub_free_free", "");
+    let env = setup_env("lub_free_free", EMPTY_SOURCE_STR);
     let t_rptr_free1 = env.t_rptr_free(0, 1);
     let t_rptr_free2 = env.t_rptr_free(0, 2);
     let t_rptr_static = env.t_rptr_static();
@@ -302,10 +361,50 @@ fn lub_free_free() {
 
 #[test]
 fn lub_returning_scope() {
-    let env = setup_env("lub_returning_scope", "");
+    let env = setup_env("lub_returning_scope", EMPTY_SOURCE_STR);
     let t_rptr_scope10 = env.t_rptr_scope(10);
     let t_rptr_scope11 = env.t_rptr_scope(11);
     env.check_no_lub(env.t_fn([], t_rptr_scope10),
                      env.t_fn([], t_rptr_scope11));
 }
 
+#[test]
+fn glb_free_free_with_common_scope() {
+    let env = setup_env("glb_free_free", EMPTY_SOURCE_STR);
+    let t_rptr_free1 = env.t_rptr_free(0, 1);
+    let t_rptr_free2 = env.t_rptr_free(0, 2);
+    let t_rptr_scope = env.t_rptr_scope(0);
+    env.check_glb(env.t_fn([t_rptr_free1], env.t_int()),
+                  env.t_fn([t_rptr_free2], env.t_int()),
+                  env.t_fn([t_rptr_scope], env.t_int()));
+}
+
+#[test]
+fn glb_bound_bound() {
+    let env = setup_env("glb_bound_bound", EMPTY_SOURCE_STR);
+    let t_rptr_bound1 = env.t_rptr_bound(1);
+    let t_rptr_bound2 = env.t_rptr_bound(2);
+    env.check_glb(env.t_fn([t_rptr_bound1], env.t_int()),
+                  env.t_fn([t_rptr_bound2], env.t_int()),
+                  env.t_fn([t_rptr_bound1], env.t_int()));
+}
+
+#[test]
+fn glb_bound_free() {
+    let env = setup_env("glb_bound_free", EMPTY_SOURCE_STR);
+    let t_rptr_bound1 = env.t_rptr_bound(1);
+    let t_rptr_free1 = env.t_rptr_free(0, 1);
+    env.check_glb(env.t_fn([t_rptr_bound1], env.t_int()),
+                  env.t_fn([t_rptr_free1], env.t_int()),
+                  env.t_fn([t_rptr_bound1], env.t_int()));
+}
+
+#[test]
+fn glb_bound_static() {
+    let env = setup_env("glb_bound_static", EMPTY_SOURCE_STR);
+    let t_rptr_bound1 = env.t_rptr_bound(1);
+    let t_rptr_static = env.t_rptr_static();
+    env.check_glb(env.t_fn([t_rptr_bound1], env.t_int()),
+                  env.t_fn([t_rptr_static], env.t_int()),
+                  env.t_fn([t_rptr_bound1], env.t_int()));
+}

@@ -17,9 +17,11 @@ use core::io;
 use core::option;
 use core::str;
 use core::vec;
+use core::dvec::DVec;
+
 use std::term;
 
-export emitter, emit;
+export emitter, collect, emit;
 export level, fatal, error, warning, note;
 export span_handler, handler, mk_span_handler, mk_handler;
 export codemap_span_handler, codemap_handler;
@@ -143,7 +145,7 @@ fn mk_handler(emitter: Option<emitter>) -> handler {
       Some(e) => e,
       None => {
         let f = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
-            msg: &str, t: level) {
+                    msg: &str, t: level) {
             emit(cmsp, msg, t);
         };
         f
@@ -204,6 +206,12 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
         term::reset(io::stderr());
     }
     io::stderr().write_str(fmt!(" %s\n", msg));
+}
+
+fn collect(messages: @DVec<~str>)
+    -> fn@(Option<(@codemap::CodeMap, span)>, &str, level)
+{
+    |_o, msg: &str, _l| { messages.push(msg.to_str()); }
 }
 
 fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {

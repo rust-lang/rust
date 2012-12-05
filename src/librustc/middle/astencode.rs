@@ -418,7 +418,8 @@ impl ty::Region: tr {
 impl ty::bound_region: tr {
     fn tr(xcx: extended_decode_ctxt) -> ty::bound_region {
         match self {
-            ty::br_anon(_) | ty::br_named(_) | ty::br_self => self,
+            ty::br_anon(_) | ty::br_named(_) | ty::br_self |
+            ty::br_fresh(_) => self,
             ty::br_cap_avoid(id, br) => ty::br_cap_avoid(xcx.tr_id(id),
                                                          @br.tr(xcx))
         }
