@@ -11,6 +11,7 @@
 //! Generic pass for performing an operation on all descriptions
 
 use doc::ItemUtils;
+use fold::Fold;
 use util::NominalOp;
 
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
@@ -33,13 +34,13 @@ fn run(
     let op = NominalOp {
         op: move op
     };
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        .. *fold::default_any_fold(move op)
-    });
+        .. fold::default_any_fold(move op)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

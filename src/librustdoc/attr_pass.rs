@@ -18,6 +18,7 @@ of the natural-language documentation for a crate.
 
 use doc::ItemUtils;
 use extract::to_str;
+use fold::Fold;
 use syntax::ast;
 use syntax::ast_map;
 use std::map::HashMap;
@@ -33,14 +34,14 @@ fn run(
     srv: astsrv::Srv,
     +doc: doc::Doc
 ) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_crate: fold_crate,
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        .. *fold::default_any_fold(srv)
-    });
+        .. fold::default_any_fold(srv)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

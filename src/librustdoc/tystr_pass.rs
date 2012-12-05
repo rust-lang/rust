@@ -11,6 +11,7 @@
 //! Pulls type information out of the AST and attaches it to the document
 
 use doc::ItemUtils;
+use fold::Fold;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;
@@ -28,7 +29,7 @@ fn run(
     srv: astsrv::Srv,
     +doc: doc::Doc
 ) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
@@ -36,8 +37,8 @@ fn run(
         fold_impl: fold_impl,
         fold_type: fold_type,
         fold_struct: fold_struct,
-        .. *fold::default_any_fold(srv)
-    });
+        .. fold::default_any_fold(srv)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

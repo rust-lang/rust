@@ -9,7 +9,7 @@ use syntax::ast::{expr_addr_of, expr_assign_op, expr_binary, expr_call};
 use syntax::ast::{expr_copy, expr_field, expr_index, expr_method_call};
 use syntax::ast::{expr_path, expr_swap, expr_unary, node_id, sty_uniq};
 use syntax::ast::{sty_value};
-use syntax::ast::{box, uniq, deref, not, neg, expr_paren};
+use syntax::ast::{box, uniq, deref, not, neg, expr_match, expr_paren};
 use syntax::visit;
 use syntax::visit::vt;
 
@@ -157,6 +157,21 @@ fn compute_modes_for_expr(expr: @expr,
         expr_paren(arg) => {
             compute_modes_for_expr(arg, cx, v);
             record_mode_for_expr(expr, cx);
+        }
+        expr_match(head, ref arms) => {
+            let by_move_bindings_present =
+                pat_util::arms_have_by_move_bindings(cx.tcx.def_map, *arms);
+            if by_move_bindings_present {
+                // Propagate the current mode flag downward.
+                visit::visit_expr(expr, cx, v);
+            } else {
+                // We aren't moving into any pattern, so this is just a read.
+                let head_cx = VisitContext { mode: ReadValue, ..cx };
+                compute_modes_for_expr(head, head_cx, v);
+                for arms.each |arm| {
+                    (v.visit_arm)(*arm, cx, v);
+                }
+            }
         }
         _ => {
             // XXX: Spell out every expression above so when we add them we

@@ -17,6 +17,8 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves to dnot affect things loaned out in any way
 
+use middle::ty::{CopyValue, MoveValue, ReadValue};
+
 use dvec::DVec;
 
 export check_loans;
@@ -623,6 +625,12 @@ fn check_loans_in_expr(expr: @ast::expr,
            expr.id, pprust::expr_to_str(expr, self.tcx().sess.intr()));
 
     self.check_for_conflicting_loans(expr.id);
+
+    // If this is a move, check it.
+    match self.tcx().value_modes.find(expr.id) {
+        Some(MoveValue) => self.check_move_out(expr),
+        Some(ReadValue) | Some(CopyValue) | None => {}
+    }
 
     match expr.node {
       ast::expr_path(*) if self.bccx.last_use_map.contains_key(expr.id) => {

@@ -11,6 +11,7 @@
 //! Prunes things with the #[doc(hidden)] attribute
 
 use doc::ItemUtils;
+use fold::Fold;
 use std::map::HashMap;
 
 pub fn mk_pass() -> Pass {
@@ -21,10 +22,10 @@ pub fn mk_pass() -> Pass {
 }
 
 fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_mod: fold_mod,
-        .. *fold::default_any_fold(srv)
-    });
+        .. fold::default_any_fold(srv)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

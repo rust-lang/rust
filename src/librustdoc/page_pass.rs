@@ -16,6 +16,7 @@ individual modules, pages for the crate, indexes, etc.
 */
 
 use doc::{ItemUtils, PageUtils};
+use fold::Fold;
 use syntax::ast;
 use util::NominalOp;
 
@@ -68,12 +69,12 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
 }
 
 fn find_pages(doc: doc::Doc, page_chan: PageChan) {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. *fold::default_any_fold(NominalOp { op: page_chan })
-    });
+        .. fold::default_any_fold(NominalOp { op: page_chan })
+    };
     (fold.fold_doc)(&fold, doc);
 
     comm::send(page_chan, None);

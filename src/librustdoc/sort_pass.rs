@@ -11,6 +11,7 @@
 //! A general sorting pass
 
 use doc::ItemUtils;
+use fold::Fold;
 use std::sort;
 use util::NominalOp;
 
@@ -33,10 +34,10 @@ fn run(
     +doc: doc::Doc,
     +lteq: ItemLtEq
 ) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_mod: fold_mod,
-        .. *fold::default_any_fold(move lteq)
-    });
+        .. fold::default_any_fold(move lteq)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 

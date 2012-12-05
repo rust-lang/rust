@@ -11,6 +11,7 @@
 //! Build indexes as appropriate for the markdown pass
 
 use doc::ItemUtils;
+use fold::Fold;
 
 pub fn mk_pass(+config: config::Config) -> Pass {
     {
@@ -26,11 +27,11 @@ fn run(
     +doc: doc::Doc,
     +config: config::Config
 ) -> doc::Doc {
-    let fold = fold::Fold({
+    let fold = Fold {
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. *fold::default_any_fold(config)
-    });
+        .. fold::default_any_fold(config)
+    };
     (fold.fold_doc)(&fold, doc)
 }
 
