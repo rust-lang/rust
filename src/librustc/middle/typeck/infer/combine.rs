@@ -64,6 +64,7 @@ trait combine {
     fn infcx() -> infer_ctxt;
     fn tag() -> ~str;
     fn a_is_expected() -> bool;
+    fn span() -> span;
 
     fn sub() -> Sub;
     fn lub() -> Lub;
