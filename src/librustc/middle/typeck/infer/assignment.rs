@@ -80,7 +80,7 @@ enum Assign = combine_fields;
 
 impl Assign {
     fn tys(a: ty::t, b: ty::t) -> ares {
-        debug!("Assign.tys(%s -> %s)",
+        debug!("Assign.tys(%s => %s)",
                a.to_str(self.infcx),
                b.to_str(self.infcx));
         let _r = indenter();
@@ -139,7 +139,7 @@ priv impl Assign {
         a: ty::t, b: ty::t,
         +a_bnd: Option<ty::t>, +b_bnd: Option<ty::t>) -> ares {
 
-        debug!("Assign.assign_tys_or_sub(%s -> %s, %s -> %s)",
+        debug!("Assign.assign_tys_or_sub(%s => %s, %s => %s)",
                a.to_str(self.infcx), b.to_str(self.infcx),
                a_bnd.to_str(self.infcx), b_bnd.to_str(self.infcx));
         let _r = indenter();

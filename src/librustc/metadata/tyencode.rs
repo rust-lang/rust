@@ -188,6 +188,9 @@ fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
         w.write_char('|');
         enc_bound_region(w, cx, *br);
       }
+      ty::br_fresh(id) => {
+        w.write_uint(id);
+      }
     }
 }
 
