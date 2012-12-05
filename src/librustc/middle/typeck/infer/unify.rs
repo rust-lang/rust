@@ -43,7 +43,7 @@ impl infer_ctxt {
             match (*var_val) {
               redirect(ref vid) => {
                 let node = self.get(vb, (*vid));
-                if node.root != (*vid) {
+                if node.root.ne(vid) {
                     // Path compression
                     vb.vals.insert((*vid).to_uint(), redirect(node.root));
                 }
