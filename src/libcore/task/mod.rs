@@ -785,7 +785,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     let b1 = TaskBuilder {
         opts: move opts,
         can_not_copy: None,
-        .. *b0
+        .. b0
     };
     do b1.spawn { fail; }
     comm::recv(po); // We should get punted awake
@@ -805,7 +805,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     let b1 = TaskBuilder {
         opts: move opts,
         can_not_copy: None,
-        .. *b0
+        .. b0
     };
     do b1.spawn { loop { task::yield(); } }
     fail; // *both* mechanisms would be wrong if this didn't kill the child...
