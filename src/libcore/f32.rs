@@ -163,14 +163,14 @@ impl f32 : cmp::Ord {
 }
 
 impl f32: num::Num {
-    pure fn add(other: &f32)    -> f32 { return self + *other; }
-    pure fn sub(other: &f32)    -> f32 { return self - *other; }
-    pure fn mul(other: &f32)    -> f32 { return self * *other; }
-    pure fn div(other: &f32)    -> f32 { return self / *other; }
-    pure fn modulo(other: &f32) -> f32 { return self % *other; }
-    pure fn neg()                -> f32 { return -self;        }
+    pure fn add(&self, other: &f32) -> f32 { return *self + *other; }
+    pure fn sub(&self, other: &f32) -> f32 { return *self - *other; }
+    pure fn mul(&self, other: &f32) -> f32 { return *self * *other; }
+    pure fn div(&self, other: &f32) -> f32 { return *self / *other; }
+    pure fn modulo(&self, other: &f32) -> f32 { return *self % *other; }
+    pure fn neg(&self)                -> f32 { return -*self;        }
 
-    pure fn to_int()         -> int { return self as int; }
+    pure fn to_int(&self)         -> int { return *self as int; }
     static pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
