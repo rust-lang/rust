@@ -242,11 +242,13 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
         (v.visit_expr)(e2, e, v);
       }
       pat_wild => (),
-      pat_vec(elts, tail) => for elts.each |elt| {
-          v.visit_pat(*elt, e, v);
-          do option::iter(&tail) |tail| {
-              v.visit_pat(*tail, e, v);
-          }
+      pat_vec(elts, tail) => {
+        for elts.each |elt| {
+          (v.visit_pat)(*elt, e, v);
+        }
+        do option::iter(&tail) |tail| {
+          (v.visit_pat)(*tail, e, v);
+        }
       }
     }
 }
