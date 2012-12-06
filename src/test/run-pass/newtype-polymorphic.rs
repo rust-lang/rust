@@ -1,6 +1,6 @@
 enum myvec<X> = ~[X];
 
-fn myvec_deref<X: Copy>(mv: myvec<X>) -> ~[X] { return *mv; }
+fn myvec_deref<X: Copy>(mv: myvec<X>) -> ~[X] { return copy *mv; }
 
 fn myvec_elt<X: Copy>(mv: myvec<X>) -> X { return mv[0]; }
 

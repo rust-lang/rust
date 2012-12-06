@@ -6,5 +6,5 @@ trait to_strz {
 }
 
 impl ~str: to_strz {
-    fn to_strz() -> ~str { self }
+    fn to_strz() -> ~str { copy self }
 }

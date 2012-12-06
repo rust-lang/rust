@@ -2,7 +2,7 @@
 
 fn foo() -> fn@() -> int {
     let k = ~22;
-    let _u = {a: k};
+    let _u = {a: copy k};
     return fn@(move k) -> int { 22 };
 }
 

@@ -4,5 +4,5 @@ fn a_val(&&x: ~int, +y: ~int) -> int {
 
 fn main() {
     let z = ~22;
-    a_val(z, z);
+    a_val(copy z, copy z);
 }

@@ -16,12 +16,12 @@ fn make_generic_record<A: Copy, B: Copy>(a: A, b: B) -> pair<A,B> {
 
 fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> pair<float, ~str>) {
     let p = f(22.22f, ~"Hi");
-    log(debug, p);
+    log(debug, copy p);
     assert p.a == 22.22f;
     assert p.b == ~"Hi";
 
     let q = f(44.44f, ~"Ho");
-    log(debug, q);
+    log(debug, copy q);
     assert q.a == 44.44f;
     assert q.b == ~"Ho";
 }

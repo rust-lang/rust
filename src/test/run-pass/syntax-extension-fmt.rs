@@ -1,8 +1,8 @@
 extern mod std;
 
 fn test(actual: ~str, expected: ~str) {
-    log(debug, actual);
-    log(debug, expected);
+    log(debug, copy actual);
+    log(debug, copy expected);
     assert (actual == expected);
 }
 

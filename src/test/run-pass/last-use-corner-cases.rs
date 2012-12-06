@@ -21,7 +21,7 @@ fn main() {
     // Check that no false positives are found in loops.
     let mut q = ~40, p = 10;
     loop {
-        let i = q;
+        let i = copy q;
         p += *i;
         if p > 100 { break; }
     }

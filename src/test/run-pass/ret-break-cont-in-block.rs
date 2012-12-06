@@ -22,8 +22,8 @@ fn find_pos<T:Eq>(n: T, h: ~[T]) -> Option<uint> {
 
 fn bail_deep(x: ~[~[bool]]) {
     let mut seen = false;
-    for iter(x) |x| {
-        for iter(x) |x| {
+    for iter(copy x) |x| {
+        for iter(copy x) |x| {
             assert !seen;
             if x { seen = true; return; }
         }

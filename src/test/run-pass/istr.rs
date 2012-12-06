@@ -1,6 +1,6 @@
 fn test_stack_assign() {
     let s: ~str = ~"a";
-    log(debug, s);
+    log(debug, copy s);
     let t: ~str = ~"a";
     assert (s == t);
     let u: ~str = ~"b";
@@ -39,7 +39,7 @@ fn test_append() {
 
     let mut s = ~"a";
     s += ~"b";
-    log(debug, s);
+    log(debug, copy s);
     assert (s == ~"ab");
 
     let mut s = ~"c";
