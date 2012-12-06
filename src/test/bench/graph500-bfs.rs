@@ -407,7 +407,7 @@ fn main() {
                                  vec::len(edges), stop - start));
 
     let start = time::precise_time_s();
-    let graph = make_graph(1 << scale, edges);
+    let graph = make_graph(1 << scale, copy edges);
     let stop = time::precise_time_s();
 
     let mut total_edges = 0;

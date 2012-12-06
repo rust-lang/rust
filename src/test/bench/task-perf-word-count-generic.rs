@@ -270,8 +270,10 @@ mod map_reduce {
                     // log(error, "creating new reducer for " + k);
                     let p = Port();
                     let ch = Chan(&p);
-                    let r = reduce, kk = k;
-                    tasks.push(spawn_joinable(|move r| reduce_task(~r, kk, ch) ));
+                    let r = copy reduce, kk = k;
+                    tasks.push(spawn_joinable(|move r|
+                        reduce_task(~copy r, kk, ch)
+                    ));
                     c = recv(p);
                     reducers.insert(k, c);
                   }

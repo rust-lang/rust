@@ -90,7 +90,7 @@ fn main() {
         args
     };
 
-    let opts = parse_opts(args);
+    let opts = parse_opts(copy args);
 
     if opts.stress {
         stress(2);

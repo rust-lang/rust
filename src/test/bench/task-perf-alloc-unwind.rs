@@ -75,7 +75,7 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
           }
           Some(st) => {
             let fn_box = st.fn_box;
-            let fn_unique = st.fn_unique;
+            let fn_unique = copy st.fn_unique;
 
             st_({
                 box: @Cons((), st.box),
