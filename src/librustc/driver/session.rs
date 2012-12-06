@@ -65,6 +65,7 @@ const debug_llvm: uint = 1 << 13;
 const count_type_sizes: uint = 1 << 14;
 const meta_stats: uint = 1 << 15;
 const no_opt: uint = 1 << 16;
+const no_monomorphic_collapse: uint = 1 << 17;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -90,6 +91,8 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       count_type_sizes),
      (~"meta-stats", ~"gather metadata statistics", meta_stats),
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
+     (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
+      no_monomorphic_collapse),
     ]
 }
 
@@ -242,6 +245,9 @@ impl Session {
     fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
     fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
     fn borrowck_note_loan() -> bool { self.debugging_opt(borrowck_note_loan) }
+    fn no_monomorphic_collapse() -> bool {
+        self.debugging_opt(no_monomorphic_collapse)
+    }
 
     fn str_of(id: ast::ident) -> ~str {
         *self.parse_sess.interner.get(id)
