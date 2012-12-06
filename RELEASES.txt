@@ -3,36 +3,46 @@ Version 0.5 (December 2012)
 
    * ~700 changes, numerous bugfixes
 
-   * Language
-      * Traits may inherit from other traits
-      * Traits may declare default methods for the impls to use
-      * More support for explicit self arguments in methods - `self`, `&self`
-        `@self`, and `~self` all generally work as expected
-      * Static methods improved to work in more situations
+   * Syntax changes
+      * Removed `<-` move operator
       * Completed the transition from the `#fmt` extension syntax to `fmt!`
       * Removed old fixed length vector syntax - `[T]/N`
-      * Item macros
-      * Remove `<-` move operator
-      * Tuple structs - `struct Foo(Bar, Baz)`. Will replace newtype enums.
-      * Eq impls can be derived with #[deriving_eq]
-      * IterBytes impls can be derived with #[deriving_iter_bytes]
-      * Destructors can be added to all nominal types with the Drop trait
-      * Removed the special crate language for .rc files
       * New token-based quasi-quoter, `quote!`
-      * More things can be constants now, including structs and
-        nullary enum variants
+      * Macros may now expand to items
+      * `a.b()` is always parsed as a method call, never as a field projection
+      * `Eq` and `IterBytes` implementations can be automatically generated
+        with `#[deriving_eq]` and `#[deriving_iter_bytes]` respectively
+      * Removed the special crate language for `.rc` files
+
+   * Semantic changes
+      * `&` and `~` pointers may point to objects
+      * Tuple structs - `struct Foo(Bar, Baz)`. Will replace newtype enums.
+      * Enum variants may be structs
+      * Destructors can be added to all nominal types with the Drop trait
+      * Structs and nullary enum variants may be constants
+      * Values that cannot be implicitly copied are now automatically moved
+        without writing `move` explicitly
+      * `&T` may now be coerced to `*T`
+      * Coercions happen in `let` statements as well as function calls
+
+   * Improved support for language features
+      * Trait inheritance is much more complete
+      * Traits may declare default methods for the implementations to use
+      * More support for explicit self arguments in methods - `self`, `&self`
+        `@self`, and `~self` all generally work as expected
+      * Static methods work in more situations
 
    * Libraries
-      * New condition handling system in core::condition
-      * Timsort added to std::sort
+      * New condition handling system in `core::condition`
+      * Timsort added to `std::sort`
       * Serialization overhauled to be trait-based
-      * Expanded getopts definitions
-      * Moved futures to std
+      * Expanded `getopts` definitions
+      * Moved futures to `std`
       * More functions are pure now
 
    * Tools
-      * Added a new, but still immature, REPL, rusti
-      * rustdoc and cargo are libraries now
+      * Added a new (still immature) REPL, `rusti`
+      * `rustdoc` and `cargo` are libraries now
 
 Version 0.4 (October 2012)
 --------------------------
