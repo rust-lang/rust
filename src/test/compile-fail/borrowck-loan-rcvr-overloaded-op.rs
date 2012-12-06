@@ -4,7 +4,7 @@ struct Point {
 }
 
 impl Point : ops::Add<int,int> {
-    pure fn add(z: &int) -> int {
+    pure fn add(&self, z: &int) -> int {
         self.x + self.y + (*z)
     }
 }
