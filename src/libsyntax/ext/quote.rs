@@ -62,11 +62,11 @@ pub fn expand_quote_pat(cx: ext_ctxt,
                                     ~[e_refutable], tts))
 }
 
-pub fn expand_quote_type(cx: ext_ctxt,
-                         sp: span,
-                         tts: ~[ast::token_tree]) -> base::mac_result {
+pub fn expand_quote_ty(cx: ext_ctxt,
+                       sp: span,
+                       tts: ~[ast::token_tree]) -> base::mac_result {
     let e_param_colons = build::mk_lit(cx, sp, ast::lit_bool(false));
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_type",
+    base::mr_expr(expand_parse_call(cx, sp, ~"parse_ty",
                                     ~[e_param_colons], tts))
 }
 
