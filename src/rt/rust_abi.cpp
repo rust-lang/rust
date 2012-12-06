@@ -21,7 +21,7 @@
 #define HAVE_DLFCN_H
 #include <dlfcn.h>
 #elif defined(_WIN32)
-// FIXME #2889
+// Otherwise it's windows.h -- included in rust_abi.h
 #endif
 
 #define END_OF_STACK_RA     (void (*)())0xdeadbeef
