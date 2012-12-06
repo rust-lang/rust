@@ -163,6 +163,7 @@ trait ext_ctxt {
     fn codemap() -> @CodeMap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
+    fn call_site() -> span;
     fn print_backtrace();
     fn backtrace() -> Option<@ExpnInfo>;
     fn mod_push(mod_name: ast::ident);
@@ -195,6 +196,12 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn codemap() -> @CodeMap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
+        fn call_site() -> span {
+            match self.backtrace {
+                Some(@ExpandedFrom({call_site: cs, _})) => cs,
+                None => self.bug(~"missing top span")
+            }
+        }
         fn print_backtrace() { }
         fn backtrace() -> Option<@ExpnInfo> { self.backtrace }
         fn mod_push(i: ast::ident) { self.mod_path.push(i); }
