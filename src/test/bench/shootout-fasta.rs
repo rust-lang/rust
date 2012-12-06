@@ -36,7 +36,7 @@ fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
             } else { return bisect(v, mid, hi, target); }
         } else { return v[hi].ch; }
     }
-    return bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
+    return bisect(copy genelist, 0, vec::len::<aminoacids>(genelist) - 1, r);
 }
 
 fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {

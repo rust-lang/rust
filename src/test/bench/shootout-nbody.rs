@@ -25,7 +25,7 @@ fn main() {
     };
     let n = int::from_str(args[1]).get();
     let bodies: ~[Body::props] = NBodySystem::make();
-    io::println(fmt!("%f", NBodySystem::energy(bodies)));
+    io::println(fmt!("%f", NBodySystem::energy(copy bodies)));
     let mut i = 0;
     while i < n { NBodySystem::advance(bodies, 0.01); i += 1; }
     io::println(fmt!("%f", NBodySystem::energy(bodies)));
