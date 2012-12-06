@@ -117,6 +117,12 @@ transcriber (therefore `() => ((1,2,3))` is a macro that expands to a tuple
 expression, `() => (let $x=$val)` is a macro that expands to a statement, and
 `() => (1,2,3)` is a macro that expands to a syntax errror).
 
+Except for permissibility of `$name` (and `$(...)*`, discussed below), the
+right-hand side of a macro definition follows the same rules as ordinary
+Rust syntax. In particular, macro invocations (including invocations of the
+macro currently being defined) are permitted in expression, statement, and
+item locations.
+
 ## Interpolation location
 
 The interpolation `$argument_name` may appear in any location consistent with
