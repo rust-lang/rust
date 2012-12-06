@@ -11,7 +11,6 @@ impl r : Drop {
 }
 
 fn f<T>(+i: ~[T], +j: ~[T]) {
-    let k = i + j;
 }
 
 fn main() {
@@ -19,7 +18,7 @@ fn main() {
     let i2 = @mut 1;
     let r1 = move ~[~r { i: i1 }];
     let r2 = move ~[~r { i: i2 }];
-    f(r1, r2);
+    f(copy r1, copy r2);
     log(debug, (r2, *i1));
     log(debug, (r1, *i2));
 }

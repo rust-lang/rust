@@ -19,7 +19,7 @@ fn my_resource(x: int) -> my_resource {
 fn main() {
     {
         let a = {x: 0, y: my_resource(20)};
-        let b = {x: 2,.. a};
+        let b = {x: 2,.. copy a};
         log(error, (a, b));
     }
 }

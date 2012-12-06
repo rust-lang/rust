@@ -21,7 +21,7 @@ fn main() {
     {
         // Can't do this copy
         let x = ~~~{y: r(i)};
-        let z = x;
+        let z = copy x;
         log(debug, x);
     }
     log(error, *i);
