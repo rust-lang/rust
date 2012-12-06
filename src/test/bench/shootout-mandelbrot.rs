@@ -33,7 +33,7 @@ impl cmplx : ops::Mul<cmplx,cmplx> {
 }
 
 impl cmplx : ops::Add<cmplx,cmplx> {
-    pure fn add(x: &cmplx) -> cmplx {
+    pure fn add(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re + (*x).re,
             im: self.im + (*x).im
@@ -145,7 +145,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
         }
         else {
             debug!("S %u", aline.i);
-            lines.insert(aline.i, aline.b);
+            lines.insert(aline.i, copy aline.b);    // FIXME: bad for perf
         };
         i += 1_u;
     }
@@ -160,7 +160,7 @@ fn main() {
     };
 
     let path = if vec::len(args) < 4_u { ~"" }
-    else { args[3] };
+    else { copy args[3] };  // FIXME: bad for perf
 
     let yieldevery = if vec::len(args) < 3_u { 10_u }
     else { uint::from_str(args[2]).get() };
@@ -170,8 +170,8 @@ fn main() {
 
     let writep = comm::Port();
     let writech = comm::Chan(&writep);
-    do task::spawn {
-        writer(path, writech, size);
+    do task::spawn |move path| {
+        writer(copy path, writech, size);
     };
     let ch = comm::recv(writep);
     for uint::range(0_u, size) |j| {
