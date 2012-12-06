@@ -7,7 +7,7 @@ fn failfn() {
 fn main() {
     let y = ~0;
     let x = @fn~() {
-        log(error, y);
+        log(error, copy y);
     };
     failfn();
     log(error, x);
