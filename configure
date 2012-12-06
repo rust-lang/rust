@@ -114,7 +114,38 @@ probe_need() {
     fi
 }
 
+validate_opt () {
+    for arg in $CFG_CONFIGURE_ARGS
+    do
+        isArgValid=0
+        for option in $BOOL_OPTIONS
+        do
+            if test --disable-$option = $arg
+            then
+                isArgValid=1
+            fi
+            if test --enable-$option = $arg
+            then
+                isArgValid=1
+            fi
+        done
+        for option in $VAL_OPTIONS
+        do
+            if echo "$arg" | grep -q -- "--$option="
+            then
+                isArgValid=1
+            fi
+        done
+        if test $isArgValid -eq 0
+        then
+            err "Option '$arg' is not recognized"
+        fi
+    done
+}
+
 valopt() {
+    VAL_OPTIONS="$VAL_OPTIONS $1"
+
     local OP=$1
     local DEFAULT=$2
     shift
@@ -145,6 +176,8 @@ valopt() {
 }
 
 opt() {
+    BOOL_OPTIONS="$BOOL_OPTIONS $1"
+
     local OP=$1
     local DEFAULT=$2
     shift
@@ -293,6 +326,9 @@ else
     step_msg "processing $CFG_SELF args"
 fi
 
+BOOL_OPTIONS=""
+VAL_OPTIONS=""
+
 opt sharedstd 1 "build libstd as a shared library"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
@@ -312,6 +348,10 @@ valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
 valopt host-triple "${DEFAULT_HOST_TRIPLE}" "LLVM host triple"
 valopt target-triples "${CFG_HOST_TRIPLE}" "LLVM target triples"
+
+# Validate Options
+step_msg "validating $CFG_SELF args"
+validate_opt
 
 if [ $HELP -eq 1 ]
 then
