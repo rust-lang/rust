@@ -192,9 +192,6 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
 
             visit::visit_mod(the_module, span, node_id, method_map, visitor);
 
-            // FIXME #4054: n_added gets corrupted without this log statement
-            debug!("%i", n_added);
-
             for n_added.times {
                 ignore(privileged_items.pop());
             }
