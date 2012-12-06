@@ -13,7 +13,7 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
 
 fn find_pos<T:Eq>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
-    for iter(h) |e| {
+    for iter(copy h) |e| {
         if e == n { return Some(i); }
         i += 1u;
     }
