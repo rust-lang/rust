@@ -86,65 +86,6 @@ fn id_ext(cx: ext_ctxt, str: ~str) -> ast::ident {
     cx.parse_sess().interner.intern(@str)
 }
 
-fn mk_option_span(cx: ext_ctxt,
-                  qsp: span,
-                  sp: Option<span>) -> @ast::expr {
-    match sp {
-        None => build::mk_path(cx, qsp, ids_ext(cx, ~[~"None"])),
-        Some(sp) => {
-            build::mk_call(cx, qsp,
-                           ids_ext(cx, ~[~"Some"]),
-                           ~[build::mk_managed(cx, qsp,
-                                               mk_span(cx, qsp, sp))])
-        }
-    }
-}
-
-fn mk_span(cx: ext_ctxt, qsp: span, sp: span) -> @ast::expr {
-
-    let e_expn_info = match sp.expn_info {
-        None => build::mk_path(cx, qsp, ids_ext(cx, ~[~"None"])),
-        Some(@codemap::ExpandedFrom(ref cr)) => {
-            let e_callee =
-                build::mk_rec_e(
-                    cx, qsp,
-                    ~[{ident: id_ext(cx, ~"name"),
-                       ex: build::mk_uniq_str(cx, qsp,
-                                              (*cr).callie.name)},
-                      {ident: id_ext(cx, ~"span"),
-                       ex: mk_option_span(cx, qsp, (*cr).callie.span)}]);
-
-            let e_expn_info_ =
-                build::mk_call(
-                    cx, qsp,
-                    ids_ext(cx, ~[~"expanded_from"]),
-                    ~[build::mk_rec_e(
-                        cx, qsp,
-                        ~[{ident: id_ext(cx, ~"call_site"),
-                           ex: mk_span(cx, qsp, (*cr).call_site)},
-                          {ident: id_ext(cx, ~"callie"),
-                           ex: e_callee}])]);
-
-            build::mk_call(cx, qsp,
-                           ids_ext(cx, ~[~"Some"]),
-                           ~[build::mk_managed(cx, qsp, e_expn_info_)])
-        }
-    };
-
-    let span_path = ids_ext(cx, ~[~"span"]);
-
-    build::mk_struct_e(cx, qsp,
-                       span_path,
-                    ~[{ident: id_ext(cx, ~"lo"),
-                       ex: mk_bytepos(cx, qsp, sp.lo) },
-
-                      {ident: id_ext(cx, ~"hi"),
-                       ex: mk_bytepos(cx, qsp, sp.hi) },
-
-                      {ident: id_ext(cx, ~"expn_info"),
-                       ex: e_expn_info}])
-}
-
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
     let e_meth = build::mk_access(cx, sp,
@@ -321,59 +262,121 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
 }
 
 
-fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree) -> @ast::expr {
+fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree)
+    -> ~[@ast::stmt] {
+
     match *tt {
+
         ast::tt_tok(sp, ref tok) => {
+            let e_sp = build::mk_path(cx, sp,
+                                      ids_ext(cx, ~[~"sp"]));
             let e_tok =
                 build::mk_call(cx, sp,
                                ids_ext(cx, ~[~"tt_tok"]),
-                               ~[mk_span(cx, sp, sp),
-                                 mk_token(cx, sp, (*tok))]);
-            build::mk_uniq_vec_e(cx, sp, ~[e_tok])
+                               ~[e_sp, mk_token(cx, sp, *tok)]);
+            let e_push =
+                build::mk_call_(cx, sp,
+                                build::mk_access(cx, sp,
+                                                 ids_ext(cx, ~[~"tt"]),
+                                                 id_ext(cx, ~"push")),
+                                ~[e_tok]);
+            ~[build::mk_stmt(cx, sp, e_push)]
+
         }
 
-        ast::tt_delim(ref tts) => {
-            let e_delim =
-                build::mk_call(cx, sp,
-                               ids_ext(cx, ~[~"tt_delim"]),
-                               ~[mk_tts(cx, sp, (*tts))]);
-            build::mk_uniq_vec_e(cx, sp, ~[e_delim])
-        }
-
+        ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
         ast::tt_seq(*) => fail ~"tt_seq in quote!",
 
-        ast::tt_nonterminal(sp, ident) =>
-        build::mk_copy(cx, sp, build::mk_path(cx, sp, ~[ident]))
+        ast::tt_nonterminal(sp, ident) => {
+            let e_push =
+                build::mk_call_(cx, sp,
+                                build::mk_access
+                                (cx, sp,
+                                 ids_ext(cx, ~[~"tt"]),
+                                 id_ext(cx, ~"push_all_move")),
+                                ~[build::mk_path(cx, sp, ~[ident])]);
+            ~[build::mk_stmt(cx, sp, e_push)]            
+        }
     }
 }
 
-fn mk_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree]) -> @ast::expr {
-    let e_tts = tts.map(|tt| mk_tt(cx, sp, tt));
-    build::mk_call(cx, sp,
-                   ids_ext(cx, ~[~"vec", ~"concat"]),
-                   ~[build::mk_slice_vec_e(cx, sp, e_tts)])
+fn mk_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
+    -> ~[@ast::stmt] {
+    let mut ss = ~[];
+    for tts.each |tt| {
+        ss.push_all_move(mk_tt(cx, sp, tt));
+    }
+    ss
 }
 
 fn expand_tts(cx: ext_ctxt,
               sp: span,
               tts: ~[ast::token_tree]) -> @ast::expr {
+
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
     // under quote_depth > 0. This is silly and should go away; the _guess_ is
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.
+
     let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts);
     p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
     p.abort_if_errors();
 
     // We want to emit a block expression that does a sequence of 'use's to
-    // import the runtime module, followed by a tt expression.
+    // import the runtime module, followed by a tt-building expression.
+
     let uses = ~[ build::mk_glob_use(cx, sp, ids_ext(cx, ~[~"syntax",
                                                            ~"ext",
                                                            ~"quote",
                                                            ~"rt"])) ];
-    build::mk_block(cx, sp, uses, ~[], Some(mk_tts(cx, sp, tts)))
+
+    // We also bind a single value, sp, to ext_cx.call_site()
+    //
+    // This causes every span in a token-tree quote to be attributed to the
+    // call site of the extension using the quote. We can't really do much
+    // better since the source of the quote may well be in a library that
+    // was not even parsed by this compilation run, that the user has no
+    // source code for (eg. in libsyntax, which they're just _using_).
+    //
+    // The old quasiquoter had an elaborate mechanism for denoting input
+    // file locations from which quotes originated; unfortunately this
+    // relied on feeding the source string of the quote back into the
+    // compiler (which we don't really want to do) and, in any case, only
+    // pushed the problem a very small step further back: an error
+    // resulting from a parse of the resulting quote is still attributed to
+    // the site the string literal occured, which was in a source file
+    // _other_ than the one the user has control over. For example, an
+    // error in a quote from the protocol compiler, invoked in user code
+    // using proto! for example, will be attributed to the pipec.rs file in
+    // libsyntax, which the user might not even have source to (unless they
+    // happen to have a compiler on hand). Over all, the phase distinction
+    // just makes quotes "hard to attribute". Possibly this could be fixed
+    // by recreating some of the original qq machinery in the tt regime
+    // (pushing fake FileMaps onto the parser to account for original sites
+    // of quotes, for example) but at this point it seems not likely to be
+    // worth the hassle.
+
+    let e_sp = build::mk_call_(cx, sp,
+                               build::mk_access(cx, sp,
+                                                ids_ext(cx, ~[~"ext_cx"]),
+                                                id_ext(cx, ~"call_site")),
+                               ~[]);
+
+    let stmt_let_sp = build::mk_local(cx, sp, false,
+                                      id_ext(cx, ~"sp"),
+                                      e_sp);
+    
+    let stmt_let_tt = build::mk_local(cx, sp, true,
+                                      id_ext(cx, ~"tt"),
+                                      build::mk_uniq_vec_e(cx, sp, ~[]));
+
+    build::mk_block(cx, sp, uses,
+                    ~[stmt_let_sp,
+                      stmt_let_tt] + mk_tts(cx, sp, tts),
+                    Some(build::mk_path(cx, sp,
+                                        ids_ext(cx, ~[~"tt"]))))
 }
 
 fn expand_parse_call(cx: ext_ctxt,
