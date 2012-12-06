@@ -86,7 +86,8 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
                 let self_kind = match mth.self_ty.node {
                     ast::sty_static => no_self,
                     _ => {
-                        let self_ty = ty::node_id_to_type(ccx.tcx, mth.self_id);
+                        let self_ty = ty::node_id_to_type(ccx.tcx,
+                                                          mth.self_id);
                         debug!("calling inline trans_fn with self_ty %s",
                                ty_to_str(ccx.tcx, self_ty));
                         match mth.self_ty.node {
