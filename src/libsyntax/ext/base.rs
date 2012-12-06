@@ -123,8 +123,8 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
         ~"quote_tokens", builtin_normal_tt(ext::quote::expand_quote_tokens));
     syntax_expanders.insert(~"quote_expr",
                             builtin_normal_tt(ext::quote::expand_quote_expr));
-    syntax_expanders.insert(~"quote_type",
-                            builtin_normal_tt(ext::quote::expand_quote_type));
+    syntax_expanders.insert(~"quote_ty",
+                            builtin_normal_tt(ext::quote::expand_quote_ty));
     syntax_expanders.insert(~"quote_item",
                             builtin_normal_tt(ext::quote::expand_quote_item));
     syntax_expanders.insert(~"quote_pat",
