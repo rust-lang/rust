@@ -87,7 +87,10 @@ pub fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
 // bits in this number of bytes actually carry data related to the datum
 // with the type. Not junk, padding, accidentally-damaged words, or
 // whatever. Rounds up to the nearest byte though, so if you have a 1-bit
-// value, we return 1 here, not 0. Most of rustc works in bytes.
+// value, we return 1 here, not 0. Most of rustc works in bytes. Be warned
+// that LLVM *does* distinguish between e.g. a 1-bit value and an 8-bit value
+// at the codegen level! In general you should prefer `llbitsize_of_real`
+// below.
 pub fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, t) as uint;
     if nbits & 7u != 0u {
@@ -96,6 +99,11 @@ pub fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     } else {
         nbits >> 3
     }
+}
+
+/// Returns the "real" size of the type in bits.
+pub fn llbitsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+    llvm::LLVMSizeOfTypeInBits(cx.td.lltd, t) as uint
 }
 
 // Returns the "default" size of t, which is calculated by casting null to a

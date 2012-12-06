@@ -961,8 +961,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             let llout_ty = type_of::type_of(ccx, substs.tys[1]);
-            let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
-            out_sz = shape::llsize_of_real(ccx, llout_ty);
+            let tp_sz = machine::llbitsize_of_real(ccx, lltp_ty),
+            out_sz = machine::llbitsize_of_real(ccx, llout_ty);
           if tp_sz != out_sz {
               let sp = match ccx.tcx.items.get(ref_id.get()) {
                   ast_map::node_expr(e) => e.span,
@@ -970,7 +970,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
               };
               ccx.sess.span_fatal(
                   sp, fmt!("reinterpret_cast called on types \
-                            with different size: %s (%u) to %s (%u)",
+                            with different size: %s (%u bit(s)) to %s \
+                            (%u bit(s))",
                            ty_to_str(ccx.tcx, tp_ty), tp_sz,
                            ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
           }

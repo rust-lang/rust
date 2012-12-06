@@ -329,7 +329,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                         !ty::type_needs_drop(ccx.tcx, subst)
                     {
                         let llty = type_of::type_of(ccx, subst);
-                        let size = shape::llsize_of_real(ccx, llty);
+                        let size = machine::llbitsize_of_real(ccx, llty);
                         let align = shape::llalign_of_pref(ccx, llty);
                         let mode = datum::appropriate_mode(subst);
 
@@ -344,7 +344,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
 
                         // Special value for nil to prevent problems
                         // with undef return pointers.
-                        if size == 1u && ty::type_is_nil(subst) {
+                        if size <= 8u && ty::type_is_nil(subst) {
                             mono_repr(0u, 0u, is_float, mode)
                         } else {
                             mono_repr(size, align, is_float, mode)
