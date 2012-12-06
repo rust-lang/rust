@@ -17,7 +17,6 @@ use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::pat_util::{pat_bindings};
 use syntax::ast::{_mod, add, arm};
-use syntax::ast::{bind_by_ref, bind_by_implicit_ref, bind_by_value};
 use syntax::ast::{bitand, bitor, bitxor};
 use syntax::ast::{binding_mode, blk, capture_clause, class_ctor, class_dtor};
 use syntax::ast::{crate, crate_num, decl_item};

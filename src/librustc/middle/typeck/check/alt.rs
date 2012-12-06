@@ -358,13 +358,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
           // otherwise the type of x is the expected type T
-          ast::bind_by_value => {
-            demand::eqtype(fcx, pat.span, expected, typ);
-          }
-          ast::bind_by_move => {
-            demand::eqtype(fcx, pat.span, expected, typ);
-          }
-          ast::bind_by_implicit_ref => {
+          ast::bind_by_value | ast::bind_by_move | ast::bind_infer => {
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }

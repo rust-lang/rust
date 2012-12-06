@@ -309,7 +309,7 @@ enum binding_mode {
     bind_by_value,
     bind_by_move,
     bind_by_ref(ast::mutability),
-    bind_by_implicit_ref
+    bind_infer
 }
 
 impl binding_mode : to_bytes::IterBytes {
@@ -322,7 +322,7 @@ impl binding_mode : to_bytes::IterBytes {
           bind_by_ref(ref m) =>
           to_bytes::iter_bytes_2(&2u8, m, lsb0, f),
 
-          bind_by_implicit_ref =>
+          bind_infer =>
           3u8.iter_bytes(lsb0, f),
         }
     }
@@ -349,9 +349,9 @@ impl binding_mode : cmp::Eq {
                     _ => false
                 }
             }
-            bind_by_implicit_ref => {
+            bind_infer => {
                 match (*other) {
-                    bind_by_implicit_ref => true,
+                    bind_infer => true,
                     _ => false
                 }
             }

@@ -291,7 +291,7 @@ pub impl<
             Number(v) => v.serialize(s),
             String(ref v) => v.serialize(s),
             Boolean(v) => v.serialize(s),
-            List(v) => v.serialize(s),
+            List(ref v) => v.serialize(s),
             Object(ref v) => {
                 do s.emit_rec || {
                     let mut idx = 0;
@@ -927,8 +927,8 @@ impl Json : Eq {
                 match *other { Boolean(b1) => b0 == b1, _ => false },
             Null =>
                 match *other { Null => true, _ => false },
-            List(v0) =>
-                match *other { List(v1) => v0 == v1, _ => false },
+            List(ref v0) =>
+                match *other { List(ref v1) => v0 == v1, _ => false },
             Object(ref d0) => {
                 match *other {
                     Object(ref d1) => {
@@ -981,10 +981,10 @@ impl Json : Ord {
                 }
             }
 
-            List(l0) => {
+            List(ref l0) => {
                 match *other {
                     Number(_) | String(_) | Boolean(_) => false,
-                    List(l1) => l0 < l1,
+                    List(ref l1) => (*l0) < (*l1),
                     Object(_) | Null => true
                 }
             }
