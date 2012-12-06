@@ -249,7 +249,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
              middle::check_loop::check_crate(ty_cx, crate));
 
         time(time_passes, ~"alt checking", ||
-             middle::check_alt::check_crate(ty_cx, crate));
+             middle::check_alt::check_crate(ty_cx, method_map, crate));
 
         time(time_passes, ~"mode computation", ||
              middle::mode::compute_modes(ty_cx, method_map, crate));
