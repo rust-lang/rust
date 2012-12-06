@@ -7,7 +7,7 @@ fn main() {
     // Create a cycle!
     match *x { //~ NOTE loan of immutable local variable granted here
       node(ref y) => {
-        y.a = move x; //~ ERROR moving out of immutable local variable prohibited due to outstanding loan
+        y.a = x; //~ ERROR moving out of immutable local variable prohibited due to outstanding loan
       }
       empty => {}
     };
