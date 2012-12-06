@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty::{CopyValue, MoveValue, ReadValue};
+
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::ast_util::{path_to_ident, respan, walk_pat};
@@ -93,16 +95,25 @@ fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[node_id] {
     return found;
 }
 
-fn arms_have_by_move_bindings(dm: resolve::DefMap, +arms: &[arm]) -> bool {
+fn arms_have_by_move_bindings(tcx: ty::ctxt, +arms: &[arm]) -> bool {
     for arms.each |arm| {
         for arm.pats.each |pat| {
             let mut found = false;
-            do pat_bindings(dm, *pat) |binding_mode, _node_id, _span, _path| {
+            do pat_bindings(tcx.def_map, *pat)
+                    |binding_mode, node_id, span, _path| {
                 match binding_mode {
                     bind_by_move => found = true,
-                    bind_by_implicit_ref |
-                    bind_by_ref(*) |
-                    bind_by_value => {}
+                    bind_infer => {
+                        match tcx.value_modes.find(node_id) {
+                            Some(MoveValue) => found = true,
+                            Some(CopyValue) | Some(ReadValue) => {}
+                            None => {
+                                tcx.sess.span_bug(span, ~"pat binding not in \
+                                                          value mode map");
+                            }
+                        }
+                    }
+                    bind_by_ref(*) | bind_by_value => {}
                 }
             }
             if found { return true; }

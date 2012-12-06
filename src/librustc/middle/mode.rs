@@ -1,15 +1,16 @@
+use middle::pat_util;
 use middle::ty;
 use middle::ty::{CopyValue, MoveValue, ReadValue, ValueMode, ctxt};
 use middle::typeck::{method_map, method_map_entry};
 
 use core::vec;
 use std::map::HashMap;
-use syntax::ast::{by_copy, by_move, by_ref, by_val, crate, expr, expr_assign};
-use syntax::ast::{expr_addr_of, expr_assign_op, expr_binary, expr_call};
-use syntax::ast::{expr_copy, expr_field, expr_index, expr_method_call};
-use syntax::ast::{expr_path, expr_swap, expr_unary, node_id, sty_uniq};
-use syntax::ast::{sty_value};
-use syntax::ast::{box, uniq, deref, not, neg, expr_match, expr_paren};
+use syntax::ast::{bind_infer, by_copy, by_move, by_ref, by_val, crate, expr};
+use syntax::ast::{expr_addr_of, expr_assign, expr_assign_op, expr_binary};
+use syntax::ast::{expr_call, expr_copy, expr_field, expr_index, expr_match};
+use syntax::ast::{expr_method_call, expr_paren, expr_path, expr_swap};
+use syntax::ast::{expr_unary, node_id, pat, pat_ident, sty_uniq, sty_value};
+use syntax::ast::{box, uniq, deref, not, neg};
 use syntax::visit;
 use syntax::visit::vt;
 
@@ -159,8 +160,14 @@ fn compute_modes_for_expr(expr: @expr,
             record_mode_for_expr(expr, cx);
         }
         expr_match(head, ref arms) => {
+            // We must do this first so that `arms_have_by_move_bindings`
+            // below knows which bindings are moves.
+            for arms.each |arm| {
+                (v.visit_arm)(*arm, cx, v);
+            }
+
             let by_move_bindings_present =
-                pat_util::arms_have_by_move_bindings(cx.tcx.def_map, *arms);
+                pat_util::arms_have_by_move_bindings(cx.tcx, *arms);
             if by_move_bindings_present {
                 // Propagate the current mode flag downward.
                 visit::visit_expr(expr, cx, v);
@@ -168,9 +175,6 @@ fn compute_modes_for_expr(expr: @expr,
                 // We aren't moving into any pattern, so this is just a read.
                 let head_cx = VisitContext { mode: ReadValue, ..cx };
                 compute_modes_for_expr(head, head_cx, v);
-                for arms.each |arm| {
-                    (v.visit_arm)(*arm, cx, v);
-                }
             }
         }
         _ => {
@@ -181,9 +185,28 @@ fn compute_modes_for_expr(expr: @expr,
     }
 }
 
+fn compute_modes_for_pat(pat: @pat,
+                         &&cx: VisitContext,
+                         v: vt<VisitContext>) {
+    match pat.node {
+        pat_ident(bind_infer, _, _)
+                if pat_util::pat_is_binding(cx.tcx.def_map, pat) => {
+            if ty::type_implicitly_moves(cx.tcx, ty::pat_ty(cx.tcx, pat)) {
+                cx.tcx.value_modes.insert(pat.id, MoveValue);
+            } else {
+                cx.tcx.value_modes.insert(pat.id, CopyValue);
+            }
+        }
+        _ => {}
+    }
+
+    visit::visit_pat(pat, cx, v);
+}
+
 pub fn compute_modes(tcx: ctxt, method_map: method_map, crate: @crate) {
     let visitor = visit::mk_vt(@{
         visit_expr: compute_modes_for_expr,
+        visit_pat: compute_modes_for_pat,
         .. *visit::default_visitor()
     });
     let callee_cx = VisitContext {

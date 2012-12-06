@@ -529,20 +529,9 @@ impl gather_loan_ctxt {
                         self.guarantee_valid(cmt, mutbl, scope_r);
                     }
                   }
-                  ast::bind_by_implicit_ref => {
-                    // Note: there is a discussion of the function of
-                    // cat_discr in the method preserve():
-                    let cmt1 = self.bccx.cat_discr(cmt, alt_id);
-                    let arm_scope = ty::re_scope(arm_id);
-
-                    // We used to remember the mutability of the location
-                    // that this binding refers to and use it later when
-                    // categorizing the binding.  This hack is being
-                    // removed in favor of ref mode bindings.
-                    //
-                    // self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
-
-                    self.guarantee_valid(cmt1, m_const, arm_scope);
+                  ast::bind_infer => {
+                    // Nothing to do here; this is either a copy or a move;
+                    // thus either way there is nothing to check. Yay!
                   }
                 }
               }
