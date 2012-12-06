@@ -12,7 +12,7 @@ mod kitty {
   }
 
   impl cat {
-    fn get_name() -> ~str {  self.name }
+    fn get_name() -> ~str { copy self.name }
   }
 
     fn cat(in_name: ~str) -> cat {

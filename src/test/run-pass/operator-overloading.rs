@@ -25,7 +25,7 @@ impl Point : ops::Neg<Point> {
 }
 
 impl Point : ops::Index<bool,int> {
-    pure fn index(+x: bool) -> int {
+    pure fn index(&self, +x: bool) -> int {
         if x { self.x } else { self.y }
     }
 }
