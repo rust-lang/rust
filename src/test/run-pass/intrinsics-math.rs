@@ -51,7 +51,7 @@ fn main() {
     assert(powf32(25f32, -2f32) == 0.0016f32);
     assert(powf64(400f64, 0.5f64) == 20f64);
 
-    assert(expf32(1f32) == f32::consts::e);
+    assert(fabsf32(expf32(1f32) - f32::consts::e) < 0.000001f32);
     assert(expf64(1f64) == f64::consts::e);
 
     assert(exp2f32(10f32) == 1024f32);
