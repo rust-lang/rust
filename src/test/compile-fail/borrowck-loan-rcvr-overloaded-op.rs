@@ -30,7 +30,7 @@ fn b() {
 
     let q = &mut p; //~ NOTE prior loan as mutable granted here
 
-    p + 3; //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+    p + 3;  // ok for pure fns
     p.times(3); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
 
     q.x += 1;
