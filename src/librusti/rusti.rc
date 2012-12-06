@@ -246,7 +246,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     middle::check_loop::check_crate(ty_cx, crate);
 
     debug!("alt checking");
-    middle::check_alt::check_crate(ty_cx, crate);
+    middle::check_alt::check_crate(ty_cx, method_map, crate);
 
     debug!("liveness checking");
     let last_use_map = middle::liveness::check_crate(ty_cx,
