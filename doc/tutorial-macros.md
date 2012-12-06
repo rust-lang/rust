@@ -84,12 +84,27 @@ To take as an argument a fragment of Rust code, write `$` followed by a name
 * `pat` (a pattern, usually appearing in a `match` or on the left-hand side of
   a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)
 * `block` (a sequence of actions. Example: `{ log(error, "hi"); return 12; }`)
- 
+
 The parser interprets any token that's not preceded by a `$` literally. Rust's usual
 rules of tokenization apply,
 
 So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a macro
 that could be invoked like: `my_macro!(i->(( 2+2 )))`.
+
+## Invocation location
+
+A macro invocation may take the place of (and therefore expand to) either an
+expression, an item, or a statement. The Rust parser will parse the macro
+invocation as a "placeholder" for whichever of those three nonterminals is
+appropriate for the location.
+
+At expansion time, the output of the macro will be parsed as whichever of the
+three nonterminals it stands in for. This means that a single macro might,
+for example, expand to an item or an expression, depending on its arguments
+(and cause a syntax error if it is called with the wrong argument for its
+location). Although this behavior sounds excessively dynamic, it is known to
+be useful under some circumstances.
+
 
 # Transcription syntax
 
@@ -97,10 +112,16 @@ The right-hand side of the `=>` follows the same rules as the left-hand side,
 except that a `$` need only be followed by the name of the syntactic fragment
 to transcribe into the macro expansion; its type need not be repeated.
 
-The right-hand side must be enclosed by delimiters, and must be
-an expression. Currently, invocations of user-defined macros can only appear in a context
-where the Rust grammar requires an expression, even though `macro_rules!` itself can appear
-in a context where the grammar requires an item.
+The right-hand side must be enclosed by delimiters, which are ignored by the
+transcriber (therefore `() => ((1,2,3))` is a macro that expands to a tuple
+expression, `() => (let $x=$val)` is a macro that expands to a statement, and
+`() => (1,2,3)` is a macro that expands to a syntax errror).
+
+## Interpolation location
+
+The interpolation `$argument_name` may appear in any location consistent with
+its fragment specifier (i.e., if it is specified as `ident`, it may be used
+anywhere an identifier is permitted).
 
 # Multiplicity
 
@@ -163,7 +184,7 @@ fragments by the macro parser:
 fragment. For example, if the comma were omitted from the syntax of
 `early_return!` above, `input_1 [` would've been interpreted as the beginning
 of an array index. In fact, invoking the macro would have been impossible.
-2. The parser must have eliminated all ambiguity by the time it reaches a 
+2. The parser must have eliminated all ambiguity by the time it reaches a
 `$name:fragment_specifier` declaration. This limitation can result in parse
 errors when declarations occur at the beginning of, or immediately after,
 a `$(...)*`. For example, the grammar `$($t:ty)* $e:expr` will always fail to
