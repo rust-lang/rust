@@ -59,27 +59,25 @@ impl BytePos: cmp::Ord {
     pure fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
-impl BytePos: Num {
-    pure fn add(other: &BytePos) -> BytePos {
-        BytePos(*self + **other)
+#[cfg(stage0)]
+impl BytePos: Add<BytePos, BytePos> {
+    pure fn add(rhs: &BytePos) -> BytePos {
+        BytePos(*self + **rhs)
     }
-    pure fn sub(other: &BytePos) -> BytePos {
-        BytePos(*self - **other)
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl BytePos: Add<BytePos, BytePos> {
+    pure fn add(&self, rhs: &BytePos) -> BytePos {
+        BytePos(**self + **rhs)
     }
-    pure fn mul(other: &BytePos) -> BytePos {
-        BytePos(*self * (**other))
+}
+
+impl BytePos: Sub<BytePos, BytePos> {
+    pure fn sub(&self, rhs: &BytePos) -> BytePos {
+        BytePos(**self - **rhs)
     }
-    pure fn div(other: &BytePos) -> BytePos {
-        BytePos(*self / **other)
-    }
-    pure fn modulo(other: &BytePos) -> BytePos {
-        BytePos(*self % **other)
-    }
-    pure fn neg() -> BytePos {
-        BytePos(-*self)
-    }
-    pure fn to_int() -> int { *self as int }
-    static pure fn from_int(+n: int) -> BytePos { BytePos(n as uint) }
 }
 
 impl BytePos: to_bytes::IterBytes {
@@ -105,32 +103,30 @@ impl CharPos: cmp::Ord {
     pure fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
-impl CharPos: Num {
-    pure fn add(other: &CharPos) -> CharPos {
-        CharPos(*self + **other)
-    }
-    pure fn sub(other: &CharPos) -> CharPos {
-        CharPos(*self - **other)
-    }
-    pure fn mul(other: &CharPos) -> CharPos {
-        CharPos(*self * (**other))
-    }
-    pure fn div(other: &CharPos) -> CharPos {
-        CharPos(*self / **other)
-    }
-    pure fn modulo(other: &CharPos) -> CharPos {
-        CharPos(*self % **other)
-    }
-    pure fn neg() -> CharPos {
-        CharPos(-*self)
-    }
-    pure fn to_int() -> int { *self as int }
-    static pure fn from_int(+n: int) -> CharPos { CharPos(n as uint) }
-}
-
 impl CharPos: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
+    }
+}
+
+#[cfg(stage0)]
+impl CharPos: Add<CharPos, CharPos> {
+    pure fn add(rhs: &CharPos) -> CharPos {
+        CharPos(*self + **rhs)
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl CharPos: Add<CharPos, CharPos> {
+    pure fn add(&self, rhs: &CharPos) -> CharPos {
+        CharPos(**self + **rhs)
+    }
+}
+
+impl CharPos: Sub<CharPos, CharPos> {
+    pure fn sub(&self, rhs: &CharPos) -> CharPos {
+        CharPos(**self - **rhs)
     }
 }
 

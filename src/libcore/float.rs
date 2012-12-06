@@ -425,22 +425,22 @@ impl float : Ord {
 
 impl float: num::Num {
     #[inline(always)]
-    pub pure fn add(other: &float)    -> float { return self + *other; }
+    pub pure fn add(&self, other: &float) -> float { return *self + *other; }
     #[inline(always)]
-    pub pure fn sub(other: &float)    -> float { return self - *other; }
+    pub pure fn sub(&self, other: &float) -> float { return *self - *other; }
     #[inline(always)]
-    pub pure fn mul(other: &float)    -> float { return self * *other; }
+    pub pure fn mul(&self, other: &float) -> float { return *self * *other; }
     #[inline(always)]
-    pub pure fn div(other: &float)    -> float { return self / *other; }
+    pub pure fn div(&self, other: &float) -> float { return *self / *other; }
     #[inline(always)]
-    pure fn modulo(other: &float) -> float { return self % *other; }
+    pure fn modulo(&self, other: &float) -> float { return *self % *other; }
     #[inline(always)]
-    pure fn neg()                  -> float { return -self;        }
+    pure fn neg(&self)                  -> float { return -*self;        }
 
     #[inline(always)]
-    pure fn to_int()         -> int   { return self as int; }
+    pure fn to_int(&self)         -> int   { return *self as int; }
     #[inline(always)]
-    static pure fn from_int(n: int) -> float { return n as float;  }
+    static pure fn from_int(&self, n: int) -> float { return n as float;  }
 }
 
 #[test]

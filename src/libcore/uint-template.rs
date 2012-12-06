@@ -73,14 +73,14 @@ impl T : Eq {
 }
 
 impl T: num::Num {
-    pure fn add(other: &T)    -> T { return self + *other; }
-    pure fn sub(other: &T)    -> T { return self - *other; }
-    pure fn mul(other: &T)    -> T { return self * *other; }
-    pure fn div(other: &T)    -> T { return self / *other; }
-    pure fn modulo(other: &T) -> T { return self % *other; }
-    pure fn neg()              -> T { return -self;        }
+    pure fn add(&self, other: &T)    -> T { return *self + *other; }
+    pure fn sub(&self, other: &T)    -> T { return *self - *other; }
+    pure fn mul(&self, other: &T)    -> T { return *self * *other; }
+    pure fn div(&self, other: &T)    -> T { return *self / *other; }
+    pure fn modulo(&self, other: &T) -> T { return *self % *other; }
+    pure fn neg(&self)              -> T { return -*self;        }
 
-    pure fn to_int()         -> int { return self as int; }
+    pure fn to_int(&self)         -> int { return *self as int; }
     static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
