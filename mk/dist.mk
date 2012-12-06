@@ -21,6 +21,7 @@ PKG_FILES := \
     $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.txt                               \
+      driver                                   \
       libcargo                                 \
       librusti                                 \
       librustc                                 \
