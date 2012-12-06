@@ -50,10 +50,11 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                         fmt!("%s can only be used as a decorator", *extname));
                   }
                   Some(normal({expander: exp, span: exp_sp})) => {
-                    let expanded = exp(cx, (*mac).span, args, body);
 
                     cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
+                    let expanded = exp(cx, (*mac).span, args, body);
+
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -90,6 +91,9 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
                   Some(normal_tt({expander: exp, span: exp_sp})) => {
+                    cx.bt_push(ExpandedFrom({call_site: s,
+                                callie: {name: *extname, span: exp_sp}}));
+
                     let expanded = match exp(cx, (*mac).span, (*tts)) {
                       mr_expr(e) => e,
                       mr_any(expr_maker,_,_) => expr_maker(),
@@ -98,8 +102,6 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                                          *extname))
                     };
 
-                    cx.bt_push(ExpandedFrom({call_site: s,
-                                callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -107,13 +109,14 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     (fully_expanded, s)
                   }
                   Some(normal({expander: exp, span: exp_sp})) => {
+                    cx.bt_push(ExpandedFrom({call_site: s,
+                                callie: {name: *extname, span: exp_sp}}));
+
                     //convert the new-style invoc for the old-style macro
                     let arg = base::tt_args_to_original_flavor(cx, pth.span,
                                                                (*tts));
                     let expanded = exp(cx, (*mac).span, arg, None);
 
-                    cx.bt_push(ExpandedFrom({call_site: s,
-                                callie: {name: *extname, span: exp_sp}}));
                     //keep going, outside-in
                     let fully_expanded = fld.fold_expr(expanded).node;
                     cx.bt_pop();
@@ -296,6 +299,8 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
         Some(normal_tt({expander: exp, span: exp_sp})) => {
+            cx.bt_push(ExpandedFrom(
+                {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             let expanded = match exp(cx, mac.span, tts) {
                 mr_expr(e) =>
                     @{node: stmt_expr(e, cx.next_id()), span: e.span},
@@ -305,8 +310,6 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     fmt!("non-stmt macro in stmt pos: %s", *extname))
             };
 
-            cx.bt_push(ExpandedFrom(
-                {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             //keep going, outside-in
             let fully_expanded = fld.fold_stmt(expanded).node;
             cx.bt_pop();
@@ -315,15 +318,15 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
         }
 
         Some(normal({expander: exp, span: exp_sp})) => {
+            cx.bt_push(ExpandedFrom({call_site: sp,
+                                      callie: {name: *extname,
+                                               span: exp_sp}}));
             //convert the new-style invoc for the old-style macro
             let arg = base::tt_args_to_original_flavor(cx, pth.span, tts);
             let exp_expr = exp(cx, mac.span, arg, None);
             let expanded = @{node: stmt_expr(exp_expr, cx.next_id()),
                              span: exp_expr.span};
 
-            cx.bt_push(ExpandedFrom({call_site: sp,
-                                      callie: {name: *extname,
-                                               span: exp_sp}}));
             //keep going, outside-in
             let fully_expanded = fld.fold_stmt(expanded).node;
             cx.bt_pop();

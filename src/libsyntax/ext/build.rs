@@ -145,6 +145,24 @@ fn mk_glob_use(cx: ext_ctxt, sp: span,
       vis: ast::private,
       span: sp}
 }
+fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
+            ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
+
+    let pat : @ast::pat = @{id: cx.next_id(),
+                            node: ast::pat_ident(ast::bind_by_value,
+                                                 mk_raw_path(sp, ~[ident]),
+                                                 None),
+                           span: sp};
+    let ty : @ast::Ty = @{ id: cx.next_id(), node: ast::ty_infer, span: sp };
+    let local : @ast::local = @{node: {is_mutbl: mutbl,
+                                       ty: ty,
+                                       pat: pat,
+                                       init: Some(ex),
+                                       id: cx.next_id()},
+                                span: sp};
+    let decl = {node: ast::decl_local(~[local]), span: sp};
+    @{ node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
+}
 fn mk_block(cx: ext_ctxt, sp: span,
             view_items: ~[@ast::view_item],
             stmts: ~[@ast::stmt],
