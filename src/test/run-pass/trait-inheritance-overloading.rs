@@ -5,7 +5,7 @@ trait MyNum : Add<self,self>, Sub<self,self>, Mul<self,self>, Eq { }
 struct MyInt { val: int }
 
 impl MyInt : Add<MyInt, MyInt> {
-    pure fn add(other: &MyInt) -> MyInt { mi(self.val + other.val) }
+    pure fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
 impl MyInt : Sub<MyInt, MyInt> {

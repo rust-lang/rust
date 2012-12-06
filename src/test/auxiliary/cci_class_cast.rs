@@ -13,7 +13,7 @@ struct cat {
 }
 
     impl cat : ToStr {
-       pure fn to_str() -> ~str { self.name }
+       pure fn to_str() -> ~str { copy self.name }
     }
 
     priv impl cat {

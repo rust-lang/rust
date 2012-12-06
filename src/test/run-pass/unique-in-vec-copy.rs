@@ -1,6 +1,6 @@
 fn main() {
     let a = ~[~mut 10];
-    let b = a;
+    let b = copy a;
 
     assert *a[0] == 10;
     assert *b[0] == 10;

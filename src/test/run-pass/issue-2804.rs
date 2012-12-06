@@ -13,9 +13,9 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 {
     match table.find(&key)
     {
-        option::Some(std::json::String(s)) =>
+        option::Some(std::json::String(copy s)) =>
         {
-            s
+            copy s
         }
         option::Some(value) =>
         {
@@ -33,9 +33,9 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, 
 {
     match &data
     {
-        &std::json::Object(interface) =>
+        &std::json::Object(copy interface) =>
         {
-            let name = lookup(interface, ~"ifDescr", ~"");
+            let name = lookup(copy interface, ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);
 
             (label, bool_value(false))

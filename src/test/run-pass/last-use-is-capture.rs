@@ -3,6 +3,6 @@
 fn main() {
     fn invoke(f: fn@()) { f(); }
     let k = ~22;
-    let _u = {a: k};
+    let _u = {a: copy k};
     invoke(|| log(error, k) )
 }

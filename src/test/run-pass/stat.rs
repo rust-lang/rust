@@ -8,7 +8,7 @@ fn main() {
 
     {
         match io::file_writer(&path, [io::Create, io::Truncate]) {
-            Err(e) => fail e,
+            Err(copy e) => fail e,
             Ok(f) => {
                 for uint::range(0, 1000) |_i| {
                     f.write_u8(0);

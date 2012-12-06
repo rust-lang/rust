@@ -7,7 +7,7 @@ struct Point {
 }
 
 impl Point : ops::Add<Point,Point> {
-    pure fn add(other: &Point) -> Point {
+    pure fn add(&self, other: &Point) -> Point {
         Point {x: self.x + (*other).x, y: self.y + (*other).y}
     }
 }
