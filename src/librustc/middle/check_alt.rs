@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use syntax::ast::*;
-use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
+use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
 use const_eval::{eval_const_expr, const_val, const_int, const_bool,
                  compare_const_vals, lookup_const_by_id};
 use syntax::codemap::span;
@@ -43,6 +43,15 @@ fn check_expr(cx: @AltCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
       expr_match(scrut, ref arms) => {
+        // First, check legality of move bindings.
+        let is_lvalue = ty::expr_is_lval(cx.tcx, cx.method_map, scrut);
+        for arms.each |arm| {
+            check_legality_of_move_bindings(cx,
+                                            is_lvalue,
+                                            arm.guard.is_some(),
+                                            arm.pats);
+        }
+
         check_arms(cx, (*arms));
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
@@ -511,6 +520,13 @@ fn check_local(cx: @AltCheckCtxt, loc: @local, &&s: (), v: visit::vt<()>) {
         cx.tcx.sess.span_err(loc.node.pat.span,
                           ~"refutable pattern in local binding");
     }
+
+    // Check legality of move bindings.
+    let is_lvalue = match loc.node.init {
+        Some(init) => ty::expr_is_lval(cx.tcx, cx.method_map, init),
+        None => true
+    };
+    check_legality_of_move_bindings(cx, is_lvalue, false, [ loc.node.pat ]);
 }
 
 fn check_fn(cx: @AltCheckCtxt,
@@ -562,6 +578,67 @@ fn is_refutable(cx: @AltCheckCtxt, pat: &pat) -> bool {
         args.any(|a| is_refutable(cx, *a))
       }
       pat_enum(_,_) => { false }
+    }
+}
+
+// Legality of move bindings checking
+
+fn check_legality_of_move_bindings(cx: @AltCheckCtxt,
+                                   is_lvalue: bool,
+                                   has_guard: bool,
+                                   pats: &[@pat]) {
+    let tcx = cx.tcx;
+    let def_map = tcx.def_map;
+    let mut by_ref_span = None;
+    let mut any_by_move = false;
+    for pats.each |pat| {
+        do pat_bindings(def_map, *pat) |bm, _id, span, _path| {
+            match bm {
+                bind_by_ref(_) | bind_by_implicit_ref => {
+                    by_ref_span = Some(span);
+                }
+                bind_by_move => {
+                    any_by_move = true;
+                }
+                _ => { }
+            }
+        }
+    }
+
+    if !any_by_move { return; } // pointless micro-optimization
+    for pats.each |pat| {
+        do walk_pat(*pat) |p| {
+            if pat_is_binding(def_map, p) {
+                match p.node {
+                    pat_ident(bind_by_move, _, sub) => {
+                        // check legality of moving out of the enum
+                        if sub.is_some() {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move with sub-bindings");
+                        } else if has_guard {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move into a pattern guard");
+                        } else if by_ref_span.is_some() {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move and by-ref \
+                                  in the same pattern");
+                            tcx.sess.span_note(
+                                by_ref_span.get(),
+                                ~"by-ref binding occurs here");
+                        } else if is_lvalue {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move when \
+                                  matching an lvalue");
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
