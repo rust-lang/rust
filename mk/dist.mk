@@ -21,17 +21,17 @@ PKG_FILES := \
     $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.txt                               \
-      cargo                                    \
-      rusti                                    \
-      rustc                                    \
+      libcargo                                 \
+      librusti                                 \
+      librustc                                 \
       compiletest                              \
       etc                                      \
-      fuzzer                                   \
+      libfuzzer                                \
       libcore                                  \
       libsyntax                                \
       libstd                                   \
       rt                                       \
-      rustdoc                                  \
+      librustdoc                               \
       rustllvm                                 \
       snapshots.txt                            \
       test)                                    \
