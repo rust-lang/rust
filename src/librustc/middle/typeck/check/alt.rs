@@ -21,7 +21,6 @@ fn check_alt(fcx: @fn_ctxt,
 
     let pattern_ty = fcx.infcx().next_ty_var();
     bot = check_expr_with(fcx, discrim, pattern_ty);
-    let is_lvalue = ty::expr_is_lval(tcx, fcx.ccx.method_map, discrim);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -34,10 +33,6 @@ fn check_alt(fcx: @fn_ctxt,
         };
 
         for arm.pats.each |p| { check_pat(pcx, *p, pattern_ty);}
-        check_legality_of_move_bindings(fcx,
-                                        is_lvalue,
-                                        arm.guard.is_some(),
-                                        arm.pats);
     }
 
     // Now typecheck the blocks.
@@ -57,67 +52,6 @@ fn check_alt(fcx: @fn_ctxt,
     fcx.write_ty(expr.id, result_ty);
     return bot;
 }
-
-fn check_legality_of_move_bindings(fcx: @fn_ctxt,
-                                   is_lvalue: bool,
-                                   has_guard: bool,
-                                   pats: &[@ast::pat])
-{
-    let tcx = fcx.tcx();
-    let def_map = tcx.def_map;
-    let mut by_ref = None;
-    let mut any_by_move = false;
-    for pats.each |pat| {
-        do pat_util::pat_bindings(def_map, *pat) |bm, _id, span, _path| {
-            match bm {
-                ast::bind_by_ref(_) | ast::bind_by_implicit_ref => {
-                    by_ref = Some(span);
-                }
-                ast::bind_by_move => {
-                    any_by_move = true;
-                }
-                _ => { }
-            }
-        }
-    }
-
-    if !any_by_move { return; } // pointless micro-optimization
-    for pats.each |pat| {
-        do walk_pat(*pat) |p| {
-            if pat_is_binding(def_map, p) {
-                match p.node {
-                    ast::pat_ident(ast::bind_by_move, _, sub) => {
-                        // check legality of moving out of the enum
-                        if sub.is_some() {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move with sub-bindings");
-                        } else if has_guard {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move into a pattern guard");
-                        } else if by_ref.is_some() {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move and by-ref \
-                                  in the same pattern");
-                            tcx.sess.span_note(
-                                by_ref.get(),
-                                ~"by-ref binding occurs here");
-                        } else if is_lvalue {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move when \
-                                  matching an lvalue");
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-}
-
 
 type pat_ctxt = {
     fcx: @fn_ctxt,
