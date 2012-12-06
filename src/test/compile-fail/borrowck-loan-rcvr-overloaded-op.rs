@@ -29,7 +29,6 @@ fn b() {
     // Here I create an outstanding loan and check that we get conflicts:
 
     let q = &mut p; //~ NOTE prior loan as mutable granted here
-    //~^ NOTE prior loan as mutable granted here
 
     p + 3; //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
     p.times(3); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan

@@ -10,6 +10,6 @@ impl r : Drop {
 
 fn main() {
     let i = move ~r { b: true };
-    let j = i;
+    let j = copy i;
     log(debug, i);
 }

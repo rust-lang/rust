@@ -14,4 +14,4 @@ fn foo(i:int) -> foo {
     }
 }
 
-fn main() { let x = move foo(10); let y = x; log(error, x); }
+fn main() { let x = move foo(10); let y = copy x; log(error, x); }

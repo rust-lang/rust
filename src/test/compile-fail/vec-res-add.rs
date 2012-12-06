@@ -1,4 +1,4 @@
-// error-pattern: copying a noncopyable value
+// error-pattern: instantiating a type parameter with an incompatible type
 
 struct r {
   i:int
