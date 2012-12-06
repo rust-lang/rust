@@ -4,12 +4,11 @@ use middle::typeck::{method_map, method_map_entry};
 
 use core::vec;
 use std::map::HashMap;
-use syntax::ast::{by_copy, by_move, by_ref, by_val, crate, expr, expr_assign};
-use syntax::ast::{expr_addr_of, expr_assign_op, expr_binary, expr_call};
-use syntax::ast::{expr_copy, expr_field, expr_index, expr_method_call};
-use syntax::ast::{expr_path, expr_swap, expr_unary, node_id, sty_uniq};
-use syntax::ast::{sty_value};
-use syntax::ast::{box, uniq, deref, not, neg, expr_match, expr_paren};
+use syntax::ast::{box, by_copy, by_move, by_ref, by_val, crate, deref, expr};
+use syntax::ast::{expr_addr_of, expr_assign, expr_assign_op, expr_binary};
+use syntax::ast::{expr_call, expr_copy, expr_field, expr_index, expr_match};
+use syntax::ast::{expr_method_call, expr_paren, expr_path, expr_swap};
+use syntax::ast::{expr_unary, neg, node_id, not, sty_uniq, sty_value, uniq};
 use syntax::visit;
 use syntax::visit::vt;
 
@@ -115,17 +114,25 @@ fn compute_modes_for_expr(expr: @expr,
             compute_modes_for_expr(arg, arg_cx, v);
         }
         expr_unary(unop, arg) => {
-            // Ditto.
-            let arg_cx = VisitContext { mode: ReadValue, ..cx };
-            compute_modes_for_expr(arg, arg_cx, v);
-
             match unop {
                 deref => {
+                    // Derefs function as reads.
+                    let arg_cx = VisitContext { mode: ReadValue, ..cx };
+                    compute_modes_for_expr(arg, arg_cx, v);
+
                     // This is an lvalue, so it needs a value mode recorded
                     // for it.
                     record_mode_for_expr(expr, cx);
                 }
-                box(_) | uniq(_) | not | neg => {}
+                box(_) | uniq(_) => {
+                    let arg_cx = VisitContext { mode: MoveValue, ..cx };
+                    compute_modes_for_expr(arg, arg_cx, v);
+                }
+                not | neg => {
+                    // Takes its argument by ref.
+                    let arg_cx = VisitContext { mode: ReadValue, ..cx };
+                    compute_modes_for_expr(arg, arg_cx, v);
+                }
             }
         }
         expr_field(arg, _, _) => {
