@@ -8,7 +8,7 @@ Version 0.5 (December 2012)
       * Completed the transition from the `#fmt` extension syntax to `fmt!`
       * Removed old fixed length vector syntax - `[T]/N`
       * New token-based quasi-quoter, `quote!`
-      * Macros may now expand to items
+      * Macros may now expand to items and statements
       * `a.b()` is always parsed as a method call, never as a field projection
       * `Eq` and `IterBytes` implementations can be automatically generated
         with `#[deriving_eq]` and `#[deriving_iter_bytes]` respectively
