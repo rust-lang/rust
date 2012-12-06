@@ -811,8 +811,8 @@ mod test {
     fn test_switch_implies_cfg_test() {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
-              Ok(m) => m,
-              Err(f) => fail ~"test_switch_implies_cfg_test: " +
+              Ok(copy m) => m,
+              Err(copy f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
             };
         let sessopts = build_session_options(
@@ -828,8 +828,8 @@ mod test {
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
-              Ok(m) => m,
-              Err(f) => {
+              Ok(copy m) => m,
+              Err(copy f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
                     getopts::fail_str(f);
               }
