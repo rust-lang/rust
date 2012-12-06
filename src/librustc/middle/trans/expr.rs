@@ -1003,8 +1003,8 @@ fn trans_index(bcx: block,
     // Translate index expression and cast to a suitable LLVM integer.
     // Rust is less strict than LLVM in this regard.
     let Result {bcx, val: ix_val} = trans_to_datum(bcx, idx).to_result();
-    let ix_size = shape::llsize_of_real(bcx.ccx(), val_ty(ix_val));
-    let int_size = shape::llsize_of_real(bcx.ccx(), ccx.int_type);
+    let ix_size = machine::llbitsize_of_real(bcx.ccx(), val_ty(ix_val));
+    let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type);
     let ix_val = {
         if ix_size < int_size {
             if ty::type_is_signed(expr_ty(bcx, idx)) {
