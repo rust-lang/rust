@@ -7,8 +7,8 @@ extern mod std;
 
 use cmp::Eq;
 use std::ebml;
-use EBReader = std::ebml::Reader;
-use EBWriter = std::ebml::Writer;
+use EBReader = std::ebml::reader;
+use EBWriter = std::ebml::writer;
 use io::Writer;
 use std::serialization::{Serializable, Deserializable, deserialize};
 use std::prettyprint;
