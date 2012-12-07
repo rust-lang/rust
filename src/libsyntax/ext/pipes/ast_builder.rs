@@ -17,6 +17,7 @@ use ast::{ident, node_id};
 use ast_util::{ident_to_path, respan, dummy_sp};
 use codemap::span;
 use ext::base::mk_ctxt;
+use quote::rt::*;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -121,6 +122,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
           span: dummy_sp()}
     }
 
+    #[cfg(stage0)]
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
         // If the quasiquoter could interpolate idents, this is all
         // we'd need.
@@ -142,6 +144,13 @@ impl ext_ctxt: ext_ctxt_ast_builder {
               span: dummy_sp()}]),
                                span: dummy_sp()}, self.next_id()),
          span: dummy_sp()}
+     }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
+        let ext_cx = self;
+        quote_stmt!( let $ident = $e; )
     }
 
     fn field_imm(name: ident, e: @ast::expr) -> ast::field {
