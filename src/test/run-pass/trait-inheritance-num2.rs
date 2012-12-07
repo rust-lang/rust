@@ -26,7 +26,7 @@ pub impl f64: TypeExt {}
 pub impl float: TypeExt {}
 
 
-pub trait NumExt: TypeExt, Eq, Ord, Num {}
+pub trait NumExt: TypeExt Eq Ord Num {}
 
 pub impl u8: NumExt {}
 pub impl u16: NumExt {}
@@ -82,7 +82,7 @@ pub impl i64: IntegerExt {}
 pub impl int: IntegerExt {}
 
 
-pub trait FloatExt: NumExt , FuzzyEq {}
+pub trait FloatExt: NumExt FuzzyEq {}
 
 pub impl f32: FloatExt {}
 pub impl f64: FloatExt {}

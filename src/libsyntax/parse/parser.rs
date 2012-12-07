@@ -2826,7 +2826,7 @@ impl Parser {
 
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
-            ket, seq_sep_trailing_disallowed(token::COMMA),
+            ket, seq_sep_none(),
             |p| p.parse_trait_ref())
     }
 
