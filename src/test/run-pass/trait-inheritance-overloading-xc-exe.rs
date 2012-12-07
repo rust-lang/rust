@@ -1,3 +1,4 @@
+// xfail-test
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:trait_inheritance_overloading_xc.rs
 
