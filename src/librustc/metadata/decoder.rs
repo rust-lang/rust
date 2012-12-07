@@ -13,7 +13,7 @@
 use std::ebml;
 use std::map;
 use std::map::HashMap;
-use std::serialization::deserialize;
+use std::serialize::decode;
 use reader = ebml::reader;
 use io::WriterUtil;
 use dvec::DVec;
@@ -283,7 +283,7 @@ fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        deserialize(&reader::Deserializer(*doc))
+        decode(&reader::Decoder(*doc))
     })
 }
 

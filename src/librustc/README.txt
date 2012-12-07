@@ -23,7 +23,7 @@ front/    - front-end: attributes, conditional compilation
 middle/   - middle-end: name resolution, typechecking, LLVM code
                   generation
 back/     - back-end: linking and ABI
-metadata/ - serializer and deserializer for data required by
+metadata/ - encoder and decoder for data required by
                     separate compilation
 driver/   - command-line processing, main() entrypoint
 util/     - ubiquitous types and helper functions
