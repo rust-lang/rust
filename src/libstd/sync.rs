@@ -158,36 +158,25 @@ impl &Sem<~[mut Waitqueue]> {
 
 // FIXME(#3588) should go inside of access()
 #[doc(hidden)]
-struct SemRelease {
-    sem: &Sem<()>,
-}
+type SemRelease = SemReleaseGeneric<()>;
+type SemAndSignalRelease = SemReleaseGeneric<~[mut Waitqueue]>;
+struct SemReleaseGeneric<Q: Send> { sem: &Sem<Q> }
 
-impl SemRelease : Drop {
+impl<Q: Send> SemReleaseGeneric<Q> : Drop {
     fn finalize(&self) {
         self.sem.release();
     }
 }
 
 fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
-    SemRelease {
+    SemReleaseGeneric {
         sem: sem
-    }
-}
-
-#[doc(hidden)]
-struct SemAndSignalRelease {
-    sem: &Sem<~[mut Waitqueue]>,
-}
-
-impl SemAndSignalRelease : Drop {
-    fn finalize(&self) {
-        self.sem.release();
     }
 }
 
 fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
     -> SemAndSignalRelease/&r {
-    SemAndSignalRelease {
+    SemReleaseGeneric {
         sem: sem
     }
 }
