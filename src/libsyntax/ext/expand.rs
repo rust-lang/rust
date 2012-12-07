@@ -237,7 +237,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
     );
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let (expanded, ex_span) = match exts.find(*extname) {
+    let expanded = match exts.find(*extname) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extname)),
 
@@ -248,7 +248,10 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                                     given '%s'", *extname,
                                    *cx.parse_sess().interner.get(it.ident)));
             }
-            (((*expand).expander)(cx, it.span, tts), (*expand).span)
+            cx.bt_push(ExpandedFrom({call_site: it.span,
+                                     callie: {name: *extname,
+                                              span: (*expand).span}}));
+            ((*expand).expander)(cx, it.span, tts)
         }
         Some(item_tt(ref expand)) => {
             if it.ident == parse::token::special_idents::invalid {
@@ -256,14 +259,15 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                               fmt!("macro %s! expects an ident argument",
                                    *extname));
             }
-            (((*expand).expander)(cx, it.span, it.ident, tts), (*expand).span)
+            cx.bt_push(ExpandedFrom({call_site: it.span,
+                                     callie: {name: *extname,
+                                              span: (*expand).span}}));
+            ((*expand).expander)(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
             it.span, fmt!("%s! is not legal in item position", *extname))
     };
 
-    cx.bt_push(ExpandedFrom({call_site: it.span,
-                              callie: {name: *extname, span: ex_span}}));
     let maybe_it = match expanded {
         mr_item(it) => fld.fold_item(it),
         mr_expr(_) => cx.span_fatal(pth.span,
