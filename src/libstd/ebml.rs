@@ -53,7 +53,7 @@ enum EbmlSerializerTag {
 }
 // --------------------------------------
 
-pub mod Reader {
+pub mod reader {
 
     // ebml reading
 
@@ -395,7 +395,7 @@ pub mod Reader {
 
 }
 
-pub mod Writer {
+pub mod writer {
 
     // ebml writing
     struct Serializer {
@@ -663,11 +663,11 @@ mod tests {
         fn test_v(v: Option<int>) {
             debug!("v == %?", v);
             let bytes = do io::with_bytes_writer |wr| {
-                let ebml_w = Writer::Serializer(wr);
+                let ebml_w = writer::Serializer(wr);
                 v.serialize(&ebml_w)
             };
-            let ebml_doc = Reader::Doc(@bytes);
-            let deser = Reader::Deserializer(ebml_doc);
+            let ebml_doc = reader::Doc(@bytes);
+            let deser = reader::Deserializer(ebml_doc);
             let v1 = serialization::deserialize(&deser);
             debug!("v1 == %?", v1);
             assert v == v1;

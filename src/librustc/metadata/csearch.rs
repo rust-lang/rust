@@ -11,7 +11,7 @@
 // Searching for information from the cstore
 
 use std::ebml;
-use Reader = std::ebml::Reader;
+use reader = std::ebml::reader;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_map;
@@ -192,7 +192,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                   def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
-    let all_items = Reader::get_doc(Reader::Doc(cdata.data), tag_items);
+    let all_items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     debug!("Looking up %?", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
