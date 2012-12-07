@@ -19,10 +19,10 @@ use token::*;
 *
 * Quasiquoting works via token trees.
 *
-* This is registered as a set of expression syntax extension called quote! that lifts
-* its argument token-tree to an AST representing the construction of the same
-* token tree, with ast::tt_nonterminal nodes interpreted as antiquotes
-* (splices).
+* This is registered as a set of expression syntax extension called quote!
+* that lifts its argument token-tree to an AST representing the
+* construction of the same token tree, with ast::tt_nonterminal nodes
+* interpreted as antiquotes (splices).
 *
 */
 
@@ -32,6 +32,176 @@ pub mod rt {
     pub use parse::new_parser_from_tts;
     pub use codemap::BytePos;
     pub use codemap::span;
+
+    use print::pprust;
+    use pprust::{item_to_str, ty_to_str};
+
+    trait ToTokens {
+        pub fn to_tokens(_cx: ext_ctxt) -> ~[token_tree];
+    }
+
+    impl ~[token_tree]: ToTokens {
+        pub fn to_tokens(_cx: ext_ctxt) -> ~[token_tree] {
+            copy self
+        }
+    }
+
+    /* Should be (when bugs in default methods are fixed):
+
+    trait ToSource : ToTokens {
+        // Takes a thing and generates a string containing rust code for it.
+        pub fn to_source(cx: ext_ctxt) -> ~str;
+
+        // If you can make source, you can definitely make tokens.
+        pub fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    */
+
+    trait ToSource {
+        // Takes a thing and generates a string containing rust code for it.
+        pub fn to_source(cx: ext_ctxt) -> ~str;
+    }
+
+    impl ast::ident: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            copy *cx.parse_sess().interner.get(self)
+        }
+    }
+
+    impl @ast::item: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            item_to_str(self, cx.parse_sess().interner)
+        }
+    }
+
+    impl ~[@ast::item]: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            str::connect(self.map(|i| i.to_source(cx)), ~"\n\n")
+        }
+    }
+
+    impl @ast::Ty: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            ty_to_str(self, cx.parse_sess().interner)
+        }
+    }
+
+    impl ~[@ast::Ty]: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            str::connect(self.map(|i| i.to_source(cx)), ~", ")
+        }
+    }
+
+    impl ~[ast::ty_param]: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            pprust::typarams_to_str(self, cx.parse_sess().interner)
+        }
+    }
+
+    impl @ast::expr: ToSource {
+        fn to_source(cx: ext_ctxt) -> ~str {
+            pprust::expr_to_str(self, cx.parse_sess().interner)
+        }
+    }
+
+    // Alas ... we write these out instead. All redundant.
+
+    impl ast::ident: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl @ast::item: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl ~[@ast::item]: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl @ast::Ty: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl ~[@ast::Ty]: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl ~[ast::ty_param]: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    impl @ast::expr: ToTokens {
+        fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
+            cx.parse_tts(self.to_source(cx))
+        }
+    }
+
+    trait ExtParseUtils {
+        fn parse_item(s: ~str) -> @ast::item;
+        fn parse_expr(s: ~str) -> @ast::expr;
+        fn parse_stmt(s: ~str) -> @ast::stmt;
+        fn parse_tts(s: ~str) -> ~[ast::token_tree];
+    }
+
+    impl ext_ctxt: ExtParseUtils {
+
+        fn parse_item(s: ~str) -> @ast::item {
+            let res = parse::parse_item_from_source_str(
+                ~"<quote expansion>",
+                @(copy s),
+                self.cfg(),
+                ~[],
+                self.parse_sess());
+            match res {
+                Some(ast) => ast,
+                None => {
+                    error!("Parse error with ```\n%s\n```", s);
+                    fail
+                }
+            }
+        }
+
+        fn parse_stmt(s: ~str) -> @ast::stmt {
+            parse::parse_stmt_from_source_str(
+                ~"<quote expansion>",
+                @(copy s),
+                self.cfg(),
+                ~[],
+                self.parse_sess())
+        }
+
+        fn parse_expr(s: ~str) -> @ast::expr {
+            parse::parse_expr_from_source_str(
+                ~"<quote expansion>",
+                @(copy s),
+                self.cfg(),
+                self.parse_sess())
+        }
+
+        fn parse_tts(s: ~str) -> ~[ast::token_tree] {
+            parse::parse_tts_from_source_str(
+                ~"<quote expansion>",
+                @(copy s),
+                self.cfg(),
+                self.parse_sess())
+        }
+    }
+
 }
 
 pub fn expand_quote_tokens(cx: ext_ctxt,
@@ -288,14 +458,27 @@ fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree)
         ast::tt_seq(*) => fail ~"tt_seq in quote!",
 
         ast::tt_nonterminal(sp, ident) => {
+
+            // tt.push_all_move($ident.to_tokens(ext_cx))
+
+            let e_to_toks =
+                build::mk_call_(cx, sp,
+                                build::mk_access
+                                (cx, sp,
+                                 ~[ident],
+                                 id_ext(cx, ~"to_tokens")),
+                                ~[build::mk_path(cx, sp,
+                                        ids_ext(cx, ~[~"ext_cx"]))]);
+
             let e_push =
                 build::mk_call_(cx, sp,
                                 build::mk_access
                                 (cx, sp,
                                  ids_ext(cx, ~[~"tt"]),
                                  id_ext(cx, ~"push_all_move")),
-                                ~[build::mk_path(cx, sp, ~[ident])]);
-            ~[build::mk_stmt(cx, sp, e_push)]            
+                                ~[e_to_toks]);
+
+            ~[build::mk_stmt(cx, sp, e_push)]
         }
     }
 }
@@ -367,7 +550,7 @@ fn expand_tts(cx: ext_ctxt,
     let stmt_let_sp = build::mk_local(cx, sp, false,
                                       id_ext(cx, ~"sp"),
                                       e_sp);
-    
+
     let stmt_let_tt = build::mk_local(cx, sp, true,
                                       id_ext(cx, ~"tt"),
                                       build::mk_uniq_vec_e(cx, sp, ~[]));
