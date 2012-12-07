@@ -51,6 +51,7 @@ struct Repl {
     binary: ~str,
     running: bool,
     view_items: ~str,
+    lib_search_paths: ~[~str],
     stmts: ~str
 }
 
@@ -132,7 +133,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     let options: @session::options = @{
         crate_type: session::unknown_crate,
         binary: repl.binary,
-        addl_lib_search_paths: ~[os::getcwd()],
+        addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
         .. *session::basic_options()
     };
 
@@ -284,6 +285,63 @@ fn run(repl: Repl, input: ~str) -> Repl {
     record(repl, blk, sess.parse_sess.interner)
 }
 
+// Compiles a crate given by the filename as a library if the compiled
+// version doesn't exist or is older than the source file. Binary is
+// the name of the compiling executable. Returns Some(true) if it
+// successfully compiled, Some(false) if the crate wasn't compiled
+// because it already exists and is newer than the source file, or
+// None if there were compile errors.
+fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
+    match do task::try {
+        let src_path = Path(src_filename);
+        let options: @session::options = @{
+            binary: binary,
+            addl_lib_search_paths: ~[os::getcwd()],
+            .. *session::basic_options()
+        };
+        let input = driver::file_input(src_path);
+        let sess = driver::build_session(options, diagnostic::emit);
+        sess.building_library = true;
+        let cfg = driver::build_configuration(sess, binary, input);
+        let outputs = driver::build_output_filenames(input, &None, &None, sess);
+        // If the library already exists and is newer than the source
+        // file, skip compilation and return None.
+        let mut should_compile = true;
+        let dir = os::list_dir_path(&Path(outputs.out_filename.dirname()));
+        let maybe_lib_path = do dir.find |file| {
+            // The actual file's name has a hash value and version
+            // number in it which is unknown at this time, so looking
+            // for a file that matches out_filename won't work,
+            // instead we guess which file is the library by matching
+            // the prefix and suffix of out_filename to files in the
+            // directory.
+            let file_str = file.filename().get();
+            file_str.starts_with(outputs.out_filename.filestem().get())
+                && file_str.ends_with(outputs.out_filename.filetype().get())
+        };
+        match maybe_lib_path {
+            Some(lib_path) => {
+                let (src_mtime, _) = src_path.get_mtime().get();
+                let (lib_mtime, _) = lib_path.get_mtime().get();
+                if lib_mtime >= src_mtime {
+                    should_compile = false;
+                }
+            },
+            None => { },
+        }
+        if (should_compile) {
+            io::println(fmt!("compiling %s...", src_filename));
+            driver::compile_upto(sess, cfg, input, driver::cu_everything,
+                                 Some(outputs));
+            true
+        } else { false }
+    } {
+        Ok(true) => Some(true),
+        Ok(false) => Some(false),
+        Err(_) => None,
+    }
+}
+
 /// Tries to get a line from rl after outputting a prompt. Returns
 /// None if no input was read (e.g. EOF was reached).
 fn get_line(prompt: ~str) -> Option<~str> {
@@ -302,7 +360,7 @@ fn get_line(prompt: ~str) -> Option<~str> {
 
 /// Run a command, e.g. :clear, :exit, etc.
 fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
-           cmd: ~str, _args: ~[~str]) -> CmdAction {
+           cmd: ~str, args: ~[~str]) -> CmdAction {
     let mut action = action_none;
     match cmd {
         ~"exit" => repl.running = false,
@@ -316,9 +374,42 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
         ~"help" => {
             io::println(
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
+                ~":load <crate> ... - loads given crates as dynamic libraries" +
                 ~":clear - clear the screen\n" +
                 ~":exit - exit from the repl\n" +
                 ~":help - show this message");
+        }
+        ~"load" => {
+            let mut loaded_crates: ~[~str] = ~[];
+            for args.each |arg| {
+                let (crate, filename) =
+                    if arg.ends_with(".rs") || arg.ends_with(".rc") {
+                    (arg.substr(0, arg.len() - 3), *arg)
+                } else {
+                    (*arg, arg + ~".rs")
+                };
+                match compile_crate(filename, repl.binary) {
+                    Some(_) => loaded_crates.push(crate),
+                    None => { }
+                }
+            }
+            for loaded_crates.each |crate| {
+                let crate_path = Path(*crate);
+                let crate_dir = crate_path.dirname();
+                let crate_name = crate_path.filename().get();
+                if !repl.view_items.contains(*crate) {
+                    repl.view_items += fmt!("extern mod %s;\n", crate_name);
+                    if !repl.lib_search_paths.contains(&crate_dir) {
+                        repl.lib_search_paths.push(crate_dir);
+                    }
+                }
+            }
+            if loaded_crates.is_empty() {
+                io::println("no crates loaded");
+            } else {
+                io::println(fmt!("crates loaded: %s",
+                                 str::connect(loaded_crates, ", ")));
+            }
         }
         ~"{" => {
             let mut multiline_cmd = ~"";
@@ -356,9 +447,7 @@ fn run_line(repl: &mut Repl, in: io::Reader, out: io::Writer, line: ~str)
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
-                    do vec::view(split, 1, len - 1).map |arg| {
-                        *arg
-                    }
+                    vec::slice(split, 1, len)
                 } else { ~[] };
 
                 match run_cmd(repl, in, out, cmd, args) {
@@ -394,6 +483,7 @@ pub fn main() {
         binary: args[0],
         running: true,
         view_items: ~"",
+        lib_search_paths: ~[],
         stmts: ~""
     };
 
@@ -403,6 +493,7 @@ pub fn main() {
                 suggest(~":clear");
                 suggest(~":exit");
                 suggest(~":help");
+                suggest(~":load");
             }
         }
     }
