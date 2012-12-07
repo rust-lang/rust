@@ -79,7 +79,7 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
-use coherence::{ProvidedMethodInfo, get_base_type_def_id};
+use coherence::get_base_type_def_id;
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::*;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box,
@@ -313,7 +313,7 @@ impl LookupContext {
                 }
 
                 // Look for default methods.
-                match coherence_info.provided_methods.find(*trait_did) {
+                match self.tcx().provided_methods.find(*trait_did) {
                     Some(methods) => {
                         self.push_candidates_from_provided_methods(
                             &self.extension_candidates, self_ty, *trait_did,
