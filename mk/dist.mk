@@ -15,6 +15,7 @@ endif
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm
 
 PKG_FILES := \
+    $(S)COPYRIGHT                              \
     $(S)LICENSE-APACHE                         \
     $(S)LICENSE-MIT                            \
     $(S)README.md                              \
