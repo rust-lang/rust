@@ -3,7 +3,7 @@
 trait A { fn a(&self) -> int; }
 trait B: A { fn b(&self) -> int; }
 trait C: A { fn c(&self) -> int; }
-trait D: B, C { fn d(&self) -> int; }
+trait D: B C { fn d(&self) -> int; }
 
 struct S { bogus: () }
 

@@ -7,7 +7,7 @@ extern mod aux(name = "trait_inheritance_auto_xc_2_aux");
 use aux::{Foo, Bar, Baz, A};
 
 // We want to extend all Foo, Bar, Bazes to Quuxes
-pub trait Quux: Foo, Bar, Baz { }
+pub trait Quux: Foo Bar Baz { }
 impl<T: Foo Bar Baz> T: Quux { }
 
 fn f<T: Quux>(a: &T) {

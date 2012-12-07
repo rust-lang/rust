@@ -1,7 +1,7 @@
 use cmp::{Eq, Ord};
 use num::from_int;
 
-pub trait NumExt: Eq, Ord, Num {}
+pub trait NumExt: Eq Ord Num {}
 
 pub impl f32: NumExt {}
 
