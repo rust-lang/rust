@@ -254,9 +254,6 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         // so we can find the self_ty
         for traits.each |p| {
             cx.map.insert(p.ref_id, node_item(i, item_path));
-            // This is so we can look up the right things when
-            // encoding/decoding
-            cx.map.insert(p.impl_id, node_item(i, item_path));
         }
         for (*methods).each |tm| {
             let id = ast_util::trait_method_to_ty_method(*tm).id;
@@ -282,9 +279,6 @@ fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     // so we can find the self_ty
     for struct_def.traits.each |p| {
         cx.map.insert(p.ref_id, parent_node);
-        // This is so we can look up the right things when
-        // encoding/decoding
-        cx.map.insert(p.impl_id, parent_node);
     }
     let d_id = ast_util::local_def(id);
     let p = extend(cx, ident);

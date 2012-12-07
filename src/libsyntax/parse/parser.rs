@@ -2821,7 +2821,7 @@ impl Parser {
 
     fn parse_trait_ref() -> @trait_ref {
         @{path: self.parse_path_with_tps(false),
-          ref_id: self.get_id(), impl_id: self.get_id()}
+          ref_id: self.get_id()}
     }
 
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
