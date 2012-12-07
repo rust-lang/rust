@@ -61,7 +61,7 @@ fn main() {
     check_pp(ext_cx, *stmt2, pprust::print_stmt, ~"let x: int = 23;");
 
     let pat = #ast[pat]{some(_)};
-    check_pp(ext_cx, pat, pprust::print_pat, ~"some(_)");
+    check_pp(ext_cx, pat, pprust::print_refutable_pat, ~"some(_)");
 
     // issue #1785
     let x = #ast{1};
