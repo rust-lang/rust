@@ -17,12 +17,10 @@ use dvec::DVec;
 use ast::ident;
 use ast_util::dummy_sp;
 use util::interner;
-use print::pprust;
-use pprust::{item_to_str, ty_to_str};
-use ext::base::{mk_ctxt, ext_ctxt};
+use ext::base::ext_ctxt;
 use parse::*;
 use proto::*;
-
+use quote::rt::*;
 use ast_builder::{append_types, path};
 
 // Transitional reexports so qquote can find the paths it is looking for
@@ -303,6 +301,8 @@ impl state: to_type_decls {
 }
 
 impl protocol: gen_init {
+
+    #[cfg(stage0)]
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
@@ -341,6 +341,47 @@ impl protocol: gen_init {
                            body.to_source(cx)))
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn gen_init(cx: ext_ctxt) -> @ast::item {
+        let ext_cx = cx;
+
+        debug!("gen_init");
+        let start_state = self.states[0];
+
+        let body = if !self.is_bounded() {
+            match start_state.dir {
+              send => quote_expr!( pipes::entangle() ),
+              recv => {
+                quote_expr!({
+                    let (s, c) = pipes::entangle();
+                    (move c, move s)
+                })
+              }
+            }
+        }
+        else {
+            let body = self.gen_init_bounded(ext_cx);
+            match start_state.dir {
+              send => body,
+              recv => {
+                  quote_expr!({
+                      let (s, c) = $body;
+                      (move c, move s)
+                  })
+              }
+            }
+        };
+
+        cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
+                            { use pipes::HasBuffer; %s }",
+                           start_state.ty_params.to_source(cx),
+                           start_state.to_ty(cx).to_source(cx),
+                           start_state.to_ty(cx).to_source(cx),
+                           body.to_source(cx)))
+    }
+
+    #[cfg(stage0)]
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
         ext_cx.rec(self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
@@ -349,10 +390,22 @@ impl protocol: gen_init {
         }))
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
+        ext_cx.rec(self.states.map_to_vec(|s| {
+            let fty = s.to_ty(ext_cx);
+            ext_cx.field_imm(ext_cx.ident_of(s.name),
+                             quote_expr!(
+                                 pipes::mk_packet::<$fty>()
+                             ))
+        }))
+    }
+
+    #[cfg(stage0)]
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
-
         let buffer = #ast {
             ~{header: pipes::BufferHeader(),
               data: $(buffer_fields)}
@@ -376,6 +429,34 @@ impl protocol: gen_init {
         }}
     }
 
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
+        debug!("gen_init_bounded");
+        let buffer_fields = self.gen_buffer_init(ext_cx);
+        let buffer = quote_expr!(
+            ~{header: pipes::BufferHeader(),
+              data: $buffer_fields}
+        );
+
+        let entangle_body = ext_cx.block_expr(
+            ext_cx.block(
+                self.states.map_to_vec(
+                    |s| ext_cx.parse_stmt(
+                        fmt!("data.%s.set_buffer_(buffer)",
+                             s.name))),
+                ext_cx.parse_expr(
+                    fmt!("ptr::addr_of(&(data.%s))",
+                         self.states[0].name))));
+
+        quote_expr!({
+            let buffer = $buffer;
+            do pipes::entangle_buffer(move buffer) |buffer, data| {
+                $entangle_body
+            }
+        })
+    }
+
     fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty {
         let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
@@ -391,6 +472,7 @@ impl protocol: gen_init {
                                .add_tys(cx.ty_vars(params)))
     }
 
+    #[cfg(stage0)]
     fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
         let mut params: ~[ast::ty_param] = ~[];
@@ -405,6 +487,32 @@ impl protocol: gen_init {
             let fty = #ast[ty] {
                 pipes::Packet<$(ty)>
             };
+
+            cx.ty_field_imm(cx.ident_of(s.name), fty)
+        };
+
+        cx.item_ty_poly(
+            cx.ident_of(~"__Buffer"),
+            dummy_sp(),
+            cx.ty_rec(fields),
+            params)
+    }
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
+        let ext_cx = cx;
+        let mut params: ~[ast::ty_param] = ~[];
+        let fields = do (copy self.states).map_to_vec |s| {
+            for s.ty_params.each |tp| {
+                match params.find(|tpp| tp.ident == tpp.ident) {
+                  None => params.push(*tp),
+                  _ => ()
+                }
+            }
+            let ty = s.to_ty(cx);
+            let fty = quote_ty!( pipes::Packet<$ty> );
+
             cx.ty_field_imm(cx.ident_of(s.name), fty)
         };
 
@@ -420,7 +528,6 @@ impl protocol: gen_init {
         let mut client_states = ~[];
         let mut server_states = ~[];
 
-        // :(
         for (copy self.states).each |s| {
             items += s.to_type_decls(cx);
 
@@ -441,95 +548,4 @@ impl protocol: gen_init {
 
         cx.item_mod(cx.ident_of(self.name), self.span, items)
     }
-}
-
-trait to_source {
-    // Takes a thing and generates a string containing rust code for it.
-    fn to_source(cx: ext_ctxt) -> ~str;
-}
-
-impl @ast::item: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        item_to_str(self, cx.parse_sess().interner)
     }
-}
-
-impl ~[@ast::item]: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        str::connect(self.map(|i| i.to_source(cx)), ~"\n\n")
-    }
-}
-
-impl @ast::Ty: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        ty_to_str(self, cx.parse_sess().interner)
-    }
-}
-
-impl ~[@ast::Ty]: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        str::connect(self.map(|i| i.to_source(cx)), ~", ")
-    }
-}
-
-impl ~[ast::ty_param]: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        pprust::typarams_to_str(self, cx.parse_sess().interner)
-    }
-}
-
-impl @ast::expr: to_source {
-    fn to_source(cx: ext_ctxt) -> ~str {
-        pprust::expr_to_str(self, cx.parse_sess().interner)
-    }
-}
-
-trait ext_ctxt_parse_utils {
-    fn parse_item(s: ~str) -> @ast::item;
-    fn parse_expr(s: ~str) -> @ast::expr;
-    fn parse_stmt(s: ~str) -> @ast::stmt;
-    fn parse_tts(s: ~str) -> ~[ast::token_tree];
-}
-
-impl ext_ctxt: ext_ctxt_parse_utils {
-    fn parse_item(s: ~str) -> @ast::item {
-        let res = parse::parse_item_from_source_str(
-            ~"***protocol expansion***",
-            @(copy s),
-            self.cfg(),
-            ~[],
-            self.parse_sess());
-        match res {
-          Some(ast) => ast,
-          None => {
-            error!("Parse error with ```\n%s\n```", s);
-            fail
-          }
-        }
-    }
-
-    fn parse_stmt(s: ~str) -> @ast::stmt {
-        parse::parse_stmt_from_source_str(
-            ~"***protocol expansion***",
-            @(copy s),
-            self.cfg(),
-            ~[],
-            self.parse_sess())
-    }
-
-    fn parse_expr(s: ~str) -> @ast::expr {
-        parse::parse_expr_from_source_str(
-            ~"***protocol expansion***",
-            @(copy s),
-            self.cfg(),
-            self.parse_sess())
-    }
-
-    fn parse_tts(s: ~str) -> ~[ast::token_tree] {
-        parse::parse_tts_from_source_str(
-            ~"***protocol expansion***",
-            @(copy s),
-            self.cfg(),
-            self.parse_sess())
-    }
-}
