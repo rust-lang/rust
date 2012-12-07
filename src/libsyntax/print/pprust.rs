@@ -1539,6 +1539,10 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
 }
 
 fn print_pat(s: ps, &&pat: @ast::pat) {
+    print_pat_full(s, pat, true)
+}
+
+fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     (s.ann.pre)(ann_node);
@@ -1547,24 +1551,29 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     match pat.node {
       ast::pat_wild => word(s.s, ~"_"),
       ast::pat_ident(binding_mode, path, sub) => {
-        match binding_mode {
-          ast::bind_by_ref(mutbl) => {
-            word_nbsp(s, ~"ref");
-            print_mutability(s, mutbl);
+          if print_binding_mode {
+              match binding_mode {
+                  ast::bind_by_ref(mutbl) => {
+                      word_nbsp(s, ~"ref");
+                      print_mutability(s, mutbl);
+                  }
+                  ast::bind_by_move => {
+                      word_nbsp(s, ~"move");
+                  }
+                  ast::bind_by_value => {
+                      word_nbsp(s, ~"copy");
+                  }
+                  ast::bind_by_implicit_ref => {}
+              }
           }
-          ast::bind_by_move => {
-            word_nbsp(s, ~"move");
+          print_path(s, path, true);
+          match sub {
+              Some(p) => {
+                  word(s.s, ~"@");
+                  print_pat(s, p);
+              }
+              None => ()
           }
-          ast::bind_by_value => {
-            word_nbsp(s, ~"copy");
-          }
-          ast::bind_by_implicit_ref => {}
-        }
-        print_path(s, path, true);
-        match sub {
-          Some(p) => { word(s.s, ~"@"); print_pat(s, p); }
-          None => ()
-        }
       }
       ast::pat_enum(path, args_) => {
         print_path(s, path, true);
@@ -1619,8 +1628,14 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         commasep(s, inconsistent, elts, print_pat);
         pclose(s);
       }
-      ast::pat_box(inner) => { word(s.s, ~"@"); print_pat(s, inner); }
-      ast::pat_uniq(inner) => { word(s.s, ~"~"); print_pat(s, inner); }
+      ast::pat_box(inner) => {
+          word(s.s, ~"@");
+          print_pat(s, inner);
+      }
+      ast::pat_uniq(inner) => {
+          word(s.s, ~"~");
+          print_pat(s, inner);
+      }
       ast::pat_region(inner) => {
           word(s.s, ~"&");
           print_pat(s, inner);
@@ -1870,7 +1885,7 @@ fn print_arg(s: ps, input: ast::arg) {
     ibox(s, indent_unit);
     print_arg_mode(s, input.mode);
     match input.ty.node {
-      ast::ty_infer => print_pat(s, input.pat),
+      ast::ty_infer => print_pat_full(s, input.pat, false),
       _ => {
         match input.pat.node {
             ast::pat_ident(_, path, _) if
@@ -1879,7 +1894,7 @@ fn print_arg(s: ps, input: ast::arg) {
                 // Do nothing.
             }
             _ => {
-                print_pat(s, input.pat);
+                print_pat_full(s, input.pat, false);
                 word(s.s, ~":");
                 space(s.s);
             }
