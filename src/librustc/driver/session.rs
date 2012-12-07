@@ -246,10 +246,7 @@ impl Session {
     fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
     fn borrowck_note_loan() -> bool { self.debugging_opt(borrowck_note_loan) }
     fn no_monomorphic_collapse() -> bool {
-        // FIXME #4127: Type use is causing mysterious bustage on 32-bit archs
-        let type_use_unreliable = self.targ_cfg.arch == arch_x86;
-
-        self.debugging_opt(no_monomorphic_collapse) || type_use_unreliable
+        self.debugging_opt(no_monomorphic_collapse)
     }
 
     fn str_of(id: ast::ident) -> ~str {
