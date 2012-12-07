@@ -356,7 +356,11 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           pat_region(inner) => pat_region(fld.fold_pat(inner)),
           pat_range(e1, e2) => {
             pat_range(fld.fold_expr(e1), fld.fold_expr(e2))
-          }
+          },
+          pat_vec(elts, tail) => pat_vec(
+            vec::map(elts, |x| fld.fold_pat(*x)),
+            option::map(&tail, |tail| fld.fold_pat(*tail))
+          )
         };
 }
 
