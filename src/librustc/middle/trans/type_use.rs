@@ -192,11 +192,11 @@ fn node_type_needs(cx: ctx, use_: uint, id: node_id) {
     type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
-fn mark_for_method_call(cx: ctx, e_id: node_id) {
+fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
     do option::iter(&cx.ccx.maps.method_map.find(e_id)) |mth| {
         match mth.origin {
           typeck::method_static(did) => {
-            do cx.ccx.tcx.node_type_substs.find(e_id).iter |ts| {
+            do cx.ccx.tcx.node_type_substs.find(callee_id).iter |ts| {
                 let type_uses = type_uses_for(cx.ccx, did, ts.len());
                 for vec::each2(type_uses, *ts) |uses, subst| {
                     type_needs(cx, *uses, *subst)
@@ -269,7 +269,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
-        mark_for_method_call(cx, e.id);
+        mark_for_method_call(cx, e.id, e.callee_id);
       }
       expr_log(_, _, val) => {
         node_type_needs(cx, use_tydesc, val.id);
@@ -299,7 +299,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
               _ => ()
           }
         }
-        mark_for_method_call(cx, e.id);
+        mark_for_method_call(cx, e.id, e.callee_id);
       }
       expr_paren(e) => mark_for_expr(cx, e),
       expr_match(*) | expr_block(_) | expr_if(*) |
