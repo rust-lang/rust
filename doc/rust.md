@@ -2710,7 +2710,7 @@ trait Printable {
 }
 
 impl ~str: Printable {
-  fn to_str() -> ~str { self }
+  fn to_str() -> ~str { copy self }
 }
 ~~~~~~
 
