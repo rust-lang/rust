@@ -295,7 +295,7 @@ impl gather_loan_ctxt {
                                              autoref.mutbl,
                                              autoref.region)
                     }
-                    ty::AutoBorrowVec => {
+                    ty::AutoBorrowVec | ty::AutoBorrowVecRef => {
                         let cmt_index = mcx.cat_index(expr, cmt);
                         self.guarantee_valid(cmt_index,
                                              autoref.mutbl,
