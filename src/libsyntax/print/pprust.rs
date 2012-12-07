@@ -107,7 +107,7 @@ fn ty_to_str(ty: @ast::Ty, intr: @ident_interner) -> ~str {
 }
 
 fn pat_to_str(pat: @ast::pat, intr: @ident_interner) -> ~str {
-    to_str(pat, print_pat, intr)
+    to_str(pat, print_irrefutable_pat, intr)
 }
 
 fn expr_to_str(e: @ast::expr, intr: @ident_interner) -> ~str {
@@ -1266,7 +1266,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
                 if first {
                     first = false;
                 } else { space(s.s); word_space(s, ~"|"); }
-                print_pat(s, *p);
+                print_refutable_pat(s, *p);
             }
             space(s.s);
             match arm.guard {
@@ -1461,7 +1461,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
 }
 
 fn print_local_decl(s: ps, loc: @ast::local) {
-    print_pat(s, loc.node.pat);
+    print_irrefutable_pat(s, loc.node.pat);
     match loc.node.ty.node {
       ast::ty_infer => (),
       _ => { word_space(s, ~":"); print_type(s, loc.node.ty); }
@@ -1538,11 +1538,15 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
     }
 }
 
-fn print_pat(s: ps, &&pat: @ast::pat) {
-    print_pat_full(s, pat, true)
+fn print_irrefutable_pat(s: ps, &&pat: @ast::pat) {
+    print_pat(s, pat, false)
 }
 
-fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
+fn print_refutable_pat(s: ps, &&pat: @ast::pat) {
+    print_pat(s, pat, true)
+}
+
+fn print_pat(s: ps, &&pat: @ast::pat, refutable: bool) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
     (s.ann.pre)(ann_node);
@@ -1551,7 +1555,7 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
     match pat.node {
       ast::pat_wild => word(s.s, ~"_"),
       ast::pat_ident(binding_mode, path, sub) => {
-          if print_binding_mode {
+          if refutable {
               match binding_mode {
                   ast::bind_by_ref(mutbl) => {
                       word_nbsp(s, ~"ref");
@@ -1570,7 +1574,7 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
           match sub {
               Some(p) => {
                   word(s.s, ~"@");
-                  print_pat(s, p);
+                  print_pat(s, p, refutable);
               }
               None => ()
           }
@@ -1582,7 +1586,8 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
           Some(args) => {
             if args.is_not_empty() {
               popen(s);
-              commasep(s, inconsistent, args, print_pat);
+              commasep(s, inconsistent, args,
+                       |s, p| print_pat(s, p, refutable));
               pclose(s);
             } else { }
           }
@@ -1590,15 +1595,17 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
       }
       ast::pat_rec(fields, etc) => {
         word(s.s, ~"{");
-        fn print_field(s: ps, f: ast::field_pat) {
+        fn print_field(s: ps, f: ast::field_pat, refutable: bool) {
             cbox(s, indent_unit);
             print_ident(s, f.ident);
             word_space(s, ~":");
-            print_pat(s, f.pat);
+            print_pat(s, f.pat, refutable);
             end(s);
         }
         fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
-        commasep_cmnt(s, consistent, fields, print_field, get_span);
+        commasep_cmnt(s, consistent, fields,
+                      |s, f| print_field(s, f, refutable),
+                      get_span);
         if etc {
             if vec::len(fields) != 0u { word_space(s, ~","); }
             word(s.s, ~"_");
@@ -1608,15 +1615,17 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
       ast::pat_struct(path, fields, etc) => {
         print_path(s, path, true);
         word(s.s, ~"{");
-        fn print_field(s: ps, f: ast::field_pat) {
+        fn print_field(s: ps, f: ast::field_pat, refutable: bool) {
             cbox(s, indent_unit);
             print_ident(s, f.ident);
             word_space(s, ~":");
-            print_pat(s, f.pat);
+            print_pat(s, f.pat, refutable);
             end(s);
         }
         fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
-        commasep_cmnt(s, consistent, fields, print_field, get_span);
+        commasep_cmnt(s, consistent, fields,
+                      |s, f| print_field(s,f,refutable),
+                      get_span);
         if etc {
             if vec::len(fields) != 0u { word_space(s, ~","); }
             word(s.s, ~"_");
@@ -1625,20 +1634,20 @@ fn print_pat_full(s: ps, &&pat: @ast::pat, print_binding_mode: bool) {
       }
       ast::pat_tup(elts) => {
         popen(s);
-        commasep(s, inconsistent, elts, print_pat);
+        commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
         pclose(s);
       }
       ast::pat_box(inner) => {
           word(s.s, ~"@");
-          print_pat(s, inner);
+          print_pat(s, inner, refutable);
       }
       ast::pat_uniq(inner) => {
           word(s.s, ~"~");
-          print_pat(s, inner);
+          print_pat(s, inner, refutable);
       }
       ast::pat_region(inner) => {
           word(s.s, ~"&");
-          print_pat(s, inner);
+          print_pat(s, inner, refutable);
       }
       ast::pat_lit(e) => print_expr(s, e),
       ast::pat_range(begin, end) => {
@@ -1885,7 +1894,7 @@ fn print_arg(s: ps, input: ast::arg) {
     ibox(s, indent_unit);
     print_arg_mode(s, input.mode);
     match input.ty.node {
-      ast::ty_infer => print_pat_full(s, input.pat, false),
+      ast::ty_infer => print_irrefutable_pat(s, input.pat),
       _ => {
         match input.pat.node {
             ast::pat_ident(_, path, _) if
@@ -1894,7 +1903,7 @@ fn print_arg(s: ps, input: ast::arg) {
                 // Do nothing.
             }
             _ => {
-                print_pat_full(s, input.pat, false);
+                print_irrefutable_pat(s, input.pat);
                 word(s.s, ~":");
                 space(s.s);
             }
