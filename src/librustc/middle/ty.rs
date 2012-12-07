@@ -218,7 +218,7 @@ export DerivedMethodInfo;
 export DerivedFieldInfo;
 export AutoAdjustment;
 export AutoRef;
-export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowFn;
+export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn;
 export iter_bound_traits_and_supertraits;
 export count_traits_and_supertraits;
 
@@ -351,6 +351,9 @@ enum AutoRefKind {
 
     /// Convert from @[]/~[] to &[] (or str)
     AutoBorrowVec,
+
+    /// Convert from @[]/~[] to &&[] (or str)
+    AutoBorrowVecRef,
 
     /// Convert from @fn()/~fn() to &fn()
     AutoBorrowFn,

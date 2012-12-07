@@ -707,19 +707,46 @@ impl LookupContext {
             ty_evec(mt, vstore_box) |
             ty_evec(mt, vstore_uniq) |
             ty_evec(mt, vstore_fixed(_)) => {
-                self.search_for_some_kind_of_autorefd_method(
+                // First try to borrow to a slice
+                let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| ty::mk_evec(tcx,
                                       {ty:mt.ty, mutbl:m},
-                                      vstore_slice(r)))
+                                      vstore_slice(r)));
+
+                if entry.is_some() { return entry; }
+
+                // Then try to borrow to a slice *and* borrow a pointer.
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoBorrowVecRef, autoderefs, [m_const, m_imm, m_mutbl],
+                    |m,r| {
+                        let slice_ty = ty::mk_evec(tcx,
+                                                   {ty:mt.ty, mutbl:m},
+                                                   vstore_slice(r));
+                        // NB: we do not try to autoref to a mutable
+                        // pointer. That would be creating a pointer
+                        // to a temporary pointer (the borrowed
+                        // slice), so any update the callee makes to
+                        // it can't be observed.
+                        ty::mk_rptr(tcx, r, {ty:slice_ty, mutbl:m_imm})
+                    })
             }
 
             ty_estr(vstore_box) |
             ty_estr(vstore_uniq) |
             ty_estr(vstore_fixed(_)) => {
-                self.search_for_some_kind_of_autorefd_method(
+                let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [m_imm],
-                    |_m,r| ty::mk_estr(tcx, vstore_slice(r)))
+                    |_m,r| ty::mk_estr(tcx, vstore_slice(r)));
+
+                if entry.is_some() { return entry; }
+
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoBorrowVecRef, autoderefs, [m_imm],
+                    |m,r| {
+                        let slice_ty = ty::mk_estr(tcx, vstore_slice(r));
+                        ty::mk_rptr(tcx, r, {ty:slice_ty, mutbl:m})
+                    })
             }
 
             ty_trait(*) | ty_fn(*) => {

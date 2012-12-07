@@ -119,7 +119,7 @@ use base::*;
 use syntax::print::pprust::{expr_to_str};
 use util::ppaux::ty_to_str;
 use util::common::indenter;
-use ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
+use ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
 use middle::ty::MoveValue;
 
@@ -202,6 +202,9 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                         AutoBorrowVec => {
                             unpack_datum!(bcx, auto_slice(bcx, datum))
                         }
+                        AutoBorrowVecRef => {
+                            unpack_datum!(bcx, auto_slice_and_ref(bcx, datum))
+                        }
                         AutoBorrowFn => {
                             // currently, all closure types are
                             // represented precisely the same, so no
@@ -242,6 +245,11 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         DatumBlock {bcx: bcx, datum: scratch}
+    }
+
+    fn auto_slice_and_ref(bcx: block, datum: Datum) -> DatumBlock {
+        let DatumBlock { bcx, datum } = auto_slice(bcx, datum);
+        auto_ref(bcx, datum)
     }
 }
 
