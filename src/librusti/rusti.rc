@@ -303,7 +303,8 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let sess = driver::build_session(options, diagnostic::emit);
         sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, input);
-        let outputs = driver::build_output_filenames(input, &None, &None, sess);
+        let outputs = driver::build_output_filenames(
+            input, &None, &None, sess);
         // If the library already exists and is newer than the source
         // file, skip compilation and return None.
         let mut should_compile = true;
@@ -374,7 +375,8 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
         ~"help" => {
             io::println(
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                ~":load <crate> ... - loads given crates as dynamic libraries" +
+                ~":load <crate> ... - \
+                  loads given crates as dynamic libraries" +
                 ~":clear - clear the screen\n" +
                 ~":exit - exit from the repl\n" +
                 ~":help - show this message");
