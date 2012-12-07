@@ -10,6 +10,7 @@
 
 #[warn(deprecated_pattern)];
 
+use core::dvec::DVec;
 use std::{map, smallintmap};
 use result::Result;
 use std::map::HashMap;
@@ -27,8 +28,11 @@ use middle::lint::{get_lint_level, allow};
 use syntax::ast::*;
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+use middle::resolve::{Impl, MethodInfo};
 
 export ProvidedMethodSource;
+export ProvidedMethodInfo;
+export ProvidedMethodsMap;
 export InstantiatedTraitRef;
 export TyVid, IntVid, FloatVid, FnVid, RegionVid, vid;
 export br_hashmap;
@@ -352,6 +356,21 @@ enum AutoRefKind {
     AutoBorrowFn,
 }
 
+// Stores information about provided methods (a.k.a. default methods) in
+// implementations.
+//
+// This is a map from ID of each implementation to the method info and trait
+// method ID of each of the default methods belonging to the trait that that
+// implementation implements.
+type ProvidedMethodsMap = HashMap<def_id,@DVec<@ProvidedMethodInfo>>;
+
+// Stores the method info and definition ID of the associated trait method for
+// each instantiation of each provided method.
+struct ProvidedMethodInfo {
+    method_info: @MethodInfo,
+    trait_method_def_id: def_id
+}
+
 struct ProvidedMethodSource {
     method_id: ast::def_id,
     impl_id: ast::def_id
@@ -416,6 +435,10 @@ type ctxt =
       normalized_cache: HashMap<t, t>,
       lang_items: middle::lang_items::LanguageItems,
       legacy_boxed_traits: HashMap<node_id, ()>,
+      // A mapping from an implementation ID to the method info and trait method
+      // ID of the provided (a.k.a. default) methods in the traits that that
+      // implementation implements.
+      provided_methods: ProvidedMethodsMap,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
       deriving_struct_methods: HashMap<ast::def_id, @~[DerivedFieldInfo]>,
@@ -975,6 +998,7 @@ fn mk_ctxt(s: session::Session,
       normalized_cache: new_ty_hash(),
       lang_items: move lang_items,
       legacy_boxed_traits: HashMap(),
+      provided_methods: HashMap(),
       provided_method_sources: HashMap(),
       supertraits: HashMap(),
       deriving_struct_methods: HashMap(),

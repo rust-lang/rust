@@ -19,7 +19,7 @@ use metadata::csearch::{get_impls_for_mod};
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{DerivedMethodInfo, ProvidedMethodSource, get};
+use middle::ty::{DerivedMethodInfo, ProvidedMethodSource, ProvidedMethodInfo, get};
 use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_class};
 use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
 use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec, ty_uniq};
@@ -130,21 +130,6 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     }
 }
 
-// Stores the method info and definition ID of the associated trait method for
-// each instantiation of each provided method.
-struct ProvidedMethodInfo {
-    method_info: @MethodInfo,
-    trait_method_def_id: def_id
-}
-
-// Stores information about provided methods (a.k.a. default methods) in
-// implementations.
-//
-// This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that that
-// implementation implements.
-type ProvidedMethodsMap = HashMap<def_id,@DVec<@ProvidedMethodInfo>>;
-
 struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
@@ -154,17 +139,12 @@ struct CoherenceInfo {
     // the associated trait must be imported at the call site.
     extension_methods: HashMap<def_id,@DVec<@Impl>>,
 
-    // A mapping from an implementation ID to the method info and trait method
-    // ID of the provided (a.k.a. default) methods in the traits that that
-    // implementation implements.
-    provided_methods: ProvidedMethodsMap,
 }
 
 fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
         inherent_methods: HashMap(),
         extension_methods: HashMap(),
-        provided_methods: HashMap(),
     }
 }
 
@@ -350,7 +330,7 @@ impl CoherenceChecker {
                     trait_method_def_id: trait_method.def_id
                 };
 
-            let pmm = self.crate_context.coherence_info.provided_methods;
+            let pmm = self.crate_context.tcx.provided_methods;
             match pmm.find(local_def(impl_id)) {
                 Some(mis) => {
                     // If the trait already has an entry in the
@@ -765,8 +745,7 @@ impl CoherenceChecker {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
 
-                    match self.crate_context
-                              .coherence_info
+                    match self.crate_context.tcx
                               .provided_methods
                               .find(local_def(item.id)) {
                         None => {
@@ -925,7 +904,7 @@ impl CoherenceChecker {
 
     fn add_default_methods_for_external_trait(trait_def_id: ast::def_id) {
         let tcx = self.crate_context.tcx;
-        let pmm = self.crate_context.coherence_info.provided_methods;
+        let pmm = tcx.provided_methods;
 
         if pmm.contains_key(trait_def_id) { return; }
 

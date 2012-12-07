@@ -88,6 +88,7 @@ export vtable_origin;
 export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
+export coherence;
 
 #[legacy_exports]
 #[path = "check/mod.rs"]
@@ -380,7 +381,7 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
 fn check_crate(tcx: ty::ctxt,
                trait_map: resolve::TraitMap,
                crate: @ast::crate)
-            -> (method_map, vtable_map) {
+    -> (method_map, vtable_map) {
 
     let ccx = @crate_ctxt_({trait_map: trait_map,
                             method_map: std::map::HashMap(),
