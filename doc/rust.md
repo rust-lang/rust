@@ -2244,8 +2244,9 @@ The compiler interprets a variable pattern `x` as a binding _only_ if there is n
 A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
 and local variables with lower-case letters.
 
-Multiple match patterns may be joined with the `|` operator.  A
-range of values may be specified with `..`. For example:
+Multiple match patterns may be joined with the `|` operator.
+A range of values may be specified with `..`.
+For example:
 
 ~~~~
 # let x = 2;
@@ -2256,6 +2257,10 @@ let message = match x {
   _      => "lots"
 };
 ~~~~
+
+Range patterns only work on scalar types
+(like integers and characters; not like vectors and structs, which have sub-components).
+A range pattern may not be a sub-range of another range pattern inside the same `match`.
 
 Finally, match patterns can accept *pattern guards* to further refine the
 criteria for matching a case. Pattern guards appear after the pattern and
