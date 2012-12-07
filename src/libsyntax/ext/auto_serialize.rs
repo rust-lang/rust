@@ -393,7 +393,6 @@ fn mk_impl(
     let opt_trait = Some(@{
         path: path,
         ref_id: cx.next_id(),
-        impl_id: cx.next_id(),
     });
 
     let ty = cx.ty_path(

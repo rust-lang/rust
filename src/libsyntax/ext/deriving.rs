@@ -220,8 +220,7 @@ fn create_derived_impl(cx: ext_ctxt,
     let trait_path = @move trait_path;
     let trait_ref = {
         path: trait_path,
-        ref_id: cx.next_id(),
-        impl_id: cx.next_id(),
+        ref_id: cx.next_id()
     };
     let trait_ref = @move trait_ref;
 

@@ -647,9 +647,6 @@ fn convert_struct(ccx: @crate_ctxt,
     let cms = convert_methods(ccx, struct_def.methods, rp, bounds);
     for struct_def.traits.each |trait_ref| {
         check_methods_against_trait(ccx, tps, rp, selfty, *trait_ref, cms);
-        // trait_ref.impl_id represents (class, trait) pair
-        write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
-        tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);
     }
 
     // If this struct is enum-like or tuple-like, create the type of its

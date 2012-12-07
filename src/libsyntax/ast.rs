@@ -1417,7 +1417,7 @@ type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
  */
 #[auto_serialize]
 #[auto_deserialize]
-type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
+type trait_ref = {path: @path, ref_id: node_id};
 
 #[auto_serialize]
 #[auto_deserialize]
