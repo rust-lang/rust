@@ -154,6 +154,7 @@ use syntax::ast::def_id;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use middle::resolve::DefMap;
+use middle::ty::{CopyValue, MoveValue, ReadValue};
 use back::abi;
 use std::map::HashMap;
 use dvec::DVec;
@@ -1394,7 +1395,7 @@ fn trans_alt_inner(scope_cx: block,
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
         let bindings_map = std::map::HashMap();
-        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
+        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);
             let llvariable_ty = type_of::type_of(bcx.ccx(), variable_ty);
@@ -1408,9 +1409,18 @@ fn trans_alt_inner(scope_cx: block,
                     llmatch = alloca(bcx, T_ptr(llvariable_ty));
                     trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
                 }
-                ast::bind_by_implicit_ref => {
+                ast::bind_infer => {
+                    // in this case also, the type of the variable will be T,
+                    // but we need to store a *T
+                    let is_move = match tcx.value_modes.find(p_id) {
+                        None => {
+                            tcx.sess.span_bug(s, ~"no value mode");
+                        }
+                        Some(MoveValue) => true,
+                        Some(CopyValue) | Some(ReadValue) => false
+                    };
                     llmatch = alloca(bcx, T_ptr(llvariable_ty));
-                    trmode = TrByImplicitRef;
+                    trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
                 }
                 ast::bind_by_ref(_) => {
                     llmatch = alloca(bcx, llvariable_ty);

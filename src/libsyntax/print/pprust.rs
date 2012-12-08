@@ -1573,7 +1573,7 @@ fn print_pat(s: ps, &&pat: @ast::pat, refutable: bool) {
                   ast::bind_by_value => {
                       word_nbsp(s, ~"copy");
                   }
-                  ast::bind_by_implicit_ref => {}
+                  ast::bind_infer => {}
               }
           }
           print_path(s, path, true);
