@@ -19,7 +19,8 @@ use metadata::csearch::{get_impls_for_mod};
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{DerivedMethodInfo, ProvidedMethodSource, ProvidedMethodInfo, get};
+use middle::ty::{DerivedMethodInfo, ProvidedMethodSource,
+                 ProvidedMethodInfo, get};
 use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_class};
 use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
 use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec, ty_uniq};
