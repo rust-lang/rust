@@ -20,7 +20,7 @@ trait option_monad<A> {
 impl<A> Option<A>: option_monad<A> {
     fn bind<B>(f: fn(A) -> Option<B>) -> Option<B> {
         match self {
-          Some(a) => { f(a) }
+          Some(ref a) => { f(*a) }
           None => { None }
         }
     }

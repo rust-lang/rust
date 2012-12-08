@@ -15,7 +15,7 @@ impl <T: to_str> Option<T>: to_str {
     fn to_str() -> ~str {
         match self {
           None => { ~"none" }
-          Some(t) => { ~"some(" + t.to_str() + ~")" }
+          Some(ref t) => { ~"some(" + t.to_str() + ~")" }
         }
     }
 }
