@@ -1641,6 +1641,16 @@ fn print_pat(s: ps, &&pat: @ast::pat, refutable: bool) {
         word(s.s, ~"..");
         print_expr(s, end);
       }
+      ast::pat_vec(elts, tail) => {
+        word(s.s, ~"[");
+        commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
+        do option::iter(&tail) |tail| {
+            if vec::len(elts) != 0u { word_space(s, ~","); }
+            word(s.s, ~"..");
+            print_pat(s, *tail, refutable);
+        }
+        word(s.s, ~"]");
+      }
     }
     (s.ann.post)(ann_node);
 }

@@ -525,7 +525,36 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
       }
+      ast::pat_vec(elts, tail) => {
+        let elt_type = match structure_of(fcx, pat.span, expected) {
+          ty::ty_evec(mt, _) | ty::ty_unboxed_vec(mt) => mt,
+          _ => {
+            tcx.sess.span_fatal(
+                pat.span,
+                fmt!("mismatched type: expected `%s` but found vector",
+                     fcx.infcx().ty_to_str(expected))
+            );
+          }
+        };
+        for elts.each |elt| {
+            check_pat(pcx, *elt, elt_type.ty);
+        }
+        fcx.write_ty(pat.id, expected);
 
+        match tail {
+            Some(tail_pat) => {
+                let region_var = fcx.infcx().next_region_var_with_lb(
+                    pat.span, pcx.block_region
+                );
+                let slice_ty = ty::mk_evec(tcx,
+                    {ty: elt_type.ty, mutbl: elt_type.mutbl},
+                    ty::vstore_slice(region_var)
+                );
+                check_pat(pcx, tail_pat, slice_ty);
+            }
+            None => ()
+        }
+      }
     }
 }
 

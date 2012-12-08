@@ -593,6 +593,14 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
+        pat_vec(elts, tail) => {
+            for elts.each |p| {
+                walk_pat(*p, it)
+            }
+            do option::iter(&tail) |tail| {
+                walk_pat(*tail, it)
+            }
+        }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
         pat_enum(_, _) => {
         }

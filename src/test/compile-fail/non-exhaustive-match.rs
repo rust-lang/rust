@@ -35,4 +35,28 @@ fn main() {
       (_, a) => {}
       (b, b) => {}
     }
+    match ~[Some(42), None, Some(21)] { //~ ERROR non-exhaustive patterns: vectors of length 0 not covered
+        [Some(*), None, ..tail] => {}
+        [Some(*), Some(*), ..tail] => {}
+        [None] => {}
+    }
+    match ~[1] {
+        [_, ..tail] => (),
+        [] => ()
+    }
+    match ~[0.5] { //~ ERROR non-exhaustive patterns: vectors of length 4 not covered
+        [0.1, 0.2, 0.3] => (),
+        [0.1, 0.2] => (),
+        [0.1] => (),
+        [] => ()
+    }
+    match ~[Some(42), None, Some(21)] {
+        [Some(*), None, ..tail] => {}
+        [Some(*), Some(*), ..tail] => {}
+        [None, None, ..tail] => {}
+        [None, Some(*), ..tail] => {}
+        [Some(_)] => {}
+        [None] => {}
+        [] => {}
+    }
 }
