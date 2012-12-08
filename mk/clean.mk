@@ -110,7 +110,8 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM)
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass*
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 endef
 
 $(foreach host, $(CFG_TARGET_TRIPLES), \
