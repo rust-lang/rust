@@ -131,9 +131,9 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
     // \0 to terminate.
     unsafe {
         match *env {
-          Some(es) if !vec::is_empty(es) => {
+          Some(ref es) if !vec::is_empty(*es) => {
             let mut blk : ~[u8] = ~[];
-            for vec::each(es) |e| {
+            for vec::each(*es) |e| {
                 let (k,v) = *e;
                 let t = fmt!("%s=%s", k, v);
                 let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
