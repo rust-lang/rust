@@ -2201,7 +2201,7 @@ then a placeholder (`_`) represents the remaining fields.
 # type options = {choose: bool, size: ~str};
 # type player = {player: ~str, stats: (), options: options};
 # fn load_stats() { }
-# fn choose_player(r: player) { }
+# fn choose_player(r: &player) { }
 # fn next_player() { }
 
 fn main() {
@@ -2216,10 +2216,10 @@ fn main() {
 
     match r {
       {options: {choose: true, _}, _} => {
-        choose_player(r)
+        choose_player(&r)
       }
-      {player: p, options: {size: ~"small", _}, _} => {
-        log(info, p + ~" is small");
+      {player: ref p, options: {size: ~"small", _}, _} => {
+        log(info, (copy *p) + ~" is small");
       }
       _ => {
         next_player();
