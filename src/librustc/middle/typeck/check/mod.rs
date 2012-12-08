@@ -133,6 +133,8 @@ struct inherited {
     adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
 }
 
+enum FnKind { ForLoop, DoBlock, Vanilla }
+
 struct fn_ctxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
@@ -157,6 +159,11 @@ struct fn_ctxt {
     // charged with guaranteeing that the value whose address was taken
     // can actually be made to live as long as it needs to live.
     mut region_lb: ast::node_id,
+
+    // Says whether we're inside a for loop, in a do block
+    // or neither. Helps with error messages involving the
+    // function return type.
+    fn_kind: FnKind,
 
     in_scope_regions: isr_alist,
 
@@ -187,6 +194,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
         purity: ast::pure_fn,
         mut region_lb: region_bnd,
         in_scope_regions: @Nil,
+        fn_kind: Vanilla,
         inh: blank_inherited(ccx),
         ccx: ccx
     }
@@ -208,7 +216,7 @@ fn check_bare_fn(ccx: @crate_ctxt,
     let fty = ty::node_id_to_type(ccx.tcx, id);
     match ty::get(fty).sty {
         ty::ty_fn(ref fn_ty) => {
-            check_fn(ccx, self_info, fn_ty, decl, body, false, None)
+            check_fn(ccx, self_info, fn_ty, decl, body, Vanilla, None)
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -220,10 +228,13 @@ fn check_fn(ccx: @crate_ctxt,
             fn_ty: &ty::FnTy,
             decl: ast::fn_decl,
             body: ast::blk,
-            indirect_ret: bool,
+            fn_kind: FnKind,
             old_fcx: Option<@fn_ctxt>) {
 
     let tcx = ccx.tcx;
+    let indirect_ret = match fn_kind {
+        ForLoop => true, _ => false
+    };
 
     // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
@@ -276,6 +287,7 @@ fn check_fn(ccx: @crate_ctxt,
             purity: purity,
             mut region_lb: body.node.id,
             in_scope_regions: isr,
+            fn_kind: fn_kind,
             inh: inherited,
             ccx: ccx
         }
@@ -304,7 +316,11 @@ fn check_fn(ccx: @crate_ctxt,
     match body.node.expr {
       Some(tail_expr) => {
         let tail_expr_ty = fcx.expr_ty(tail_expr);
-        demand::suptype(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty);
+        // Special case: we print a special error if there appears
+        // to be do-block/for-loop confusion
+        demand::suptype_with_fn(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty,
+            |sp, e, a, s| {
+                fcx.report_mismatched_return_types(sp, e, a, s) });
       }
       None => ()
     }
@@ -774,11 +790,27 @@ impl @fn_ctxt {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
     }
 
-    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+    fn report_mismatched_return_types(sp: span, e: ty::t, a: ty::t,
                                err: &ty::type_err) {
-        self.infcx().report_mismatched_types(sp, e, a, err);
+        match self.fn_kind {
+            ForLoop if !ty::type_is_bool(e) && !ty::type_is_nil(a) =>
+                    self.tcx().sess.span_err(sp, fmt!("A for-loop body must \
+                        return (), but it returns %s here. \
+                        Perhaps you meant to write a `do`-block?",
+                                            ty_to_str(self.tcx(), a))),
+            DoBlock if ty::type_is_bool(e) && ty::type_is_nil(a) =>
+                // If we expected bool and got ()...
+                    self.tcx().sess.span_err(sp, fmt!("Do-block body must \
+                        return %s, but returns () here. Perhaps you meant \
+                        to write a `for`-loop?", ty_to_str(self.tcx(), e))),
+            _ => self.infcx().report_mismatched_types(sp, e, a, err)
+        }
     }
 
+    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+                               err: &ty::type_err) {
+            self.infcx().report_mismatched_types(sp, e, a, err)
+    }
 }
 
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
@@ -1087,9 +1119,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         DontDerefArgs => {}
                     }
 
+                    // mismatch error happens in here
                     bot |= check_expr_with_assignability(fcx,
                                                          *arg, formal_ty);
-                    fcx.write_ty(arg.id, fcx.expr_ty(*arg));
 
                 }
             }
@@ -1414,7 +1446,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      ast_proto_opt: Option<ast::Proto>,
                      decl: ast::fn_decl,
                      body: ast::blk,
-                     is_loop_body: bool,
+                     fn_kind: FnKind,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
 
@@ -1473,7 +1505,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(expr.id, fty);
 
         check_fn(fcx.ccx, None, &fn_ty, decl, body,
-                 is_loop_body, Some(fcx));
+                 fn_kind, Some(fcx));
     }
 
 
@@ -2041,14 +2073,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_fn(proto, decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, Some(proto),
-                      decl, (*body), false,
-                      expected);
+                      decl, (*body), Vanilla, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, None,
-                      decl, (*body), false,
-                      expected);
+                      decl, (*body), Vanilla, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_loop_body(b) => {
@@ -2058,6 +2088,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // parameter. The catch here is that we need to validate two things:
         // 1. a closure that returns a bool is expected
         // 2. the closure that was given returns unit
+        let mut err_happened = false;
         let expected_sty = unpack_expected(fcx, expected, |x| Some(x));
         let inner_ty = match expected_sty {
           Some(ty::ty_fn(ref fty)) => {
@@ -2071,8 +2102,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                 should return `bool`, not `%s`", actual)
                       },
                       (*fty).sig.output, None);
+                err_happened = true;
                 fcx.write_ty(id, ty::mk_err(tcx));
-                return true;
               }
             }
             ty::mk_fn(tcx, FnTyBase {
@@ -2091,8 +2122,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                actual)
                       },
                                              expected_t, None);
-                      fcx.write_ty(id, ty::mk_err(tcx));
-                      return true;
+                      let err_ty = ty::mk_err(tcx);
+                      fcx.write_ty(id, err_ty);
+                      err_happened = true;
+                      err_ty
                   }
                   None => fcx.tcx().sess.impossible_case(expr.span,
                             ~"loop body must have an expected type")
@@ -2101,8 +2134,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match b.node {
           ast::expr_fn_block(decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          decl, (*body), true,
-                          Some(inner_ty));
+                          decl, (*body), ForLoop, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
@@ -2113,11 +2145,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx, expr.span, fcx.node_ty(b.id));
         match ty::get(block_ty).sty {
           ty::ty_fn(ref fty) => {
-            fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
-                meta: (*fty).meta,
-                sig: FnSig {output: ty::mk_bool(tcx),
-                            ..(*fty).sig}
-            }))
+              if !err_happened {
+                  fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
+                      meta: (*fty).meta,
+                      sig: FnSig {output: ty::mk_bool(tcx),
+                                  ..(*fty).sig}
+                  }));
+              }
+              else {
+                  fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
+              }
           }
           _ => fail ~"expected fn type"
         }
@@ -2135,8 +2172,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                             function as its last argument, or wrong number \
                             of arguments passed to a `do` function"
                       }, expected_t, None);
-                      fcx.write_ty(id, ty::mk_err(tcx));
-                      return true;
+                      let err_ty = ty::mk_err(tcx);
+                      fcx.write_ty(id, err_ty);
+                      err_ty
                   }
                   None => fcx.tcx().sess.impossible_case(expr.span,
                               ~"do body must have expected type")
@@ -2145,8 +2183,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match b.node {
           ast::expr_fn_block(decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          decl, (*body), true,
-                          Some(inner_ty));
+                          decl, (*body), DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
