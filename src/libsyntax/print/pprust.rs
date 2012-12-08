@@ -564,9 +564,11 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_ident(s, item.ident);
         print_type_params(s, tps);
         if vec::len(traits) != 0u {
-            word_space(s, ~":");
-            commasep(s, inconsistent, traits, |s, p|
-                print_path(s, p.path, false));
+            word(s.s, ~":");
+            for vec::each(traits) |trait_| {
+                nbsp(s);
+                print_path(s, trait_.path, false);
+            }
         }
         word(s.s, ~" ");
         bopen(s);
