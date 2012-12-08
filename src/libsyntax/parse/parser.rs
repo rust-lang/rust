@@ -37,7 +37,7 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat,
              expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
              expr_unary_move, expr_vec, expr_vstore, expr_vstore_mut_box,
-             expr_while, extern_fn, field, fn_decl,
+             expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl,
              foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
              ident, impure_fn, infer, inherited,
              item, item_, item_class, item_const, item_enum, item_fn,
@@ -1455,6 +1455,9 @@ impl Parser {
                   expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
                   if m == m_imm => {
                     expr_vstore(e, expr_vstore_slice)
+                  }
+                  expr_vec(*) if m == m_mutbl => {
+                    expr_vstore(e, expr_vstore_mut_slice)
                   }
                   _ => expr_addr_of(m, e)
                 };

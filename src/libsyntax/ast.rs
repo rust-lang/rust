@@ -441,7 +441,8 @@ enum expr_vstore {
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
     expr_vstore_mut_box,               // @mut [1,2,3,4]
-    expr_vstore_slice                  // &[1,2,3,4]
+    expr_vstore_slice,                 // &[1,2,3,4]
+    expr_vstore_mut_slice,             // &mut [1,2,3,4]
 }
 
 pure fn is_blockish(p: ast::Proto) -> bool {
