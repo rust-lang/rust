@@ -1052,6 +1052,10 @@ fn print_expr_vstore(s: ps, t: ast::expr_vstore) {
         word(s.s, ~"mut");
       }
       ast::expr_vstore_slice => word(s.s, ~"&"),
+      ast::expr_vstore_mut_slice => {
+        word(s.s, ~"&");
+        word(s.s, ~"mut");
+      }
     }
 }
 

@@ -1804,7 +1804,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let tt = ast_expr_vstore_to_vstore(fcx, ev, args.len(), vst);
             let mutability;
             match vst {
-                ast::expr_vstore_mut_box => mutability = ast::m_mutbl,
+                ast::expr_vstore_mut_box | ast::expr_vstore_mut_slice => {
+                    mutability = ast::m_mutbl
+                }
                 _ => mutability = mutbl
             }
             let t: ty::t = fcx.infcx().next_ty_var();
@@ -2823,7 +2825,7 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
         }
         ast::expr_vstore_uniq => ty::vstore_uniq,
         ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
-        ast::expr_vstore_slice => {
+        ast::expr_vstore_slice | ast::expr_vstore_mut_slice => {
             let r = fcx.infcx().next_region_var(e.span, e.id);
             ty::vstore_slice(r)
         }
