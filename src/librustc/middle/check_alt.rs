@@ -22,6 +22,7 @@ use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
+use std::sort;
 
 struct AltCheckCtxt {
     tcx: ty::ctxt,
@@ -146,6 +147,12 @@ fn check_exhaustive(cx: @AltCheckCtxt, sp: span, pats: ~[@pat]) {
               None => fail ~"check_exhaustive: bad variant in ctor"
             }
           }
+          ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+            match (*ctor) {
+              vec(n) => Some(fmt!("vectors of length %u", n)),
+              _ => None
+            }
+          }
           _ => None
         }
       }
@@ -166,6 +173,8 @@ enum ctor {
     variant(def_id),
     val(const_val),
     range(const_val, const_val),
+    vec(uint),
+    vec_with_tail(uint)
 }
 
 impl ctor : cmp::Eq {
@@ -179,7 +188,12 @@ impl ctor : cmp::Eq {
              range(ref cv0_other, ref cv1_other)) => {
                 (*cv0_self) == (*cv0_other) && (*cv1_self) == (*cv1_other)
             }
-            (single, _) | (variant(_), _) | (val(_), _) | (range(*), _) => {
+            (vec(n_self), vec(n_other)) => n_self == n_other,
+            (vec_with_tail(n_self), vec_with_tail(n_other)) => {
+                n_self == n_other
+            }
+            (single, _) | (variant(_), _) | (val(_), _) |
+            (range(*), _) | (vec(*), _) | (vec_with_tail(*), _) => {
                 false
             }
         }
@@ -233,6 +247,21 @@ fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
                       not_useful => (),
                       ref u => return (*u)
                     }
+                }
+                not_useful
+              }
+              ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+                let max_len = do m.foldr(0) |r, max_len| {
+                  match r[0].node {
+                    pat_vec(elems, _) => uint::max(elems.len(), max_len),
+                    _ => max_len
+                  }
+                };
+                for uint::range(0, max_len + 1) |n| {
+                  match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
+                    not_useful => (),
+                    ref u => return (*u)
+                  }
                 }
                 not_useful
               }
@@ -297,6 +326,12 @@ fn pat_ctor_id(cx: @AltCheckCtxt, p: @pat) -> Option<ctor> {
       pat_region(*) => {
         Some(single)
       }
+      pat_vec(elems, tail) => {
+        match tail {
+          Some(_) => Some(vec_with_tail(elems.len())),
+          None => Some(vec(elems.len()))
+        }
+      }
     }
 }
 
@@ -360,6 +395,56 @@ fn missing_ctor(cx: @AltCheckCtxt,
         else if true_found { Some(val(const_bool(false))) }
         else { Some(val(const_bool(true))) }
       }
+      ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+        let max_len = do m.foldr(0) |r, max_len| {
+          match r[0].node {
+            pat_vec(elems, _) => uint::max(elems.len(), max_len),
+            _ => max_len
+          }
+        };
+        let min_len_with_tail = do m.foldr(max_len + 1) |r, min_len| {
+          match r[0].node {
+            pat_vec(elems, tail) => {
+              if tail.is_some() && elems.len() < min_len {
+                elems.len()
+              } else {
+                min_len
+              }
+            }
+            _ => min_len
+          }
+        };
+        let vec_lens = do m.filter_map |r| {
+          match r[0].node {
+            pat_vec(elems, tail) => {
+              match tail {
+                None if elems.len() < min_len_with_tail => Some(elems.len()),
+                _ => None
+              }
+            }
+            _ => None
+          }
+        };
+        let mut sorted_vec_lens = do sort::merge_sort(vec_lens) |a, b| {
+          a < b
+        };
+        vec::dedup(&mut sorted_vec_lens);
+
+        let mut missing = None;
+        for uint::range(0, min_len_with_tail) |i| {
+          if i >= sorted_vec_lens.len() || i != sorted_vec_lens[i] {
+            missing = Some(i);
+            break;
+          }
+        };
+        if missing.is_none() && min_len_with_tail > max_len {
+          missing = Some(min_len_with_tail);
+        }
+        match missing {
+          Some(k) => Some(vec(k)),
+          None => None
+        }
+      }
       _ => Some(single)
     }
 }
@@ -378,6 +463,12 @@ fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
+      ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+        match ctor {
+          vec(n) | vec_with_tail(n) => n,
+          _ => 0u
+        }
+      }
       _ => 0u
     }
 }
@@ -521,6 +612,32 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
                     compare_const_vals(c_hi, v_hi) <= 0;
         if match_ { Some(vec::tail(r)) } else { None }
       }
+      pat_vec(elems, tail) => {
+        match ctor_id {
+          vec_with_tail(_) => {
+            if elems.len() >= arity {
+              Some(vec::append(elems.slice(0, arity), vec::tail(r)))
+            } else {
+              None
+            }
+          }
+          vec(_) => {
+            if elems.len() < arity && tail.is_some() {
+              Some(vec::append(
+                vec::append(elems, vec::from_elem(
+                    arity - elems.len(), wild())
+                ),
+                vec::tail(r)
+              ))
+            } else if elems.len() == arity {
+              Some(vec::append(elems, vec::tail(r)))
+            } else {
+              None
+            }
+          }
+          _ => None
+        }
+      }
     }
 }
 
@@ -593,6 +710,7 @@ fn is_refutable(cx: @AltCheckCtxt, pat: &pat) -> bool {
         args.any(|a| is_refutable(cx, *a))
       }
       pat_enum(_,_) => { false }
+      pat_vec(*) => { true }
     }
 }
 

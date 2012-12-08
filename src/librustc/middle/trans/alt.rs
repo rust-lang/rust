@@ -179,7 +179,9 @@ enum Lit {
 enum Opt {
     lit(Lit),
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
-    range(@ast::expr, @ast::expr)
+    range(@ast::expr, @ast::expr),
+    vec_len_eq(uint),
+    vec_len_ge(uint)
 }
 
 fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
@@ -223,12 +225,15 @@ fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
         const_eval::compare_lit_exprs(tcx, a2, b2) == 0
       }
       (var(a, _), var(b, _)) => a == b,
+      (vec_len_eq(a), vec_len_eq(b)) => a == b,
+      (vec_len_ge(a), vec_len_ge(b)) => a == b,
       _ => false
     }
 }
 
 enum opt_result {
     single_result(Result),
+    lower_bound(Result),
     range_result(Result, Result),
 }
 fn trans_opt(bcx: block, o: &Opt) -> opt_result {
@@ -255,6 +260,12 @@ fn trans_opt(bcx: block, o: &Opt) -> opt_result {
         range(l1, l2) => {
             return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
                                 rslt(bcx, consts::const_expr(ccx, l2)));
+        }
+        vec_len_eq(n) => {
+            return single_result(rslt(bcx, C_int(ccx, n as int)));
+        }
+        vec_len_ge(n) => {
+            return lower_bound(rslt(bcx, C_int(ccx, n as int)));
         }
     }
 }
@@ -545,6 +556,24 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     None
                 }
             }
+            ast::pat_vec(elems, tail) => {
+                match tail {
+                    Some(_) => {
+                        if opt_eq(tcx, &vec_len_ge(elems.len()), opt) {
+                            Some(vec::append_one(elems, tail.get()))
+                        } else {
+                            None
+                        }
+                    }
+                    None => {
+                        if opt_eq(tcx, &vec_len_eq(elems.len()), opt) {
+                            Some(copy elems)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(variant_size, dummy))
@@ -755,6 +784,13 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
             ast::pat_range(l1, l2) => {
                 add_to_set(ccx.tcx, &found, range(l1, l2));
             }
+            ast::pat_vec(elems, tail) => {
+                let opt = match tail {
+                    None => vec_len_eq(elems.len()),
+                    Some(_) => vec_len_ge(elems.len())
+                };
+                add_to_set(ccx.tcx, &found, opt);
+            }
             _ => {}
         }
     }
@@ -788,6 +824,41 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
                  enum_ty_substs, i)
     };
     return {vals: args, bcx: bcx};
+}
+
+fn extract_vec_elems(bcx: block, pat_id: ast::node_id,
+                     elem_count: uint, tail: bool, val: ValueRef)
+    -> {vals: ~[ValueRef], bcx: block}
+{
+    let _icx = bcx.insn_ctxt("alt::extract_vec_elems");
+    let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
+    let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
+    let (base, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
+
+    let mut elems = do vec::from_fn(elem_count) |i| {
+        GEPi(bcx, base, ~[i])
+    };
+    if tail {
+        let tail_offset = Mul(bcx, vt.llunit_size,
+            C_int(bcx.ccx(), elem_count as int)
+        );
+        let tail_begin = tvec::pointer_add(bcx, base, tail_offset);
+        let tail_len = Sub(bcx, len, tail_offset);
+        let tail_ty = ty::mk_evec(bcx.tcx(),
+            {ty: vt.unit_ty, mutbl: ast::m_imm},
+            ty::vstore_slice(ty::re_static)
+        );
+        let scratch = scratch_datum(bcx, tail_ty, false);
+        Store(bcx, tail_begin,
+            GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
+        );
+        Store(bcx, tail_len,
+            GEPi(bcx, scratch.val, [0u, abi::slice_elt_len])
+        );
+        elems.push(scratch.val);
+        scratch.add_clean(bcx);
+    }
+    return {vals: elems, bcx: bcx};
 }
 
 // NB: This function does not collect fields from struct-like enum variants.
@@ -918,7 +989,7 @@ fn pick_col(m: &[@Match]) -> uint {
     return best_col;
 }
 
-enum branch_kind { no_branch, single, switch, compare, }
+enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 impl branch_kind : cmp::Eq {
     pure fn eq(&self, other: &branch_kind) -> bool {
@@ -1268,6 +1339,15 @@ fn compile_submatch(bcx: block,
             range(_, _) => {
                 test_val = Load(bcx, val);
                 kind = compare;
+            },
+            vec_len_eq(_) | vec_len_ge(_) => {
+                let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
+                let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
+                let (_, len) = tvec::get_base_and_len(
+                    bcx, unboxed, vt.vec_ty
+                );
+                test_val = SDiv(bcx, len, vt.llunit_size);
+                kind = compare_vec_len;
             }
         }
     }
@@ -1323,6 +1403,12 @@ fn compile_submatch(bcx: block,
                                   Result {bcx, val}) => {
                                   compare_values(bcx, test_val, val, t)
                               }
+                              lower_bound(
+                                  Result {bcx, val}) => {
+                                  compare_scalar_types(
+                                          bcx, test_val, val,
+                                          t, ast::ge)
+                              }
                               range_result(
                                   Result {val: vbegin, _},
                                   Result {bcx, val: vend}) => {
@@ -1342,9 +1428,47 @@ fn compile_submatch(bcx: block,
                   bcx = sub_block(after_cx, ~"compare_next");
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
-                _ => ()
+              compare_vec_len => {
+                  let Result {bcx: after_cx, val: matches} = {
+                      do with_scope_result(bcx, None,
+                                           ~"compare_vec_len_scope") |bcx| {
+                          match trans_opt(bcx, opt) {
+                              single_result(
+                                  Result {bcx, val}) => {
+                                  let value = compare_scalar_values(
+                                      bcx, test_val, val,
+                                      signed_int, ast::eq);
+                                  rslt(bcx, value)
+                              }
+                              lower_bound(
+                                  Result {bcx, val: val}) => {
+                                  let value = compare_scalar_values(
+                                      bcx, test_val, val,
+                                      signed_int, ast::ge);
+                                  rslt(bcx, value)
+                              }
+                              range_result(
+                                  Result {val: vbegin, _},
+                                  Result {bcx, val: vend}) => {
+                                  let llge =
+                                      compare_scalar_values(
+                                          bcx, test_val,
+                                          vbegin, signed_int, ast::ge);
+                                  let llle =
+                                      compare_scalar_values(
+                                          bcx, test_val, vend,
+                                          signed_int, ast::le);
+                                  rslt(bcx, And(bcx, llge, llle))
+                              }
+                          }
+                      }
+                  };
+                  bcx = sub_block(after_cx, ~"compare_vec_len_next");
+                  CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
+              }
+              _ => ()
             }
-        } else if kind == compare {
+        } else if kind == compare || kind == compare_vec_len {
             Br(bcx, else_cx.llbb);
         }
 
@@ -1353,6 +1477,16 @@ fn compile_submatch(bcx: block,
         match *opt {
             var(_, vdef) => {
                 let args = extract_variant_args(opt_cx, pat_id, vdef, val);
+                size = args.vals.len();
+                unpacked = args.vals;
+                opt_cx = args.bcx;
+            }
+            vec_len_eq(n) | vec_len_ge(n) => {
+                let tail = match *opt {
+                    vec_len_ge(_) => true,
+                    _ => false
+                };
+                let args = extract_vec_elems(opt_cx, pat_id, n, tail, val);
                 size = args.vals.len();
                 unpacked = args.vals;
                 opt_cx = args.bcx;
@@ -1366,7 +1500,9 @@ fn compile_submatch(bcx: block,
 
     // Compile the fall-through case, if any
     if !exhaustive {
-        if kind == compare { Br(bcx, else_cx.llbb); }
+        if kind == compare || kind == compare_vec_len {
+            Br(bcx, else_cx.llbb);
+        }
         if kind != single {
             compile_submatch(else_cx, defaults, vals_left, chk);
         }
@@ -1640,7 +1776,8 @@ fn bind_irrefutable_pat(bcx: block,
                                        true,
                                        binding_mode);
         }
-        ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()
+        ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) |
+        ast::pat_vec(*) => ()
     }
     return bcx;
 }

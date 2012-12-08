@@ -389,6 +389,7 @@ enum pat_ {
     pat_region(@pat), // borrowed pointer pattern
     pat_lit(@expr),
     pat_range(@expr, @expr),
+    pat_vec(~[@pat], Option<@pat>)
 }
 
 #[auto_serialize]

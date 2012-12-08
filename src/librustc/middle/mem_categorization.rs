@@ -978,7 +978,9 @@ impl &mem_categorization_ctxt {
             self.cat_pattern(subcmt, subpat, op);
           }
 
-          ast::pat_lit(_) | ast::pat_range(_, _) => { /*always ok*/ }
+          ast::pat_vec(*) | ast::pat_lit(_) | ast::pat_range(_, _) => {
+              /*always ok*/
+          }
         }
     }
 

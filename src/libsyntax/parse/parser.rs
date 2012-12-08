@@ -1794,6 +1794,39 @@ impl Parser {
         };
     }
 
+    fn parse_pat_vec_elements(refutable: bool) -> (~[@pat], Option<@pat>) {
+        let mut elements = ~[];
+        let mut tail = None;
+        let mut first = true;
+
+        while self.token != token::RBRACKET {
+            if first { first = false; }
+            else { self.expect(token::COMMA); }
+
+            let mut is_tail = false;
+            if self.token == token::DOTDOT {
+                self.bump();
+                is_tail = true;
+            }
+
+            let subpat = self.parse_pat(refutable);
+            if is_tail {
+                match subpat {
+                    @{ node: pat_wild, _ } => (),
+                    @{ node: pat_ident(_, _, _), _ } => (),
+                    @{ span, _ } => self.span_fatal(
+                        span, ~"expected an identifier or `_`"
+                    )
+                }
+                tail = Some(subpat);
+                break;
+            }
+
+            elements.push(subpat);
+        }
+        return (elements, tail);
+    }
+
     fn parse_pat_fields(refutable: bool) -> (~[ast::field_pat], bool) {
         let mut fields = ~[];
         let mut etc = false;
@@ -1928,6 +1961,13 @@ impl Parser {
                 self.expect(token::RPAREN);
                 pat = pat_tup(fields);
             }
+          }
+          token::LBRACKET => {
+            self.bump();
+            let (elements, tail) = self.parse_pat_vec_elements(refutable);
+            hi = self.span.hi;
+            self.expect(token::RBRACKET);
+            pat = ast::pat_vec(elements, tail);
           }
           copy tok => {
             if !is_ident_or_path(tok)
