@@ -1,3 +1,4 @@
+// xfail-test
 extern mod std;
 use io::WriterUtil;
 use std::tempfile;
