@@ -438,9 +438,9 @@ type ctxt =
       normalized_cache: HashMap<t, t>,
       lang_items: middle::lang_items::LanguageItems,
       legacy_boxed_traits: HashMap<node_id, ()>,
-      // A mapping from an implementation ID to the method info and trait method
-      // ID of the provided (a.k.a. default) methods in the traits that that
-      // implementation implements.
+      // A mapping from an implementation ID to the method info and trait
+      // method ID of the provided (a.k.a. default) methods in the traits that
+      // that implementation implements.
       provided_methods: ProvidedMethodsMap,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,

@@ -372,7 +372,8 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
             None => {
                 match ccx.tcx.provided_method_sources.find(m_id) {
                     Some(source) => {
-                        method_ty_param_count(ccx, source.method_id, source.impl_id)
+                        method_ty_param_count(
+                            ccx, source.method_id, source.impl_id)
                     }
                     None => fail
                 }
