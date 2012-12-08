@@ -14,13 +14,20 @@ use check::fn_ctxt;
 // don't.
 fn suptype(fcx: @fn_ctxt, sp: span,
            expected: ty::t, actual: ty::t) {
+    suptype_with_fn(fcx, sp, expected, actual,
+        |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
+}
+
+fn suptype_with_fn(fcx: @fn_ctxt, sp: span,
+           expected: ty::t, actual: ty::t,
+                   handle_err: fn(span, ty::t, ty::t, &ty::type_err)) {
 
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), false, sp,
                           actual, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
-        fcx.report_mismatched_types(sp, expected, actual, err);
+          handle_err(sp, expected, actual, err);
       }
     }
 }
