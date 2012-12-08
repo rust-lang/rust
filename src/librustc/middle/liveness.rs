@@ -390,9 +390,7 @@ impl IrMaps {
           Arg(id, _, by_copy) |
           Local(LocalInfo {id: id, kind: FromLetNoInitializer, _}) |
           Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
-          Local(LocalInfo {id: id, kind: FromMatch(bind_by_value), _}) |
-          Local(LocalInfo {id: id, kind: FromMatch(bind_by_ref(_)), _}) |
-          Local(LocalInfo {id: id, kind: FromMatch(bind_by_move), _}) => {
+          Local(LocalInfo {id: id, kind: FromMatch(_), _}) => {
             let v = match self.last_use_map.find(expr_id) {
               Some(v) => v,
               None => {
@@ -405,8 +403,7 @@ impl IrMaps {
             (*v).push(id);
           }
           Arg(_, _, by_ref) |
-          Arg(_, _, by_val) | Self | ImplicitRet |
-          Local(LocalInfo {kind: FromMatch(bind_by_implicit_ref), _}) => {
+          Arg(_, _, by_val) | Self | ImplicitRet => {
             debug!("--but it is not owned");
           }
         }

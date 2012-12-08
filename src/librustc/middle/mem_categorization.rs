@@ -636,26 +636,10 @@ impl &mem_categorization_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_binding(vid, ast::bind_by_value) |
-          ast::def_binding(vid, ast::bind_by_move)  |
-          ast::def_binding(vid, ast::bind_by_ref(_)) => {
+          ast::def_binding(vid, _) => {
             // by-value/by-ref bindings are local variables
             @{id:id, span:span,
               cat:cat_local(vid), lp:Some(@lp_local(vid)),
-              mutbl:m_imm, ty:expr_ty}
-          }
-
-          ast::def_binding(pid, ast::bind_by_implicit_ref) => {
-            // implicit-by-ref bindings are "special" since they are
-            // implicit pointers.
-
-            // Technically, the mutability is not always imm, but we
-            // (choose to be) unsound for the moment since these
-            // implicit refs are going away and it reduces external
-            // dependencies.
-
-            @{id:id, span:span,
-              cat:cat_binding(pid), lp:None,
               mutbl:m_imm, ty:expr_ty}
           }
         }

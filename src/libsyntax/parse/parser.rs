@@ -23,7 +23,7 @@ use obsolete::{
     ObsoleteModeInFnType, ObsoleteMoveInit, ObsoleteBinaryMove,
 };
 use ast::{_mod, add, arg, arm, attribute,
-             bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
+             bind_by_ref, bind_infer, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
              by_move, by_ref, by_val, capture_clause,
              capture_item, class_immutable, class_mutable,
@@ -1925,9 +1925,7 @@ impl Parser {
             } else {
                 subpat = @{
                     id: self.get_id(),
-                    node: pat_ident(bind_by_implicit_ref,
-                                    fieldpath,
-                                    None),
+                    node: pat_ident(bind_infer, fieldpath, None),
                     span: self.last_span
                 };
             }
@@ -2054,9 +2052,7 @@ impl Parser {
                 } else if self.eat_keyword(~"move") {
                     binding_mode = bind_by_move;
                 } else if refutable {
-                    // XXX: Should be bind_by_value, but that's not
-                    // backward compatible.
-                    binding_mode = bind_by_implicit_ref;
+                    binding_mode = bind_infer;
                 } else {
                     binding_mode = bind_by_value;
                 }

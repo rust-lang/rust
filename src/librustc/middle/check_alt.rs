@@ -592,15 +592,25 @@ fn check_legality_of_move_bindings(cx: @AltCheckCtxt,
     let mut by_ref_span = None;
     let mut any_by_move = false;
     for pats.each |pat| {
-        do pat_bindings(def_map, *pat) |bm, _id, span, _path| {
+        do pat_bindings(def_map, *pat) |bm, id, span, _path| {
             match bm {
-                bind_by_ref(_) | bind_by_implicit_ref => {
+                bind_by_ref(_) => {
                     by_ref_span = Some(span);
                 }
                 bind_by_move => {
                     any_by_move = true;
                 }
-                _ => { }
+                bind_by_value => {}
+                bind_infer => {
+                    match cx.tcx.value_modes.find(id) {
+                        Some(MoveValue) => any_by_move = true,
+                        Some(CopyValue) | Some(ReadValue) => {}
+                        None => {
+                            cx.tcx.sess.span_bug(span, ~"no mode for pat \
+                                                         binding");
+                        }
+                    }
+                }
             }
         }
     }
