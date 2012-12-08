@@ -21,7 +21,8 @@
  * Single-character options are expected to appear on the command line with a
  * single preceding dash; multiple-character options are expected to be
  * proceeded by two dashes. Options that expect an argument accept their
- * argument following either a space or an equals sign.
+ * argument following either a space or an equals sign. Single-character
+ * options don't require the space.
  *
  * # Example
  *
@@ -203,7 +204,7 @@ impl Matches : Eq {
 }
 
 fn is_arg(arg: &str) -> bool {
-    return arg.len() > 1u && arg[0] == '-' as u8;
+    return arg.len() > 1 && arg[0] == '-' as u8;
 }
 
 fn name_str(nm: &Name) -> ~str {
@@ -293,38 +294,37 @@ pub type Result = result::Result<Matches, Fail_>;
  * Use <fail_str> to get an error message.
  */
 pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
-    let n_opts = vec::len::<Opt>(opts);
+    let n_opts = opts.len();
     fn f(_x: uint) -> ~[Optval] { return ~[]; }
     let vals = vec::to_mut(vec::from_fn(n_opts, f));
     let mut free: ~[~str] = ~[];
-    let l = vec::len(args);
-    let mut i = 0u;
+    let l = args.len();
+    let mut i = 0;
     while i < l {
         let cur = args[i];
         let curlen = cur.len();
         if !is_arg(cur) {
             free.push(cur);
         } else if cur == ~"--" {
-            let mut j = i + 1u;
-            while j < l { free.push(args[j]); j += 1u; }
+            let mut j = i + 1;
+            while j < l { free.push(args[j]); j += 1; }
             break;
         } else {
             let mut names;
-            let mut i_arg = option::None::<~str>;
+            let mut i_arg = None;
             if cur[1] == '-' as u8 {
-                let tail = str::slice(cur, 2u, curlen);
-                let tail_eq = str::splitn_char(tail, '=', 1u);
-                if vec::len(tail_eq) <= 1u {
+                let tail = str::slice(cur, 2, curlen);
+                let tail_eq = str::splitn_char(tail, '=', 1);
+                if tail_eq.len() <= 1 {
                     names = ~[Long(tail)];
                 } else {
                     names =
                         ~[Long(tail_eq[0])];
-                    i_arg =
-                        option::Some::<~str>(tail_eq[1]);
+                    i_arg = Some(tail_eq[1]);
                 }
             } else {
-                let mut j = 1u;
-                let mut last_valid_opt_id = option::None;
+                let mut j = 1;
+                let mut last_valid_opt_id = None;
                 names = ~[];
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
@@ -338,7 +338,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                     */
 
                     match find_opt(opts, opt) {
-                      Some(id) => last_valid_opt_id = option::Some(id),
+                      Some(id) => last_valid_opt_id = Some(id),
                       None => {
                         let arg_follows =
                             last_valid_opt_id.is_some() &&
@@ -348,11 +348,11 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                               Yes | Maybe => true,
                               No => false
                             };
-                        if arg_follows && j + 1 < curlen {
-                            i_arg = option::Some(str::slice(cur, j, curlen));
+                        if arg_follows && j < curlen {
+                            i_arg = Some(cur.slice(j, curlen));
                             break;
                         } else {
-                            last_valid_opt_id = option::None;
+                            last_valid_opt_id = None;
                         }
                       }
                     }
@@ -360,9 +360,9 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                     j = range.next;
                 }
             }
-            let mut name_pos = 0u;
-            for vec::each(names) |nm| {
-                name_pos += 1u;
+            let mut name_pos = 0;
+            for names.each() |nm| {
+                name_pos += 1;
                 let optid = match find_opt(opts, *nm) {
                   Some(id) => id,
                   None => return Err(UnrecognizedOption(name_str(nm)))
@@ -377,38 +377,38 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                   Maybe => {
                     if !i_arg.is_none() {
                         vals[optid].push(Val(i_arg.get()));
-                    } else if name_pos < vec::len::<Name>(names) ||
-                                  i + 1u == l || is_arg(args[i + 1u]) {
+                    } else if name_pos < names.len() ||
+                                  i + 1 == l || is_arg(args[i + 1]) {
                         vals[optid].push(Given);
-                    } else { i += 1u; vals[optid].push(Val(args[i])); }
+                    } else { i += 1; vals[optid].push(Val(args[i])); }
                   }
                   Yes => {
                     if !i_arg.is_none() {
                         vals[optid].push(Val(i_arg.get()));
-                    } else if i + 1u == l {
+                    } else if i + 1 == l {
                         return Err(ArgumentMissing(name_str(nm)));
-                    } else { i += 1u; vals[optid].push(Val(args[i])); }
+                    } else { i += 1; vals[optid].push(Val(args[i])); }
                   }
                 }
             }
         }
-        i += 1u;
+        i += 1;
     }
     i = 0u;
     while i < n_opts {
-        let n = vec::len::<Optval>(vals[i]);
+        let n = vals[i].len();
         let occ = opts[i].occur;
         if occ == Req {
-            if n == 0u {
+            if n == 0 {
                 return Err(OptionMissing(name_str(&(opts[i].name))));
             }
         }
         if occ != Multi {
-            if n > 1u {
+            if n > 1 {
                 return Err(OptionDuplicated(name_str(&(opts[i].name))));
             }
         }
-        i += 1u;
+        i += 1;
     }
     return Ok({opts: vec::from_slice(opts),
                vals: vec::from_mut(move vals),
@@ -1275,14 +1275,17 @@ mod tests {
 
     #[test]
     fn test_nospace() {
-        let args = ~[~"-Lfoo"];
-        let opts = ~[optmulti(~"L")];
+        let args = ~[~"-Lfoo", ~"-M."];
+        let opts = ~[optmulti(~"L"), optmulti(~"M")];
         let matches = &match getopts(args, opts) {
           result::Ok(move m) => m,
           result::Err(_) => fail
         };
         assert opts_present(matches, ~[~"L"]);
         assert opts_str(matches, ~[~"L"]) == ~"foo";
+        assert opts_present(matches, ~[~"M"]);
+        assert opts_str(matches, ~[~"M"]) == ~".";
+
     }
 
     #[test]
