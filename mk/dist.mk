@@ -46,8 +46,8 @@ PKG_FILES := \
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
 ifdef CFG_ISCC
-LICENSE.txt: $(S)LICENSE.txt
-	cp $< $@
+LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
+	cat $^ > $@
 
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
