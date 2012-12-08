@@ -2046,8 +2046,6 @@ impl Parser {
                 pat = self.parse_pat_ident(refutable, bind_by_value);
             } else if self.eat_keyword(~"move") {
                 pat = self.parse_pat_ident(refutable, bind_by_move);
-            } else if !is_plain_ident(self.token) {
-                pat = self.parse_enum_variant(refutable);
             } else {
                 let binding_mode;
                 // XXX: Aren't these two cases deadcode? -- bblum
@@ -2066,7 +2064,7 @@ impl Parser {
                 let cannot_be_enum_or_struct;
                 match self.look_ahead(1) {
                     token::LPAREN | token::LBRACKET | token::LT |
-                    token::LBRACE =>
+                    token::LBRACE | token::MOD_SEP =>
                         cannot_be_enum_or_struct = false,
                     _ =>
                         cannot_be_enum_or_struct = true
@@ -2161,32 +2159,6 @@ impl Parser {
         }
 
         pat_ident(binding_mode, name, sub)
-    }
-
-    fn parse_enum_variant(refutable: bool) -> ast::pat_ {
-        let enum_path = self.parse_path_with_tps(true);
-        match self.token {
-          token::LPAREN => {
-            match self.look_ahead(1u) {
-              token::BINOP(token::STAR) => { // foo(*)
-                self.expect(token::LPAREN);
-                self.expect(token::BINOP(token::STAR));
-                self.expect(token::RPAREN);
-                pat_enum(enum_path, None)
-              }
-              _ => { // foo(a, ..., z)
-                let args = self.parse_unspanned_seq(
-                    token::LPAREN, token::RPAREN,
-                    seq_sep_trailing_disallowed(token::COMMA),
-                    |p| p.parse_pat(refutable));
-                pat_enum(enum_path, Some(args))
-              }
-            }
-          }
-          _ => { // option::None
-            pat_enum(enum_path, Some(~[]))
-          }
-        }
     }
 
     fn parse_local(is_mutbl: bool,
