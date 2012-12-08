@@ -138,7 +138,7 @@ export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
 export type_implicitly_moves;
 export kind_is_safe_for_default_mode;
 export kind_is_owned;
-export meta_kind, kind_lteq, type_kind;
+export meta_kind, kind_lteq, type_kind, type_kind_ext;
 export operators;
 export type_err, terr_vstore_kind;
 export terr_mismatch, terr_onceness_mismatch;
@@ -2106,6 +2106,12 @@ fn mutable_type_kind(cx: ctxt, ty: mt) -> Kind {
 }
 
 fn type_kind(cx: ctxt, ty: t) -> Kind {
+    type_kind_ext(cx, ty, false)
+}
+
+// If `allow_ty_var` is true, then this is a conservative assumption; we
+// assume that type variables *do* have all kinds.
+fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
     match cx.kind_cache.find(ty) {
       Some(result) => return result,
       None => {/* fall through */ }
@@ -2140,6 +2146,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
       }
 
       // Trait instances are (for now) like shared boxes, basically
+      // XXX: This is wrong for ~Trait and &Trait!
       ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_owned(),
 
       // Static region pointers are copyable and sendable, but not owned
@@ -2254,8 +2261,13 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
       ty_self => kind_noncopyable(),
 
       ty_infer(_) => {
-        cx.sess.bug(~"Asked to compute kind of a type variable");
+        if allow_ty_var {
+            kind_top()
+        } else {
+            cx.sess.bug(~"Asked to compute kind of a type variable")
+        }
       }
+
       ty_type | ty_opaque_closure_ptr(_)
       | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
         cx.sess.bug(~"Asked to compute kind of fictitious type");
