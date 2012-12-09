@@ -35,6 +35,11 @@ private:
         return v;
     }
 
+private:
+    // private and undefined to disable copying
+    boxed_region(const boxed_region& rhs);
+    boxed_region& operator=(const boxed_region& rhs);
+    
 public:
     boxed_region(rust_env *e, memory_region *br)
         : env(e)
