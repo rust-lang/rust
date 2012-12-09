@@ -14,6 +14,7 @@
 
 #include <inttypes.h>
 #include <stddef.h>
+#include <new>
 
 /**
  * A simple, resizable array list. Note that this only works with POD types
@@ -69,8 +70,12 @@ array_list<T>::append(T value) {
 template<typename T> int32_t
 array_list<T>::push(T value) {
     if (_size == _capacity) {
-        _capacity = _capacity * 2;
-        _data = (T *) realloc(_data, _capacity * sizeof(T));
+        size_t new_capacity = _capacity * 2;
+        void* buffer = realloc(_data, new_capacity * sizeof(T));
+        if (buffer == NULL)
+            throw std::bad_alloc();
+        _data = (T *) buffer;
+        _capacity = new_capacity;
     }
     _data[_size ++] = value;
     return _size - 1;
@@ -115,11 +120,13 @@ array_list<T>::index_of(T value) const {
 
 template<typename T> T &
 array_list<T>::operator[](size_t index) {
+    assert(index < size());
     return _data[index];
 }
 
 template<typename T> const T &
 array_list<T>::operator[](size_t index) const {
+    assert(index < size());
     return _data[index];
 }
 
