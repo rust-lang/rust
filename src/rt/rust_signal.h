@@ -16,6 +16,12 @@ class rust_signal {
 public:
     virtual void signal() = 0;
     virtual ~rust_signal() {}
+    rust_signal() {}
+
+private:
+    // private and undefined to disable copying
+    rust_signal(const rust_signal& rhs);
+    rust_signal& operator=(const rust_signal& rhs);
 };
 
 #endif /* RUST_SIGNAL_H */

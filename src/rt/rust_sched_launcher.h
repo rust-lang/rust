@@ -23,6 +23,11 @@ public:
 private:
     rust_sched_loop sched_loop;
 
+private:
+    // private and undefined to disable copying
+    rust_sched_launcher(const rust_sched_launcher& rhs);
+    rust_sched_launcher& operator=(const rust_sched_launcher& rhs);
+    
 protected:
     rust_sched_driver driver;
 
