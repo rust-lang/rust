@@ -58,6 +58,11 @@ private:
     // Called when refcount reaches zero
     void delete_this();
 
+private:
+    // private and undefined to disable copying
+    rust_scheduler(const rust_scheduler& rhs);
+    rust_scheduler& operator=(const rust_scheduler& rhs);
+    
 public:
     rust_scheduler(rust_kernel *kernel, size_t max_num_threads,
                    rust_sched_id id, bool allow_exit, bool killed,

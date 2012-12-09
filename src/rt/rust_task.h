@@ -305,6 +305,11 @@ private:
     void wakeup_inner(rust_cond *from);
     bool blocked_on(rust_cond *cond);
 
+private:
+    // private and undefined to disable copying
+    rust_task(const rust_task& rhs);
+    rust_task& operator=(const rust_task& rhs);
+    
 public:
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
