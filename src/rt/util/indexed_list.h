@@ -17,6 +17,7 @@
 
 class indexed_list_object {
 public:
+    virtual ~indexed_list_object() {}
     int32_t list_index;
 };
 
@@ -39,22 +40,22 @@ public:
 template<typename T> class indexed_list {
     array_list<T*> list;
 public:
-    virtual int32_t append(T *value);
-    virtual bool pop(T **value);
+    int32_t append(T *value);
+    bool pop(T **value);
     /**
      * Same as pop(), except that it returns NULL if the list is empty.
      */
-    virtual T* pop_value();
-    virtual size_t length() const {
+    T* pop_value();
+    size_t length() const {
         return list.size();
     }
-    virtual bool is_empty() const {
+    bool is_empty() const {
         return list.is_empty();
     }
-    virtual int32_t remove(T* value);
-    virtual T * operator[](int32_t index);
-    virtual const T * operator[](int32_t index) const;
-    virtual ~indexed_list() {}
+    int32_t remove(T* value);
+    T * operator[](int32_t index);
+    const T * operator[](int32_t index) const;
+    ~indexed_list() {}
 };
 
 template<typename T> int32_t
