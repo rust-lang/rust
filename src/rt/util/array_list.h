@@ -35,7 +35,7 @@ public:
     size_t size() const;
     int32_t append(T value);
     int32_t push(T value);
-    bool pop(T *value);
+    void pop(T *value);
     bool replace(T old_value, T new_value);
     int32_t index_of(T value) const;
     bool is_empty() const;
@@ -81,17 +81,14 @@ array_list<T>::push(T value) {
     return _size - 1;
 }
 
-template<typename T> bool
+template<typename T> void
 array_list<T>::pop(T *value) {
-    if (_size == 0) {
-        return false;
-    }
+    assert(_size > 0);
     if (value != NULL) {
         *value = _data[-- _size];
     } else {
         -- _size;
     }
-    return true;
 }
 
 /**
