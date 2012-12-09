@@ -22,9 +22,7 @@ mod name_pool {
 mod rust {
     #[legacy_exports];
 
-    import name_pool::add;
-    // FIXME #3155: this is a hack
-    import name_pool::__extensions__;
+    use name_pool::add;
     export add;
     export rt;
     export cx;
