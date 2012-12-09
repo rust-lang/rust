@@ -45,14 +45,15 @@ public:
      * Same as pop(), except that it returns NULL if the list is empty.
      */
     virtual T* pop_value();
-    virtual size_t length() {
+    virtual size_t length() const {
         return list.size();
     }
-    virtual bool is_empty() {
+    virtual bool is_empty() const {
         return list.is_empty();
     }
     virtual int32_t remove(T* value);
     virtual T * operator[](int32_t index);
+    virtual const T * operator[](int32_t index) const;
     virtual ~indexed_list() {}
 };
 
@@ -99,6 +100,13 @@ indexed_list<T>::pop_value() {
 
 template <typename T> T *
 indexed_list<T>::operator[](int32_t index) {
+    T *value = list[index];
+    assert(value->list_index == index);
+    return value;
+}
+
+template <typename T> const T *
+indexed_list<T>::operator[](int32_t index) const {
     T *value = list[index];
     assert(value->list_index == index);
     return value;

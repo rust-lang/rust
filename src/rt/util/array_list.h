@@ -16,25 +16,32 @@
 #include <stddef.h>
 
 /**
- * A simple, resizable array list.
+ * A simple, resizable array list. Note that this only works with POD types
+ * (because data is grown via realloc).
  */
 template<typename T> class array_list {
     static const size_t INITIAL_CAPACITY = 8;
     size_t _size;
     T * _data;
     size_t _capacity;
+private:
+    // private and left undefined to disable copying
+    array_list(const array_list& rhs);
+    array_list& operator=(const array_list& rhs);
 public:
     array_list();
     ~array_list();
-    size_t size();
+    size_t size() const;
     int32_t append(T value);
     int32_t push(T value);
     bool pop(T *value);
     bool replace(T old_value, T new_value);
-    int32_t index_of(T value);
-    bool is_empty();
+    int32_t index_of(T value) const;
+    bool is_empty() const;
     T* data();
+    const T* data() const;
     T & operator[](size_t index);
+    const T & operator[](size_t index) const;
 };
 
 template<typename T>
@@ -50,7 +57,7 @@ array_list<T>::~array_list() {
 }
 
 template<typename T> size_t
-array_list<T>::size() {
+array_list<T>::size() const {
     return _size;
 }
 
@@ -97,7 +104,7 @@ array_list<T>::replace(T old_value, T new_value) {
 }
 
 template<typename T> int32_t
-array_list<T>::index_of(T value) {
+array_list<T>::index_of(T value) const {
     for (size_t i = 0; i < _size; i++) {
         if (_data[i] == value) {
             return i;
@@ -111,13 +118,23 @@ array_list<T>::operator[](size_t index) {
     return _data[index];
 }
 
+template<typename T> const T &
+array_list<T>::operator[](size_t index) const {
+    return _data[index];
+}
+
 template<typename T> bool
-array_list<T>::is_empty() {
+array_list<T>::is_empty() const {
     return _size == 0;
 }
 
 template<typename T> T*
 array_list<T>::data() {
+    return _data;
+}
+
+template<typename T> const T*
+array_list<T>::data() const {
     return _data;
 }
 
