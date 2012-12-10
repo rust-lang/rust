@@ -328,18 +328,6 @@ impl check_loan_ctxt {
         }
     }
 
-    fn is_self_field(cmt: cmt) -> bool {
-        match cmt.cat {
-          cat_comp(cmt_base, comp_field(*)) => {
-            match cmt_base.cat {
-              cat_special(sk_self) => true,
-              _ => false
-            }
-          }
-          _ => false
-        }
-    }
-
     fn check_assignment(at: assignment_type, ex: @ast::expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
