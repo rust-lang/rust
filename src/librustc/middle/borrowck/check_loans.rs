@@ -471,6 +471,9 @@ impl check_loan_ctxt {
           // rvalues, I guess.
           cat_special(sk_static_item) => {}
 
+          // We allow moving out of explicit self only.
+          cat_special(sk_self) => {}
+
           cat_deref(_, _, unsafe_ptr) => {}
 
           // Nothing else.

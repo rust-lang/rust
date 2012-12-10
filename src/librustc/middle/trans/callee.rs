@@ -114,7 +114,8 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
             ast::def_mod(*) | ast::def_foreign_mod(*) |
             ast::def_const(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
             ast::def_use(*) | ast::def_typaram_binder(*) |
-            ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) => {
+            ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) |
+            ast::def_self_ty(*) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     fmt!("Cannot translate def %? \

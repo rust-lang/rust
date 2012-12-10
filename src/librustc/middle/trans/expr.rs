@@ -828,7 +828,7 @@ fn trans_local_var(bcx: block,
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
             take_local(bcx, bcx.fcx.lllocals, nid, expr_id_opt)
         }
-        ast::def_self(nid) => {
+        ast::def_self(nid, _) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
                 Some(ref self_info) => *self_info,
                 None => {

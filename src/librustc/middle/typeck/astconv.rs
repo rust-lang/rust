@@ -354,7 +354,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self(_) => {
+          ast::def_self_ty(_) => {
             // n.b.: resolve guarantees that the self type only appears in a
             // trait, which we rely upon in various places when creating
             // substs
