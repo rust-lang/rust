@@ -150,16 +150,6 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     }
 }
 
-#[cfg(stage0)]
-impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
-    pure fn index(key: uint) -> V {
-        unsafe {
-            get(self, key)
-        }
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
     pure fn index(&self, key: uint) -> V {
         unsafe {

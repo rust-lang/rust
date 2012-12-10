@@ -2107,15 +2107,6 @@ impl ~str: Trimmable {
 
 #[cfg(notest)]
 pub mod traits {
-    #[cfg(stage0)]
-    impl ~str : Add<&str,~str> {
-        #[inline(always)]
-        pure fn add(rhs: & &self/str) -> ~str {
-            append(copy self, (*rhs))
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl ~str : Add<&str,~str> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/str) -> ~str {

@@ -565,14 +565,6 @@ pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
-#[cfg(stage0)]
-impl Bitv: ops::Index<uint,bool> {
-    pure fn index(i: uint) -> bool {
-        self.get(i)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl Bitv: ops::Index<uint,bool> {
     pure fn index(&self, i: uint) -> bool {
         self.get(i)

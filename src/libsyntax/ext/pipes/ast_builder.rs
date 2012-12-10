@@ -122,32 +122,6 @@ impl ext_ctxt: ext_ctxt_ast_builder {
           span: dummy_sp()}
     }
 
-    #[cfg(stage0)]
-    fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
-        // If the quasiquoter could interpolate idents, this is all
-        // we'd need.
-        //
-        //let ext_cx = self;
-        //#ast[stmt] { let $(ident) = $(e) }
-
-        @{node: ast::stmt_decl(@{node: ast::decl_local(~[
-            @{node: {is_mutbl: false,
-                     ty: self.ty_infer(),
-                     pat: @{id: self.next_id(),
-                            node: ast::pat_ident(ast::bind_infer,
-                                                 path(~[ident],
-                                                      dummy_sp()),
-                                                 None),
-                            span: dummy_sp()},
-                     init: Some(self.move_expr(e)),
-                     id: self.next_id()},
-              span: dummy_sp()}]),
-                               span: dummy_sp()}, self.next_id()),
-         span: dummy_sp()}
-     }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt {
         let ext_cx = self;
         quote_stmt!( let $ident = $e; )

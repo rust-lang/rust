@@ -57,16 +57,6 @@ pub mod reader {
 
     // ebml reading
 
-    #[cfg(stage0)]
-    impl Doc: ops::Index<uint,Doc> {
-        pure fn index(tag: uint) -> Doc {
-            unsafe {
-                get_doc(self, tag)
-            }
-        }
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     impl Doc: ops::Index<uint,Doc> {
         pure fn index(&self, tag: uint) -> Doc {
             unsafe {

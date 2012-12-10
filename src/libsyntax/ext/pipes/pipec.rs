@@ -302,47 +302,6 @@ impl state: to_type_decls {
 
 impl protocol: gen_init {
 
-    #[cfg(stage0)]
-    fn gen_init(cx: ext_ctxt) -> @ast::item {
-        let ext_cx = cx;
-
-        debug!("gen_init");
-        let start_state = self.states[0];
-
-        let body = if !self.is_bounded() {
-            match start_state.dir {
-              send => #ast { pipes::entangle() },
-              recv => {
-                #ast {{
-                    let (s, c) = pipes::entangle();
-                    (move c, move s)
-                }}
-              }
-            }
-        }
-        else {
-            let body = self.gen_init_bounded(ext_cx);
-            match start_state.dir {
-              send => body,
-              recv => {
-                #ast {{
-                    let (s, c) = $(body);
-                    (move c, move s)
-                }}
-              }
-            }
-        };
-
-        cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
-                            { use pipes::HasBuffer; %s }",
-                           start_state.ty_params.to_source(cx),
-                           start_state.to_ty(cx).to_source(cx),
-                           start_state.to_ty(cx).to_source(cx),
-                           body.to_source(cx)))
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
@@ -381,17 +340,6 @@ impl protocol: gen_init {
                            body.to_source(cx)))
     }
 
-    #[cfg(stage0)]
-    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
-        ext_cx.rec(self.states.map_to_vec(|s| {
-            let fty = s.to_ty(ext_cx);
-            ext_cx.field_imm(ext_cx.ident_of(s.name),
-                             #ast { pipes::mk_packet::<$(fty)>() })
-        }))
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
         ext_cx.rec(self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
@@ -402,35 +350,6 @@ impl protocol: gen_init {
         }))
     }
 
-    #[cfg(stage0)]
-    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
-        debug!("gen_init_bounded");
-        let buffer_fields = self.gen_buffer_init(ext_cx);
-        let buffer = #ast {
-            ~{header: pipes::BufferHeader(),
-              data: $(buffer_fields)}
-        };
-
-        let entangle_body = ext_cx.block_expr(
-            ext_cx.block(
-                self.states.map_to_vec(
-                    |s| ext_cx.parse_stmt(
-                        fmt!("data.%s.set_buffer_(buffer)",
-                             s.name))),
-                ext_cx.parse_expr(
-                    fmt!("ptr::addr_of(&(data.%s))",
-                         self.states[0].name))));
-
-        #ast {{
-            let buffer = $(buffer);
-            do pipes::entangle_buffer(move buffer) |buffer, data| {
-                $(entangle_body)
-            }
-        }}
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
@@ -472,34 +391,6 @@ impl protocol: gen_init {
                                .add_tys(cx.ty_vars(params)))
     }
 
-    #[cfg(stage0)]
-    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
-        let ext_cx = cx;
-        let mut params: ~[ast::ty_param] = ~[];
-        let fields = do (copy self.states).map_to_vec |s| {
-            for s.ty_params.each |tp| {
-                match params.find(|tpp| tp.ident == tpp.ident) {
-                  None => params.push(*tp),
-                  _ => ()
-                }
-            }
-            let ty = s.to_ty(cx);
-            let fty = #ast[ty] {
-                pipes::Packet<$(ty)>
-            };
-
-            cx.ty_field_imm(cx.ident_of(s.name), fty)
-        };
-
-        cx.item_ty_poly(
-            cx.ident_of(~"__Buffer"),
-            dummy_sp(),
-            cx.ty_rec(fields),
-            params)
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
         let mut params: ~[ast::ty_param] = ~[];

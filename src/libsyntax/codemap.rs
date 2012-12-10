@@ -59,15 +59,6 @@ impl BytePos: cmp::Ord {
     pure fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
-#[cfg(stage0)]
-impl BytePos: Add<BytePos, BytePos> {
-    pure fn add(rhs: &BytePos) -> BytePos {
-        BytePos(*self + **rhs)
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl BytePos: Add<BytePos, BytePos> {
     pure fn add(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self + **rhs)
@@ -109,15 +100,6 @@ impl CharPos: to_bytes::IterBytes {
     }
 }
 
-#[cfg(stage0)]
-impl CharPos: Add<CharPos, CharPos> {
-    pure fn add(rhs: &CharPos) -> CharPos {
-        CharPos(*self + **rhs)
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl CharPos: Add<CharPos, CharPos> {
     pure fn add(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self + **rhs)
