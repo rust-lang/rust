@@ -452,10 +452,10 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_class(a_id, ref a_substs), ty::ty_class(b_id, ref b_substs))
+      (ty::ty_struct(a_id, ref a_substs), ty::ty_struct(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            Ok(ty::mk_class(tcx, a_id, substs))
+            Ok(ty::mk_struct(tcx, a_id, substs))
         }
       }
 

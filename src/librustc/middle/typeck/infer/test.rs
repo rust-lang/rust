@@ -122,7 +122,7 @@ impl Env {
                     None
                 }
 
-                ast::item_enum(*) | ast::item_class(*) |
+                ast::item_enum(*) | ast::item_struct(*) |
                 ast::item_trait(*) | ast::item_impl(*) |
                 ast::item_mac(*) => {
                     None

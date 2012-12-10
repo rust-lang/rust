@@ -337,7 +337,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
           debug!("parsed a def_id %?", did);
           let substs = parse_substs(st, conv);
           assert (next(st) == ']');
-          return ty::mk_class(st.tcx, did, substs);
+          return ty::mk_struct(st.tcx, did, substs);
       }
       c => { error!("unexpected char in type string: %c", c); fail;}
     }

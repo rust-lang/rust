@@ -277,7 +277,7 @@ impl LookupContext {
                     self.push_inherent_candidates_from_self(
                         self_ty, self_did, &substs);
                 }
-                ty_enum(did, _) | ty_class(did, _) => {
+                ty_enum(did, _) | ty_struct(did, _) => {
                     self.push_inherent_impl_candidates_for_type(did);
                 }
                 _ => { /* No inherent methods in these types */ }
@@ -778,7 +778,7 @@ impl LookupContext {
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |
-            ty_class(*) | ty_tup(*) | ty_estr(*) | ty_evec(*) |
+            ty_struct(*) | ty_tup(*) | ty_estr(*) | ty_evec(*) |
             ty_trait(*) | ty_fn(*) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],

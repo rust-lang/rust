@@ -134,8 +134,8 @@ enum def {
               @def,     // closed over def
               node_id,  // expr node that creates the closure
               node_id), // id for the block/body of the closure expr
-    def_class(def_id),
-    def_typaram_binder(node_id), /* class, impl or trait that has ty params */
+    def_struct(def_id),
+    def_typaram_binder(node_id), /* struct, impl or trait with ty params */
     def_region(node_id),
     def_label(node_id)
 }
@@ -235,9 +235,9 @@ impl def : cmp::Eq {
                     _ => false
                 }
             }
-            def_class(e0a) => {
+            def_struct(e0a) => {
                 match (*other) {
-                    def_class(e0b) => e0a == e0b,
+                    def_struct(e0b) => e0a == e0b,
                     _ => false
                 }
             }
@@ -1408,13 +1408,11 @@ impl attr_style : cmp::Eq {
 type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
 
 /*
-  trait_refs appear in both impls and in classes that implement traits.
+  trait_refs appear in impls.
   resolve maps each trait_ref's ref_id to its defining trait; that's all
   that the ref_id is for. The impl_id maps to the "self type" of this impl.
   If this impl is an item_impl, the impl_id is redundant (it could be the
-  same as the impl's node id). If this impl is actually an impl_class, then
-  conceptually, the impl_id stands in for the pair of (this class, this
-  trait)
+  same as the impl's node id).
  */
 #[auto_serialize]
 #[auto_deserialize]
@@ -1451,19 +1449,19 @@ type struct_field = spanned<struct_field_>;
 #[auto_serialize]
 #[auto_deserialize]
 enum struct_field_kind {
-    named_field(ident, class_mutability, visibility),
+    named_field(ident, struct_mutability, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
 impl struct_field_kind : cmp::Eq {
     pure fn eq(&self, other: &struct_field_kind) -> bool {
         match (*self) {
-            named_field(ident_a, class_mutability_a, visibility_a) => {
+            named_field(ident_a, struct_mutability_a, visibility_a) => {
                 match *other {
-                    named_field(ident_b, class_mutability_b, visibility_b)
+                    named_field(ident_b, struct_mutability_b, visibility_b)
                             => {
                         ident_a == ident_b &&
-                        class_mutability_a == class_mutability_b &&
+                        struct_mutability_a == struct_mutability_b &&
                         visibility_a == visibility_b
                     }
                     unnamed_field => false
@@ -1485,12 +1483,10 @@ impl struct_field_kind : cmp::Eq {
 #[auto_serialize]
 #[auto_deserialize]
 type struct_def = {
-    traits: ~[@trait_ref],   /* traits this struct implements */
     fields: ~[@struct_field], /* fields */
-    methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
     /* dtor is optional */
-    dtor: Option<class_dtor>,
+    dtor: Option<struct_dtor>,
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
@@ -1515,7 +1511,7 @@ enum item_ {
     item_foreign_mod(foreign_mod),
     item_ty(@Ty, ~[ty_param]),
     item_enum(enum_def, ~[ty_param]),
-    item_class(@struct_def, ~[ty_param]),
+    item_struct(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
               Option<@trait_ref>, /* (optional) trait this impl implements */
@@ -1526,41 +1522,33 @@ enum item_ {
 
 #[auto_serialize]
 #[auto_deserialize]
-enum class_mutability { class_mutable, class_immutable }
+enum struct_mutability { struct_mutable, struct_immutable }
 
-impl class_mutability : to_bytes::IterBytes {
+impl struct_mutability : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
-impl class_mutability : cmp::Eq {
-    pure fn eq(&self, other: &class_mutability) -> bool {
+impl struct_mutability : cmp::Eq {
+    pure fn eq(&self, other: &struct_mutability) -> bool {
         match ((*self), (*other)) {
-            (class_mutable, class_mutable) => true,
-            (class_immutable, class_immutable) => true,
-            (class_mutable, _) => false,
-            (class_immutable, _) => false,
+            (struct_mutable, struct_mutable) => true,
+            (struct_immutable, struct_immutable) => true,
+            (struct_mutable, _) => false,
+            (struct_immutable, _) => false,
         }
     }
-    pure fn ne(&self, other: &class_mutability) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &struct_mutability) -> bool {
+        !(*self).eq(other)
+    }
 }
 
-type class_ctor = spanned<class_ctor_>;
+type struct_dtor = spanned<struct_dtor_>;
 
 #[auto_serialize]
 #[auto_deserialize]
-type class_ctor_ = {id: node_id,
-                    attrs: ~[attribute],
-                    self_id: node_id,
-                    dec: fn_decl,
-                    body: blk};
-
-type class_dtor = spanned<class_dtor_>;
-
-#[auto_serialize]
-#[auto_deserialize]
-type class_dtor_ = {id: node_id,
+type struct_dtor_ = {id: node_id,
                     attrs: ~[attribute],
                     self_id: node_id,
                     body: blk};
@@ -1591,7 +1579,7 @@ enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(class_dtor, ident, ~[ty_param], def_id /* parent id */)
+    ii_dtor(struct_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
 

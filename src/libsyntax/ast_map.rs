@@ -81,8 +81,8 @@ enum ast_node {
     // order they are introduced.
     node_arg(arg, uint),
     node_local(uint),
-    // Destructor for a class
-    node_dtor(~[ty_param], @class_dtor, def_id, @path),
+    // Destructor for a struct
+    node_dtor(~[ty_param], @struct_dtor, def_id, @path),
     node_block(blk),
     node_struct_ctor(@struct_def, @item, @path),
 }
@@ -245,13 +245,11 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                                             }));
         }
       }
-      item_class(struct_def, _) => {
-        map_struct_def(struct_def, node_item(i, item_path), i.ident, i.id, cx,
+      item_struct(struct_def, _) => {
+        map_struct_def(struct_def, node_item(i, item_path), i.ident, cx,
                        v);
       }
       item_trait(_, traits, ref methods) => {
-        // Map trait refs to their parent classes. This is
-        // so we can find the self_ty
         for traits.each |p| {
             cx.map.insert(p.ref_id, node_item(i, item_path));
         }
@@ -274,18 +272,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 }
 
 fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
-                  ident: ast::ident, id: ast::node_id, cx: ctx, _v: vt) {
-    // Map trait refs to their parent classes. This is
-    // so we can find the self_ty
-    for struct_def.traits.each |p| {
-        cx.map.insert(p.ref_id, parent_node);
-    }
-    let d_id = ast_util::local_def(id);
+                  ident: ast::ident, cx: ctx, _v: vt) {
     let p = extend(cx, ident);
-    // only need to handle methods
-    for vec::each(struct_def.methods) |m| {
-        map_method(d_id, p, *m, cx);
-    }
     // If this is a tuple-like struct, register the constructor.
     match struct_def.ctor_id {
         None => {}
@@ -342,7 +330,7 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
           item_foreign_mod(*) => ~"foreign mod",
           item_ty(*) => ~"ty",
           item_enum(*) => ~"enum",
-          item_class(*) => ~"class",
+          item_struct(*) => ~"struct",
           item_trait(*) => ~"trait",
           item_impl(*) => ~"impl",
           item_mac(*) => ~"macro"

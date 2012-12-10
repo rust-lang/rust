@@ -84,7 +84,7 @@ const tag_path_len: uint = 0x41u;
 const tag_path_elt_mod: uint = 0x42u;
 const tag_path_elt_name: uint = 0x43u;
 const tag_item_field: uint = 0x44u;
-const tag_class_mut: uint = 0x45u;
+const tag_struct_mut: uint = 0x45u;
 
 const tag_region_param: uint = 0x46u;
 const tag_mod_impl_trait: uint = 0x47u;

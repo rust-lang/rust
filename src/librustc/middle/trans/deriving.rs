@@ -102,7 +102,7 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt,
                         derived_method_info.method_info.self_type);
 
                 match ty::get(self_ty.ty).sty {
-                    ty::ty_class(*) => {
+                    ty::ty_struct(*) => {
                         trans_deriving_struct_method(ccx,
                                                      llfn,
                                                      impl_def_id,
@@ -175,8 +175,8 @@ fn trans_deriving_struct_method(ccx: @crate_ctxt,
 
     let struct_field_tys;
     match ty::get(self_ty).sty {
-        ty::ty_class(struct_id, ref struct_substs) => {
-            struct_field_tys = ty::class_items_as_fields(
+        ty::ty_struct(struct_id, ref struct_substs) => {
+            struct_field_tys = ty::struct_fields(
                 ccx.tcx, struct_id, struct_substs);
         }
         _ => {

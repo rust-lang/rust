@@ -120,11 +120,11 @@ fn encode_region_param(ecx: @encode_ctxt, ebml_w: writer::Serializer,
     }
 }
 
-fn encode_mutability(ebml_w: writer::Serializer, mt: class_mutability) {
-    do ebml_w.wr_tag(tag_class_mut) {
+fn encode_mutability(ebml_w: writer::Serializer, mt: struct_mutability) {
+    do ebml_w.wr_tag(tag_struct_mut) {
         let val = match mt {
-          class_immutable => 'a',
-          class_mutable => 'm'
+          struct_immutable => 'a',
+          struct_mutable => 'm'
         };
         ebml_w.writer.write(&[val as u8]);
     }
@@ -318,7 +318,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Serializer,
     // Encode info about all the module children.
     for md.items.each |item| {
         match item.node {
-            item_impl(*) | item_class(*) => {
+            item_impl(*) | item_struct(*) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl %s \
                         (%?/%?), exported? %?",
@@ -412,11 +412,9 @@ fn encode_method_sort(ebml_w: writer::Serializer, sort: char) {
 }
 
 /* Returns an index of items in this class */
-fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: writer::Serializer,
-                         id: node_id, path: ast_map::path,
-                         class_tps: ~[ty_param],
+fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Serializer,
+                         path: ast_map::path,
                          fields: ~[@struct_field],
-                         methods: ~[@method],
                          global_index: @mut~[entry<int>]) -> ~[entry<int>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
@@ -432,7 +430,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: writer::Serializer,
                 global_index.push({val: id,
                                     pos: ebml_w.writer.tell()});
                 ebml_w.start_tag(tag_items_data_item);
-                debug!("encode_info_for_class: doing %s %d",
+                debug!("encode_info_for_struct: doing %s %d",
                        tcx.sess.str_of(nm), id);
                 encode_visibility(ebml_w, vis);
                 encode_name(ecx, ebml_w, nm);
@@ -445,25 +443,6 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: writer::Serializer,
             unnamed_field => {}
         }
     }
-
-    for methods.each |m| {
-        match m.vis {
-            public | inherited => {
-                index.push({val: m.id, pos: ebml_w.writer.tell()});
-                global_index.push(
-                    {val: m.id, pos: ebml_w.writer.tell()});
-                let impl_path = vec::append_one(path,
-                                                ast_map::path_name(m.ident));
-                debug!("encode_info_for_class: doing %s %d",
-                       ecx.tcx.sess.str_of(m.ident), m.id);
-                encode_info_for_method(ecx, ebml_w, impl_path,
-                                       should_inline(m.attrs), id, *m,
-                                       vec::append(class_tps, m.tps));
-            }
-            _ => { /* don't encode private methods */ }
-        }
-    }
-
     *index
 }
 
@@ -556,7 +535,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
     let must_write =
         match item.node {
           item_enum(_, _) | item_impl(*)
-          | item_trait(*) | item_class(*) => true,
+          | item_trait(*) | item_struct(*) => true,
           _ => false
         };
     if !must_write && !reachable(ecx, item.id) { return; }
@@ -645,14 +624,13 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
                                  index,
                                  tps);
       }
-      item_class(struct_def, tps) => {
-        /* First, encode the fields and methods
+      item_struct(struct_def, tps) => {
+        /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
-        let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
-                                        struct_def.fields, struct_def.methods,
-                                        index);
+        let idx = encode_info_for_struct(ecx, ebml_w, path,
+                                        struct_def.fields, index);
         /* Encode the dtor */
         do struct_def.dtor.iter |dtor| {
             index.push({val: dtor.node.id, pos: ebml_w.writer.tell()});
@@ -677,9 +655,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
-        for struct_def.traits.each |t| {
-           encode_trait_ref(ebml_w, ecx, *t);
-        }
         /* Encode the dtor */
         /* Encode id for dtor */
         do struct_def.dtor.iter |dtor| {
@@ -704,28 +679,6 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
             }
         }
 
-        for struct_def.methods.each |m| {
-           match m.vis {
-              private => { /* do nothing */ }
-              public | inherited => {
-                /* Write the info that's needed when viewing this class
-                   as a trait */
-                ebml_w.start_tag(tag_item_trait_method);
-                encode_family(ebml_w, purity_fn_family(m.purity));
-                encode_name(ecx, ebml_w, m.ident);
-                encode_type_param_bounds(ebml_w, ecx, m.tps);
-                encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
-                encode_def_id(ebml_w, local_def(m.id));
-                encode_self_type(ebml_w, m.self_ty.node);
-                ebml_w.end_tag();
-                /* Write the info that's needed when viewing this class
-                   as an impl (just the method def_id and self type) */
-                ebml_w.start_tag(tag_item_impl_method);
-                ebml_w.writer.write(to_bytes(def_to_str(local_def(m.id))));
-                ebml_w.end_tag();
-              }
-           }
-        }
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx);
         encode_index(ebml_w, bkts, write_int);

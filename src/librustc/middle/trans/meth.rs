@@ -320,10 +320,6 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
           ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
             method_from_methods(ms, name).get()
           }
-          ast_map::node_item(@{node:
-              ast::item_class(struct_def, _), _}, _) => {
-            method_from_methods(struct_def.methods, name).get()
-          }
           _ => fail ~"method_with_name"
         }
     } else {
@@ -365,7 +361,7 @@ fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
 
 fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                          i_id: ast::def_id) -> uint {
-    debug!("mythod_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
+    debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
         match ccx.tcx.items.find(m_id.node) {
             Some(ast_map::node_method(m, _, _)) => m.tps.len(),
@@ -378,10 +374,11 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                     None => fail
                 }
             }
-            Some(ast_map::node_trait_method(@ast::provided(@m), _, _)) => {
+            Some(ast_map::node_trait_method(@ast::provided(@ref m), _, _))
+                => {
                 m.tps.len()
             }
-            e => fail fmt!("method_ty_param_count %?", e)
+            copy e => fail fmt!("method_ty_param_count %?", e)
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -

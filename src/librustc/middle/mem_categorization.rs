@@ -564,7 +564,7 @@ impl &mem_categorization_ctxt {
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(*) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(*) | ast::def_class(*) |
+          ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
           ast::def_label(_) => {
             @{id:id, span:span,
@@ -913,7 +913,7 @@ impl &mem_categorization_ctxt {
                         self.cat_pattern(subcmt, *subpat, op);
                     }
                 }
-                Some(ast::def_class(*)) => {
+                Some(ast::def_struct(*)) => {
                     for subpats.each |subpat| {
                         let cmt_field = self.cat_anon_struct_field(*subpat,
                                                                    cmt);
@@ -1104,12 +1104,12 @@ fn field_mutbl(tcx: ty::ctxt,
             }
         }
       }
-      ty::ty_class(did, _) => {
-        for ty::lookup_class_fields(tcx, did).each |fld| {
+      ty::ty_struct(did, _) => {
+        for ty::lookup_struct_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
                 let m = match fld.mutability {
-                  ast::class_mutable => ast::m_mutbl,
-                  ast::class_immutable => ast::m_imm
+                  ast::struct_mutable => ast::m_mutbl,
+                  ast::struct_immutable => ast::m_imm
                 };
                 return Some(m);
             }
@@ -1118,11 +1118,11 @@ fn field_mutbl(tcx: ty::ctxt,
       ty::ty_enum(*) => {
         match tcx.def_map.get(node_id) {
           ast::def_variant(_, variant_id) => {
-            for ty::lookup_class_fields(tcx, variant_id).each |fld| {
+            for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
                 if fld.ident == f_name {
                     let m = match fld.mutability {
-                      ast::class_mutable => ast::m_mutbl,
-                      ast::class_immutable => ast::m_imm
+                      ast::struct_mutable => ast::m_mutbl,
+                      ast::struct_immutable => ast::m_imm
                     };
                     return Some(m);
                 }

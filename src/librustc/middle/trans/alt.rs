@@ -269,7 +269,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
             }
             core::util::unreachable();
         }
-        ast::def_class(_) => {
+        ast::def_struct(_) => {
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
@@ -531,11 +531,13 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     // specified in the struct definition. Also fill in
                     // unspecified fields with dummy.
                     let reordered_patterns = dvec::DVec();
-                    for ty::lookup_class_fields(tcx, struct_id).each |field| {
-                        match field_pats.find(|p| p.ident == field.ident) {
-                            None => reordered_patterns.push(dummy),
-                            Some(fp) => reordered_patterns.push(fp.pat)
-                        }
+                    for ty::lookup_struct_fields(tcx, struct_id).each
+                        |field| {
+                            match field_pats.find(|p|
+                                                  p.ident == field.ident) {
+                                None => reordered_patterns.push(dummy),
+                                Some(fp) => reordered_patterns.push(fp.pat)
+                            }
                     }
                     Some(dvec::unwrap(move reordered_patterns))
                 } else {
@@ -727,7 +729,7 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
                         add_to_set(ccx.tcx, &found,
                                    variant_opt(ccx.tcx, cur.id));
                     }
-                    Some(ast::def_class(*)) => {
+                    Some(ast::def_struct(*)) => {
                         add_to_set(ccx.tcx, &found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
@@ -796,7 +798,7 @@ fn collect_record_or_struct_fields(bcx: block, m: &[@Match], col: uint) ->
           ast::pat_rec(fs, _) => extend(&mut fields, fs),
           ast::pat_struct(_, fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
-              ty::ty_class(*) => extend(&mut fields, fs),
+              ty::ty_struct(*) => extend(&mut fields, fs),
               _ => ()
             }
           }
@@ -874,7 +876,7 @@ fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
         match pat.node {
             ast::pat_enum(_, Some(_)) => {
                 match bcx.tcx().def_map.find(pat.id) {
-                    Some(ast::def_class(*)) => true,
+                    Some(ast::def_struct(*)) => true,
                     _ => false
                 }
             }
@@ -1182,9 +1184,9 @@ fn compile_submatch(bcx: block,
         let struct_ty = node_id_type(bcx, pat_id);
         let struct_element_count;
         match ty::get(struct_ty).sty {
-            ty::ty_class(struct_id, _) => {
+            ty::ty_struct(struct_id, _) => {
                 struct_element_count =
-                    ty::lookup_class_fields(tcx, struct_id).len();
+                    ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
                 ccx.sess.bug(~"non-struct type in tuple struct pattern");
@@ -1562,7 +1564,7 @@ fn bind_irrefutable_pat(bcx: block,
                         }
                     }
                 }
-                Some(ast::def_class(*)) => {
+                Some(ast::def_struct(*)) => {
                     match sub_pats {
                         None => {
                             // This is a unit-like struct. Nothing to do here.

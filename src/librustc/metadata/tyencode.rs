@@ -316,7 +316,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
           enc_proto(w, p);
       }
       ty::ty_opaque_box => w.write_char('B'),
-      ty::ty_class(def, ref substs) => {
+      ty::ty_struct(def, ref substs) => {
           debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);

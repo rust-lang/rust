@@ -15,7 +15,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use base::{trans_item, get_item_val, no_self, self_arg, trans_fn,
               impl_self, decl_internal_cdecl_fn,
               set_inline_hint_if_appr, set_inline_hint,
-              trans_enum_variant, trans_class_dtor,
+              trans_enum_variant, trans_struct_dtor,
               get_insn_ctxt};
 use syntax::parse::token::special_idents;
 use type_of::type_of_fn_from_ty;
@@ -211,7 +211,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
                 None      => ccx.sess.span_bug(dtor.span, ~"Bad self ty in \
                                                             dtor")
         };
-        trans_class_dtor(ccx, *pt, dtor.node.body,
+        trans_struct_dtor(ccx, *pt, dtor.node.body,
           dtor.node.id, psubsts, Some(hash_id), parent_id)
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {

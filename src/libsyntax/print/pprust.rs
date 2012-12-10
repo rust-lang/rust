@@ -527,7 +527,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_enum_def(s, (*enum_definition), params, item.ident,
                        item.span, item.vis);
       }
-      ast::item_class(struct_def, tps) => {
+      ast::item_struct(struct_def, tps) => {
           head(s, visibility_qualified(item.vis, ~"struct"));
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
@@ -676,11 +676,6 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
     print_ident(s, ident);
     nbsp(s);
     print_type_params(s, tps);
-    if vec::len(struct_def.traits) != 0u {
-        word_space(s, ~":");
-        commasep(s, inconsistent, struct_def.traits, |s, p|
-            print_path(s, p.path, false));
-    }
     if ast_util::struct_def_is_tuple_like(struct_def) {
         popen(s);
         let mut first = true;
@@ -720,7 +715,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
                     print_visibility(s, visibility);
-                    if mutability == ast::class_mutable {
+                    if mutability == ast::struct_mutable {
                         word_nbsp(s, ~"mut");
                     }
                     print_ident(s, ident);
@@ -731,9 +726,6 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
             }
         }
 
-        for struct_def.methods.each |method| {
-            print_method(s, *method);
-        }
         bclose(s, span);
     }
 }

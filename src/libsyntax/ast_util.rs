@@ -68,7 +68,7 @@ pure fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_class(id) => {
+      def_use(id) | def_struct(id) => {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
@@ -374,7 +374,7 @@ impl inlined_item: inlined_item_utils {
           ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
           ii_method(_, m) => visit::visit_method_helper(m, e, v),
           ii_dtor(ref dtor, _, tps, parent_id) => {
-              visit::visit_class_dtor_helper((*dtor), tps, parent_id, e, v);
+              visit::visit_struct_dtor_helper((*dtor), tps, parent_id, e, v);
           }
         }
     }

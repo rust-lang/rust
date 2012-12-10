@@ -259,14 +259,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
             method_ty
         });
       }
-      ast_map::node_item(@{node: ast::item_class(struct_def, _), _}, _) => {
-        // All methods need to be stored, since lookup_method
-        // relies on the same method cache for self-calls
-        store_methods::<@ast::method>(ccx, id, struct_def.methods, |m| {
-            ty_of_method(ccx, *m, region_paramd)
-        });
-      }
-      _ => { /* Ignore things that aren't traits or classes */ }
+      _ => { /* Ignore things that aren't traits */ }
     }
 }
 
@@ -595,7 +588,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         // }
       }
-      ast::item_class(struct_def, tps) => {
+      ast::item_struct(struct_def, tps) => {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -636,18 +629,13 @@ fn convert_struct(ccx: @crate_ctxt,
                            region_param: rp,
                            ty: t_dtor});
     };
-    ensure_trait_methods(ccx, id, tpt.ty);
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {
        convert_field(ccx, rp, tpt.bounds, *f);
     }
-    let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
-    let selfty = ty::mk_class(tcx, local_def(id), substs);
-    let cms = convert_methods(ccx, struct_def.methods, rp, bounds);
-    for struct_def.traits.each |trait_ref| {
-        check_methods_against_trait(ccx, tps, rp, selfty, *trait_ref, cms);
-    }
+    let {bounds: _, substs: substs} = mk_substs(ccx, tps, rp);
+    let selfty = ty::mk_struct(tcx, local_def(id), substs);
 
     // If this struct is enum-like or tuple-like, create the type of its
     // constructor.
@@ -835,9 +823,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_class(_, tps) => {
+      ast::item_struct(_, tps) => {
           let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
-          let t = ty::mk_class(tcx, local_def(it.id), substs);
+          let t = ty::mk_struct(tcx, local_def(it.id), substs);
           let tpt = {bounds: bounds,
                      region_param: rp,
                      ty: t};

@@ -18,7 +18,7 @@ use middle::ty::{ctxt, field, method};
 use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
-use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
+use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
@@ -408,7 +408,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }
       ty_self => ~"self",
-      ty_enum(did, ref substs) | ty_class(did, ref substs) => {
+      ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
         parameterized(cx, base, (*substs).self_r, (*substs).tps)

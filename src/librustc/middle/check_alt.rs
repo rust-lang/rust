@@ -305,7 +305,7 @@ fn missing_ctor(cx: @AltCheckCtxt,
              -> Option<ctor> {
     match ty::get(left_ty).sty {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
-      ty::ty_rec(_) | ty::ty_class(*) => {
+      ty::ty_rec(_) | ty::ty_struct(*) => {
         for m.each |r| {
             if !is_wild(cx, r[0]) { return None; }
         }
@@ -362,7 +362,7 @@ fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
             None => fail ~"impossible case"
         }
       }
-      ty::ty_class(cid, _) => ty::lookup_class_fields(cx.tcx, cid).len(),
+      ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
       _ => 0u
     }
 }
@@ -410,7 +410,7 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             Some(vec::append(args, vec::tail(r)))
           }
           def_variant(_, _) => None,
-          def_class(*) => {
+          def_struct(*) => {
             // XXX: Is this right? --pcw
             let new_args;
             match args {
@@ -456,9 +456,9 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
                 // Grab the class data that we care about.
                 let class_fields, class_id;
                 match ty::get(left_ty).sty {
-                    ty::ty_class(cid, _) => {
+                    ty::ty_struct(cid, _) => {
                         class_id = cid;
-                        class_fields = ty::lookup_class_fields(cx.tcx,
+                        class_fields = ty::lookup_struct_fields(cx.tcx,
                                                                class_id);
                     }
                     _ => {

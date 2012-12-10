@@ -234,9 +234,9 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                                     |x| fold_struct_def(*x, fld))
             }), fold_ty_params(typms, fld))
           }
-          item_class(struct_def, typms) => {
+          item_struct(struct_def, typms) => {
             let struct_def = fold_struct_def(struct_def, fld);
-              item_class(struct_def, /* FIXME (#2543) */ copy typms)
+              item_struct(struct_def, /* FIXME (#2543) */ copy typms)
           }
           item_impl(tps, ifce, ty, ref methods) => {
               item_impl(fold_ty_params(tps, fld),
@@ -271,9 +271,7 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                 id: dtor_id,.. dtor.node},
             .. *dtor}};
     return @{
-        traits: vec::map(struct_def.traits, |p| fold_trait_ref(*p, fld)),
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
-        methods: vec::map(struct_def.methods, |m| fld.fold_method(*m)),
         dtor: dtor,
         ctor_id: option::map(&struct_def.ctor_id, |cid| fld.new_id(*cid))
     };
@@ -569,11 +567,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                         id: dtor_id,.. dtor.node},
                     .. *dtor}};
             kind = struct_variant_kind(@{
-                traits: ~[],
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
-                methods: vec::map(struct_def.methods,
-                                  |m| fld.fold_method(*m)),
                 dtor: dtor,
                 ctor_id: option::map(&struct_def.ctor_id, |c| fld.new_id(*c))
             })

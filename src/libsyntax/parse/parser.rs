@@ -36,7 +36,7 @@ use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_infer, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
              by_move, by_ref, by_val, capture_clause,
-             capture_item, class_immutable, class_mutable,
+             capture_item, struct_immutable, struct_mutable,
              crate, crate_cfg, decl, decl_item, decl_local,
              default_blk, deref, div, enum_def, enum_variant_kind, expl, expr,
              expr_, expr_addr_of, expr_match, expr_again, expr_assert,
@@ -50,7 +50,7 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl,
              foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
              ident, impure_fn, infer, inherited,
-             item, item_, item_class, item_const, item_enum, item_fn,
+             item, item_, item_struct, item_const, item_enum, item_fn,
              item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
              item_ty, lit, lit_, lit_bool, lit_float, lit_float_unsuffixed,
              lit_int, lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local,
@@ -98,17 +98,10 @@ enum restriction {
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
-enum class_member {
-    field_member(@struct_field),
-    method_member(@method)
-}
+//  So that we can distinguish a class dtor from other class members
 
-/*
-  So that we can distinguish a class ctor or dtor
-  from other class members
- */
 enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
-                      members(~[@class_member]) }
+                      members(~[@struct_field]) }
 
 type arg_or_capture_item = Either<arg, capture_item>;
 type item_info = (ident, item_, Option<~[attribute]>);
@@ -2192,11 +2185,11 @@ impl Parser {
     }
 
     /* assumes "let" token has already been consumed */
-    fn parse_instance_var(pr: visibility) -> @class_member {
-        let mut is_mutbl = class_immutable;
+    fn parse_instance_var(pr: visibility) -> @struct_field {
+        let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(~"mut") {
-            is_mutbl = class_mutable;
+            is_mutbl = struct_mutable;
         }
         if !is_plain_ident(self.token) {
             self.fatal(~"expected ident");
@@ -2204,11 +2197,11 @@ impl Parser {
         let name = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return @field_member(@spanned(lo, self.last_span.hi, {
+        return @spanned(lo, self.last_span.hi, {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
             ty: ty
-        }));
+        });
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
@@ -2811,18 +2804,16 @@ impl Parser {
             |p| p.parse_trait_ref())
     }
 
-    fn parse_item_class() -> item_info {
+    fn parse_item_struct() -> item_info {
         let class_name = self.parse_value_ident();
         self.parse_region_param();
         let ty_params = self.parse_ty_params();
-        let traits : ~[@trait_ref] = if self.eat(token::COLON) {
+        if self.eat(token::COLON) {
             self.obsolete(copy self.span, ObsoleteClassTraits);
-            self.parse_trait_ref_list(token::LBRACE)
+            let _ = self.parse_trait_ref_list(token::LBRACE);
         }
-        else { ~[] };
 
         let mut fields: ~[@struct_field];
-        let mut methods: ~[@method] = ~[];
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let is_tuple_like;
 
@@ -2847,13 +2838,8 @@ impl Parser {
                       }
                   }
                   members(mms) => {
-                    for mms.each |mm| {
-                        match *mm {
-                            @field_member(struct_field) =>
-                                fields.push(struct_field),
-                            @method_member(the_method_member) =>
-                                methods.push(the_method_member)
-                        }
+                    for mms.each |struct_field| {
+                        fields.push(*struct_field)
                     }
                   }
                 }
@@ -2894,10 +2880,8 @@ impl Parser {
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
-         item_class(@{
-             traits: traits,
+         item_struct(@{
              fields: move fields,
-             methods: move methods,
              dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, ty_params),
@@ -2911,7 +2895,7 @@ impl Parser {
         }
     }
 
-    fn parse_single_class_item(vis: visibility) -> @class_member {
+    fn parse_single_class_item(vis: visibility) -> @struct_field {
         let obsolete_let = self.eat_obsolete_ident("let");
         if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
 
@@ -2939,10 +2923,16 @@ impl Parser {
                                                   self.token)));
               }
             }
-            return a_var;
+            a_var
         } else {
             self.obsolete(copy self.span, ObsoleteClassMethod);
-            return @method_member(self.parse_method());
+            self.parse_method();
+            // bogus value
+            @spanned(self.span.lo, self.span.hi,
+                     { kind: unnamed_field, id: self.get_id(),
+                       ty: @{id: self.get_id(),
+                             node: ty_nil,
+                             span: copy self.span} })
         }
     }
 
@@ -3328,7 +3318,6 @@ impl Parser {
     fn parse_struct_def() -> @struct_def {
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
-        let mut methods: ~[@method] = ~[];
         while self.token != token::RBRACE {
             match self.parse_class_item() {
                 dtor_decl(ref blk, ref attrs, s) => {
@@ -3346,13 +3335,8 @@ impl Parser {
                     }
                 }
                 members(mms) => {
-                    for mms.each |mm| {
-                        match *mm {
-                            @field_member(struct_field) =>
-                                fields.push(struct_field),
-                            @method_member(the_method_member) =>
-                                methods.push(the_method_member)
-                        }
+                    for mms.each |struct_field| {
+                        fields.push(*struct_field);
                     }
                 }
             }
@@ -3368,9 +3352,7 @@ impl Parser {
         };
 
         return @{
-            traits: ~[],
             fields: move fields,
-            methods: move methods,
             dtor: actual_dtor,
             ctor_id: None
         };
@@ -3593,7 +3575,7 @@ impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"struct") {
-            let (ident, item_, extra_attrs) = self.parse_item_class();
+            let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));

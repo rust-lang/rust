@@ -39,7 +39,7 @@ fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {
     match pat.node {
         pat_enum(_, _) | pat_ident(_, _, None) | pat_struct(*) => {
             match dm.find(pat.id) {
-                Some(def_variant(*)) | Some(def_class(*)) => true,
+                Some(def_variant(*)) | Some(def_struct(*)) => true,
                 _ => false
             }
         }
