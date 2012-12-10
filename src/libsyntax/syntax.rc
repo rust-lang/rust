@@ -124,9 +124,6 @@ mod ext {
     #[path = "ext/auto_encode.rs"]
     mod auto_encode;
     #[legacy_exports]
-    #[path = "ext/auto_serialize.rs"]
-    mod auto_serialize;
-    #[legacy_exports]
     #[path = "ext/source_util.rs"]
     mod source_util;
 
