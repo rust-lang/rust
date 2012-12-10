@@ -219,6 +219,14 @@ fn mk_pat_enum(cx: ext_ctxt,
     let pat = ast::pat_enum(path, Some(move subpats));
     mk_pat(cx, span, move pat)
 }
+fn mk_pat_struct(cx: ext_ctxt,
+                 span: span,
+                 path: @ast::path,
+                 +field_pats: ~[ast::field_pat])
+              -> @ast::pat {
+    let pat = ast::pat_struct(path, move field_pats, false);
+    mk_pat(cx, span, move pat)
+}
 fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
     let lit_expr = ast::expr_lit(@{ node: ast::lit_bool(value), span: span });
     build::mk_expr(cx, span, move lit_expr)
