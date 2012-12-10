@@ -318,6 +318,26 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     }
 }
 
+fn create_subpatterns(cx: ext_ctxt,
+                      span: span,
+                      prefix: ~str,
+                      n: uint)
+                   -> ~[@pat] {
+    let subpats = dvec::DVec();
+    for uint::range(0, n) |_i| {
+        // Create the subidentifier.
+        let index = subpats.len().to_str();
+        let ident = cx.ident_of(prefix + index);
+
+        // Create the subpattern.
+        let subpath = build::mk_raw_path(span, ~[ ident ]);
+        let subpat = pat_ident(bind_by_ref(m_imm), subpath, None);
+        let subpat = build::mk_pat(cx, span, move subpat);
+        subpats.push(subpat);
+    }
+    return dvec::unwrap(move subpats);
+}
+
 fn create_enum_variant_pattern(cx: ext_ctxt,
                                span: span,
                                variant: &variant,
@@ -330,25 +350,37 @@ fn create_enum_variant_pattern(cx: ext_ctxt,
                 return build::mk_pat_ident(cx, span, variant_ident);
             }
 
-            let subpats = dvec::DVec();
-            for variant_args.each |_variant_arg| {
-                // Create the subidentifier.
-                let index = subpats.len().to_str();
-                let ident = cx.ident_of(prefix + index);
-
-                // Create the subpattern.
-                let subpath = build::mk_raw_path(span, ~[ ident ]);
-                let subpat = pat_ident(bind_by_ref(m_imm), subpath, None);
-                let subpat = build::mk_pat(cx, span, move subpat);
-                subpats.push(subpat);
-            }
-
             let matching_path = build::mk_raw_path(span, ~[ variant_ident ]);
-            let subpats = dvec::unwrap(move subpats);
+            let subpats = create_subpatterns(cx,
+                                             span,
+                                             prefix,
+                                             variant_args.len());
+
             return build::mk_pat_enum(cx, span, matching_path, move subpats);
         }
-        struct_variant_kind(*) => {
-            cx.span_unimpl(span, ~"struct variants for `deriving`");
+        struct_variant_kind(struct_def) => {
+            let matching_path = build::mk_raw_path(span, ~[ variant_ident ]);
+            let subpats = create_subpatterns(cx,
+                                             span,
+                                             prefix,
+                                             struct_def.fields.len());
+
+            let field_pats = dvec::DVec();
+            for struct_def.fields.eachi |i, struct_field| {
+                let ident = match struct_field.node.kind {
+                    named_field(ident, _, _) => ident,
+                    unnamed_field => {
+                        cx.span_bug(span, ~"unexpected unnamed field");
+                    }
+                };
+                field_pats.push({ ident: ident, pat: subpats[i] });
+            }
+            let field_pats = dvec::unwrap(move field_pats);
+
+            return build::mk_pat_struct(cx,
+                                        span,
+                                        matching_path,
+                                        move field_pats);
         }
         enum_variant_kind(*) => {
             cx.span_unimpl(span, ~"enum variants for `deriving`");
