@@ -358,15 +358,6 @@ impl<A: Copy> DVec<A> {
     }
 }
 
-#[cfg(stage0)]
-impl<A:Copy> DVec<A>: Index<uint,A> {
-    #[inline(always)]
-    pure fn index(idx: uint) -> A {
-        self.get_elt(idx)
-    }
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 impl<A:Copy> DVec<A>: Index<uint,A> {
     #[inline(always)]
     pure fn index(&self, idx: uint) -> A {
