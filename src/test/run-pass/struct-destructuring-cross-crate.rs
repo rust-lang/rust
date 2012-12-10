@@ -1,4 +1,6 @@
 // xfail-fast
+// aux-build:struct_destructuring_cross_crate.rs
+
 extern mod struct_destructuring_cross_crate;
 
 fn main() {
