@@ -261,13 +261,7 @@ fn tys_to_str(cx: ctxt, ts: ~[t]) -> ~str {
 }
 
 fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {
-    match b {
-      bound_copy     => ~"copy",
-      bound_owned    => ~"owned",
-      bound_send     => ~"send",
-      bound_const    => ~"const",
-      bound_trait(t) => ty_to_str(cx, t)
-    }
+    ty::param_bound_to_str(cx, &b)
 }
 
 fn ty_to_str(cx: ctxt, typ: t) -> ~str {
