@@ -74,7 +74,9 @@ priv impl &preserve_ctxt {
         let _i = indenter();
 
         match cmt.cat {
-          cat_special(sk_self) | cat_special(sk_heap_upvar) => {
+          cat_special(sk_self) |
+          cat_special(sk_implicit_self) |
+          cat_special(sk_heap_upvar) => {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
           }
           cat_special(sk_static_item) | cat_special(sk_method) => {

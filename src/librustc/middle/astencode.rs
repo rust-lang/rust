@@ -346,7 +346,8 @@ impl ast::def: tr {
                                    did2_opt.map(|did2| did2.tr(xcx)),
                                    p)
           }
-          ast::def_self(nid) => { ast::def_self(xcx.tr_id(nid)) }
+          ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
+          ast::def_self(nid, i) => { ast::def_self(xcx.tr_id(nid), i) }
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
           ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
           ast::def_const(did) => { ast::def_const(did.tr(xcx)) }

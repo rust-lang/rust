@@ -16,14 +16,13 @@ use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::pat_util::{pat_bindings};
-use syntax::ast::{_mod, add, arm};
-use syntax::ast::{bitand, bitor, bitxor};
-use syntax::ast::{binding_mode, blk, capture_clause, struct_dtor};
-use syntax::ast::{crate, crate_num, decl_item};
-use syntax::ast::{def, def_arg, def_binding, def_struct, def_const, def_fn};
-use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
-use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
-use syntax::ast::{def_typaram_binder, def_static_method};
+use syntax::ast::{_mod, add, arm, binding_mode, bitand, bitor, bitxor, blk};
+use syntax::ast::{capture_clause};
+use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
+use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
+use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
+use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
+use syntax::ast::{def_ty_param, def_typaram_binder};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
@@ -40,13 +39,13 @@ use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul, ne};
 use syntax::ast::{neg, node_id, pat, pat_enum, pat_ident, path, prim_ty};
 use syntax::ast::{pat_box, pat_lit, pat_range, pat_rec, pat_struct};
 use syntax::ast::{pat_tup, pat_uniq, pat_wild, private, provided, public};
-use syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl};
-use syntax::ast::{struct_field, struct_variant_kind, sty_static, subtract};
-use syntax::ast::{trait_ref, tuple_variant_kind, Ty, ty_bool, ty_char};
-use syntax::ast::{ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16, ty_i32};
-use syntax::ast::{ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str, ty_u};
-use syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
-use syntax::ast::{ty_param_bound, unnamed_field};
+use syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl, struct_dtor};
+use syntax::ast::{struct_field, struct_variant_kind, sty_by_ref, sty_static};
+use syntax::ast::{subtract, trait_ref, tuple_variant_kind, Ty, ty_bool};
+use syntax::ast::{ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16};
+use syntax::ast::{ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str};
+use syntax::ast::{ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
+use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named};
@@ -197,7 +196,7 @@ impl Mutability : cmp::Eq {
 
 enum SelfBinding {
     NoSelfBinding,
-    HasSelfBinding(node_id)
+    HasSelfBinding(node_id, bool /* is implicit */)
 }
 
 enum CaptureClause {
@@ -1753,7 +1752,7 @@ impl Resolver {
           def_self(*) | def_arg(*) | def_local(*) |
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
-          def_typaram_binder(*) | def_label(*) => {
+          def_typaram_binder(*) | def_label(*) | def_self_ty(*) => {
             fail fmt!("didn't expect `%?`", def);
           }
         }
@@ -3724,7 +3723,7 @@ impl Resolver {
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
                 self_type_rib.bindings.insert(self.self_ident,
-                                              dl_def(def_self(item.id)));
+                                              dl_def(def_self_ty(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
@@ -3985,8 +3984,9 @@ impl Resolver {
                 NoSelfBinding => {
                     // Nothing to do.
                 }
-                HasSelfBinding(self_node_id) => {
-                    let def_like = dl_def(def_self(self_node_id));
+                HasSelfBinding(self_node_id, is_implicit) => {
+                    let def_like = dl_def(def_self(self_node_id,
+                                                   is_implicit));
                     (*function_value_rib).bindings.insert(self.self_ident,
                                                           def_like);
                 }
@@ -4065,7 +4065,8 @@ impl Resolver {
                                           NoTypeParameters,
                                           (*destructor).node.body,
                                           HasSelfBinding
-                                            ((*destructor).node.self_id),
+                                            ((*destructor).node.self_id,
+                                             true),
                                           NoCaptureClause,
                                           visitor);
                 }
@@ -4088,7 +4089,8 @@ impl Resolver {
         // we only have self ty if it is a non static method
         let self_binding = match method.self_ty.node {
           sty_static => { NoSelfBinding }
-          _ => { HasSelfBinding(method.self_id) }
+          sty_by_ref => { HasSelfBinding(method.self_id, true) }
+          _ => { HasSelfBinding(method.self_id, false) }
         };
 
         self.resolve_function(rib_kind,

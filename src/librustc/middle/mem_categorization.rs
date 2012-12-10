@@ -224,6 +224,7 @@ enum special_kind {
     sk_method,
     sk_static_item,
     sk_self,
+    sk_implicit_self,   // old by-reference `self`
     sk_heap_upvar
 }
 
@@ -566,7 +567,7 @@ impl &mem_categorization_ctxt {
           ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_struct(*) |
           ast::def_typaram_binder(*) | ast::def_region(_) |
-          ast::def_label(_) => {
+          ast::def_label(_) | ast::def_self_ty(*) => {
             @{id:id, span:span,
               cat:cat_special(sk_static_item), lp:None,
               mutbl:m_imm, ty:expr_ty}
@@ -599,9 +600,15 @@ impl &mem_categorization_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_self(_) => {
+          ast::def_self(_, is_implicit) => {
+            let special_kind = if is_implicit {
+                sk_implicit_self
+            } else {
+                sk_self
+            };
+
             @{id:id, span:span,
-              cat:cat_special(sk_self), lp:None,
+              cat:cat_special(special_kind), lp:None,
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -975,6 +982,7 @@ impl &mem_categorization_ctxt {
         match cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static_item",
+          cat_special(sk_implicit_self) => ~"implicit-self",
           cat_special(sk_self) => ~"self",
           cat_special(sk_heap_upvar) => ~"heap-upvar",
           cat_stack_upvar(_) => ~"stack-upvar",
@@ -1053,7 +1061,8 @@ impl &mem_categorization_ctxt {
         match cmt.cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static item",
-          cat_special(sk_self) => ~"self reference",
+          cat_special(sk_implicit_self) => ~"self reference",
+          cat_special(sk_self) => ~"self value",
           cat_special(sk_heap_upvar) => {
               ~"captured outer variable in a heap closure"
           }
