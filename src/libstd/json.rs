@@ -782,8 +782,11 @@ pub impl Deserializer: serialization::Deserializer {
     }
 
     fn read_managed_str(&self) -> @str {
-        // FIXME(#3604): There's no way to convert from a ~str to a @str.
-        fail ~"read_managed_str()";
+        debug!("read_managed_str");
+        match *self.pop() {
+            String(ref s) => s.to_managed(),
+            _ => fail ~"not a string"
+        }
     }
 
     fn read_owned<T>(&self, f: fn() -> T) -> T {
