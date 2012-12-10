@@ -1455,7 +1455,7 @@ let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
 let stack_crayons: &str = &"Aquamarine, Asparagus, AtomicTangerine";
 
 // A local heap (managed) string
-let local_crayons: @str = @"BananMania, Beaver, Bittersweet";
+let local_crayons: @str = @"BananaMania, Beaver, Bittersweet";
 
 // An exchange heap (owned) string
 let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
@@ -2133,7 +2133,7 @@ let stacky: &Drawable = &new_circle() as &Drawable;
 
 Method calls to trait types are _dynamically dispatched_. Since the
 compiler doesn't know specifically which functions to call at compile
-time it uses a lookup table (also known as a vtable or dictionary) to
+time, it uses a lookup table (also known as a vtable or dictionary) to
 select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
@@ -2402,7 +2402,7 @@ tutorials on individual topics.
 
 There is further documentation on the [wiki], including articles about
 [unit testing] in Rust, [documenting][rustdoc] and [packaging][cargo]
-Rust code, and a discussion of the [attributes] used to apply metada
+Rust code, and a discussion of the [attributes] used to apply metadata
 to code.
 
 [borrow]: tutorial-borrowed-ptr.html
