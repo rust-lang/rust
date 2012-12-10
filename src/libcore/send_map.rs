@@ -428,6 +428,25 @@ pub mod linear {
             option::unwrap(move value)
         }
     }
+
+    impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: cmp::Eq {
+        pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
+            if self.len() != other.len() { return false; }
+
+            for self.each |key, value| {
+                match other.find_ref(key) {
+                    None => return false,
+                    Some(v) => if value != v { return false },
+                }
+            }
+
+            return true;
+        }
+
+        pure fn ne(&self, other: &LinearMap<K, V>) -> bool {
+            !self.eq(other)
+        }
+    }
 }
 
 #[test]
@@ -537,5 +556,23 @@ pub mod test {
             None => fail,
             Some(v) => assert *v == 2
         }
+    }
+
+    #[test]
+    pub fn test_eq() {
+        let mut m1 = ~LinearMap();
+        m1.insert(1, 2);
+        m1.insert(2, 3);
+        m1.insert(3, 4);
+
+        let mut m2 = ~LinearMap();
+        m2.insert(1, 2);
+        m2.insert(2, 3);
+
+        assert m1 != m2;
+
+        m2.insert(3, 4);
+
+        assert m1 == m2;
     }
 }
