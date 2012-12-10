@@ -4454,11 +4454,17 @@ impl Resolver {
                             let class_def = def_class(class_id);
                             self.record_def(pattern.id, class_def);
                         }
+                        Some(definition @ def_class(class_id))
+                                if self.structs.contains_key(class_id) => {
+                            self.record_def(pattern.id, definition);
+                        }
                         Some(definition @ def_variant(_, variant_id))
                                 if self.structs.contains_key(variant_id) => {
                             self.record_def(pattern.id, definition);
                         }
-                        _ => {
+                        result => {
+                            debug!("(resolving pattern) didn't find struct \
+                                    def: %?", result);
                             self.session.span_err(
                                 path.span,
                                 fmt!("`%s` does not name a structure",
