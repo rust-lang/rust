@@ -76,6 +76,21 @@ impl <T: Copy Ord> PriorityQueue<T> {
         ret
     }
 
+    /// Consume the PriorityQueue and return the underlying vector
+    pure fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
+
+    /// Consume the PriorityQueue and return a vector in sorted (ascending) order
+    pure fn to_sorted_vec(self) -> ~[T] {
+        let mut q = self;
+        let mut end = q.len() - 1;
+        while end > 0 {
+            q.data[end] <-> q.data[0];
+            end -= 1;
+            unsafe { q.siftup_range(0, end) } // purity-checking workaround
+        }
+        q.to_vec()
+    }
+
     priv fn siftdown(&mut self, startpos: uint, pos: uint) {
         let mut pos = pos;
         let newitem = self.data[pos];
@@ -116,24 +131,6 @@ impl <T: Copy Ord> PriorityQueue<T> {
     priv fn siftup(&mut self, pos: uint) {
         self.siftup_range(pos, self.len());
     }
-}
-
-/// Consume the PriorityQueue and return the underlying vector
-pub pure fn to_vec<T: Copy Ord>(q: PriorityQueue<T>) -> ~[T] {
-    let PriorityQueue{data: v} = q;
-    v
-}
-
-/// Consume the PriorityQueue and return a vector in sorted (ascending) order
-pub pure fn to_sorted_vec<T: Copy Ord>(q: PriorityQueue<T>) -> ~[T] {
-    let mut q = q;
-    let mut end = q.len() - 1;
-    while end > 0 {
-        q.data[end] <-> q.data[0];
-        end -= 1;
-        unsafe { q.siftup_range(0, end) } // purity-checking workaround
-    }
-    to_vec(q)
 }
 
 pub pure fn from_vec<T: Copy Ord>(xs: ~[T]) -> PriorityQueue<T> {
@@ -215,7 +212,7 @@ mod tests {
     #[test]
     fn test_to_sorted_vec() {
         let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
-        assert to_sorted_vec(from_vec(data)) == merge_sort(data, le);
+        assert from_vec(data).to_sorted_vec() == merge_sort(data, le);
     }
 
     #[test]
@@ -248,6 +245,6 @@ mod tests {
     fn test_to_vec() {
         let data = ~[1, 3, 5, 7, 9, 2, 4, 6, 8, 0];
         let heap = from_vec(copy data);
-        assert merge_sort(to_vec(heap), le) == merge_sort(data, le);
+        assert merge_sort(heap.to_vec(), le) == merge_sort(data, le);
     }
 }
