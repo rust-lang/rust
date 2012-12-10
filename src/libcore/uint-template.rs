@@ -69,13 +69,34 @@ pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
+/// Iterate over the range [`start`,`start`+`step`..`stop`)
+pub pure fn range_step(start: T, stop: T, step: T, it: fn(T) -> bool) {
+    let mut i = start;
+    if step == 0 {
+        fail ~"range_step called with step == 0";
+    } else if step > 0 { // ascending
+        while i < stop {
+            if !it(i) { break }
+            i += step;
+        }
+    } else { // descending
+        while i > stop {
+            if !it(i) { break }
+            i += step;
+        }
+    }
+}
+
+#[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
 pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
-    let mut i = lo;
-    while i < hi {
-        if !it(i) { break }
-        i += 1 as T;
-    }
+    range_step(lo, hi, 1 as T, it);
+}
+
+#[inline(always)]
+/// Iterate over the range [`hi`..`lo`)
+pub pure fn range_rev(hi: T, lo: T, it: fn(T) -> bool) {
+    range_step(hi, lo, -1 as T, it);
 }
 
 /// Computes the bitwise complement
