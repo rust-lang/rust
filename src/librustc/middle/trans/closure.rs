@@ -370,6 +370,7 @@ fn load_environment(fcx: fn_ctxt,
 }
 
 fn trans_expr_fn(bcx: block,
+                 span: span,
                  proto: ast::Proto,
                  decl: ast::fn_decl,
                  body: ast::blk,
@@ -395,7 +396,7 @@ fn trans_expr_fn(bcx: block,
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     let trans_closure_env = fn@(proto: ast::Proto) -> Result {
-        let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
+        let cap_vars = capture::compute_capture_vars(ccx.tcx, span, id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,

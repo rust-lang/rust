@@ -523,7 +523,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
         // in better error messages than just pointing at the closure
         // construction site.
         let proto = ty::ty_fn_proto(ty::expr_ty(self.tcx, expr));
-        let cvs = capture::compute_capture_vars(self.tcx, expr.id,
+        let cvs = capture::compute_capture_vars(self.tcx, expr.span, expr.id,
                                                 proto, cap_clause);
         let mut call_caps = ~[];
         for cvs.each |cv| {
