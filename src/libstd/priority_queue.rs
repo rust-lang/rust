@@ -91,6 +91,16 @@ impl <T: Copy Ord> PriorityQueue<T> {
         q.to_vec()
     }
 
+    static pub pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+        let mut q = PriorityQueue{data: xs,};
+        let mut n = q.len() / 2;
+        while n > 0 {
+            n -= 1;
+            unsafe { q.siftup(n) }; // purity-checking workaround
+        }
+        q
+    }
+
     priv fn siftdown(&mut self, startpos: uint, pos: uint) {
         let mut pos = pos;
         let newitem = self.data[pos];
@@ -133,20 +143,11 @@ impl <T: Copy Ord> PriorityQueue<T> {
     }
 }
 
-pub pure fn from_vec<T: Copy Ord>(xs: ~[T]) -> PriorityQueue<T> {
-    let mut q = PriorityQueue{data: xs,};
-    let mut n = q.len() / 2;
-    while n > 0 {
-        n -= 1;
-        unsafe { q.siftup(n) }; // purity-checking workaround
-    }
-    q
-}
-
 #[cfg(test)]
 mod tests {
     use sort::merge_sort;
     use core::cmp::le;
+    use PriorityQueue::from_vec;
 
     #[test]
     fn test_top_and_pop() {
