@@ -372,8 +372,8 @@ impl ast::def: tr {
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
-          ast::def_class(did) => {
-            ast::def_class(did.tr(xcx))
+          ast::def_struct(did) => {
+            ast::def_struct(did.tr(xcx))
           }
           ast::def_region(nid) => ast::def_region(xcx.tr_id(nid)),
           ast::def_typaram_binder(nid) => {

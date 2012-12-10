@@ -42,7 +42,7 @@ export node_id_to_type_params;
 export arg;
 export args_eq;
 export block_ty;
-export class_items_as_fields, class_items_as_mutable_fields;
+export struct_fields, struct_mutable_fields;
 export ctxt;
 export deref, deref_sty;
 export index, index_sty;
@@ -64,14 +64,13 @@ export get_element_type;
 export has_dtor;
 export is_binopable;
 export is_pred_ty;
-export lookup_class_field, lookup_class_fields;
-export lookup_class_method_by_name;
+export lookup_struct_field, lookup_struct_fields;
 export lookup_field_type;
 export lookup_item_type;
 export lookup_public_fields;
 export method;
 export method_idx;
-export mk_class, mk_err;
+export mk_struct, mk_err;
 export mk_ctxt;
 export mk_with_id, type_def_id;
 export mt;
@@ -123,7 +122,7 @@ export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var, mk_float_var;
 export InferTy, TyVar, IntVar, FloatVar;
 export ValueMode, ReadValue, CopyValue, MoveValue;
 export ty_self, mk_self, type_has_self;
-export ty_class;
+export ty_struct;
 export Region, bound_region, encl_region;
 export re_bound, re_free, re_scope, re_static, re_infer;
 export ReVar, ReSkolemized;
@@ -254,7 +253,7 @@ type field_ty = {
   ident: ident,
   id: def_id,
   vis: ast::visibility,
-  mutability: ast::class_mutability
+  mutability: ast::struct_mutability
 };
 
 /// How an lvalue is to be used.
@@ -604,7 +603,7 @@ enum Region {
 #[auto_serialize]
 #[auto_deserialize]
 enum bound_region {
-    /// The self region for classes, impls (&T in a type defn or &self/T)
+    /// The self region for structs, impls (&T in a type defn or &self/T)
     br_self,
 
     /// An anonymous region parameter for a given fn (&T)
@@ -636,7 +635,7 @@ type opt_region = Option<Region>;
  *   according to the order in which they were declared.
  *
  * - `self_r` indicates the region parameter `self` that is present on nominal
- *   types (enums, classes) declared as having a region parameter.  `self_r`
+ *   types (enums, structs) declared as having a region parameter.  `self_r`
  *   should always be none for types that are not region-parameterized and
  *   Some(_) for types that are.  The only bound region parameter that should
  *   appear within a region-parameterized type is `self`.
@@ -669,7 +668,7 @@ enum sty {
     ty_rec(~[field]),
     ty_fn(FnTy),
     ty_trait(def_id, substs, vstore),
-    ty_class(def_id, substs),
+    ty_struct(def_id, substs),
     ty_tup(~[t]),
 
     ty_param(param_ty), // type parameter
@@ -1054,7 +1053,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       ty_param(_) => flags |= has_params as uint,
       ty_infer(_) => flags |= needs_infer as uint,
       ty_self => flags |= has_self as uint,
-      ty_enum(_, ref substs) | ty_class(_, ref substs)
+      ty_enum(_, ref substs) | ty_struct(_, ref substs)
       | ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
       }
@@ -1187,9 +1186,9 @@ fn mk_trait(cx: ctxt, did: ast::def_id, +substs: substs, vstore: vstore)
     mk_t(cx, ty_trait(did, substs, vstore))
 }
 
-fn mk_class(cx: ctxt, class_id: ast::def_id, +substs: substs) -> t {
+fn mk_struct(cx: ctxt, struct_id: ast::def_id, +substs: substs) -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_class(class_id, substs))
+    mk_t(cx, ty_struct(struct_id, substs))
 }
 
 fn mk_var(cx: ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
@@ -1297,7 +1296,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_ptr(tm) | ty_rptr(_, tm) => {
         maybe_walk_ty(tm.ty, f);
       }
-      ty_enum(_, ref substs) | ty_class(_, ref substs) |
+      ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
@@ -1372,8 +1371,8 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         ty_rptr(r, tm) => {
             ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
-        ty_class(did, ref substs) => {
-            ty_class(did, fold_substs(substs, fldop))
+        ty_struct(did, ref substs) => {
+            ty_struct(did, fold_substs(substs, fldop))
         }
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
@@ -1440,8 +1439,8 @@ fn fold_regions_and_ty(
       ty_enum(def_id, ref substs) => {
         ty::mk_enum(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_class(def_id, ref substs) => {
-        ty::mk_class(cx, def_id, fold_substs(substs, fldr, fldt))
+      ty_struct(def_id, ref substs) => {
+        ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
       }
       ty_trait(def_id, ref substs, vst) => {
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
@@ -1657,7 +1656,7 @@ fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
 fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_rec(_) | ty_class(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
+      ty_rec(_) | ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
       ty_trait(*) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
@@ -1818,10 +1817,10 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         }
         accum
       }
-      ty_class(did, ref substs) => {
-         // Any class with a dtor needs a drop
+      ty_struct(did, ref substs) => {
+         // Any struct with a dtor needs a drop
          ty_dtor(cx, did).is_present() || {
-             for vec::each(ty::class_items_as_fields(cx, did, substs)) |f| {
+             for vec::each(ty::struct_fields(cx, did, substs)) |f| {
                  if type_needs_drop(cx, f.mt.ty) { accum = true; }
              }
              accum
@@ -2229,16 +2228,16 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
         lowest
       }
 
-      ty_class(did, ref substs) => {
-        // Classes are sendable if all their fields are sendable,
+      ty_struct(did, ref substs) => {
+        // Structs are sendable if all their fields are sendable,
         // likewise for copyable...
         // also factor out this code, copied from the records case
         let mut lowest = kind_top();
-        let flds = class_items_as_fields(cx, did, substs);
+        let flds = struct_fields(cx, did, substs);
         for flds.each |f| {
             lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
         }
-        // ...but classes with dtors are never copyable (they can be
+        // ...but structs with dtors are never copyable (they can be
         // sendable)
         if ty::has_dtor(cx, did) {
            lowest = remove_copyable(lowest);
@@ -2334,8 +2333,8 @@ fn type_size(cx: ctxt, ty: t) -> uint {
         flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
-      ty_class(did, ref substs) => {
-        let flds = class_items_as_fields(cx, did, substs);
+      ty_struct(did, ref substs) => {
+        let flds = struct_fields(cx, did, substs);
         flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
       }
 
@@ -2433,13 +2432,13 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false
           }
 
-          ty_class(ref did, _) if vec::contains(*seen, did) => {
+          ty_struct(ref did, _) if vec::contains(*seen, did) => {
             false
           }
 
-          ty_class(did, ref substs) => {
+          ty_struct(did, ref substs) => {
               seen.push(did);
-              let r = vec::any(class_items_as_fields(cx, did, substs),
+              let r = vec::any(struct_fields(cx, did, substs),
                                |f| type_requires(cx, seen, r_ty, f.mt.ty));
               seen.pop();
             r
@@ -2502,8 +2501,8 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
         }
         return false;
       }
-      ty_class(did, ref substs) => {
-        for lookup_class_fields(cx, did).each |field| {
+      ty_struct(did, ref substs) => {
+        for lookup_struct_fields(cx, did).each |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
             if type_structurally_contains(cx, ft, test) { return true; }
         }
@@ -2597,8 +2596,8 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
-      ty_class(did, ref substs) => {
-        result = vec::any(lookup_class_fields(cx, did), |f| {
+      ty_struct(did, ref substs) => {
+        result = vec::any(lookup_struct_fields(cx, did), |f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
@@ -2673,8 +2672,8 @@ fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         }
       }
 
-      ty_class(did, ref substs) => {
-        let fields = class_items_as_fields(cx, did, substs);
+      ty_struct(did, ref substs) => {
+        let fields = struct_fields(cx, did, substs);
         if fields.len() == 1 && fields[0].ident ==
                 syntax::parse::token::special_idents::unnamed_field {
             Some({ty: fields[0].mt.ty, mutbl: ast::m_imm})
@@ -2877,7 +2876,7 @@ impl sty : to_bytes::IterBytes {
 
           ty_opaque_box => 22u8.iter_bytes(lsb0, f),
 
-          ty_class(ref did, ref substs) =>
+          ty_struct(ref did, ref substs) =>
           to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
 
           ty_rptr(ref r, ref mt) =>
@@ -3014,8 +3013,8 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
     do method_map.find(id).map |method| {
         match method.origin {
           typeck::method_static(did) => {
-            // n.b.: When we encode class/impl methods, the bounds
-            // that we encode include both the class/impl bounds
+            // n.b.: When we encode impl methods, the bounds
+            // that we encode include both the impl bounds
             // and then the method bounds themselves...
             ty::lookup_item_type(tcx, did).bounds
           }
@@ -3083,7 +3082,7 @@ fn expr_kind(tcx: ctxt,
         ast::expr_path(*) => {
             match resolve_expr(tcx, expr) {
                 ast::def_fn(*) | ast::def_static_method(*) |
-                ast::def_variant(*) | ast::def_class(*) => RvalueDpsExpr,
+                ast::def_variant(*) | ast::def_struct(*) => RvalueDpsExpr,
 
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to
@@ -3377,7 +3376,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_rec(_) => ~"record",
       ty_fn(_) => ~"fn",
       ty_trait(id, _, _) => fmt!("trait %s", item_path_str(cx, id)),
-      ty_class(id, _) => fmt!("class %s", item_path_str(cx, id)),
+      ty_struct(id, _) => fmt!("struct %s", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
       ty_infer(TyVar(_)) => ~"inferred type",
       ty_infer(IntVar(_)) => ~"integral variable",
@@ -3550,7 +3549,7 @@ fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
 
 fn def_has_ty_params(def: ast::def) -> bool {
     match def {
-      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_class(_)
+      ast::def_fn(_, _) | ast::def_variant(_, _) | ast::def_struct(_)
         => true,
       _ => false
     }
@@ -3655,13 +3654,6 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
                                    vstore)]
                    }
            }
-           Some(ast_map::node_item(@{node: ast::item_class(sd,_),
-                           _},_)) => {
-               do vec::map(sd.traits) |trait_ref| {
-                    vstoreify(cx, node_id_to_type(cx, trait_ref.ref_id),
-                              vstore)
-                }
-           }
            _ => ~[]
         }
     } else {
@@ -3672,7 +3664,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
 
 fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     match get(ty).sty {
-      ty_trait(id, _, _) | ty_class(id, _) | ty_enum(id, _) => Some(id),
+      ty_trait(id, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
       _ => None
     }
 }
@@ -3689,7 +3681,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
     match cx.items.find(struct_did.node) {
         Some(ast_map::node_item(item, _)) => {
             match item.node {
-                ast::item_class(struct_def, _) => {
+                ast::item_struct(struct_def, _) => {
                     struct_def.ctor_id.map(|ctor_id|
                         ast_util::local_def(*ctor_id))
                 }
@@ -3748,18 +3740,18 @@ impl DtorKind {
     }
 }
 
-/* If class_id names a class with a dtor, return Some(the dtor's id).
+/* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
-fn ty_dtor(cx: ctxt, class_id: def_id) -> DtorKind {
-    match cx.destructor_for_type.find(class_id) {
+fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
+    match cx.destructor_for_type.find(struct_id) {
         Some(method_def_id) => return TraitDtor(method_def_id),
         None => {}  // Continue.
     }
 
-    if is_local(class_id) {
-       match cx.items.find(class_id.node) {
+    if is_local(struct_id) {
+       match cx.items.find(struct_id.node) {
            Some(ast_map::node_item(@{
-               node: ast::item_class(@{ dtor: Some(ref dtor), _ }, _),
+               node: ast::item_struct(@{ dtor: Some(ref dtor), _ }, _),
                _
            }, _)) =>
                LegacyDtor(local_def((*dtor).node.id)),
@@ -3768,15 +3760,15 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> DtorKind {
        }
     }
     else {
-      match csearch::class_dtor(cx.sess.cstore, class_id) {
+      match csearch::struct_dtor(cx.sess.cstore, struct_id) {
         None => NoDtor,
         Some(did) => LegacyDtor(did),
       }
     }
 }
 
-fn has_dtor(cx: ctxt, class_id: def_id) -> bool {
-    ty_dtor(cx, class_id).is_present()
+fn has_dtor(cx: ctxt, struct_id: def_id) -> bool {
+    ty_dtor(cx, struct_id).is_present()
 }
 
 fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
@@ -3943,8 +3935,8 @@ fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
 }
 
 // Look up a field ID, whether or not it's local
-// Takes a list of type substs in case the class is generic
-fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
+// Takes a list of type substs in case the struct is generic
+fn lookup_field_type(tcx: ctxt, struct_id: def_id, id: def_id,
                      substs: &substs) -> ty::t {
 
     let t = if id.crate == ast::local_crate {
@@ -3954,7 +3946,7 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
         match tcx.tcache.find(id) {
            Some(tpt) => tpt.ty,
            None => {
-               let tpt = csearch::get_field_type(tcx, class_id, id);
+               let tpt = csearch::get_field_type(tcx, struct_id, id);
                tcx.tcache.insert(id, tpt);
                tpt.ty
            }
@@ -3963,23 +3955,23 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
     subst(tcx, substs, t)
 }
 
-// Look up the list of field names and IDs for a given class
-// Fails if the id is not bound to a class.
-fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
+// Look up the list of field names and IDs for a given struct
+// Fails if the id is not bound to a struct.
+fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
     match cx.items.find(did.node) {
        Some(ast_map::node_item(i,_)) => {
          match i.node {
-            ast::item_class(struct_def, _) => {
-               class_field_tys(struct_def.fields)
+            ast::item_struct(struct_def, _) => {
+               struct_field_tys(struct_def.fields)
             }
-            _ => cx.sess.bug(~"class ID bound to non-class")
+            _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
        }
        Some(ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
-              class_field_tys(struct_def.fields)
+              struct_field_tys(struct_def.fields)
             }
             _ => {
               cx.sess.bug(~"struct ID bound to enum variant that isn't \
@@ -3989,23 +3981,23 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        }
        _ => {
            cx.sess.bug(
-               fmt!("class ID not bound to an item: %s",
+               fmt!("struct ID not bound to an item: %s",
                     ast_map::node_id_to_str(cx.items, did.node,
                                             cx.sess.parse_sess.interner)));
        }
     }
         }
   else {
-        return csearch::get_class_fields(cx, did);
+        return csearch::get_struct_fields(cx, did);
     }
 }
 
-fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
+fn lookup_struct_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     -> field_ty {
-    match vec::find(lookup_class_fields(cx, parent),
+    match vec::find(lookup_struct_fields(cx, parent),
                  |f| f.id.node == field_id.node) {
         Some(t) => t,
-        None => cx.sess.bug(~"class ID not found in parent's fields")
+        None => cx.sess.bug(~"struct ID not found in parent's fields")
     }
 }
 
@@ -4017,50 +4009,7 @@ pure fn is_public(f: field_ty) -> bool {
     }
 }
 
-/* Given a class def_id and a method name, return the method's
- def_id. Needed so we can do static dispatch for methods
- Doesn't care about the method's privacy. (It's assumed that
- the caller already checked that.)
-*/
-fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
-                               sp: span) -> def_id {
-
-    // Look up the list of method names and IDs for a given class
-    // Fails if the id is not bound to a class.
-    fn lookup_class_method_ids(cx: ctxt, did: ast::def_id)
-        -> ~[{name: ident, id: node_id, vis: visibility}] {
-
-        assert is_local(did);
-        match cx.items.find(did.node) {
-          Some(ast_map::node_item(@{
-            node: item_class(struct_def, _), _
-          }, _)) => {
-            vec::map(struct_def.methods, |m| {name: m.ident,
-                                              id: m.id,
-                                              vis: m.vis})
-          }
-          _ => {
-            cx.sess.bug(~"lookup_class_method_ids: id not bound to a class");
-          }
-        }
-    }
-
-    if is_local(did) {
-       let ms = lookup_class_method_ids(cx, did);
-        for ms.each |m| {
-            if m.name == name {
-                return ast_util::local_def(m.id);
-            }
-       }
-       cx.sess.span_fatal(sp, fmt!("Class doesn't have a method \
-           named %s", cx.sess.str_of(name)));
-    }
-    else {
-      csearch::get_class_method(cx.sess.cstore, did, name)
-    }
-}
-
-fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
+fn struct_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
     let mut rslt = ~[];
     for fields.each |field| {
         match field.node.kind {
@@ -4075,43 +4024,43 @@ fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
                     syntax::parse::token::special_idents::unnamed_field,
                            id: ast_util::local_def(field.node.id),
                            vis: ast::public,
-                           mutability: ast::class_immutable});
+                           mutability: ast::struct_immutable});
             }
        }
     }
     rslt
 }
 
-// Return a list of fields corresponding to the class's items
-// (as if the class was a record). trans uses this
+// Return a list of fields corresponding to the struct's items
+// (as if the struct was a record). trans uses this
 // Takes a list of substs with which to instantiate field types
 // Keep in mind that this function reports that all fields are
 // mutable, regardless of how they were declared. It's meant to
 // be used in trans.
-fn class_items_as_mutable_fields(cx:ctxt,
+fn struct_mutable_fields(cx:ctxt,
                                  did: ast::def_id,
                                  substs: &substs) -> ~[field] {
-    class_item_fields(cx, did, substs, |_mt| m_mutbl)
+    struct_item_fields(cx, did, substs, |_mt| m_mutbl)
 }
 
-// Same as class_items_as_mutable_fields, but doesn't change
+// Same as struct_mutable_fields, but doesn't change
 // mutability.
-fn class_items_as_fields(cx:ctxt,
+fn struct_fields(cx:ctxt,
                          did: ast::def_id,
                          substs: &substs) -> ~[field] {
-    class_item_fields(cx, did, substs, |mt| match mt {
-      class_mutable => m_mutbl,
-        class_immutable => m_imm })
+    struct_item_fields(cx, did, substs, |mt| match mt {
+      struct_mutable => m_mutbl,
+        struct_immutable => m_imm })
 }
 
 
-fn class_item_fields(cx:ctxt,
+fn struct_item_fields(cx:ctxt,
                      did: ast::def_id,
                      substs: &substs,
-                     frob_mutability: fn(class_mutability) -> mutability)
+                     frob_mutability: fn(struct_mutability) -> mutability)
     -> ~[field] {
     let mut rslt = ~[];
-    for lookup_class_fields(cx, did).each |f| {
+    for lookup_struct_fields(cx, did).each |f| {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
        rslt.push({ident: f.ident, mt:
@@ -4247,12 +4196,13 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                     t
             },
 
-        ty_class(did, ref r) =>
+        ty_struct(did, ref r) =>
             match (*r).self_r {
               Some(_) =>
                 // Ditto.
-                mk_class(cx, did, {self_r: Some(ty::re_static), self_ty: None,
-                                   tps: (*r).tps}),
+                mk_struct(cx, did, {self_r: Some(ty::re_static),
+                                    self_ty: None,
+                                    tps: (*r).tps}),
               None =>
                 t
             },
@@ -4654,9 +4604,9 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
-            ty_class(e0a, ref e1a) => {
+            ty_struct(e0a, ref e1a) => {
                 match (*other) {
-                    ty_class(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
+                    ty_struct(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
                     _ => false
                 }
             }

@@ -111,7 +111,7 @@ lvalues are *never* stored by value.
 
 */
 
-use ty::class_items_as_mutable_fields;
+use ty::struct_mutable_fields;
 use lib::llvm::ValueRef;
 use common::*;
 use datum::*;
@@ -695,7 +695,7 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 return bcx;
             }
         }
-        ast::def_class(*) => {
+        ast::def_struct(*) => {
             // Nothing to do here.
             // XXX: May not be true in the case of classes with destructors.
             return bcx;
@@ -926,9 +926,9 @@ fn with_field_tys<R>(tcx: ty::ctxt,
             op(false, *fields)
         }
 
-        ty::ty_class(did, ref substs) => {
+        ty::ty_struct(did, ref substs) => {
             let has_dtor = ty::ty_dtor(tcx, did).is_present();
-            op(has_dtor, class_items_as_mutable_fields(tcx, did, substs))
+            op(has_dtor, struct_mutable_fields(tcx, did, substs))
         }
 
         ty::ty_enum(_, ref substs) => {
@@ -943,7 +943,7 @@ fn with_field_tys<R>(tcx: ty::ctxt,
                 Some(node_id) => {
                     match tcx.def_map.get(node_id) {
                         ast::def_variant(_, variant_id) => {
-                            op(false, class_items_as_mutable_fields(
+                            op(false, struct_mutable_fields(
                                 tcx, variant_id, substs))
                         }
                         _ => {
@@ -1103,7 +1103,7 @@ fn trans_rec_or_struct(bcx: block,
                               GEPi(bcx, addr, [0, 0]));
                         GEPi(bcx, addr, [0, 1])
                     };
-                    let fields = ty::class_items_as_mutable_fields(
+                    let fields = ty::struct_mutable_fields(
                         tcx, variant_id, substs);
                     let field_lltys = do fields.map |field| {
                         type_of(bcx.ccx(),

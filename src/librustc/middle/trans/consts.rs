@@ -420,7 +420,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
                 C_named_struct(llty, ~[ lldiscrim, C_null(llstructtys[1]) ])
             }
-            Some(ast::def_class(_)) => {
+            Some(ast::def_struct(_)) => {
                 let ety = ty::expr_ty(cx.tcx, e);
                 let llty = type_of::type_of(cx, ety);
                 C_null(llty)
@@ -433,7 +433,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       }
       ast::expr_call(callee, args, _) => {
         match cx.tcx.def_map.find(callee.id) {
-            Some(ast::def_class(def_id)) => {
+            Some(ast::def_struct(def_id)) => {
                 let ety = ty::expr_ty(cx.tcx, e);
                 let llty = type_of::type_of(cx, ety);
                 let llstructbody = C_struct(args.map(|a| const_expr(cx, *a)));

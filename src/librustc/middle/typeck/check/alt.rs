@@ -100,7 +100,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
             kind_name = "variant";
         }
-        ty::ty_class(struct_def_id, ref expected_substs) => {
+        ty::ty_struct(struct_def_id, ref expected_substs) => {
             // Assign the pattern the type of the struct.
             let struct_tpt = ty::lookup_item_type(tcx, struct_def_id);
             instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id,
@@ -112,7 +112,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             demand::suptype(fcx, pat.span, pat_ty, expected);
 
             // Get the expected types of the arguments.
-            let class_fields = ty::class_items_as_fields(
+            let class_fields = ty::struct_fields(
                 tcx, struct_def_id, expected_substs);
             arg_types = class_fields.map(|field| field.mt.ty);
 
@@ -232,15 +232,15 @@ fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let class_fields = ty::lookup_class_fields(tcx, class_id);
+    let class_fields = ty::lookup_struct_fields(tcx, class_id);
 
     // Check to ensure that the struct is the one specified.
     match tcx.def_map.find(pat_id) {
-        Some(ast::def_class(supplied_def_id))
+        Some(ast::def_struct(supplied_def_id))
                 if supplied_def_id == class_id => {
             // OK.
         }
-        Some(ast::def_class(*)) | Some(ast::def_variant(*)) => {
+        Some(ast::def_struct(*)) | Some(ast::def_variant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
                               fmt!("mismatched types: expected `%s` but \
@@ -280,12 +280,12 @@ fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
         Some(ast::def_variant(found_enum_id, variant_id))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
-            let class_fields = ty::lookup_class_fields(tcx, variant_id);
+            let class_fields = ty::lookup_struct_fields(tcx, variant_id);
 
             check_struct_pat_fields(pcx, span, path, fields, class_fields,
                                     variant_id, substitutions, etc);
         }
-        Some(ast::def_class(*)) | Some(ast::def_variant(*)) => {
+        Some(ast::def_struct(*)) | Some(ast::def_variant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
                               fmt!("mismatched types: expected `%s` but \
@@ -423,7 +423,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);
         match structure {
-            ty::ty_class(cid, ref substs) => {
+            ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
                                  fields, etc, cid, substs);
             }

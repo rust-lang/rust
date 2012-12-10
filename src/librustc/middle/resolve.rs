@@ -18,9 +18,9 @@ use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::pat_util::{pat_bindings};
 use syntax::ast::{_mod, add, arm};
 use syntax::ast::{bitand, bitor, bitxor};
-use syntax::ast::{binding_mode, blk, capture_clause, class_ctor, class_dtor};
+use syntax::ast::{binding_mode, blk, capture_clause, struct_dtor};
 use syntax::ast::{crate, crate_num, decl_item};
-use syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
+use syntax::ast::{def, def_arg, def_binding, def_struct, def_const, def_fn};
 use syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_typaram_binder, def_static_method};
@@ -33,7 +33,7 @@ use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_fn_block, expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
-use syntax::ast::{gt, ident, impure_fn, inherited, item, item_class};
+use syntax::ast::{gt, ident, impure_fn, inherited, item, item_struct};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
 use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul, ne};
@@ -281,8 +281,8 @@ enum RibKind {
     // upvars as appropriate.
     FunctionRibKind(node_id /* func id */, node_id /* body id */),
 
-    // We passed through a class, impl, or trait and are now in one of its
-    // methods. Allow references to ty params that that class, impl or trait
+    // We passed through an impl or trait and are now in one of its
+    // methods. Allow references to ty params that that impl or trait
     // binds. Disallow any other upvars (including other ty params that are
     // upvars).
               // parent;   method itself
@@ -1183,7 +1183,7 @@ impl Resolver {
             }
 
             // These items live in both the type and value namespaces.
-            item_class(struct_def, _) => {
+            item_struct(struct_def, _) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
@@ -1197,7 +1197,7 @@ impl Resolver {
                     Some(ctor_id) => {
                         name_bindings.define_value(
                             privacy,
-                            def_class(local_def(ctor_id)),
+                            def_struct(local_def(ctor_id)),
                             sp);
                     }
                 }
@@ -1733,7 +1733,7 @@ impl Resolver {
 
             child_name_bindings.define_type(Public, def, dummy_sp());
           }
-          def_class(def_id) => {
+          def_struct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type %s",
                    final_ident);
@@ -3662,12 +3662,10 @@ impl Resolver {
                 (*self.type_ribs).pop();
             }
 
-            item_class(struct_def, ty_params) => {
-                self.resolve_class(item.id,
+            item_struct(struct_def, ty_params) => {
+                self.resolve_struct(item.id,
                                    @copy ty_params,
-                                   struct_def.traits,
                                    struct_def.fields,
-                                   struct_def.methods,
                                    struct_def.dtor,
                                    visitor);
             }
@@ -3905,15 +3903,12 @@ impl Resolver {
         }
     }
 
-    fn resolve_class(id: node_id,
+    fn resolve_struct(id: node_id,
                      type_parameters: @~[ty_param],
-                     traits: ~[@trait_ref],
                      fields: ~[@struct_field],
-                     methods: ~[@method],
-                     optional_destructor: Option<class_dtor>,
+                     optional_destructor: Option<struct_dtor>,
                      visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
-        let outer_type_parameter_count = (*type_parameters).len();
         let borrowed_type_parameters: &~[ty_param] = &*type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
                                         (borrowed_type_parameters, id, 0,
@@ -3921,39 +3916,6 @@ impl Resolver {
 
             // Resolve the type parameters.
             self.resolve_type_parameters(*type_parameters, visitor);
-
-            // Resolve implemented traits.
-            for traits.each |trt| {
-                match self.resolve_path(trt.path, TypeNS, true, visitor) {
-                    None => {
-                        self.session.span_err(trt.path.span,
-                                              ~"attempt to implement a \
-                                               nonexistent trait");
-                    }
-                    Some(def) => {
-                        // Write a mapping from the trait ID to the
-                        // definition of the trait into the definition
-                        // map.
-
-                        debug!("(resolving class) found trait def: %?", def);
-
-                        self.record_def(trt.ref_id, def);
-
-                        // XXX: This is wrong but is needed for tests to
-                        // pass.
-
-                        self.record_def(id, def);
-                    }
-                }
-            }
-
-            // Resolve methods.
-            for methods.each |method| {
-                self.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                    *method,
-                                    outer_type_parameter_count,
-                                    visitor);
-            }
 
             // Resolve fields.
             for fields.each |field| {
@@ -4416,7 +4378,7 @@ impl Resolver {
                     // These two must be enum variants or structs.
                     match self.resolve_path(path, ValueNS, false, visitor) {
                         Some(def @ def_variant(*)) |
-                                Some(def @ def_class(*)) => {
+                                Some(def @ def_struct(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4451,10 +4413,10 @@ impl Resolver {
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
                                 if self.structs.contains_key(class_id) => {
-                            let class_def = def_class(class_id);
+                            let class_def = def_struct(class_id);
                             self.record_def(pattern.id, class_def);
                         }
-                        Some(definition @ def_class(class_id))
+                        Some(definition @ def_struct(class_id))
                                 if self.structs.contains_key(class_id) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -4495,7 +4457,7 @@ impl Resolver {
                     }
                     Some(def) => {
                         match def.def {
-                            def @ def_variant(*) | def @ def_class(*) => {
+                            def @ def_variant(*) | def @ def_struct(*) => {
                                 return FoundStructOrEnumVariant(def);
                             }
                             def @ def_const(*) => {
@@ -4811,7 +4773,7 @@ impl Resolver {
         }
     }
 
-    fn name_exists_in_scope_class(name: &str) -> bool {
+    fn name_exists_in_scope_struct(name: &str) -> bool {
         let mut i = self.type_ribs.len();
         while i != 0 {
           i -= 1;
@@ -4821,7 +4783,7 @@ impl Resolver {
               for vec::each(self.crate.node.module.items) |item| {
                 if item.id == node_id {
                   match item.node {
-                    item_class(class_def, _) => {
+                    item_struct(class_def, _) => {
                       for vec::each(class_def.fields) |field| {
                         match field.node.kind {
                           syntax::ast::unnamed_field
@@ -4833,12 +4795,6 @@ impl Resolver {
                                 return true
                               }
                             }
-                        }
-                      }
-                      for vec::each(class_def.methods) |method| {
-                        if str::eq_slice(self.session.str_of(method.ident),
-                                         name) {
-                          return true
                         }
                       }
                     }
@@ -4879,7 +4835,7 @@ impl Resolver {
                         let wrong_name =
                             connect(path.idents.map(
                                 |x| self.session.str_of(*x)), ~"::") ;
-                        if self.name_exists_in_scope_class(wrong_name) {
+                        if self.name_exists_in_scope_struct(wrong_name) {
                             self.session.span_err(expr.span,
                                         fmt!("unresolved name: `%s`. \
                                             Did you mean: `self.%s`?",
@@ -4925,9 +4881,9 @@ impl Resolver {
                 //    let bar = Bar { ... } // no type parameters
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
-                    Some(def_ty(class_id)) | Some(def_class(class_id))
+                    Some(def_ty(class_id)) | Some(def_struct(class_id))
                             if self.structs.contains_key(class_id) => {
-                        let class_def = def_class(class_id);
+                        let class_def = def_struct(class_id);
                         self.record_def(expr.id, class_def);
                     }
                     Some(definition @ def_variant(_, class_id))

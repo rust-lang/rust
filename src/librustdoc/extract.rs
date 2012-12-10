@@ -127,7 +127,7 @@ fn moddoc_from_mod(
                     tydoc_from_ty(ItemDoc)
                 ))
               }
-              ast::item_class(def, _) => {
+              ast::item_struct(def, _) => {
                 Some(doc::StructTag(
                     structdoc_from_struct(ItemDoc, def)
                 ))

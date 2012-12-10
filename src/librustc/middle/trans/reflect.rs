@@ -67,9 +67,10 @@ impl reflector {
 
     fn visit(ty_name: ~str, args: ~[ValueRef]) {
         let tcx = self.bcx.tcx();
-        let mth_idx = option::get(ty::method_idx(
+        let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
-            *self.visitor_methods));
+            *self.visitor_methods).expect(fmt!("Couldn't find visit method \
+                                                for %s", ty_name));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         debug!("passing %u args:", vec::len(args));
@@ -230,12 +231,12 @@ impl reflector {
             self.visit(~"leave_fn", extra);
           }
 
-          ty::ty_class(did, ref substs) => {
+          ty::ty_struct(did, ref substs) => {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
-            let fields = ty::class_items_as_fields(tcx, did, substs);
+            let fields = ty::struct_fields(tcx, did, substs);
 
-            do self.bracketed(~"class", ~[self.c_uint(vec::len(fields))]
+            do self.bracketed(~"class", ~[self.c_uint(fields.len())]
                               + self.c_size_and_align(t)) {
                 for fields.eachi |i, field| {
                     self.visit(~"class_field",

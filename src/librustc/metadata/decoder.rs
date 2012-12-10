@@ -32,15 +32,14 @@ use syntax::parse::token::ident_interner;
 use hash::{Hash, HashUtil};
 use csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 
-export class_dtor;
-export get_class_fields;
+export struct_dtor;
+export get_struct_fields;
 export get_symbol;
 export get_enum_variants;
 export get_type;
 export get_region_param;
 export get_type_param_count;
 export get_impl_traits;
-export get_class_method;
 export get_impl_method;
 export get_static_methods_if_impl;
 export lookup_def;
@@ -228,15 +227,15 @@ fn each_reexport(d: ebml::Doc, f: fn(ebml::Doc) -> bool) {
     }
 }
 
-fn field_mutability(d: ebml::Doc) -> ast::class_mutability {
+fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
     // Use maybe_get_doc in case it's a method
     option::map_default(
-        &reader::maybe_get_doc(d, tag_class_mut),
-        ast::class_immutable,
+        &reader::maybe_get_doc(d, tag_struct_mut),
+        ast::struct_immutable,
         |d| {
             match reader::doc_as_u8(*d) as char {
-              'm' => ast::class_mutable,
-              _   => ast::class_immutable
+              'm' => ast::struct_mutable,
+              _   => ast::struct_immutable
             }
         })
 }
@@ -338,7 +337,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
     let fam = item_family(item);
     match fam {
         Const     => dl_def(ast::def_const(did)),
-        Struct    => dl_def(ast::def_class(did)),
+        Struct    => dl_def(ast::def_struct(did)),
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
         PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
@@ -419,34 +418,12 @@ fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     found.get()
 }
 
-fn get_class_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                    name: ast::ident) -> ast::def_id {
-    let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    let mut found = None;
-    let cls_items = match maybe_find_item(id, items) {
-      Some(it) => it,
-      None => fail (fmt!("get_class_method: class id not found \
-                              when looking up method %s", *intr.get(name)))
-    };
-    for reader::tagged_docs(cls_items, tag_item_trait_method) |mid| {
-        let m_did = item_def_id(mid, cdata);
-        if item_name(intr, mid) == name {
-            found = Some(m_did);
-        }
-    }
-    match found {
-      Some(found) => found,
-      None => fail (fmt!("get_class_method: no method named %s",
-                         *intr.get(name)))
-    }
-}
-
-fn class_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
+fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
     let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
             Some(it) => it,
-            None     => fail (fmt!("class_dtor: class id not found \
+            None     => fail (fmt!("struct_dtor: class id not found \
               when looking up dtor for %d", id))
     };
     for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
@@ -905,25 +882,6 @@ fn get_item_attrs(cdata: cmd,
     }
 }
 
-// Helper function that gets either fields or methods
-fn get_class_members(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                     p: fn(Family) -> bool) -> ~[ty::field_ty] {
-    let data = cdata.data;
-    let item = lookup_item(id, data);
-    let mut result = ~[];
-    for reader::tagged_docs(item, tag_item_field) |an_item| {
-       let f = item_family(an_item);
-       if p(f) {
-          let name = item_name(intr, an_item);
-          let did = item_def_id(an_item, cdata);
-          let mt = field_mutability(an_item);
-          result.push({ident: name, id: did, vis:
-                  family_to_visibility(f), mutability: mt});
-       }
-    }
-    result
-}
-
 pure fn family_to_visibility(family: Family) -> ast::visibility {
     match family {
       PublicField => ast::public,
@@ -933,10 +891,22 @@ pure fn family_to_visibility(family: Family) -> ast::visibility {
     }
 }
 
-fn get_class_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
+fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     -> ~[ty::field_ty] {
-    get_class_members(intr, cdata, id, |f| f == PublicField
-                      || f == PrivateField || f == InheritedField)
+    let data = cdata.data;
+    let item = lookup_item(id, data);
+    let mut result = ~[];
+    for reader::tagged_docs(item, tag_item_field) |an_item| {
+       let f = item_family(an_item);
+       if f == PublicField || f == PrivateField || f == InheritedField {
+          let name = item_name(intr, an_item);
+          let did = item_def_id(an_item, cdata);
+          let mt = field_mutability(an_item);
+          result.push({ident: name, id: did, vis:
+                  family_to_visibility(f), mutability: mt});
+       }
+    }
+    result
 }
 
 fn family_has_type_params(fam: Family) -> bool {

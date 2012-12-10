@@ -131,7 +131,7 @@ fn expand_auto_serialize(
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_class(@{ fields, _}, tps) => {
+                ast::item_struct(@{ fields, _}, tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
@@ -195,7 +195,7 @@ fn expand_auto_deserialize(
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_class(@{ fields, _}, tps) => {
+                ast::item_struct(@{ fields, _}, tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
@@ -755,8 +755,8 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
             span: field.span,
             ident: ident,
             mutbl: match mutbl {
-                ast::class_mutable => ast::m_mutbl,
-                ast::class_immutable => ast::m_imm,
+                ast::struct_mutable => ast::m_mutbl,
+                ast::struct_immutable => ast::m_imm,
             },
         }
     }

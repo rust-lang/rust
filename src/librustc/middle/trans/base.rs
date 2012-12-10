@@ -557,7 +557,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     */
     let mut cx = cx;
     match ty::get(t).sty {
-      ty::ty_rec(*) | ty::ty_class(*) => {
+      ty::ty_rec(*) | ty::ty_struct(*) => {
           do expr::with_field_tys(cx.tcx(), t, None) |_has_dtor, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
                   let llfld_a = GEPi(cx, av, struct_field(i));
@@ -1776,7 +1776,7 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
     finish_fn(fcx, lltop);
 }
 
-fn trans_class_dtor(ccx: @crate_ctxt, path: path,
+fn trans_struct_dtor(ccx: @crate_ctxt, path: path,
     body: ast::blk, dtor_id: ast::node_id,
     psubsts: Option<param_substs>,
     hash_id: Option<mono_id>, parent_id: ast::def_id)
@@ -1829,7 +1829,7 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
             }
             ast::struct_variant_kind(struct_def) => {
                 trans_struct_def(ccx, struct_def, tps, path,
-                                 variant.node.name, variant.node.id);
+                                 variant.node.id);
             }
             ast::enum_variant_kind(ref enum_definition) => {
                 trans_enum_def(ccx,
@@ -1905,8 +1905,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
-      ast::item_class(struct_def, tps) => {
-        trans_struct_def(ccx, struct_def, tps, path, item.ident, item.id);
+      ast::item_struct(struct_def, tps) => {
+        trans_struct_def(ccx, struct_def, tps, path, item.id);
       }
       _ => {/* fall through */ }
     }
@@ -1914,13 +1914,13 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
 
 fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                     tps: ~[ast::ty_param], path: @ast_map::path,
-                    ident: ast::ident, id: ast::node_id) {
+                    id: ast::node_id) {
     // If there are type parameters, the destructor and constructor will be
     // monomorphized, so we don't translate them here.
     if tps.len() == 0u {
         // Translate the destructor.
         do option::iter(&struct_def.dtor) |dtor| {
-            trans_class_dtor(ccx, *path, dtor.node.body,
+            trans_struct_dtor(ccx, *path, dtor.node.body,
                              dtor.node.id, None, None, local_def(id));
         };
 
@@ -1936,9 +1936,6 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
             Some(_) | None => {}
         }
     }
-
-    // Translate methods.
-    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps, None, id);
 }
 
 // Translate a module. Doing this amounts to translating the items in the

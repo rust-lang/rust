@@ -36,14 +36,14 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           }
           // Reduce a class type to a record type in which all the fields are
           // simplified
-          ty::ty_class(did, ref substs) => {
+          ty::ty_struct(did, ref substs) => {
             let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
                 // remember the drop flag
                   ~[{ident: syntax::parse::token::special_idents::dtor,
                      mt: {ty: ty::mk_u8(tcx),
                           mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
-                do ty::lookup_class_fields(tcx, did).map |f| {
+                do ty::lookup_struct_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);
                  {ident: f.ident,
                   mt: {ty: simplify_type(tcx, t), mutbl: ast::m_const}}

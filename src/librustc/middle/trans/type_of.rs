@@ -179,12 +179,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(tys)
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
-      ty::ty_class(did, ref substs) => {
+      ty::ty_struct(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We fill it
         // in *after* placing it into the type cache. This prevents
-        // infinite recursion with recursive class types.
+        // infinite recursion with recursive struct types.
 
-        common::T_named_struct(llvm_type_name(cx, a_class, did, substs.tps))
+        common::T_named_struct(llvm_type_name(cx, a_struct, did, substs.tps))
       }
       ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
@@ -194,14 +194,14 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
     cx.lltypes.insert(t, llty);
 
-    // If this was an enum or class, fill in the type now.
+    // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
       ty::ty_enum(did, _) => {
         fill_type_of_enum(cx, did, t, llty);
       }
-      ty::ty_class(did, ref substs) => {
+      ty::ty_struct(did, ref substs) => {
         // Only instance vars are record fields at runtime.
-        let fields = ty::lookup_class_fields(cx.tcx, did);
+        let fields = ty::lookup_struct_fields(cx.tcx, did);
         let mut tys = do vec::map(fields) |f| {
             let t = ty::lookup_field_type(cx.tcx, did, f.id, substs);
             type_of(cx, t)
@@ -244,14 +244,17 @@ fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
 }
 
 // Want refinements! (Or case classes, I guess
-enum named_ty { a_class, an_enum }
+enum named_ty { a_struct, an_enum }
 
 fn llvm_type_name(cx: @crate_ctxt,
                   what: named_ty,
                   did: ast::def_id,
                   tps: ~[ty::t]
                   ) -> ~str {
-    let name = match what { a_class => { "~class" } an_enum => { "~enum" } };
+    let name = match what {
+        a_struct => { "~struct" }
+        an_enum => { "~enum" }
+    };
     return fmt!(
         "%s %s[#%d]",
           name,

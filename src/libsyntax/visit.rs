@@ -154,7 +154,7 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(*m, e, v)
         }
       }
-      item_class(struct_def, tps) => {
+      item_struct(struct_def, tps) => {
         (v.visit_ty_params)(tps, e, v);
         (v.visit_struct_def)(struct_def, i.ident, tps, i.id, e, v);
       }
@@ -297,7 +297,7 @@ fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
                m.decl, m.body, m.span, m.id, e, v);
 }
 
-fn visit_class_dtor_helper<E>(dtor: class_dtor, tps: ~[ty_param],
+fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: ~[ty_param],
                               parent_id: def_id, e: E, v: vt<E>) {
     (v.visit_fn)(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
                        dtor.node.self_id, parent_id), ast_util::dtor_dec(),
@@ -330,14 +330,8 @@ fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
     }
-    for sd.methods.each |m| {
-        (v.visit_struct_method)(*m, e, v);
-    }
-    for sd.traits.each |p| {
-        visit_path(p.path, e, v);
-    }
     do option::iter(&sd.dtor) |dtor| {
-      visit_class_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
+      visit_struct_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
     };
 }
 

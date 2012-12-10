@@ -666,7 +666,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     match ty.node {
       ast::ty_path(path, id) => {
         match cx.def_map.find(id) {
-          Some(ast::def_ty(did)) | Some(ast::def_class(did)) => {
+          Some(ast::def_ty(did)) | Some(ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
                 if cx.opt_region_is_relevant(path.rp) {
                     cx.add_dep(did.node);
@@ -749,12 +749,12 @@ fn determine_rp_in_struct_field(cm: @ast::struct_field,
                                 &&cx: determine_rp_ctxt,
                                 visitor: visit::vt<determine_rp_ctxt>) {
     match cm.node.kind {
-      ast::named_field(_, ast::class_mutable, _) => {
+      ast::named_field(_, ast::struct_mutable, _) => {
         do cx.with_ambient_variance(rv_invariant) {
             visit::visit_struct_field(cm, cx, visitor);
         }
       }
-      ast::named_field(_, ast::class_immutable, _) |
+      ast::named_field(_, ast::struct_immutable, _) |
       ast::unnamed_field => {
         visit::visit_struct_field(cm, cx, visitor);
       }

@@ -15,13 +15,13 @@ use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
 use syntax::ast_map;
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
-use syntax::ast::{expr_unary, ident, item_class, item_enum, item_impl};
+use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
 use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
 use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
-use ty::{ty_class, ty_enum};
+use ty::{ty_struct, ty_enum};
 use typeck::{method_map, method_origin, method_param, method_self};
 use typeck::{method_static, method_trait};
 
@@ -37,7 +37,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         let mut count = 0;
         for items.each |item| {
             match item.node {
-                item_class(*) | item_trait(*) | item_impl(*)
+                item_struct(*) | item_trait(*) | item_impl(*)
                 | item_enum(*) => {
                     privileged_items.push(item.id);
                     count += 1;
@@ -78,7 +78,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
 
     // Checks that a private field is in scope.
     let check_field = |span, id, ident| {
-        let fields = ty::lookup_class_fields(tcx, id);
+        let fields = ty::lookup_struct_fields(tcx, id);
         for fields.each |field| {
             if field.ident != ident { loop; }
             if field.vis == private {
@@ -200,7 +200,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
             match expr.node {
                 expr_field(base, ident, _) => {
                     match ty::get(ty::expr_ty(tcx, base)).sty {
-                        ty_class(id, _)
+                        ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
                             match method_map.find(expr.id) {
@@ -221,7 +221,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                 }
                 expr_method_call(base, _, _, _, _) => {
                     match ty::get(ty::expr_ty(tcx, base)).sty {
-                        ty_class(id, _)
+                        ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
                             match method_map.find(expr.id) {
@@ -242,7 +242,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                 }
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
-                        ty_class(id, _) => {
+                        ty_struct(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
                                 for (*fields).each |field| {
@@ -308,7 +308,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
             match pattern.node {
                 pat_struct(_, fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
-                        ty_class(id, _) => {
+                        ty_struct(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
                                 for fields.each |field| {

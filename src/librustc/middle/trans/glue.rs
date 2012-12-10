@@ -405,15 +405,15 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
-      ty::ty_class(did, ref substs) => {
+      ty::ty_struct(did, ref substs) => {
         // Call the dtor if there is one
         match ty::ty_dtor(bcx.tcx(), did) {
             ty::NoDtor => bcx,
             ty::LegacyDtor(ref dt_id) => {
-                trans_class_drop(bcx, v, *dt_id, did, substs, false)
+                trans_struct_drop(bcx, v, *dt_id, did, substs, false)
             }
             ty::TraitDtor(ref dt_id) => {
-                trans_class_drop(bcx, v, *dt_id, did, substs, true)
+                trans_struct_drop(bcx, v, *dt_id, did, substs, true)
             }
         }
       }
@@ -422,7 +422,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-fn trans_class_drop(bcx: block,
+fn trans_struct_drop(bcx: block,
                     v0: ValueRef,
                     dtor_did: ast::def_id,
                     class_did: ast::def_id,
@@ -461,7 +461,7 @@ fn trans_class_drop(bcx: block,
 
         // Drop the fields
         let field_tys =
-            ty::class_items_as_mutable_fields(bcx.tcx(), class_did,
+            ty::struct_mutable_fields(bcx.tcx(), class_did,
                                               substs);
         for vec::eachi(field_tys) |i, fld| {
             let llfld_a = GEPi(bcx, v0, struct_field(i));
@@ -490,14 +490,14 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_unboxed_vec(_) => {
         tvec::make_drop_glue_unboxed(bcx, v0, t)
       }
-      ty::ty_class(did, ref substs) => {
+      ty::ty_struct(did, ref substs) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
           ty::TraitDtor(dtor) => {
-            trans_class_drop(bcx, v0, dtor, did, substs, true)
+            trans_struct_drop(bcx, v0, dtor, did, substs, true)
           }
           ty::LegacyDtor(dtor) => {
-            trans_class_drop(bcx, v0, dtor, did, substs, false)
+            trans_struct_drop(bcx, v0, dtor, did, substs, false)
           }
           ty::NoDtor => {
             // No dtor? Just the default case

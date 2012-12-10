@@ -12,7 +12,7 @@
 /// #[deriving_iter_bytes] extensions.
 
 use ast::{Ty, and, bind_by_ref, binop, deref, enum_def, enum_variant_kind};
-use ast::{expr, expr_match, ident, item, item_, item_class, item_enum};
+use ast::{expr, expr_match, ident, item, item_, item_struct, item_enum};
 use ast::{item_impl, m_imm, meta_item, method, named_field, or, pat};
 use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, stmt, struct_def};
 use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
@@ -83,7 +83,7 @@ fn expand_deriving(cx: ext_ctxt,
     for in_items.each |item| {
         result.push(copy *item);
         match item.node {
-            item_class(struct_def, copy ty_params) => {
+            item_struct(struct_def, copy ty_params) => {
                 result.push(expand_deriving_struct_def(cx,
                                                        span,
                                                        struct_def,

@@ -24,10 +24,9 @@ use common::*;
 use std::map::HashMap;
 use dvec::DVec;
 
-export class_dtor;
+export struct_dtor;
 export get_symbol;
-export get_class_fields;
-export get_class_method;
+export get_struct_fields;
 export get_field_type;
 export get_type_param_count;
 export get_region_param;
@@ -170,10 +169,10 @@ fn get_item_attrs(cstore: cstore::CStore,
     decoder::get_item_attrs(cdata, def_id.node, f)
 }
 
-fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
+fn get_struct_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_fields(cstore.intr, cdata, def.node)
+    decoder::get_struct_fields(cstore.intr, cdata, def.node)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
@@ -226,22 +225,11 @@ fn get_impl_method(cstore: cstore::CStore,
     decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
 }
 
-/* Because classes use the trait format rather than the impl format
-   for their methods (so that get_trait_methods can be reused to get
-   class methods), classes require a slightly different version of
-   get_impl_method. Sigh. */
-fn get_class_method(cstore: cstore::CStore,
-                    def: ast::def_id, mname: ast::ident)
-    -> ast::def_id {
-    let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_method(cstore.intr, cdata, def.node, mname)
-}
-
 /* If def names a class with a dtor, return it. Otherwise, return none. */
-fn class_dtor(cstore: cstore::CStore, def: ast::def_id)
+fn struct_dtor(cstore: cstore::CStore, def: ast::def_id)
     -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::class_dtor(cdata, def.node)
+    decoder::struct_dtor(cdata, def.node)
 }
 // Local Variables:
 // mode: rust

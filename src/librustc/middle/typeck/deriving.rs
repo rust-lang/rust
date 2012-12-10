@@ -28,7 +28,7 @@ use syntax::visit::{default_simple_visitor, mk_simple_visitor, visit_crate};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty;
 use middle::ty::{DerivedFieldInfo, ReVar, re_infer, re_static, substs};
-use middle::ty::{ty_class, ty_enum, ty_param_bounds_and_ty};
+use middle::ty::{ty_struct, ty_enum, ty_param_bounds_and_ty};
 use /*middle::typeck::*/check::method;
 use /*middle::typeck::*/check::vtable;
 use /*middle::typeck::*/infer::infer_ctxt;
@@ -182,7 +182,7 @@ impl DerivingChecker {
                                  impl_span: span) {
         let tcx = self.crate_context.tcx;
         let field_info = dvec::DVec();
-        for ty::lookup_class_fields(tcx, struct_def_id).each |field| {
+        for ty::lookup_struct_fields(tcx, struct_def_id).each |field| {
             let field_type = ty::lookup_field_type(
                 tcx, struct_def_id, field.id, struct_substs);
             match self.check_deriving_for_substructure_type(field_type,
@@ -288,7 +288,7 @@ impl DerivingChecker {
                                         item.id,
                                         item.span);
                                 }
-                                ty_class(def_id, ref substs) => {
+                                ty_struct(def_id, ref substs) => {
                                     self.check_deriving_for_struct(
                                         def_id,
                                         substs,

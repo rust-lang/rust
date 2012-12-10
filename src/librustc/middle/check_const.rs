@@ -106,7 +106,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
               Some(def_const(def_id)) |
                 Some(def_fn(def_id, _)) |
                 Some(def_variant(_, def_id)) |
-                Some(def_class(def_id)) => {
+                Some(def_struct(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
@@ -128,7 +128,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
           }
           expr_call(callee, _, false) => {
             match def_map.find(callee.id) {
-                Some(def_class(*)) => {}    // OK.
+                Some(def_struct(*)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,

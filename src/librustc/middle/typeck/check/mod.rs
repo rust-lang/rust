@@ -483,7 +483,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let tcx = ccx.tcx;
     let self_ty = ty::node_id_to_type(tcx, id);
 
-    do option::iter(&struct_def.dtor) |dtor| {
+    do struct_def.dtor.iter() |dtor| {
         let class_t = {self_ty: self_ty,
                        self_id: dtor.node.self_id,
                        def_id: local_def(id),
@@ -495,10 +495,6 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                       Some(class_t));
     };
 
-    // typecheck the methods
-    for struct_def.methods.each |m| {
-        check_method(ccx, *m, self_ty, local_def(id));
-    }
     // Check that the class is instantiable
     check_instantiable(ccx.tcx, span, id);
 }
@@ -539,7 +535,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
             }
         }
       }
-      ast::item_class(struct_def, _) => {
+      ast::item_struct(struct_def, _) => {
         check_struct(ccx, struct_def, it.id, it.span);
       }
       ast::item_ty(t, tps) => {
@@ -940,7 +936,7 @@ fn impl_self_ty(vcx: &VtableContext,
              region_param: region_param,
              raw_ty: vcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
           }
-          Some(ast_map::node_item(@{node: ast::item_class(_, ts),
+          Some(ast_map::node_item(@{node: ast::item_struct(_, ts),
                                     id: class_id, _},_)) => {
               /* If the impl is a class, the self ty is just the class ty
                  (doing a no-op subst for the ty params; in the next step,
@@ -948,7 +944,7 @@ fn impl_self_ty(vcx: &VtableContext,
                */
               {n_tps: ts.len(),
                region_param: region_param,
-               raw_ty: ty::mk_class(tcx, local_def(class_id),
+               raw_ty: ty::mk_struct(tcx, local_def(class_id),
                       {self_r: rscope::bound_self_region(region_param),
                        self_ty: None,
                        tps: ty::ty_params_to_tys(tcx, ts)})}
@@ -1538,14 +1534,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     _ => ()
                 }
             }
-            ty::ty_class(base_id, ref substs) => {
+            ty::ty_struct(base_id, ref substs) => {
                 // This is just for fields -- the same code handles
                 // methods in both classes and traits
 
                 // (1) verify that the class id actually has a field called
                 // field
                 debug!("class named %s", ty_to_str(tcx, base_t));
-                let cls_items = ty::lookup_class_fields(tcx, base_id);
+                let cls_items = ty::lookup_struct_fields(tcx, base_id);
                 match lookup_field_ty(tcx, base_id, cls_items,
                                       field, &(*substs)) {
                     Some(field_ty) => {
@@ -1685,7 +1681,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 tcx.region_paramd_items.find(class_id.node);
             match tcx.items.find(class_id.node) {
                 Some(ast_map::node_item(@{
-                        node: ast::item_class(_, type_parameters),
+                        node: ast::item_struct(_, type_parameters),
                         _
                     }, _)) => {
 
@@ -1694,7 +1690,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     let self_region =
                         bound_self_region(region_parameterized);
 
-                    raw_type = ty::mk_class(tcx, class_id, {
+                    raw_type = ty::mk_struct(tcx, class_id, {
                         self_r: self_region,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(tcx, type_parameters)
@@ -1727,7 +1723,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let struct_type = ty::subst(tcx, &substitutions, raw_type);
 
         // Look up and check the fields.
-        let class_fields = ty::lookup_class_fields(tcx, class_id);
+        let class_fields = ty::lookup_struct_fields(tcx, class_id);
         bot = check_struct_or_variant_fields(fcx,
                                              span,
                                              class_id,
@@ -1808,7 +1804,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let enum_type = ty::subst(tcx, &substitutions, raw_type);
 
         // Look up and check the enum variant fields.
-        let variant_fields = ty::lookup_class_fields(tcx, variant_id);
+        let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
         bot = check_struct_or_variant_fields(fcx,
                                              span,
                                              variant_id,
@@ -1927,7 +1923,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                          with a single variant which has a \
                          single argument");
                   }
-                  ty::ty_class(*) => {
+                  ty::ty_struct(*) => {
                     tcx.sess.span_err(
                         expr.span,
                         ~"can only dereference structs with one anonymous \
@@ -2351,7 +2347,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.
         match tcx.def_map.find(id) {
-            Some(ast::def_class(type_def_id)) => {
+            Some(ast::def_struct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          (*fields), base_expr);
             }
@@ -2627,7 +2623,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                     arg_tys = Some(~[]);
                 }
                 ast::struct_variant_kind(_) => {
-                    arg_tys = Some(ty::lookup_class_fields(
+                    arg_tys = Some(ty::lookup_struct_fields(
                         ccx.tcx, local_def(v.node.id)).map(|cf|
                             ty::node_id_to_type(ccx.tcx, cf.id.node)));
                 }
@@ -2731,7 +2727,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
       ast::def_const(id) | ast::def_variant(_, id) |
-      ast::def_class(id) => {
+      ast::def_struct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_upvar(_, inner, _, _) => {

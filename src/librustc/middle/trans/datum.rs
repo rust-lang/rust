@@ -665,9 +665,9 @@ impl Datum {
                     }
                 };
             }
-            ty::ty_class(did, ref substs) => {
+            ty::ty_struct(did, ref substs) => {
                 // Check whether this struct is a newtype struct.
-                let fields = ty::class_items_as_fields(ccx.tcx, did, substs);
+                let fields = ty::struct_fields(ccx.tcx, did, substs);
                 if fields.len() != 1 || fields[0].ident !=
                     syntax::parse::token::special_idents::unnamed_field {
                     return None;

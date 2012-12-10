@@ -319,8 +319,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = match ty::get(t).sty {
               ty::ty_rec(f) => f,
-              ty::ty_class(did, ref substs) =>
-                  ty::class_items_as_fields(cx.tcx, did, &(*substs)),
+              ty::ty_struct(did, ref substs) =>
+                  ty::struct_fields(cx.tcx, did, &(*substs)),
               _ => cx.tcx.sess.span_bug(ex.span,
                                         ~"bad base expr type in record")
             };

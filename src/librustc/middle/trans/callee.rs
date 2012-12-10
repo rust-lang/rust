@@ -100,7 +100,7 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
                                                 vid).args.len() > 0u;
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ref_expr.id))
             }
-            ast::def_class(def_id) => {
+            ast::def_struct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ref_expr.id))
             }
             ast::def_arg(*) |
