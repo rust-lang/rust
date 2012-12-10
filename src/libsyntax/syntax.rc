@@ -105,8 +105,6 @@ mod ext {
     #[legacy_exports]
     mod auto_encode;
     #[legacy_exports]
-    mod auto_serialize;
-    #[legacy_exports]
     mod source_util;
 
     #[legacy_exports]
