@@ -110,8 +110,10 @@ use core::io::WriterUtil;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
+use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
-use syntax::visit::vt;
+use syntax::visit::{fk_anon, fk_dtor, fk_fn_block, fk_item_fn, fk_method};
+use syntax::visit::{vt};
 use syntax::{visit, ast_util};
 
 export check_crate;
@@ -265,7 +267,6 @@ struct LocalInfo {
 enum VarKind {
     Arg(node_id, ident, rmode),
     Local(LocalInfo),
-    Self,
     ImplicitRet
 }
 
@@ -273,7 +274,8 @@ fn relevant_def(def: def) -> Option<node_id> {
     match def {
       def_binding(nid, _) |
       def_arg(nid, _) |
-      def_local(nid, _) => Some(nid),
+      def_local(nid, _) |
+      def_self(nid, _) => Some(nid),
 
       _ => None
     }
@@ -338,8 +340,7 @@ impl IrMaps {
             Arg(node_id, _, _) => {
                 self.variable_map.insert(node_id, v);
             }
-            Self | ImplicitRet => {
-            }
+            ImplicitRet => {}
         }
 
         debug!("%s is %?", v.to_str(), vk);
@@ -361,7 +362,6 @@ impl IrMaps {
         match copy self.var_kinds[*var] {
             Local(LocalInfo {ident: nm, _}) |
             Arg(_, nm, _) => self.tcx.sess.str_of(nm),
-            Self => ~"self",
             ImplicitRet => ~"<implicit-ret>"
         }
     }
@@ -404,7 +404,7 @@ impl IrMaps {
             (*v).push(id);
           }
           Arg(_, _, by_ref) |
-          Arg(_, _, by_val) | Self | ImplicitRet => {
+          Arg(_, _, by_val) | ImplicitRet => {
             debug!("--but it is not owned");
           }
         }
@@ -431,6 +431,31 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             (*fn_maps).add_variable(Arg(arg_id, ident, mode));
         }
     };
+
+    // Add `self`, whether explicit or implicit.
+    match fk {
+        fk_method(_, _, method) => {
+            match method.self_ty.node {
+                sty_by_ref => {
+                    fn_maps.add_variable(Arg(method.self_id,
+                                             special_idents::self_,
+                                             by_ref));
+                }
+                sty_value | sty_region(_) | sty_box(_) | sty_uniq(_) => {
+                    fn_maps.add_variable(Arg(method.self_id,
+                                             special_idents::self_,
+                                             by_copy));
+                }
+                sty_static => {}
+            }
+        }
+        fk_dtor(_, _, self_id, _) => {
+            fn_maps.add_variable(Arg(self_id,
+                                     special_idents::self_,
+                                     by_copy));
+        }
+        fk_item_fn(*) | fk_anon(*) | fk_fn_block(*) => {}
+    }
 
     // gather up the various local variables, significant expressions,
     // and so forth:
@@ -1788,13 +1813,6 @@ impl @Liveness {
                     move_span,
                     fmt!("illegal move from argument `%s`, which is not \
                           copy or move mode", self.tcx.sess.str_of(name)));
-                return;
-              }
-              Self => {
-                self.tcx.sess.span_err(
-                    move_span,
-                    ~"illegal move from self (cannot move out of a field of \
-                       self)");
                 return;
               }
               Local(*) | ImplicitRet => {

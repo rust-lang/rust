@@ -46,7 +46,7 @@ type rvt = visit::vt<@rcx>;
 fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
-        def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id) |
+        def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id, _) |
         def_binding(node_id, _) =>
             return encl_region(tcx, node_id),
         def_upvar(_, subdef, closure_id, body_id) => {

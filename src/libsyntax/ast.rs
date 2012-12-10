@@ -118,7 +118,8 @@ enum def {
     def_static_method(/* method */ def_id,
                       /* trait */  Option<def_id>,
                       purity),
-    def_self(node_id),
+    def_self(node_id, bool /* is_implicit */),
+    def_self_ty(node_id),
     def_mod(def_id),
     def_foreign_mod(def_id),
     def_const(def_id),
@@ -156,9 +157,15 @@ impl def : cmp::Eq {
                     _ => false
                 }
             }
-            def_self(e0a) => {
+            def_self(e0a, e1a) => {
                 match (*other) {
-                    def_self(e0b) => e0a == e0b,
+                    def_self(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_self_ty(e0a) => {
+                match (*other) {
+                    def_self_ty(e0b) => e0a == e0b,
                     _ => false
                 }
             }

@@ -2721,7 +2721,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
     match defn {
       ast::def_arg(nid, _) | ast::def_local(nid, _) |
-      ast::def_self(nid) | ast::def_binding(nid, _) => {
+      ast::def_self(nid, _) | ast::def_binding(nid, _) => {
         assert (fcx.inh.locals.contains_key(nid));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         return no_params(typ);
@@ -2773,6 +2773,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       }
       ast::def_label(*) => {
         fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found label");
+      }
+      ast::def_self_ty(*) => {
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found self ty");
       }
     }
 }
