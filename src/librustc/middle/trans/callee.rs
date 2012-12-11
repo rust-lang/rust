@@ -275,13 +275,6 @@ fn trans_fn_ref_with_vtables(
         }
     };
 
-    //NDM I think this is dead. Commenting out to be sure!
-    //NDM
-    //NDM if tys.len() > 0u {
-    //NDM     val = PointerCast(bcx, val, T_ptr(type_of_fn_from_ty(
-    //NDM         ccx, node_id_type(bcx, id))));
-    //NDM }
-
     return FnData {llfn: val};
 }
 
