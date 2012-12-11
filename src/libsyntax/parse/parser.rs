@@ -203,6 +203,7 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
         obsolete_set: std::map::HashMap(),
+        mod_path_stack: ~[],
     }
 }
 
@@ -226,6 +227,8 @@ struct Parser {
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     obsolete_set: HashMap<ObsoleteSyntax, ()>,
+    /// Used to determine the path to externally loaded source files
+    mut mod_path_stack: ~[~str],
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 }
@@ -3041,10 +3044,12 @@ impl Parser {
             let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span);
             (id, m, Some(move attrs))
         } else {
+            self.push_mod_path(id, outer_attrs);
             self.expect(token::LBRACE);
             let inner_attrs = self.parse_inner_attrs_and_next();
             let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
             self.expect(token::RBRACE);
+            self.pop_mod_path();
             (id, item_mod(m), Some(inner_attrs.inner))
         };
 
@@ -3081,20 +3086,40 @@ impl Parser {
         }
     }
 
+    fn push_mod_path(id: ident, attrs: ~[ast::attribute]) {
+        let default_path = self.sess.interner.get(id);
+        let file_path = match ::attr::first_attr_value_str_by_name(
+            attrs, ~"path2") {
+
+            Some(ref d) => (*d),
+            None => copy *default_path
+        };
+        self.mod_path_stack.push(file_path)
+    }
+
+    fn pop_mod_path() {
+        self.mod_path_stack.pop();
+    }
+
     fn eval_src_mod(id: ast::ident,
                     outer_attrs: ~[ast::attribute],
                     id_sp: span) -> (ast::item_, ~[ast::attribute]) {
+
         let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
         let prefix = prefix.dir_path();
+        let mod_path = Path(".").push_many(self.mod_path_stack);
         let default_path = self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
-            outer_attrs, ~"path") {
+            outer_attrs, ~"path2") {
 
-            Some(ref d) => (*d),
-            None => default_path
+            Some(ref d) => mod_path.push(*d),
+            None => match ::attr::first_attr_value_str_by_name(
+                outer_attrs, ~"path") {
+                Some(ref d) => Path(*d),
+                None => mod_path.push(default_path)
+            }
         };
 
-        let file_path = Path(file_path);
         self.eval_src_mod_from_path(prefix, file_path,
                                     outer_attrs, id_sp)
     }
