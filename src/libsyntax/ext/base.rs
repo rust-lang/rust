@@ -47,7 +47,7 @@ enum mac_result {
 
 enum syntax_extension {
 
-    // #[auto_serialize] and such
+    // #[auto_encode] and such
     item_decorator(item_decorator),
 
     // Token-tree expanders
@@ -79,6 +79,12 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(
         ~"auto_deserialize",
         item_decorator(ext::auto_serialize::expand_auto_deserialize));
+    syntax_expanders.insert(
+        ~"auto_encode",
+        item_decorator(ext::auto_encode::expand_auto_encode));
+    syntax_expanders.insert(
+        ~"auto_decode",
+        item_decorator(ext::auto_encode::expand_auto_decode));
     syntax_expanders.insert(~"env",
                             builtin_normal_tt(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
