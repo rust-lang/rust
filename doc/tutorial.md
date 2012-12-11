@@ -214,6 +214,11 @@ while count < 10 {
 }
 ~~~~
 
+The name of the function that prints a line of text, `io::println`, is
+qualified: it refers to the function named `println` that's defined in the
+module `io`. In Rust, a double colon---`::`---separates parts of a
+qualified name. For more details, see the section on [crates](#crates).
+
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
 name.
