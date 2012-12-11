@@ -98,12 +98,12 @@ impl T: iter::Times {
         will execute the given function exactly x times. If we assume that \
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
-    pure fn times(it: fn() -> bool) {
-        if self < 0 {
+    pure fn times(&self, it: fn() -> bool) {
+        if *self < 0 {
             fail fmt!("The .times method expects a nonnegative number, \
                        but found %?", self);
         }
-        let mut i = self;
+        let mut i = *self;
         while i > 0 {
             if !it() { break }
             i -= 1;
