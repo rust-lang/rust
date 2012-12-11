@@ -21,7 +21,7 @@ fn start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
 
 fn main() {
     debug!("Check that we don't deadlock.");
-    let (ch, p) = pipes::stream();
+    let (p, ch) = pipes::stream();
     task::try(|move ch| start(ch, 0, 10) );
     debug!("Joined task");
 }
