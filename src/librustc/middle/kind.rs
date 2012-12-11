@@ -63,8 +63,8 @@ fn kind_to_str(k: Kind) -> ~str {
 
     if ty::kind_can_be_sent(k) {
         kinds.push(~"send");
-    } else if ty::kind_is_owned(k) {
-        kinds.push(~"owned");
+    } else if ty::kind_is_static(k) {
+        kinds.push(~"static");
     }
 
     str::connect(kinds, ~" ")
@@ -135,7 +135,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_box(cx: ctx, id: node_id, fv: Option<@freevar_entry>,
                      is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be owned
-        if !check_owned(cx.tcx, var_t, sp) { return; }
+        if !check_static(cx.tcx, var_t, sp) { return; }
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
@@ -552,12 +552,12 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
 }
 
 // note: also used from middle::typeck::regionck!
-fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
-    if !ty::kind_is_owned(ty::type_kind(tcx, ty)) {
+fn check_static(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
+    if !ty::kind_is_static(ty::type_kind(tcx, ty)) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `owned` bound");
+                                    pointers; use `static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
@@ -629,7 +629,7 @@ fn check_cast_for_escaping_regions(
             if target_params.contains(&source_param) {
                 /* case (2) */
             } else {
-                check_owned(cx.tcx, ty, source.span); /* case (3) */
+                check_static(cx.tcx, ty, source.span); /* case (3) */
             }
           }
           _ => {}

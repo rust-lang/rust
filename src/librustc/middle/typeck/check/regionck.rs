@@ -34,7 +34,6 @@ use infer::{resolve_and_force_all_but_regions, fres};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use middle::freevars::get_freevars;
-use middle::kind::check_owned;
 use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};

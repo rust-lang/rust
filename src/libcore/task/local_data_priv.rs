@@ -14,7 +14,7 @@ use local_data::LocalDataKey;
 use rt::rust_task;
 
 pub trait LocalData { }
-impl<T: Owned> @T: LocalData { }
+impl<T: Static> @T: LocalData { }
 
 impl LocalData: Eq {
     pure fn eq(&self, other: &@LocalData) -> bool unsafe {
@@ -62,7 +62,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T: Owned>(
+unsafe fn key_to_key_value<T: Static>(
     key: LocalDataKey<T>) -> *libc::c_void {
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
@@ -72,7 +72,7 @@ unsafe fn key_to_key_value<T: Owned>(
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
-unsafe fn local_data_lookup<T: Owned>(
+unsafe fn local_data_lookup<T: Static>(
     map: TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
@@ -90,7 +90,7 @@ unsafe fn local_data_lookup<T: Owned>(
     }
 }
 
-unsafe fn local_get_helper<T: Owned>(
+unsafe fn local_get_helper<T: Static>(
     task: *rust_task, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
@@ -112,21 +112,21 @@ unsafe fn local_get_helper<T: Owned>(
 }
 
 
-pub unsafe fn local_pop<T: Owned>(
+pub unsafe fn local_pop<T: Static>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, true)
 }
 
-pub unsafe fn local_get<T: Owned>(
+pub unsafe fn local_get<T: Static>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, false)
 }
 
-pub unsafe fn local_set<T: Owned>(
+pub unsafe fn local_set<T: Static>(
     task: *rust_task, key: LocalDataKey<T>, data: @T) {
 
     let map = get_task_local_map(task);
@@ -158,7 +158,7 @@ pub unsafe fn local_set<T: Owned>(
     }
 }
 
-pub unsafe fn local_modify<T: Owned>(
+pub unsafe fn local_modify<T: Static>(
     task: *rust_task, key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 

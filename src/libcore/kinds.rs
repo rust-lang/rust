@@ -30,9 +30,7 @@ The 4 kinds are
 * Const - types that are deeply immutable. Const types are used for
   freezable data structures.
 
-* Owned - types that do not contain borrowed pointers. Note that this
-  meaning of 'owned' conflicts with 'owned pointers'. The two notions
-  of ownership are different.
+* Static - types that do not contain borrowed pointers.
 
 `Copy` types include both implicitly copyable types that the compiler
 will copy automatically and non-implicitly copyable types that require
@@ -56,7 +54,16 @@ pub trait Const {
     // Empty.
 }
 
+#[cfg(stage0)]
 #[lang="owned"]
-pub trait Owned {
+pub trait Static {
+    // Empty.
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+#[lang="static"]
+pub trait Static {
     // Empty.
 }
