@@ -1817,14 +1817,29 @@ struct Stack<T> {
     elements: ~[mut T]
 }
 
-enum Maybe<T> {
-    Just(T),
-    Nothing
+enum Option<T> {
+    Some(T),
+    None
 }
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,
-`Stack<int>` and `Maybe<int>`.
+`Stack<int>` and `Option<int>`.
+
+The last type in that example, `Option`, appears frequently in Rust code.
+Because Rust does not have null pointers (except in unsafe code), we need
+another way to write a function whose result isn't defined on every possible
+combination of arguments of the appropriate types. The usual way is to write
+a function that returns `Option<T>` instead of `T`.
+
+~~~~
+fn radius(shape: Shape) -> Option<float> {
+   match shape {
+       Circle(_, radius) => Some(radius),
+       Rectangle(*)      => None
+   }      
+}
+~~~~
 
 The Rust compiler compiles generic functions very efficiently by
 *monomorphizing* them. *Monomorphization* is a fancy name for a simple
