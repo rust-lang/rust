@@ -378,21 +378,10 @@ fn core_macros() -> ~str {
 
     macro_rules! die(
         ($msg: expr) => (
-            {
-                do core::str::as_buf($msg) |msg_buf, _msg_len| {
-                    do core::str::as_buf(file!()) |file_buf, _file_len| {
-                        unsafe {
-                            let msg_buf = core::cast::transmute(msg_buf);
-                            let file_buf = core::cast::transmute(file_buf);
-                            let line = line!() as core::libc::size_t;
-                            core::rt::rt_fail_(msg_buf, file_buf, line)
-                        }
-                    }
-                }
-            }
+            core::sys::begin_unwind($msg, file!(), line!())
         );
         () => (
-            die!(\"explicit failure\")
+            die!(~\"explicit failure\")
         )
     )
 }";

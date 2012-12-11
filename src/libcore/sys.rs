@@ -15,7 +15,7 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
-use libc::c_void;
+use libc::{c_void, c_char, size_t};
 
 pub type FreeGlue = fn(*TypeDesc, *c_void);
 
@@ -41,6 +41,11 @@ extern mod rusti {
     fn size_of<T>() -> uint;
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
+}
+
+extern mod rustrt {
+    #[rust_stack]
+    fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
 }
 
 /// Compares contents of two pointers using the default method.
@@ -105,6 +110,28 @@ pub pure fn log_str<T>(t: &T) -> ~str {
         do io::with_str_writer |wr| {
             repr::write_repr(wr, t)
         }
+    }
+}
+
+/** Initiate task failure */
+pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
+    do str::as_buf(msg) |msg_buf, _msg_len| {
+        do str::as_buf(file) |file_buf, _file_len| {
+            unsafe {
+                let msg_buf = cast::transmute(msg_buf);
+                let file_buf = cast::transmute(file_buf);
+                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+            }
+        }
+    }
+}
+
+// XXX: Temorary until rt::rt_fail_ goes away
+pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
+    unsafe {
+        gc::cleanup_stack_for_failure();
+        rustrt::rust_upcall_fail(msg, file, line);
+        cast::transmute(())
     }
 }
 
