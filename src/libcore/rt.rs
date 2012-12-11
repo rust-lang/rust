@@ -27,9 +27,6 @@ pub type rust_task = c_void;
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
-
-    #[rust_stack]
     fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char;
 
     #[rust_stack]
@@ -47,11 +44,7 @@ extern mod rustrt {
 // gather_rust_rtcalls.
 #[rt(fail_)]
 pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
-    unsafe {
-        cleanup_stack_for_failure();
-        rustrt::rust_upcall_fail(expr, file, line);
-        cast::transmute(())
-    }
+    sys::begin_unwind_(expr, file, line);
 }
 
 #[rt(fail_bounds_check)]
