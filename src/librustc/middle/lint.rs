@@ -784,7 +784,7 @@ fn check_item_deprecated(tcx: ty::ctxt, it: @ast::item) {
                     match l.node {
                         ast::lit_str(ref reason) =>
                             fmt!("deprecated: %s", **reason),
-                        _ =>  ~"item is deprecated" 
+                        _ =>  ~"item is deprecated"
                     },
                 _ => ~"item is deprecated"
             };
