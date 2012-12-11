@@ -10,32 +10,32 @@
 
 /*
 
-The compiler code necessary to implement the #[auto_serialize] and
-#[auto_deserialize] extension.  The idea here is that type-defining items may
-be tagged with #[auto_serialize] and #[auto_deserialize], which will cause
+The compiler code necessary to implement the #[auto_encode] and
+#[auto_decode] extension.  The idea here is that type-defining items may
+be tagged with #[auto_encode] and #[auto_decode], which will cause
 us to generate a little companion module with the same name as the item.
 
 For example, a type like:
 
-    #[auto_serialize]
-    #[auto_deserialize]
+    #[auto_encode]
+    #[auto_decode]
     struct Node {id: uint}
 
 would generate two implementations like:
 
-    impl<S: Serializer> node_id: Serializable<S> {
-        fn serialize(s: &S) {
+    impl<S: Encoder> node_id: Encodable<S> {
+        fn encode(s: &S) {
             do s.emit_struct("Node") {
                 s.emit_field("id", 0, || s.emit_uint(self))
             }
         }
     }
 
-    impl<D: Deserializer> node_id: Deserializable {
-        static fn deserialize(d: &D) -> Node {
+    impl<D: Decoder> node_id: Decodable {
+        static fn decode(d: &D) -> Node {
             do d.read_struct("Node") {
                 Node {
-                    id: d.read_field(~"x", 0, || deserialize(d))
+                    id: d.read_field(~"x", 0, || decode(d))
                 }
             }
         }
@@ -44,33 +44,33 @@ would generate two implementations like:
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
-    #[auto_serialize]
-    #[auto_deserialize]
+    #[auto_encode]
+    #[auto_decode]
     type spanned<T> = {node: T, span: span};
 
 would yield functions like:
 
     impl<
-        S: Serializer,
-        T: Serializable<S>
-    > spanned<T>: Serializable<S> {
-        fn serialize<S: Serializer>(s: &S) {
+        S: Encoder,
+        T: Encodable<S>
+    > spanned<T>: Encodable<S> {
+        fn encode<S: Encoder>(s: &S) {
             do s.emit_rec {
-                s.emit_field("node", 0, || self.node.serialize(s));
-                s.emit_field("span", 1, || self.span.serialize(s));
+                s.emit_field("node", 0, || self.node.encode(s));
+                s.emit_field("span", 1, || self.span.encode(s));
             }
         }
     }
 
     impl<
-        D: Deserializer,
-        T: Deserializable<D>
-    > spanned<T>: Deserializable<D> {
-        static fn deserialize(d: &D) -> spanned<T> {
+        D: Decoder,
+        T: Decodable<D>
+    > spanned<T>: Decodable<D> {
+        static fn decode(d: &D) -> spanned<T> {
             do d.read_rec {
                 {
-                    node: d.read_field(~"node", 0, || deserialize(d)),
-                    span: d.read_field(~"span", 1, || deserialize(d)),
+                    node: d.read_field(~"node", 0, || decode(d)),
+                    span: d.read_field(~"span", 1, || decode(d)),
                 }
             }
         }
@@ -93,8 +93,8 @@ use codemap::span;
 use std::map;
 use std::map::HashMap;
 
-export expand_auto_serialize;
-export expand_auto_deserialize;
+export expand_auto_encode;
+export expand_auto_decode;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -102,23 +102,23 @@ mod syntax {
     pub use parse;
 }
 
-fn expand_auto_serialize(
+fn expand_auto_encode(
     cx: ext_ctxt,
     span: span,
     _mitem: ast::meta_item,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
-    fn is_auto_serialize(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_serialize"
+    fn is_auto_encode(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) == ~"auto_encode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_serialize(a)),
+        @{attrs: vec::filter(item.attrs, |a| !is_auto_encode(a)),
           .. *item}
     }
 
     do vec::flat_map(in_items) |item| {
-        if item.attrs.any(is_auto_serialize) {
+        if item.attrs.any(is_auto_encode) {
             match item.node {
                 ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
                     let ser_impl = mk_rec_ser_impl(
@@ -154,7 +154,7 @@ fn expand_auto_serialize(
                     ~[filter_attrs(*item), ser_impl]
                 },
                 _ => {
-                    cx.span_err(span, ~"#[auto_serialize] can only be \
+                    cx.span_err(span, ~"#[auto_encode] can only be \
                                         applied to structs, record types, \
                                         and enum definitions");
                     ~[*item]
@@ -166,23 +166,23 @@ fn expand_auto_serialize(
     }
 }
 
-fn expand_auto_deserialize(
+fn expand_auto_decode(
     cx: ext_ctxt,
     span: span,
     _mitem: ast::meta_item,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
-    fn is_auto_deserialize(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_deserialize"
+    fn is_auto_decode(a: &ast::attribute) -> bool {
+        attr::get_attr_name(*a) == ~"auto_decode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_deserialize(a)),
+        @{attrs: vec::filter(item.attrs, |a| !is_auto_decode(a)),
           .. *item}
     }
 
     do vec::flat_map(in_items) |item| {
-        if item.attrs.any(is_auto_deserialize) {
+        if item.attrs.any(is_auto_decode) {
             match item.node {
                 ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
                     let deser_impl = mk_rec_deser_impl(
@@ -218,7 +218,7 @@ fn expand_auto_deserialize(
                     ~[filter_attrs(*item), deser_impl]
                 },
                 _ => {
-                    cx.span_err(span, ~"#[auto_deserialize] can only be \
+                    cx.span_err(span, ~"#[auto_decode] can only be \
                                         applied to structs, record types, \
                                         and enum definitions");
                     ~[*item]
@@ -227,6 +227,139 @@ fn expand_auto_deserialize(
         } else {
             ~[*item]
         }
+    }
+}
+
+priv impl ext_ctxt {
+    fn bind_path(
+        span: span,
+        ident: ast::ident,
+        path: @ast::path,
+        bounds: @~[ast::ty_param_bound]
+    ) -> ast::ty_param {
+        let bound = ast::ty_param_bound(@{
+            id: self.next_id(),
+            node: ast::ty_path(path, self.next_id()),
+            span: span,
+        });
+
+        {
+            ident: ident,
+            id: self.next_id(),
+            bounds: @vec::append(~[bound], *bounds)
+        }
+    }
+
+    fn expr(span: span, node: ast::expr_) -> @ast::expr {
+        @{id: self.next_id(), callee_id: self.next_id(),
+          node: node, span: span}
+    }
+
+    fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
+        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
+    }
+
+    fn path_tps(span: span, strs: ~[ast::ident],
+                tps: ~[@ast::Ty]) -> @ast::path {
+        @{span: span, global: false, idents: strs, rp: None, types: tps}
+    }
+
+    fn ty_path(span: span, strs: ~[ast::ident],
+               tps: ~[@ast::Ty]) -> @ast::Ty {
+        @{id: self.next_id(),
+          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
+          span: span}
+    }
+
+    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
+        let path = @{span: span, global: false, idents: ~[nm],
+                     rp: None, types: ~[]};
+        @{id: self.next_id(),
+          node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
+                               path,
+                               None),
+          span: span}
+    }
+
+    fn stmt(expr: @ast::expr) -> @ast::stmt {
+        @{node: ast::stmt_semi(expr, self.next_id()),
+          span: expr.span}
+    }
+
+    fn lit_str(span: span, s: @~str) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_vstore(
+                self.expr(
+                    span,
+                    ast::expr_lit(
+                        @{node: ast::lit_str(s),
+                          span: span})),
+                ast::expr_vstore_uniq))
+    }
+
+    fn lit_uint(span: span, i: uint) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_lit(
+                @{node: ast::lit_uint(i as u64, ast::ty_u),
+                  span: span}))
+    }
+
+    fn lambda(blk: ast::blk) -> @ast::expr {
+        let ext_cx = self;
+        let blk_e = self.expr(blk.span, ast::expr_block(blk));
+        quote_expr!( || $blk_e )
+    }
+
+    fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
+        {node: {view_items: ~[],
+                stmts: stmts,
+                expr: None,
+                id: self.next_id(),
+                rules: ast::default_blk},
+         span: span}
+    }
+
+    fn expr_blk(expr: @ast::expr) -> ast::blk {
+        {node: {view_items: ~[],
+                stmts: ~[],
+                expr: Some(expr),
+                id: self.next_id(),
+                rules: ast::default_blk},
+         span: expr.span}
+    }
+
+    fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path(span, strs)))
+    }
+
+    fn expr_var(span: span, var: ~str) -> @ast::expr {
+        self.expr_path(span, ~[self.ident_of(var)])
+    }
+
+    fn expr_field(
+        span: span,
+        expr: @ast::expr,
+        ident: ast::ident
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_field(expr, ident, ~[]))
+    }
+
+    fn expr_call(
+        span: span,
+        expr: @ast::expr,
+        args: ~[@ast::expr]
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_call(expr, args, false))
+    }
+
+    fn lambda_expr(expr: @ast::expr) -> @ast::expr {
+        self.lambda(self.expr_blk(expr))
+    }
+
+    fn lambda_stmts(span: span, stmts: ~[@ast::stmt]) -> @ast::expr {
+        self.lambda(self.blk(span, stmts))
     }
 }
 
@@ -287,7 +420,7 @@ fn mk_ser_impl(
     tps: ~[ast::ty_param],
     body: @ast::expr
 ) -> @ast::item {
-    // Make a path to the std::serialization::Serializable typaram.
+    // Make a path to the std::serialize::Encodable typaram.
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__S"),
@@ -295,20 +428,20 @@ fn mk_ser_impl(
             span,
             ~[
                 cx.ident_of(~"std"),
-                cx.ident_of(~"serialization"),
-                cx.ident_of(~"Serializer"),
+                cx.ident_of(~"serialize"),
+                cx.ident_of(~"Encoder"),
             ]
         ),
         @~[]
     );
 
-    // Make a path to the std::serialization::Serializable trait.
+    // Make a path to the std::serialize::Encodable trait.
     let path = cx.path_tps(
         span,
         ~[
             cx.ident_of(~"std"),
-            cx.ident_of(~"serialization"),
-            cx.ident_of(~"Serializable"),
+            cx.ident_of(~"serialize"),
+            cx.ident_of(~"Encodable"),
         ],
         ~[cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[])]
     );
@@ -331,7 +464,7 @@ fn mk_deser_impl(
     tps: ~[ast::ty_param],
     body: @ast::expr
 ) -> @ast::item {
-    // Make a path to the std::serialization::Deserializable typaram.
+    // Make a path to the std::serialize::Decodable typaram.
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__D"),
@@ -339,20 +472,20 @@ fn mk_deser_impl(
             span,
             ~[
                 cx.ident_of(~"std"),
-                cx.ident_of(~"serialization"),
-                cx.ident_of(~"Deserializer"),
+                cx.ident_of(~"serialize"),
+                cx.ident_of(~"Decoder"),
             ]
         ),
         @~[]
     );
 
-    // Make a path to the std::serialization::Deserializable trait.
+    // Make a path to the std::serialize::Decodable trait.
     let path = cx.path_tps(
         span,
         ~[
             cx.ident_of(~"std"),
-            cx.ident_of(~"serialization"),
-            cx.ident_of(~"Deserializable"),
+            cx.ident_of(~"serialize"),
+            cx.ident_of(~"Decodable"),
         ],
         ~[cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[])]
     );
@@ -413,7 +546,7 @@ fn mk_ser_method(
     };
 
     @{
-        ident: cx.ident_of(~"serialize"),
+        ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
         self_ty: { node: ast::sty_region(ast::m_imm), span: span },
@@ -467,7 +600,7 @@ fn mk_deser_method(
     };
 
     @{
-        ident: cx.ident_of(~"deserialize"),
+        ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
         self_ty: { node: ast::sty_static, span: span },
@@ -596,7 +729,7 @@ fn mk_struct_deser_impl(
 }
 
 // Records and structs don't have the same fields types, but they share enough
-// that if we extract the right subfields out we can share the serialization
+// that if we extract the right subfields out we can share the code
 // generator code.
 type field = { span: span, ident: ast::ident, mutbl: ast::mutability };
 
@@ -614,7 +747,7 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
     do fields.map |field| {
         let (ident, mutbl) = match field.node.kind {
             ast::named_field(ident, mutbl, _) => (ident, mutbl),
-            _ => fail ~"[auto_serialize] does not support \
+            _ => fail ~"[auto_encode] does not support \
                         unnamed fields",
         };
 
@@ -635,7 +768,7 @@ fn mk_ser_fields(
     fields: ~[field]
 ) -> ~[@ast::stmt] {
     do fields.mapi |idx, field| {
-        // ast for `|| self.$(name).serialize(__s)`
+        // ast for `|| self.$(name).encode(__s)`
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
@@ -646,7 +779,7 @@ fn mk_ser_fields(
                         cx.expr_var(span, ~"self"),
                         field.ident
                     ),
-                    cx.ident_of(~"serialize")
+                    cx.ident_of(~"encode")
                 ),
                 ~[cx.expr_var(span, ~"__s")]
             )
@@ -677,15 +810,15 @@ fn mk_deser_fields(
     fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }]
 ) -> ~[ast::field] {
     do fields.mapi |idx, field| {
-        // ast for `|| std::serialization::deserialize(__d)`
+        // ast for `|| std::serialize::decode(__d)`
         let expr_lambda = cx.lambda(
             cx.expr_blk(
                 cx.expr_call(
                     span,
                     cx.expr_path(span, ~[
                         cx.ident_of(~"std"),
-                        cx.ident_of(~"serialization"),
-                        cx.ident_of(~"deserialize"),
+                        cx.ident_of(~"serialize"),
+                        cx.ident_of(~"decode"),
                     ]),
                     ~[cx.expr_var(span, ~"__d")]
                 )
@@ -788,25 +921,25 @@ fn ser_variant(
             cx.ident_of(~"emit_enum_variant_arg")
         );
 
-        // ast for `|| $(v).serialize(__s)`
-        let expr_serialize = cx.lambda_expr(
+        // ast for `|| $(v).encode(__s)`
+        let expr_encode = cx.lambda_expr(
              cx.expr_call(
                 span,
                 cx.expr_field(
                     span,
                     cx.expr_path(span, ~[names[a_idx]]),
-                    cx.ident_of(~"serialize")
+                    cx.ident_of(~"encode")
                 ),
                 ~[cx.expr_var(span, ~"__s")]
             )
         );
 
-        // ast for `$(expr_emit)($(a_idx), $(expr_serialize))`
+        // ast for `$(expr_emit)($(a_idx), $(expr_encode))`
         cx.stmt(
             cx.expr_call(
                 span,
                 expr_emit,
-                ~[cx.lit_uint(span, a_idx), expr_serialize]
+                ~[cx.lit_uint(span, a_idx), expr_encode]
             )
         )
     };
@@ -881,14 +1014,14 @@ fn mk_enum_deser_variant_nary(
     args: ~[ast::variant_arg]
 ) -> @ast::expr {
     let args = do args.mapi |idx, _arg| {
-        // ast for `|| std::serialization::deserialize(__d)`
+        // ast for `|| std::serialize::decode(__d)`
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
                 cx.expr_path(span, ~[
                     cx.ident_of(~"std"),
-                    cx.ident_of(~"serialization"),
-                    cx.ident_of(~"deserialize"),
+                    cx.ident_of(~"serialize"),
+                    cx.ident_of(~"decode"),
                 ]),
                 ~[cx.expr_var(span, ~"__d")]
             )

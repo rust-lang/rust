@@ -104,13 +104,15 @@ mod unicode;
 // Compiler support modules
 
 pub mod test;
+pub mod serialize;
 pub mod serialization;
 
 // A curious inner-module that's not exported that contains the binding
-// 'std' so that macro-expanded references to std::serialization and such
+// 'std' so that macro-expanded references to std::code and such
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
 mod std {
+    pub use serialize;
     pub use serialization;
 }
 

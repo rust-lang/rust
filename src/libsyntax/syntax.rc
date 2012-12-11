@@ -117,6 +117,9 @@ mod ext {
     #[path = "ext/log_syntax.rs"]
     mod log_syntax;
     #[legacy_exports]
+    #[path = "ext/auto_encode.rs"]
+    mod auto_encode;
+    #[legacy_exports]
     #[path = "ext/auto_serialize.rs"]
     mod auto_serialize;
     #[legacy_exports]
