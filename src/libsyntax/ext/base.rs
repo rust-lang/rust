@@ -66,7 +66,7 @@ enum syntax_extension {
     // macro_defining() is obsolete, remove when #old_macros go away.
     macro_defining(macro_definer),
 
-    // #[auto_serialize] and such. will probably survive death of #old_macros
+    // #[auto_encode] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
     // Token-tree expanders
@@ -101,6 +101,12 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(
         ~"auto_deserialize",
         item_decorator(ext::auto_serialize::expand_auto_deserialize));
+    syntax_expanders.insert(
+        ~"auto_encode",
+        item_decorator(ext::auto_encode::expand_auto_encode));
+    syntax_expanders.insert(
+        ~"auto_decode",
+        item_decorator(ext::auto_encode::expand_auto_decode));
     syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
