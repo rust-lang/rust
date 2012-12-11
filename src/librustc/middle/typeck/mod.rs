@@ -105,8 +105,8 @@ mod collect;
 mod coherence;
 mod deriving;
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
@@ -123,8 +123,8 @@ enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 type method_param = {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,

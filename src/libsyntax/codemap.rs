@@ -22,10 +22,7 @@ source code snippets, etc.
 */
 
 use dvec::DVec;
-use std::serialization::{Serializable,
-                         Deserializable,
-                         Serializer,
-                         Deserializer};
+use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 trait Pos {
     static pure fn from_uint(n: uint) -> self;
@@ -131,13 +128,13 @@ impl span : cmp::Eq {
     pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
-impl<S: Serializer> span: Serializable<S> {
-    /* Note #1972 -- spans are serialized but not deserialized */
-    fn serialize(&self, _s: &S) { }
+impl<S: Encoder> span: Encodable<S> {
+    /* Note #1972 -- spans are encoded but not decoded */
+    fn encode(&self, _s: &S) { }
 }
 
-impl<D: Deserializer> span: Deserializable<D> {
-    static fn deserialize(_d: &D) -> span {
+impl<D: Decoder> span: Decodable<D> {
+    static fn decode(_d: &D) -> span {
         ast_util::dummy_sp()
     }
 }
