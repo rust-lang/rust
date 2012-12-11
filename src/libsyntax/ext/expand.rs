@@ -379,7 +379,11 @@ fn core_macros() -> ~str {
     macro_rules! die(
         ($msg: expr) => (
             {
-                do core::str::as_buf($msg) |msg_buf, _msg_len| {
+                // ensure that the argument is an owned string
+                let msgptr: &~str = &{$msg};
+                // rt_fail_ returns ! so we need to constrain the type
+                // parameter on as_buf by assigning to something
+                let _: () = do core::str::as_buf(*msgptr) |msg_buf, _msg_len| {
                     do core::str::as_buf(file!()) |file_buf, _file_len| {
                         unsafe {
                             let msg_buf = core::cast::transmute(msg_buf);
@@ -388,11 +392,11 @@ fn core_macros() -> ~str {
                             core::rt::rt_fail_(msg_buf, file_buf, line)
                         }
                     }
-                }
+                };
             }
         );
         () => (
-            die!(\"explicit failure\")
+            die!(~\"explicit failure\")
         )
     )
 }";
