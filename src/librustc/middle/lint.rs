@@ -60,7 +60,6 @@ enum lint {
     unrecognized_lint,
     non_implicitly_copyable_typarams,
     vecs_implicitly_copyable,
-    deprecated_item,
     deprecated_mode,
     deprecated_pattern,
     non_camel_case_types,
@@ -156,11 +155,6 @@ fn get_lint_dict() -> lint_dict {
         (~"implicit_copies",
          @{lint: implicit_copies,
            desc: ~"implicit copies of non implicitly copyable data",
-           default: warn}),
-
-        (~"deprecated_item",
-         @{lint: deprecated_item,
-           desc: ~"warn about items marked deprecated",
            default: warn}),
 
         (~"deprecated_mode",
@@ -418,7 +412,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_non_camel_case_types(cx, i);
     check_item_heap(cx, i);
     check_item_structural_records(cx, i);
-    check_item_deprecated(cx, i);
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
 }
@@ -771,26 +764,6 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
         }
       }
       _ => ()
-    }
-}
-
-fn check_item_deprecated(tcx: ty::ctxt, it: @ast::item) {
-    let at = attr::find_attrs_by_name(it.attrs, ~"deprecated");
-
-    if at.is_not_empty() {
-        for at.each |attr| {
-            let fmt = match attr.node.value.node {
-                ast::meta_name_value(_, ref l) =>
-                    match l.node {
-                        ast::lit_str(ref reason) =>
-                            fmt!("deprecated: %s", **reason),
-                        _ =>  ~"item is deprecated"
-                    },
-                _ => ~"item is deprecated"
-            };
-            tcx.sess.span_lint(deprecated_item, it.id, it.id, it.span,
-                fmt);
-        }
     }
 }
 
