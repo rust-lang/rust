@@ -79,7 +79,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
     Future {state: Forced(~(move val))}
 }
 
-pub fn from_port<A:Send>(port: PortOne<A>) ->
+pub fn from_port<A:Owned>(port: PortOne<A>) ->
         Future<A> {
     /*!
      * Create a future from a port
@@ -111,7 +111,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     Future {state: Pending(move f)}
 }
 
-pub fn spawn<A:Send>(blk: fn~() -> A) -> Future<A> {
+pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *

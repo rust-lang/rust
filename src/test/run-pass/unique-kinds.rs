@@ -12,11 +12,11 @@ use cmp::Eq;
 
 fn sendable() {
 
-    fn f<T: Send Eq>(i: T, j: T) {
+    fn f<T: Owned Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: Send Eq>(i: T, j: T) {
+    fn g<T: Owned Eq>(i: T, j: T) {
         assert i != j;
     }
 

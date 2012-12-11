@@ -52,7 +52,7 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
  * or, if no channel exists creates and installs a new channel and sets up a
  * new task to receive from it.
  */
-pub unsafe fn chan_from_global_ptr<T: Send>(
+pub unsafe fn chan_from_global_ptr<T: Owned>(
     global: GlobalPtr,
     task_fn: fn() -> task::TaskBuilder,
     f: fn~(comm::Port<T>)
@@ -350,7 +350,7 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
     }
 }
 
-pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
+pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
@@ -421,9 +421,9 @@ pub unsafe fn unwrap_shared_mutable_state<T: Send>(rc: SharedMutableState<T>)
  * Data races between tasks can result in crashes and, with sufficient
  * cleverness, arbitrary type coercion.
  */
-pub type SharedMutableState<T: Send> = ArcDestruct<T>;
+pub type SharedMutableState<T: Owned> = ArcDestruct<T>;
 
-pub unsafe fn shared_mutable_state<T: Send>(data: T) ->
+pub unsafe fn shared_mutable_state<T: Owned>(data: T) ->
         SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
@@ -433,7 +433,7 @@ pub unsafe fn shared_mutable_state<T: Send>(data: T) ->
 }
 
 #[inline(always)]
-pub unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
+pub unsafe fn get_shared_mutable_state<T: Owned>(rc: &a/SharedMutableState<T>)
         -> &a/mut T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -445,7 +445,7 @@ pub unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
     }
 }
 #[inline(always)]
-pub unsafe fn get_shared_immutable_state<T: Send>(
+pub unsafe fn get_shared_immutable_state<T: Owned>(
         rc: &a/SharedMutableState<T>) -> &a/T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -457,7 +457,7 @@ pub unsafe fn get_shared_immutable_state<T: Send>(
     }
 }
 
-pub unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
+pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -506,27 +506,27 @@ impl LittleLock {
     }
 }
 
-struct ExData<T: Send> { lock: LittleLock, mut failed: bool, mut data: T, }
+struct ExData<T: Owned> { lock: LittleLock, mut failed: bool, mut data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-pub struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
+pub struct Exclusive<T: Owned> { x: SharedMutableState<ExData<T>> }
 
-pub fn exclusive<T:Send >(user_data: T) -> Exclusive<T> {
+pub fn exclusive<T:Owned >(user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: move user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(move data) } }
 }
 
-impl<T: Send> Exclusive<T>: Clone {
+impl<T: Owned> Exclusive<T>: Clone {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
         Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
 }
 
-impl<T: Send> Exclusive<T> {
+impl<T: Owned> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //
@@ -556,7 +556,7 @@ impl<T: Send> Exclusive<T> {
 }
 
 // FIXME(#3724) make this a by-move method on the exclusive
-pub fn unwrap_exclusive<T: Send>(arc: Exclusive<T>) -> T {
+pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
     let Exclusive { x: x } = move arc;
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let ExData { data: data, _ } = move inner;

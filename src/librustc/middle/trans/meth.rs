@@ -519,7 +519,7 @@ fn combine_impl_and_methods_origins(bcx: block,
         m_bounds.foldl(*sum, |sum, m_bound| {
             (*sum) + match (*m_bound) {
                 ty::bound_copy | ty::bound_static |
-                ty::bound_send | ty::bound_const => 0,
+                ty::bound_owned | ty::bound_const => 0,
                 ty::bound_trait(_) => 1
             }
         })

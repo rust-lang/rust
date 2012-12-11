@@ -95,7 +95,7 @@ fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
     }
 }
 
-pub fn exec<T:Send>(
+pub fn exec<T:Owned>(
     srv: Srv,
     +f: fn~(ctxt: Ctxt) -> T
 ) -> T {

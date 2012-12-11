@@ -157,7 +157,7 @@ struct Exec {
     discovered_outputs: WorkMap
 }
 
-struct Work<T:Send> {
+struct Work<T:Owned> {
     prep: @mut Prep,
     res: Option<Either<T,PortOne<(Exec,T)>>>
 }
@@ -188,7 +188,7 @@ impl Context {
         Context {db: db, logger: lg, cfg: cfg, freshness: LinearMap()}
     }
 
-    fn prep<T:Send
+    fn prep<T:Owned
               Serializable<json::Serializer>
               Deserializable<json::Deserializer>>(
                   @self,
@@ -213,7 +213,7 @@ impl Prep {
                                      val.to_owned());
     }
 
-    fn exec<T:Send
+    fn exec<T:Owned
               Serializable<json::Serializer>
               Deserializable<json::Deserializer>>(
                   @mut self, blk: ~fn(&Exec) -> T) -> Work<T> {
@@ -250,7 +250,7 @@ impl Prep {
     }
 }
 
-impl<T:Send
+impl<T:Owned
        Serializable<json::Serializer>
        Deserializable<json::Deserializer>>
     Work<T> {
@@ -260,7 +260,7 @@ impl<T:Send
 }
 
 // FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Send
+fn unwrap<T:Owned
             Serializable<json::Serializer>
             Deserializable<json::Deserializer>>(w: Work<T>) -> T {
 

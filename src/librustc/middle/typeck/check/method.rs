@@ -339,7 +339,7 @@ impl LookupContext {
             let bound_trait_ty = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
-                ty::bound_copy | ty::bound_send |
+                ty::bound_copy | ty::bound_owned |
                 ty::bound_const | ty::bound_static => {
                     loop; // skip non-trait bounds
                 }

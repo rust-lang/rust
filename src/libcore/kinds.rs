@@ -24,7 +24,7 @@ The 4 kinds are
   scalar types and managed pointers, and exludes owned pointers. It
   also excludes types that implement `Drop`.
 
-* Send - owned types and types containing owned types.  These types
+* Owned - owned types and types containing owned types.  These types
   may be transferred across task boundaries.
 
 * Const - types that are deeply immutable. Const types are used for
@@ -44,8 +44,17 @@ pub trait Copy {
     // Empty.
 }
 
+#[cfg(stage0)]
 #[lang="send"]
-pub trait Send {
+pub trait Owned {
+    // Empty.
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+#[lang="owned"]
+pub trait Owned {
     // Empty.
 }
 

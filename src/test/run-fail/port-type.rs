@@ -15,7 +15,7 @@ use comm::Port;
 use comm::send;
 use comm::recv;
 
-fn echo<T: Send>(c: Chan<T>, oc: Chan<Chan<T>>) {
+fn echo<T: Owned>(c: Chan<T>, oc: Chan<Chan<T>>) {
     // Tests that the type argument in port gets
     // visited
     let p = Port::<T>();
