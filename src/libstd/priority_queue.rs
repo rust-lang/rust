@@ -39,7 +39,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
     /// Pop the greatest item from the queue - fails if empty
     fn pop(&mut self) -> T {
         let mut item = self.data.pop();
-        if self.is_not_empty() { item <-> self.data[0]; self.siftup(0); }
+        if self.is_not_empty() { item <-> self.data[0]; self.siftdown(0); }
         item
     }
 
@@ -51,7 +51,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
     /// Push an item onto the queue
     fn push(&mut self, item: T) {
         self.data.push(item);
-        self.siftdown(0, self.len() - 1);
+        self.siftup(0, self.len() - 1);
     }
 
     /// Optimized version of a push followed by a pop
@@ -59,7 +59,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
         let mut item = item;
         if self.is_not_empty() && self.data[0] > item {
             item <-> self.data[0];
-            self.siftup(0);
+            self.siftdown(0);
         }
         item
     }
@@ -68,7 +68,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
     fn replace(&mut self, item: T) -> T {
         let mut item = item;
         item <-> self.data[0];
-        self.siftup(0);
+        self.siftdown(0);
         item
     }
 
@@ -82,7 +82,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
         while end > 1 {
             end -= 1;
             q.data[end] <-> q.data[0];
-            unsafe { q.siftup_range(0, end) } // purity-checking workaround
+            unsafe { q.siftdown_range(0, end) } // purity-checking workaround
         }
         q.to_vec()
     }
@@ -92,12 +92,12 @@ impl <T: Copy Ord> PriorityQueue<T> {
         let mut n = q.len() / 2;
         while n > 0 {
             n -= 1;
-            unsafe { q.siftup(n) }; // purity-checking workaround
+            unsafe { q.siftdown(n) }; // purity-checking workaround
         }
         q
     }
 
-    priv fn siftdown(&mut self, startpos: uint, pos: uint) {
+    priv fn siftup(&mut self, startpos: uint, pos: uint) {
         let mut pos = pos;
         let newitem = self.data[pos];
 
@@ -114,7 +114,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
         self.data[pos] = newitem;
     }
 
-    priv fn siftup_range(&mut self, pos: uint, endpos: uint) {
+    priv fn siftdown_range(&mut self, pos: uint, endpos: uint) {
         let mut pos = pos;
         let startpos = pos;
         let newitem = self.data[pos];
@@ -131,11 +131,11 @@ impl <T: Copy Ord> PriorityQueue<T> {
             childpos = 2 * pos + 1;
         }
         self.data[pos] = newitem;
-        self.siftdown(startpos, pos);
+        self.siftup(startpos, pos);
     }
 
-    priv fn siftup(&mut self, pos: uint) {
-        self.siftup_range(pos, self.len());
+    priv fn siftdown(&mut self, pos: uint) {
+        self.siftdown_range(pos, self.len());
     }
 }
 
