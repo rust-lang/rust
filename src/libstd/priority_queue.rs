@@ -38,13 +38,9 @@ impl <T: Copy Ord> PriorityQueue<T> {
 
     /// Pop the greatest item from the queue - fails if empty
     fn pop(&mut self) -> T {
-        let last = self.data.pop();
-        if self.is_not_empty() {
-            let ret = self.data[0];
-            self.data[0] = last;
-            self.siftup(0);
-            ret
-        } else { last }
+        let mut item = self.data.pop();
+        if self.is_not_empty() { item <-> self.data[0]; self.siftup(0); }
+        item
     }
 
     /// Pop the greatest item from the queue - None if empty
@@ -70,10 +66,10 @@ impl <T: Copy Ord> PriorityQueue<T> {
 
     /// Optimized version of a pop followed by a push - fails if empty
     fn replace(&mut self, item: T) -> T {
-        let ret = self.data[0];
-        self.data[0] = item;
+        let mut item = item;
+        item <-> self.data[0];
         self.siftup(0);
-        ret
+        item
     }
 
     /// Consume the PriorityQueue and return the underlying vector
