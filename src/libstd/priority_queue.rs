@@ -78,10 +78,10 @@ impl <T: Copy Ord> PriorityQueue<T> {
     /// Consume the PriorityQueue and return a vector in sorted (ascending) order
     pure fn to_sorted_vec(self) -> ~[T] {
         let mut q = self;
-        let mut end = q.len() - 1;
-        while end > 0 {
-            q.data[end] <-> q.data[0];
+        let mut end = q.len();
+        while end > 1 {
             end -= 1;
+            q.data[end] <-> q.data[0];
             unsafe { q.siftup_range(0, end) } // purity-checking workaround
         }
         q.to_vec()
@@ -206,10 +206,27 @@ mod tests {
         assert heap.len() == 5;
     }
 
+    fn check_to_vec(data: ~[int]) {
+        let heap = from_vec(data);
+        assert merge_sort(heap.to_vec(), le) == merge_sort(data, le);
+        assert heap.to_sorted_vec() == merge_sort(data, le);
+    }
+
     #[test]
-    fn test_to_sorted_vec() {
-        let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
-        assert from_vec(data).to_sorted_vec() == merge_sort(data, le);
+    fn test_to_vec() {
+        check_to_vec(~[]);
+        check_to_vec(~[5]);
+        check_to_vec(~[3, 2]);
+        check_to_vec(~[2, 3]);
+        check_to_vec(~[5, 1, 2]);
+        check_to_vec(~[1, 100, 2, 3]);
+        check_to_vec(~[1, 3, 5, 7, 9, 2, 4, 6, 8, 0]);
+        check_to_vec(~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+        check_to_vec(~[9, 11, 9, 9, 9, 9, 11, 2, 3, 4, 11, 9, 0, 0, 0, 0]);
+        check_to_vec(~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        check_to_vec(~[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
+        check_to_vec(~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 1, 2]);
+        check_to_vec(~[5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 5, 4, 3, 2, 1]);
     }
 
     #[test]
@@ -236,12 +253,5 @@ mod tests {
     fn test_empty_replace() {
         let mut heap = from_vec::<int>(~[]);
         heap.replace(5);
-    }
-
-    #[test]
-    fn test_to_vec() {
-        let data = ~[1, 3, 5, 7, 9, 2, 4, 6, 8, 0];
-        let heap = from_vec(copy data);
-        assert merge_sort(heap.to_vec(), le) == merge_sort(data, le);
     }
 }
