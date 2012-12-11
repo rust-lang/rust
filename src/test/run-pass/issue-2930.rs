@@ -9,7 +9,7 @@
 // except according to those terms.
 
 proto! stream (
-    Stream:send<T:Send> {
+    Stream:send<T:Owned> {
         send(T) -> Stream<T>
     }
 )

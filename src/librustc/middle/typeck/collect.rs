@@ -872,8 +872,8 @@ fn compute_bounds(ccx: @crate_ctxt,
         match ty::get(ity).sty {
             ty::ty_trait(did, _, _) => {
                 let d = Some(did);
-                if d == li.send_trait {
-                    ~[ty::bound_send]
+                if d == li.owned_trait {
+                    ~[ty::bound_owned]
                 }
                 else if d == li.copy_trait {
                     ~[ty::bound_copy]

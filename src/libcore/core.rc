@@ -167,7 +167,7 @@ pub mod util;
 
 /* Reexported core operators */
 
-pub use kinds::{Const, Copy, Send, Durable};
+pub use kinds::{Const, Copy, Owned, Durable};
 pub use ops::{Drop};
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg};
 pub use ops::{BitAnd, BitOr, BitXor};

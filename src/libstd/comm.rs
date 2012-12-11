@@ -21,24 +21,24 @@ use pipes::{GenericChan, GenericSmartChan, GenericPort,
             Chan, Port, Selectable, Peekable};
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-pub struct DuplexStream<T: Send, U: Send> {
+pub struct DuplexStream<T: Owned, U: Owned> {
     priv chan: Chan<T>,
     priv port: Port<U>,
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : GenericChan<T> {
+impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericChan<T> {
     fn send(x: T) {
         self.chan.send(move x)
     }
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : GenericSmartChan<T> {
+impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericSmartChan<T> {
     fn try_send(x: T) -> bool {
         self.chan.try_send(move x)
     }
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : GenericPort<U> {
+impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericPort<U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -48,20 +48,20 @@ impl<T: Send, U: Send> DuplexStream<T, U> : GenericPort<U> {
     }
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : Peekable<U> {
+impl<T: Owned, U: Owned> DuplexStream<T, U> : Peekable<U> {
     pure fn peek() -> bool {
         self.port.peek()
     }
 }
 
-impl<T: Send, U: Send> DuplexStream<T, U> : Selectable {
+impl<T: Owned, U: Owned> DuplexStream<T, U> : Selectable {
     pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }
 }
 
 /// Creates a bidirectional stream.
-pub fn DuplexStream<T: Send, U: Send>()
+pub fn DuplexStream<T: Owned, U: Owned>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (p1, c2) = pipes::stream();

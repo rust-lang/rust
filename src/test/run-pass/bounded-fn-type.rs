@@ -11,7 +11,7 @@
 fn ignore<T>(_x: T) {}
 
 fn main() {
-    let f: fn@:Send() = ||();
+    let f: fn@:Owned() = ||();
     ignore(f);
 }
 

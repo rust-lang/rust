@@ -29,7 +29,7 @@ const min_granularity : uint = 1024u;
  * This is used to build most of the other parallel vector functions,
  * like map or alli.
  */
-fn map_slices<A: Copy Send, B: Copy Send>(
+fn map_slices<A: Copy Owned, B: Copy Owned>(
     xs: &[A],
     f: fn() -> fn~(uint, v: &[A]) -> B)
     -> ~[B] {
@@ -84,7 +84,8 @@ fn map_slices<A: Copy Send, B: Copy Send>(
 }
 
 /// A parallel version of map.
-pub fn map<A: Copy Send, B: Copy Send>(xs: &[A], f: fn~((&A)) -> B) -> ~[B] {
+pub fn map<A: Copy Owned, B: Copy Owned>(
+    xs: &[A], f: fn~((&A)) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
             vec::map(slice, |x| f(x))
@@ -93,7 +94,7 @@ pub fn map<A: Copy Send, B: Copy Send>(xs: &[A], f: fn~((&A)) -> B) -> ~[B] {
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A: Copy Send, B: Copy Send>(xs: &[A],
+pub fn mapi<A: Copy Owned, B: Copy Owned>(xs: &[A],
                                     f: fn~(uint, (&A)) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
@@ -114,7 +115,7 @@ pub fn mapi<A: Copy Send, B: Copy Send>(xs: &[A],
  * In this case, f is a function that creates functions to run over the
  * inner elements. This is to skirt the need for copy constructors.
  */
-pub fn mapi_factory<A: Copy Send, B: Copy Send>(
+pub fn mapi_factory<A: Copy Owned, B: Copy Owned>(
     xs: &[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         let f = f();
@@ -131,7 +132,7 @@ pub fn mapi_factory<A: Copy Send, B: Copy Send>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A: Copy Send>(xs: &[A], f: fn~(uint, (&A)) -> bool) -> bool {
+pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, (&A)) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
@@ -142,7 +143,7 @@ pub fn alli<A: Copy Send>(xs: &[A], f: fn~(uint, (&A)) -> bool) -> bool {
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A: Copy Send>(xs: &[A], f: fn~(&(A)) -> bool) -> bool {
+pub fn any<A: Copy Owned>(xs: &[A], f: fn~(&(A)) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, |x| f(x))

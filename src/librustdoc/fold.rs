@@ -92,7 +92,7 @@ fn mk_fold<T:Clone>(
     }
 }
 
-pub fn default_any_fold<T:Send Clone>(+ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T:Owned Clone>(+ctxt: T) -> Fold<T> {
     mk_fold(
         move ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -128,7 +128,7 @@ pub fn default_seq_fold<T:Clone>(+ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_par_fold<T:Send Clone>(+ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T:Owned Clone>(+ctxt: T) -> Fold<T> {
     mk_fold(
         move ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -178,7 +178,7 @@ pub fn default_seq_fold_item<T>(
     doc
 }
 
-pub fn default_any_fold_mod<T:Send Clone>(
+pub fn default_any_fold_mod<T:Owned Clone>(
     fold: &Fold<T>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -205,7 +205,7 @@ pub fn default_seq_fold_mod<T>(
     })
 }
 
-pub fn default_par_fold_mod<T:Send Clone>(
+pub fn default_par_fold_mod<T:Owned Clone>(
     fold: &Fold<T>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -219,7 +219,7 @@ pub fn default_par_fold_mod<T:Send Clone>(
     })
 }
 
-pub fn default_any_fold_nmod<T:Send Clone>(
+pub fn default_any_fold_nmod<T:Owned Clone>(
     fold: &Fold<T>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
@@ -246,7 +246,7 @@ pub fn default_seq_fold_nmod<T>(
     }
 }
 
-pub fn default_par_fold_nmod<T:Send Clone>(
+pub fn default_par_fold_nmod<T:Owned Clone>(
     fold: &Fold<T>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {

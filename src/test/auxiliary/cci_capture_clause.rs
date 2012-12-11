@@ -14,7 +14,7 @@ export foo;
 
 use core::comm::*;
 
-fn foo<T: Send Copy>(x: T) -> Port<T> {
+fn foo<T: Owned Copy>(x: T) -> Port<T> {
     let p = Port();
     let c = Chan(&p);
     do task::spawn() |copy c, copy x| {
