@@ -951,8 +951,18 @@ fn compare_values(cx: block, lhs: ValueRef, rhs: ValueRef, rhs_t: ty::t) ->
                                                          scratch_result.val));
             return scratch_result.to_result(bcx);
         }
+        ty::ty_estr(_) => {
+            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
+                                               false);
+            let did = cx.tcx().lang_items.str_eq_fn.get();
+            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+                                                        ~[lhs, rhs],
+                                                        expr::SaveIn(
+                                                         scratch_result.val));
+            return scratch_result.to_result(bcx);
+        }
         _ => {
-            cx.tcx().sess.bug(~"only scalars and unique strings supported in \
+            cx.tcx().sess.bug(~"only scalars and strings supported in \
                                 compare_values");
         }
     }
