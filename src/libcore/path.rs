@@ -20,6 +20,7 @@ Cross-platform file path handling
 
 use cmp::Eq;
 
+#[deriving_eq]
 pub struct WindowsPath {
     host: Option<~str>,
     device: Option<~str>,
@@ -31,6 +32,7 @@ pub pure fn WindowsPath(s: &str) -> WindowsPath {
     from_str(s)
 }
 
+#[deriving_eq]
 pub struct PosixPath {
     is_absolute: bool,
     components: ~[~str],
@@ -354,24 +356,6 @@ impl PosixPath : ToStr {
         }
         s + str::connect(self.components, "/")
     }
-}
-
-impl PosixPath : Eq {
-    pure fn eq(&self, other: &PosixPath) -> bool {
-        return (*self).is_absolute == (*other).is_absolute &&
-            (*self).components == (*other).components;
-    }
-    pure fn ne(&self, other: &PosixPath) -> bool { !(*self).eq(other) }
-}
-
-impl WindowsPath : Eq {
-    pure fn eq(&self, other: &WindowsPath) -> bool {
-        return (*self).host == (*other).host &&
-            (*self).device == (*other).device &&
-            (*self).is_absolute == (*other).is_absolute &&
-            (*self).components == (*other).components;
-    }
-    pure fn ne(&self, other: &WindowsPath) -> bool { !(*self).eq(other) }
 }
 
 // FIXME (#3227): when default methods in traits are working, de-duplicate

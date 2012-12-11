@@ -19,6 +19,7 @@ use cmp::Eq;
 use either::Either;
 
 /// The result type
+#[deriving_eq]
 pub enum Result<T, U> {
     /// Contains the successful result value
     Ok(T),
@@ -372,26 +373,6 @@ pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
       Err(move u) => move u,
       Ok(_) => fail ~"unwrap called on an ok result"
     }
-}
-
-impl<T:Eq,U:Eq> Result<T,U> : Eq {
-    pure fn eq(&self, other: &Result<T,U>) -> bool {
-        match (*self) {
-            Ok(ref e0a) => {
-                match (*other) {
-                    Ok(ref e0b) => *e0a == *e0b,
-                    _ => false
-                }
-            }
-            Err(ref e0a) => {
-                match (*other) {
-                    Err(ref e0b) => *e0a == *e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &Result<T,U>) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(test)]

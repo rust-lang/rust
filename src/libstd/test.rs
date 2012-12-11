@@ -92,14 +92,8 @@ fn parse_opts(args: &[~str]) -> OptRes {
     return either::Left(test_opts);
 }
 
+#[deriving_eq]
 pub enum TestResult { TrOk, TrFailed, TrIgnored, }
-
-impl TestResult : Eq {
-    pure fn eq(&self, other: &TestResult) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &TestResult) -> bool { !(*self).eq(other) }
-}
 
 type ConsoleTestState =
     @{out: io::Writer,

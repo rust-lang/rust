@@ -16,6 +16,7 @@ use core::option;
 use option::*;
 use option::{Some, None};
 
+#[deriving_eq]
 pub enum List<T> {
     Cons(T, @List<T>),
     Nil,
@@ -155,26 +156,6 @@ pub fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
           Nil => break
         }
     }
-}
-
-impl<T:Eq> List<T> : Eq {
-    pure fn eq(&self, other: &List<T>) -> bool {
-        match (*self) {
-            Cons(ref e0a, e1a) => {
-                match (*other) {
-                    Cons(ref e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            Nil => {
-                match (*other) {
-                    Nil => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &List<T>) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(test)]

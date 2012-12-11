@@ -445,23 +445,8 @@ pub mod rt {
             };
     }
 
+    #[deriving_eq]
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
-
-    pub impl PadMode : Eq {
-        pure fn eq(&self, other: &PadMode) -> bool {
-            match ((*self), (*other)) {
-                (PadSigned, PadSigned) => true,
-                (PadUnsigned, PadUnsigned) => true,
-                (PadNozero, PadNozero) => true,
-                (PadFloat, PadFloat) => true,
-                (PadSigned, _) => false,
-                (PadUnsigned, _) => false,
-                (PadNozero, _) => false,
-                (PadFloat, _) => false
-            }
-        }
-        pure fn ne(&self, other: &PadMode) -> bool { !(*self).eq(other) }
-    }
 
     pub fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {
         let mut s = move s; // sadtimes

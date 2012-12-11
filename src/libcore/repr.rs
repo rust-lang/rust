@@ -518,18 +518,12 @@ fn test_repr2() {
 
 // Old non-factored implementation, transitional...
 
+#[deriving_eq]
 enum EnumVisitState {
     PreVariant,     // We're before the variant we're interested in.
     InVariant,      // We're inside the variant we're interested in.
     PostVariant,    // We're after the variant we're interested in.
     Degenerate      // This is a degenerate enum (exactly 1 variant)
-}
-
-impl EnumVisitState : cmp::Eq {
-    pure fn eq(&self, other: &EnumVisitState) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &EnumVisitState) -> bool { !(*self).eq(other) }
 }
 
 struct EnumState {

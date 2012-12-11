@@ -523,17 +523,8 @@ pub pure fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
 pub enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
+#[deriving_eq]
 pub enum WriterType { Screen, File }
-
-pub impl WriterType : Eq {
-    pure fn eq(&self, other: &WriterType) -> bool {
-        match ((*self), (*other)) {
-            (Screen, Screen) | (File, File) => true,
-            (Screen, _) | (File, _) => false
-        }
-    }
-    pure fn ne(&self, other: &WriterType) -> bool { !(*self).eq(other) }
-}
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64

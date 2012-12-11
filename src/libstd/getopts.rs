@@ -79,16 +79,20 @@ use core::result::{Err, Ok};
 use core::option;
 use core::option::{Some, None};
 
+#[deriving_eq]
 enum Name {
     Long(~str),
     Short(char),
 }
 
+#[deriving_eq]
 enum HasArg { Yes, No, Maybe, }
 
+#[deriving_eq]
 enum Occur { Req, Optional, Multi, }
 
 /// A description of a possible option
+#[deriving_eq]
 pub struct Opt {
     name: Name,
     hasarg: HasArg,
@@ -100,49 +104,6 @@ fn mkname(nm: &str) -> Name {
     return if nm.len() == 1u {
             Short(str::char_at(unm, 0u))
         } else { Long(unm) };
-}
-
-impl Name : Eq {
-    pure fn eq(&self, other: &Name) -> bool {
-        match (*self) {
-            Long(ref e0a) => {
-                match (*other) {
-                    Long(ref e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            Short(e0a) => {
-                match (*other) {
-                    Short(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &Name) -> bool { !(*self).eq(other) }
-}
-
-impl Occur : Eq {
-    pure fn eq(&self, other: &Occur) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Occur) -> bool { !(*self).eq(other) }
-}
-
-impl HasArg : Eq {
-    pure fn eq(&self, other: &HasArg) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &HasArg) -> bool { !(*self).eq(other) }
-}
-
-impl Opt : Eq {
-    pure fn eq(&self, other: &Opt) -> bool {
-        (*self).name   == (*other).name   &&
-        (*self).hasarg == (*other).hasarg &&
-        (*self).occur  == (*other).occur
-    }
-    pure fn ne(&self, other: &Opt) -> bool { !(*self).eq(other) }
 }
 
 /// Create an option that is required and takes an argument
@@ -178,37 +139,18 @@ pub fn optmulti(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: Yes, occur: Multi};
 }
 
+#[deriving_eq]
 enum Optval { Val(~str), Given, }
 
 /**
  * The result of checking command line arguments. Contains a vector
  * of matches and a vector of free strings.
  */
+#[deriving_eq]
 pub struct Matches {
     opts: ~[Opt],
     vals: ~[~[Optval]],
     free: ~[~str]
-}
-
-impl Optval : Eq {
-    pure fn eq(&self, other: &Optval) -> bool {
-        match (*self) {
-            Val(ref s) => match *other { Val (ref os) => s == os,
-                                          Given => false },
-            Given       => match *other { Val(_) => false,
-                                          Given => true }
-        }
-    }
-    pure fn ne(&self, other: &Optval) -> bool { !(*self).eq(other) }
-}
-
-impl Matches : Eq {
-    pure fn eq(&self, other: &Matches) -> bool {
-        (*self).opts == (*other).opts &&
-        (*self).vals == (*other).vals &&
-        (*self).free == (*other).free
-    }
-    pure fn ne(&self, other: &Matches) -> bool { !(*self).eq(other) }
 }
 
 fn is_arg(arg: &str) -> bool {
@@ -230,41 +172,13 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
  * The type returned when the command line does not conform to the
  * expected format. Pass this value to <fail_str> to get an error message.
  */
+#[deriving_eq]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),
     OptionMissing(~str),
     OptionDuplicated(~str),
     UnexpectedArgument(~str),
-}
-
-impl Fail_ : Eq {
-    // this whole thing should be easy to infer...
-    pure fn eq(&self, other: &Fail_) -> bool {
-        match (*self) {
-            ArgumentMissing(ref s) => {
-                match *other { ArgumentMissing(ref so)    => s == so,
-                               _                          => false }
-            }
-            UnrecognizedOption(ref s) => {
-                match *other { UnrecognizedOption(ref so) => s == so,
-                               _                          => false }
-            }
-            OptionMissing(ref s) => {
-                match *other { OptionMissing(ref so)      => s == so,
-                               _                          => false }
-            }
-            OptionDuplicated(ref s) => {
-                match *other { OptionDuplicated(ref so)   => s == so,
-                               _                          => false }
-            }
-            UnexpectedArgument(ref s) => {
-                match *other { UnexpectedArgument(ref so) => s == so,
-                               _                          => false }
-            }
-        }
-    }
-    pure fn ne(&self, other: &Fail_) -> bool { !(*self).eq(other) }
 }
 
 /// Convert a `fail_` enum into an error string
@@ -523,19 +437,13 @@ pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
                            _      => Some::<~str>(str::from_slice(def)) }
 }
 
+#[deriving_eq]
 enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,
     OptionMissing_,
     OptionDuplicated_,
     UnexpectedArgument_,
-}
-
-impl FailType : Eq {
-    pure fn eq(&self, other: &FailType) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &FailType) -> bool { !(*self).eq(other) }
 }
 
 /** A module which provides a way to specify descriptions and
@@ -546,6 +454,7 @@ pub mod groups {
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
      */
+    #[deriving_eq]
     pub struct OptGroup {
         short_name: ~str,
         long_name: ~str,
@@ -553,20 +462,6 @@ pub mod groups {
         desc: ~str,
         hasarg: HasArg,
         occur: Occur
-    }
-
-    impl OptGroup : Eq {
-        pure fn eq(&self, other: &OptGroup) -> bool {
-            (*self).short_name == (*other).short_name &&
-            (*self).long_name  == (*other).long_name  &&
-            (*self).hint       == (*other).hint       &&
-            (*self).desc       == (*other).desc       &&
-            (*self).hasarg     == (*other).hasarg     &&
-            (*self).occur      == (*other).occur
-        }
-        pure fn ne(&self, other: &OptGroup) -> bool {
-            !self.eq(other)
-        }
     }
 
     /// Create a long option that is required and takes an argument
@@ -733,7 +628,7 @@ mod tests {
     #[legacy_exports];
     use opt = getopts;
     use result::{Err, Ok};
-    use opt::groups::OptGroup;
+    use getopts::groups::OptGroup;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {
