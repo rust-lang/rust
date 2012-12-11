@@ -240,6 +240,8 @@ mod core {
     pub const warn : u32 = 2_u32;
     pub const info : u32 = 3_u32;
     pub const debug : u32 = 4_u32;
+
+    pub use cmp;
 }
 
 

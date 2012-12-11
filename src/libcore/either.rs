@@ -18,6 +18,7 @@ use cmp::Eq;
 use result::Result;
 
 /// The either type
+#[deriving_eq]
 pub enum Either<T, U> {
     Left(T),
     Right(U)
@@ -139,26 +140,6 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     match move eith {
         Right(move x) => move x, Left(_) => fail ~"either::unwrap_right Left"
     }
-}
-
-impl<T:Eq,U:Eq> Either<T,U> : Eq {
-    pure fn eq(&self, other: &Either<T,U>) -> bool {
-        match (*self) {
-            Left(ref a) => {
-                match (*other) {
-                    Left(ref b) => (*a).eq(b),
-                    Right(_) => false
-                }
-            }
-            Right(ref a) => {
-                match (*other) {
-                    Left(_) => false,
-                    Right(ref b) => (*a).eq(b)
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &Either<T,U>) -> bool { !(*self).eq(other) }
 }
 
 #[test]

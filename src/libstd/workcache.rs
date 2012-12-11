@@ -79,6 +79,7 @@ use serialization::{Serializer,Serializable,
 *
 */
 
+#[deriving_eq]
 struct WorkKey {
     kind: ~str,
     name: ~str
@@ -97,15 +98,6 @@ impl WorkKey: to_bytes::IterBytes {
 impl WorkKey {
     static fn new(kind: &str, name: &str) -> WorkKey {
     WorkKey { kind: kind.to_owned(), name: name.to_owned() }
-    }
-}
-
-impl WorkKey: core::cmp::Eq {
-    pure fn eq(&self, other: &WorkKey) -> bool {
-        self.kind == other.kind && self.name == other.name
-    }
-    pure fn ne(&self, other: &WorkKey) -> bool {
-        self.kind != other.kind || self.name != other.name
     }
 }
 
