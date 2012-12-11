@@ -32,6 +32,7 @@ use middle::ty::{ty_class, ty_enum, ty_param_bounds_and_ty};
 use /*middle::typeck::*/check::method;
 use /*middle::typeck::*/check::vtable;
 use /*middle::typeck::*/infer::infer_ctxt;
+use /*middle::typeck::*/method::TransformTypeNormally;
 use /*middle::typeck::*/vtable::{LocationInfo, VtableContext};
 use util::ppaux;
 
@@ -70,7 +71,11 @@ impl DerivingChecker {
         let inference_context = infer::new_infer_ctxt(self.crate_context.tcx);
         let region = inference_context.next_region_var_nb(span);
         let transformed_type = method::transform_self_type_for_method(
-            tcx, Some(region), impl_self_tpbt.ty, method_info.self_type);
+            tcx,
+            Some(region),
+            impl_self_tpbt.ty,
+            method_info.self_type,
+            TransformTypeNormally);
 
         let substs = {
             self_r: None,

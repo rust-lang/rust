@@ -78,6 +78,7 @@ type parameter).
 
 use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 use astconv::{ast_region_to_region};
+use method::TransformTypeNormally;
 use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
 use regionmanip::{replace_bound_regions_in_fn_ty};
 use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
@@ -302,8 +303,11 @@ fn check_fn(ccx: @crate_ctxt,
         } else  {
             let self_region = fcx.in_scope_regions.find(ty::br_self);
             let ty = method::transform_self_type_for_method(
-                fcx.tcx(), self_region,
-                self_info.self_ty, self_info.explicit_self.node);
+                fcx.tcx(),
+                self_region,
+                self_info.self_ty,
+                self_info.explicit_self.node,
+                TransformTypeNormally);
             Some({self_ty: ty,.. *self_info})
         }
     };
