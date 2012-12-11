@@ -8,10 +8,10 @@ pub struct PriorityQueue <T: Copy Ord>{
 
 impl <T: Copy Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    pure fn top(&self) -> T { self.data[0] }
+    pure fn top(&self) -> &self/T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    pure fn maybe_top(&self) -> Option<T> {
+    pure fn maybe_top(&self) -> Option<&self/T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
 
@@ -151,7 +151,7 @@ mod tests {
         let mut sorted = merge_sort(data, le);
         let mut heap = from_vec(data);
         while heap.is_not_empty() {
-            assert heap.top() == sorted.last();
+            assert *heap.top() == sorted.last();
             assert heap.pop() == sorted.pop();
         }
     }
@@ -160,22 +160,22 @@ mod tests {
     fn test_push() {
         let mut heap = from_vec(~[2, 4, 9]);
         assert heap.len() == 3;
-        assert heap.top() == 9;
+        assert *heap.top() == 9;
         heap.push(11);
         assert heap.len() == 4;
-        assert heap.top() == 11;
+        assert *heap.top() == 11;
         heap.push(5);
         assert heap.len() == 5;
-        assert heap.top() == 11;
+        assert *heap.top() == 11;
         heap.push(27);
         assert heap.len() == 6;
-        assert heap.top() == 27;
+        assert *heap.top() == 27;
         heap.push(3);
         assert heap.len() == 7;
-        assert heap.top() == 27;
+        assert *heap.top() == 27;
         heap.push(103);
         assert heap.len() == 8;
-        assert heap.top() == 103;
+        assert *heap.top() == 103;
     }
 
     #[test]
@@ -241,11 +241,12 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_empty_top() { from_vec::<int>(~[]).top(); }
+    fn test_empty_top() { let empty = from_vec::<int>(~[]); empty.top(); }
 
     #[test]
     fn test_empty_maybe_top() {
-        assert from_vec::<int>(~[]).maybe_top().is_none();
+        let empty = from_vec::<int>(~[]);
+        assert empty.maybe_top().is_none();
     }
 
     #[test]
