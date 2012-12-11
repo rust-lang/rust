@@ -60,7 +60,7 @@ fn bound_self_region(rp: Option<ty::region_variance>) -> Option<ty::Region> {
 }
 
 enum anon_rscope = {anon: ty::Region, base: region_scope};
-fn in_anon_rscope<RS: region_scope Copy Owned>(self: RS, r: ty::Region)
+fn in_anon_rscope<RS: region_scope Copy Durable>(self: RS, r: ty::Region)
     -> @anon_rscope {
     @anon_rscope({anon: r, base: self as region_scope})
 }
@@ -80,7 +80,7 @@ struct binding_rscope {
     base: region_scope,
     mut anon_bindings: uint,
 }
-fn in_binding_rscope<RS: region_scope Copy Owned>(self: RS)
+fn in_binding_rscope<RS: region_scope Copy Durable>(self: RS)
     -> @binding_rscope {
     let base = self as region_scope;
     @binding_rscope { base: base, anon_bindings: 0 }

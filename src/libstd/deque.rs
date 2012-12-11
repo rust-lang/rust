@@ -210,7 +210,7 @@ mod tests {
         assert (deq.get(3) == d);
     }
 
-    fn test_parameterized<T: Copy Eq Owned>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
         let deq: deque::Deque<T> = deque::create::<T>();
         assert (deq.size() == 0u);
         deq.add_front(a);

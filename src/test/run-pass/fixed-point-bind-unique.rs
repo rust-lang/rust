@@ -11,11 +11,11 @@
 // xfail-fast
 #[legacy_modes];
 
-fn fix_help<A: Owned, B: Send>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {
+fn fix_help<A: Durable, B: Send>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {
     return f({|a|fix_help(f, a)}, x);
 }
 
-fn fix<A: Owned, B: Send>(f: extern fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
+fn fix<A: Durable, B: Send>(f: extern fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
     return {|a|fix_help(f, a)};
 }
 

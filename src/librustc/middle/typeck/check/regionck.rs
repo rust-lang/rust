@@ -28,7 +28,6 @@ this point a bit better.
 */
 
 use middle::freevars::get_freevars;
-use middle::kind::check_owned;
 use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};

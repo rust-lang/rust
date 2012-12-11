@@ -32,10 +32,10 @@ fn to_foo<T:Copy>(t: T) {
 fn to_foo_2<T:Copy>(t: T) -> foo {
     // Not OK---T may contain borrowed ptrs and it is going to escape
     // as part of the returned foo value
-    {f:t} as foo //~ ERROR value may contain borrowed pointers; use `owned` bound
+    {f:t} as foo //~ ERROR value may contain borrowed pointers; use `durable` bound
 }
 
-fn to_foo_3<T:Copy Owned>(t: T) -> foo {
+fn to_foo_3<T:Copy Durable>(t: T) -> foo {
     // OK---T may escape as part of the returned foo value, but it is
     // owned and hence does not contain borrowed ptrs
     {f:t} as foo

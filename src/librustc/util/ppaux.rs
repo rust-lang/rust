@@ -11,7 +11,7 @@
 use std::map::HashMap;
 use middle::ty;
 use middle::ty::{arg, canon_mode};
-use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
+use middle::ty::{bound_copy, bound_const, bound_durable, bound_send,
         bound_trait};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{ctxt, field, method};
