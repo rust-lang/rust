@@ -63,7 +63,7 @@ fn kind_to_str(k: Kind) -> ~str {
     }
 
     if ty::kind_can_be_sent(k) {
-        kinds.push(~"send");
+        kinds.push(~"owned");
     } else if ty::kind_is_durable(k) {
         kinds.push(~"durable");
     }

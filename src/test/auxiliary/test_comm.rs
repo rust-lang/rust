@@ -28,20 +28,20 @@ export recv;
  * transmitted. If a port value is copied, both copies refer to the same
  * port.  Ports may be associated with multiple `chan`s.
  */
-enum port<T: Send> {
+enum port<T: Owned> {
     port_t(@port_ptr<T>)
 }
 
 /// Constructs a port
-fn port<T: Send>() -> port<T> {
+fn port<T: Owned>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
-struct port_ptr<T:Send> {
+struct port_ptr<T:Owned> {
    po: *rust_port,
 }
 
-impl<T:Send> port_ptr<T> : Drop {
+impl<T:Owned> port_ptr<T> : Drop {
     fn finalize(&self) {
         unsafe {
             debug!("in the port_ptr destructor");
@@ -63,7 +63,7 @@ impl<T:Send> port_ptr<T> : Drop {
     }
 }
 
-fn port_ptr<T: Send>(po: *rust_port) -> port_ptr<T> {
+fn port_ptr<T: Owned>(po: *rust_port) -> port_ptr<T> {
     debug!("in the port_ptr constructor");
     port_ptr {
         po: po
@@ -74,11 +74,11 @@ fn port_ptr<T: Send>(po: *rust_port) -> port_ptr<T> {
  * Receive from a port.  If no data is available on the port then the
  * task will block until data becomes available.
  */
-fn recv<T: Send>(p: port<T>) -> T { recv_((**p).po) }
+fn recv<T: Owned>(p: port<T>) -> T { recv_((**p).po) }
 
 
 /// Receive on a raw port pointer
-fn recv_<T: Send>(p: *rust_port) -> T {
+fn recv_<T: Owned>(p: *rust_port) -> T {
     let yield = 0;
     let yieldp = ptr::addr_of(&yield);
     let mut res;

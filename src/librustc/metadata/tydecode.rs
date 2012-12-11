@@ -484,7 +484,7 @@ fn parse_bounds(st: @pstate, conv: conv_did) -> @~[ty::param_bound] {
     let mut bounds = ~[];
     loop {
         bounds.push(match next(st) {
-          'S' => ty::bound_send,
+          'S' => ty::bound_owned,
           'C' => ty::bound_copy,
           'K' => ty::bound_const,
           'O' => ty::bound_durable,

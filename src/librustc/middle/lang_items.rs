@@ -13,7 +13,7 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "const", "copy", "send".
+// * Traits that specify "kinds"; e.g. "const", "copy", "owned".
 //
 // * Traits that represent operators; e.g. "add", "sub", "index".
 //
@@ -35,7 +35,7 @@ use str_eq = str::eq;
 struct LanguageItems {
     mut const_trait: Option<def_id>,
     mut copy_trait: Option<def_id>,
-    mut send_trait: Option<def_id>,
+    mut owned_trait: Option<def_id>,
     mut durable_trait: Option<def_id>,
 
     mut drop_trait: Option<def_id>,
@@ -68,7 +68,7 @@ mod language_items {
         LanguageItems {
             const_trait: None,
             copy_trait: None,
-            send_trait: None,
+            owned_trait: None,
             durable_trait: None,
 
             drop_trait: None,
@@ -105,7 +105,7 @@ fn LanguageItemCollector(crate: @crate, session: Session,
 
     item_refs.insert(~"const", &mut items.const_trait);
     item_refs.insert(~"copy", &mut items.copy_trait);
-    item_refs.insert(~"send", &mut items.send_trait);
+    item_refs.insert(~"owned", &mut items.owned_trait);
     item_refs.insert(~"durable", &mut items.durable_trait);
 
     item_refs.insert(~"drop", &mut items.drop_trait);

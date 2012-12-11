@@ -29,13 +29,13 @@ mod pipes {
         pure fn ne(&self, other: &state) -> bool { !(*self).eq(other) }
     }
 
-    type packet<T: Send> = {
+    type packet<T: Owned> = {
         mut state: state,
         mut blocked_task: Option<task::Task>,
         mut payload: Option<T>
     };
 
-    fn packet<T: Send>() -> *packet<T> unsafe {
+    fn packet<T: Owned>() -> *packet<T> unsafe {
         let p: *packet<T> = cast::transmute(~{
             mut state: empty,
             mut blocked_task: None::<task::Task>,
@@ -70,7 +70,7 @@ mod pipes {
         }
     }
 
-    fn send<T: Send>(-p: send_packet<T>, -payload: T) {
+    fn send<T: Owned>(-p: send_packet<T>, -payload: T) {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         assert (*p).payload.is_none();
@@ -96,7 +96,7 @@ mod pipes {
         }
     }
 
-    fn recv<T: Send>(-p: recv_packet<T>) -> Option<T> {
+    fn recv<T: Owned>(-p: recv_packet<T>) -> Option<T> {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         loop {
@@ -117,7 +117,7 @@ mod pipes {
         }
     }
 
-    fn sender_terminate<T: Send>(p: *packet<T>) {
+    fn sender_terminate<T: Owned>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
@@ -134,7 +134,7 @@ mod pipes {
         }
     }
 
-    fn receiver_terminate<T: Send>(p: *packet<T>) {
+    fn receiver_terminate<T: Owned>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
@@ -151,11 +151,11 @@ mod pipes {
         }
     }
 
-    struct send_packet<T: Send> {
+    struct send_packet<T: Owned> {
         mut p: Option<*packet<T>>,
     }
 
-    impl<T: Send> send_packet<T> : Drop {
+    impl<T: Owned> send_packet<T> : Drop {
         fn finalize(&self) {
             if self.p != None {
                 let mut p = None;
@@ -165,7 +165,7 @@ mod pipes {
         }
     }
 
-    impl<T: Send> send_packet<T> {
+    impl<T: Owned> send_packet<T> {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;
@@ -173,17 +173,17 @@ mod pipes {
         }
     }
 
-    fn send_packet<T: Send>(p: *packet<T>) -> send_packet<T> {
+    fn send_packet<T: Owned>(p: *packet<T>) -> send_packet<T> {
         send_packet {
             p: Some(p)
         }
     }
 
-    struct recv_packet<T: Send> {
+    struct recv_packet<T: Owned> {
         mut p: Option<*packet<T>>,
     }
 
-    impl<T: Send> recv_packet<T> : Drop {
+    impl<T: Owned> recv_packet<T> : Drop {
         fn finalize(&self) {
             if self.p != None {
                 let mut p = None;
@@ -193,7 +193,7 @@ mod pipes {
         }
     }
 
-    impl<T: Send> recv_packet<T> {
+    impl<T: Owned> recv_packet<T> {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;
@@ -201,13 +201,13 @@ mod pipes {
         }
     }
 
-    fn recv_packet<T: Send>(p: *packet<T>) -> recv_packet<T> {
+    fn recv_packet<T: Owned>(p: *packet<T>) -> recv_packet<T> {
         recv_packet {
             p: Some(p)
         }
     }
 
-    fn entangle<T: Send>() -> (send_packet<T>, recv_packet<T>) {
+    fn entangle<T: Owned>() -> (send_packet<T>, recv_packet<T>) {
         let p = packet();
         (send_packet(p), recv_packet(p))
     }

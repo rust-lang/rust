@@ -26,7 +26,7 @@ proto! oneshot (
 )
 
 proto! stream (
-    Stream:send<T:Send> {
+    Stream:send<T:Owned> {
         send(T) -> Stream<T>
     }
 )

@@ -425,7 +425,7 @@ impl TaskBuilder {
         spawn::spawn_raw(move opts, (x.gen_body)(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Send>(arg: A, f: fn~(v: A)) {
+    fn spawn_with<A: Owned>(arg: A, f: fn~(v: A)) {
         let arg = ~mut Some(move arg);
         do self.spawn |move arg, move f| {
             f(option::swap_unwrap(arg))
@@ -443,7 +443,7 @@ impl TaskBuilder {
      * otherwise be required to establish communication from the parent
      * to the child.
      */
-    fn spawn_listener<A: Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+    fn spawn_listener<A: Owned>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
         let setup_po = comm::Port();
         let setup_ch = comm::Chan(&setup_po);
         do self.spawn |move f| {
@@ -458,7 +458,7 @@ impl TaskBuilder {
     /**
      * Runs a new task, setting up communication in both directions
      */
-    fn spawn_conversation<A: Send, B: Send>
+    fn spawn_conversation<A: Owned, B: Owned>
         (f: fn~(comm::Port<A>, comm::Chan<B>))
         -> (comm::Port<B>, comm::Chan<A>) {
         let from_child = comm::Port();
@@ -482,7 +482,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: Send>(f: fn~() -> T) -> Result<T,()> {
+    fn try<T: Owned>(f: fn~() -> T) -> Result<T,()> {
         let po = comm::Port();
         let ch = comm::Chan(&po);
         let mut result = None;
@@ -552,7 +552,7 @@ pub fn spawn_supervised(f: fn~()) {
     task().supervised().spawn(move f)
 }
 
-pub fn spawn_with<A:Send>(arg: A, f: fn~(v: A)) {
+pub fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -566,7 +566,7 @@ pub fn spawn_with<A:Send>(arg: A, f: fn~(v: A)) {
     task().spawn_with(move arg, move f)
 }
 
-pub fn spawn_listener<A:Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+pub fn spawn_listener<A:Owned>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
@@ -576,7 +576,7 @@ pub fn spawn_listener<A:Send>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     task().spawn_listener(move f)
 }
 
-pub fn spawn_conversation<A: Send, B: Send>
+pub fn spawn_conversation<A: Owned, B: Owned>
     (f: fn~(comm::Port<A>, comm::Chan<B>))
     -> (comm::Port<B>, comm::Chan<A>) {
     /*!
@@ -605,7 +605,7 @@ pub fn spawn_sched(mode: SchedMode, f: fn~()) {
     task().sched_mode(mode).spawn(move f)
 }
 
-pub fn try<T:Send>(f: fn~() -> T) -> Result<T,()> {
+pub fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.

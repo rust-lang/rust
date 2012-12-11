@@ -13,7 +13,7 @@
 extern mod std;
 use std::arc;
 
-enum e<T: Const Send> { e(arc::ARC<T>) }
+enum e<T: Const Owned> { e(arc::ARC<T>) }
 
 fn foo() -> e<int> {fail;}
 
