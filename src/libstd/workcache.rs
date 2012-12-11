@@ -118,17 +118,18 @@ struct Database {
 
 impl Database {
     pure fn prepare(_fn_name: &str,
-                    _declared_inputs: &const WorkMap) ->
-        Option<(WorkMap, WorkMap, WorkMap, ~str)> {
+                    _declared_inputs: &const WorkMap,
+                    _declared_outputs: &const WorkMap) ->
+        Option<(WorkMap, WorkMap, ~str)> {
         // XXX: load
         None
     }
     pure fn cache(_fn_name: &str,
-             _declared_inputs: &WorkMap,
-             _declared_outputs: &WorkMap,
-             _discovered_inputs: &WorkMap,
-             _discovered_outputs: &WorkMap,
-             _result: &str) {
+                  _declared_inputs: &WorkMap,
+                  _declared_outputs: &WorkMap,
+                  _discovered_inputs: &WorkMap,
+                  _discovered_outputs: &WorkMap,
+                  _result: &str) {
         // XXX: store
     }
 }
@@ -138,11 +139,19 @@ struct Logger {
     a: ()
 }
 
+impl Logger {
+    pure fn info(i: &str) {
+        unsafe {
+            io::println(~"workcache: " + i.to_owned());
+        }
+    }
+}
+
 struct Context {
     db: @Database,
     logger: @Logger,
     cfg: @json::Object,
-    freshness: LinearMap<~str,~fn(&str,&str)->bool>
+    freshness: LinearMap<~str,@pure fn(&str,&str)->bool>
 }
 
 struct Prep {
@@ -213,25 +222,57 @@ impl Prep {
                                      val.to_owned());
     }
 
+    pure fn is_fresh(cat: &str, kind: &str,
+                     name: &str, val: &str) -> bool {
+        let k = kind.to_owned();
+        let f = (self.ctxt.freshness.get(&k))(name, val);
+        if f {
+            self.ctxt.logger.info(fmt!("%s %s:%s is fresh",
+                                       cat, kind, name));
+        } else {
+            self.ctxt.logger.info(fmt!("%s %s:%s is not fresh",
+                                       cat, kind, name))
+        }
+        return f;
+    }
+
+    pure fn all_fresh(cat: &str, map: WorkMap) -> bool {
+        for map.each |k,v| {
+            if ! self.is_fresh(cat, k.kind, k.name, *v) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     fn exec<T:Send
               Serializable<json::Serializer>
               Deserializable<json::Deserializer>>(
                   @mut self, blk: ~fn(&Exec) -> T) -> Work<T> {
+
         let cached = self.ctxt.db.prepare(self.fn_name,
-                                          &self.declared_inputs);
+                                          &self.declared_inputs,
+                                          &self.declared_outputs);
 
         match move cached {
             None => (),
-            Some((move _decl_out,
-                  move _disc_in,
-                  move _disc_out,
+            Some((move disc_in,
+                  move disc_out,
                   move res)) => {
-                // XXX: check deps for freshness, only return if fresh.
-                let v : T = do io::with_str_reader(res) |rdr| {
-                    let j = result::unwrap(json::from_reader(rdr));
-                    deserialize(&json::Deserializer(move j))
-                };
-                return Work::new(self, move Left(move v));
+
+                if self.all_fresh("declared input",
+                                  self.declared_inputs) &&
+                    self.all_fresh("declared output",
+                                   self.declared_outputs) &&
+                    self.all_fresh("discovered input", disc_in) &&
+                    self.all_fresh("discovered output", disc_out) {
+
+                    let v : T = do io::with_str_reader(res) |rdr| {
+                        let j = result::unwrap(json::from_reader(rdr));
+                        deserialize(&json::Deserializer(move j))
+                    };
+                    return Work::new(self, move Left(move v));
+                }
             }
         }
 
