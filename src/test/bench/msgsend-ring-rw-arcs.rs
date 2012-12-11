@@ -108,7 +108,7 @@ fn main() {
     thread_ring(0, msg_per_task, option::unwrap(move num_chan), move num_port);
 
     // synchronize
-    for futures.each |f| { future::get(f) };
+    for futures.each |f| { f.get() };
 
     let stop = time::precise_time_s();
 
