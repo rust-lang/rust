@@ -26,6 +26,7 @@ use middle::trans::common::{fn_ctxt};
 use middle::trans::expr::SaveIn;
 use middle::trans::type_of::type_of;
 use middle::ty::{DerivedFieldInfo, re_static};
+use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::method;
 use middle::typeck::method_static;
 use syntax::ast;
@@ -99,7 +100,8 @@ pub fn trans_deriving_impl(ccx: @crate_ctxt,
                         ccx.tcx,
                         Some(re_static),
                         self_ty.ty,
-                        derived_method_info.method_info.self_type);
+                        derived_method_info.method_info.self_type,
+                        TransformTypeNormally);
 
                 match ty::get(self_ty.ty).sty {
                     ty::ty_struct(*) => {
