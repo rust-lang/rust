@@ -15,7 +15,7 @@ use pipes::{Port, Chan};
   message.
  */
 fn main() {
-    let (ch, po) = pipes::stream();
+    let (po, ch) = pipes::stream();
     ch.send(42);
     let r = po.recv();
     log(error, r);
