@@ -1838,6 +1838,8 @@ combination of arguments of the appropriate types. The usual way is to write
 a function that returns `Option<T>` instead of `T`.
 
 ~~~~
+# struct Point {x: float, y: float}
+# enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn radius(shape: Shape) -> Option<float> {
    match shape {
        Circle(_, radius) => Some(radius),
