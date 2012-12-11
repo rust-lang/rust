@@ -395,7 +395,7 @@ fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
           ty::bound_send => w.write_char('S'),
           ty::bound_copy => w.write_char('C'),
           ty::bound_const => w.write_char('K'),
-          ty::bound_owned => w.write_char('O'),
+          ty::bound_durable => w.write_char('O'),
           ty::bound_trait(tp) => {
             w.write_char('I');
             enc_ty(w, cx, tp);

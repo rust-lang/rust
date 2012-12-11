@@ -59,7 +59,7 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr: Owned io::Reader>(+in: rdr) -> ~[~[square]] {
+fn read_board_grid<rdr: Durable io::Reader>(+in: rdr) -> ~[~[square]] {
     let in = (move in) as io::Reader;
     let mut grid = ~[];
     for in.each_line |line| {

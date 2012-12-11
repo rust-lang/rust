@@ -47,13 +47,13 @@ use task::local_data_priv::{
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<T: Owned> = &fn(v: @T);
+pub type LocalDataKey<T: Durable> = &fn(v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-pub unsafe fn local_data_pop<T: Owned>(
+pub unsafe fn local_data_pop<T: Durable>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_pop(rt::rust_get_task(), key)
@@ -62,7 +62,7 @@ pub unsafe fn local_data_pop<T: Owned>(
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-pub unsafe fn local_data_get<T: Owned>(
+pub unsafe fn local_data_get<T: Durable>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get(rt::rust_get_task(), key)
@@ -71,7 +71,7 @@ pub unsafe fn local_data_get<T: Owned>(
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-pub unsafe fn local_data_set<T: Owned>(
+pub unsafe fn local_data_set<T: Durable>(
     key: LocalDataKey<T>, data: @T) {
 
     local_set(rt::rust_get_task(), key, data)
@@ -80,7 +80,7 @@ pub unsafe fn local_data_set<T: Owned>(
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
-pub unsafe fn local_data_modify<T: Owned>(
+pub unsafe fn local_data_modify<T: Durable>(
     key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 

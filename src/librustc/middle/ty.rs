@@ -140,7 +140,7 @@ export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
 export type_implicitly_moves;
 export kind_is_safe_for_default_mode;
-export kind_is_owned;
+export kind_is_durable;
 export meta_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
@@ -176,7 +176,7 @@ export VariantInfo, VariantInfo_;
 export walk_ty, maybe_walk_ty;
 export occurs_check;
 export param_ty;
-export param_bound, param_bounds, bound_copy, bound_owned;
+export param_bound, param_bounds, bound_copy, bound_durable;
 export param_bounds_to_str, param_bound_to_str;
 export bound_send, bound_trait;
 export param_bounds_to_kind;
@@ -702,7 +702,7 @@ enum type_err {
 
 enum param_bound {
     bound_copy,
-    bound_owned,
+    bound_durable,
     bound_send,
     bound_const,
     bound_trait(t),
@@ -769,7 +769,7 @@ impl param_bound : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           bound_copy => 0u8.iter_bytes(lsb0, f),
-          bound_owned => 1u8.iter_bytes(lsb0, f),
+          bound_durable => 1u8.iter_bytes(lsb0, f),
           bound_send => 2u8.iter_bytes(lsb0, f),
           bound_const => 3u8.iter_bytes(lsb0, f),
           bound_trait(ref t) =>
@@ -873,11 +873,11 @@ fn param_bounds_to_kind(bounds: param_bounds) -> Kind {
           bound_copy => {
             kind = raise_kind(kind, kind_implicitly_copyable());
           }
-          bound_owned => {
-            kind = raise_kind(kind, kind_owned());
+          bound_durable => {
+            kind = raise_kind(kind, kind_durable());
           }
           bound_send => {
-            kind = raise_kind(kind, kind_send_only() | kind_owned());
+            kind = raise_kind(kind, kind_send_only() | kind_durable());
           }
           bound_const => {
             kind = raise_kind(kind, kind_const());
@@ -1549,7 +1549,7 @@ fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
 fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
     match *pb {
         bound_copy => ~"copy",
-        bound_owned => ~"owned",
+        bound_durable => ~"durable",
         bound_send => ~"send",
         bound_const => ~"const",
         bound_trait(t) => ty_to_str(cx, t)
@@ -1908,11 +1908,11 @@ enum Kind { kind_(u32) }
 /// can be copied (implicitly or explicitly)
 const KIND_MASK_COPY         : u32 = 0b000000000000000000000000001_u32;
 
-/// can be sent: no shared box, borrowed ptr (must imply OWNED)
+/// can be sent: no shared box, borrowed ptr (must imply DURABLE)
 const KIND_MASK_SEND         : u32 = 0b000000000000000000000000010_u32;
 
-/// is owned (no borrowed ptrs)
-const KIND_MASK_OWNED        : u32 = 0b000000000000000000000000100_u32;
+/// is durable (no borrowed ptrs)
+const KIND_MASK_DURABLE      : u32 = 0b000000000000000000000000100_u32;
 
 /// is deeply immutable
 const KIND_MASK_CONST        : u32 = 0b000000000000000000000001000_u32;
@@ -1963,8 +1963,8 @@ fn kind_const() -> Kind {
     kind_(KIND_MASK_CONST)
 }
 
-fn kind_owned() -> Kind {
-    kind_(KIND_MASK_OWNED)
+fn kind_durable() -> Kind {
+    kind_(KIND_MASK_DURABLE)
 }
 
 fn kind_top() -> Kind {
@@ -1983,8 +1983,8 @@ fn remove_send(k: Kind) -> Kind {
     k - kind_(KIND_MASK_SEND)
 }
 
-fn remove_owned_send(k: Kind) -> Kind {
-    k - kind_(KIND_MASK_OWNED) - kind_(KIND_MASK_SEND)
+fn remove_durable_send(k: Kind) -> Kind {
+    k - kind_(KIND_MASK_DURABLE) - kind_(KIND_MASK_SEND)
 }
 
 fn remove_copyable(k: Kind) -> Kind {
@@ -2034,23 +2034,23 @@ pure fn kind_can_be_sent(k: Kind) -> bool {
     *k & KIND_MASK_SEND == KIND_MASK_SEND
 }
 
-pure fn kind_is_owned(k: Kind) -> bool {
-    *k & KIND_MASK_OWNED == KIND_MASK_OWNED
+pure fn kind_is_durable(k: Kind) -> bool {
+    *k & KIND_MASK_DURABLE == KIND_MASK_DURABLE
 }
 
 fn meta_kind(p: FnMeta) -> Kind {
     match p.proto { // XXX consider the kind bounds!
         ast::ProtoBare => {
-            kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+            kind_safe_for_default_mode_send() | kind_const() | kind_durable()
         }
         ast::ProtoBorrowed => {
             kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE)
         }
         ast::ProtoBox => {
-            kind_safe_for_default_mode() | kind_owned()
+            kind_safe_for_default_mode() | kind_durable()
         }
         ast::ProtoUniq => {
-            kind_send_copy() | kind_owned()
+            kind_send_copy() | kind_durable()
         }
     }
 }
@@ -2113,15 +2113,15 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) => {
-        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+        kind_safe_for_default_mode_send() | kind_const() | kind_durable()
       }
 
       // Implicit copyability of strs is configurable
       ty_estr(vstore_uniq) => {
         if cx.vecs_implicitly_copyable {
-            kind_implicitly_sendable() | kind_const() | kind_owned()
+            kind_implicitly_sendable() | kind_const() | kind_durable()
         } else {
-            kind_send_copy() | kind_const() | kind_owned()
+            kind_send_copy() | kind_const() | kind_durable()
         }
       }
 
@@ -2135,7 +2135,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
       }
 
       // Trait instances are (for now) like shared boxes, basically
-      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_owned(),
+      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_durable(),
 
       // Static region pointers are copyable and sendable, but not owned
       ty_rptr(re_static, mt) =>
@@ -2167,8 +2167,8 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
         kind_safe_for_default_mode() | mutable_type_kind(cx, tm)
       }
       ty_evec(tm, vstore_slice(_)) => {
-        remove_owned_send(kind_safe_for_default_mode() |
-                          mutable_type_kind(cx, tm))
+        remove_durable_send(kind_safe_for_default_mode() |
+                           mutable_type_kind(cx, tm))
       }
       ty_evec(tm, vstore_fixed(_)) => {
         mutable_type_kind(cx, tm)
@@ -2176,7 +2176,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
 
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) => {
-        kind_safe_for_default_mode() | kind_const() | kind_owned()
+        kind_safe_for_default_mode() | kind_const() | kind_durable()
       }
       ty_estr(vstore_slice(re_static)) => {
         kind_safe_for_default_mode() | kind_send_copy() | kind_const()
@@ -2185,7 +2185,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
         kind_safe_for_default_mode() | kind_const()
       }
       ty_estr(vstore_fixed(_)) => {
-        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+        kind_safe_for_default_mode_send() | kind_const() | kind_durable()
       }
 
       // Records lower to the lowest of their members.
@@ -2226,7 +2226,7 @@ fn type_kind(cx: ctxt, ty: t) -> Kind {
         let mut lowest = kind_top();
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 0u {
-            lowest = kind_send_only() | kind_owned();
+            lowest = kind_send_only() | kind_durable();
         } else {
             for vec::each(*variants) |variant| {
                 for variant.args.each |aty| {
@@ -4237,7 +4237,7 @@ fn iter_bound_traits_and_supertraits(tcx: ctxt,
             ty::bound_trait(bound_t) => bound_t,
 
             ty::bound_copy | ty::bound_send |
-            ty::bound_const | ty::bound_owned => {
+            ty::bound_const | ty::bound_durable => {
                 loop; // skip non-trait bounds
             }
         };
@@ -4647,9 +4647,9 @@ impl param_bound : cmp::Eq {
                     _ => false
                 }
             }
-            bound_owned => {
+            bound_durable => {
                 match (*other) {
-                    bound_owned => true,
+                    bound_durable => true,
                     _ => false
                 }
             }

@@ -88,7 +88,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 }
 
 impl @crate_ctxt {
-    fn to_ty<RS: region_scope Copy Owned>(
+    fn to_ty<RS: region_scope Copy Durable>(
         rs: RS, ast_ty: @ast::Ty) -> ty::t {
 
         ast_ty_to_ty(self, rs, ast_ty)
@@ -863,7 +863,7 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
 // Translate the AST's notion of ty param bounds (which are just newtyped Tys)
 // to ty's notion of ty param bounds, which can either be user-defined traits,
 // or one of the four built-in traits (formerly known as kinds): Const, Copy,
-// Owned, and Send.
+// Durable, and Send.
 fn compute_bounds(ccx: @crate_ctxt,
                   ast_bounds: @~[ast::ty_param_bound]) -> ty::param_bounds {
     @do vec::flat_map(*ast_bounds) |b| {
@@ -881,8 +881,8 @@ fn compute_bounds(ccx: @crate_ctxt,
                 else if d == li.const_trait {
                     ~[ty::bound_const]
                 }
-                else if d == li.owned_trait {
-                    ~[ty::bound_owned]
+                else if d == li.durable_trait {
+                    ~[ty::bound_durable]
                 }
                 else {
                     // Must be a user-defined trait
