@@ -182,7 +182,7 @@ fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
     return vec::filter_map(attrs, filter);
 }
 
-/// Search a list of meta items and return only those with a specific name
+/// Searcha list of meta items and return only those with a specific name
 fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
    ~[@ast::meta_item] {
     let filter = fn@(m: &@ast::meta_item) -> Option<@ast::meta_item> {
