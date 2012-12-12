@@ -9,15 +9,16 @@
 // except according to those terms.
 
 
-use syntax::{ast, codemap};
-use syntax::ast::node_id;
-use codemap::span;
-use syntax::ast::{int_ty, uint_ty, float_ty};
-use syntax::parse::parse_sess;
-use metadata::filesearch;
-use back::target_strs;
 use back::link;
+use back::target_strs;
+use metadata::filesearch;
 use middle::lint;
+
+use syntax::ast::node_id;
+use syntax::ast::{int_ty, uint_ty, float_ty};
+use syntax::codemap::span;
+use syntax::parse::parse_sess;
+use syntax::{ast, codemap};
 
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }

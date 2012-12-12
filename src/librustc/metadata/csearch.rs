@@ -10,19 +10,20 @@
 
 // Searching for information from the cstore
 
-use std::ebml;
-use reader = std::ebml::reader;
-use syntax::ast;
-use syntax::ast_util;
-use syntax::ast_map;
+use metadata::common::*;
 use middle::ty;
-use option::{Some, None};
-use syntax::diagnostic::span_handler;
-use syntax::diagnostic::expect;
-use ast_util::dummy_sp;
-use common::*;
+
+use core::dvec::DVec;
+use core::option::{Some, None};
+use reader = std::ebml::reader;
+use std::ebml;
 use std::map::HashMap;
-use dvec::DVec;
+use syntax::ast;
+use syntax::ast_map;
+use syntax::ast_util::dummy_sp;
+use syntax::ast_util;
+use syntax::diagnostic::expect;
+use syntax::diagnostic::span_handler;
 
 export struct_dtor;
 export get_symbol;

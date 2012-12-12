@@ -43,11 +43,11 @@ use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use dvec::DVec;
-use result::Ok;
+use core::dvec::DVec;
+use core::result::Ok;
 use std::map::HashMap;
-use uint::range;
-use vec::{len, push};
+use core::uint::range;
+use core::vec::{len, push};
 
 fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
               -> Option<t> {

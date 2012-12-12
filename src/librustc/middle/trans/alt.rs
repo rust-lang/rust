@@ -142,26 +142,27 @@
  *
  */
 
+use back::abi;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, BasicBlockRef};
-use pat_util::*;
-use build::*;
-use base::*;
-use syntax::ast;
-use syntax::ast_util;
-use syntax::ast_util::{dummy_sp, path_to_ident};
+use middle::pat_util::*;
+use middle::resolve::DefMap;
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::common::*;
+use middle::trans::datum::*;
+use middle::trans::expr::Dest;
+use middle::ty::{CopyValue, MoveValue, ReadValue};
+use util::common::indenter;
+
+use core::dvec::DVec;
+use std::map::HashMap;
 use syntax::ast::def_id;
+use syntax::ast;
+use syntax::ast_util::{dummy_sp, path_to_ident};
+use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
-use middle::resolve::DefMap;
-use middle::ty::{CopyValue, MoveValue, ReadValue};
-use back::abi;
-use std::map::HashMap;
-use dvec::DVec;
-use datum::*;
-use common::*;
-use expr::Dest;
-use util::common::indenter;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

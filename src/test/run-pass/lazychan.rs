@@ -9,26 +9,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-extern mod std;
-use comm::*;
-
 fn main() {
-    let p = Port();
-    let ch = Chan(&p);
+    let p = core::comm::Port();
+    let ch = core::comm::Chan(&p);
     let mut y: int;
 
     task::spawn(|| child(ch) );
-    y = recv(p);
+    y = core::comm::recv(p);
     debug!("received 1");
     log(debug, y);
     assert (y == 10);
 
     task::spawn(|| child(ch) );
-    y = recv(p);
+    y = core::comm::recv(p);
     debug!("received 2");
     log(debug, y);
     assert (y == 10);
 }
 
-fn child(c: Chan<int>) { send(c, 10); }
+fn child(c: core::comm::Chan<int>) { core::comm::send(c, 10); }

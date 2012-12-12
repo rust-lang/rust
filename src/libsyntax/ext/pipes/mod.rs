@@ -49,9 +49,8 @@ use ast::tt_delim;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
-use pipes::parse_proto::proto_parser;
-
-use pipes::proto::{visit, protocol};
+use ext::pipes::parse_proto::proto_parser;
+use ext::pipes::proto::{visit, protocol};
 
 #[legacy_exports]
 mod ast_builder;

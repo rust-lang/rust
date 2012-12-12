@@ -9,20 +9,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use task::*;
-
 fn main() {
     let mut result = None;
     task::task().future_result(|+r| { result = Some(move r); }).spawn(child);
     error!("1");
-    yield();
+    task::yield();
     error!("2");
-    yield();
+    task::yield();
     error!("3");
     option::unwrap(move result).recv();
 }
 
 fn child() {
-    error!("4"); yield(); error!("5"); yield(); error!("6");
+    error!("4"); task::yield(); error!("5"); task::yield(); error!("6");
 }

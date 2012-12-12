@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dvec::DVec;
-
 struct c1<T: Copy> {
     x: T,
 }

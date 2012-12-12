@@ -18,7 +18,7 @@ use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, stmt, struct_def};
 use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_rptr, unnamed_field};
 use ast::{variant};
-use base::ext_ctxt;
+use ext::base::ext_ctxt;
 use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
 

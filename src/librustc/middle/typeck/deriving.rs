@@ -15,6 +15,16 @@
 // trait (for example, Eq), all the subcomponents of the type in question
 // also implement the trait. This phase runs after coherence.
 
+use middle::resolve::{Impl, MethodInfo};
+use middle::ty;
+use middle::ty::{DerivedFieldInfo, ReVar, re_infer, re_static, substs};
+use middle::ty::{ty_struct, ty_enum, ty_param_bounds_and_ty};
+use middle::typeck::check::method;
+use middle::typeck::check::vtable;
+use middle::typeck::check::vtable::{LocationInfo, VtableContext};
+use middle::typeck::infer::infer_ctxt;
+use util::ppaux;
+
 use syntax::ast::crate;
 use syntax::ast::{def_id, ident};
 use syntax::ast::item_impl;
@@ -25,15 +35,6 @@ use syntax::ast_util::{def_id_of_def, dummy_sp};
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, visit_crate};
-use middle::resolve::{Impl, MethodInfo};
-use middle::ty;
-use middle::ty::{DerivedFieldInfo, ReVar, re_infer, re_static, substs};
-use middle::ty::{ty_struct, ty_enum, ty_param_bounds_and_ty};
-use /*middle::typeck::*/check::method;
-use /*middle::typeck::*/check::vtable;
-use /*middle::typeck::*/infer::infer_ctxt;
-use /*middle::typeck::*/vtable::{LocationInfo, VtableContext};
-use util::ppaux;
 
 struct MethodMatch {
     method_def_id: def_id,

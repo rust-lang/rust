@@ -247,7 +247,7 @@ mod core {
 #[cfg(test)]
 mod std {
     extern mod std(vers = "0.5");
-    pub use std::test;
+    pub use std::std::test;
 }
 
 

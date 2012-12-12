@@ -13,7 +13,7 @@
 use parse::parser;
 use parse::token;
 
-use pipec::*;
+use ext::pipes::pipec::*;
 
 trait proto_parser {
     fn parse_proto(id: ~str) -> protocol;

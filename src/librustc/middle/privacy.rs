@@ -11,6 +11,9 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
+use middle::ty::{ty_struct, ty_enum};
+use middle::typeck::{method_map, method_origin, method_param, method_self};
+use middle::typeck::{method_static, method_trait};
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
 use syntax::ast_map;
@@ -21,9 +24,6 @@ use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
-use ty::{ty_struct, ty_enum};
-use typeck::{method_map, method_origin, method_param, method_self};
-use typeck::{method_static, method_trait};
 
 use core::util::ignore;
 use dvec::DVec;

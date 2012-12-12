@@ -12,11 +12,15 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use check::{fn_ctxt, lookup_local};
-use infer::{resolve_type, resolve_region, resolve_all, force_all};
+use middle::typeck::check::{fn_ctxt, lookup_local};
+use middle::typeck::infer::{force_all, resolve_all, resolve_region};
+use middle::typeck::infer::{resolve_type};
+use util::ppaux;
+
+use result::{Result, Ok, Err};
+
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
-use result::{Result, Ok, Err};
 
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
     -> Option<ty::t>
@@ -97,7 +101,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
 
       Some(t) => {
         debug!("resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
-               id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t));
+               id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         match fcx.opt_node_ty_substs(id) {
           Some(ref substs) => {

@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::c_uint;
-use base::*;
-use common::*;
-use type_of::*;
-use build::*;
-use driver::session::{session, expect};
-use syntax::{ast, ast_map};
-use ast_map::{path, path_mod, path_name, node_id_to_str};
-use syntax::ast_util::local_def;
-use metadata::csearch;
 use back::{link, abi};
+use lib::llvm::llvm::LLVMGetParam;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
-use lib::llvm::llvm::LLVMGetParam;
-use std::map::HashMap;
+use metadata::csearch;
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::callee::*;
+use middle::trans::common::*;
+use middle::trans::expr::{SaveIn, Ignore};
+use middle::trans::type_of::*;
 use util::ppaux::{ty_to_str, tys_to_str};
-use callee::*;
+
+use core::libc::c_uint;
+use std::map::HashMap;
+use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
+use syntax::ast_util::local_def;
 use syntax::print::pprust::expr_to_str;
-use expr::{SaveIn, Ignore};
+use syntax::{ast, ast_map};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

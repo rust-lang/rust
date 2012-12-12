@@ -42,26 +42,25 @@ extern mod std(vers = "0.5");
 extern mod rustc(vers = "0.5");
 extern mod syntax(vers = "0.5");
 
-use core::*;
-
 #[legacy_exports]
 mod pgp;
 
-use syntax::{ast, codemap, parse, visit, attr};
-use syntax::diagnostic::span_handler;
-use codemap::span;
-use rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
-                                     get_cargo_sysroot, libdir};
-use syntax::diagnostic;
+use rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest};
+use rustc::metadata::filesearch::{get_cargo_sysroot, libdir};
 
-use result::{Ok, Err};
-use io::WriterUtil;
-use send_map::linear::LinearMap;
+use core::*;
+
+use core::dvec::DVec;
+use core::io::WriterUtil;
+use core::result::{Ok, Err};
+use core::send_map::linear::LinearMap;
+use std::getopts::{optflag, optopt, opt_present};
+use std::map::HashMap;
 use std::{map, json, tempfile, term, sort, getopts};
-use map::HashMap;
-use to_str::to_str;
-use getopts::{optflag, optopt, opt_present};
-use dvec::DVec;
+use syntax::codemap::span;
+use syntax::diagnostic::span_handler;
+use syntax::diagnostic;
+use syntax::{ast, codemap, parse, visit, attr};
 
 struct Package {
     name: ~str,

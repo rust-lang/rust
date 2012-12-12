@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::const_eval::{compare_const_vals, lookup_const_by_id};
+use middle::const_eval::{eval_const_expr, const_val, const_int, const_bool};
+use middle::pat_util::*;
+use middle::ty::*;
+use middle::ty;
+use middle::typeck::method_map;
+use util::ppaux::ty_to_str;
+
+use std::map::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
-use const_eval::{eval_const_expr, const_val, const_int, const_bool,
-                 compare_const_vals, lookup_const_by_id};
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
-use util::ppaux::ty_to_str;
-use pat_util::*;
 use syntax::visit;
-use middle::ty;
-use middle::ty::*;
-use middle::typeck::method_map;
-use std::map::HashMap;
 
 struct AltCheckCtxt {
     tcx: ty::ctxt,

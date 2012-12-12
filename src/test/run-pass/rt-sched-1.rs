@@ -10,8 +10,6 @@
 
 // Tests of the runtime's scheduler interface
 
-use ptr::is_null;
-
 type sched_id = int;
 type task_id = *libc::c_void;
 

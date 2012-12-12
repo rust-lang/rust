@@ -8,26 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::c_uint;
-use syntax::ast;
-use syntax::ast_util;
+use back::abi;
+use back::link::{mangle_internal_name_by_path_and_seq};
+use back::link::{mangle_internal_name_by_path};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
-use common::*;
-use build::*;
-use base::*;
-use type_of::*;
-use back::abi;
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::common::*;
+use middle::trans::datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
+use middle::trans::type_of::*;
+use util::ppaux::ty_to_str;
+
+use core::libc::c_uint;
+use std::map::HashMap;
+use syntax::ast;
+use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
-use back::link::{
-    mangle_internal_name_by_path,
-    mangle_internal_name_by_path_and_seq};
-use util::ppaux::ty_to_str;
-use syntax::ast_map::{path, path_mod, path_name};
-use driver::session::session;
-use std::map::HashMap;
-use datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
 
 // ___Good to know (tm)__________________________________________________
 //

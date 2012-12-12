@@ -313,6 +313,16 @@ enum XrayFlag {
     Xray        //< Private items can be accessed.
 }
 
+enum UseLexicalScopeFlag {
+    DontUseLexicalScope,
+    UseLexicalScope
+}
+
+struct ModulePrefixResult {
+    result: ResolveResult<@Module>,
+    prefix_len: uint
+}
+
 impl XrayFlag : cmp::Eq {
     pure fn eq(&self, other: &XrayFlag) -> bool {
         ((*self) as uint) == ((*other) as uint)
@@ -2108,9 +2118,10 @@ impl Resolver {
         } else {
             // First, resolve the module path for the directive, if necessary.
             match self.resolve_module_path_for_import(module_,
-                                                    module_path,
-                                                    NoXray,
-                                                    import_directive.span) {
+                                                      module_path,
+                                                      NoXray,
+                                                      DontUseLexicalScope,
+                                                      import_directive.span) {
 
                 Failed => {
                     resolution_result = Failed;
@@ -2650,8 +2661,11 @@ impl Resolver {
 
         while index < module_path_len {
             let name = (*module_path).get_elt(index);
-            match self.resolve_name_in_module(search_module, name, TypeNS,
-                                              xray) {
+            match self.resolve_name_in_module(search_module,
+                                              name,
+                                              TypeNS,
+                                              xray,
+                                              false) {
                 Failed => {
                     self.session.span_err(span, ~"unresolved name");
                     return Failed;
@@ -2702,12 +2716,13 @@ impl Resolver {
     }
 
     /**
-     * Attempts to resolve the module part of an import directive rooted at
-     * the given module.
+     * Attempts to resolve the module part of an import directive or path
+     * rooted at the given module.
      */
     fn resolve_module_path_for_import(module_: @Module,
                                       module_path: @DVec<ident>,
                                       xray: XrayFlag,
+                                      use_lexical_scope: UseLexicalScopeFlag,
                                       span: span)
                                    -> ResolveResult<@Module> {
 
@@ -2722,9 +2737,20 @@ impl Resolver {
         // The first element of the module path must be in the current scope
         // chain.
 
-        let first_element = (*module_path).get_elt(0);
+        let resolve_result = match use_lexical_scope {
+            DontUseLexicalScope => {
+                self.resolve_module_prefix(module_, module_path)
+            }
+            UseLexicalScope => {
+                let result = self.resolve_module_in_lexical_scope(
+                    module_,
+                    module_path.get_elt(0));
+                ModulePrefixResult { result: result, prefix_len: 1 }
+            }
+        };
+
         let mut search_module;
-        match self.resolve_module_in_lexical_scope(module_, first_element) {
+        match resolve_result.result {
             Failed => {
                 self.session.span_err(span, ~"unresolved name");
                 return Failed;
@@ -2740,10 +2766,10 @@ impl Resolver {
         }
 
         return self.resolve_module_path_from_root(search_module,
-                                               module_path,
-                                               1,
-                                               xray,
-                                               span);
+                                                  module_path,
+                                                  resolve_result.prefix_len,
+                                                  xray,
+                                                  span);
     }
 
     fn resolve_item_in_lexical_scope(module_: @Module,
@@ -2811,8 +2837,11 @@ impl Resolver {
             }
 
             // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace,
-                                            Xray) {
+            match self.resolve_name_in_module(search_module,
+                                              name,
+                                              namespace,
+                                              Xray,
+                                              false) {
                 Failed => {
                     // Continue up the search chain.
                 }
@@ -2832,9 +2861,15 @@ impl Resolver {
         }
     }
 
+    /** Resolves a module name in the current lexical scope. */
     fn resolve_module_in_lexical_scope(module_: @Module, name: ident)
                                     -> ResolveResult<@Module> {
-        match self.resolve_item_in_lexical_scope(module_, name, TypeNS) {
+        // If this module is an anonymous module, resolve the item in the
+        // lexical scope. Otherwise, resolve the item from the crate root.
+        let resolve_result = self.resolve_item_in_lexical_scope(module_,
+                                                                name,
+                                                                TypeNS);
+        match resolve_result {
             Success(target) => {
                 match target.bindings.type_def {
                     Some(ref type_def) => {
@@ -2870,6 +2905,102 @@ impl Resolver {
         }
     }
 
+    /**
+     * Resolves a "module prefix". A module prefix is one of (a) the name of a
+     * module; (b) "self::"; (c) some chain of "super::".
+     */
+    fn resolve_module_prefix(module_: @Module,
+                             module_path: @DVec<ident>)
+                          -> ModulePrefixResult {
+        let interner = self.session.parse_sess.interner;
+
+        let mut containing_module = self.graph_root.get_module();
+        let mut i = 0;
+        loop {
+            if *interner.get(module_path.get_elt(i)) == ~"self" {
+                containing_module = module_;
+                i += 1;
+                break;
+            }
+            if *interner.get(module_path.get_elt(i)) == ~"super" {
+                match containing_module.parent_link {
+                    NoParentLink => {
+                        return ModulePrefixResult {
+                            result: Failed,
+                            prefix_len: i
+                        };
+                    }
+                    BlockParentLink(new_module, _) |
+                    ModuleParentLink(new_module, _) => {
+                        containing_module = new_module;
+                    }
+                }
+                i += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Is the containing module the current module? If so, we allow
+        // globs to be unresolved.
+        let allow_globs = core::managed::ptr_eq(containing_module, module_);
+
+        let name = module_path.get_elt(i);
+        let resolve_result = self.resolve_name_in_module(containing_module,
+                                                         name,
+                                                         TypeNS,
+                                                         Xray,
+                                                         allow_globs);
+        match resolve_result {
+            Success(target) => {
+                match target.bindings.type_def {
+                    Some(ref type_def) => {
+                        match (*type_def).module_def {
+                            None => {
+                                error!("!!! (resolving crate-relative \
+                                        module) module wasn't actually a \
+                                        module!");
+                                return ModulePrefixResult {
+                                    result: Failed,
+                                    prefix_len: i + 1
+                                };
+                            }
+                            Some(module_def) => {
+                                return ModulePrefixResult {
+                                    result: Success(module_def),
+                                    prefix_len: i + 1
+                                };
+                            }
+                        }
+                    }
+                    None => {
+                        error!("!!! (resolving crate-relative module) module
+                                wasn't actually a module!");
+                        return ModulePrefixResult {
+                            result: Failed,
+                            prefix_len: i + 1
+                        };
+                    }
+                }
+            }
+            Indeterminate => {
+                debug!("(resolving crate-relative module) indeterminate; \
+                        bailing");
+                return ModulePrefixResult {
+                    result: Indeterminate,
+                    prefix_len: i + 1
+                };
+            }
+            Failed => {
+                debug!("(resolving crate-relative module) failed to resolve");
+                return ModulePrefixResult {
+                    result: Failed,
+                    prefix_len: i + 1
+                };
+            }
+        }
+    }
+
     fn name_is_exported(module_: @Module, name: ident) -> bool {
         return !module_.legacy_exports ||
             module_.exported_names.size() == 0 ||
@@ -2884,7 +3015,8 @@ impl Resolver {
     fn resolve_name_in_module(module_: @Module,
                               name: ident,
                               namespace: Namespace,
-                              xray: XrayFlag)
+                              xray: XrayFlag,
+                              allow_globs: bool)
                            -> ResolveResult<Target> {
 
         debug!("(resolving name in module) resolving `%s` in `%s`",
@@ -2910,10 +3042,10 @@ impl Resolver {
             }
         }
 
-        // Next, check the module's imports. If the module has a glob, then
-        // we bail out; we don't know its imports yet.
-
-        if module_.glob_count > 0 {
+        // Next, check the module's imports. If the module has a glob and
+        // globs were not allowed, then we bail out; we don't know its imports
+        // yet.
+        if !allow_globs && module_.glob_count > 0 {
             debug!("(resolving name in module) module has glob; bailing out");
             return Indeterminate;
         }
@@ -4627,10 +4759,10 @@ impl Resolver {
 
         let mut containing_module;
         match self.resolve_module_path_for_import(self.current_module,
-                                                module_path_idents,
-                                                xray,
-                                                path.span) {
-
+                                                  module_path_idents,
+                                                  xray,
+                                                  UseLexicalScope,
+                                                  path.span) {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `%s`",

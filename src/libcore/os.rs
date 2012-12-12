@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers.src/libcore/os.rs
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -36,7 +36,7 @@ pub use libc::{close, fclose};
 
 use option::{Some, None};
 
-pub use consts::*;
+pub use os::consts::*;
 use task::TaskBuilder;
 
 // FIXME: move these to str perhaps? #2620
@@ -77,8 +77,8 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 }
 
 #[cfg(windows)]
-mod win32 {
-    use libc::DWORD;
+pub mod win32 {
+    use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
@@ -224,7 +224,7 @@ mod global_env {
 
         #[cfg(windows)]
         pub fn getenv(n: &str) -> Option<~str> {
-            use win32::*;
+            use os::win32::*;
             do as_utf16_p(n) |u| {
                 do fill_utf16_buf_and_decode() |buf, sz| {
                     libc::GetEnvironmentVariableW(u, buf, sz)
@@ -245,7 +245,7 @@ mod global_env {
 
         #[cfg(windows)]
         pub fn setenv(n: &str, v: &str) {
-            use win32::*;
+            use os::win32::*;
             do as_utf16_p(n) |nbuf| {
                 do as_utf16_p(v) |vbuf| {
                     libc::SetEnvironmentVariableW(nbuf, vbuf);
@@ -403,7 +403,7 @@ pub fn self_exe_path() -> Option<Path> {
 
     #[cfg(windows)]
     fn load_self() -> Option<~str> {
-        use win32::*;
+        use os::win32::*;
         do fill_utf16_buf_and_decode() |buf, sz| {
             libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
         }
@@ -566,7 +566,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 
     #[cfg(windows)]
     fn mkdir(p: &Path, _mode: c_int) -> bool {
-        use win32::*;
+        use os::win32::*;
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
             libc::CreateDirectoryW(buf, unsafe {
@@ -614,7 +614,7 @@ pub fn remove_dir(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn rmdir(p: &Path) -> bool {
-        use win32::*;
+        use os::win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::RemoveDirectoryW(buf) != (0 as libc::BOOL)
         };
@@ -633,7 +633,7 @@ pub fn change_dir(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
-        use win32::*;
+        use os::win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
         };
@@ -653,7 +653,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
 
     #[cfg(windows)]
     fn do_copy_file(from: &Path, to: &Path) -> bool {
-        use win32::*;
+        use os::win32::*;
         return do as_utf16_p(from.to_str()) |fromp| {
             do as_utf16_p(to.to_str()) |top| {
                 libc::CopyFileW(fromp, top, (0 as libc::BOOL)) !=
@@ -713,7 +713,7 @@ pub fn remove_file(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn unlink(p: &Path) -> bool {
-        use win32::*;
+        use os::win32::*;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::DeleteFileW(buf) != (0 as libc::BOOL)
         };

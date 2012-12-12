@@ -8,46 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use c = metadata::common;
+use cstore = metadata::cstore;
+use driver::session::Session;
+use e = metadata::encoder;
+use metadata::decoder;
+use metadata::encoder;
+use metadata::tydecode;
+use metadata::tyencode;
+use middle::freevars::freevar_entry;
+use middle::typeck::{method_origin, method_map_entry, vtable_res};
+use middle::typeck::{vtable_origin};
+use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
 
+use reader = std::ebml::reader;
+use std::ebml::reader::get_doc;
+use std::ebml::writer::Serializer;
+use std::ebml;
+use std::map::HashMap;
+use std::serialization::{DeserializerHelpers, deserialize};
+use std::serialization::{Serializable, SerializerHelpers};
+use std::serialization;
 use syntax::ast;
-use syntax::fold;
-use syntax::fold::*;
-use syntax::visit;
 use syntax::ast_map;
 use syntax::ast_util;
 use syntax::codemap::span;
-use std::ebml;
-use writer = std::ebml::writer;
-use reader = std::ebml::reader;
-use reader::get_doc;
-use writer::Serializer;
-use std::map::HashMap;
-use std::serialization;
-use std::serialization::{Serializable,
-                         SerializerHelpers,
-                         DeserializerHelpers,
-                         deserialize};
-use middle::{ty, typeck};
-use middle::typeck::{method_origin, method_map_entry,
-                     vtable_res,
-                     vtable_origin};
-use driver::session::Session;
-use middle::freevars::freevar_entry;
-use c = metadata::common;
-use e = metadata::encoder;
-use cstore = metadata::cstore;
-use metadata::encoder;
-use metadata::decoder;
-use metadata::tyencode;
-use metadata::tydecode;
-
-
-// used in testing:
-use syntax::diagnostic;
 use syntax::codemap;
+use syntax::diagnostic;
+use syntax::fold::*;
+use syntax::fold;
 use syntax::parse;
 use syntax::print::pprust;
+use syntax::visit;
+use writer = std::ebml::writer;
 
 export maps;
 export encode_inlined_item;

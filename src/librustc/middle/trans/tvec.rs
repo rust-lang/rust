@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
-use lib::llvm::{ValueRef, TypeRef};
 use back::abi;
-use syntax::codemap::span;
-use shape::llsize_of;
-use build::*;
-use common::*;
-use util::ppaux::ty_to_str;
-use expr::{Dest, SaveIn, Ignore};
-use datum::*;
-use syntax::print::pprust::{expr_to_str};
+use lib::llvm::{ValueRef, TypeRef};
+use middle::trans::build::*;
+use middle::trans::common::*;
+use middle::trans::datum::*;
+use middle::trans::expr::{Dest, Ignore, SaveIn};
+use middle::trans::shape::llsize_of;
 use util::common::indenter;
+use util::ppaux::ty_to_str;
+
+use syntax::ast;
+use syntax::codemap::span;
+use syntax::print::pprust::{expr_to_str};
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an

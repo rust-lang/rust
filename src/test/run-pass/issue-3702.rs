@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::println;
-
 fn main() {
   trait Text {
     fn to_str(&self) -> ~str;
   }
 
   fn to_string(t: Text) {
-    println(t.to_str());
+    io::println(t.to_str());
   }
 
 }

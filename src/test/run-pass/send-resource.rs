@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use task::*;
-use comm::*;
-
 struct test {
   f: int,
 }
@@ -26,12 +23,12 @@ fn test(f: int) -> test {
 }
 
 fn main() {
-    let p = Port();
-    let c = Chan(&p);
+    let p = core::comm::Port();
+    let c = core::comm::Chan(&p);
 
-    do spawn() {
-        let p = Port();
-        c.send(Chan(&p));
+    do task::spawn() {
+        let p = core::comm::Port();
+        c.send(core::comm::Chan(&p));
 
         let _r = p.recv();
     }

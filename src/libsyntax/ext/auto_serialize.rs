@@ -88,7 +88,7 @@ node twice.
 
 */
 
-use base::*;
+use ext::base::*;
 use codemap::span;
 use std::map;
 use std::map::HashMap;

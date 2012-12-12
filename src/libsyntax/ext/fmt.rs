@@ -16,7 +16,7 @@
  * compiler syntax extension plugin interface.
  */
 use extfmt::ct::*;
-use base::*;
+use ext::base::*;
 use codemap::span;
 use ext::build::*;
 export expand_syntax_ext;

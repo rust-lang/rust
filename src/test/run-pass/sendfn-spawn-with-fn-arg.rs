@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-
-use comm::Chan;
-use comm::send;
-
 fn main() { test05(); }
 
 fn test05_start(&&f: fn~(int)) {

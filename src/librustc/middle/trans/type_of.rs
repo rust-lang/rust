@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::*;
-use lib::llvm::{TypeRef};
-use syntax::ast;
 use lib::llvm::llvm;
-use driver::session::session;
+use lib::llvm::{TypeRef};
+use middle::trans::common::*;
+
 use std::map::HashMap;
+use syntax::ast;
 
 export type_of;
 export type_of_dtor;

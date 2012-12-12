@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use base::{ext_ctxt, mac_result, mr_any, mr_def, normal_tt};
+use ext::base::{ext_ctxt, mac_result, mr_any, mr_def, normal_tt};
 use codemap::span;
 use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
 use parse::lexer::{new_tt_reader, reader};
 use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 use parse::parser::Parser;
-use macro_parser::{parse, parse_or_else, success, failure, named_match,
-                      matched_seq, matched_nonterminal, error};
+use ext::tt::macro_parser::{parse, parse_or_else, success, failure,
+                            named_match, matched_seq, matched_nonterminal,
+                            error};
 use std::map::HashMap;
 use parse::token::special_idents;
 use ast_util::dummy_sp;

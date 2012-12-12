@@ -17,15 +17,16 @@
 // closure.
 
 use lib::llvm::ValueRef;
-use syntax::ast;
-use datum::Datum;
-use common::{block, node_id_type_params};
-use build::*;
-use base::{get_item_val, trans_external_path};
-use syntax::visit;
-use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
-use datum::*;
+use middle::trans::base::{get_item_val, trans_external_path};
+use middle::trans::build::*;
+use middle::trans::common::{block, node_id_type_params};
+use middle::trans::datum::*;
+use middle::trans::datum::Datum;
 use util::common::indenter;
+
+use syntax::ast;
+use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
+use syntax::visit;
 
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure

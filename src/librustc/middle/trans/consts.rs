@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::*;
+use middle::trans::base::get_insn_ctxt;
+use middle::trans::common::*;
+
 use syntax::{ast, ast_util, codemap, ast_map};
-use base::get_insn_ctxt;
 
 fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {

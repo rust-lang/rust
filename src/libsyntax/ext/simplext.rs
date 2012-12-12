@@ -12,7 +12,7 @@ use codemap::span;
 use std::map::HashMap;
 use dvec::DVec;
 
-use base::*;
+use ext::base::*;
 
 use fold::*;
 use ast_util::respan;

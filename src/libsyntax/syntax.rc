@@ -31,6 +31,11 @@ extern mod std(vers = "0.5");
 
 use core::*;
 
+pub mod syntax {
+    pub use ext;
+    pub use parse;
+}
+
 #[legacy_exports]
 mod attr;
 #[legacy_exports]

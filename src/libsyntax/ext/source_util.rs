@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use base::*;
+use ext::base::*;
 use codemap::{span, Loc, FileMap};
 use print::pprust;
-use build::{mk_base_vec_e,mk_uint,mk_u8,mk_uniq_str};
+use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_uniq_str};
 
 export expand_line;
 export expand_col;

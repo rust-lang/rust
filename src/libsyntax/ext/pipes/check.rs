@@ -31,7 +31,7 @@ that.
 
 use ext::base::ext_ctxt;
 
-use proto::{state, protocol, next_state};
+use ext::pipes::proto::{state, protocol, next_state};
 
 impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_proto(_proto: protocol,

@@ -13,19 +13,19 @@ use print::pprust::expr_to_str;
 use result::Result;
 use either::{Either, Left, Right};
 use std::map::HashMap;
-use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
-            INTERPOLATED, special_idents};
+use parse::token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
+                   INTERPOLATED, special_idents};
 use codemap::{span,FssNone, BytePos};
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-use lexer::reader;
-use prec::{as_prec, token_to_binop};
-use attr::parser_attr;
-use common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                seq_sep_none, token_to_str};
+use parse::lexer::reader;
+use parse::prec::{as_prec, token_to_binop};
+use parse::attr::parser_attr;
+use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
+                    seq_sep_none, token_to_str};
 use dvec::DVec;
 use vec::{push};
-use obsolete::{
+use parse::obsolete::{
     ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,

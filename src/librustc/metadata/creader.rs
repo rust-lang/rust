@@ -17,8 +17,8 @@ use syntax::visit;
 use syntax::codemap::span;
 use std::map::HashMap;
 use syntax::print::pprust;
-use filesearch::FileSearch;
-use common::*;
+use metadata::filesearch::FileSearch;
+use metadata::common::*;
 use dvec::DVec;
 use syntax::parse::token::ident_interner;
 

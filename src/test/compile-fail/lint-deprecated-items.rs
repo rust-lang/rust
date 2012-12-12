@@ -1,3 +1,4 @@
+// xfail-test
 #[forbid(deprecated_item)];
 
 type Bar = uint;

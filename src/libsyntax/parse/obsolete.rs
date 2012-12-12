@@ -20,7 +20,7 @@ removed.
 use codemap::span;
 use ast::{expr, expr_lit, lit_nil};
 use ast_util::{respan};
-use token::Token;
+use parse::token::Token;
 
 /// The specific types of unsupported syntax
 pub enum ObsoleteSyntax {
