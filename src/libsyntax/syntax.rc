@@ -75,9 +75,6 @@ mod ext {
     #[legacy_exports]
     #[path = "ext/expand.rs"]
     mod expand;
-    #[legacy_exports]
-    #[path = "ext/qquote.rs"]
-    mod qquote;
 
     #[path = "ext/quote.rs"]
     mod quote;

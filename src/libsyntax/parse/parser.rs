@@ -81,13 +81,6 @@ use ast::{_mod, add, arg, arm, attribute,
 
 export Parser;
 
-// FIXME (#3726): #ast expects to find this here but it's actually
-// defined in `parse` Fixing this will be easier when we have export
-// decls on individual items -- then parse can export this publicly, and
-// everything else crate-visibly.
-use parse::parse_from_source_str;
-export parse_from_source_str;
-
 export item_or_view_item, iovi_none, iovi_view_item, iovi_item;
 
 enum restriction {

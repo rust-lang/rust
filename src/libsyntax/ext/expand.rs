@@ -14,7 +14,6 @@ use ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
           tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use fold::*;
 use ext::base::*;
-use ext::qquote::{qq_helper};
 use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
 
 
@@ -169,7 +168,12 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
               None | Some(normal(_)) | Some(macro_defining(_))
               | Some(normal_tt(_)) | Some(item_tt(*)) => items,
               Some(item_decorator(dec_fn)) => {
-                dec_fn(cx, attr.span, attr.node.value, items)
+                  cx.bt_push(ExpandedFrom({call_site: attr.span,
+                                           callie: {name: copy mname,
+                                                    span: None}}));
+                  let r = dec_fn(cx, attr.span, attr.node.value, items);
+                  cx.bt_pop();
+                  r
               }
             }
         }
