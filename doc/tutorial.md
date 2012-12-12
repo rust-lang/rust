@@ -1914,9 +1914,9 @@ types by the compiler, and may not be overridden:
   `copy` operator. All types are copyable unless they have destructors or
   contain types with destructors.
 
-* `Send` - Sendable (owned) types. All types are sendable unless they
-  contain managed boxes, managed closures, or otherwise managed
-  types. Sendable types may or may not be copyable.
+* `Owned` - Owned types. Types are owned unless they contain managed
+  boxes, managed closures, or borrowed pointers.  Owned types may or
+  may not be copyable.
 
 * `Const` - Constant (immutable) types. These are types that do not contain
   mutable fields.
@@ -1949,7 +1949,7 @@ may call it.
 ## Declaring and implementing traits
 
 A trait consists of a set of methods, without bodies, or may be empty,
-as is the case with `Copy`, `Send`, and `Const`. For example, we could
+as is the case with `Copy`, `Owned`, and `Const`. For example, we could
 declare the trait `Printable` for things that can be printed to the
 console, with a single method:
 
