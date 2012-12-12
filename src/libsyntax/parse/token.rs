@@ -49,7 +49,6 @@ enum Token {
     AT,
     DOT,
     DOTDOT,
-    ELLIPSIS,
     COMMA,
     SEMI,
     COLON,
@@ -137,7 +136,6 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
       AT => ~"@",
       DOT => ~".",
       DOTDOT => ~"..",
-      ELLIPSIS => ~"...",
       COMMA => ~",",
       SEMI => ~";",
       COLON => ~":",
@@ -575,12 +573,6 @@ impl Token : cmp::Eq {
             DOTDOT => {
                 match (*other) {
                     DOTDOT => true,
-                    _ => false
-                }
-            }
-            ELLIPSIS => {
-                match (*other) {
-                    ELLIPSIS => true,
                     _ => false
                 }
             }

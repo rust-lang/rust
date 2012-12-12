@@ -379,15 +379,8 @@ fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
     for exprs.each |ex| { (v.visit_expr)(*ex, e, v); }
 }
 
-fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
-    match m.node {
-      ast::mac_invoc(_, arg, _) => {
-        option::map(&arg, |arg| (v.visit_expr)(*arg, e, v)); }
-      ast::mac_invoc_tt(*) => { /* no user-serviceable parts inside */ }
-      ast::mac_ellipsis => (),
-      ast::mac_aq(*) => { /* FIXME: maybe visit (Issue #2340) */ }
-      ast::mac_var(_) => ()
-    }
+fn visit_mac<E>(_m: mac, _e: E, _v: vt<E>) {
+    /* no user-serviceable parts inside */
 }
 
 fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {

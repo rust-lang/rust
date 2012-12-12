@@ -100,9 +100,6 @@ mod ext {
 
 
     #[legacy_exports]
-    #[path = "ext/simplext.rs"]
-    mod simplext;
-    #[legacy_exports]
     #[path = "ext/fmt.rs"]
     mod fmt;
     #[legacy_exports]
