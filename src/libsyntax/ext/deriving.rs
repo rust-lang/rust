@@ -710,9 +710,10 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
 
             // Create the nonmatching pattern body.
             let nonmatching_expr = build::mk_bool(cx, span, !is_eq);
-            let nonmatching_body_block = build::mk_simple_block(cx,
-                                                                span,
-                                                                nonmatching_expr);
+            let nonmatching_body_block =
+                build::mk_simple_block(cx,
+                                       span,
+                                       nonmatching_expr);
 
             // Create the nonmatching arm.
             let nonmatching_arm = {
