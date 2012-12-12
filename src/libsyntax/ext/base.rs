@@ -109,8 +109,6 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"log_syntax",
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(~"ast",
-                            builtin(ext::qquote::expand_ast));
     syntax_expanders.insert(~"deriving_eq",
                             item_decorator(
                                 ext::deriving::expand_deriving_eq));
