@@ -2740,11 +2740,11 @@ The kinds are:
 `Const`
   : Types of this kind are deeply immutable;
     they contain no mutable memory locations directly or indirectly via pointers.
-`Send`
+`Owned`
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
-    structural types containing only other sendable types.
-`Owned`
+    structural types containing only other owned types. All `Owned` types are `Static`.
+`Static`
   : Types of this kind do not contain any borrowed pointers;
     this can be a useful guarantee for code that breaks borrowing assumptions using [`unsafe` operations](#unsafe-functions).
 `Copy`
@@ -2833,10 +2833,10 @@ frame they are allocated within.
 A task owns all memory it can *safely* reach through local variables,
 as well as managed, owning and borrowed pointers.
 
-When a task sends a value that has the `Send` trait to another task,
+When a task sends a value that has the `Owned` trait to another task,
 it loses ownership of the value sent and can no longer refer to it.
 This is statically guaranteed by the combined use of "move semantics",
-and the compiler-checked _meaning_ of the `Send` trait:
+and the compiler-checked _meaning_ of the `Owned` trait:
 it is only instantiated for (transitively) sendable kinds of data constructor and pointers,
 never including managed or borrowed pointers.
 
@@ -2971,7 +2971,7 @@ These include:
   - read-only and read-write shared variables with various safe mutual exclusion patterns
   - simple locks and semaphores
 
-When such facilities carry values, the values are restricted to the [`Send` type-kind](#type-kinds).
+When such facilities carry values, the values are restricted to the [`Owned` type-kind](#type-kinds).
 Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
 Thus access to an entire data structure can be mediated through its owning "root" value;
 no further locking or copying is required to avoid data races within the substructure of such a value.
