@@ -72,8 +72,10 @@ array_list<T>::push(T value) {
     if (_size == _capacity) {
         size_t new_capacity = _capacity * 2;
         void* buffer = realloc(_data, new_capacity * sizeof(T));
-        if (buffer == NULL)
-            throw std::bad_alloc();
+        if (buffer == NULL) {
+            fprintf(stderr, "array_list::push> Out of memory allocating %ld bytes", new_capacity * sizeof(T));
+            abort();
+        }
         _data = (T *) buffer;
         _capacity = new_capacity;
     }
