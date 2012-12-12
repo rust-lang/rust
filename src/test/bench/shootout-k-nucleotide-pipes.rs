@@ -157,11 +157,11 @@ fn main() {
         let sz = *sz;
         let mut stream = None;
         stream <-> streams[ii];
-        let (to_parent_, from_child_) = option::unwrap(move stream);
+        let (from_child_, to_parent_) = option::unwrap(move stream);
 
         from_child.push(move from_child_);
 
-        let (to_child, from_parent) = pipes::stream();
+        let (from_parent, to_child) = pipes::stream();
 
         do task::spawn_with(move from_parent) |move to_parent_, from_parent| {
             make_sequence_processor(sz, from_parent, to_parent_);

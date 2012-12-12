@@ -55,8 +55,8 @@ fn server(requests: Port<request>, responses: pipes::Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (to_parent, from_child) = pipes::stream();
-    let (to_child, from_parent) = pipes::stream();
+    let (from_child, to_parent) = pipes::stream();
+    let (from_parent, to_child) = pipes::stream();
 
     let to_child = SharedChan(move to_child);
 

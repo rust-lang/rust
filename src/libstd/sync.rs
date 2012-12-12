@@ -34,7 +34,7 @@ struct Waitqueue { head: pipes::Port<SignalEnd>,
                    tail: pipes::Chan<SignalEnd> }
 
 fn new_waitqueue() -> Waitqueue {
-    let (block_tail, block_head) = pipes::stream();
+    let (block_head, block_tail) = pipes::stream();
     Waitqueue { head: move block_head, tail: move block_tail }
 }
 
@@ -733,7 +733,7 @@ mod tests {
     #[test]
     fn test_sem_as_cvar() {
         /* Child waits and parent signals */
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
         let s = ~semaphore(0);
         let s2 = ~s.clone();
         do task::spawn |move s2, move c| {
@@ -745,7 +745,7 @@ mod tests {
         let _ = p.recv();
 
         /* Parent waits and child signals */
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
         let s = ~semaphore(0);
         let s2 = ~s.clone();
         do task::spawn |move s2, move p| {
@@ -762,8 +762,8 @@ mod tests {
         // time, and shake hands.
         let s = ~semaphore(2);
         let s2 = ~s.clone();
-        let (c1,p1) = pipes::stream();
-        let (c2,p2) = pipes::stream();
+        let (p1,c1) = pipes::stream();
+        let (p2,c2) = pipes::stream();
         do task::spawn |move s2, move c1, move p2| {
             do s2.access {
                 let _ = p2.recv();
@@ -782,7 +782,7 @@ mod tests {
         do task::spawn_sched(task::ManualThreads(1)) {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
-            let (c,p) = pipes::stream();
+            let (p,c) = pipes::stream();
             let child_data = ~mut Some((move s2, move c));
             do s.access {
                 let (s2,c) = option::swap_unwrap(child_data);
@@ -804,7 +804,7 @@ mod tests {
     fn test_mutex_lock() {
         // Unsafely achieve shared state, and do the textbook
         // "load tmp = move ptr; inc tmp; store ptr <- tmp" dance.
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
         let m = ~Mutex();
         let m2 = ~m.clone();
         let mut sharedstate = ~0;
@@ -847,7 +847,7 @@ mod tests {
             cond.wait();
         }
         // Parent wakes up child
-        let (chan,port) = pipes::stream();
+        let (port,chan) = pipes::stream();
         let m3 = ~m.clone();
         do task::spawn |move chan, move m3| {
             do m3.lock_cond |cond| {
@@ -870,7 +870,7 @@ mod tests {
 
         for num_waiters.times {
             let mi = ~m.clone();
-            let (chan, port) = pipes::stream();
+            let (port, chan) = pipes::stream();
             ports.push(move port);
             do task::spawn |move chan, move mi| {
                 do mi.lock_cond |cond| {
@@ -932,7 +932,7 @@ mod tests {
         let m2 = ~m.clone();
 
         let result: result::Result<(),()> = do task::try |move m2| {
-            let (c,p) = pipes::stream();
+            let (p,c) = pipes::stream();
             do task::spawn |move p| { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
                 task::yield();
@@ -954,12 +954,12 @@ mod tests {
     fn test_mutex_killed_broadcast() {
         let m = ~Mutex();
         let m2 = ~m.clone();
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
 
         let result: result::Result<(),()> = do task::try |move c, move m2| {
             let mut sibling_convos = ~[];
             for 2.times {
-                let (c,p) = pipes::stream();
+                let (p,c) = pipes::stream();
                 let c = ~mut Some(move c);
                 sibling_convos.push(move p);
                 let mi = ~m2.clone();
@@ -1022,7 +1022,7 @@ mod tests {
         let result = do task::try {
             let m = ~mutex_with_condvars(2);
             let m2 = ~m.clone();
-            let (c,p) = pipes::stream();
+            let (p,c) = pipes::stream();
             do task::spawn |move m2, move c| {
                 do m2.lock_cond |cond| {
                     c.send(());
@@ -1082,7 +1082,7 @@ mod tests {
                              mode2: RWlockMode) {
         // Test mutual exclusion between readers and writers. Just like the
         // mutex mutual exclusion test, a ways above.
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
         let x2 = ~x.clone();
         let mut sharedstate = ~0;
         let ptr = ptr::addr_of(&(*sharedstate));
@@ -1127,8 +1127,8 @@ mod tests {
                              mode2: RWlockMode, make_mode2_go_first: bool) {
         // Much like sem_multi_resource.
         let x2 = ~x.clone();
-        let (c1,p1) = pipes::stream();
-        let (c2,p2) = pipes::stream();
+        let (p1,c1) = pipes::stream();
+        let (p2,c2) = pipes::stream();
         do task::spawn |move c1, move x2, move p2| {
             if !make_mode2_go_first {
                 let _ = p2.recv(); // parent sends to us once it locks, or ...
@@ -1193,7 +1193,7 @@ mod tests {
             cond.wait();
         }
         // Parent wakes up child
-        let (chan,port) = pipes::stream();
+        let (port,chan) = pipes::stream();
         let x3 = ~x.clone();
         do task::spawn |move x3, move chan| {
             do x3.write_cond |cond| {
@@ -1229,7 +1229,7 @@ mod tests {
 
         for num_waiters.times {
             let xi = ~x.clone();
-            let (chan, port) = pipes::stream();
+            let (port, chan) = pipes::stream();
             ports.push(move port);
             do task::spawn |move chan, move xi| {
                 do lock_cond(xi, dg1) |cond| {

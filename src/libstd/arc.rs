@@ -471,7 +471,7 @@ mod tests {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = arc::ARC(v);
 
-        let (c, p) = pipes::stream();
+        let (p, c) = pipes::stream();
 
         do task::spawn() |move c| {
             let p = pipes::PortSet();
@@ -517,7 +517,7 @@ mod tests {
     fn test_arc_condvar_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
-        let (c,p) = pipes::stream();
+        let (p, c) = pipes::stream();
 
         do task::spawn_unlinked |move arc2, move p| {
             let _ = p.recv();
@@ -551,7 +551,7 @@ mod tests {
     fn test_mutex_arc_unwrap_poison() {
         let arc = MutexARC(1);
         let arc2 = ~(&arc).clone();
-        let (c,p) = pipes::stream();
+        let (p, c) = pipes::stream();
         do task::spawn |move c, move arc2| {
             do arc2.access |one| {
                 c.send(());
@@ -649,7 +649,7 @@ mod tests {
     fn test_rw_arc() {
         let arc = ~RWARC(0);
         let arc2 = ~arc.clone();
-        let (c,p) = pipes::stream();
+        let (p,c) = pipes::stream();
 
         do task::spawn |move arc2, move c| {
             do arc2.write |num| {
@@ -695,7 +695,7 @@ mod tests {
         // Reader tasks
         let mut reader_convos = ~[];
         for 10.times {
-            let ((rc1,rp1),(rc2,rp2)) = (pipes::stream(),pipes::stream());
+            let ((rp1,rc1),(rp2,rc2)) = (pipes::stream(),pipes::stream());
             reader_convos.push((move rc1, move rp2));
             let arcn = ~arc.clone();
             do task::spawn |move rp1, move rc2, move arcn| {
@@ -709,7 +709,7 @@ mod tests {
 
         // Writer task
         let arc2 = ~arc.clone();
-        let ((wc1,wp1),(wc2,wp2)) = (pipes::stream(),pipes::stream());
+        let ((wp1,wc1),(wp2,wc2)) = (pipes::stream(),pipes::stream());
         do task::spawn |move arc2, move wc2, move wp1| {
             wp1.recv();
             do arc2.write_cond |state, cond| {
