@@ -406,7 +406,6 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
         AT => "AT",
         DOT => "DOT",
         DOTDOT => "DOTDOT",
-        ELLIPSIS => "ELLIPSIS",
         COMMA => "COMMA",
         SEMI => "SEMI",
         COLON => "COLON",

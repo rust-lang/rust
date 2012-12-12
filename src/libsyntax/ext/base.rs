@@ -16,16 +16,16 @@ use ast_util::dummy_sp;
 
 // obsolete old-style #macro code:
 //
-//    syntax_expander, normal, macro_defining, macro_definer,
-//    builtin
+//    syntax_expander, normal, builtin
 //
 // new-style macro! tt code:
 //
 //    syntax_expander_tt, syntax_expander_tt_item, mac_result,
 //    normal_tt, item_tt
 //
-// also note that ast::mac has way too many cases and can probably
-// be trimmed down substantially.
+// also note that ast::mac used to have a bunch of extraneous cases and
+// is now probably a redundant AST node, can be merged with
+// ast::mac_invoc_tt.
 
 // second argument is the span to blame for general argument problems
 type syntax_expander_ =
@@ -34,10 +34,6 @@ type syntax_expander_ =
 type syntax_expander = {expander: syntax_expander_, span: Option<span>};
 
 type macro_def = {name: ~str, ext: syntax_extension};
-
-// macro_definer is obsolete, remove when #old_macros go away.
-type macro_definer =
-    fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
@@ -63,9 +59,6 @@ enum syntax_extension {
     // normal() is obsolete, remove when #old_macros go away.
     normal(syntax_expander),
 
-    // macro_defining() is obsolete, remove when #old_macros go away.
-    macro_defining(macro_definer),
-
     // #[auto_serialize] and such. will probably survive death of #old_macros
     item_decorator(item_decorator),
 
@@ -89,8 +82,6 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
         item_tt({expander: f, span: None})
     }
     let syntax_expanders = HashMap();
-    syntax_expanders.insert(~"macro",
-                            macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert(~"macro_rules",
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));

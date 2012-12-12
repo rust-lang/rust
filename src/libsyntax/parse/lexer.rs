@@ -515,11 +515,6 @@ fn next_token_inner(rdr: string_reader) -> token::Token {
             bump(rdr);
             return token::DOTDOT;
         }
-        if rdr.curr == '.' && nextch(rdr) == '.' {
-            bump(rdr);
-            bump(rdr);
-            return token::ELLIPSIS;
-        }
         return token::DOT;
       }
       '(' => { bump(rdr); return token::LPAREN; }

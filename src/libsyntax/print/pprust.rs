@@ -590,9 +590,6 @@ fn print_item(s: ps, &&item: @ast::item) {
         pclose(s);
         end(s);
       }
-      ast::item_mac(_) => {
-        fail ~"invalid item-position syntax bit"
-      }
     }
     (s.ann.post)(ann_node);
 }
@@ -1000,16 +997,6 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
 
 fn print_mac(s: ps, m: ast::mac) {
     match m.node {
-      ast::mac_invoc(path, arg, _body) => {
-        word(s.s, ~"#");
-        print_path(s, path, false);
-        match arg {
-          Some(@{node: ast::expr_vec(_, _), _}) => (),
-          _ => word(s.s, ~" ")
-        }
-        arg.iter(|a| print_expr(s, *a));
-        // FIXME: extension 'body' (#2339)
-      }
       ast::mac_invoc_tt(pth, ref tts) => {
         print_path(s, pth, false);
         word(s.s, ~"!");
@@ -1017,9 +1004,6 @@ fn print_mac(s: ps, m: ast::mac) {
         for (*tts).each() |tt| { print_tt(s, *tt); }
         pclose(s);
       }
-      ast::mac_ellipsis => word(s.s, ~"..."),
-      ast::mac_var(v) => word(s.s, fmt!("$%u", v)),
-      _ => { /* fixme */ }
     }
 }
 
