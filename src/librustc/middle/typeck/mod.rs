@@ -103,7 +103,6 @@ mod infer;
 mod collect;
 #[legacy_exports]
 mod coherence;
-mod deriving;
 
 #[auto_serialize]
 #[auto_deserialize]
@@ -391,7 +390,6 @@ fn check_crate(tcx: ty::ctxt,
                            });
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
-    deriving::check_deriving(ccx, crate);
 
     check::check_item_types(ccx, crate);
     check_for_main_fn(ccx);
