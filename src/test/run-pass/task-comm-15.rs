@@ -27,7 +27,7 @@ fn main() {
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
-    let (ch, p) = pipes::stream();
+    let (p, ch) = pipes::stream();
     task::spawn(|move ch| start(ch, 10));
     p.recv();
 }

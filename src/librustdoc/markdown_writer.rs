@@ -111,12 +111,12 @@ fn pandoc_writer(
         os::close(pipe_err.out);
         os::close(pipe_in.out);
 
-        let (stdout_ch, stdout_po) = pipes::stream();
+        let (stdout_po, stdout_ch) = pipes::stream();
         do task::spawn_sched(task::SingleThreaded) |move stdout_ch| {
             stdout_ch.send(readclose(pipe_out.in));
         }
 
-        let (stderr_ch, stderr_po) = pipes::stream();
+        let (stderr_po, stderr_ch) = pipes::stream();
         do task::spawn_sched(task::SingleThreaded) |move stderr_ch| {
             stderr_ch.send(readclose(pipe_err.in));
         }
@@ -149,7 +149,7 @@ fn readclose(fd: libc::c_int) -> ~str {
 }
 
 fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
-    let (setup_ch, setup_po) = pipes::stream();
+    let (setup_po, setup_ch) = pipes::stream();
     do task::spawn |move process, move setup_ch| {
         let po: comm::Port<WriteInstr> = comm::Port();
         let ch = comm::Chan(&po);
@@ -279,7 +279,7 @@ pub fn future_writer_factory(
     let markdown_po = comm::Port();
     let markdown_ch = comm::Chan(&markdown_po);
     let writer_factory = fn~(+page: doc::Page) -> Writer {
-        let (writer_ch, writer_po) = pipes::stream();
+        let (writer_po, writer_ch) = pipes::stream();
         do task::spawn |move writer_ch| {
             let (writer, future) = future_writer();
             writer_ch.send(move writer);
@@ -293,7 +293,7 @@ pub fn future_writer_factory(
 }
 
 fn future_writer() -> (Writer, future::Future<~str>) {
-    let (chan, port) = pipes::stream();
+    let (port, chan) = pipes::stream();
     let writer = fn~(move chan, +instr: WriteInstr) {
         chan.send(copy instr);
     };

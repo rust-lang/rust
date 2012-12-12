@@ -576,7 +576,7 @@ pub mod tests {
 
         for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
-            let (chan, port) = pipes::stream();
+            let (port, chan) = pipes::stream();
             futures.push(move port);
 
             do task::spawn |move total, move chan| {

@@ -340,7 +340,7 @@ impl TaskBuilder {
         }
 
         // Construct the future and give it to the caller.
-        let (notify_pipe_ch, notify_pipe_po) = stream::<TaskResult>();
+        let (notify_pipe_po, notify_pipe_ch) = stream::<TaskResult>();
 
         blk(move notify_pipe_po);
 
@@ -1211,7 +1211,7 @@ fn test_unkillable() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable_nested() {
-    let (ch, po) = pipes::stream();
+    let (po, ch) = pipes::stream();
 
     // We want to do this after failing
     do spawn_unlinked |move ch| {
@@ -1277,7 +1277,7 @@ fn test_child_doesnt_ref_parent() {
 
 #[test]
 fn test_sched_thread_per_core() {
-    let (chan, port) = pipes::stream();
+    let (port, chan) = pipes::stream();
 
     do spawn_sched(ThreadPerCore) |move chan| {
         let cores = rt::rust_num_threads();
@@ -1291,7 +1291,7 @@ fn test_sched_thread_per_core() {
 
 #[test]
 fn test_spawn_thread_on_demand() {
-    let (chan, port) = pipes::stream();
+    let (port, chan) = pipes::stream();
 
     do spawn_sched(ManualThreads(2)) |move chan| {
         let max_threads = rt::rust_sched_threads();
@@ -1299,7 +1299,7 @@ fn test_spawn_thread_on_demand() {
         let running_threads = rt::rust_sched_current_nonlazy_threads();
         assert(running_threads as int == 1);
 
-        let (chan2, port2) = pipes::stream();
+        let (port2, chan2) = pipes::stream();
 
         do spawn() |move chan2| {
             chan2.send(());
