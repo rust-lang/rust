@@ -150,7 +150,7 @@ come in a variety of forms, each one appropriate for a different use case. In
 what follows, we cover the most commonly used varieties.
 
 The simplest way to create a pipe is to use the `pipes::stream`
-function to create a `(Chan, Port)` pair. In Rust parlance, a *channel*
+function to create a `(Port, Chan)` pair. In Rust parlance, a *channel*
 is a sending endpoint of a pipe, and a *port* is the receiving
 endpoint. Consider the following example of calculating two results
 concurrently:
@@ -159,7 +159,7 @@ concurrently:
 use task::spawn;
 use pipes::{stream, Port, Chan};
 
-let (chan, port): (Chan<int>, Port<int>) = stream();
+let (port, chan): (Port<int>, Chan<int>) = stream();
 
 do spawn |move chan| {
     let result = some_expensive_computation();
@@ -179,7 +179,7 @@ a tuple into its component parts).
 
 ~~~~
 # use pipes::{stream, Chan, Port};
-let (chan, port): (Chan<int>, Port<int>) = stream();
+let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
 The child task will use the channel to send data to the parent task,
@@ -191,7 +191,7 @@ spawns the child task.
 # use task::spawn;
 # use pipes::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-# let (chan, port) = stream();
+# let (port, chan) = stream();
 do spawn |move chan| {
     let result = some_expensive_computation();
     chan.send(result);
@@ -211,7 +211,7 @@ port:
 ~~~~
 # use pipes::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
-# let (chan, port) = stream::<int>();
+# let (port, chan) = stream::<int>();
 # chan.send(0);
 some_other_expensive_computation();
 let result = port.recv();
@@ -227,7 +227,7 @@ following program is ill-typed:
 # use task::{spawn};
 # use pipes::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-let (chan, port) = stream();
+let (port, chan) = stream();
 
 do spawn |move chan| {
     chan.send(some_expensive_computation());
@@ -247,7 +247,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 # use task::spawn;
 use pipes::{stream, SharedChan};
 
-let (chan, port) = stream();
+let (port, chan) = stream();
 let chan = SharedChan(move chan);
 
 for uint::range(0, 3) |init_val| {
@@ -282,7 +282,7 @@ might look like the example below.
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
-    let (chan, port) = stream();
+    let (port, chan) = stream();
     do spawn |move chan| {
         chan.send(some_expensive_computation(init_val));
     }
@@ -397,7 +397,7 @@ before returning. Hence:
 # use task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
-let (sender, receiver): (Chan<int>, Port<int>) = stream();
+let (receiver, sender): (Port<int>, Chan<int>) = stream();
 do spawn |move receiver| {  // Bidirectionally linked
     // Wait for the supervised child task to exist.
     let message = receiver.recv();
