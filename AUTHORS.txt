@@ -54,6 +54,7 @@ Gonçalo Cabrita <_@gmcabrita.com>
 Graham Fawcett <fawcett@uwindsor.ca>
 Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
+Huon Wilson <dbau.pp+github@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
 Ivano Coppola <rgbfirefox@gmail.com>
 Jacob Harris Cryer Kragh <jhckragh@gmail.com>
