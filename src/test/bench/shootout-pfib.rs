@@ -50,7 +50,7 @@ fn fib(n: int) -> int {
         }
     }
 
-    let (ch, p) = pipes::stream();
+    let (p, ch) = pipes::stream();
     let _t = task::spawn(|move ch| pfib(ch, n) );
     p.recv()
 }

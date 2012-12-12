@@ -978,10 +978,10 @@ pub enum Port<T:Send> {
 These allow sending or receiving an unlimited number of messages.
 
 */
-pub fn stream<T:Send>() -> (Chan<T>, Port<T>) {
+pub fn stream<T:Send>() -> (Port<T>, Chan<T>) {
     let (c, s) = streamp::init();
 
-    (Chan_({ mut endp: Some(move c) }), Port_({ mut endp: Some(move s) }))
+    (Port_({ mut endp: Some(move s) }), Chan_({ mut endp: Some(move c) }))
 }
 
 impl<T: Send> Chan<T>: GenericChan<T> {
@@ -1070,7 +1070,7 @@ impl<T: Send> PortSet<T> {
     }
 
     fn chan() -> Chan<T> {
-        let (ch, po) = stream();
+        let (po, ch) = stream();
         self.add(move po);
         move ch
     }
@@ -1240,8 +1240,8 @@ pub mod rt {
 pub mod test {
     #[test]
     pub fn test_select2() {
-        let (c1, p1) = pipes::stream();
-        let (c2, p2) = pipes::stream();
+        let (p1, c1) = pipes::stream();
+        let (p2, c2) = pipes::stream();
 
         c1.send(~"abc");
 
@@ -1264,7 +1264,7 @@ pub mod test {
 
     #[test]
     fn test_peek_terminated() {
-        let (chan, port): (Chan<int>, Port<int>) = stream();
+        let (port, chan): (Port<int>, Chan<int>) = stream();
 
         {
             // Destroy the channel

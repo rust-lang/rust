@@ -64,8 +64,8 @@ impl<T: Send, U: Send> DuplexStream<T, U> : Selectable {
 pub fn DuplexStream<T: Send, U: Send>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
-    let (c2, p1) = pipes::stream();
-    let (c1, p2) = pipes::stream();
+    let (p1, c2) = pipes::stream();
+    let (p2, c1) = pipes::stream();
     (DuplexStream {
         chan: move c1,
         port: move p1
