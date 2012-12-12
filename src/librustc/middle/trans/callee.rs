@@ -223,8 +223,6 @@ fn trans_fn_ref_with_vtables(
     let must_monomorphise;
     if type_params.len() > 0 || opt_impl_did.is_some() {
         must_monomorphise = true;
-    } else if ccx.tcx.automatically_derived_methods.contains_key(def_id) {
-        must_monomorphise = false;
     } else if def_id.crate == ast::local_crate {
         let map_node = session::expect(
             ccx.sess,

@@ -213,8 +213,6 @@ export opt_region_variance;
 export determine_inherited_purity;
 export provided_trait_methods;
 export trait_supertraits;
-export DerivedMethodInfo;
-export DerivedFieldInfo;
 export AutoAdjustment;
 export AutoRef;
 export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn;
@@ -383,17 +381,6 @@ struct InstantiatedTraitRef {
     tpt: ty_param_substs_and_ty
 }
 
-struct DerivedMethodInfo {
-    method_info: @middle::resolve::MethodInfo,
-    containing_impl: ast::def_id
-}
-
-struct DerivedFieldInfo {
-    method_origin: typeck::method_origin,
-    type_parameter_substitutions: @~[ty::t],
-    vtable_result: Option<typeck::vtable_res>
-}
-
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
       interner: HashMap<intern_key, t_box>,
@@ -443,20 +430,6 @@ type ctxt =
       provided_methods: ProvidedMethodsMap,
       provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
       supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
-      deriving_struct_methods: HashMap<ast::def_id, @~[DerivedFieldInfo]>,
-
-      // The outer vector here describes each enum variant, while the inner
-      // nested vector describes each enum variant argument.
-      deriving_enum_methods: HashMap<ast::def_id, @~[@~[DerivedFieldInfo]]>,
-
-      // A mapping from the def ID of a method that was automatically derived
-      // to information about it.
-      automatically_derived_methods: HashMap<ast::def_id, DerivedMethodInfo>,
-
-      // A mapping from the def ID of an impl to the IDs of the derived
-      // methods within it.
-      automatically_derived_methods_for_impl:
-            HashMap<ast::def_id, @~[ast::def_id]>,
 
       // A mapping from the def ID of an enum or struct type to the def ID
       // of the method that implements its destructor. If the type is not
@@ -1003,10 +976,6 @@ fn mk_ctxt(s: session::Session,
       provided_methods: HashMap(),
       provided_method_sources: HashMap(),
       supertraits: HashMap(),
-      deriving_struct_methods: HashMap(),
-      deriving_enum_methods: HashMap(),
-      automatically_derived_methods: HashMap(),
-      automatically_derived_methods_for_impl: HashMap(),
       destructor_for_type: HashMap(),
       destructors: HashMap(),
       value_modes: HashMap()}

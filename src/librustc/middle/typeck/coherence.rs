@@ -19,7 +19,7 @@ use metadata::csearch::{get_impls_for_mod};
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{DerivedMethodInfo, ProvidedMethodSource,
+use middle::ty::{ProvidedMethodSource,
                  ProvidedMethodInfo, get};
 use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_struct};
 use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
@@ -598,105 +598,31 @@ impl CoherenceChecker {
         return trait_id;
     }
 
-    /// Returns true if the method has been marked with the #[derivable]
-    /// attribute and false otherwise.
-    fn method_is_derivable(method_def_id: ast::def_id) -> bool {
-        if method_def_id.crate == local_crate {
-            match self.crate_context.tcx.items.find(method_def_id.node) {
-                Some(ast_map::node_trait_method(trait_method, _, _)) => {
-                    match *trait_method {
-                        ast::required(ref ty_method) => {
-                            attr::attrs_contains_name((*ty_method).attrs,
-                                                      ~"derivable")
-                        }
-                        ast::provided(method) => {
-                            attr::attrs_contains_name(method.attrs,
-                                                      ~"derivable")
-                        }
-                    }
-                }
-                _ => {
-                    self.crate_context.tcx.sess.bug(~"method_is_derivable(): \
-                                                      def ID passed in \
-                                                      wasn't a trait method")
-                }
-            }
-        } else {
-            false   // XXX: Unimplemented.
-        }
-    }
+    // This check doesn't really have anything to do with coherence. It's
+    // here for historical reasons
+    fn please_check_that_trait_methods_are_implemented(
+        all_methods: &mut ~[@MethodInfo],
+        trait_did: def_id,
+        trait_ref_span: span) {
 
-    fn add_automatically_derived_methods_from_trait(
-            all_methods: &mut ~[@MethodInfo],
-            trait_did: def_id,
-            self_ty: ty::t,
-            impl_did: def_id,
-            trait_ref_span: span) {
         let tcx = self.crate_context.tcx;
 
-        // Make a set of all the method names that this implementation and
-        // trait provided so that we don't try to automatically derive
-        // implementations for them.
         let mut provided_names = send_map::linear::LinearMap();
+        // Implemented methods
         for uint::range(0, all_methods.len()) |i| {
             provided_names.insert(all_methods[i].ident, ());
         }
+        // Default methods
         for ty::provided_trait_methods(tcx, trait_did).each |ident| {
             provided_names.insert(*ident, ());
         }
 
-        let new_method_dids = dvec::DVec();
         for (*ty::trait_methods(tcx, trait_did)).each |method| {
-            // Check to see whether we need to derive this method. We need to
-            // derive a method only if and only if neither the trait nor the
-            // implementation we're considering provided a body.
             if provided_names.contains_key(&method.ident) { loop; }
 
-            if !self.method_is_derivable(method.def_id) {
-                tcx.sess.span_err(trait_ref_span,
-                                  fmt!("missing method `%s`",
-                                       tcx.sess.str_of(method.ident)));
-                loop;
-            }
-
-            // Generate a def ID for each node.
-            let new_def_id = local_def(tcx.sess.next_node_id());
-            let method_info = @{
-                did: new_def_id,
-                n_tps: method.tps.len(),
-                ident: method.ident,
-                self_type: method.self_ty
-            };
-            all_methods.push(method_info);
-
-            // Note that this method was automatically derived so that trans
-            // can handle it differently.
-            let derived_method_info = DerivedMethodInfo {
-                method_info: method_info,
-                containing_impl: impl_did
-            };
-
-            tcx.automatically_derived_methods.insert(new_def_id,
-                                                     derived_method_info);
-
-            new_method_dids.push(new_def_id);
-
-            // Additionally, generate the type for the derived method and add
-            // it to the type cache.
-            //
-            // XXX: Handle generics correctly.
-            let substs = { self_r: None, self_ty: Some(self_ty), tps: ~[] };
-            tcx.tcache.insert(new_def_id, {
-                bounds: @~[],
-                region_param: None,
-                ty: ty::subst(tcx, &substs, ty::mk_fn(tcx, method.fty))
-            });
-        }
-
-        let new_method_dids = @dvec::unwrap(move new_method_dids);
-        if new_method_dids.len() > 0 {
-            tcx.automatically_derived_methods_for_impl.insert(
-                impl_did, new_method_dids);
+            tcx.sess.span_err(trait_ref_span,
+                              fmt!("missing method `%s`",
+                                   tcx.sess.str_of(method.ident)));
         }
     }
 
@@ -720,19 +646,14 @@ impl CoherenceChecker {
                     methods.push(method_to_MethodInfo(*ast_method));
                 }
 
-                // Now search for methods that need to be automatically
-                // derived.
-                let tcx = self.crate_context.tcx;
-                let self_ty = ty::lookup_item_type(tcx, local_def(item.id));
+                // Check that we have implementations of every trait method
                 for trait_refs.each |trait_ref| {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
-                    self.add_automatically_derived_methods_from_trait(
-                            &mut methods,
-                            trait_did,
-                            self_ty.ty,
-                            local_def(item.id),
-                            trait_ref.path.span);
+                    self.please_check_that_trait_methods_are_implemented(
+                        &mut methods,
+                        trait_did,
+                        trait_ref.path.span);
                 }
 
                 // For each trait that the impl implements, see which

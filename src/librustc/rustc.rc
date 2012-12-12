@@ -123,8 +123,6 @@ mod middle {
         mod reachable;
         #[path = "middle/trans/machine.rs"]
         mod machine;
-        #[path = "middle/trans/deriving.rs"]
-        mod deriving;
     }
     #[legacy_exports]
     #[path = "middle/ty.rs"]
