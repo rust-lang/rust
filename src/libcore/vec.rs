@@ -120,7 +120,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
             }
         }
         raw::set_len(&mut v, n_elts);
-        return move v;
+        return v;
     }
 }
 
@@ -142,7 +142,7 @@ pub pure fn from_slice<T: Copy>(t: &[T]) -> ~[T] {
 pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
     unsafe { reserve(&mut vec, capacity); }
-    return move vec;
+    return vec;
 }
 
 /**
@@ -161,8 +161,8 @@ pub pure fn with_capacity<T>(capacity: uint) -> ~[T] {
 pub pure fn build_sized<A>(size: uint,
                        builder: fn(push: pure fn(v: A))) -> ~[A] {
     let mut vec = with_capacity(size);
-    builder(|x| unsafe { vec.push(move x) });
-    move vec
+    builder(|x| unsafe { vec.push(x) });
+    vec
 }
 
 /**
@@ -200,12 +200,12 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 
 /// Produces a mut vector from an immutable vector.
 pub pure fn to_mut<T>(v: ~[T]) -> ~[mut T] {
-    unsafe { ::cast::transmute(move v) }
+    unsafe { ::cast::transmute(v) }
 }
 
 /// Produces an immutable vector from a mut vector.
 pub pure fn from_mut<T>(v: ~[mut T]) -> ~[T] {
-    unsafe { ::cast::transmute(move v) }
+    unsafe { ::cast::transmute(v) }
 }
 
 // Accessors
@@ -255,7 +255,7 @@ pub pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     unsafe {
         for uint::range(start, end) |i| { result.push(v[i]) }
     }
-    move result
+    result
 }
 
 /// Return a slice that points into another slice.
@@ -315,7 +315,7 @@ pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(slice(v, start, ln));
-    move result
+    result
 }
 
 /**
@@ -341,7 +341,7 @@ pub fn splitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
         }
     }
     result.push(slice(v, start, ln));
-    move result
+    result
 }
 
 /**
@@ -365,7 +365,7 @@ pub fn rsplit<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
     }
     result.push(slice(v, 0u, end));
     reverse(result);
-    return move result;
+    return result;
 }
 
 /**
@@ -392,7 +392,7 @@ pub fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
     }
     result.push(slice(v, 0u, end));
     reverse(result);
-    move result
+    result
 }
 
 // Mutators
@@ -413,20 +413,20 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
 
             for uint::range(1, ln) |i| {
                 let r = move *ptr::offset(vv, i);
-                v.push(move r);
+                v.push(r);
             }
         }
         raw::set_len(&mut vv, 0);
 
-        move rr
+        rr
     }
 }
 
 /// Prepend an element to the vector
 pub fn unshift<T>(v: &mut ~[T], x: T) {
-    let mut vv = ~[move x];
+    let mut vv = ~[x];
     *v <-> vv;
-    v.push_all_move(move vv);
+    v.push_all_move(vv);
 }
 
 /// Insert an element at position i within v, shifting all
@@ -435,7 +435,7 @@ pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
     let len = v.len();
     assert i <= len;
 
-    v.push(move x);
+    v.push(x);
     let mut j = len;
     while j > i {
         v[j] <-> v[j - 1];
@@ -454,16 +454,16 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
         v[j] <-> v[j + 1];
         j += 1;
     }
-    move v.pop()
+    v.pop()
 }
 
 pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
-    let mut v = move v; // FIXME(#3488)
+    let mut v = v; // FIXME(#3488)
 
     do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x = move *ptr::offset(p, i);
-            f(i, move x);
+            f(i, x);
         }
     }
 
@@ -471,7 +471,7 @@ pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
 }
 
 pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
-    consume(vec::from_mut(move v), f)
+    consume(vec::from_mut(v), f)
 }
 
 /// Remove the last element from a vector and return it
@@ -484,7 +484,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     unsafe {
         let val = move *valptr;
         raw::set_len(v, ln - 1u);
-        move val
+        val
     }
 }
 
@@ -512,10 +512,10 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
         let repr: **raw::VecRepr = ::cast::transmute(copy v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
-            push_fast(v, move initval);
+            push_fast(v, initval);
         }
         else {
-            push_slow(v, move initval);
+            push_slow(v, initval);
         }
     }
 }
@@ -534,7 +534,7 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
 #[inline(never)]
 fn push_slow<T>(v: &mut ~[T], initval: T) {
     reserve_at_least(v, v.len() + 1u);
-    unsafe { push_fast(v, move initval) }
+    unsafe { push_fast(v, initval) }
 }
 
 #[inline(always)]
@@ -548,13 +548,13 @@ pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
 
 #[inline(always)]
 pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
-    let mut rhs = move rhs; // FIXME(#3488)
+    let mut rhs = rhs; // FIXME(#3488)
     reserve(v, v.len() + rhs.len());
     unsafe {
         do as_imm_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
                 let x = move *ptr::offset(p, i);
-                push(v, move x);
+                push(v, x);
             }
         }
         raw::set_len(&mut rhs, 0);
@@ -613,23 +613,23 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
 // Appending
 #[inline(always)]
 pub pure fn append<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
-    let mut v = move lhs;
+    let mut v = lhs;
     unsafe {
         v.push_all(rhs);
     }
-    move v
+    v
 }
 
 #[inline(always)]
 pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
-    let mut v = move lhs;
-    unsafe { v.push(move x); }
-    move v
+    let mut v = lhs;
+    unsafe { v.push(x); }
+    v
 }
 
 #[inline(always)]
 pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
-    to_mut(append(from_mut(move lhs), rhs))
+    to_mut(append(from_mut(lhs), rhs))
 }
 
 /**
@@ -684,7 +684,7 @@ pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
 pub fn grow_set<T: Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
     let l = v.len();
     if index >= l { grow(v, index - l + 1u, initval); }
-    v[index] = move val;
+    v[index] = val;
 }
 
 // Functional utilities
@@ -697,15 +697,15 @@ pub pure fn map<T, U>(v: &[T], f: fn(t: &T) -> U) -> ~[U] {
             result.push(f(elem));
         }
     }
-    move result
+    result
 }
 
 pub fn map_consume<T, U>(v: ~[T], f: fn(v: T) -> U) -> ~[U] {
     let mut result = ~[];
-    do consume(move v) |_i, x| {
-        result.push(f(move x));
+    do consume(v) |_i, x| {
+        result.push(f(x));
     }
-    move result
+    result
 }
 
 /// Apply a function to each element of a vector and return the results
@@ -724,7 +724,7 @@ pub pure fn mapi<T, U>(v: &[T], f: fn(uint, t: &T) -> U) -> ~[U] {
 pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| { unsafe{ result.push_all_move(f(elem)); } }
-    move result
+    result
 }
 
 /// Apply a function to each pair of elements and return the results
@@ -738,7 +738,7 @@ pub pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
         unsafe { u.push(f(&v0[i], &v1[i])) };
         i += 1u;
     }
-    move u
+    u
 }
 
 /**
@@ -753,10 +753,10 @@ pub pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
     for each(v) |elem| {
         match f(elem) {
           None => {/* no-op */ }
-          Some(move result_elem) => unsafe { result.push(result_elem); }
+          Some(result_elem) => unsafe { result.push(result_elem); }
         }
     }
-    move result
+    result
 }
 
 /**
@@ -771,7 +771,7 @@ pub pure fn filter<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
     for each(v) |elem| {
         if f(elem) { unsafe { result.push(*elem); } }
     }
-    move result
+    result
 }
 
 /**
@@ -803,7 +803,7 @@ pub fn retain<T>(v: &mut ~[T], f: pure fn(t: &T) -> bool) {
 pub pure fn concat<T: Copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
     for each(v) |inner| { unsafe { r.push_all(*inner); } }
-    move r
+    r
 }
 
 /// Concatenate a vector of vectors, placing a given separator between each
@@ -814,21 +814,21 @@ pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
         if first { first = false; } else { unsafe { r.push(*sep); } }
         unsafe { r.push_all(*inner) };
     }
-    move r
+    r
 }
 
 /// Reduce a vector from left to right
 pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
-    let mut accum = move z;
+    let mut accum = z;
     let mut i = 0;
     let l = v.len();
     while i < l {
         // Use a while loop so that liveness analysis can handle moving
         // the accumulator.
-        accum = p(move accum, &v[i]);
+        accum = p(accum, &v[i]);
         i += 1;
     }
-    return move accum;
+    return accum;
 }
 
 /// Reduce a vector from right to left
@@ -1044,7 +1044,7 @@ pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
             us.push(u);
         }
     }
-    return (move ts, move us);
+    return (ts, us);
 }
 
 /**
@@ -1058,13 +1058,13 @@ pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
 pub pure fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     unsafe {
-        do consume(move v) |_i, p| {
-            let (t, u) = move p;
-            ts.push(move t);
-            us.push(move u);
+        do consume(v) |_i, p| {
+            let (t, u) = p;
+            ts.push(t);
+            us.push(u);
         }
     }
-    (move ts, move us)
+    (ts, us)
 }
 
 /**
@@ -1077,7 +1077,7 @@ pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
     let mut i = 0u;
     assert sz == len(u);
     while i < sz unsafe { zipped.push((v[i], u[i])); i += 1u; }
-    move zipped
+    zipped
 }
 
 /**
@@ -1087,7 +1087,7 @@ pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
  * i-th elements from each of the input vectors.
  */
 pub pure fn zip<T, U>(v: ~[T], u: ~[U]) -> ~[(T, U)] {
-    let mut v = move v, u = move u; // FIXME(#3488)
+    let mut v = v, u = u; // FIXME(#3488)
     let mut i = len(v);
     assert i == len(u);
     let mut w = with_capacity(i);
@@ -1096,7 +1096,7 @@ pub pure fn zip<T, U>(v: ~[T], u: ~[U]) -> ~[(T, U)] {
         i -= 1;
     }
     unsafe { reverse(w); }
-    move w
+    w
 }
 
 /**
@@ -1123,12 +1123,12 @@ pub fn reverse<T>(v: &[mut T]) {
 pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
-    if i == 0 { return (move rs); } else { i -= 1; }
+    if i == 0 { return (rs); } else { i -= 1; }
     unsafe {
         while i != 0 { rs.push(v[i]); i -= 1; }
         rs.push(v[0]);
     }
-    move rs
+    rs
 }
 
 /**
@@ -1286,7 +1286,7 @@ pub pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
             ww.push(vec::slice(xx, ii, ii+nn));
         }
     }
-    move ww
+    ww
 }
 
 /**
@@ -1548,7 +1548,7 @@ impl<T> &[T]: ImmutableVector<T> {
             r.push(f(&self[i]));
             i += 1;
         }
-        move r
+        r
     }
 
     /**
@@ -1674,11 +1674,11 @@ trait MutableEqVector<T: Eq> {
 
 impl<T> ~[T]: MutableVector<T> {
     fn push(&mut self, t: T) {
-        push(self, move t);
+        push(self, t);
     }
 
     fn push_all_move(&mut self, rhs: ~[T]) {
-        push_all_move(self, move rhs);
+        push_all_move(self, rhs);
     }
 
     fn pop(&mut self) -> T {
@@ -1690,11 +1690,11 @@ impl<T> ~[T]: MutableVector<T> {
     }
 
     fn unshift(&mut self, x: T) {
-        unshift(self, move x)
+        unshift(self, x)
     }
 
     fn insert(&mut self, i: uint, x:T) {
-        insert(self, i, move x)
+        insert(self, i, x)
     }
 
     fn remove(&mut self, i: uint) -> T {
@@ -1844,12 +1844,12 @@ mod raw {
      */
     #[inline(always)]
     pub unsafe fn init_elem<T>(v: &[mut T], i: uint, val: T) {
-        let mut box = Some(move val);
+        let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
             box2 <-> box;
             rusti::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                 option::unwrap(move box2));
+                                 option::unwrap(box2));
         }
     }
 
@@ -1867,7 +1867,7 @@ mod raw {
         let mut dst = with_capacity(elts);
         set_len(&mut dst, elts);
         as_mut_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
-        move dst
+        dst
     }
 
     /**
@@ -1993,7 +1993,7 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     pub pure fn all(blk: fn(&A) -> bool) -> bool { iter::all(&self, blk) }
     pub pure fn any(blk: fn(&A) -> bool) -> bool { iter::any(&self, blk) }
     pub pure fn foldl<B>(b0: B, blk: fn(&B, &A) -> B) -> B {
-        iter::foldl(&self, move b0, blk)
+        iter::foldl(&self, b0, blk)
     }
     pub pure fn position(f: fn(&A) -> bool) -> Option<uint> {
         iter::position(&self, f)
@@ -2320,7 +2320,7 @@ mod tests {
     #[test]
     fn test_dedup() {
         fn case(a: ~[uint], b: ~[uint]) {
-            let mut v = move a;
+            let mut v = a;
             v.dedup();
             assert(v == b);
         }
@@ -2576,13 +2576,13 @@ mod tests {
         let v1 = ~[1, 2, 3];
         let v2 = ~[4, 5, 6];
 
-        let z1 = zip(move v1, move v2);
+        let z1 = zip(v1, v2);
 
         assert ((1, 4) == z1[0]);
         assert ((2, 5) == z1[1]);
         assert ((3, 6) == z1[2]);
 
-        let (left, right) = unzip(move z1);
+        let (left, right) = unzip(z1);
 
         assert ((1, 4) == (left[0], right[0]));
         assert ((2, 5) == (left[1], right[1]));
@@ -2880,7 +2880,7 @@ mod tests {
         unsafe {
             let x = ~[1, 2, 3];
             let addr = raw::to_ptr(x);
-            let x_mut = to_mut(move x);
+            let x_mut = to_mut(x);
             let addr_mut = raw::to_ptr(x_mut);
             assert addr == addr_mut;
         }
@@ -2891,7 +2891,7 @@ mod tests {
         unsafe {
             let x = ~[mut 1, 2, 3];
             let addr = raw::to_ptr(x);
-            let x_imm = from_mut(move x);
+            let x_imm = from_mut(x);
             let addr_imm = raw::to_ptr(x_imm);
             assert addr == addr_imm;
         }
@@ -3139,7 +3139,7 @@ mod tests {
     fn test_consume_fail() {
         let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do consume(move v) |_i, _elt| {
+        do consume(v) |_i, _elt| {
             if i == 2 {
                 fail
             }
@@ -3153,7 +3153,7 @@ mod tests {
     fn test_consume_mut_fail() {
         let v = ~[mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do consume_mut(move v) |_i, _elt| {
+        do consume_mut(v) |_i, _elt| {
             if i == 2 {
                 fail
             }
@@ -3196,7 +3196,7 @@ mod tests {
     fn test_map_consume_fail() {
         let v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do map_consume(move v) |_elt| {
+        do map_consume(v) |_elt| {
             if i == 2 {
                 fail
             }
