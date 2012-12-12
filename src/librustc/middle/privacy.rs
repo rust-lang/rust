@@ -199,7 +199,10 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         visit_expr: |expr, method_map: &method_map, visitor| {
             match expr.node {
                 expr_field(base, ident, _) => {
-                    match ty::get(ty::expr_ty(tcx, base)).sty {
+                    // With type_autoderef, make sure we don't
+                    // allow pointers to violate privacy
+                    match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
+                                                          base))).sty {
                         ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
@@ -220,7 +223,9 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     }
                 }
                 expr_method_call(base, _, _, _, _) => {
-                    match ty::get(ty::expr_ty(tcx, base)).sty {
+                    // Ditto
+                    match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
+                                                          base))).sty {
                         ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
