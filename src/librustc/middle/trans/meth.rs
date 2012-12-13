@@ -550,8 +550,16 @@ fn trans_trait_callee(bcx: block,
 
     let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
-    let self_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr));
+    let self_datum = unpack_datum!(bcx,
+        expr::trans_to_datum(bcx, self_expr));
     let llpair = self_datum.to_ref_llval(bcx);
+
+    let llpair = match explicit_self {
+        ast::sty_region(_) => Load(bcx, llpair),
+        ast::sty_static | ast::sty_by_ref | ast::sty_value |
+        ast::sty_box(_) | ast::sty_uniq(_) => llpair
+    };
+
     let callee_ty = node_id_type(bcx, callee_id);
     trans_trait_callee_from_llval(bcx,
                                   callee_ty,
