@@ -11,12 +11,12 @@
 
 
 fn main() {
-    let po = core::comm::Port();
-    let ch = core::comm::Chan(&po);
-    core::comm::send(ch, 10);
-    let i = core::comm::recv(po);
+    let po = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&po);
+    core::oldcomm::send(ch, 10);
+    let i = core::oldcomm::recv(po);
     assert (i == 10);
-    core::comm::send(ch, 11);
-    let j = core::comm::recv(po);
+    core::oldcomm::send(ch, 11);
+    let j = core::oldcomm::recv(po);
     assert (j == 11);
 }

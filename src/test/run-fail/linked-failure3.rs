@@ -12,8 +12,8 @@
 
 // error-pattern:fail
 extern mod std;
-use comm::Port;
-use comm::recv;
+use oldcomm::Port;
+use oldcomm::recv;
 
 fn grandchild() { fail ~"grandchild dies"; }
 

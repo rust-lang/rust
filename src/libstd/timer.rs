@@ -14,7 +14,6 @@
 
 use uv::iotask;
 use uv::iotask::IoTask;
-use comm = core::comm;
 
 /**
  * Wait for timeout period then send provided value over a channel
@@ -33,10 +32,10 @@ use comm = core::comm;
  * * val - a value of type T to send over the provided `ch`
  */
 pub fn delayed_send<T: Owned>(iotask: IoTask,
-                                  msecs: uint, ch: comm::Chan<T>, val: T) {
+                                  msecs: uint, ch: oldcomm::Chan<T>, val: T) {
         unsafe {
-            let timer_done_po = core::comm::Port::<()>();
-            let timer_done_ch = core::comm::Chan(&timer_done_po);
+            let timer_done_po = oldcomm::Port::<()>();
+            let timer_done_ch = oldcomm::Chan(&timer_done_po);
             let timer_done_ch_ptr = ptr::addr_of(&timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(&timer);
@@ -62,11 +61,11 @@ pub fn delayed_send<T: Owned>(iotask: IoTask,
                 }
             };
             // delayed_send_cb has been processed by libuv
-            core::comm::recv(timer_done_po);
+            oldcomm::recv(timer_done_po);
             // notify the caller immediately
-            core::comm::send(ch, move(val));
+            oldcomm::send(ch, move(val));
             // uv_close for this timer has been processed
-            core::comm::recv(timer_done_po);
+            oldcomm::recv(timer_done_po);
     };
 }
 
@@ -82,10 +81,10 @@ pub fn delayed_send<T: Owned>(iotask: IoTask,
  * * msecs - an amount of time, in milliseconds, for the current task to block
  */
 pub fn sleep(iotask: IoTask, msecs: uint) {
-    let exit_po = core::comm::Port::<()>();
-    let exit_ch = core::comm::Chan(&exit_po);
+    let exit_po = oldcomm::Port::<()>();
+    let exit_ch = oldcomm::Chan(&exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
-    core::comm::recv(exit_po);
+    oldcomm::recv(exit_po);
 }
 
 /**
@@ -110,9 +109,9 @@ pub fn sleep(iotask: IoTask, msecs: uint) {
  */
 pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
                               msecs: uint,
-                              wait_po: comm::Port<T>) -> Option<T> {
-    let timeout_po = comm::Port::<()>();
-    let timeout_ch = comm::Chan(&timeout_po);
+                              wait_po: oldcomm::Port<T>) -> Option<T> {
+    let timeout_po = oldcomm::Port::<()>();
+    let timeout_ch = oldcomm::Chan(&timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
     // FIXME: This could be written clearer (#2618)
     either::either(
@@ -122,7 +121,7 @@ pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
             None
         }, |right_val| {
             Some(*right_val)
-        }, &core::comm::select2(timeout_po, wait_po)
+        }, &oldcomm::select2(timeout_po, wait_po)
     )
 }
 
@@ -131,10 +130,10 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
                                 status: libc::c_int) unsafe {
     log(debug, fmt!("delayed_send_cb handle %? status %?", handle, status));
     let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *comm::Chan<()>);
+        *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
     let stop_result = uv::ll::timer_stop(handle);
     if (stop_result == 0i32) {
-        core::comm::send(timer_done_ch, ());
+        oldcomm::send(timer_done_ch, ());
         uv::ll::close(handle, delayed_send_close_cb);
     }
     else {
@@ -147,8 +146,8 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
 extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
     log(debug, fmt!("delayed_send_close_cb handle %?", handle));
     let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *comm::Chan<()>);
-    comm::send(timer_done_ch, ());
+        *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
+    oldcomm::send(timer_done_ch, ());
 }
 
 #[cfg(test)]
@@ -170,8 +169,8 @@ mod test {
 
     #[test]
     fn test_gl_timer_sleep_stress2() {
-        let po = core::comm::Port();
-        let ch = core::comm::Chan(&po);
+        let po = oldcomm::Port();
+        let ch = oldcomm::Chan(&po);
         let hl_loop = uv::global_loop::get();
 
         let repeat = 20u;
@@ -193,13 +192,13 @@ mod test {
                     for iter::repeat(times) {
                         sleep(hl_loop, rng.next() as uint % maxms);
                     }
-                    core::comm::send(ch, ());
+                    oldcomm::send(ch, ());
                 }
             }
         }
 
         for iter::repeat(repeat * spec.len()) {
-            core::comm::recv(po)
+            oldcomm::recv(po)
         }
     }
 
@@ -248,8 +247,8 @@ mod test {
 
         for iter::repeat(times as uint) {
             let expected = rand::Rng().gen_str(16u);
-            let test_po = core::comm::Port::<~str>();
-            let test_ch = core::comm::Chan(&test_po);
+            let test_po = oldcomm::Port::<~str>();
+            let test_ch = oldcomm::Chan(&test_po);
 
             do task::spawn() {
                 delayed_send(hl_loop, 50u, test_ch, expected);

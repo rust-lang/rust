@@ -30,7 +30,6 @@ use create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
 use set_data_for_req = uv::ll::set_data_for_req;
 use get_data_for_req = uv::ll::get_data_for_req;
 use ll = uv::ll;
-use comm = core::comm;
 
 /// An IP address
 pub enum IpAddr {
@@ -108,7 +107,7 @@ enum IpGetAddrErr {
  */
 pub fn get_addr(node: &str, iotask: iotask)
         -> result::Result<~[IpAddr], IpGetAddrErr> {
-    do core::comm::listen |output_ch| {
+    do oldcomm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| unsafe {
             log(debug, fmt!("slice len %?", len));
             let handle = create_uv_getaddrinfo_t();
@@ -268,7 +267,7 @@ pub mod v6 {
 }
 
 type GetAddrData = {
-    output_ch: comm::Chan<result::Result<~[IpAddr],IpGetAddrErr>>
+    output_ch: oldcomm::Chan<result::Result<~[IpAddr],IpGetAddrErr>>
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,

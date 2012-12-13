@@ -18,23 +18,23 @@ impl<T: Copy> NominalOp<T>: Clone {
 }
 
 pub fn spawn_listener<A: Owned>(
-    +f: fn~(comm::Port<A>)) -> comm::Chan<A> {
-    let setup_po = comm::Port();
-    let setup_ch = comm::Chan(&setup_po);
+    +f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
+    let setup_po = oldcomm::Port();
+    let setup_ch = oldcomm::Chan(&setup_po);
     do task::spawn |move f| {
-        let po = comm::Port();
-        let ch = comm::Chan(&po);
-        comm::send(setup_ch, ch);
+        let po = oldcomm::Port();
+        let ch = oldcomm::Chan(&po);
+        oldcomm::send(setup_ch, ch);
         f(move po);
     }
-    comm::recv(setup_po)
+    oldcomm::recv(setup_po)
 }
 
 pub fn spawn_conversation<A: Owned, B: Owned>
-    (+f: fn~(comm::Port<A>, comm::Chan<B>))
-    -> (comm::Port<B>, comm::Chan<A>) {
-    let from_child = comm::Port();
-    let to_parent = comm::Chan(&from_child);
+    (+f: fn~(oldcomm::Port<A>, oldcomm::Chan<B>))
+    -> (oldcomm::Port<B>, oldcomm::Chan<A>) {
+    let from_child = oldcomm::Port();
+    let to_parent = oldcomm::Chan(&from_child);
     let to_child = do spawn_listener |move f, from_parent| {
         f(from_parent, to_parent)
     };

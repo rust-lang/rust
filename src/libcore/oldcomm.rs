@@ -144,7 +144,7 @@ fn PortPtr<T: Owned>(po: *rust_port) -> PortPtr<T> {
  * Fails if the port is detached or dead. Fails if the port
  * is owned by a different task.
  */
-fn as_raw_port<T: Owned, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
+fn as_raw_port<T: Owned, U>(ch: Chan<T>, f: fn(*rust_port) -> U) -> U {
 
     struct PortRef {
         p: *rust_port,
@@ -205,11 +205,11 @@ pub fn recv<T: Owned>(p: Port<T>) -> T { recv_((**p).po) }
 pub fn peek<T: Owned>(p: Port<T>) -> bool { peek_((**p).po) }
 
 #[doc(hidden)]
-pub fn recv_chan<T: Owned>(ch: comm::Chan<T>) -> T {
+pub fn recv_chan<T: Owned>(ch: Chan<T>) -> T {
     as_raw_port(ch, |x|recv_(x))
 }
 
-fn peek_chan<T: Owned>(ch: comm::Chan<T>) -> bool {
+fn peek_chan<T: Owned>(ch: Chan<T>) -> bool {
     as_raw_port(ch, |x|peek_(x))
 }
 

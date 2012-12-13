@@ -11,17 +11,17 @@
 
 
 fn main() {
-    let p = comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
     let t = task::spawn(|| child(ch) );
-    let y = core::comm::recv(p);
+    let y = core::oldcomm::recv(p);
     error!("received");
     log(error, y);
     assert (y == 10);
 }
 
-fn child(c: core::comm::Chan<int>) {
+fn child(c: core::oldcomm::Chan<int>) {
     error!("sending");
-    core::comm::send(c, 10);
+    core::oldcomm::send(c, 10);
     error!("value sent");
 }

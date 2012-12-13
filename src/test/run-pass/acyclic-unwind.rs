@@ -13,14 +13,14 @@
 
 extern mod std;
 
-fn f(c: comm::_chan<int>) {
+fn f(c: oldcomm::_chan<int>) {
     type t = {_0: int, _1: int, _2: int};
 
     // Allocate a box.
     let x: @t = @{_0: 1, _1: 2, _2: 3};
 
     // Signal parent that we've allocated a box.
-    comm::send(c, 1);
+    oldcomm::send(c, 1);
 
 
     loop {
@@ -31,12 +31,12 @@ fn f(c: comm::_chan<int>) {
         // sending to the channel are never received
         // by the parent, therefore this test cases drops
         // messages on the floor
-        comm::send(c, 1);
+        oldcomm::send(c, 1);
     }
 }
 
 fn main() {
-    let p = comm::mk_port();
+    let p = oldcomm::mk_port();
     task::_spawn(bind f(p.mk_chan()));
     let i: int;
 

@@ -10,7 +10,7 @@
 
 extern mod std;
 use std::arc;
-use comm::*;
+use oldcomm::*;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
