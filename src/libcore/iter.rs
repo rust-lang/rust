@@ -244,7 +244,7 @@ pub pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
 #[inline(always)]
 pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(v: A)))
     -> B {
-    build_sized(4, builder)
+    Buildable::build_sized(4, builder)
 }
 
 /**
@@ -265,7 +265,7 @@ pub pure fn build_sized_opt<A,B: Buildable<A>>(
     size: Option<uint>,
     builder: fn(push: pure fn(v: A))) -> B {
 
-    build_sized(size.get_default(4), builder)
+    Buildable::build_sized(size.get_default(4), builder)
 }
 
 // Functions that combine iteration and building
@@ -288,7 +288,7 @@ pub fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: &IT, f: fn(&T) -> U)
  */
 pub pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint,
                                         op: InitOp<T>) -> BT {
-    do build_sized(n_elts) |push| {
+    do Buildable::build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
     }
@@ -302,7 +302,7 @@ pub pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint,
  */
 pub pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint,
                                                 t: T) -> BT {
-    do build_sized(n_elts) |push| {
+    do Buildable::build_sized(n_elts) |push| {
         let mut i: uint = 0;
         while i < n_elts { push(t); i += 1; }
     }
