@@ -131,6 +131,19 @@ fn creature(
 }
 
 fn rendezvous(nn: uint, set: ~[color]) {
+
+    pub fn spawn_listener<A: Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+        let setup_po = comm::Port();
+        let setup_ch = comm::Chan(&setup_po);
+        do task::spawn |move f| {
+            let po = comm::Port();
+            let ch = comm::Chan(&po);
+            comm::send(setup_ch, ch);
+            f(move po);
+        }
+        comm::recv(setup_po)
+    }
+
     // these ports will allow us to hear from the creatures
     let from_creatures:     comm::Port<creature_info> = comm::Port();
     let from_creatures_log: comm::Port<~str> = comm::Port();
@@ -146,7 +159,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             // give us a channel to talk to each
             let ii = ii;
             let col = *col;
-            do task::spawn_listener |from_rendezvous, move ii, move col| {
+            do spawn_listener |from_rendezvous, move ii, move col| {
                 creature(ii, col, from_rendezvous, to_rendezvous,
                          to_rendezvous_log);
             }

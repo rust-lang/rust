@@ -461,7 +461,7 @@ and child both need to exchange messages with each other. The
 function `std::comm::DuplexStream()` supports this pattern.  We'll
 look briefly at how to use it.
 
-To see how `spawn_conversation()` works, we will create a child task
+To see how `DuplexStream()` works, we will create a child task
 that repeatedly receives a `uint` message, converts it to a string, and sends
 the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:

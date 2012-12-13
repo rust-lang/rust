@@ -64,7 +64,7 @@ pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
     let srv_ = Srv({
-        ch: do task::spawn_listener |move parse, po| {
+        ch: do util::spawn_listener |move parse, po| {
             act(po, source, parse);
         }
     });
