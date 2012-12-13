@@ -12,7 +12,7 @@
 
 export foo;
 
-use comm::*;
+use core::comm::*;
 
 fn foo<T: Send Copy>(x: T) -> Port<T> {
     let p = Port();

@@ -13,7 +13,7 @@ use mod parse::token;
 
 use codemap::{span, BytePos};
 use ext::base::ext_ctxt;
-use token::*;
+use parse::token::*;
 
 /**
 *
@@ -34,7 +34,7 @@ pub mod rt {
     pub use codemap::span;
 
     use print::pprust;
-    use pprust::{item_to_str, ty_to_str};
+    use print::pprust::{item_to_str, ty_to_str};
 
     trait ToTokens {
         pub fn to_tokens(_cx: ext_ctxt) -> ~[token_tree];

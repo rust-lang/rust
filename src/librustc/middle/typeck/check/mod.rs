@@ -76,35 +76,51 @@ type parameter).
 
 */
 
-use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
-use astconv::{ast_region_to_region};
 use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
-use regionmanip::{replace_bound_regions_in_fn_ty};
-use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
-use rscope::{in_binding_rscope, region_scope, type_rscope,
-                bound_self_region};
-use syntax::ast::ty_i;
-use typeck::infer::{resolve_type, force_tvar};
-use result::{Result, Ok, Err};
-use syntax::print::pprust;
-use syntax::parse::token::special_idents;
-use syntax::ast_util::{is_local, visibility_to_privacy, Private, Public};
-use vtable::{LocationInfo, VtableContext};
+use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
+use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
+use middle::typeck::check::vtable::{LocationInfo, VtableContext};
+use middle::typeck::infer::{resolve_type, force_tvar};
+use middle::typeck::rscope::{anon_rscope, binding_rscope, bound_self_region};
+use middle::typeck::rscope::{empty_rscope, in_anon_rscope};
+use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
+use util::ppaux;
 
+use core::result::{Result, Ok, Err};
 use std::map::HashMap;
+use syntax::ast::ty_i;
+use syntax::ast_util::{is_local, visibility_to_privacy, Private, Public};
+use syntax::parse::token::special_idents;
+use syntax::print::pprust;
+
+export alt;
+export vtable;
+export writeback;
+export regionmanip;
+export regionck;
+export demand;
+export method;
+export fn_ctxt;
+export lookup_local;
+export impl_self_ty;
+export DerefArgs;
+export DontDerefArgs;
+export DoDerefArgs;
+export check_item_types;
 
 #[legacy_exports]
-mod alt;
+pub mod alt;
 #[legacy_exports]
-mod vtable;
+pub mod vtable;
 #[legacy_exports]
-mod writeback;
+pub mod writeback;
 #[legacy_exports]
-mod regionmanip;
+pub mod regionmanip;
 #[legacy_exports]
-mod regionck;
+pub mod regionck;
 #[legacy_exports]
-mod demand;
+pub mod demand;
 #[legacy_exports]
 pub mod method;
 
@@ -135,7 +151,7 @@ struct inherited {
 
 enum FnKind { ForLoop, DoBlock, Vanilla }
 
-struct fn_ctxt {
+pub struct fn_ctxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
@@ -252,9 +268,9 @@ fn check_fn(ccx: @crate_ctxt,
     let ret_ty = fn_ty.sig.output;
 
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
-           arg_tys.map(|a| ty_to_str(tcx, *a)),
-           ty_to_str(tcx, ret_ty),
-           option::map(&self_info, |s| ty_to_str(tcx, s.self_ty)));
+           arg_tys.map(|a| ppaux::ty_to_str(tcx, *a)),
+           ppaux::ty_to_str(tcx, ret_ty),
+           option::map(&self_info, |s| ppaux::ty_to_str(tcx, s.self_ty)));
 
     // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
@@ -631,7 +647,7 @@ impl @fn_ctxt {
     #[inline(always)]
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
-               node_id, ty_to_str(self.tcx(), ty), self.tag());
+               node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
 
@@ -793,12 +809,13 @@ impl @fn_ctxt {
                     self.tcx().sess.span_err(sp, fmt!("A for-loop body must \
                         return (), but it returns %s here. \
                         Perhaps you meant to write a `do`-block?",
-                                            ty_to_str(self.tcx(), a))),
+                                            ppaux::ty_to_str(self.tcx(), a))),
             DoBlock if ty::type_is_bool(e) && ty::type_is_nil(a) =>
                 // If we expected bool and got ()...
                     self.tcx().sess.span_err(sp, fmt!("Do-block body must \
                         return %s, but returns () here. Perhaps you meant \
-                        to write a `for`-loop?", ty_to_str(self.tcx(), e))),
+                        to write a `for`-loop?",
+                        ppaux::ty_to_str(self.tcx(), e))),
             _ => self.infcx().report_mismatched_types(sp, e, a, err)
         }
     }
@@ -921,10 +938,11 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-fn impl_self_ty(vcx: &VtableContext,
-                location_info: &LocationInfo, // (potential) receiver for
-                                              // this impl
-                did: ast::def_id) -> ty_param_substs_and_ty {
+pub fn impl_self_ty(vcx: &VtableContext,
+                    location_info: &LocationInfo, // (potential) receiver for
+                                                  // this impl
+                    did: ast::def_id)
+                 -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
 
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
@@ -1540,7 +1558,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
                 // (1) verify that the class id actually has a field called
                 // field
-                debug!("class named %s", ty_to_str(tcx, base_t));
+                debug!("class named %s", ppaux::ty_to_str(tcx, base_t));
                 let cls_items = ty::lookup_struct_fields(tcx, base_id);
                 match lookup_field_ty(tcx, base_id, cls_items,
                                       field, &(*substs)) {
@@ -2400,9 +2418,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     debug!("type of expr %s is %s, expected is %s",
            syntax::print::pprust::expr_to_str(expr, tcx.sess.intr()),
-           ty_to_str(tcx, fcx.expr_ty(expr)),
+           ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
            match expected {
-               Some(t) => ty_to_str(tcx, t),
+               Some(t) => ppaux::ty_to_str(tcx, t),
                _ => ~"empty"
            });
 
@@ -2565,7 +2583,7 @@ fn check_instantiable(tcx: ty::ctxt,
         tcx.sess.span_err(sp, fmt!("this type cannot be instantiated \
                   without an instance of itself; \
                   consider using `option<%s>`",
-                                   ty_to_str(tcx, item_ty)));
+                                   ppaux::ty_to_str(tcx, item_ty)));
     }
 }
 
@@ -2678,7 +2696,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> TyVid {
+pub fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> TyVid {
     match fcx.inh.locals.find(id) {
         Some(x) => x,
         _ => {
@@ -2893,7 +2911,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
                          tps: ~[ast::ty_param],
                          ty: ty::t) {
     debug!("check_bounds_are_used(n_tps=%u, ty=%s)",
-           tps.len(), ty_to_str(ccx.tcx, ty));
+           tps.len(), ppaux::ty_to_str(ccx.tcx, ty));
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
@@ -3158,6 +3176,6 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
             tcx, None, false, it.span, i_ty.ty, fty,
             || fmt!("intrinsic has wrong type: \
                       expected `%s`",
-                     ty_to_str(ccx.tcx, fty)));
+                     ppaux::ty_to_str(ccx.tcx, fty)));
     }
 }

@@ -14,7 +14,7 @@
 mod intrinsic {
     #[legacy_exports];
 
-    pub use rusti::visit_tydesc;
+    pub use intrinsic::rusti::visit_tydesc;
 
     // FIXME (#3727): remove this when the interface has settled and the
     // version in sys is no longer present.

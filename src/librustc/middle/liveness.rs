@@ -102,16 +102,17 @@
  *   to return explicitly.
  */
 
-use dvec::DVec;
-use std::map::HashMap;
-use syntax::{visit, ast_util};
-use syntax::print::pprust::{expr_to_str, block_to_str};
-use visit::vt;
-use syntax::codemap::span;
-use syntax::ast::*;
-use io::WriterUtil;
-use capture::{cap_move, cap_drop, cap_copy, cap_ref};
+use middle::capture::{cap_move, cap_drop, cap_copy, cap_ref};
 use middle::ty::MoveValue;
+
+use core::dvec::DVec;
+use core::io::WriterUtil;
+use std::map::HashMap;
+use syntax::ast::*;
+use syntax::codemap::span;
+use syntax::print::pprust::{expr_to_str, block_to_str};
+use syntax::visit::vt;
+use syntax::{visit, ast_util};
 
 export check_crate;
 export last_use_map;

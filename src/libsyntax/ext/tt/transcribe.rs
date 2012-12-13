@@ -10,7 +10,7 @@
 
 use diagnostic::span_handler;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-use macro_parser::{named_match, matched_seq, matched_nonterminal};
+use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use codemap::span;
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
 use std::map::HashMap;

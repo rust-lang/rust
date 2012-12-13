@@ -54,8 +54,9 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-use to_str::ToStr;
-use ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::typeck::infer::to_str::ToStr;
+
 use syntax::ast::Onceness;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
@@ -92,7 +93,7 @@ trait combine {
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
 }
 
-struct combine_fields {
+pub struct combine_fields {
     infcx: infer_ctxt,
     a_is_expected: bool,
     span: span,
@@ -108,7 +109,7 @@ fn expected_found<C: combine,T>(
     }
 }
 
-fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
+pub fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
     let suber = self.sub();
     do self.infcx().try {
         do suber.tys(a, b).chain |_ok| {

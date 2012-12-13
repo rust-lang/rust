@@ -10,7 +10,14 @@
 
 //! Operations and constants for `uint`
 
+#[cfg(stage0)]
 pub use inst::{
+    div_ceil, div_round, div_floor, iterate,
+    next_power_of_two
+};
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub use self::inst::{
     div_ceil, div_round, div_floor, iterate,
     next_power_of_two
 };

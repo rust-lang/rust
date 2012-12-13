@@ -11,8 +11,6 @@
 
 
 // Regression test for issue #374
-extern mod std;
-use option::None;
 
 enum sty { ty_nil, }
 

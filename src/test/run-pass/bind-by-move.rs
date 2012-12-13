@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-test
+// xfail-fast
 extern mod std;
 use std::arc;
 fn dispose(+_x: arc::ARC<bool>) unsafe { }

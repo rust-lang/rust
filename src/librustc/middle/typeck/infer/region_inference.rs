@@ -453,19 +453,19 @@ write it)
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-use dvec::DVec;
+use middle::region::is_subregion_of;
+use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
+use middle::ty::{re_scope, ReVar, ReSkolemized};
+use middle::typeck::infer::to_str::ToStr;
+use syntax::codemap;
+use util::ppaux::note_and_explain_region;
+
+use core::dvec::DVec;
 use result::Result;
 use result::{Ok, Err};
 use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
-
-use region::is_subregion_of;
-use ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound,
-         re_scope, ReVar, ReSkolemized};
-use syntax::codemap;
-use to_str::ToStr;
-use util::ppaux::note_and_explain_region;
 
 export RegionVarBindings;
 export make_subregion;

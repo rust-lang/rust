@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags:-Z no-opt
-use comm::*;
 
 // This test has to be setup just so to trigger
 // the condition which was causing us a crash.
@@ -25,9 +24,9 @@ use comm::*;
 // course preferable, as the value itself is
 // irrelevant).
 
-fn foo(&&x: ()) -> Port<()> {
-    let p = Port();
-    let c = Chan(&p);
+fn foo(&&x: ()) -> core::comm::Port<()> {
+    let p = core::comm::Port();
+    let c = core::comm::Chan(&p);
     do task::spawn() |copy c, copy x| {
         c.send(x);
     }

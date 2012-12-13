@@ -14,8 +14,8 @@ Code related to floating-point type inference.
 
 */
 
-use to_str::ToStr;
 use middle::ty::ty_float;
+use middle::typeck::infer::to_str::ToStr;
 
 // Bitvector to represent sets of floating-point types.
 pub enum float_ty_set = uint;

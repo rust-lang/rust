@@ -28,7 +28,7 @@ extern mod rustc(vers = "0.5");
 extern mod syntax(vers = "0.5");
 
 use core::*;
-use io::{ReaderUtil, WriterUtil};
+use core::io::{ReaderUtil, WriterUtil};
 use rustc::back;
 use rustc::driver::{driver, session};
 use rustc::front;
@@ -38,8 +38,8 @@ use rustc::middle::{freevars, kind, lint, trans, ty, typeck};
 use rustc::middle;
 use syntax::{ast, ast_util, codemap, diagnostic, fold, parse, print, visit};
 use syntax::ast_util::*;
-use parse::token;
-use print::{pp, pprust};
+use syntax::parse::token;
+use syntax::print::{pp, pprust};
 use std::rl;
 
 /**

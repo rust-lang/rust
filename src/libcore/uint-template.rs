@@ -12,7 +12,12 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+#[cfg(stage0)]
 use T = inst::T;
+#[cfg(stage1)]
+#[cfg(stage2)]
+use T = self::inst::T;
+
 use cmp::{Eq, Ord};
 use from_str::FromStr;
 

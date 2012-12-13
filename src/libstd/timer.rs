@@ -12,9 +12,8 @@
 
 #[forbid(deprecated_mode)];
 
-use uv = uv;
 use uv::iotask;
-use iotask::IoTask;
+use uv::iotask::IoTask;
 use comm = core::comm;
 
 /**

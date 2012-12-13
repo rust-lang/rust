@@ -451,7 +451,7 @@ pub mod linear {
 
 #[test]
 pub mod test {
-    use linear::LinearMap;
+    use send_map::linear::LinearMap;
 
     #[test]
     pub fn inserts() {

@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::{fn_ctxt, impl_self_ty};
-use infer::{infer_ctxt, resolve_type, resolve_and_force_all_but_regions,
-               fixup_err_to_str};
+use middle::typeck::check::{fn_ctxt, impl_self_ty};
+use middle::typeck::infer::{fixup_err_to_str, infer_ctxt};
+use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
+use util::common::indenter;
+use util::ppaux;
+
+use result::{Result, Ok, Err};
 use syntax::codemap::span;
 use syntax::print::pprust;
-use result::{Result, Ok, Err};
-use util::common::indenter;
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some
@@ -81,14 +83,14 @@ fn lookup_vtables(vcx: &VtableContext,
             tcx, bounds[i]) |trait_ty| {
 
             debug!("about to subst: %?, %?",
-                   ty_to_str(tcx, trait_ty),
+                   ppaux::ty_to_str(tcx, trait_ty),
                    ty::substs_to_str(tcx, substs));
 
             let new_substs = {self_ty: Some(*ty), ..*substs};
             let trait_ty = ty::subst(tcx, &new_substs, trait_ty);
 
             debug!("after subst: %?",
-                   ty_to_str(tcx, trait_ty));
+                   ppaux::ty_to_str(tcx, trait_ty));
 
             match lookup_vtable(vcx, location_info, *ty, trait_ty,
                                 allow_unsafe, is_early) {
@@ -98,8 +100,8 @@ fn lookup_vtables(vcx: &VtableContext,
                         location_info.span,
                         fmt!("failed to find an implementation of \
                               trait %s for %s",
-                             ty_to_str(vcx.tcx(), trait_ty),
-                             ty_to_str(vcx.tcx(), *ty)));
+                             ppaux::ty_to_str(vcx.tcx(), trait_ty),
+                             ppaux::ty_to_str(vcx.tcx(), *ty)));
                 }
             }
         }
@@ -664,8 +666,8 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                             ex.span,
                             fmt!("failed to find an implementation of trait \
                                   %s for %s",
-                                 ty_to_str(fcx.tcx(), target_ty),
-                                 ty_to_str(fcx.tcx(), ty)));
+                                 ppaux::ty_to_str(fcx.tcx(), target_ty),
+                                 ppaux::ty_to_str(fcx.tcx(), ty)));
                     }
                 }
                 Some(vtable) => {

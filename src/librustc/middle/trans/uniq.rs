@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
 use lib::llvm::ValueRef;
-use common::*;
-use build::*;
-use base::*;
-use datum::immediate_rvalue;
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::common::*;
+use middle::trans::datum::immediate_rvalue;
+
+use syntax::ast;
 
 export make_free_glue, autoderef, duplicate;
 

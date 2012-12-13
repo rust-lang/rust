@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map;
-use std::map::HashMap;
-use lib::llvm::llvm;
+use driver::session;
 use lib::llvm::ValueRef;
-use trans::common::*;
-use trans::base;
-use trans::build::B;
+use lib::llvm::llvm;
+use middle::pat_util::*;
+use middle::trans::base;
+use middle::trans::build::B;
+use middle::trans::common::*;
 use middle::ty;
-use syntax::{ast, codemap, ast_util, ast_map};
-use syntax::parse::token::ident_interner;
-use codemap::{span, CharPos};
-use ast::Ty;
-use pat_util::*;
 use util::ppaux::ty_to_str;
-use driver::session::session;
+
+use std::map::HashMap;
+use std::map;
+use syntax::ast::Ty;
+use syntax::codemap::{span, CharPos};
+use syntax::parse::token::ident_interner;
+use syntax::{ast, codemap, ast_util, ast_map};
 
 export create_local_var;
 export create_function;

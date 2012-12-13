@@ -30,13 +30,15 @@ are represented as `ty_param()` instances.
 
 */
 
-use astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
-use ast_util::trait_method_to_ty_method;
-use middle::ty::{FnMeta, FnSig, FnTyBase};
-use rscope::*;
-use ty::{FnTyBase, FnMeta, FnSig, InstantiatedTraitRef};
+use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef};
+use middle::typeck::astconv::{ast_conv, ty_of_fn_decl, ty_of_arg};
+use middle::typeck::astconv::{ast_ty_to_ty};
+use middle::typeck::rscope::*;
 use util::common::pluralize;
+use util::ppaux;
 use util::ppaux::bound_to_str;
+
+use syntax::ast_util::trait_method_to_ty_method;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
@@ -403,10 +405,10 @@ fn compare_impl_method(tcx: ty::ctxt,
     // - replace self region with a fresh, dummy region
     let impl_fty = {
         let impl_fty = ty::mk_fn(tcx, impl_m.fty);
-        debug!("impl_fty (pre-subst): %s", ty_to_str(tcx, impl_fty));
+        debug!("impl_fty (pre-subst): %s", ppaux::ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
-    debug!("impl_fty: %s", ty_to_str(tcx, impl_fty));
+    debug!("impl_fty: %s", ppaux::ty_to_str(tcx, impl_fty));
     let trait_fty = {
         let dummy_tps = do vec::from_fn((*trait_m.tps).len()) |i| {
             // hack: we don't know the def id of the impl tp, but it
@@ -421,7 +423,7 @@ fn compare_impl_method(tcx: ty::ctxt,
             tps: vec::append(trait_tps, dummy_tps)
         };
         let trait_fty = ty::mk_fn(tcx, trait_m.fty);
-        debug!("trait_fty (pre-subst): %s", ty_to_str(tcx, trait_fty));
+        debug!("trait_fty (pre-subst): %s", ppaux::ty_to_str(tcx, trait_fty));
         ty::subst(tcx, &substs, trait_fty)
     };
 
@@ -574,7 +576,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_trait(tps, supertraits, ref trait_methods) => {
         let tpt = ty_of_item(ccx, it);
         debug!("item_trait(it.id=%d, tpt.ty=%s)",
-               it.id, ty_to_str(tcx, tpt.ty));
+               it.id, ppaux::ty_to_str(tcx, tpt.ty));
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id, tpt.ty);
         ensure_supertraits(ccx, it.id, it.span, rp, supertraits);
@@ -774,7 +776,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
                    region_param: None,
                    ty: ty::mk_fn(ccx.tcx, tofd)};
         debug!("type of %s (id %d) is %s",
-               tcx.sess.str_of(it.ident), it.id, ty_to_str(tcx, tpt.ty));
+               tcx.sess.str_of(it.ident),
+               it.id,
+               ppaux::ty_to_str(tcx, tpt.ty));
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }

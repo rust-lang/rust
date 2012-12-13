@@ -13,13 +13,14 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
+use middle::ty;
+use middle::ty::{FnTyBase, FnMeta, FnSig};
+
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::ast_util::respan;
-use middle::ty;
 use std::map::HashMap;
-use ty::{FnTyBase, FnMeta, FnSig};
 
 export parse_state_from_data;
 export parse_arg_data, parse_ty_data, parse_def_id, parse_ident;

@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::pat_util::{pat_is_binding, pat_is_const};
+use middle::pat_util::{pat_is_variant_or_struct};
+
+use syntax::ast_util::walk_pat;
 use syntax::print::pprust;
-use syntax::ast_util::{walk_pat};
-use pat_util::{pat_is_binding, pat_is_const, pat_is_variant_or_struct};
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,

@@ -41,11 +41,9 @@
 use cmp::Eq;
 use result::Result;
 use pipes::{stream, Chan, Port};
-use local_data_priv::{local_get, local_set};
+use task::local_data_priv::{local_get, local_set};
+use task::rt::{task_id, rust_task};
 use util::replace;
-
-use rt::task_id;
-use rt::rust_task;
 
 mod local_data_priv;
 pub mod local_data;

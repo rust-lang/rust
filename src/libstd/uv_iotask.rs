@@ -19,7 +19,7 @@
 use libc::c_void;
 use ptr::addr_of;
 use comm = core::comm;
-use comm::{Port, Chan, listen};
+use core::comm::{Port, Chan, listen};
 use task::TaskBuilder;
 use ll = uv_ll;
 

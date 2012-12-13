@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sys::size_of;
-extern mod std;
-
 struct Cat {
     x: int
 }
@@ -25,12 +22,12 @@ impl Kitty : Drop {
 
 #[cfg(target_arch = "x86_64")]
 fn main() {
-    assert (size_of::<Cat>() == 8 as uint);
-    assert (size_of::<Kitty>() == 16 as uint);
+    assert (sys::size_of::<Cat>() == 8 as uint);
+    assert (sys::size_of::<Kitty>() == 16 as uint);
 }
 
 #[cfg(target_arch = "x86")]
 fn main() {
-    assert (size_of::<Cat>() == 4 as uint);
-    assert (size_of::<Kitty>() == 8 as uint);
+    assert (sys::size_of::<Cat>() == 4 as uint);
+    assert (sys::size_of::<Kitty>() == 8 as uint);
 }

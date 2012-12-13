@@ -10,8 +10,8 @@
 
 use std::map::{HashMap};
 use ast_util::spanned;
-use parser::Parser;
-use lexer::reader;
+use parse::parser::Parser;
+use parse::lexer::reader;
 
 type seq_sep = {
     sep: Option<token::Token>,

@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::*;
+use middle::trans::base::{get_insn_ctxt};
+use middle::trans::base::{impl_owned_self, impl_self, no_self};
+use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
+use middle::trans::common::*;
+
 use syntax::ast;
-use syntax::ast_util::local_def;
 use syntax::ast_map::{path, path_mod, path_name};
-use base::{trans_item, get_item_val, self_arg, trans_fn, impl_owned_self,
-           impl_self, no_self, get_insn_ctxt};
+use syntax::ast_util::local_def;
 
 // `translate` will be true if this function is allowed to translate the
 // item and false otherwise. Currently, this parameter is set to false when

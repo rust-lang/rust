@@ -15,8 +15,6 @@
 // task will kill the supervising task, waking it up. The supervising task no
 // longer needs to be wakened when the supervised task exits.
 
-extern mod std;
-
 fn supervised() {
     // Yield to make sure the supervisor joins before we fail. This is
     // currently not needed because the supervisor runs first, but I can

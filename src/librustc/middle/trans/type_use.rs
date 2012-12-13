@@ -27,13 +27,16 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
-use std::map::HashMap;
-use std::list;
-use std::list::{List, Cons, Nil};
 use metadata::csearch;
-use syntax::ast::*, syntax::ast_util, syntax::visit;
+use middle::trans::common::*;
+
+use std::list::{List, Cons, Nil};
+use std::list;
+use std::map::HashMap;
+use syntax::ast::*;
 use syntax::ast_map;
-use common::*;
+use syntax::ast_util;
+use syntax::visit;
 
 type type_uses = uint; // Bitmask
 const use_repr: uint = 1u;   /* Dependency on size/alignment/mode and

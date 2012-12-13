@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use integral::{int_ty_set};
-use floating::{float_ty_set};
-use unify::{var_value, redirect, root};
+use middle::typeck::infer::integral::int_ty_set;
+use middle::typeck::infer::floating::float_ty_set;
+use middle::typeck::infer::unify::{redirect, root, var_value};
 
 trait ToStr {
     fn to_str(cx: infer_ctxt) -> ~str;
