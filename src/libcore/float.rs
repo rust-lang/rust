@@ -36,7 +36,7 @@ pub use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
 pub use f64::signbit;
 pub use f64::{j0, j1, jn, y0, y1, yn};
 use cmp::{Eq, Ord};
-use num::from_int;
+use num::Num::from_int;
 
 pub const NaN: float = 0.0/0.0;
 

@@ -20,7 +20,7 @@ use T = self::inst::T;
 
 use cmp::{Eq, Ord};
 use from_str::FromStr;
-use num::from_int;
+use num::Num::from_int;
 
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);

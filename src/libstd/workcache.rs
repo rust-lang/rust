@@ -16,8 +16,7 @@ use either::{Right,Left,Either};
 use json;
 use sha1;
 use serialization::{Serializer,Serializable,
-                    Deserializer,Deserializable,
-                    deserialize};
+                    Deserializer,Deserializable};
 
 /**
 *
@@ -261,7 +260,7 @@ impl Prep {
 
                     let v : T = do io::with_str_reader(res) |rdr| {
                         let j = result::unwrap(json::from_reader(rdr));
-                        deserialize(&json::Deserializer(move j))
+                        Deserializable::deserialize(&json::Deserializer(move j))
                     };
                     return Work::new(self, move Left(move v));
                 }

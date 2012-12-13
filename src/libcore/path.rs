@@ -29,7 +29,7 @@ pub struct WindowsPath {
 }
 
 pub pure fn WindowsPath(s: &str) -> WindowsPath {
-    from_str(s)
+    GenericPath::from_str(s)
 }
 
 #[deriving_eq]
@@ -39,7 +39,7 @@ pub struct PosixPath {
 }
 
 pub pure fn PosixPath(s: &str) -> PosixPath {
-    from_str(s)
+    GenericPath::from_str(s)
 }
 
 pub trait GenericPath {
