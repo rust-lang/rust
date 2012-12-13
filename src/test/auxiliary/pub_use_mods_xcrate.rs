@@ -16,6 +16,6 @@ pub mod a {
         }
     }
 
-    pub use b::c;
+    pub use a::b::c;
 }
 

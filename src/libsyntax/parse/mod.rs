@@ -20,6 +20,7 @@ export comments;
 export prec;
 export classify;
 export attr;
+export obsolete;
 
 export parse_sess;
 export new_parse_sess, new_parse_sess_special_handler;
@@ -35,14 +36,14 @@ export parse_stmt_from_source_str;
 export parse_tts_from_source_str;
 export parse_from_source_str;
 
-use parser::Parser;
-use attr::parser_attr;
 use ast::node_id;
-use util::interner;
-use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
-use lexer::{reader, string_reader};
-use parse::token::{ident_interner, mk_ident_interner};
 use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
+use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
+use parse::attr::parser_attr;
+use parse::lexer::{reader, string_reader};
+use parse::parser::Parser;
+use parse::token::{ident_interner, mk_ident_interner};
+use util::interner;
 
 
 #[legacy_exports]

@@ -10,38 +10,32 @@
 
 // Issue #763
 
-extern mod std;
-use comm::Chan;
-use comm::send;
-use comm::Port;
-use comm::recv;
+enum request { quit, close(core::comm::Chan<bool>), }
 
-enum request { quit, close(Chan<bool>), }
+type ctx = core::comm::Chan<request>;
 
-type ctx = Chan<request>;
-
-fn request_task(c: Chan<ctx>) {
-    let p = Port();
-    send(c, Chan(&p));
+fn request_task(c: core::comm::Chan<ctx>) {
+    let p = core::comm::Port();
+    core::comm::send(c, core::comm::Chan(&p));
     let mut req: request;
-    req = recv(p);
+    req = core::comm::recv(p);
     // Need to drop req before receiving it again
-    req = recv(p);
+    req = core::comm::recv(p);
 }
 
 fn new_cx() -> ctx {
-    let p = Port();
-    let ch = Chan(&p);
+    let p = core::comm::Port();
+    let ch = core::comm::Chan(&p);
     let t = task::spawn(|| request_task(ch) );
     let mut cx: ctx;
-    cx = recv(p);
+    cx = core::comm::recv(p);
     return cx;
 }
 
 fn main() {
     let cx = new_cx();
 
-    let p = Port::<bool>();
-    send(cx, close(Chan(&p)));
-    send(cx, quit);
+    let p = core::comm::Port::<bool>();
+    core::comm::send(cx, close(core::comm::Chan(&p)));
+    core::comm::send(cx, quit);
 }

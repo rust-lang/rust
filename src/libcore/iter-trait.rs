@@ -16,7 +16,12 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+
+#[cfg(stage0)]
 use inst::{IMPL_T, EACH, SIZE_HINT};
+#[cfg(stage1)]
+#[cfg(stage2)]
+use self::inst::{IMPL_T, EACH, SIZE_HINT};
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {
     pure fn each(blk: fn(v: &A) -> bool) { EACH(&self, blk) }

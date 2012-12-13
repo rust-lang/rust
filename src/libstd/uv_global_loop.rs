@@ -15,10 +15,10 @@
 use ll = uv_ll;
 use iotask = uv_iotask;
 use get_gl = get;
-use iotask::{IoTask, spawn_iotask};
+use uv_iotask::{IoTask, spawn_iotask};
 use private::{chan_from_global_ptr, weaken_task};
 use comm = core::comm;
-use comm::{Port, Chan, select2, listen};
+use core::comm::{Port, Chan, select2, listen};
 use task::TaskBuilder;
 use either::{Left, Right};
 

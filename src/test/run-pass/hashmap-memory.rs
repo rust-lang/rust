@@ -1,3 +1,5 @@
+// xfail-fast
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -16,8 +18,6 @@
 
 extern mod std;
 
-use option::Some;
-use option::None;
 use std::map;
 use std::map::HashMap;
 use comm::Chan;

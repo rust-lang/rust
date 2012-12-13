@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dvec::DVec;
-
 fn main() {
-    let d = DVec();
+    let d = dvec::DVec();
     d.push(3);
     d.push(4);
     assert d.get() == ~[3, 4];

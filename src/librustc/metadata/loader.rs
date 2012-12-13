@@ -15,7 +15,7 @@ use syntax::{ast, attr};
 use syntax::print::pprust;
 use syntax::codemap::span;
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-use filesearch::FileSearch;
+use metadata::filesearch::FileSearch;
 use io::WriterUtil;
 use syntax::parse::token::ident_interner;
 

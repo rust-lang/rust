@@ -10,12 +10,12 @@
 
 //! AST-parsing helpers
 
+use rustc::driver::driver::{file_input, str_input};
 use rustc::driver::driver;
-use driver::{file_input, str_input};
 use rustc::driver::session;
-use syntax::diagnostic;
 use syntax::ast;
 use syntax::codemap;
+use syntax::diagnostic;
 use syntax::parse;
 
 pub fn from_file(file: &Path) -> @ast::crate {

@@ -18,18 +18,19 @@ region parameterized.
 */
 
 use driver::session::Session;
-use middle::ty;
-use syntax::{ast, visit};
-use syntax::codemap::span;
-use syntax::print::pprust;
-use syntax::ast_map;
-use dvec::DVec;
 use metadata::csearch;
-use ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
+use middle::ty::{region_variance, rv_covariant, rv_invariant};
+use middle::ty::{rv_contravariant};
+use middle::ty;
 
+use core::dvec::DVec;
 use std::list;
 use std::list::list;
 use std::map::HashMap;
+use syntax::ast_map;
+use syntax::codemap::span;
+use syntax::print::pprust;
+use syntax::{ast, visit};
 
 type parent = Option<ast::node_id>;
 

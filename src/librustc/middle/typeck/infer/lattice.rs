@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use combine::*;
-use unify::*;
-use to_str::ToStr;
+use middle::typeck::infer::combine::*;
+use middle::typeck::infer::unify::*;
+use middle::typeck::infer::to_str::ToStr;
 
 // ______________________________________________________________________
 // Lattice operations on variables

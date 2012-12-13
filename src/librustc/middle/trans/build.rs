@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
-use libc::{c_uint, c_int};
-use lib::llvm::llvm;
-use syntax::codemap;
 use codemap::span;
+use lib::llvm::llvm;
+use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
+use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
-use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
-        CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
-use common::*;
+use libc::{c_uint, c_int};
+use middle::trans::common::*;
+
+use std::map::HashMap;
+use syntax::codemap;
 
 fn B(cx: block) -> BuilderRef {
     let b = cx.fcx.ccx.builder.B;

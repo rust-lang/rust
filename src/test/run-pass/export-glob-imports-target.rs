@@ -1,3 +1,5 @@
+// xfail-fast
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -15,7 +17,7 @@
 
 mod foo {
     #[legacy_exports];
-    use bar::*;
+    use foo::bar::*;
     mod bar {
         #[legacy_exports];
         const a : int = 10;

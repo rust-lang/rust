@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
-use lib::llvm::{TypeRef, ValueRef};
-use syntax::ast;
 use back::abi;
-use common::*;
-use build::*;
-use base::*;
-use type_of::*;
-use ast::def_id;
+use lib::llvm::{TypeRef, ValueRef};
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::callee::{ArgVals, DontAutorefArg};
+use middle::trans::common::*;
+use middle::trans::datum::*;
+use middle::trans::expr::SaveIn;
+use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
-use datum::*;
-use callee::{ArgVals, DontAutorefArg};
-use expr::SaveIn;
+
+use std::map::HashMap;
+use syntax::ast::def_id;
+use syntax::ast;
 
 enum reflector = {
     visitor_val: ValueRef,

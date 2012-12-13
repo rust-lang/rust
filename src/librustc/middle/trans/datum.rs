@@ -96,11 +96,11 @@
  * values. */
 
 use lib::llvm::ValueRef;
-use base::*;
-use common::*;
-use build::*;
-use util::ppaux::ty_to_str;
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::common::*;
 use util::common::indenter;
+use util::ppaux::ty_to_str;
 
 enum CopyAction {
     INIT,

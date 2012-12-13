@@ -10,7 +10,6 @@
 // except according to those terms.
 
 
-extern mod std;
 use pipes::send;
 use pipes::Port;
 use pipes::recv;

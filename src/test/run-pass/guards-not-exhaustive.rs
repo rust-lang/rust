@@ -1,5 +1,3 @@
-use option::*;
-
 enum Q { R(Option<uint>) }
 
 fn xyzzy(q: Q) -> uint {

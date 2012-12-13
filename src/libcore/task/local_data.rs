@@ -26,7 +26,7 @@ magic.
 
 */
 
-use local_data_priv::{
+use task::local_data_priv::{
     local_pop,
     local_get,
     local_set,

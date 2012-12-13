@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::*;
-use syntax::ast;
-use syntax::ast_util::local_def;
-use syntax::ast_map::{path, path_mod, path_name};
-use base::{trans_item, get_item_val, no_self, self_arg, trans_fn,
-              impl_self, decl_internal_cdecl_fn,
-              set_inline_hint_if_appr, set_inline_hint,
-              trans_enum_variant, trans_struct_dtor,
-              get_insn_ctxt};
-use syntax::parse::token::special_idents;
-use type_of::type_of_fn_from_ty;
 use back::link::mangle_exported_name;
+use middle::trans::base::{get_insn_ctxt};
+use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
+use middle::trans::base::{trans_enum_variant, trans_struct_dtor};
+use middle::trans::base::{trans_fn, impl_self, decl_internal_cdecl_fn};
+use middle::trans::base::{trans_item, get_item_val, no_self, self_arg};
+use middle::trans::common::*;
+use middle::trans::type_of::type_of_fn_from_ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
+
+use syntax::ast;
+use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_util::local_def;
+use syntax::parse::token::special_idents;
 
 fn monomorphic_fn(ccx: @crate_ctxt,
                   fn_id: ast::def_id,

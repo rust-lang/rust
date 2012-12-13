@@ -59,89 +59,109 @@
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.
 
-pub use types::common::c95::*;
-pub use types::common::c99::*;
-pub use types::common::posix88::*;
-pub use types::common::posix01::*;
-pub use types::common::posix08::*;
-pub use types::common::bsd44::*;
-pub use types::os::common::posix01::*;
-pub use types::os::arch::c95::*;
-pub use types::os::arch::c99::*;
-pub use types::os::arch::posix88::*;
-pub use types::os::arch::posix01::*;
-pub use types::os::arch::posix08::*;
-pub use types::os::arch::bsd44::*;
-pub use types::os::arch::extra::*;
+pub use libc::types::common::c95::*;
+pub use libc::types::common::c99::*;
+pub use libc::types::common::posix88::*;
+pub use libc::types::common::posix01::*;
+pub use libc::types::common::posix08::*;
+pub use libc::types::common::bsd44::*;
+pub use libc::types::os::common::posix01::*;
+pub use libc::types::os::arch::c95::*;
+pub use libc::types::os::arch::c99::*;
+pub use libc::types::os::arch::posix88::*;
+pub use libc::types::os::arch::posix01::*;
+pub use libc::types::os::arch::posix08::*;
+pub use libc::types::os::arch::bsd44::*;
+pub use libc::types::os::arch::extra::*;
 
-pub use consts::os::c95::*;
-pub use consts::os::c99::*;
-pub use consts::os::posix88::*;
-pub use consts::os::posix01::*;
-pub use consts::os::posix08::*;
-pub use consts::os::bsd44::*;
-pub use consts::os::extra::*;
+pub use libc::consts::os::c95::*;
+pub use libc::consts::os::c99::*;
+pub use libc::consts::os::posix88::*;
+pub use libc::consts::os::posix01::*;
+pub use libc::consts::os::posix08::*;
+pub use libc::consts::os::bsd44::*;
+pub use libc::consts::os::extra::*;
 
-pub use funcs::c95::ctype::*;
-pub use funcs::c95::stdio::*;
-pub use funcs::c95::stdlib::*;
-pub use funcs::c95::string::*;
+pub use libc::funcs::c95::ctype::*;
+pub use libc::funcs::c95::stdio::*;
+pub use libc::funcs::c95::stdlib::*;
+pub use libc::funcs::c95::string::*;
 
-pub use funcs::posix88::stat_::*;
-pub use funcs::posix88::stdio::*;
-pub use funcs::posix88::fcntl::*;
-pub use funcs::posix88::dirent::*;
-pub use funcs::posix88::unistd::*;
+pub use libc::funcs::posix88::stat_::*;
+pub use libc::funcs::posix88::stdio::*;
+pub use libc::funcs::posix88::fcntl::*;
+pub use libc::funcs::posix88::dirent::*;
+pub use libc::funcs::posix88::unistd::*;
 
-pub use funcs::posix01::stat_::*;
-pub use funcs::posix01::unistd::*;
-pub use funcs::posix08::unistd::*;
+pub use libc::funcs::posix01::stat_::*;
+pub use libc::funcs::posix01::unistd::*;
+pub use libc::funcs::posix08::unistd::*;
 
-pub use funcs::bsd44::*;
-pub use funcs::extra::*;
+pub use libc::funcs::bsd44::*;
+pub use libc::funcs::extra::*;
+
+#[cfg(target_os = "win32")]
+pub use libc::funcs::extra::kernel32::*;
+#[cfg(target_os = "win32")]
+pub use libc::funcs::extra::msvcrt::*;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
 // symbols.
 
-pub use size_t;
-pub use c_float, c_double, c_void, FILE, fpos_t;
-pub use DIR, dirent_t;
-pub use c_char, c_schar, c_uchar;
-pub use c_short, c_ushort, c_int, c_uint, c_long, c_ulong;
-pub use size_t, ptrdiff_t, clock_t, time_t;
-pub use c_longlong, c_ulonglong, intptr_t, uintptr_t;
-pub use off_t, dev_t, ino_t, pid_t, mode_t, ssize_t;
+pub use libc::types::common::c95::{FILE, c_void, fpos_t};
+pub use libc::types::common::posix88::{DIR, dirent_t};
+pub use libc::types::os::arch::c95::{c_char, c_double, c_float, c_int};
+pub use libc::types::os::arch::c95::{c_long, c_short, c_uchar, c_ulong};
+pub use libc::types::os::arch::c95::{c_ushort, clock_t, ptrdiff_t};
+pub use libc::types::os::arch::c95::{size_t, time_t};
+pub use libc::types::os::arch::c99::{c_longlong, c_ulonglong, intptr_t};
+pub use libc::types::os::arch::c99::{uintptr_t};
+pub use libc::types::os::arch::posix88::{dev_t, dirent_t, ino_t, mode_t};
+pub use libc::types::os::arch::posix88::{off_t, pid_t, ssize_t};
 
-pub use EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX,
-EOF, SEEK_SET, SEEK_CUR, SEEK_END, _IOFBF, _IONBF, _IOLBF,
-BUFSIZ, FOPEN_MAX, FILENAME_MAX, L_tmpnam, TMP_MAX,
-O_RDONLY, O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_EXCL, O_TRUNC,
-S_IFIFO, S_IFCHR, S_IFBLK, S_IFDIR, S_IFREG, S_IFMT, S_IEXEC,
-S_IWRITE, S_IREAD, S_IRWXU, S_IXUSR, S_IWUSR, S_IRUSR, F_OK, R_OK,
-W_OK, X_OK, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+pub use libc::consts::os::c95::{_IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF};
+pub use libc::consts::os::c95::{EXIT_FAILURE, EXIT_SUCCESS};
+pub use libc::consts::os::c95::{FILENAME_MAX, FOPEN_MAX, L_tmpnam};
+pub use libc::consts::os::c95::{RAND_MAX, SEEK_CUR, SEEK_END};
+pub use libc::consts::os::c95::{SEEK_SET, TMP_MAX};
+pub use libc::consts::os::posix88::{F_OK, O_APPEND, O_CREAT, O_EXCL};
+pub use libc::consts::os::posix88::{O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
+pub use libc::consts::os::posix88::{R_OK, S_IEXEC, S_IFBLK, S_IFCHR};
+pub use libc::consts::os::posix88::{S_IFDIR, S_IFIFO, S_IFMT, S_IFREG};
+pub use libc::consts::os::posix88::{S_IREAD, S_IRUSR, S_IRWXU, S_IWUSR};
+pub use libc::consts::os::posix88::{STDERR_FILENO, STDIN_FILENO};
+pub use libc::consts::os::posix88::{STDOUT_FILENO, W_OK, X_OK};
 
-pub use isalnum, isalpha, iscntrl, isdigit, islower, isprint, ispunct,
-isspace, isupper, isxdigit, tolower, toupper;
+pub use libc::funcs::c95::ctype::{isalnum, isalpha, iscntrl, isdigit};
+pub use libc::funcs::c95::ctype::{islower, isprint, ispunct, isspace};
+pub use libc::funcs::c95::ctype::{isupper, isxdigit, tolower, toupper};
 
-pub use fopen, freopen, fflush, fclose, remove, tmpfile, setvbuf, setbuf,
-fgetc, fgets, fputc, fputs, puts, ungetc, fread, fwrite, fseek, ftell,
-rewind, fgetpos, fsetpos, feof, ferror, perror;
+pub use libc::funcs::c95::stdio::{fclose, feof, ferror, fflush, fgetc};
+pub use libc::funcs::c95::stdio::{fgetpos, fgets, fopen, fputc, fputs};
+pub use libc::funcs::c95::stdio::{fread, freopen, fseek, fsetpos, ftell};
+pub use libc::funcs::c95::stdio::{fwrite, perror, puts, remove, rewind};
+pub use libc::funcs::c95::stdio::{setbuf, setvbuf, tmpfile, ungetc};
 
-pub use abs, labs, atof, atoi, strtod, strtol, strtoul, calloc, malloc,
-realloc, free, abort, exit, system, getenv, rand, srand;
+pub use libc::funcs::c95::stdlib::{abort, abs, atof, atoi, calloc, exit};
+pub use libc::funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
+pub use libc::funcs::c95::stdlib::{realloc, srand, strtod, strtol};
+pub use libc::funcs::c95::stdlib::{strtoul, system};
 
-pub use strcpy, strncpy, strcat, strncat, strcmp, strncmp, strcoll, strchr,
-strrchr, strspn, strcspn, strpbrk, strstr, strlen, strerror, strtok,
-strxfrm, memcpy, memmove, memcmp, memchr, memset;
+pub use libc::funcs::c95::string::{memchr, memcmp, memcpy, memmove};
+pub use libc::funcs::c95::string::{memset, strcat, strchr, strcmp};
+pub use libc::funcs::c95::string::{strcoll, strcpy, strcspn, strerror};
+pub use libc::funcs::c95::string::{strlen, strncat, strncmp, strncpy};
+pub use libc::funcs::c95::string::{strpbrk, strrchr, strspn, strstr};
+pub use libc::funcs::c95::string::{strtok, strxfrm};
 
-pub use chmod, mkdir;
-pub use popen, pclose, fdopen, fileno;
-pub use open, creat;
-pub use access, chdir, close, dup, dup2, execv, execve, execvp, getcwd,
-getpid, isatty, lseek, pipe, read, rmdir, unlink, write;
-
-pub use fstat, stat;
+pub use libc::funcs::posix88::fcntl::{open, creat};
+pub use libc::funcs::posix88::stat_::{chmod, fstat, mkdir, stat};
+pub use libc::funcs::posix88::stdio::{fdopen, fileno, pclose, popen};
+pub use libc::funcs::posix88::unistd::{access, chdir, close, dup, dup2};
+pub use libc::funcs::posix88::unistd::{execv, execve, execvp, getcwd};
+pub use libc::funcs::posix88::unistd::{getpid, isatty, lseek, pipe, read};
+pub use libc::funcs::posix88::unistd::{rmdir, unlink, write};
 
 
 mod types {
@@ -1365,10 +1385,6 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     pub mod extra {
-        use types::os::arch::extra::*;
-        pub use kernel32::*;
-        pub use msvcrt::*;
-
         #[abi = "stdcall"]
         pub extern mod kernel32 {
             fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -1396,7 +1412,7 @@ pub mod funcs {
         #[nolink]
         pub extern mod msvcrt {
             #[link_name = "_commit"]
-            fn commit(fd: c_int) -> c_int;
+            pub fn commit(fd: c_int) -> c_int;
         }
     }
 }

@@ -10,8 +10,8 @@
 
 use parse::{comments, lexer, token};
 use codemap::{CodeMap, BytePos};
-use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
-use pp::{consistent, inconsistent, eof};
+use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
+use print::pp::{breaks, consistent, inconsistent, eof};
 use ast::{required, provided};
 use ast_util::{operator_prec};
 use dvec::DVec;

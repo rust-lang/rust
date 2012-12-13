@@ -10,7 +10,11 @@
 
 //! Operations and constants for `u8`
 
+#[cfg(stage0)]
 pub use inst::is_ascii;
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub use self::inst::is_ascii;
 
 mod inst {
     pub type T = u8;

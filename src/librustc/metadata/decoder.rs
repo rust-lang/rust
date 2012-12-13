@@ -10,27 +10,28 @@
 
 // Decoding metadata from a single crate's metadata
 
-use std::ebml;
-use std::map;
-use std::map::HashMap;
-use std::serialization::deserialize;
-use reader = ebml::reader;
-use io::WriterUtil;
+use cmd = metadata::cstore::crate_metadata;
 use dvec::DVec;
-use syntax::{ast, ast_util};
-use syntax::attr;
-use middle::ty;
-use syntax::ast_map;
-use tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
-        parse_ident};
-use syntax::print::pprust;
-use cmd=cstore::crate_metadata;
-use util::ppaux::ty_to_str;
-use syntax::diagnostic::span_handler;
-use common::*;
-use syntax::parse::token::ident_interner;
 use hash::{Hash, HashUtil};
-use csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
+use io::WriterUtil;
+use metadata::common::*;
+use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
+use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
+use metadata::tydecode::{parse_ident};
+use middle::ty;
+use util::ppaux::ty_to_str;
+
+use reader = std::ebml::reader;
+use std::ebml;
+use std::map::HashMap;
+use std::map;
+use std::serialization::deserialize;
+use syntax::ast_map;
+use syntax::attr;
+use syntax::diagnostic::span_handler;
+use syntax::parse::token::ident_interner;
+use syntax::print::pprust;
+use syntax::{ast, ast_util};
 
 export struct_dtor;
 export get_struct_fields;

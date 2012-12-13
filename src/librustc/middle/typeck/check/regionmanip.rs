@@ -11,6 +11,8 @@
 // #[warn(deprecated_mode)];
 // #[warn(deprecated_pattern)];
 
+use util::ppaux;
+
 use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
@@ -47,9 +49,9 @@ fn replace_bound_regions_in_fn_ty(
 
     debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",
-           self_ty.map(|t| ty_to_str(tcx, *t)),
-           ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
-           all_tys.map(|t| ty_to_str(tcx, *t)));
+           self_ty.map(|t| ppaux::ty_to_str(tcx, *t)),
+           ppaux::ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
+           all_tys.map(|t| ppaux::ty_to_str(tcx, *t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
@@ -64,8 +66,8 @@ fn replace_bound_regions_in_fn_ty(
 
     debug!("result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
                 fn_ty=%s",
-           t_self.map(|t| ty_to_str(tcx, *t)),
-           ty_to_str(tcx, t_fn));
+           t_self.map(|t| ppaux::ty_to_str(tcx, *t)),
+           ppaux::ty_to_str(tcx, t_fn));
 
 
     // Glue updated self_ty back together with its original def_id.

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
 use pipes::send;
 use pipes::Chan;
 use pipes::recv;

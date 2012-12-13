@@ -23,45 +23,44 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use libc::{c_uint, c_ulonglong};
-use std::{map, time, list};
-use std::map::HashMap;
-use driver::session;
-use session::Session;
-use syntax::attr;
+use back::link::{mangle_exported_name};
+use back::link::{mangle_internal_name_by_path_and_seq};
+use back::link::{mangle_internal_name_by_path};
+use back::link::{mangle_internal_name_by_seq};
+use back::link::{mangle_internal_name_by_type_only};
 use back::{link, abi, upcall};
-use syntax::{ast, ast_util, codemap, ast_map};
-use ast_util::{def_id_of_def, local_def, path_to_ident};
-use syntax::visit;
-use syntax::codemap::span;
-use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
-use pat_util::*;
-use visit::vt;
-use util::common::is_main_name;
-use lib::llvm::{llvm, mk_target_data, mk_type_names};
+use driver::session;
+use driver::session::Session;
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 use lib::llvm::{True, False};
-use link::{mangle_internal_name_by_type_only,
-              mangle_internal_name_by_seq,
-              mangle_internal_name_by_path,
-              mangle_internal_name_by_path_and_seq,
-              mangle_exported_name};
-use metadata::{csearch, cstore, decoder, encoder};
+use lib::llvm::{llvm, mk_target_data, mk_type_names};
 use metadata::common::link_meta;
-use util::ppaux;
-use util::ppaux::{ty_to_str, ty_to_short_str};
-use syntax::diagnostic::expect;
+use metadata::{csearch, cstore, decoder, encoder};
+use middle::pat_util::*;
+use middle::trans::build::*;
+use middle::trans::common::*;
+use middle::trans::shape::*;
+use middle::trans::type_of::*;
 use util::common::indenter;
+use util::common::is_main_name;
+use util::ppaux::{ty_to_str, ty_to_short_str};
+use util::ppaux;
 
-use build::*;
-use shape::*;
-use type_of::*;
-use common::*;
-use syntax::ast_map::{path, path_mod, path_name};
-use syntax::parse::token::special_idents;
-
+use core::libc::{c_uint, c_ulonglong};
+use core::option::{is_none, is_some};
+use std::map::HashMap;
 use std::smallintmap;
-use option::{is_none, is_some};
+use std::{map, time, list};
+use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
+use syntax::attr;
+use syntax::codemap::span;
+use syntax::diagnostic::expect;
+use syntax::parse::token::special_idents;
+use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
+use syntax::visit;
+use syntax::visit::vt;
+use syntax::{ast, ast_util, codemap, ast_map};
 
 struct icx_popper {
     ccx: @crate_ctxt,
@@ -1228,7 +1227,7 @@ fn with_scope_datumblock(bcx: block, opt_node_info: Option<node_info>,
                          name: ~str, f: fn(block) -> datum::DatumBlock)
     -> datum::DatumBlock
 {
-    use datum::DatumBlock;
+    use middle::trans::datum::DatumBlock;
 
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);

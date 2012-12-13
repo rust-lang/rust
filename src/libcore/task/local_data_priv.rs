@@ -10,8 +10,13 @@
 
 #[doc(hidden)]; // FIXME #3538
 
-use local_data::LocalDataKey;
+use task::local_data::LocalDataKey;
+
+#[cfg(notest)]
 use rt::rust_task;
+#[cfg(test)]
+#[allow(non_camel_case_types)]
+type rust_task = libc::c_void;
 
 pub trait LocalData { }
 impl<T: Owned> @T: LocalData { }

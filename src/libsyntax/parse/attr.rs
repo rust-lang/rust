@@ -10,7 +10,7 @@
 
 use either::{Either, Left, Right};
 use ast_util::spanned;
-use common::*; //resolve bug?
+use parse::common::*; //resolve bug?
 
 export parser_attr;
 

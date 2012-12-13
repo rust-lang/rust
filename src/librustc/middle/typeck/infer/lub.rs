@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use combine::*;
-use lattice::*;
-use to_str::ToStr;
+use middle::typeck::infer::combine::*;
+use middle::typeck::infer::lattice::*;
+use middle::typeck::infer::to_str::ToStr;
+
 use syntax::ast::{Many, Once};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.

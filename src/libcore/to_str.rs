@@ -18,7 +18,7 @@ The `ToStr` trait for converting to strings
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-pub trait ToStr { pure fn to_str() -> ~str; }
+pub trait ToStr { pub pure fn to_str() -> ~str; }
 
 impl int: ToStr {
     pure fn to_str() -> ~str { int::str(self) }

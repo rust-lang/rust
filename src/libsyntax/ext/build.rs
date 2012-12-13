@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use codemap::span;
-use base::ext_ctxt;
+use ext::base::ext_ctxt;
 
 fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
     @ast::expr {

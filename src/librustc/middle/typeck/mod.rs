@@ -50,31 +50,31 @@ independently:
 
 #[legacy_exports];
 
-use result::Result;
-use syntax::{ast, ast_util, ast_map};
-use ast::spanned;
-use ast::{required, provided};
-use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{local_def, respan, split_trait_methods,
-                       has_legacy_export_attr};
-use syntax::visit;
 use metadata::csearch;
-use util::common::{block_query, loop_query};
-use syntax::codemap::span;
-use pat_util::{pat_id_map, PatIdMap};
-use middle::ty;
+use middle::pat_util::{pat_id_map, PatIdMap};
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
-use std::smallintmap;
-use std::map;
-use std::map::HashMap;
-use syntax::print::pprust::*;
-use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
-                  bound_region_to_str, vstore_to_str, expr_repr};
-use util::common::{indent, indenter};
+use middle::ty;
+use util::common::{block_query, indent, indenter, loop_query};
+use util::ppaux::{bound_region_to_str, vstore_to_str, expr_repr};
+use util::ppaux::{ty_to_str, tys_to_str, region_to_str};
+use util::ppaux;
+
+use core::dvec::DVec;
+use core::result::Result;
+use std::list::{List, Nil, Cons};
 use std::list;
-use list::{List, Nil, Cons};
-use dvec::DVec;
+use std::map::HashMap;
+use std::map;
+use std::smallintmap;
+use syntax::ast::{provided, required, spanned};
+use syntax::ast_map::node_id_to_str;
+use syntax::ast_util::{has_legacy_export_attr};
+use syntax::ast_util::{local_def, respan, split_trait_methods};
+use syntax::codemap::span;
+use syntax::print::pprust::*;
+use syntax::visit;
+use syntax::{ast, ast_util, ast_map};
 
 export check;
 export check_crate;
@@ -89,24 +89,31 @@ export method_static, method_param, method_trait, method_self;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 export coherence;
+export check;
+export rscope;
+export astconv;
+export infer;
+export collect;
+export coherence;
+export deriving;
 
 #[legacy_exports]
 #[path = "check/mod.rs"]
 pub mod check;
 #[legacy_exports]
-mod rscope;
+pub mod rscope;
 #[legacy_exports]
-mod astconv;
+pub mod astconv;
 #[path = "infer/mod.rs"]
-mod infer;
+pub mod infer;
 #[legacy_exports]
-mod collect;
+pub mod collect;
 #[legacy_exports]
-mod coherence;
+pub mod coherence;
 
 #[auto_serialize]
 #[auto_deserialize]
-enum method_origin {
+pub enum method_origin {
     // fully statically resolved method
     method_static(ast::def_id),
 
@@ -139,7 +146,7 @@ type method_param = {
     bound_num: uint
 };
 
-type method_map_entry = {
+pub type method_map_entry = {
     // the type and mode of the self parameter, which is not reflected
     // in the fn type (FIXME #3446)
     self_arg: ty::arg,
@@ -153,12 +160,12 @@ type method_map_entry = {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-type method_map = HashMap<ast::node_id, method_map_entry>;
+pub type method_map = HashMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
-type vtable_res = @~[vtable_origin];
+pub type vtable_res = @~[vtable_origin];
 
-enum vtable_origin {
+pub enum vtable_origin {
     /*
       Statically known vtable. def_id gives the class or impl item
       from whence comes the vtable, and tys are the type substs.
@@ -198,7 +205,7 @@ impl vtable_origin {
             vtable_trait(def_id, ref tys) => {
                 fmt!("vtable_trait(%?:%s, %?)",
                      def_id, ty::item_path_str(tcx, def_id),
-                     tys.map(|t| ty_to_str(tcx, *t)))
+                     tys.map(|t| ppaux::ty_to_str(tcx, *t)))
             }
         }
     }
@@ -220,7 +227,7 @@ enum crate_ctxt {
 
 // Functions that write types into the node type table
 fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
-    debug!("write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty));
+    debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
     smallintmap::insert(*tcx.node_types, node_id as uint, ty);
 }
 fn write_substs_to_tcx(tcx: ty::ctxt,
@@ -228,7 +235,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
                        +substs: ~[ty::t]) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
-               substs.map(|t| ty_to_str(tcx, *t)));
+               substs.map(|t| ppaux::ty_to_str(tcx, *t)));
         tcx.node_type_substs.insert(node_id, substs);
     }
 }
@@ -356,13 +363,13 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
                     main_span,
                     fmt!("Wrong type in main function: found `%s`, \
                           expected `fn() -> ()`",
-                         ty_to_str(tcx, main_t)));
+                         ppaux::ty_to_str(tcx, main_t)));
             }
         }
         _ => {
             tcx.sess.span_bug(main_span,
                               ~"main has a non-function type: found `" +
-                              ty_to_str(tcx, main_t) + ~"`");
+                              ppaux::ty_to_str(tcx, main_t) + ~"`");
         }
     }
 }
