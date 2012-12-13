@@ -20,10 +20,10 @@ extern mod std;
 
 use std::map;
 use std::map::HashMap;
-use comm::Chan;
-use comm::Port;
-use comm::send;
-use comm::recv;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::send;
+use oldcomm::recv;
 
 fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 

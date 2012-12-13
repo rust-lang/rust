@@ -11,14 +11,14 @@
 // Test for concurrent tasks
 
 enum msg {
-    ready(comm::Chan<msg>),
+    ready(oldcomm::Chan<msg>),
     start,
     done(int),
 }
 
-fn calc(children: uint, parent_ch: comm::Chan<msg>) {
-    let port = comm::Port();
-    let chan = comm::Chan(&port);
+fn calc(children: uint, parent_ch: oldcomm::Chan<msg>) {
+    let port = oldcomm::Port();
+    let chan = oldcomm::Chan(&port);
     let mut child_chs = ~[];
     let mut sum = 0;
 
@@ -29,7 +29,7 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
     }
 
     for iter::repeat (children) {
-        match comm::recv(port) {
+        match oldcomm::recv(port) {
           ready(child_ch) => {
             child_chs.push(child_ch);
           }
@@ -37,25 +37,25 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
         }
     }
 
-    comm::send(parent_ch, ready(chan));
+    oldcomm::send(parent_ch, ready(chan));
 
-    match comm::recv(port) {
+    match oldcomm::recv(port) {
         start => {
             for vec::each(child_chs) |child_ch| {
-                comm::send(*child_ch, start);
+                oldcomm::send(*child_ch, start);
             }
         }
         _ => fail ~"task-perf-one-million failed (port not in start state)"
     }
 
     for iter::repeat (children) {
-        match comm::recv(port) {
+        match oldcomm::recv(port) {
           done(child_sum) => { sum += child_sum; }
           _ => fail ~"task-perf-one-million failed (port not done)"
         }
     }
 
-    comm::send(parent_ch, done(sum + 1));
+    oldcomm::send(parent_ch, done(sum + 1));
 }
 
 fn main() {
@@ -69,18 +69,18 @@ fn main() {
     };
 
     let children = uint::from_str(args[1]).get();
-    let port = comm::Port();
-    let chan = comm::Chan(&port);
+    let port = oldcomm::Port();
+    let chan = oldcomm::Chan(&port);
     do task::spawn {
         calc(children, chan);
     };
-    match comm::recv(port) {
+    match oldcomm::recv(port) {
       ready(chan) => {
-        comm::send(chan, start);
+        oldcomm::send(chan, start);
       }
       _ => fail ~"task-perf-one-million failed (port not ready)"
     }
-    let sum = match comm::recv(port) {
+    let sum = match oldcomm::recv(port) {
       done(sum) => { sum }
       _ => fail ~"task-perf-one-million failed (port not done)"
     };

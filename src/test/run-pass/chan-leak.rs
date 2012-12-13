@@ -10,32 +10,32 @@
 
 // Issue #763
 
-enum request { quit, close(core::comm::Chan<bool>), }
+enum request { quit, close(core::oldcomm::Chan<bool>), }
 
-type ctx = core::comm::Chan<request>;
+type ctx = core::oldcomm::Chan<request>;
 
-fn request_task(c: core::comm::Chan<ctx>) {
-    let p = core::comm::Port();
-    core::comm::send(c, core::comm::Chan(&p));
+fn request_task(c: core::oldcomm::Chan<ctx>) {
+    let p = core::oldcomm::Port();
+    core::oldcomm::send(c, core::oldcomm::Chan(&p));
     let mut req: request;
-    req = core::comm::recv(p);
+    req = core::oldcomm::recv(p);
     // Need to drop req before receiving it again
-    req = core::comm::recv(p);
+    req = core::oldcomm::recv(p);
 }
 
 fn new_cx() -> ctx {
-    let p = core::comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
     let t = task::spawn(|| request_task(ch) );
     let mut cx: ctx;
-    cx = core::comm::recv(p);
+    cx = core::oldcomm::recv(p);
     return cx;
 }
 
 fn main() {
     let cx = new_cx();
 
-    let p = core::comm::Port::<bool>();
-    core::comm::send(cx, close(core::comm::Chan(&p)));
-    core::comm::send(cx, quit);
+    let p = core::oldcomm::Port::<bool>();
+    core::oldcomm::send(cx, close(core::oldcomm::Chan(&p)));
+    core::oldcomm::send(cx, quit);
 }

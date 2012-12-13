@@ -10,13 +10,13 @@
 
 extern mod std;
 
-fn child(c: comm::Chan<~uint>, i: uint) {
-    comm::send(c, ~i);
+fn child(c: oldcomm::Chan<~uint>, i: uint) {
+    oldcomm::send(c, ~i);
 }
 
 fn main() {
-    let p = comm::Port();
-    let ch = comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = oldcomm::Chan(&p);
     let n = 100u;
     let mut expected = 0u;
     for uint::range(0u, n) |i| {
@@ -26,7 +26,7 @@ fn main() {
 
     let mut actual = 0u;
     for uint::range(0u, n) |_i| {
-        let j = comm::recv(p);
+        let j = oldcomm::recv(p);
         actual += *j;
     }
 

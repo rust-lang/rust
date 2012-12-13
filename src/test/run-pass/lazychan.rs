@@ -10,21 +10,21 @@
 // except according to those terms.
 
 fn main() {
-    let p = core::comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
     let mut y: int;
 
     task::spawn(|| child(ch) );
-    y = core::comm::recv(p);
+    y = core::oldcomm::recv(p);
     debug!("received 1");
     log(debug, y);
     assert (y == 10);
 
     task::spawn(|| child(ch) );
-    y = core::comm::recv(p);
+    y = core::oldcomm::recv(p);
     debug!("received 2");
     log(debug, y);
     assert (y == 10);
 }
 
-fn child(c: core::comm::Chan<int>) { core::comm::send(c, 10); }
+fn child(c: core::oldcomm::Chan<int>) { core::oldcomm::send(c, 10); }

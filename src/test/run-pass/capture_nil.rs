@@ -24,9 +24,9 @@
 // course preferable, as the value itself is
 // irrelevant).
 
-fn foo(&&x: ()) -> core::comm::Port<()> {
-    let p = core::comm::Port();
-    let c = core::comm::Chan(&p);
+fn foo(&&x: ()) -> core::oldcomm::Port<()> {
+    let p = core::oldcomm::Port();
+    let c = core::oldcomm::Chan(&p);
     do task::spawn() |copy c, copy x| {
         c.send(x);
     }

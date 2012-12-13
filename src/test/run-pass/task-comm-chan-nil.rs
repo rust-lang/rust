@@ -16,9 +16,9 @@ extern mod std;
 // any size, but rustc currently can because they do have size. Whether
 // or not this is desirable I don't know, but here's a regression test.
 fn main() {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
-    comm::send(ch, ());
-    let n: () = comm::recv(po);
+    let po = oldcomm::Port();
+    let ch = oldcomm::Chan(&po);
+    oldcomm::send(ch, ());
+    let n: () = oldcomm::recv(po);
     assert (n == ());
 }
