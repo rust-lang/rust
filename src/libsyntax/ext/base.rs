@@ -13,31 +13,18 @@ use parse::parser;
 use diagnostic::span_handler;
 use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
 use ast_util::dummy_sp;
+use parse::token;
 
-// obsolete old-style #macro code:
-//
-//    syntax_expander, normal, macro_defining, macro_definer,
-//    builtin
-//
 // new-style macro! tt code:
 //
 //    syntax_expander_tt, syntax_expander_tt_item, mac_result,
 //    normal_tt, item_tt
 //
-// also note that ast::mac has way too many cases and can probably
-// be trimmed down substantially.
-
-// second argument is the span to blame for general argument problems
-type syntax_expander_ =
-    fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
-// second argument is the origin of the macro, if user-defined
-type syntax_expander = {expander: syntax_expander_, span: Option<span>};
+// also note that ast::mac used to have a bunch of extraneous cases and
+// is now probably a redundant AST node, can be merged with
+// ast::mac_invoc_tt.
 
 type macro_def = {name: ~str, ext: syntax_extension};
-
-// macro_definer is obsolete, remove when #old_macros go away.
-type macro_definer =
-    fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> macro_def;
 
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
@@ -60,13 +47,7 @@ enum mac_result {
 
 enum syntax_extension {
 
-    // normal() is obsolete, remove when #old_macros go away.
-    normal(syntax_expander),
-
-    // macro_defining() is obsolete, remove when #old_macros go away.
-    macro_defining(macro_definer),
-
-    // #[auto_serialize] and such. will probably survive death of #old_macros
+    // #[auto_serialize] and such
     item_decorator(item_decorator),
 
     // Token-tree expanders
@@ -80,8 +61,6 @@ enum syntax_extension {
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
 fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
-    fn builtin(f: syntax_expander_) -> syntax_extension
-        {normal({expander: f, span: None})}
     fn builtin_normal_tt(f: syntax_expander_tt_) -> syntax_extension {
         normal_tt({expander: f, span: None})
     }
@@ -89,28 +68,25 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
         item_tt({expander: f, span: None})
     }
     let syntax_expanders = HashMap();
-    syntax_expanders.insert(~"macro",
-                            macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert(~"macro_rules",
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
-    syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert(~"fmt",
+                            builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
         ~"auto_serialize",
         item_decorator(ext::auto_serialize::expand_auto_serialize));
     syntax_expanders.insert(
         ~"auto_deserialize",
         item_decorator(ext::auto_serialize::expand_auto_deserialize));
-    syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
+    syntax_expanders.insert(~"env",
+                            builtin_normal_tt(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
-                            builtin(ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert(~"ident_to_str",
-                            builtin(ext::ident_to_str::expand_syntax_ext));
+                            builtin_normal_tt(
+                                ext::concat_idents::expand_syntax_ext));
     syntax_expanders.insert(~"log_syntax",
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(~"ast",
-                            builtin(ext::qquote::expand_ast));
     syntax_expanders.insert(~"deriving_eq",
                             item_decorator(
                                 ext::deriving::expand_deriving_eq));
@@ -133,21 +109,29 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                             builtin_normal_tt(ext::quote::expand_quote_stmt));
 
     syntax_expanders.insert(~"line",
-                            builtin(ext::source_util::expand_line));
+                            builtin_normal_tt(
+                                ext::source_util::expand_line));
     syntax_expanders.insert(~"col",
-                            builtin(ext::source_util::expand_col));
+                            builtin_normal_tt(
+                                ext::source_util::expand_col));
     syntax_expanders.insert(~"file",
-                            builtin(ext::source_util::expand_file));
+                            builtin_normal_tt(
+                                ext::source_util::expand_file));
     syntax_expanders.insert(~"stringify",
-                            builtin(ext::source_util::expand_stringify));
+                            builtin_normal_tt(
+                                ext::source_util::expand_stringify));
     syntax_expanders.insert(~"include",
-                            builtin(ext::source_util::expand_include));
+                            builtin_normal_tt(
+                                ext::source_util::expand_include));
     syntax_expanders.insert(~"include_str",
-                            builtin(ext::source_util::expand_include_str));
+                            builtin_normal_tt(
+                                ext::source_util::expand_include_str));
     syntax_expanders.insert(~"include_bin",
-                            builtin(ext::source_util::expand_include_bin));
+                            builtin_normal_tt(
+                                ext::source_util::expand_include_bin));
     syntax_expanders.insert(~"module_path",
-                            builtin(ext::source_util::expand_mod));
+                            builtin_normal_tt(
+                                ext::source_util::expand_mod));
     syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
     syntax_expanders.insert(
@@ -303,87 +287,39 @@ fn expr_to_ident(cx: ext_ctxt,
     }
 }
 
-fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                       min: uint, name: ~str) -> ~[@ast::expr] {
-    return get_mac_args(cx, sp, arg, min, None, name);
+fn check_zero_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
+                  name: &str) {
+    if tts.len() != 0 {
+        cx.span_fatal(sp, fmt!("%s takes no arguments", name));
+    }
 }
 
-fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                min: uint, max: Option<uint>, name: ~str) -> ~[@ast::expr] {
-    match arg {
-      Some(expr) => match expr.node {
-        ast::expr_vec(elts, _) => {
-            let elts_len = vec::len(elts);
-              match max {
-                Some(max) if ! (min <= elts_len && elts_len <= max) => {
-                  cx.span_fatal(sp,
-                                fmt!("%s! takes between %u and %u arguments.",
-                                     name, min, max));
-                }
-                None if ! (min <= elts_len) => {
-                  cx.span_fatal(sp, fmt!("%s! needs at least %u arguments.",
-                                         name, min));
-                }
-                _ => return elts /* we are good */
-              }
-          }
-        _ => {
-            cx.span_fatal(sp, fmt!("%s!: malformed invocation", name))
+fn get_single_str_from_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
+                           name: &str) -> ~str {
+    if tts.len() != 1 {
+        cx.span_fatal(sp, fmt!("%s takes 1 argument.", name));
+    }
+
+    match tts[0] {
+        ast::tt_tok(_, token::LIT_STR(ident)) => cx.str_of(ident),
+        _ =>
+        cx.span_fatal(sp, fmt!("%s requires a string.", name))
+    }
+}
+
+fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
+    -> ~[@ast::expr] {
+    let p = parse::new_parser_from_tts(cx.parse_sess(),
+                                       cx.cfg(),
+                                       tts);
+    let mut es = ~[];
+    while p.token != token::EOF {
+        if es.len() != 0 {
+            p.eat(token::COMMA);
         }
-      },
-      None => cx.span_fatal(sp, fmt!("%s!: missing arguments", name))
+        es.push(p.parse_expr());
     }
-}
-
-fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
-    -> ast::mac_body_
-{
-    match (args) {
-      Some(body) => body,
-      None => cx.span_fatal(sp, ~"missing macro body")
-    }
-}
-
-// Massage syntactic form of new-style arguments to internal representation
-// of old-style macro args, such that old-style macro can be run and invoked
-// using new syntax. This will be obsolete when #old_macros go away.
-fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
-    -> ast::mac_arg {
-    use ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
-    use parse::lexer::{new_tt_reader, reader};
-    use tt::macro_parser::{parse_or_else, matched_seq,
-                              matched_nonterminal};
-
-    // these spans won't matter, anyways
-    fn ms(m: matcher_) -> matcher {
-        {node: m, span: dummy_sp()}
-    }
-    let arg_nm = cx.parse_sess().interner.gensym(@~"arg");
-
-    let argument_gram = ~[ms(match_seq(~[
-        ms(match_nonterminal(arg_nm, parse::token::special_idents::expr, 0u))
-    ], Some(parse::token::COMMA), true, 0u, 1u))];
-
-    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
-                                   cx.parse_sess().interner, None, arg);
-    let args =
-        match parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
-                          argument_gram).get(arg_nm) {
-          @matched_seq(s, _) => {
-            do s.map() |lf| {
-                match *lf {
-                  @matched_nonterminal(parse::token::nt_expr(arg)) =>
-                    arg, /* whew! list of exprs, here we come! */
-                  _ => fail ~"badly-structured parse result"
-                }
-            }
-          },
-          _ => fail ~"badly-structured parse result"
-        };
-
-    return Some(@{id: parse::next_node_id(cx.parse_sess()),
-               callee_id: parse::next_node_id(cx.parse_sess()),
-               node: ast::expr_vec(args, ast::m_imm), span: sp});
+    es
 }
 
 //

@@ -118,6 +118,10 @@ fn tt_to_str(tt: ast::token_tree, intr: @ident_interner) -> ~str {
     to_str(tt, print_tt, intr)
 }
 
+fn tts_to_str(tts: &[ast::token_tree], intr: @ident_interner) -> ~str {
+    to_str(tts, print_tts, intr)
+}
+
 fn stmt_to_str(s: ast::stmt, intr: @ident_interner) -> ~str {
     to_str(s, print_stmt, intr)
 }
@@ -584,14 +588,9 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_ident(s, item.ident);
         cbox(s, indent_unit);
         popen(s);
-        for (*tts).each |tt| {
-            print_tt(s, *tt);
-        }
+        print_tts(s, *tts);
         pclose(s);
         end(s);
-      }
-      ast::item_mac(_) => {
-        fail ~"invalid item-position syntax bit"
       }
     }
     (s.ann.post)(ann_node);
@@ -739,17 +738,9 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
 /// expression arguments as expressions). It can be done! I think.
 fn print_tt(s: ps, tt: ast::token_tree) {
     match tt {
-      ast::tt_delim(ref tts) =>
-        for (*tts).each() |tt_elt| { print_tt(s, *tt_elt); },
+      ast::tt_delim(ref tts) => print_tts(s, *tts),
       ast::tt_tok(_, ref tk) => {
-        match (*tk) {
-          parse::token::IDENT(*) => { // don't let idents run together
-            if s.s.token_tree_last_was_ident { word(s.s, ~" ") }
-            s.s.token_tree_last_was_ident = true;
-          }
-          _ => { s.s.token_tree_last_was_ident = false; }
-        }
-        word(s.s, parse::token::to_str(s.intr, (*tk)));
+          word(s.s, parse::token::to_str(s.intr, (*tk)));
       }
       ast::tt_seq(_, ref tts, ref sep, zerok) => {
         word(s.s, ~"$(");
@@ -760,14 +751,23 @@ fn print_tt(s: ps, tt: ast::token_tree) {
           None => ()
         }
         word(s.s, if zerok { ~"*" } else { ~"+" });
-        s.s.token_tree_last_was_ident = false;
       }
       ast::tt_nonterminal(_, name) => {
         word(s.s, ~"$");
         print_ident(s, name);
-        s.s.token_tree_last_was_ident = true;
       }
     }
+}
+
+fn print_tts(s: ps, &&tts: &[ast::token_tree]) {
+    ibox(s, 0);
+    for tts.eachi |i, tt| {
+        if i != 0 {
+            space(s.s);
+        }
+        print_tt(s, *tt);
+    }
+    end(s);
 }
 
 fn print_variant(s: ps, v: ast::variant) {
@@ -1000,26 +1000,13 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
 
 fn print_mac(s: ps, m: ast::mac) {
     match m.node {
-      ast::mac_invoc(path, arg, _body) => {
-        word(s.s, ~"#");
-        print_path(s, path, false);
-        match arg {
-          Some(@{node: ast::expr_vec(_, _), _}) => (),
-          _ => word(s.s, ~" ")
-        }
-        arg.iter(|a| print_expr(s, *a));
-        // FIXME: extension 'body' (#2339)
-      }
       ast::mac_invoc_tt(pth, ref tts) => {
         print_path(s, pth, false);
         word(s.s, ~"!");
         popen(s);
-        for (*tts).each() |tt| { print_tt(s, *tt); }
+        print_tts(s, *tts);
         pclose(s);
       }
-      ast::mac_ellipsis => word(s.s, ~"..."),
-      ast::mac_var(v) => word(s.s, fmt!("$%u", v)),
-      _ => { /* fixme */ }
     }
 }
 

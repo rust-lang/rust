@@ -831,24 +831,10 @@ enum matcher_ {
 
 type mac = spanned<mac_>;
 
-type mac_arg = Option<@expr>;
-
-#[auto_serialize]
-#[auto_deserialize]
-type mac_body_ = {span: span};
-
-type mac_body = Option<mac_body_>;
-
 #[auto_serialize]
 #[auto_deserialize]
 enum mac_ {
-    mac_invoc(@path, mac_arg, mac_body), // old macro-invocation
     mac_invoc_tt(@path,~[token_tree]),   // new macro-invocation
-    mac_ellipsis,                        // old pattern-match (obsolete)
-
-    // the span is used by the quoter/anti-quoter ...
-    mac_aq(span /* span of quote */, @expr), // anti-quote
-    mac_var(uint)
 }
 
 type lit = spanned<lit_>;
