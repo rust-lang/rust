@@ -70,15 +70,21 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
         log(debug,~"is probably zero...");
         // There's no global channel. We must make it
 
-        let (setup_po, setup_ch) = do task_fn().spawn_conversation
-            |move f, setup_po, setup_ch| {
+        let (setup1_po, setup1_ch) = pipes::stream();
+        let (setup2_po, setup2_ch) = pipes::stream();
+
+        // XXX: Ugly type inference hints
+        let setup1_po: pipes::Port<comm::Chan<T>> = setup1_po;
+        let setup2_po: pipes::Port<Msg> = setup2_po;
+
+        do task_fn().spawn |move f, move setup1_ch, move setup2_po| {
             let po = comm::Port::<T>();
             let ch = comm::Chan(&po);
-            comm::send(setup_ch, ch);
+            setup1_ch.send(ch);
 
             // Wait to hear if we are the official instance of
             // this global task
-            match comm::recv::<Msg>(setup_po) {
+            match setup2_po.recv() {
               Proceed => f(move po),
               Abort => ()
             }
@@ -86,7 +92,7 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
 
         log(debug,~"before setup recv..");
         // This is the proposed global channel
-        let ch = comm::recv(setup_po);
+        let ch = setup1_po.recv();
         // 0 is our sentinal value. It is not a valid channel
         assert *ch != 0;
 
@@ -99,11 +105,11 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
 
         if swapped {
             // Success!
-            comm::send(setup_ch, Proceed);
+            setup2_ch.send(Proceed);
             ch
         } else {
             // Somebody else got in before we did
-            comm::send(setup_ch, Abort);
+            setup2_ch.send(Abort);
             cast::reinterpret_cast(&*global)
         }
     } else {
