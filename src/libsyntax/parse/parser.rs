@@ -3023,6 +3023,7 @@ impl Parser {
         } else {
             prefix.push_many(path.components)
         };
+        let full_path = full_path.normalize();
         let p0 =
             new_sub_parser_from_file(self.sess, self.cfg,
                                      &full_path, id_sp);
