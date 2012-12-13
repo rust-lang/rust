@@ -515,15 +515,7 @@ fn combine_impl_and_methods_origins(bcx: block,
     let m_boundss = vec::view(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
 
     // Flatten out to find the number of vtables the method expects.
-    let m_vtables = m_boundss.foldl(0, |sum, m_bounds| {
-        m_bounds.foldl(*sum, |sum, m_bound| {
-            (*sum) + match (*m_bound) {
-                ty::bound_copy | ty::bound_owned |
-                ty::bound_send | ty::bound_const => 0,
-                ty::bound_trait(_) => 1
-            }
-        })
-    });
+    let m_vtables = ty::count_traits_and_supertraits(tcx, m_boundss);
 
     // Find the vtables we computed at type check time and monomorphize them
     let r_m_origins = match node_vtables(bcx, callee_id) {
