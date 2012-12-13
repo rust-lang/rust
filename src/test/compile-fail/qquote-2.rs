@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test Can't use syntax crate here
 
 extern mod std;
-use syntax;
+extern mod syntax;
 
 use std::io::*;
 
@@ -20,33 +21,39 @@ use syntax::codemap;
 use syntax::parse::parser;
 use syntax::print::*;
 
-fn new_parse_sess() -> parser::parse_sess {
-  fail;
-}
-
 trait fake_ext_ctxt {
-    fn session() -> fake_session;
+    fn cfg() -> ast::crate_cfg;
+    fn parse_sess() -> parse::parse_sess;
+    fn call_site() -> span;
+    fn ident_of(st: ~str) -> ast::ident;
 }
 
-type fake_options = {cfg: ast::crate_cfg};
-
-type fake_session = {opts: @fake_options,
-                     parse_sess: parser::parse_sess};
+type fake_session = parse::parse_sess;
 
 impl fake_session: fake_ext_ctxt {
-    fn session() -> fake_session {self}
+    fn cfg() -> ast::crate_cfg { ~[] }
+    fn parse_sess() -> parse::parse_sess { self }
+    fn call_site() -> span {
+        codemap::span {
+            lo: codemap::BytePos(0),
+            hi: codemap::BytePos(0),
+            expn_info: None
+        }
+    }
+    fn ident_of(st: ~str) -> ast::ident {
+        self.interner.intern(@st)
+    }
 }
 
 fn mk_ctxt() -> fake_ext_ctxt {
-    let opts : fake_options = {cfg: ~[]};
-    {opts: @opts, parse_sess: new_parse_sess()} as fake_ext_ctxt
+    parse::new_parse_sess(None) as fake_ext_ctxt
 }
 
 
 fn main() {
     let ext_cx = mk_ctxt();
 
-    let stmt = #ast[stmt]{let x int = 20;}; //~ ERROR expected end-of-string
+    let stmt = quote_stmt!(let x int = 20;); //~ ERROR expected end-of-string
     check_pp(*stmt,  pprust::print_stmt, "");
 }
 
