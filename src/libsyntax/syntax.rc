@@ -75,9 +75,6 @@ mod ext {
     #[legacy_exports]
     #[path = "ext/expand.rs"]
     mod expand;
-    #[legacy_exports]
-    #[path = "ext/qquote.rs"]
-    mod qquote;
 
     #[path = "ext/quote.rs"]
     mod quote;
@@ -103,9 +100,6 @@ mod ext {
 
 
     #[legacy_exports]
-    #[path = "ext/simplext.rs"]
-    mod simplext;
-    #[legacy_exports]
     #[path = "ext/fmt.rs"]
     mod fmt;
     #[legacy_exports]
@@ -114,9 +108,6 @@ mod ext {
     #[legacy_exports]
     #[path = "ext/concat_idents.rs"]
     mod concat_idents;
-    #[legacy_exports]
-    #[path = "ext/ident_to_str.rs"]
-    mod ident_to_str;
     #[legacy_exports]
     #[path = "ext/log_syntax.rs"]
     mod log_syntax;

@@ -12,16 +12,9 @@ use either::{Either, Left, Right};
 use ast_util::spanned;
 use common::*; //resolve bug?
 
-export attr_or_ext;
 export parser_attr;
 
-// A type to distingush between the parsing of item attributes or syntax
-// extensions, which both begin with token.POUND
-type attr_or_ext = Option<Either<~[ast::attribute], @ast::expr>>;
-
 trait parser_attr {
-    fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
-        -> attr_or_ext;
     fn parse_outer_attributes() -> ~[ast::attribute];
     fn parse_attribute(style: ast::attr_style) -> ast::attribute;
     fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
@@ -34,34 +27,6 @@ trait parser_attr {
 }
 
 impl Parser: parser_attr {
-
-    fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
-        -> attr_or_ext
-    {
-        let expect_item_next = vec::is_not_empty(first_item_attrs);
-        match self.token {
-          token::POUND => {
-            let lo = self.span.lo;
-            if self.look_ahead(1u) == token::LBRACKET {
-                self.bump();
-                let first_attr =
-                    self.parse_attribute_naked(ast::attr_outer, lo);
-                return Some(Left(vec::append(~[first_attr],
-                                          self.parse_outer_attributes())));
-            } else if !(self.look_ahead(1u) == token::LT
-                        || self.look_ahead(1u) == token::LBRACKET
-                        || self.look_ahead(1u) == token::POUND
-                        || expect_item_next) {
-                self.bump();
-                return Some(Right(self.parse_syntax_ext_naked(lo)));
-            } else { return None; }
-        }
-        token::DOC_COMMENT(_) => {
-          return Some(Left(self.parse_outer_attributes()));
-        }
-        _ => return None
-      }
-    }
 
     // Parse attributes that appear before an item
     fn parse_outer_attributes() -> ~[ast::attribute] {

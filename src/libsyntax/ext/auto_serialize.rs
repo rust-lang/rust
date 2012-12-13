@@ -309,7 +309,7 @@ priv impl ext_ctxt {
     fn lambda(blk: ast::blk) -> @ast::expr {
         let ext_cx = self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk));
-        #ast{ || $(blk_e) }
+        quote_expr!( || $blk_e )
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
