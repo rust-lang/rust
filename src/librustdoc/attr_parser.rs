@@ -29,8 +29,8 @@ mod test {
 
     fn parse_attributes(+source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
-        use parse::parser;
-        use parse::attr::parser_attr;
+        use syntax::parse::parser;
+        use syntax::parse::attr::parser_attr;
         use syntax::codemap;
         use syntax::diagnostic;
 
