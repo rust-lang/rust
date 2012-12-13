@@ -130,10 +130,11 @@ pub mod tests {
 
     #[test]
     pub fn test_transmute() {
+        use managed::raw::BoxRepr;
         unsafe {
-            let x = @1;
-            let x: *int = transmute(move x);
-            assert *x == 1;
+            let x = @100u8;
+            let x: *BoxRepr = transmute(move x);
+            assert (*x).data == 100;
             let _x: @int = transmute(move x);
         }
     }
