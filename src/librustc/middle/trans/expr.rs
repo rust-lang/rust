@@ -119,7 +119,8 @@ use base::*;
 use syntax::print::pprust::{expr_to_str};
 use util::ppaux::ty_to_str;
 use util::common::indenter;
-use ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
+use ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
+         AutoBorrowTrait};
 use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
 use middle::ty::MoveValue;
 
@@ -196,7 +197,7 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                 None => datum,
                 Some(ref autoref) => {
                     match autoref.kind {
-                        AutoPtr => {
+                        AutoPtr | AutoBorrowTrait => {
                             unpack_datum!(bcx, auto_ref(bcx, datum))
                         }
                         AutoBorrowVec => {
