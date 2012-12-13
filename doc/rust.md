@@ -847,9 +847,24 @@ fn main() {
 
 Like items, `use` declarations are private to the containing module, by default.
 Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
+Such a `use` declaration serves to _re-export_ a name.
 A public `use` declaration can therefore be used to _redirect_ some public name to a different target definition,
 even a definition with a private canonical path, inside a different module.
 If a sequence of such redirections form a cycle or cannot be unambiguously resolved, they represent a compile-time error.
+
+An example of re-exporting:
+~~~~
+mod quux {
+    mod foo {
+        pub fn bar() { }
+        pub fn baz() { }
+    }
+    
+    pub use foo::*;
+}
+~~~~
+
+In this example, the module `quux` re-exports all of the public names defined in `foo`.
 
 ### Functions
 
