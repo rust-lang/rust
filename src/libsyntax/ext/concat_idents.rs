@@ -10,19 +10,32 @@
 
 use base::*;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
-                     _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args_no_max(cx,sp,arg,1u,~"concat_idents");
+fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+    -> base::mac_result {
     let mut res_str = ~"";
-    for args.each |e| {
-        res_str += *cx.parse_sess().interner.get(
-            expr_to_ident(cx, *e, ~"expected an ident"));
+    for tts.eachi |i, e| {
+        if i & 1 == 1 {
+            match *e {
+                ast::tt_tok(_, token::COMMA) => (),
+                _ => cx.span_fatal(sp, ~"concat_idents! \
+                                         expecting comma.")
+            }
+        } else {
+            match *e {
+                ast::tt_tok(_, token::IDENT(ident,_)) =>
+                res_str += cx.str_of(ident),
+                _ => cx.span_fatal(sp, ~"concat_idents! \
+                                         requires ident args.")
+            }
+        }
     }
     let res = cx.parse_sess().interner.intern(@res_str);
 
-    return @{id: cx.next_id(),
-          callee_id: cx.next_id(),
-          node: ast::expr_path(@{span: sp, global: false, idents: ~[res],
-                                 rp: None, types: ~[]}),
-          span: sp};
+    let e = @{id: cx.next_id(),
+              callee_id: cx.next_id(),
+              node: ast::expr_path(@{span: sp, global: false,
+                                     idents: ~[res],
+                                     rp: None, types: ~[]}),
+              span: sp};
+    mr_expr(e)
 }

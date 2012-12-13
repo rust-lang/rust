@@ -154,8 +154,7 @@ fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
                mut top: 0,
                mut bottom: 0,
                print_stack: DVec(),
-               mut pending_indentation: 0,
-               mut token_tree_last_was_ident: false})
+               mut pending_indentation: 0 })
 }
 
 
@@ -261,7 +260,6 @@ type printer_ = {
     print_stack: DVec<print_stack_elt>,
     // buffered indentation to avoid writing trailing whitespace
     mut pending_indentation: int,
-    mut token_tree_last_was_ident: bool
 };
 
 enum printer {

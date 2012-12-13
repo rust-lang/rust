@@ -21,9 +21,12 @@ use codemap::span;
 use ext::build::*;
 export expand_syntax_ext;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                     _body: ast::mac_body) -> @ast::expr {
-    let args = get_mac_args_no_max(cx, sp, arg, 1u, ~"fmt");
+fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+    -> base::mac_result {
+    let args = get_exprs_from_tts(cx, copy tts);
+    if args.len() == 0 {
+        cx.span_fatal(sp, "fmt! takes at least 1 argument.");
+    }
     let fmt =
         expr_to_str(cx, args[0],
                     ~"first argument to fmt! must be a string literal.");
@@ -37,7 +40,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         parse_fmt_err_(cx, fmtspan, s)
     };
     let pieces = parse_fmt_string(fmt, parse_fmt_err);
-    return pieces_to_expr(cx, sp, pieces, args);
+    mr_expr(pieces_to_expr(cx, sp, pieces, args))
 }
 
 // FIXME (#2249): A lot of these functions for producing expressions can
