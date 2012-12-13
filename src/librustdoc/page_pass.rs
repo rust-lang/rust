@@ -39,7 +39,7 @@ fn run(
         return doc;
     }
 
-    let (result_port, page_chan) = do task::spawn_conversation
+    let (result_port, page_chan) = do util::spawn_conversation
         |page_port, result_chan| {
         comm::send(result_chan, make_doc_from_pages(page_port));
     };

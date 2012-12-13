@@ -434,43 +434,6 @@ impl TaskBuilder {
     }
 
     /**
-     * Runs a new task while providing a channel from the parent to the child
-     *
-     * Sets up a communication channel from the current task to the new
-     * child task, passes the port to child's body, and returns a channel
-     * linked to the port to the parent.
-     *
-     * This encapsulates some boilerplate handshaking logic that would
-     * otherwise be required to establish communication from the parent
-     * to the child.
-     */
-    fn spawn_listener<A: Owned>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
-        let setup_po = comm::Port();
-        let setup_ch = comm::Chan(&setup_po);
-        do self.spawn |move f| {
-            let po = comm::Port();
-            let ch = comm::Chan(&po);
-            comm::send(setup_ch, ch);
-            f(move po);
-        }
-        comm::recv(setup_po)
-    }
-
-    /**
-     * Runs a new task, setting up communication in both directions
-     */
-    fn spawn_conversation<A: Owned, B: Owned>
-        (f: fn~(comm::Port<A>, comm::Chan<B>))
-        -> (comm::Port<B>, comm::Chan<A>) {
-        let from_child = comm::Port();
-        let to_parent = comm::Chan(&from_child);
-        let to_child = do self.spawn_listener |move f, from_parent| {
-            f(from_parent, to_parent)
-        };
-        (from_child, to_child)
-    }
-
-    /**
      * Execute a function in another task and return either the return value
      * of the function or result::err.
      *
@@ -565,28 +528,6 @@ pub fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
      */
 
     task().spawn_with(move arg, move f)
-}
-
-pub fn spawn_listener<A:Owned>(f: fn~(comm::Port<A>)) -> comm::Chan<A> {
-    /*!
-     * Runs a new task while providing a channel from the parent to the child
-     *
-     * This function is equivalent to `task().spawn_listener(f)`.
-     */
-
-    task().spawn_listener(move f)
-}
-
-pub fn spawn_conversation<A: Owned, B: Owned>
-    (f: fn~(comm::Port<A>, comm::Chan<B>))
-    -> (comm::Port<B>, comm::Chan<A>) {
-    /*!
-     * Runs a new task, setting up communication in both directions
-     *
-     * This function is equivalent to `task().spawn_conversation(f)`.
-     */
-
-    task().spawn_conversation(move f)
 }
 
 pub fn spawn_sched(mode: SchedMode, f: fn~()) {
@@ -927,34 +868,6 @@ fn test_back_to_the_future_result() {
 }
 
 #[test]
-fn test_spawn_listiner_bidi() {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
-    let ch = do spawn_listener |po| {
-        // Now the child has a port called 'po' to read from and
-        // an environment-captured channel called 'ch'.
-        let res: ~str = comm::recv(po);
-        assert res == ~"ping";
-        comm::send(ch, ~"pong");
-    };
-    // Likewise, the parent has both a 'po' and 'ch'
-    comm::send(ch, ~"ping");
-    let res: ~str = comm::recv(po);
-    assert res == ~"pong";
-}
-
-#[test]
-fn test_spawn_conversation() {
-    let (recv_str, send_int) = do spawn_conversation |recv_int, send_str| {
-        let input = comm::recv(recv_int);
-        let output = int::str(input);
-        comm::send(send_str, move output);
-    };
-    comm::send(send_int, 1);
-    assert comm::recv(recv_str) == ~"1";
-}
-
-#[test]
 fn test_try_success() {
     match do try {
         ~"Success!"
@@ -1116,29 +1029,11 @@ fn test_avoid_copying_the_body_spawn() {
 }
 
 #[test]
-fn test_avoid_copying_the_body_spawn_listener() {
-    do avoid_copying_the_body |f| {
-        spawn_listener(fn~(move f, _po: comm::Port<int>) {
-            f();
-        });
-    }
-}
-
-#[test]
 fn test_avoid_copying_the_body_task_spawn() {
     do avoid_copying_the_body |f| {
         do task().spawn |move f| {
             f();
         }
-    }
-}
-
-#[test]
-fn test_avoid_copying_the_body_spawn_listener_1() {
-    do avoid_copying_the_body |f| {
-        task().spawn_listener(fn~(move f, _po: comm::Port<int>) {
-            f();
-        });
     }
 }
 
