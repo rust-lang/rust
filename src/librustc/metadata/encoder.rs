@@ -768,6 +768,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
         for traits.each |associated_trait| {
            encode_trait_ref(ebml_w, ecx, *associated_trait)
         }
+
         ebml_w.end_tag();
 
         // Now, output all of the static methods as items.  Note that for the
@@ -789,7 +790,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Serializer,
             let polyty = ecx.tcx.tcache.get(local_def(ty_m.id));
             encode_ty_type_param_bounds(ebml_w, ecx, polyty.bounds);
             encode_type(ecx, ebml_w, polyty.ty);
-            encode_path(ecx, ebml_w, path, ast_map::path_name(ty_m.ident));
+            let m_path = vec::append_one(path,
+                                         ast_map::path_name(item.ident));
+            encode_path(ecx, ebml_w, m_path, ast_map::path_name(ty_m.ident));
             ebml_w.end_tag();
         }
 
