@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:fmt! needs at least 1 arguments
+// error-pattern:fmt! takes at least 1 argument
 
 fn main() { fmt!(); }

@@ -16,7 +16,7 @@ struct cat {
 
 impl cat: Drop {
     #[cat_dropper]
-    fn finalize(&self) { error!("%s landed on hir feet",self.name); }
+    fn finalize(&self) { error!("%s landed on hir feet" , self . name); }
 }
 
 

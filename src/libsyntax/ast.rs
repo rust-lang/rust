@@ -831,14 +831,6 @@ enum matcher_ {
 
 type mac = spanned<mac_>;
 
-type mac_arg = Option<@expr>;
-
-#[auto_serialize]
-#[auto_deserialize]
-type mac_body_ = {span: span};
-
-type mac_body = Option<mac_body_>;
-
 #[auto_serialize]
 #[auto_deserialize]
 enum mac_ {

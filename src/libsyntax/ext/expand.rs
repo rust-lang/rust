@@ -62,21 +62,6 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
                     (fully_expanded, s)
                   }
-                  Some(normal({expander: exp, span: exp_sp})) => {
-                    cx.bt_push(ExpandedFrom({call_site: s,
-                                callie: {name: *extname, span: exp_sp}}));
-
-                    //convert the new-style invoc for the old-style macro
-                    let arg = base::tt_args_to_original_flavor(cx, pth.span,
-                                                               (*tts));
-                    let expanded = exp(cx, (*mac).span, arg, None);
-
-                    //keep going, outside-in
-                    let fully_expanded = fld.fold_expr(expanded).node;
-                    cx.bt_pop();
-
-                    (fully_expanded, s)
-                  }
                   _ => {
                     cx.span_fatal(pth.span,
                                   fmt!("'%s' is not a tt-style macro",
@@ -119,8 +104,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
               ast::meta_list(ref n, _) => (*n)
             };
             match exts.find(mname) {
-              None | Some(normal(_))
-                | Some(normal_tt(_)) | Some(item_tt(*)) => items,
+              None | Some(normal_tt(_)) | Some(item_tt(*)) => items,
               Some(item_decorator(dec_fn)) => {
                   cx.bt_push(ExpandedFrom({call_site: attr.span,
                                            callie: {name: copy mname,
@@ -254,23 +238,6 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     pth.span,
                     fmt!("non-stmt macro in stmt pos: %s", *extname))
             };
-
-            //keep going, outside-in
-            let fully_expanded = fld.fold_stmt(expanded).node;
-            cx.bt_pop();
-
-            (fully_expanded, sp)
-        }
-
-        Some(normal({expander: exp, span: exp_sp})) => {
-            cx.bt_push(ExpandedFrom({call_site: sp,
-                                      callie: {name: *extname,
-                                               span: exp_sp}}));
-            //convert the new-style invoc for the old-style macro
-            let arg = base::tt_args_to_original_flavor(cx, pth.span, tts);
-            let exp_expr = exp(cx, mac.span, arg, None);
-            let expanded = @{node: stmt_expr(exp_expr, cx.next_id()),
-                             span: exp_expr.span};
 
             //keep going, outside-in
             let fully_expanded = fld.fold_stmt(expanded).node;
