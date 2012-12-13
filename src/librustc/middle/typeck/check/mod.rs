@@ -79,6 +79,7 @@ type parameter).
 use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
+use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::infer::{resolve_type, force_tvar};
@@ -318,8 +319,11 @@ fn check_fn(ccx: @crate_ctxt,
         } else  {
             let self_region = fcx.in_scope_regions.find(ty::br_self);
             let ty = method::transform_self_type_for_method(
-                fcx.tcx(), self_region,
-                self_info.self_ty, self_info.explicit_self.node);
+                fcx.tcx(),
+                self_region,
+                self_info.self_ty,
+                self_info.explicit_self.node,
+                TransformTypeNormally);
             Some({self_ty: ty,.. *self_info})
         }
     };

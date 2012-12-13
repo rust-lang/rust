@@ -153,12 +153,12 @@ struct Candidate {
 }
 
 /**
- * Whether the self type should be transformed according to the form of
- * explicit self provided by the method.
+ * How the self type should be transformed according to the form of explicit
+ * self provided by the method.
  */
 enum TransformTypeFlag {
-    DontTransformType,
-    TransformType
+    TransformTypeNormally,
+    TransformTypeForObject,
 }
 
 impl LookupContext {
@@ -327,7 +327,8 @@ impl LookupContext {
         }
     }
 
-    fn push_inherent_candidates_from_param(&self, rcvr_ty: ty::t,
+    fn push_inherent_candidates_from_param(&self,
+                                           rcvr_ty: ty::t,
                                            param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty=%?)",
                param_ty);
@@ -426,7 +427,7 @@ impl LookupContext {
                         method.self_ty,
                         rcvr_ty,
                         move init_substs,
-                        TransformType);
+                        TransformTypeNormally);
 
                 let cand = Candidate {
                     rcvr_ty: rcvr_ty,
@@ -488,7 +489,7 @@ impl LookupContext {
             self.create_rcvr_ty_and_substs_for_method(method.self_ty,
                                                       self_ty,
                                                       move rcvr_substs,
-                                                      DontTransformType);
+                                                      TransformTypeForObject);
 
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
@@ -519,7 +520,7 @@ impl LookupContext {
                 method.self_ty,
                 self_ty,
                 move rcvr_substs,
-                TransformType);
+                TransformTypeNormally);
 
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
@@ -574,7 +575,7 @@ impl LookupContext {
                 method.self_type,
                 impl_ty,
                 move impl_substs,
-                TransformType);
+                TransformTypeNormally);
 
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
@@ -610,7 +611,7 @@ impl LookupContext {
                     provided_method_info.method_info.self_type,
                     self_ty,
                     dummy_substs,
-                    TransformType);
+                    TransformTypeNormally);
 
             candidates.push(Candidate {
                 rcvr_ty: impl_ty,
@@ -658,18 +659,11 @@ impl LookupContext {
             }
         };
 
-        let rcvr_ty;
-        match transform_type {
-            TransformType => {
-                rcvr_ty = transform_self_type_for_method(self.tcx(),
-                                                         rcvr_substs.self_r,
-                                                         self_ty,
-                                                         self_decl);
-            }
-            DontTransformType => {
-                rcvr_ty = self_ty;
-            }
-        }
+        let rcvr_ty = transform_self_type_for_method(self.tcx(),
+                                                     rcvr_substs.self_r,
+                                                     self_ty,
+                                                     self_decl,
+                                                     transform_type);
 
         (rcvr_ty, rcvr_substs)
     }
@@ -686,6 +680,10 @@ impl LookupContext {
         match self.search_for_method(self_ty) {
             None => None,
             Some(move mme) => {
+                debug!("(searching for autoderef'd method) writing \
+                       adjustment (%u) to %d",
+                       autoderefs,
+                       self.self_expr.id);
                 self.fcx.write_autoderef_adjustment(
                     self.self_expr.id, autoderefs);
                 Some(mme)
@@ -814,25 +812,12 @@ impl LookupContext {
             match self.search_for_method(autoref_ty) {
                 None => {}
                 Some(move mme) => {
-                    match mme.origin {
-                        method_trait(*) => {
-                            // Do not write adjustments; they make no sense
-                            // here since the adjustments are to be performed
-                            // on the self element of the object pair/triple,
-                            // not the object itself.
-                            //
-                            // FIXME (#4088): This is wrong in the presence
-                            // of autoderef.
-                        }
-                        _ => {
-                            self.fcx.write_adjustment(
-                                self.self_expr.id,
-                                @{autoderefs: autoderefs,
-                                  autoref: Some({kind: kind,
-                                                 region: region,
-                                                 mutbl: *mutbl})});
-                        }
-                    }
+                    self.fcx.write_adjustment(
+                        self.self_expr.id,
+                        @{autoderefs: autoderefs,
+                          autoref: Some({kind: kind,
+                                         region: region,
+                                         mutbl: *mutbl})});
                     return Some(mme);
                 }
             }
@@ -1162,9 +1147,9 @@ impl LookupContext {
 fn transform_self_type_for_method(tcx: ty::ctxt,
                                   self_region: Option<ty::Region>,
                                   impl_ty: ty::t,
-                                  self_type: ast::self_ty_)
-    -> ty::t
-{
+                                  self_type: ast::self_ty_,
+                                  flag: TransformTypeFlag)
+                               -> ty::t {
     match self_type {
       sty_static => {
         tcx.sess.bug(~"calling transform_self_type_for_method on \
@@ -1179,10 +1164,20 @@ fn transform_self_type_for_method(tcx: ty::ctxt,
                 { ty: impl_ty, mutbl: mutability })
       }
       sty_box(mutability) => {
-        mk_box(tcx, { ty: impl_ty, mutbl: mutability })
+        match flag {
+            TransformTypeNormally => {
+                mk_box(tcx, { ty: impl_ty, mutbl: mutability })
+            }
+            TransformTypeForObject => impl_ty
+        }
       }
       sty_uniq(mutability) => {
-        mk_uniq(tcx, { ty: impl_ty, mutbl: mutability })
+        match flag {
+            TransformTypeNormally => {
+                mk_uniq(tcx, { ty: impl_ty, mutbl: mutability })
+            }
+            TransformTypeForObject => impl_ty
+        }
       }
     }
 }
