@@ -194,6 +194,14 @@ priv impl Assign {
                                         a, nr_b, m_imm, b_f.meta.region)
                     }
 
+                    (ty::ty_trait(_, _, vs_1),
+                     ty::ty_trait(t_2, s_2, ty::vstore_slice(r_b))) => {
+                        let nr_b = ty::mk_trait(self.infcx.tcx, t_2, s_2,
+                                                vs_1);
+                        self.try_assign(0, ty::AutoBorrowTrait, a, nr_b,
+                                        m_const, r_b)
+                    }
+
                     // check for &T being assigned to *T:
                     (ty::ty_rptr(_, ref a_t), ty::ty_ptr(ref b_t)) => {
                         match Sub(*self).mts(*a_t, *b_t) {

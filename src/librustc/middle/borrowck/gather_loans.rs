@@ -307,6 +307,11 @@ impl gather_loan_ctxt {
                                              autoref.mutbl,
                                              autoref.region)
                     }
+                    ty::AutoBorrowTrait => {
+                        self.guarantee_valid(cmt,
+                                             autoref.mutbl,
+                                             autoref.region);
+                    }
                 }
             }
         }

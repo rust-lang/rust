@@ -216,6 +216,7 @@ export trait_supertraits;
 export AutoAdjustment;
 export AutoRef;
 export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn;
+export AutoBorrowTrait;
 export iter_bound_traits_and_supertraits;
 export count_traits_and_supertraits;
 
@@ -354,6 +355,9 @@ enum AutoRefKind {
 
     /// Convert from @fn()/~fn() to &fn()
     AutoBorrowFn,
+
+    /// Convert from @T to &T where T is a trait
+    AutoBorrowTrait,
 }
 
 // Stores information about provided methods (a.k.a. default methods) in
@@ -1024,7 +1028,13 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       ty_self => flags |= has_self as uint,
       ty_enum(_, ref substs) | ty_struct(_, ref substs)
       | ty_trait(_, ref substs, _) => {
-        flags |= sflags(substs);
+          flags |= sflags(substs);
+          match st {
+              ty_trait(_, _, vstore_slice(r)) => {
+                  flags |= rflags(r);
+              }
+              _ => ()
+          }
       }
       ty_box(m) | ty_uniq(m) | ty_evec(m, _) |
       ty_ptr(m) | ty_unboxed_vec(m) => {
@@ -1233,6 +1243,7 @@ fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
             ty::ty_rptr(*) => true,
             ty_evec(_, vstore_slice(_)) => true,
             ty_estr(vstore_slice(_)) => true,
+            ty_trait(_, _, vstore_slice(_)) => true,
 
             // technically, we prob ought to include
             // &fn(), but that is treated specially due to #2202
@@ -1412,7 +1423,11 @@ fn fold_regions_and_ty(
         ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
       }
       ty_trait(def_id, ref substs, vst) => {
-        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
+          let m_vst = match vst {
+              vstore_slice(r) => vstore_slice(fldr(r)),
+              _ => vst
+          };
+          ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), m_vst)
       }
       ty_fn(ref f) => {
           let new_region = fldr(f.meta.region);
@@ -1483,30 +1498,35 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(Region, bool) -> Region) -> t {
         let tb = get(t0);
         if !tbox_has_flag(tb, has_regions) { return t0; }
         match tb.sty {
-          ty_rptr(r, {ty: t1, mutbl: m}) => {
-            let m_r = fldop(r, under_r);
-            let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_rptr(cx, m_r, {ty: m_t1, mutbl: m})
-          }
-          ty_estr(vstore_slice(r)) => {
-            let m_r = fldop(r, under_r);
-            ty::mk_estr(cx, vstore_slice(m_r))
-          }
-          ty_evec({ty: t1, mutbl: m}, vstore_slice(r)) => {
-            let m_r = fldop(r, under_r);
-            let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_evec(cx, {ty: m_t1, mutbl: m}, vstore_slice(m_r))
-          }
-          ty_fn(_) => {
-            // do not recurse into functions, which introduce fresh bindings
-            t0
-          }
-          ref sty => {
-            do fold_sty_to_ty(cx, sty) |t| {
-                do_fold(cx, t, under_r, fldop)
+            ty_rptr(r, {ty: t1, mutbl: m}) => {
+                let m_r = fldop(r, under_r);
+                let m_t1 = do_fold(cx, t1, true, fldop);
+                ty::mk_rptr(cx, m_r, {ty: m_t1, mutbl: m})
             }
-          }
-      }
+            ty_estr(vstore_slice(r)) => {
+                let m_r = fldop(r, under_r);
+                ty::mk_estr(cx, vstore_slice(m_r))
+            }
+            ty_evec({ty: t1, mutbl: m}, vstore_slice(r)) => {
+                let m_r = fldop(r, under_r);
+                let m_t1 = do_fold(cx, t1, true, fldop);
+                ty::mk_evec(cx, {ty: m_t1, mutbl: m}, vstore_slice(m_r))
+            }
+            ty_fn(_) => {
+                // do not recurse into functions, which introduce fresh
+                // bindings
+                t0
+            }
+            ty_trait(id, substs, vstore_slice(r)) => {
+                let m_r = fldop(r, under_r);
+                ty::mk_trait(cx, id, substs, vstore_slice(m_r))
+            }
+            ref sty => {
+                do fold_sty_to_ty(cx, sty) |t| {
+                    do_fold(cx, t, under_r, fldop)
+                }
+            }
+        }
     }
 
     do_fold(cx, t0, false, fldop)
@@ -1693,7 +1713,8 @@ pure fn type_is_region_ptr(ty: t) -> bool {
 
 pure fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
-      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) => true,
+      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
+          | ty_trait(_, _, vstore_slice(_)) => true,
       _ => return false
     }
 }
@@ -1725,6 +1746,8 @@ pure fn type_is_unique(ty: t) -> bool {
       ty_uniq(_) => return true,
       ty_evec(_, vstore_uniq) => true,
       ty_estr(vstore_uniq) => true,
+// Note that ~Trait is *not* considered unique. If it is,
+// casts to ~Trait get treated like immediate casts.
       _ => return false
     }
 }
