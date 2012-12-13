@@ -201,7 +201,6 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
-            // Here's where is_move isn't always false...
             chk(cx, fn_id, None, cap_item.is_move, ty, cap_item.span);
             cap_def_id
         };
@@ -215,9 +214,12 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             if captured_vars.contains(&id) { loop; }
 
             let ty = ty::node_id_to_type(cx.tcx, id);
-            // is_move is always false here. See the let captured_vars...
-            // code above for where it's not always false.
-            chk(cx, fn_id, Some(*fv), false, ty, fv.span);
+
+            // is_move is true if this type implicitly moves and false
+            // otherwise.
+            let is_move = ty::type_implicitly_moves(cx.tcx, ty);
+
+            chk(cx, fn_id, Some(*fv), is_move, ty, fv.span);
         }
     }
 

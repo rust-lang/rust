@@ -67,6 +67,7 @@ fn check_capture_clause(tcx: ty::ctxt,
 }
 
 fn compute_capture_vars(tcx: ty::ctxt,
+                        span: span,
                         fn_expr_id: ast::node_id,
                         fn_proto: ast::Proto,
                         cap_clause: ast::capture_clause) -> ~[capture_var] {
@@ -122,10 +123,26 @@ fn compute_capture_vars(tcx: ty::ctxt,
         match cap_map.find(fvar_def_id) {
             option::Some(_) => { /* was explicitly named, do nothing */ }
             option::None => {
+                // Move if this type implicitly moves; copy otherwise.
+                let mode = match implicit_mode {
+                    cap_ref => cap_ref,
+                    cap_copy => {
+                        let fvar_ty = ty::node_id_to_type(tcx, fvar_def_id);
+                        if ty::type_implicitly_moves(tcx, fvar_ty) {
+                            cap_move
+                        } else {
+                            cap_copy
+                        }
+                    }
+                    cap_move | cap_drop => {
+                        tcx.sess.span_bug(span, ~"unexpected cap type")
+                    }
+                };
+
                 cap_map.insert(fvar_def_id, {def:fvar.def,
                                              span: fvar.span,
                                              cap_item: None,
-                                             mode:implicit_mode});
+                                             mode:mode});
             }
         }
     }
