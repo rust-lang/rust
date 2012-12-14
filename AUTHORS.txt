@@ -35,6 +35,7 @@ Damien Grassart <damien@grassart.com>
 Damien Schoof <damien.schoof@gmail.com>
 Daniel Brooks <db48x@db48x.net>
 Daniel Luz <dev@mernen.com>
+Daniel Micay <danielmicay@gmail.com>
 Daniel Patterson <dbp@riseup.net>
 Dave Herman <dherman@mozilla.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
