@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
+// error-pattern: use of moved variable
 
 extern mod std;
 use std::arc;
