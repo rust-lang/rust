@@ -10,7 +10,7 @@
 
 use cmp::Eq;
 
-pub trait MyNum : Add<self,self>, Sub<self,self>, Mul<self,self>, Eq {
+pub trait MyNum : Add<self,self> Sub<self,self> Mul<self,self> Eq {
 }
 
 pub struct MyInt {

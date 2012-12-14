@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:trait_inheritance_overloading_xc.rs
 
