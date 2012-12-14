@@ -42,6 +42,7 @@ Version 0.5 (December 2012)
       * Expanded `getopts` definitions
       * Moved futures to `std`
       * More functions are pure now
+      * `core::comm` renamed to `oldcomm`. Still deprecated
 
    * Tools
       * Added a new (still immature) REPL, `rusti`
