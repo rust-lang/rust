@@ -260,7 +260,8 @@ impl Prep {
 
                     let v : T = do io::with_str_reader(res) |rdr| {
                         let j = result::unwrap(json::from_reader(rdr));
-                        Deserializable::deserialize(&json::Deserializer(move j))
+                        Deserializable::deserialize(
+                            &json::Deserializer(move j))
                     };
                     return Work::new(self, move Left(move v));
                 }
