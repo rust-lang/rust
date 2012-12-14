@@ -1018,8 +1018,16 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
     debuginfo::update_source_pos(cx, s.span);
 
     match s.node {
-        ast::stmt_expr(e, _) | ast::stmt_semi(e, _) => {
-            bcx = expr::trans_into(cx, e, expr::Ignore);
+        ast::stmt_expr(e, s_id) | ast::stmt_semi(e, s_id) => {
+            // We introduce a new scope here because even though
+            // a statement of the form e; doesn't bind a new var,
+            // it might introduce a borrow, and borrowck may
+            // consider any statement to introduce a new scope.
+            bcx = with_scope(bcx, Some({id: s_id, span: s.span}),
+                             stmt_to_str(s, cx.tcx().sess.intr()),
+                             |cx| {
+                                 expr::trans_into(cx, e, expr::Ignore)
+                             });
         }
         ast::stmt_decl(d, _) => {
             match d.node {
