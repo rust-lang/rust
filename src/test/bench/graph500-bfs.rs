@@ -188,7 +188,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
               white => {
                 let i = i as node_id;
 
-                let neighbors = graph[i];
+                let neighbors = copy graph[i];
 
                 let mut color = white;
 
@@ -269,7 +269,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
                   white => {
                     let i = i as node_id;
 
-                    let neighbors = graph[i];
+                    let neighbors = copy graph[i];
 
                     let mut color = white;
 
@@ -438,7 +438,7 @@ fn main() {
 
         if do_sequential {
             let start = time::precise_time_s();
-            let bfs_tree = bfs(graph, *root);
+            let bfs_tree = bfs(copy graph, *root);
             let stop = time::precise_time_s();
             
             //total_seq += stop - start;
@@ -449,7 +449,7 @@ fn main() {
             
             if do_validate {
                 let start = time::precise_time_s();
-                assert(validate(edges, *root, bfs_tree));
+                assert(validate(copy edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
@@ -458,7 +458,7 @@ fn main() {
             }
             
             let start = time::precise_time_s();
-            let bfs_tree = bfs2(graph, *root);
+            let bfs_tree = bfs2(copy graph, *root);
             let stop = time::precise_time_s();
             
             total_seq += stop - start;
@@ -469,7 +469,7 @@ fn main() {
             
             if do_validate {
                 let start = time::precise_time_s();
-                assert(validate(edges, *root, bfs_tree));
+                assert(validate(copy edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
                 
                 io::stdout().write_line(
@@ -489,7 +489,7 @@ fn main() {
 
         if do_validate {
             let start = time::precise_time_s();
-            assert(validate(edges, *root, bfs_tree));
+            assert(validate(copy edges, *root, bfs_tree));
             let stop = time::precise_time_s();
             
             io::stdout().write_line(fmt!("Validation completed in %? seconds.",

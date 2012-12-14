@@ -59,7 +59,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut buffer = ~"";
 
    for pairs_sorted.each |kv| {
-       let (k,v) = *kv;
+       let (k,v) = copy *kv;
        unsafe {
            buffer += (fmt!("%s %0.3f\n", str::to_upper(str::raw::from_bytes(k)), v));
        }
@@ -198,7 +198,7 @@ fn main() {
             let line_bytes = str::to_bytes(line);
 
            for sizes.eachi |ii, _sz| {
-               let mut lb = line_bytes;
+               let mut lb = copy line_bytes;
                to_child[ii].send(lb);
             }
          }
