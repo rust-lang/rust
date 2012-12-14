@@ -134,7 +134,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
           Some(ref es) if !vec::is_empty(*es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(*es) |e| {
-                let (k,v) = *e;
+                let (k,v) = copy *e;
                 let t = fmt!("%s=%s", k, v);
                 let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
                 blk += v;
