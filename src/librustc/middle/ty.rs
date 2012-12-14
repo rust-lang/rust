@@ -2140,13 +2140,8 @@ fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
         remove_owned(mutable_type_kind(cx, tm) | kind_safe_for_default_mode())
       }
 
-      // Trait instances are (for now) like shared boxes, basically
-<<<<<<< HEAD
-      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_durable(),
-=======
       // XXX: This is wrong for ~Trait and &Trait!
-      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_owned(),
->>>>>>> librustc: Have coherence check Copy kind bounds when determining whether parameter substitutions could possibly unify. r=nmatsakis
+      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_durable(),
 
       // Static region pointers are copyable and sendable, but not owned
       ty_rptr(re_static, mt) =>
