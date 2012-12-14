@@ -10,16 +10,17 @@
 
 // helper for transmutation, shown below.
 type RustClosure = (int,int);
-struct Handler<T, U:Copy> {
+pub struct Handler<T, U> {
     handle: RustClosure,
     prev: Option<@Handler<T, U>>,
 }
 
-struct Condition<T, U:Copy> {
+pub struct Condition<T, U> {
+    name: &static/str,
     key: task::local_data::LocalDataKey<Handler<T,U>>
 }
 
-impl<T, U: Copy>  Condition<T,U> {
+impl<T, U>  Condition<T,U> {
 
     fn trap(&self, h: &self/fn(&T) ->U) -> Trap/&self<T,U> {
         unsafe {
@@ -32,7 +33,9 @@ impl<T, U: Copy>  Condition<T,U> {
 
     fn raise(t:&T) -> U  {
         do self.raise_default(t) {
-            fail ~"Unhandled condition";
+            fail fmt!("Unhandled condition: %s: %?",
+                      self.name,
+                      t);
         }
     }
 
@@ -65,13 +68,13 @@ impl<T, U: Copy>  Condition<T,U> {
 
 
 
-struct Trap<T, U:Copy> {
+struct Trap<T, U> {
     cond: &Condition<T,U>,
     handler: @Handler<T, U>
 }
 
-impl<T, U: Copy> Trap<T,U> {
-    fn in<V: Copy>(&self, inner: &self/fn() -> V) -> V {
+impl<T, U> Trap<T,U> {
+    fn in<V>(&self, inner: &self/fn() -> V) -> V {
         unsafe {
             let _g = Guard { cond: self.cond };
             debug!("Trap: pushing handler to TLS");
@@ -81,7 +84,7 @@ impl<T, U: Copy> Trap<T,U> {
     }
 }
 
-struct Guard<T, U:Copy> {
+struct Guard<T, U> {
     cond: &Condition<T,U>,
     drop {
         unsafe {
@@ -105,13 +108,13 @@ struct Guard<T, U:Copy> {
 #[cfg(test)]
 mod test {
 
-    fn sadness_key(_x: @Handler<int,int>) { }
-    const sadness_condition : Condition<int,int> =
-        Condition { key: sadness_key };
+    condition! {
+        sadness: int -> int;
+    }
 
     fn trouble(i: int) {
         debug!("trouble: raising conition");
-        let j = sadness_condition.raise(&i);
+        let j = sadness::cond.raise(&i);
         debug!("trouble: handler recovered with %d", j);
     }
 
@@ -119,7 +122,7 @@ mod test {
 
         let mut inner_trapped = false;
 
-        do sadness_condition.trap(|_j| {
+        do sadness::cond.trap(|_j| {
             debug!("nested_trap_test_inner: in handler");
             inner_trapped = true;
             0
@@ -136,7 +139,7 @@ mod test {
 
         let mut outer_trapped = false;
 
-        do sadness_condition.trap(|_j| {
+        do sadness::cond.trap(|_j| {
             debug!("nested_trap_test_outer: in handler");
             outer_trapped = true; 0
         }).in {
@@ -152,12 +155,12 @@ mod test {
 
         let mut inner_trapped = false;
 
-        do sadness_condition.trap(|_j| {
+        do sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_inner: in handler");
             inner_trapped = true;
             let i = 10;
             debug!("nested_reraise_trap_test_inner: handler re-raising");
-            sadness_condition.raise(&i)
+            sadness::cond.raise(&i)
         }).in {
             debug!("nested_reraise_trap_test_inner: in protected block");
             trouble(1);
@@ -171,7 +174,7 @@ mod test {
 
         let mut outer_trapped = false;
 
-        do sadness_condition.trap(|_j| {
+        do sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_outer: in handler");
             outer_trapped = true; 0
         }).in {
@@ -187,9 +190,9 @@ mod test {
 
         let mut trapped = false;
 
-        do sadness_condition.trap(|j| {
+        do sadness::cond.trap(|j| {
             debug!("test_default: in handler");
-            sadness_condition.raise_default(j, || {trapped=true; 5})
+            sadness::cond.raise_default(j, || {trapped=true; 5})
         }).in {
             debug!("test_default: in protected block");
             trouble(1);

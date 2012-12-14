@@ -242,6 +242,7 @@ mod core {
     pub const debug : u32 = 4_u32;
 
     pub use cmp;
+    pub use condition;
 }
 
 

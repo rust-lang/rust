@@ -11,7 +11,7 @@
 use ext::base::*;
 use codemap::{span, Loc, FileMap};
 use print::pprust;
-use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_uniq_str};
+use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
 
 export expand_line;
 export expand_col;
@@ -46,19 +46,19 @@ fn expand_file(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     base::check_zero_tts(cx, sp, tts, "file!");
     let Loc { file: @FileMap { name: filename, _ }, _ } =
         cx.codemap().lookup_char_pos(sp.lo);
-    base::mr_expr(mk_uniq_str(cx, sp, filename))
+    base::mr_expr(mk_base_str(cx, sp, filename))
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::mac_result {
     let s = pprust::tts_to_str(tts, cx.parse_sess().interner);
-    base::mr_expr(mk_uniq_str(cx, sp, s))
+    base::mr_expr(mk_base_str(cx, sp, s))
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::mac_result {
     base::check_zero_tts(cx, sp, tts, "module_path!");
-    base::mr_expr(mk_uniq_str(cx, sp,
+    base::mr_expr(mk_base_str(cx, sp,
                               str::connect(cx.mod_path().map(
                                   |x| cx.str_of(*x)), ~"::")))
 }
@@ -83,7 +83,7 @@ fn expand_include_str(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
       }
     }
 
-    base::mr_expr(mk_uniq_str(cx, sp, result::unwrap(res)))
+    base::mr_expr(mk_base_str(cx, sp, result::unwrap(res)))
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
