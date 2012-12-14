@@ -19,7 +19,7 @@ use std::map::{Map, HashMap};
 use io::{Reader, ReaderUtil};
 
 macro_rules! bench (
-    ($id:ident) => (maybe_run_test(argv, stringify!($id), $id))
+    ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))
 )
 
 fn main() {

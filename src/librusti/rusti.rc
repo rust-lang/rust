@@ -138,7 +138,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     };
 
     debug!("building driver input");
-    let head = include_str!("wrapper.rs");
+    let head = include_str!("wrapper.rs").to_owned();
     let foot = fmt!("%s\nfn main() {\n%s\n\nprint({\n%s\n})\n}",
                     repl.view_items, repl.stmts, input);
     let wrapped = driver::str_input(head + foot);
