@@ -164,7 +164,7 @@ mod map_reduce {
             let ctrl = box(move ctrl);
             let i = copy *i;
             let m = copy *map;
-            tasks.push(spawn_joinable(|move ctrl, move i| map_task(m, &ctrl, i)));
+            tasks.push(spawn_joinable(|move ctrl, move i| map_task(copy m, &ctrl, i)));
             ctrls.push(move ctrl_server);
         }
         move tasks

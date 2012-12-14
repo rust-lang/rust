@@ -132,7 +132,7 @@ fn creature(
 
 fn rendezvous(nn: uint, set: ~[color]) {
 
-    pub fn spawn_listener<A: Send>(+f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
+    pub fn spawn_listener<A: Owned>(+f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
         let setup_po = oldcomm::Port();
         let setup_ch = oldcomm::Chan(&setup_po);
         do task::spawn |move f| {
