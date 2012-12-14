@@ -129,7 +129,7 @@ fn should_request_new_writer_for_each_page() {
     write_markdown(doc, move writer_factory);
     // We expect two pages to have been written
     for iter::repeat(2) {
-        comm::recv(po);
+        oldcomm::recv(po);
     }
 }
 
@@ -160,7 +160,7 @@ fn should_write_title_for_each_page() {
     let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
     write_markdown(doc, move writer_factory);
     for iter::repeat(2) {
-        let (page, markdown) = comm::recv(po);
+        let (page, markdown) = oldcomm::recv(po);
         match page {
           doc::CratePage(_) => {
             assert str::contains(markdown, ~"% Crate core");
@@ -304,7 +304,7 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, ~"# Module `a::b::c`");
 }
 
-fn write_common(
+fn write_oldcommon(
     ctxt: &Ctxt,
     +desc: Option<~str>,
     sections: &[doc::Section]
@@ -353,7 +353,7 @@ fn write_mod_contents(
     ctxt: &Ctxt,
     +doc: doc::ModDoc
 ) {
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, doc.index.get());
     }
@@ -456,7 +456,7 @@ fn should_write_index_for_foreign_mods() {
 }
 
 fn write_nmod(ctxt: &Ctxt, +doc: doc::NmodDoc) {
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, doc.index.get());
     }
@@ -507,7 +507,7 @@ fn write_fnlike(
     sections: &[doc::Section]
 ) {
     write_sig(ctxt, sig);
-    write_common(ctxt, desc, sections);
+    write_oldcommon(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: &Ctxt, +sig: Option<~str>) {
@@ -576,7 +576,7 @@ fn write_const(
     +doc: doc::ConstDoc
 ) {
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -597,7 +597,7 @@ fn write_enum(
     ctxt: &Ctxt,
     +doc: doc::EnumDoc
 ) {
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -678,7 +678,7 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_trait(ctxt: &Ctxt, +doc: doc::TraitDoc) {
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -726,7 +726,7 @@ fn should_write_trait_method_signature() {
 }
 
 fn write_impl(ctxt: &Ctxt, +doc: doc::ImplDoc) {
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -768,7 +768,7 @@ fn write_type(
     +doc: doc::TyDoc
 ) {
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -795,7 +795,7 @@ fn write_struct(
     +doc: doc::StructDoc
 ) {
     write_sig(ctxt, doc.sig);
-    write_common(ctxt, doc.desc(), doc.sections());
+    write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -854,7 +854,7 @@ mod test {
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         write_markdown(doc, move writer_factory);
-        return comm::recv(po).second();
+        return oldcomm::recv(po).second();
     }
 
     fn write_markdown_str_srv(
@@ -864,7 +864,7 @@ mod test {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(move writer_factory);
         (pass.f)(srv, doc);
-        return comm::recv(po).second();
+        return oldcomm::recv(po).second();
     }
 
     #[test]

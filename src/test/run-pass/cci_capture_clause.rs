@@ -18,7 +18,7 @@
 
 extern mod cci_capture_clause;
 
-use comm::recv;
+use oldcomm::recv;
 
 fn main() {
     cci_capture_clause::foo(()).recv()

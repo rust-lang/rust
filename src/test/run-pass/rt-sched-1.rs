@@ -25,8 +25,8 @@ extern mod rustrt {
 }
 
 fn main() unsafe {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
+    let po = oldcomm::Port();
+    let ch = oldcomm::Chan(&po);
     let parent_sched_id = rustrt::rust_get_sched_id();
     error!("parent %?", parent_sched_id);
     let num_threads = 1u;
@@ -39,10 +39,10 @@ fn main() unsafe {
         error!("child_sched_id %?", child_sched_id);
         assert child_sched_id != parent_sched_id;
         assert child_sched_id == new_sched_id;
-        comm::send(ch, ());
+        oldcomm::send(ch, ());
     };
     let fptr = cast::reinterpret_cast(&ptr::addr_of(&f));
     rustrt::start_task(new_task_id, fptr);
     cast::forget(move f);
-    comm::recv(po);
+    oldcomm::recv(po);
 }

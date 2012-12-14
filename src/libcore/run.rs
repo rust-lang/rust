@@ -307,22 +307,22 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     // in parallel so we don't deadlock while blocking on one
     // or the other. FIXME (#2625): Surely there's a much more
     // clever way to do this.
-    let p = comm::Port();
-    let ch = comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = oldcomm::Chan(&p);
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
-        comm::send(ch, (2, move errput));
+        oldcomm::send(ch, (2, move errput));
     };
     do task::spawn_sched(task::SingleThreaded) {
         let output = readclose(pipe_out.in);
-        comm::send(ch, (1, move output));
+        oldcomm::send(ch, (1, move output));
     };
     let status = run::waitpid(pid);
     let mut errs = ~"";
     let mut outs = ~"";
     let mut count = 2;
     while count > 0 {
-        let stream = comm::recv(p);
+        let stream = oldcomm::recv(p);
         match stream {
             (1, copy s) => {
                 outs = move s;

@@ -11,9 +11,9 @@
 
 // error-pattern:1 == 2
 extern mod std;
-use comm::Chan;
-use comm::Port;
-use comm::recv;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::recv;
 
 fn child() { assert (1 == 2); }
 

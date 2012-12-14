@@ -18,8 +18,7 @@
 
 use libc::c_void;
 use ptr::addr_of;
-use comm = core::comm;
-use core::comm::{Port, Chan, listen};
+use core::oldcomm::{Port, Chan, listen};
 use task::TaskBuilder;
 use ll = uv_ll;
 
@@ -178,7 +177,7 @@ mod test {
         log(debug, fmt!("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)
                         as *AhData)).exit_ch;
-        core::comm::send(exit_ch, ());
+        oldcomm::send(exit_ch, ());
     }
     extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
         unsafe {
@@ -187,13 +186,13 @@ mod test {
     }
     type AhData = {
         iotask: IoTask,
-        exit_ch: comm::Chan<()>
+        exit_ch: oldcomm::Chan<()>
     };
     fn impl_uv_iotask_async(iotask: IoTask) unsafe {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(&async_handle);
-        let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(&exit_po);
+        let exit_po = oldcomm::Port::<()>();
+        let exit_ch = oldcomm::Chan(&exit_po);
         let ah_data = {
             iotask: iotask,
             exit_ch: exit_ch
@@ -204,19 +203,19 @@ mod test {
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);
         };
-        core::comm::recv(exit_po);
+        oldcomm::recv(exit_po);
     }
 
     // this fn documents the bear minimum neccesary to roll your own
     // high_level_loop
-    unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> IoTask {
-        let iotask_port = comm::Port::<IoTask>();
-        let iotask_ch = comm::Chan(&iotask_port);
+    unsafe fn spawn_test_loop(exit_ch: oldcomm::Chan<()>) -> IoTask {
+        let iotask_port = oldcomm::Port::<IoTask>();
+        let iotask_ch = oldcomm::Chan(&iotask_port);
         do task::spawn_sched(task::ManualThreads(1u)) {
             run_loop(iotask_ch);
             exit_ch.send(());
         };
-        return core::comm::recv(iotask_port);
+        return oldcomm::recv(iotask_port);
     }
 
     extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {
@@ -231,8 +230,8 @@ mod test {
 
     #[test]
     fn test_uv_iotask_async() unsafe {
-        let exit_po = core::comm::Port::<()>();
-        let exit_ch = core::comm::Chan(&exit_po);
+        let exit_po = oldcomm::Port::<()>();
+        let exit_ch = oldcomm::Chan(&exit_po);
         let iotask = spawn_test_loop(exit_ch);
 
         // using this handle to manage the lifetime of the high_level_loop,
@@ -241,20 +240,20 @@ mod test {
         // under race-condition type situations.. this ensures that the loop
         // lives until, at least, all of the impl_uv_hl_async() runs have been
         // called, at least.
-        let work_exit_po = core::comm::Port::<()>();
-        let work_exit_ch = core::comm::Chan(&work_exit_po);
+        let work_exit_po = oldcomm::Port::<()>();
+        let work_exit_ch = oldcomm::Chan(&work_exit_po);
         for iter::repeat(7u) {
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_iotask_async(iotask);
-                core::comm::send(work_exit_ch, ());
+                oldcomm::send(work_exit_ch, ());
             };
         };
         for iter::repeat(7u) {
-            core::comm::recv(work_exit_po);
+            oldcomm::recv(work_exit_po);
         };
         log(debug, ~"sending teardown_loop msg..");
         exit(iotask);
-        core::comm::recv(exit_po);
+        oldcomm::recv(exit_po);
         log(debug, ~"after recv on exit_po.. exiting..");
     }
 }

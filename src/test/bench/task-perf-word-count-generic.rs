@@ -13,7 +13,7 @@
 
    This is meant primarily to demonstrate Rust's MapReduce framework.
 
-   It takes a list of files on the command line and outputs a list of
+   It takes a list of files on the oldcommand line and outputs a list of
    words along with how many times each word is used.
 
 */
@@ -32,10 +32,10 @@ use io::{ReaderUtil, WriterUtil};
 
 use std::time;
 
-use comm::Chan;
-use comm::Port;
-use comm::recv;
-use comm::send;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::recv;
+use oldcomm::send;
 use cmp::Eq;
 use to_bytes::IterBytes;
 

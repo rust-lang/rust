@@ -26,7 +26,7 @@ use std::deque;
 use std::deque::Deque;
 use std::par;
 use io::WriterUtil;
-use comm::*;
+use oldcomm::*;
 use int::abs;
 
 type node_id = i64;

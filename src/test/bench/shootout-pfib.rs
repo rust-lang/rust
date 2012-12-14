@@ -14,7 +14,7 @@
   A parallel version of fibonacci numbers.
 
   This version is meant mostly as a way of stressing and benchmarking
-  the task system. It supports a lot of command-line arguments to
+  the task system. It supports a lot of oldcommand-line arguments to
   control how it runs.
 
 */

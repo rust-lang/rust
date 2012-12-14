@@ -17,14 +17,14 @@
 extern mod std;
 
 
-type ctx = comm::Chan<int>;
+type ctx = oldcomm::Chan<int>;
 
 fn iotask(cx: ctx, ip: ~str) {
     assert (ip == ~"localhost");
 }
 
 fn main() {
-    let p = comm::Port::<int>();
-    let ch = comm::Chan(&p);
+    let p = oldcomm::Port::<int>();
+    let ch = oldcomm::Chan(&p);
     task::spawn(|| iotask(ch, ~"localhost") );
 }

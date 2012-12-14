@@ -139,7 +139,7 @@ pub mod send_map;
 
 /* Tasks and communication */
 
-pub mod comm;
+pub mod oldcomm;
 #[path = "task/mod.rs"]
 pub mod task;
 pub mod pipes;

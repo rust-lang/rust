@@ -10,20 +10,20 @@
 
 fn main() {
     struct foo {
-      _x: comm::Port<()>,
+      _x: oldcomm::Port<()>,
     }
 
     impl foo : Drop {
         fn finalize(&self) {}
     }
 
-    fn foo(x: comm::Port<()>) -> foo {
+    fn foo(x: oldcomm::Port<()>) -> foo {
         foo {
             _x: x
         }
     }
    
-    let x = ~mut Some(foo(comm::Port()));
+    let x = ~mut Some(foo(oldcomm::Port()));
 
     do task::spawn |move x| { //~ ERROR not a sendable value
         let mut y = None;

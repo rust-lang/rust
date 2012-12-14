@@ -434,8 +434,8 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 fn monitor(+f: fn~(diagnostic::emitter)) {
-    let p = comm::Port();
-    let ch = comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = oldcomm::Chan(&p);
 
     match do task::try |move f| {
 
@@ -444,14 +444,14 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
                            msg: &str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
-                comm::send(ch, fatal);
+                oldcomm::send(ch, fatal);
             }
             diagnostic::emit(cmsp, msg, lvl);
         };
 
         struct finally {
-            ch: comm::Chan<monitor_msg>,
-            drop { comm::send(self.ch, done); }
+            ch: oldcomm::Chan<monitor_msg>,
+            drop { oldcomm::send(self.ch, done); }
         }
 
         let _finally = finally { ch: ch };
@@ -461,7 +461,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
-            if comm::recv(p) == done {
+            if oldcomm::recv(p) == done {
                 diagnostic::emit(
                     None,
                     diagnostic::ice_msg(~"unexpected failure"),

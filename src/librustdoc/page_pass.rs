@@ -39,24 +39,24 @@ fn run(
         return doc;
     }
 
-    let (result_port, page_chan) = do task::spawn_conversation
+    let (result_port, page_chan) = do util::spawn_conversation
         |page_port, result_chan| {
-        comm::send(result_chan, make_doc_from_pages(page_port));
+        oldcomm::send(result_chan, make_doc_from_pages(page_port));
     };
 
     find_pages(doc, page_chan);
-    comm::recv(result_port)
+    oldcomm::recv(result_port)
 }
 
-type PagePort = comm::Port<Option<doc::Page>>;
-type PageChan = comm::Chan<Option<doc::Page>>;
+type PagePort = oldcomm::Port<Option<doc::Page>>;
+type PageChan = oldcomm::Chan<Option<doc::Page>>;
 
 type NominalPageChan = NominalOp<PageChan>;
 
 fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
-        let val = comm::recv(page_port);
+        let val = oldcomm::recv(page_port);
         if val.is_some() {
             pages += ~[option::unwrap(move val)];
         } else {
@@ -77,7 +77,7 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
     };
     (fold.fold_doc)(&fold, doc);
 
-    comm::send(page_chan, None);
+    oldcomm::send(page_chan, None);
 }
 
 fn fold_crate(
@@ -92,7 +92,7 @@ fn fold_crate(
         .. doc
     });
 
-    comm::send(fold.ctxt.op, Some(page));
+    oldcomm::send(fold.ctxt.op, Some(page));
 
     doc
 }
@@ -108,7 +108,7 @@ fn fold_mod(
 
         let doc = strip_mod(doc);
         let page = doc::ItemPage(doc::ModTag(doc));
-        comm::send(fold.ctxt.op, Some(page));
+        oldcomm::send(fold.ctxt.op, Some(page));
     }
 
     doc
@@ -133,7 +133,7 @@ fn fold_nmod(
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::ItemPage(doc::NmodTag(doc));
-    comm::send(fold.ctxt.op, Some(page));
+    oldcomm::send(fold.ctxt.op, Some(page));
     return doc;
 }
 

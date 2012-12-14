@@ -20,20 +20,20 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 fn grandchild_group(num_tasks: uint) {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
+    let po = oldcomm::Port();
+    let ch = oldcomm::Chan(&po);
 
     for num_tasks.times {
         do task::spawn { // linked
-            comm::send(ch, ());
-            comm::recv(comm::Port::<()>()); // block forever
+            oldcomm::send(ch, ());
+            oldcomm::recv(oldcomm::Port::<()>()); // block forever
         }
     }
     error!("Grandchild group getting started");
     for num_tasks.times {
         // Make sure all above children are fully spawned; i.e., enlisted in
         // their ancestor groups.
-        comm::recv(po);
+        oldcomm::recv(po);
     }
     error!("Grandchild group ready to go.");
     // Master grandchild task exits early.

@@ -23,7 +23,6 @@ use result::{Ok, Err};
 use io::WriterUtil;
 use libc::size_t;
 use task::TaskBuilder;
-use comm = core::comm;
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -289,8 +288,8 @@ fn run_tests(opts: &TestOpts, tests: &[TestDesc],
     let mut wait_idx = 0;
     let mut done_idx = 0;
 
-    let p = core::comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = oldcomm::Chan(&p);
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
@@ -306,7 +305,7 @@ fn run_tests(opts: &TestOpts, tests: &[TestDesc],
             run_idx += 1;
         }
 
-        let (test, result) = core::comm::recv(p);
+        let (test, result) = oldcomm::recv(p);
         if concurrency != 1 {
             callback(TeWait(copy test));
         }
@@ -383,9 +382,9 @@ fn filter_tests(opts: &TestOpts,
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
 
-fn run_test(test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
+fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
     if test.ignore {
-        core::comm::send(monitor_ch, (copy test, TrIgnored));
+        oldcomm::send(monitor_ch, (copy test, TrIgnored));
         return;
     }
 
@@ -397,7 +396,7 @@ fn run_test(test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
         }).spawn(move testfn);
         let task_result = option::unwrap(move result_future).recv();
         let test_result = calc_result(&test, task_result == task::Success);
-        comm::send(monitor_ch, (copy test, test_result));
+        oldcomm::send(monitor_ch, (copy test, test_result));
     };
 }
 
@@ -424,10 +423,10 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = core::comm::Port();
-        let ch = core::comm::Chan(&p);
+        let p = oldcomm::Port();
+        let ch = oldcomm::Chan(&p);
         run_test(desc, ch);
-        let (_, res) = core::comm::recv(p);
+        let (_, res) = oldcomm::recv(p);
         assert res != TrOk;
     }
 
@@ -440,10 +439,10 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = core::comm::Port();
-        let ch = core::comm::Chan(&p);
+        let p = oldcomm::Port();
+        let ch = oldcomm::Chan(&p);
         run_test(desc, ch);
-        let (_, res) = core::comm::recv(p);
+        let (_, res) = oldcomm::recv(p);
         assert res == TrIgnored;
     }
 
@@ -457,10 +456,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = core::comm::Port();
-        let ch = core::comm::Chan(&p);
+        let p = oldcomm::Port();
+        let ch = oldcomm::Chan(&p);
         run_test(desc, ch);
-        let (_, res) = core::comm::recv(p);
+        let (_, res) = oldcomm::recv(p);
         assert res == TrOk;
     }
 
@@ -473,10 +472,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = core::comm::Port();
-        let ch = core::comm::Chan(&p);
+        let p = oldcomm::Port();
+        let ch = oldcomm::Chan(&p);
         run_test(desc, ch);
-        let (_, res) = core::comm::recv(p);
+        let (_, res) = oldcomm::recv(p);
         assert res == TrFailed;
     }
 

@@ -13,8 +13,8 @@
 
 extern mod std;
 
-use comm::Chan;
-use comm::send;
+use oldcomm::Chan;
+use oldcomm::send;
 
 fn main() { test05(); }
 

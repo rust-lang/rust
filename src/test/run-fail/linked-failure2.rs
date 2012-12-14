@@ -12,9 +12,9 @@
 
 // error-pattern:fail
 extern mod std;
-use comm::Chan;
-use comm::Port;
-use comm::recv;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::recv;
 
 fn child() { fail; }
 

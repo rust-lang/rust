@@ -10,18 +10,18 @@
 
 enum msg { closed, received(~[u8]), }
 
-fn producer(c: core::comm::Chan<~[u8]>) {
-    core::comm::send(c, ~[1u8, 2u8, 3u8, 4u8]);
+fn producer(c: core::oldcomm::Chan<~[u8]>) {
+    core::oldcomm::send(c, ~[1u8, 2u8, 3u8, 4u8]);
     let empty: ~[u8] = ~[];
-    core::comm::send(c, empty);
+    core::oldcomm::send(c, empty);
 }
 
-fn packager(cb: core::comm::Chan<core::comm::Chan<~[u8]>>, msg: core::comm::Chan<msg>) {
-    let p: core::comm::Port<~[u8]> = core::comm::Port();
-    core::comm::send(cb, core::comm::Chan(&p));
+fn packager(cb: core::oldcomm::Chan<core::oldcomm::Chan<~[u8]>>, msg: core::oldcomm::Chan<msg>) {
+    let p: core::oldcomm::Port<~[u8]> = core::oldcomm::Port();
+    core::oldcomm::send(cb, core::oldcomm::Chan(&p));
     loop {
         debug!("waiting for bytes");
-        let data = core::comm::recv(p);
+        let data = core::oldcomm::recv(p);
         debug!("got bytes");
         if vec::len(data) == 0u {
             debug!("got empty bytes, quitting");
@@ -29,26 +29,26 @@ fn packager(cb: core::comm::Chan<core::comm::Chan<~[u8]>>, msg: core::comm::Chan
         }
         debug!("sending non-empty buffer of length");
         log(debug, vec::len(data));
-        core::comm::send(msg, received(data));
+        core::oldcomm::send(msg, received(data));
         debug!("sent non-empty buffer");
     }
     debug!("sending closed message");
-    core::comm::send(msg, closed);
+    core::oldcomm::send(msg, closed);
     debug!("sent closed message");
 }
 
 fn main() {
-    let p: core::comm::Port<msg> = core::comm::Port();
-    let ch = core::comm::Chan(&p);
-    let recv_reader: core::comm::Port<core::comm::Chan<~[u8]>> = core::comm::Port();
-    let recv_reader_chan = core::comm::Chan(&recv_reader);
+    let p: core::oldcomm::Port<msg> = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
+    let recv_reader: core::oldcomm::Port<core::oldcomm::Chan<~[u8]>> = core::oldcomm::Port();
+    let recv_reader_chan = core::oldcomm::Chan(&recv_reader);
     let pack = task::spawn(|| packager(recv_reader_chan, ch) );
 
-    let source_chan: core::comm::Chan<~[u8]> = core::comm::recv(recv_reader);
+    let source_chan: core::oldcomm::Chan<~[u8]> = core::oldcomm::recv(recv_reader);
     let prod = task::spawn(|| producer(source_chan) );
 
     loop {
-        let msg = core::comm::recv(p);
+        let msg = core::oldcomm::recv(p);
         match msg {
           closed => { debug!("Got close message"); break; }
           received(data) => {
