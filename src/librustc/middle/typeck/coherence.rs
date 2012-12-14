@@ -19,16 +19,17 @@ use metadata::csearch::{get_impls_for_mod};
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{ProvidedMethodSource,
-                 ProvidedMethodInfo, get};
-use middle::ty::{lookup_item_type, subst, t, ty_bot, ty_box, ty_struct};
-use middle::ty::{ty_bool, ty_enum, ty_int, ty_nil, ty_ptr, ty_rptr, ty_uint};
-use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec, ty_uniq};
-use middle::ty::{ty_err, ty_fn, ty_trait, ty_tup, ty_infer};
-use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
-use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_ty_var};
+use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
+use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
+use middle::ty::{t, ty_bool, ty_bot, ty_box, ty_enum, ty_err, ty_estr};
+use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil, ty_ptr};
+use middle::ty::{ty_rec, ty_rptr, ty_struct, ty_trait, ty_tup, ty_uint};
+use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box, ty_uniq};
+use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
+use middle::ty::{type_is_ty_var};
 use middle::typeck::infer::{infer_ctxt, can_mk_subty};
-use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
+use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
+use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
 use syntax::ast::{crate, def_id, def_mod, def_ty};
 use syntax::ast::{item, item_struct, item_const, item_enum, item_fn};
 use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
@@ -48,6 +49,12 @@ use core::result::Ok;
 use std::map::HashMap;
 use core::uint::range;
 use core::vec::{len, push};
+
+struct UniversalQuantificationResult {
+    monotype: t,
+    type_variables: ~[ty::t],
+    bounds: @~[param_bounds]
+}
 
 fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
               -> Option<t> {
@@ -465,19 +472,21 @@ impl CoherenceChecker {
     fn polytypes_unify(polytype_a: ty_param_bounds_and_ty,
                        polytype_b: ty_param_bounds_and_ty)
                     -> bool {
+        let universally_quantified_a =
+            self.universally_quantify_polytype(polytype_a);
+        let universally_quantified_b =
+            self.universally_quantify_polytype(polytype_b);
 
-        let monotype_a = self.universally_quantify_polytype(polytype_a);
-        let monotype_b = self.universally_quantify_polytype(polytype_b);
-        return can_mk_subty(self.inference_context,
-                            monotype_a, monotype_b).is_ok()
-            || can_mk_subty(self.inference_context,
-                            monotype_b, monotype_a).is_ok();
+        return self.can_unify_universally_quantified(
+            &universally_quantified_a, &universally_quantified_b) ||
+            self.can_unify_universally_quantified(
+            &universally_quantified_b, &universally_quantified_a);
     }
 
     // Converts a polytype to a monotype by replacing all parameters with
-    // type variables.
-
-    fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty) -> t {
+    // type variables. Returns the monotype and the type variables created.
+    fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty)
+                                  -> UniversalQuantificationResult {
         // NDM--this span is bogus.
         let self_region =
             polytype.region_param.map(
@@ -493,7 +502,67 @@ impl CoherenceChecker {
             tps: type_parameters
         };
 
-        return subst(self.crate_context.tcx, &substitutions, polytype.ty);
+        let monotype = subst(self.crate_context.tcx,
+                             &substitutions,
+                             polytype.ty);
+        UniversalQuantificationResult {
+            monotype: monotype,
+            type_variables: move type_parameters,
+            bounds: polytype.bounds
+        }
+    }
+
+    fn can_unify_universally_quantified(a: &a/UniversalQuantificationResult,
+                                        b: &a/UniversalQuantificationResult)
+                                     -> bool {
+        let mut might_unify = true;
+        let _ = do self.inference_context.probe {
+            let result = self.inference_context.sub(true, dummy_sp())
+                                               .tys(a.monotype, b.monotype);
+            if result.is_ok() {
+                // Check to ensure that each parameter binding respected its
+                // kind bounds.
+                for [ a, b ].each |result| {
+                    for vec::each2(result.type_variables, *result.bounds)
+                            |ty_var, bounds| {
+                        match resolve_type(self.inference_context,
+                                           *ty_var,
+                                           resolve_nested_tvar) {
+                            Ok(resolved_ty) => {
+                                for bounds.each |bound| {
+                                    match *bound {
+                                        bound_copy => {
+                                            let kind = type_kind_ext(
+                                                self.inference_context.tcx,
+                                                resolved_ty,
+                                                true);
+                                            if !kind_can_be_copied(kind) {
+                                                might_unify = false;
+                                                break;
+                                            }
+                                        }
+
+                                        // XXX: We could be smarter here.
+                                        // Check to see whether owned, send,
+                                        // const, trait param bounds could
+                                        // possibly unify.
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            Err(*) => {
+                                // Conservatively assume it might unify.
+                            }
+                        }
+                    }
+                }
+            } else {
+                might_unify = false;
+            }
+
+            result
+        };
+        might_unify
     }
 
     fn get_self_type_for_implementation(implementation: @Impl)
