@@ -348,6 +348,10 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_comp(comp_variant(did)))
       }
 
+      ty::ty_struct(_, _) => {
+        Some(deref_comp(comp_anon_field))
+      }
+
       ty::ty_evec(mt, ty::vstore_fixed(_)) => {
         Some(deref_comp(comp_index(t, mt.mutbl)))
       }
