@@ -32,17 +32,27 @@ struct VisitContext {
 
 fn compute_modes_for_fn_args(callee_id: node_id,
                              args: &[@expr],
+                             last_arg_is_block: bool,
                              &&cx: VisitContext,
                              v: vt<VisitContext>) {
     let arg_tys = ty::ty_fn_args(ty::node_id_to_type(cx.tcx, callee_id));
+    let mut i = 0;
     for vec::each2(args, arg_tys) |arg, arg_ty| {
-        match ty::resolved_mode(cx.tcx, arg_ty.mode) {
-            by_ref => {
-                let arg_cx = VisitContext { mode: ReadValue, ..cx };
-                compute_modes_for_expr(*arg, arg_cx, v);
+        if last_arg_is_block && i == args.len() - 1 {
+            let block_cx = VisitContext { mode: MoveValue, ..cx };
+            compute_modes_for_expr(*arg, block_cx, v);
+        } else {
+            match ty::resolved_mode(cx.tcx, arg_ty.mode) {
+                by_ref => {
+                    let arg_cx = VisitContext { mode: ReadValue, ..cx };
+                    compute_modes_for_expr(*arg, arg_cx, v);
+                }
+                by_val | by_move | by_copy => {
+                    compute_modes_for_expr(*arg, cx, v);
+                }
             }
-            by_val | by_move | by_copy => compute_modes_for_expr(*arg, cx, v)
         }
+        i += 1;
     }
 }
 
@@ -80,10 +90,10 @@ fn compute_modes_for_expr(expr: @expr,
     };
 
     match expr.node {
-        expr_call(callee, args, _) => {
+        expr_call(callee, args, is_block) => {
             let callee_cx = VisitContext { mode: ReadValue, ..cx };
             compute_modes_for_expr(callee, callee_cx, v);
-            compute_modes_for_fn_args(callee.id, args, cx, v);
+            compute_modes_for_fn_args(callee.id, args, is_block, cx, v);
         }
         expr_path(*) => {
             record_mode_for_expr(expr, cx);
@@ -92,7 +102,7 @@ fn compute_modes_for_expr(expr: @expr,
             let callee_cx = VisitContext { mode: CopyValue, ..cx };
             compute_modes_for_expr(expr, callee_cx, v);
         }
-        expr_method_call(callee, _, _, args, _) => {
+        expr_method_call(callee, _, _, args, is_block) => {
             // The LHS of the dot may or may not result in a move, depending
             // on the method map entry.
             let callee_mode;
@@ -111,7 +121,7 @@ fn compute_modes_for_expr(expr: @expr,
             let callee_cx = VisitContext { mode: callee_mode, ..cx };
             compute_modes_for_expr(callee, callee_cx, v);
 
-            compute_modes_for_fn_args(expr.callee_id, args, cx, v);
+            compute_modes_for_fn_args(expr.callee_id, args, is_block, cx, v);
         }
         expr_binary(_, lhs, rhs) | expr_assign_op(_, lhs, rhs) => {
             // The signatures of these take their arguments by-ref, so they
