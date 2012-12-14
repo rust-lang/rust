@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast,ast_map,ast_util,visit};
-use ast::*;
+use syntax::{ast, ast_map, ast_util, visit};
+use syntax::ast::*;
 
 //
 // This pass classifies expressions by their constant-ness.

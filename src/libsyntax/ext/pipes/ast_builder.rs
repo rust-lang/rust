@@ -17,7 +17,7 @@ use ast::{ident, node_id};
 use ast_util::{ident_to_path, respan, dummy_sp};
 use codemap::span;
 use ext::base::mk_ctxt;
-use quote::rt::*;
+use ext::quote::rt::*;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

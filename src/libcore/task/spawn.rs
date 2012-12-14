@@ -73,8 +73,8 @@
 #[doc(hidden)]; // FIXME #3538
 #[warn(deprecated_mode)];
 
-use rt::rust_task;
-use rt::rust_closure;
+use task::rt::rust_task;
+use task::rt::rust_closure;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
@@ -670,7 +670,7 @@ fn test_spawn_raw_unsupervise() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify_success() {
-    let (notify_ch, notify_po) = pipes::stream();
+    let (notify_po, notify_ch) = pipes::stream();
 
     let opts = {
         notify_chan: Some(move notify_ch),
@@ -685,7 +685,7 @@ fn test_spawn_raw_notify_success() {
 #[ignore(cfg(windows))]
 fn test_spawn_raw_notify_failure() {
     // New bindings for these
-    let (notify_ch, notify_po) = pipes::stream();
+    let (notify_po, notify_ch) = pipes::stream();
 
     let opts = {
         linked: false,

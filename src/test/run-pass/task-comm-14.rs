@@ -18,7 +18,7 @@ fn main() {
     let mut i = 10;
     while (i > 0) {
         log(debug, i);
-        let (ch, p) = pipes::stream();
+        let (p, ch) = pipes::stream();
         po.add(move p);
         task::spawn(|move ch, copy i| child(i, ch) );
         i = i - 1;

@@ -42,7 +42,7 @@ pub impl<T> TaskPool<T> {
         assert n_tasks >= 1;
 
         let channels = do vec::from_fn(n_tasks) |i| {
-            let (chan, port) = pipes::stream::<Msg<T>>();
+            let (port, chan) = pipes::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
             let task_body: ~fn() = |move port, move init_fn| {

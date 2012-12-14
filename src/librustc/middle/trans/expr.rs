@@ -111,17 +111,18 @@ lvalues are *never* stored by value.
 
 */
 
-use ty::struct_mutable_fields;
 use lib::llvm::ValueRef;
-use common::*;
-use datum::*;
-use base::*;
-use syntax::print::pprust::{expr_to_str};
-use util::ppaux::ty_to_str;
-use util::common::indenter;
-use ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
-use callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::trans::base::*;
+use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::ty::MoveValue;
+use middle::ty::struct_mutable_fields;
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
+use util::common::indenter;
+use util::ppaux::ty_to_str;
+
+use syntax::print::pprust::{expr_to_str};
 
 // The primary two functions for translating expressions:
 export trans_to_datum, trans_into;

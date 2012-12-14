@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:is an expr, expected a path
-fn main() {
-    #macro[[#mylambda[x, body],
-            {
-                fn f(x: int) -> int { return body }
-                f
-            }]];
+// xfail-pretty
+// xfail-fast
 
-    assert (mylambda!(y * 1, y * 2)(8) == 16);
+#[path2 = "mod_dir_simple"]
+mod biscuits {
+    pub mod test;
+}
+
+#[path2 = "mod_dir_simple"]
+mod gravy {
+    pub mod test;
+}
+
+fn main() {
+    assert biscuits::test::foo() == 10;
+    assert gravy::test::foo() == 10;
 }

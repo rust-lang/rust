@@ -52,12 +52,13 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
-use check::fn_ctxt;
-use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
-use rscope::{in_binding_rscope, region_scope, type_rscope};
-use ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::typeck::check::fn_ctxt;
+use middle::typeck::rscope::{anon_rscope, binding_rscope, empty_rscope};
+use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
+use middle::typeck::rscope::{region_scope, type_rscope};
 
-trait ast_conv {
+pub trait ast_conv {
     fn tcx() -> ty::ctxt;
     fn ccx() -> @crate_ctxt;
     fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
@@ -141,7 +142,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     {substs: substs, ty: ty::subst(tcx, &substs, decl_ty)}
 }
 
-fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
+pub fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC,
     rscope: RS,
     did: ast::def_id,

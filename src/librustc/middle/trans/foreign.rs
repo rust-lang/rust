@@ -11,26 +11,27 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use driver::session::arch_x86_64;
-use syntax::codemap::span;
-use libc::c_uint;
-use syntax::{attr, ast_map};
-use lib::llvm::{ llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double,
-    Struct, Array, ModuleRef, CallConv, Attribute,
-    StructRetAttribute, ByValAttribute,
-    SequentiallyConsistent, Acquire, Release, Xchg };
-use syntax::{ast, ast_util};
 use back::{link, abi};
-use common::*;
-use build::*;
-use base::*;
-use type_of::*;
-use std::map::HashMap;
+use driver::session::arch_x86_64;
+use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
+use lib::llvm::{Struct, Array, ModuleRef, CallConv, Attribute};
+use lib::llvm::{StructRetAttribute, ByValAttribute};
+use lib::llvm::{llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double};
+use middle::trans::base::*;
+use middle::trans::build::*;
+use middle::trans::callee::*;
+use middle::trans::common::*;
+use middle::trans::datum::*;
+use middle::trans::expr::{Dest, Ignore};
+use middle::trans::type_of::*;
+use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
-use datum::*;
-use callee::*;
-use expr::{Dest, Ignore};
-use ty::{FnTyBase, FnMeta, FnSig};
+
+use core::libc::c_uint;
+use std::map::HashMap;
+use syntax::codemap::span;
+use syntax::{ast, ast_util};
+use syntax::{attr, ast_map};
 
 export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;

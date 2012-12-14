@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
 use pipes::send;
 
 fn main() { test00(); }
@@ -16,7 +15,7 @@ fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (c, p) = pipes::stream();
+    let (p, c) = pipes::stream();
     c.send(1);
     c.send(2);
     c.send(3);

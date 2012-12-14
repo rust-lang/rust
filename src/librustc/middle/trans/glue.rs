@@ -13,10 +13,10 @@
 // Code relating to taking, dropping, etc as well as type descriptors.
 
 use lib::llvm::{ValueRef, TypeRef};
-use base::*;
-use common::*;
-use build::*;
-use type_of::type_of;
+use middle::trans::base::*;
+use middle::trans::common::*;
+use middle::trans::build::*;
+use middle::trans::type_of::type_of;
 
 fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");

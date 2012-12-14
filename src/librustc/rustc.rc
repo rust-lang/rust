@@ -123,8 +123,6 @@ mod middle {
         mod reachable;
         #[path = "middle/trans/machine.rs"]
         mod machine;
-        #[path = "middle/trans/deriving.rs"]
-        mod deriving;
     }
     #[legacy_exports]
     #[path = "middle/ty.rs"]
@@ -147,7 +145,7 @@ mod middle {
     #[path = "middle/lint.rs"]
     mod lint;
     #[path = "middle/borrowck/mod.rs"]
-    mod borrowck;
+    pub mod borrowck;
     #[legacy_exports]
     #[path = "middle/mem_categorization.rs"]
     mod mem_categorization;

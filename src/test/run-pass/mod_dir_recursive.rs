@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:no clauses match
+// xfail-pretty
+// xfail-fast
+
+// Testing that the parser for each file tracks its modules
+// and paths independently. The load_another_mod module should
+// not try to reuse the 'mod_dir_simple' path.
+
+mod mod_dir_simple {
+    pub mod load_another_mod;
+}
 
 fn main() {
-    #macro[[#trivial[], 1 * 2 * 4 * 2 * 1]];
-
-    assert (trivial!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16) ==
-                16);
+    assert mod_dir_simple::load_another_mod::test::foo() == 10;
 }

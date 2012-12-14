@@ -8,46 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use c = metadata::common;
+use cstore = metadata::cstore;
+use driver::session::Session;
+use e = metadata::encoder;
+use metadata::decoder;
+use metadata::encoder;
+use metadata::tydecode;
+use metadata::tyencode;
+use middle::freevars::freevar_entry;
+use middle::typeck::{method_origin, method_map_entry, vtable_res};
+use middle::typeck::{vtable_origin};
+use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
 
+use reader = std::ebml::reader;
+use std::ebml::reader::get_doc;
+use std::ebml::writer::Serializer;
+use std::ebml;
+use std::map::HashMap;
+use std::serialization::{DeserializerHelpers, deserialize};
+use std::serialization::{Serializable, SerializerHelpers};
+use std::serialization;
 use syntax::ast;
-use syntax::fold;
-use syntax::fold::*;
-use syntax::visit;
 use syntax::ast_map;
 use syntax::ast_util;
 use syntax::codemap::span;
-use std::ebml;
-use writer = std::ebml::writer;
-use reader = std::ebml::reader;
-use reader::get_doc;
-use writer::Serializer;
-use std::map::HashMap;
-use std::serialization;
-use std::serialization::{Serializable,
-                         SerializerHelpers,
-                         DeserializerHelpers,
-                         deserialize};
-use middle::{ty, typeck};
-use middle::typeck::{method_origin, method_map_entry,
-                     vtable_res,
-                     vtable_origin};
-use driver::session::Session;
-use middle::freevars::freevar_entry;
-use c = metadata::common;
-use e = metadata::encoder;
-use cstore = metadata::cstore;
-use metadata::encoder;
-use metadata::decoder;
-use metadata::tyencode;
-use metadata::tydecode;
-
-
-// used in testing:
-use syntax::diagnostic;
 use syntax::codemap;
+use syntax::diagnostic;
+use syntax::fold::*;
+use syntax::fold;
 use syntax::parse;
 use syntax::print::pprust;
+use syntax::visit;
+use writer = std::ebml::writer;
 
 export maps;
 export encode_inlined_item;
@@ -1033,6 +1027,8 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 trait fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
     fn parse_sess() -> parse::parse_sess;
+    fn call_site() -> span;
+    fn ident_of(st: ~str) -> ast::ident;
 }
 
 #[cfg(test)]
@@ -1042,6 +1038,16 @@ type fake_session = parse::parse_sess;
 impl fake_session: fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg { ~[] }
     fn parse_sess() -> parse::parse_sess { self }
+    fn call_site() -> span {
+        codemap::span {
+            lo: codemap::BytePos(0),
+            hi: codemap::BytePos(0),
+            expn_info: None
+        }
+    }
+    fn ident_of(st: ~str) -> ast::ident {
+        self.interner.intern(@st)
+    }
 }
 
 #[cfg(test)]
@@ -1050,7 +1056,8 @@ fn mk_ctxt() -> fake_ext_ctxt {
 }
 
 #[cfg(test)]
-fn roundtrip(in_item: @ast::item) {
+fn roundtrip(in_item: Option<@ast::item>) {
+    let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = writer::Serializer(wr);
         encode_item_ast(ebml_w, in_item);
@@ -1074,45 +1081,45 @@ fn roundtrip(in_item: @ast::item) {
 #[test]
 fn test_basic() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast[item]{
+    roundtrip(quote_item!(
         fn foo() {}
-    });
+    ));
 }
 
 #[test]
 fn test_smalltalk() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast[item]{
+    roundtrip(quote_item!(
         fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
-    });
+    ));
 }
 
 #[test]
 fn test_more() {
     let ext_cx = mk_ctxt();
-    roundtrip(#ast[item]{
+    roundtrip(quote_item!(
         fn foo(x: uint, y: uint) -> uint {
             let z = x + y;
             return z;
         }
-    });
+    ));
 }
 
 #[test]
 fn test_simplification() {
     let ext_cx = mk_ctxt();
-    let item_in = ast::ii_item(#ast[item] {
+    let item_in = ast::ii_item(quote_item!(
         fn new_int_alist<B: Copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
             return {eq_fn: eq_int, mut data: ~[]};
         }
-    });
+    ).get());
     let item_out = simplify_ast(item_in);
-    let item_exp = ast::ii_item(#ast[item] {
+    let item_exp = ast::ii_item(quote_item!(
         fn new_int_alist<B: Copy>() -> alist<int, B> {
             return {eq_fn: eq_int, mut data: ~[]};
         }
-    });
+    ).get());
     match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
         assert pprust::item_to_str(item_out, ext_cx.parse_sess().interner)

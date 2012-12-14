@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dvec::DVec;
-
 fn foo() -> int { 22 }
 
 fn main() {
-    let x = DVec::<@fn() -> int>();
+    let x = dvec::DVec::<@fn() -> int>();
     x.push(foo);
     assert (x[0])() == 22;
 }

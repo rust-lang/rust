@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use lib::llvm::ValueRef;
-use common::*;
-use datum::*;
-use base::*;
+use middle::trans::base::*;
+use middle::trans::common::*;
+use middle::trans::datum::*;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

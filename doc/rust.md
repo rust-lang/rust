@@ -847,9 +847,24 @@ fn main() {
 
 Like items, `use` declarations are private to the containing module, by default.
 Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
+Such a `use` declaration serves to _re-export_ a name.
 A public `use` declaration can therefore be used to _redirect_ some public name to a different target definition,
 even a definition with a private canonical path, inside a different module.
 If a sequence of such redirections form a cycle or cannot be unambiguously resolved, they represent a compile-time error.
+
+An example of re-exporting:
+~~~~
+mod quux {
+    mod foo {
+        pub fn bar() { }
+        pub fn baz() { }
+    }
+    
+    pub use foo::*;
+}
+~~~~
+
+In this example, the module `quux` re-exports all of the public names defined in `foo`.
 
 ### Functions
 
@@ -2704,18 +2719,18 @@ The special type `self` has a meaning within methods inside an
 impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 trait Printable {
-  fn to_str() -> ~str;
+  fn make_string() -> ~str;
 }
 
 impl ~str: Printable {
-  fn to_str() -> ~str { copy self }
+  fn make_string() -> ~str { copy self }
 }
 ~~~~~~~~
 
 `self` refers to the value of type `~str` that is the receiver for a
-call to the method `to_str`.
+call to the method `make_string`.
 
 ## Type kinds
 

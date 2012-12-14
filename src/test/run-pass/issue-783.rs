@@ -8,20 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use comm::*;
-use task::spawn;
-
 fn a() {
     fn doit() {
-        fn b(c: Chan<Chan<int>>) {
-            let p = Port();
-            send(c, Chan(&p));
+        fn b(c: core::comm::Chan<core::comm::Chan<int>>) {
+            let p = core::comm::Port();
+            core::comm::send(c, core::comm::Chan(&p));
         }
-        let p = Port();
-        let ch = Chan(&p);
-        spawn(|| b(ch) );
-        recv(p);
+        let p = core::comm::Port();
+        let ch = core::comm::Chan(&p);
+        task::spawn(|| b(ch) );
+        core::comm::recv(p);
     }
     let mut i = 0;
     while i < 100 {
@@ -32,6 +28,6 @@ fn a() {
 
 fn main() {
     for iter::repeat(100u) {
-        spawn(|| a() );
+        task::spawn(|| a() );
     }
 }

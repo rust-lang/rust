@@ -10,12 +10,7 @@
 // except according to those terms.
 
 
-extern mod std;
-use comm::send;
-use comm::Chan;
-use comm::recv;
-
-fn a(c: Chan<int>) {
+fn a(c: core::comm::Chan<int>) {
     if true {
         debug!("task a");
         debug!("task a");
@@ -23,7 +18,7 @@ fn a(c: Chan<int>) {
         debug!("task a");
         debug!("task a");
     }
-    send(c, 10);
+    core::comm::send(c, 10);
 }
 
 fn k(x: int) -> int { return 15; }
@@ -39,18 +34,18 @@ fn main() {
     let mut n: int = 2 + 3 * 7;
     let s: ~str = ~"hello there";
     let p = comm::Port();
-    let ch = comm::Chan(&p);
+    let ch = core::comm::Chan(&p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut x: int = 10;
     x = g(n, s);
     log(debug, x);
-    n = recv(p);
-    n = recv(p);
+    n = core::comm::recv(p);
+    n = core::comm::recv(p);
     debug!("children finished, root finishing");
 }
 
-fn b(c: Chan<int>) {
+fn b(c: core::comm::Chan<int>) {
     if true {
         debug!("task b");
         debug!("task b");
@@ -59,5 +54,5 @@ fn b(c: Chan<int>) {
         debug!("task b");
         debug!("task b");
     }
-    send(c, 10);
+    core::comm::send(c, 10);
 }

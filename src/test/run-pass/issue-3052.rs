@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::*;
-
 type Connection = fn@(~[u8]);
 
 fn f() -> Option<Connection> {

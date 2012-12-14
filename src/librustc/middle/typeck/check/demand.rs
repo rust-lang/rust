@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::fn_ctxt;
+use middle::typeck::check::fn_ctxt;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
@@ -18,10 +18,10 @@ fn suptype(fcx: @fn_ctxt, sp: span,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-fn suptype_with_fn(fcx: @fn_ctxt, sp: span,
-           expected: ty::t, actual: ty::t,
+fn suptype_with_fn(fcx: @fn_ctxt,
+                   sp: span,
+                   expected: ty::t, actual: ty::t,
                    handle_err: fn(span, ty::t, ty::t, &ty::type_err)) {
-
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), false, sp,
                           actual, expected) {
@@ -32,9 +32,7 @@ fn suptype_with_fn(fcx: @fn_ctxt, sp: span,
     }
 }
 
-fn eqtype(fcx: @fn_ctxt, sp: span,
-          expected: ty::t, actual: ty::t) {
-
+fn eqtype(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) {
     match infer::mk_eqty(fcx.infcx(), false, sp, actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {

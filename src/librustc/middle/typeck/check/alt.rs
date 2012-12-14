@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::pat_util::{pat_is_binding, pat_is_const};
+use middle::pat_util::{pat_is_variant_or_struct};
+
+use syntax::ast_util::walk_pat;
 use syntax::print::pprust;
-use syntax::ast_util::{walk_pat};
-use pat_util::{pat_is_binding, pat_is_const, pat_is_variant_or_struct};
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -95,7 +97,16 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                 let vinfo =
                     ty::enum_variant_with_id(
                         tcx, v_def_ids.enm, v_def_ids.var);
-                vinfo.args.map(|t| { ty::subst(tcx, expected_substs, *t) })
+                let var_tpt = ty::lookup_item_type(tcx, v_def_ids.var);
+                vinfo.args.map(|t| {
+                    if var_tpt.bounds.len() == expected_substs.tps.len() {
+                        ty::subst(tcx, expected_substs, *t)
+                    }
+                    else {
+                        *t // In this case, an error was already signaled
+                           // anyway
+                    }
+                })
             };
 
             kind_name = "variant";

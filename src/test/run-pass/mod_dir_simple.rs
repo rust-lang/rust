@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regresion test for issue #1448 and #1386
+// xfail-pretty
+// xfail-fast
+
+mod mod_dir_simple {
+    pub mod test;
+}
 
 fn main() {
-    #macro[[#apply[f, [x, ...]], f(x, ...)]];
-    fn add(a: int, b: int) -> int { return a + b; }
-    assert (apply!(add, [y, 15]) == 16); //~ ERROR unresolved name: y
+    assert mod_dir_simple::test::foo() == 10;
 }

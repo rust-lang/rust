@@ -13,19 +13,19 @@ use print::pprust::expr_to_str;
 use result::Result;
 use either::{Either, Left, Right};
 use std::map::HashMap;
-use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
-            INTERPOLATED, special_idents};
+use parse::token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
+                   INTERPOLATED, special_idents};
 use codemap::{span,FssNone, BytePos};
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-use lexer::reader;
-use prec::{as_prec, token_to_binop};
-use attr::parser_attr;
-use common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                seq_sep_none, token_to_str};
+use parse::lexer::reader;
+use parse::prec::{as_prec, token_to_binop};
+use parse::attr::parser_attr;
+use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
+                    seq_sep_none, token_to_str};
 use dvec::DVec;
 use vec::{push};
-use obsolete::{
+use parse::obsolete::{
     ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
@@ -54,8 +54,8 @@ use ast::{_mod, add, arg, arm, attribute,
              item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
              item_ty, lit, lit_, lit_bool, lit_float, lit_float_unsuffixed,
              lit_int, lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local,
-             m_const, m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_invoc,
-             mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
+             m_const, m_imm, m_mutbl, mac_,
+             mac_invoc_tt, matcher, match_nonterminal, match_seq,
              match_tok, method, mode, module_ns, mt, mul, mutability,
              named_field, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct,
@@ -80,13 +80,6 @@ use ast::{_mod, add, arg, arm, attribute,
              expr_vstore_uniq, TyFn, Onceness, Once, Many};
 
 export Parser;
-
-// FIXME (#3726): #ast expects to find this here but it's actually
-// defined in `parse` Fixing this will be easier when we have export
-// decls on individual items -- then parse can export this publicly, and
-// everything else crate-visibly.
-use parse::parse_from_source_str;
-export parse_from_source_str;
 
 export item_or_view_item, iovi_none, iovi_view_item, iovi_item;
 
@@ -203,6 +196,7 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
         obsolete_set: std::map::HashMap(),
+        mod_path_stack: ~[],
     }
 }
 
@@ -226,6 +220,8 @@ struct Parser {
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     obsolete_set: HashMap<ObsoleteSyntax, ()>,
+    /// Used to determine the path to externally loaded source files
+    mut mod_path_stack: ~[~str],
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 }
@@ -514,15 +510,6 @@ impl Parser {
 
         let lo = self.span.lo;
 
-        match self.maybe_parse_dollar_mac() {
-          Some(ref e) => {
-            return @{id: self.get_id(),
-                  node: ty_mac(spanned(lo, self.span.hi, (*e))),
-                  span: mk_sp(lo, self.span.hi)};
-          }
-          None => ()
-        }
-
         let t = if self.token == token::LPAREN {
             self.bump();
             if self.token == token::RPAREN {
@@ -734,32 +721,6 @@ impl Parser {
         }
     }
 
-    fn maybe_parse_dollar_mac() -> Option<mac_> {
-        match copy self.token {
-          token::DOLLAR => {
-            let lo = self.span.lo;
-            self.bump();
-            match copy self.token {
-              token::LIT_INT_UNSUFFIXED(num) => {
-                self.bump();
-                Some(mac_var(num as uint))
-              }
-              token::LPAREN => {
-                self.bump();
-                let e = self.parse_expr();
-                self.expect(token::RPAREN);
-                let hi = self.last_span.hi;
-                Some(mac_aq(mk_sp(lo,hi), e))
-              }
-              _ => {
-                self.fatal(~"expected `(` or unsuffixed integer literal");
-              }
-            }
-          }
-          _ => None
-        }
-    }
-
     fn maybe_parse_fixed_vstore_with_star() -> Option<uint> {
         if self.eat(token::BINOP(token::STAR)) {
             match copy self.token {
@@ -932,11 +893,6 @@ impl Parser {
 
         let mut ex: expr_;
 
-        match self.maybe_parse_dollar_mac() {
-          Some(ref x) => return self.mk_mac_expr(lo, self.span.hi, (*x)),
-          _ => ()
-        }
-
         if self.token == token::LPAREN {
             self.bump();
             if self.token == token::RPAREN {
@@ -1026,13 +982,6 @@ impl Parser {
                 }
             }
             hi = self.span.hi;
-        } else if self.token == token::ELLIPSIS {
-            self.bump();
-            return self.mk_mac_expr(lo, self.span.hi, mac_ellipsis);
-        } else if self.token == token::POUND {
-            let ex_ext = self.parse_syntax_ext();
-            hi = ex_ext.span.hi;
-            ex = ex_ext.node;
         } else if self.eat_keyword(~"fail") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
@@ -1143,54 +1092,6 @@ impl Parser {
         self.expect(token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
-    }
-
-    fn parse_syntax_ext() -> @expr {
-        let lo = self.span.lo;
-        self.expect(token::POUND);
-        return self.parse_syntax_ext_naked(lo);
-    }
-
-    fn parse_syntax_ext_naked(lo: BytePos) -> @expr {
-        match self.token {
-          token::IDENT(_, _) => (),
-          _ => self.fatal(~"expected a syntax expander name")
-        }
-        let pth = self.parse_path_without_tps();
-        //temporary for a backwards-compatible cycle:
-        let sep = seq_sep_trailing_disallowed(token::COMMA);
-        let mut e = None;
-        if (self.token == token::LPAREN || self.token == token::LBRACKET) {
-            let lo = self.span.lo;
-            let es =
-                if self.token == token::LPAREN {
-                    self.parse_unspanned_seq(token::LPAREN, token::RPAREN,
-                                             sep, |p| p.parse_expr())
-                } else {
-                    self.parse_unspanned_seq(token::LBRACKET, token::RBRACKET,
-                                             sep, |p| p.parse_expr())
-                };
-            let hi = self.span.hi;
-            e = Some(self.mk_expr(lo, hi, expr_vec(es, m_imm)));
-        }
-        let mut b = None;
-        if self.token == token::LBRACE {
-            self.bump();
-            let lo = self.span.lo;
-            let mut depth = 1u;
-            while (depth > 0u) {
-                match (self.token) {
-                  token::LBRACE => depth += 1u,
-                  token::RBRACE => depth -= 1u,
-                  token::EOF => self.fatal(~"unexpected EOF in macro body"),
-                  _ => ()
-                }
-                self.bump();
-            }
-            let hi = self.last_span.lo;
-            b = Some({span: mk_sp(lo,hi)});
-        }
-        return self.mk_mac_expr(lo, self.span.hi, mac_invoc(pth, e, b));
     }
 
     fn parse_dot_or_call_expr() -> @expr {
@@ -2257,17 +2158,8 @@ impl Parser {
             }
 
         } else {
-            let mut item_attrs;
-            match self.parse_outer_attrs_or_ext(first_item_attrs) {
-              None => item_attrs = ~[],
-              Some(Left(ref attrs)) => item_attrs = (*attrs),
-              Some(Right(ext)) => {
-                return @spanned(lo, ext.span.hi,
-                                stmt_expr(ext, self.get_id()));
-              }
-            }
-
-            let item_attrs = vec::append(first_item_attrs, item_attrs);
+            let item_attrs = vec::append(first_item_attrs,
+                                         self.parse_outer_attributes());
 
             match self.parse_item_or_view_item(item_attrs,
                                                true, false, false) {
@@ -3041,10 +2933,12 @@ impl Parser {
             let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span);
             (id, m, Some(move attrs))
         } else {
+            self.push_mod_path(id, outer_attrs);
             self.expect(token::LBRACE);
             let inner_attrs = self.parse_inner_attrs_and_next();
             let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
             self.expect(token::RBRACE);
+            self.pop_mod_path();
             (id, item_mod(m), Some(inner_attrs.inner))
         };
 
@@ -3081,20 +2975,40 @@ impl Parser {
         }
     }
 
+    fn push_mod_path(id: ident, attrs: ~[ast::attribute]) {
+        let default_path = self.sess.interner.get(id);
+        let file_path = match ::attr::first_attr_value_str_by_name(
+            attrs, ~"path2") {
+
+            Some(ref d) => (*d),
+            None => copy *default_path
+        };
+        self.mod_path_stack.push(file_path)
+    }
+
+    fn pop_mod_path() {
+        self.mod_path_stack.pop();
+    }
+
     fn eval_src_mod(id: ast::ident,
                     outer_attrs: ~[ast::attribute],
                     id_sp: span) -> (ast::item_, ~[ast::attribute]) {
+
         let prefix = Path(self.sess.cm.span_to_filename(copy self.span));
         let prefix = prefix.dir_path();
+        let mod_path = Path(".").push_many(self.mod_path_stack);
         let default_path = self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
-            outer_attrs, ~"path") {
+            outer_attrs, ~"path2") {
 
-            Some(ref d) => (*d),
-            None => default_path
+            Some(ref d) => mod_path.push(*d),
+            None => match ::attr::first_attr_value_str_by_name(
+                outer_attrs, ~"path") {
+                Some(ref d) => Path(*d),
+                None => mod_path.push(default_path)
+            }
         };
 
-        let file_path = Path(file_path);
         self.eval_src_mod_from_path(prefix, file_path,
                                     outer_attrs, id_sp)
     }
@@ -3109,6 +3023,7 @@ impl Parser {
         } else {
             prefix.push_many(path.components)
         };
+        let full_path = full_path.normalize();
         let p0 =
             new_sub_parser_from_file(self.sess, self.cfg,
                                      &full_path, id_sp);

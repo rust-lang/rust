@@ -19,16 +19,9 @@ use ast_util::dummy_sp;
 use util::interner;
 use ext::base::ext_ctxt;
 use parse::*;
-use proto::*;
-use quote::rt::*;
-use ast_builder::{append_types, path};
-
-// Transitional reexports so qquote can find the paths it is looking for
-mod syntax {
-    #[legacy_exports];
-    pub use ext;
-    pub use parse;
-}
+use ext::pipes::proto::*;
+use ext::quote::rt::*;
+use ext::pipes::ast_builder::{append_types, path};
 
 trait gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item;

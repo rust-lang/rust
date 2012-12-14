@@ -33,7 +33,7 @@ enum request {
 }
 
 fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
-    let mut count = 0u;
+    let mut count = 0;
     let mut done = false;
     while !done {
         match requests.try_recv() {
@@ -51,8 +51,8 @@ fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (to_parent, from_child) = pipes::stream();
-    let (to_child, from_parent_) = pipes::stream();
+    let (from_child, to_parent) = pipes::stream();
+    let (from_parent_, to_child) = pipes::stream();
     let from_parent = PortSet();
     from_parent.add(move from_parent_);
 
@@ -62,7 +62,7 @@ fn run(args: &[~str]) {
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
-        let (to_child, from_parent_) = pipes::stream();
+        let (from_parent_, to_child) = pipes::stream();
         from_parent.add(move from_parent_);
         do task::task().future_result(|+r| {
             worker_results.push(move r);

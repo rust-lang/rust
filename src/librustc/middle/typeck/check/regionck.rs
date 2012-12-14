@@ -27,18 +27,18 @@ this point a bit better.
 
 */
 
-use util::ppaux;
-use ppaux::{note_and_explain_region, ty_to_str};
-use syntax::print::pprust;
-use infer::{resolve_and_force_all_but_regions, fres};
-use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
-use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use middle::freevars::get_freevars;
 use middle::kind::check_owned;
 use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
+use middle::typeck::infer::{resolve_and_force_all_but_regions, fres};
+use util::ppaux::{note_and_explain_region, ty_to_str};
+
+use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
+use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+use syntax::print::pprust;
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;

@@ -11,6 +11,9 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
+use middle::ty::{ty_struct, ty_enum};
+use middle::typeck::{method_map, method_origin, method_param, method_self};
+use middle::typeck::{method_static, method_trait};
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
 use syntax::ast_map;
@@ -21,9 +24,6 @@ use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
-use ty::{ty_struct, ty_enum};
-use typeck::{method_map, method_origin, method_param, method_self};
-use typeck::{method_static, method_trait};
 
 use core::util::ignore;
 use dvec::DVec;
@@ -199,7 +199,10 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         visit_expr: |expr, method_map: &method_map, visitor| {
             match expr.node {
                 expr_field(base, ident, _) => {
-                    match ty::get(ty::expr_ty(tcx, base)).sty {
+                    // With type_autoderef, make sure we don't
+                    // allow pointers to violate privacy
+                    match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
+                                                          base))).sty {
                         ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {
@@ -220,7 +223,9 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     }
                 }
                 expr_method_call(base, _, _, _, _) => {
-                    match ty::get(ty::expr_ty(tcx, base)).sty {
+                    // Ditto
+                    match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
+                                                          base))).sty {
                         ty_struct(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(&(id.node)) => {

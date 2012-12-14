@@ -11,9 +11,6 @@
 // Issue #1112
 // Alignment of interior pointers to dynamic-size types
 
-extern mod std;
-use ptr::addr_of;
-
 type x<T> = {
     a: T,
     b: u8,

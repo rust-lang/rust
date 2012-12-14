@@ -149,7 +149,7 @@ pub pure fn escape_unicode(c: char) -> ~str {
             { str::push_str(&mut out, ~"0"); }
         str::push_str(&mut out, s);
     }
-    move out
+    out
 }
 
 /**

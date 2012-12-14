@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 mod my_mod {
     pub struct MyStruct {
         priv priv_field: int
@@ -16,12 +15,18 @@ mod my_mod {
     pub fn MyStruct () -> MyStruct {
         MyStruct {priv_field: 4}
     }
+    impl MyStruct {
+        priv fn happyfun() {}
+    }
 }
 
 fn main() {
     let my_struct = my_mod::MyStruct();
-    let _woohoo = (&my_struct).priv_field; // compiles but shouldn't
-    let _woohoo = (~my_struct).priv_field; // ditto
-    let _woohoo = (@my_struct).priv_field; // ditto
-   // let nope = my_struct.priv_field;       // compile error as expected
+    let _woohoo = (&my_struct).priv_field; //~ ERROR field `priv_field` is private
+    let _woohoo = (~my_struct).priv_field; //~ ERROR field `priv_field` is private
+    let _woohoo = (@my_struct).priv_field; //~ ERROR field `priv_field` is private
+    (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
+    (~my_struct).happyfun();               //~ ERROR method `happyfun` is private
+    (@my_struct).happyfun();               //~ ERROR method `happyfun` is private
+    let nope = my_struct.priv_field;       //~ ERROR field `priv_field` is private
 }

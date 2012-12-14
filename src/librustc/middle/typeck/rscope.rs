@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use result::Result;
+use core::result::Result;
 use syntax::parse::token::special_idents;
 
 trait region_scope {

@@ -15,7 +15,7 @@ fn main() { test00(); }
 fn test00() {
     let r: int = 0;
     let mut sum: int = 0;
-    let (c, p) = pipes::stream();
+    let (p, c) = pipes::stream();
     let number_of_messages: int = 1000;
     let mut i: int = 0;
     while i < number_of_messages { c.send(i + 0); i += 1; }

@@ -18,7 +18,7 @@ use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, stmt, struct_def};
 use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_rptr, unnamed_field};
 use ast::{variant};
-use base::ext_ctxt;
+use ext::base::ext_ctxt;
 use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
 
@@ -698,26 +698,31 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
         };
         other_arms.push(move matching_arm);
 
-        // Create the nonmatching pattern.
-        let nonmatching_pat = @{
-            id: cx.next_id(),
-            node: pat_wild,
-            span: span
-        };
+        // Maybe generate a non-matching case. If there is only one
+        // variant then there will always be a match.
+        if enum_definition.variants.len() > 1 {
+            // Create the nonmatching pattern.
+            let nonmatching_pat = @{
+                id: cx.next_id(),
+                node: pat_wild,
+                span: span
+            };
 
-        // Create the nonmatching pattern body.
-        let nonmatching_expr = build::mk_bool(cx, span, !is_eq);
-        let nonmatching_body_block = build::mk_simple_block(cx,
-                                                            span,
-                                                            nonmatching_expr);
+            // Create the nonmatching pattern body.
+            let nonmatching_expr = build::mk_bool(cx, span, !is_eq);
+            let nonmatching_body_block =
+                build::mk_simple_block(cx,
+                                       span,
+                                       nonmatching_expr);
 
-        // Create the nonmatching arm.
-        let nonmatching_arm = {
-            pats: ~[ nonmatching_pat ],
-            guard: None,
-            body: move nonmatching_body_block
-        };
-        other_arms.push(move nonmatching_arm);
+            // Create the nonmatching arm.
+            let nonmatching_arm = {
+                pats: ~[ nonmatching_pat ],
+                guard: None,
+                body: move nonmatching_body_block
+            };
+            other_arms.push(move nonmatching_arm);
+        }
 
         // Create the self pattern.
         let self_pat = create_enum_variant_pattern(cx,

@@ -17,19 +17,19 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
-use std::map::HashMap;
-use rustc::driver::session;
-use session::{basic_options, options};
-use session::Session;
-use rustc::driver::driver;
-use syntax::diagnostic;
-use syntax::diagnostic::handler;
-use syntax::ast;
-use syntax::codemap;
-use syntax::ast_map;
 use rustc::back::link;
-use rustc::metadata::filesearch;
+use rustc::driver::driver;
+use rustc::driver::session::Session;
+use rustc::driver::session::{basic_options, options};
+use rustc::driver::session;
 use rustc::front;
+use rustc::metadata::filesearch;
+use std::map::HashMap;
+use syntax::ast;
+use syntax::ast_map;
+use syntax::codemap;
+use syntax::diagnostic::handler;
+use syntax::diagnostic;
 
 pub type Ctxt = {
     ast: @ast::crate,

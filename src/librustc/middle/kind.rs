@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{visit, ast_util};
+use middle::freevars::freevar_entry;
+use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};
+use middle::ty::{CopyValue, MoveValue, ReadValue};
+use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
+use util::ppaux::{ty_to_str, tys_to_str};
+
+use std::map::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
-use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
-use middle::ty::{CopyValue, MoveValue, ReadValue};
-use std::map::HashMap;
-use util::ppaux::{ty_to_str, tys_to_str};
 use syntax::print::pprust::expr_to_str;
-use freevars::freevar_entry;
-use lint::{non_implicitly_copyable_typarams,implicit_copies};
+use syntax::{visit, ast_util};
 
 // Kind analysis pass.
 //

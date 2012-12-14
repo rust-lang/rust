@@ -11,7 +11,7 @@
 use to_str::ToStr;
 use dvec::DVec;
 
-use ast_builder::{path, append_types};
+use ext::pipes::ast_builder::{path, append_types};
 
 enum direction { send, recv }
 

@@ -46,9 +46,9 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-use integral::*;
-use floating::*;
-use to_str::ToStr;
+use middle::typeck::infer::floating::*;
+use middle::typeck::infer::integral::*;
+use middle::typeck::infer::to_str::ToStr;
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;

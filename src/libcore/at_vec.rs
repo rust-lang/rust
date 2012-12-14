@@ -61,7 +61,7 @@ pub pure fn build_sized<A>(size: uint,
                            builder: &fn(push: pure fn(v: A))) -> @[A] {
     let mut vec: @[const A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
-    builder(|+x| unsafe { raw::push(&mut vec, move x) });
+    builder(|+x| unsafe { raw::push(&mut vec, x) });
     return unsafe { transmute(vec) };
 }
 
@@ -178,10 +178,10 @@ pub mod raw {
         let repr: **VecRepr = ::cast::reinterpret_cast(&v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
-            push_fast(v, move initval);
+            push_fast(v, initval);
         }
         else {
-            push_slow(v, move initval);
+            push_slow(v, initval);
         }
     }
 

@@ -15,26 +15,19 @@
    https://github.com/graydon/rust/issues/507
 */
 
-extern mod std;
+fn grandchild(c: core::comm::Chan<int>) { core::comm::send(c, 42); }
 
-use comm::Chan;
-use comm::send;
-use comm::Port;
-use comm::recv;
-
-fn grandchild(c: Chan<int>) { send(c, 42); }
-
-fn child(c: Chan<int>) {
+fn child(c: core::comm::Chan<int>) {
     task::spawn(|| grandchild(c) )
 }
 
 fn main() {
-    let p = comm::Port();
-    let ch = Chan(&p);
+    let p = core::comm::Port();
+    let ch = core::comm::Chan(&p);
 
     task::spawn(|| child(ch) );
 
-    let x: int = recv(p);
+    let x: int = core::comm::recv(p);
 
     log(debug, x);
 

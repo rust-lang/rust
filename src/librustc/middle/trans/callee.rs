@@ -17,15 +17,16 @@
 // closure.
 
 use lib::llvm::ValueRef;
-use syntax::ast;
-use datum::Datum;
-use common::{block, node_id_type_params};
-use build::*;
-use base::{get_item_val, trans_external_path};
-use syntax::visit;
-use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
-use datum::*;
+use middle::trans::base::{get_item_val, trans_external_path};
+use middle::trans::build::*;
+use middle::trans::common::{block, node_id_type_params};
+use middle::trans::datum::*;
+use middle::trans::datum::Datum;
 use util::common::indenter;
+
+use syntax::ast;
+use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
+use syntax::visit;
 
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure
@@ -223,8 +224,6 @@ fn trans_fn_ref_with_vtables(
     let must_monomorphise;
     if type_params.len() > 0 || opt_impl_did.is_some() {
         must_monomorphise = true;
-    } else if ccx.tcx.automatically_derived_methods.contains_key(def_id) {
-        must_monomorphise = false;
     } else if def_id.crate == ast::local_crate {
         let map_node = session::expect(
             ccx.sess,
