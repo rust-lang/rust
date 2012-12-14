@@ -2719,18 +2719,18 @@ The special type `self` has a meaning within methods inside an
 impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 trait Printable {
-  fn to_str() -> ~str;
+  fn make_string() -> ~str;
 }
 
 impl ~str: Printable {
-  fn to_str() -> ~str { copy self }
+  fn make_string() -> ~str { copy self }
 }
 ~~~~~~~~
 
 `self` refers to the value of type `~str` that is the receiver for a
-call to the method `to_str`.
+call to the method `make_string`.
 
 ## Type kinds
 
