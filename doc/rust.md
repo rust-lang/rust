@@ -752,6 +752,10 @@ mod math {
 }
 ~~~~~~~~
 
+Modules and types share the same namespace.
+Declaring a named type that has the same name as a module in scope is forbidden:
+that is, a type definition, trait, struct, enumeration, or type parameter
+can't shadow the name of a module in scope, or vice versa.
 
 #### View items
 
