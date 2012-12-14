@@ -398,28 +398,51 @@ pub fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
 // Mutators
 
 /// Removes the first element from a vector and return it
-pub fn shift<T>(v: &mut ~[T]) -> T {
-    let ln = v.len();
-    assert (ln > 0);
+pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
 
-    let mut vv = ~[];
-    *v <-> vv;
+    assert v.is_not_empty();
 
-    unsafe {
-        let mut rr;
-        {
-            let vv = raw::to_ptr(vv);
-            rr = move *vv;
+    if v.len() == 1 { return v.pop() }
 
-            for uint::range(1, ln) |i| {
-                let r = move *ptr::offset(vv, i);
-                v.push(r);
-            }
-        }
-        raw::set_len(&mut vv, 0);
-
-        rr
+    if v.len() == 2 {
+        let last = v.pop();
+        let first = v.pop();
+        v.push(last);
+        return first;
     }
+
+    let ln = v.len();
+    let next_ln = v.len() - 1;
+
+    // Save the last element. We're going to overwrite its position
+    let mut work_elt = v.pop();
+    // We still should have room to work where what last element was
+    assert capacity(v) >= ln;
+    // Pretend like we have the original length so we can use
+    // the vector memcpy to overwrite the hole we just made
+    raw::set_len(v, ln);
+
+    // Memcopy the head element (the one we want) to the location we just
+    // popped. For the moment it unsafely exists at both the head and last
+    // positions
+    let first_slice = view(*v, 0, 1);
+    let last_slice = mut_view(*v, next_ln, ln);
+    raw::memcpy(last_slice, first_slice, 1);
+
+    // Memcopy everything to the left one element
+    let init_slice = mut_view(*v, 0, next_ln);
+    let tail_slice = view(*v, 1, ln);
+    raw::memcpy(init_slice, tail_slice, next_ln);
+
+    // Set the new length. Now the vector is back to normal
+    raw::set_len(v, next_ln);
+
+    // Swap out the element we want from the end
+    let vp = raw::to_mut_ptr(*v);
+    let vp = ptr::mut_offset(vp, next_ln - 1);
+    *vp <-> work_elt;
+
+    return work_elt;
 }
 
 /// Prepend an element to the vector
@@ -1760,7 +1783,7 @@ pub struct UnboxedVecRepr {
 }
 
 /// Unsafe operations
-mod raw {
+pub mod raw {
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
