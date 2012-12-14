@@ -10,25 +10,25 @@
 // except according to those terms.
 
 
-fn a(c: core::comm::Chan<int>) { core::comm::send(c, 10); }
+fn a(c: core::oldcomm::Chan<int>) { core::oldcomm::send(c, 10); }
 
 fn main() {
-    let p = core::comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
     task::spawn(|| a(ch) );
     task::spawn(|| a(ch) );
     let mut n: int = 0;
-    n = core::comm::recv(p);
-    n = core::comm::recv(p);
+    n = core::oldcomm::recv(p);
+    n = core::oldcomm::recv(p);
     //    debug!("Finished.");
 }
 
-fn b(c: core::comm::Chan<int>) {
+fn b(c: core::oldcomm::Chan<int>) {
     //    debug!("task b0");
     //    debug!("task b1");
     //    debug!("task b2");
     //    debug!("task b3");
     //    debug!("task b4");
     //    debug!("task b5");
-    core::comm::send(c, 10);
+    core::oldcomm::send(c, 10);
 }

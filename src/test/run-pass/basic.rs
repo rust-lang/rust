@@ -10,7 +10,7 @@
 // except according to those terms.
 
 
-fn a(c: core::comm::Chan<int>) {
+fn a(c: core::oldcomm::Chan<int>) {
     if true {
         debug!("task a");
         debug!("task a");
@@ -18,7 +18,7 @@ fn a(c: core::comm::Chan<int>) {
         debug!("task a");
         debug!("task a");
     }
-    core::comm::send(c, 10);
+    core::oldcomm::send(c, 10);
 }
 
 fn k(x: int) -> int { return 15; }
@@ -33,19 +33,19 @@ fn g(x: int, y: ~str) -> int {
 fn main() {
     let mut n: int = 2 + 3 * 7;
     let s: ~str = ~"hello there";
-    let p = comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut x: int = 10;
     x = g(n, s);
     log(debug, x);
-    n = core::comm::recv(p);
-    n = core::comm::recv(p);
+    n = core::oldcomm::recv(p);
+    n = core::oldcomm::recv(p);
     debug!("children finished, root finishing");
 }
 
-fn b(c: core::comm::Chan<int>) {
+fn b(c: core::oldcomm::Chan<int>) {
     if true {
         debug!("task b");
         debug!("task b");
@@ -54,5 +54,5 @@ fn b(c: core::comm::Chan<int>) {
         debug!("task b");
         debug!("task b");
     }
-    core::comm::send(c, 10);
+    core::oldcomm::send(c, 10);
 }

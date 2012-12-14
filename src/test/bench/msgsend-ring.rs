@@ -14,7 +14,7 @@
 // that things will look really good once we get that lock out of the
 // message path.
 
-use comm::*;
+use oldcomm::*;
 
 extern mod std;
 use std::time;
@@ -22,8 +22,8 @@ use std::future;
 
 fn thread_ring(i: uint,
                count: uint,
-               num_chan: comm::Chan<uint>,
-               num_port: comm::Port<uint>) {
+               num_chan: oldcomm::Chan<uint>,
+               num_port: oldcomm::Port<uint>) {
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         num_chan.send(i * j);

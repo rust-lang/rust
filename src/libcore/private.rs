@@ -55,8 +55,8 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
 pub unsafe fn chan_from_global_ptr<T: Owned>(
     global: GlobalPtr,
     task_fn: fn() -> task::TaskBuilder,
-    f: fn~(comm::Port<T>)
-) -> comm::Chan<T> {
+    f: fn~(oldcomm::Port<T>)
+) -> oldcomm::Chan<T> {
 
     enum Msg {
         Proceed,
@@ -70,15 +70,21 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
         log(debug,~"is probably zero...");
         // There's no global channel. We must make it
 
-        let (setup_po, setup_ch) = do task_fn().spawn_conversation
-            |move f, setup_po, setup_ch| {
-            let po = comm::Port::<T>();
-            let ch = comm::Chan(&po);
-            comm::send(setup_ch, ch);
+        let (setup1_po, setup1_ch) = pipes::stream();
+        let (setup2_po, setup2_ch) = pipes::stream();
+
+        // XXX: Ugly type inference hints
+        let setup1_po: pipes::Port<oldcomm::Chan<T>> = setup1_po;
+        let setup2_po: pipes::Port<Msg> = setup2_po;
+
+        do task_fn().spawn |move f, move setup1_ch, move setup2_po| {
+            let po = oldcomm::Port::<T>();
+            let ch = oldcomm::Chan(&po);
+            setup1_ch.send(ch);
 
             // Wait to hear if we are the official instance of
             // this global task
-            match comm::recv::<Msg>(setup_po) {
+            match setup2_po.recv() {
               Proceed => f(move po),
               Abort => ()
             }
@@ -86,7 +92,7 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
 
         log(debug,~"before setup recv..");
         // This is the proposed global channel
-        let ch = comm::recv(setup_po);
+        let ch = setup1_po.recv();
         // 0 is our sentinal value. It is not a valid channel
         assert *ch != 0;
 
@@ -99,11 +105,11 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
 
         if swapped {
             // Success!
-            comm::send(setup_ch, Proceed);
+            setup2_ch.send(Proceed);
             ch
         } else {
             // Somebody else got in before we did
-            comm::send(setup_ch, Abort);
+            setup2_ch.send(Abort);
             cast::reinterpret_cast(&*global)
         }
     } else {
@@ -124,29 +130,29 @@ pub fn test_from_global_chan1() {
     // Create the global channel, attached to a new task
     let ch = unsafe {
         do chan_from_global_ptr(globchanp, task::task) |po| {
-            let ch = comm::recv(po);
-            comm::send(ch, true);
-            let ch = comm::recv(po);
-            comm::send(ch, true);
+            let ch = oldcomm::recv(po);
+            oldcomm::send(ch, true);
+            let ch = oldcomm::recv(po);
+            oldcomm::send(ch, true);
         }
     };
     // Talk to it
-    let po = comm::Port();
-    comm::send(ch, comm::Chan(&po));
-    assert comm::recv(po) == true;
+    let po = oldcomm::Port();
+    oldcomm::send(ch, oldcomm::Chan(&po));
+    assert oldcomm::recv(po) == true;
 
     // This one just reuses the previous channel
     let ch = unsafe {
         do chan_from_global_ptr(globchanp, task::task) |po| {
-            let ch = comm::recv(po);
-            comm::send(ch, false);
+            let ch = oldcomm::recv(po);
+            oldcomm::send(ch, false);
         }
     };
 
     // Talk to the original global task
-    let po = comm::Port();
-    comm::send(ch, comm::Chan(&po));
-    assert comm::recv(po) == true;
+    let po = oldcomm::Port();
+    oldcomm::send(ch, oldcomm::Chan(&po));
+    assert oldcomm::recv(po) == true;
 }
 
 #[test]
@@ -157,8 +163,8 @@ pub fn test_from_global_chan2() {
         let globchan = 0;
         let globchanp = ptr::addr_of(&globchan);
 
-        let resultpo = comm::Port();
-        let resultch = comm::Chan(&resultpo);
+        let resultpo = oldcomm::Port();
+        let resultch = oldcomm::Chan(&resultpo);
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
@@ -169,23 +175,23 @@ pub fn test_from_global_chan2() {
                         globchanp, task::task) |po| {
 
                         for uint::range(0, 10) |_j| {
-                            let ch = comm::recv(po);
-                            comm::send(ch, {i});
+                            let ch = oldcomm::recv(po);
+                            oldcomm::send(ch, {i});
                         }
                     }
                 };
-                let po = comm::Port();
-                comm::send(ch, comm::Chan(&po));
+                let po = oldcomm::Port();
+                oldcomm::send(ch, oldcomm::Chan(&po));
                 // We are The winner if our version of the
                 // task was installed
-                let winner = comm::recv(po);
-                comm::send(resultch, winner == i);
+                let winner = oldcomm::recv(po);
+                oldcomm::send(resultch, winner == i);
             }
         }
         // There should be only one winner
         let mut winners = 0u;
         for uint::range(0u, 10u) |_i| {
-            let res = comm::recv(resultpo);
+            let res = oldcomm::recv(resultpo);
             if res { winners += 1u };
         }
         assert winners == 1u;
@@ -211,9 +217,9 @@ pub fn test_from_global_chan2() {
  * * Weak tasks must not be supervised. A supervised task keeps
  *   a reference to its parent, so the parent will not die.
  */
-pub unsafe fn weaken_task(f: fn(comm::Port<()>)) {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
+pub unsafe fn weaken_task(f: fn(oldcomm::Port<()>)) {
+    let po = oldcomm::Port();
+    let ch = oldcomm::Chan(&po);
     unsafe {
         rustrt::rust_task_weaken(cast::reinterpret_cast(&ch));
     }
@@ -221,13 +227,13 @@ pub unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     f(po);
 
     struct Unweaken {
-      ch: comm::Chan<()>,
+      ch: oldcomm::Chan<()>,
       drop unsafe {
         rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
       }
     }
 
-    fn Unweaken(ch: comm::Chan<()>) -> Unweaken {
+    fn Unweaken(ch: oldcomm::Chan<()>) -> Unweaken {
         Unweaken {
             ch: ch
         }
@@ -249,7 +255,7 @@ pub fn test_weaken_task_wait() {
     do task::spawn_unlinked {
         unsafe {
             do weaken_task |po| {
-                comm::recv(po);
+                oldcomm::recv(po);
             }
         }
     }
@@ -269,7 +275,7 @@ pub fn test_weaken_task_stress() {
             unsafe {
                 do weaken_task |po| {
                     // Wait for it to tell us to die
-                    comm::recv(po);
+                    oldcomm::recv(po);
                 }
             }
         }
