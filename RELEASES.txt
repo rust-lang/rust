@@ -1,7 +1,7 @@
 Version 0.5 (December 2012)
 ---------------------------
 
-   * ~700 changes, numerous bugfixes
+   * ~800 changes, numerous bugfixes
 
    * Syntax changes
       * Removed `<-` move operator
@@ -13,6 +13,7 @@ Version 0.5 (December 2012)
       * `Eq` and `IterBytes` implementations can be automatically generated
         with `#[deriving_eq]` and `#[deriving_iter_bytes]` respectively
       * Removed the special crate language for `.rc` files
+      * Function arguments may consist of any irrefutable pattern
 
    * Semantic changes
       * `&` and `~` pointers may point to objects
@@ -24,13 +25,15 @@ Version 0.5 (December 2012)
         without writing `move` explicitly
       * `&T` may now be coerced to `*T`
       * Coercions happen in `let` statements as well as function calls
+      * `use` statements now take crate-relative paths
 
    * Improved support for language features
       * Trait inheritance is much more complete
-      * Traits may declare default methods for the implementations to use
       * More support for explicit self arguments in methods - `self`, `&self`
         `@self`, and `~self` all generally work as expected
       * Static methods work in more situations
+      * Experimental: Traits may declare default methods for the implementations
+        to use
 
    * Libraries
       * New condition handling system in `core::condition`
