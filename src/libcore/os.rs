@@ -968,7 +968,7 @@ mod tests {
         assert vec::len(e) > 0u;
         for vec::each(e) |p| {
             let (n, v) = copy *p;
-            log(debug, n);
+            log(debug, copy n);
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1060,7 +1060,7 @@ mod tests {
         assert (vec::len(dirs) > 0u);
 
         for vec::each(dirs) |dir| {
-            log(debug, *dir);
+            log(debug, copy *dir);
         }
     }
 
