@@ -286,12 +286,30 @@ fn core_macros() -> ~str {
 
     macro_rules! die(
         ($msg: expr) => (
-            core::sys::begin_unwind($msg, file!(), line!())
+            core::sys::begin_unwind($msg,
+                                    file!().to_owned(), line!())
         );
         () => (
             die!(~\"explicit failure\")
         )
     )
+
+    macro_rules! condition (
+
+        { $c:ident: $in:ty -> $out:ty; } => {
+
+            mod $c {
+                fn key(_x: @core::condition::Handler<$in,$out>) { }
+
+                pub const cond : core::condition::Condition<$in,$out> =
+                    core::condition::Condition {
+                    name: stringify!(c),
+                    key: key
+                };
+            }
+        }
+    )
+
 }";
 }
 
