@@ -10,14 +10,14 @@
 
 fn a() {
     fn doit() {
-        fn b(c: core::comm::Chan<core::comm::Chan<int>>) {
-            let p = core::comm::Port();
-            core::comm::send(c, core::comm::Chan(&p));
+        fn b(c: core::oldcomm::Chan<core::oldcomm::Chan<int>>) {
+            let p = core::oldcomm::Port();
+            core::oldcomm::send(c, core::oldcomm::Chan(&p));
         }
-        let p = core::comm::Port();
-        let ch = core::comm::Chan(&p);
+        let p = core::oldcomm::Port();
+        let ch = core::oldcomm::Chan(&p);
         task::spawn(|| b(ch) );
-        core::comm::recv(p);
+        core::oldcomm::recv(p);
     }
     let mut i = 0;
     while i < 100 {

@@ -133,36 +133,36 @@ mod global_env {
     }
 
     enum Msg {
-        MsgGetEnv(~str, comm::Chan<Option<~str>>),
-        MsgSetEnv(~str, ~str, comm::Chan<()>),
-        MsgEnv(comm::Chan<~[(~str,~str)]>)
+        MsgGetEnv(~str, oldcomm::Chan<Option<~str>>),
+        MsgSetEnv(~str, ~str, oldcomm::Chan<()>),
+        MsgEnv(oldcomm::Chan<~[(~str,~str)]>)
     }
 
     pub fn getenv(n: &str) -> Option<~str> {
         let env_ch = get_global_env_chan();
-        let po = comm::Port();
-        comm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     comm::Chan(&po)));
-        comm::recv(po)
+        let po = oldcomm::Port();
+        oldcomm::send(env_ch, MsgGetEnv(str::from_slice(n),
+                                     oldcomm::Chan(&po)));
+        oldcomm::recv(po)
     }
 
     pub fn setenv(n: &str, v: &str) {
         let env_ch = get_global_env_chan();
-        let po = comm::Port();
-        comm::send(env_ch, MsgSetEnv(str::from_slice(n),
+        let po = oldcomm::Port();
+        oldcomm::send(env_ch, MsgSetEnv(str::from_slice(n),
                                      str::from_slice(v),
-                                     comm::Chan(&po)));
-        comm::recv(po)
+                                     oldcomm::Chan(&po)));
+        oldcomm::recv(po)
     }
 
     pub fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
-        let po = comm::Port();
-        comm::send(env_ch, MsgEnv(comm::Chan(&po)));
-        comm::recv(po)
+        let po = oldcomm::Port();
+        oldcomm::send(env_ch, MsgEnv(oldcomm::Chan(&po)));
+        oldcomm::recv(po)
     }
 
-    fn get_global_env_chan() -> comm::Chan<Msg> {
+    fn get_global_env_chan() -> oldcomm::Chan<Msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
         unsafe {
             private::chan_from_global_ptr(global_ptr, || {
@@ -173,19 +173,19 @@ mod global_env {
         }
     }
 
-    fn global_env_task(msg_po: comm::Port<Msg>) {
+    fn global_env_task(msg_po: oldcomm::Port<Msg>) {
         unsafe {
             do private::weaken_task |weak_po| {
                 loop {
-                    match comm::select2(msg_po, weak_po) {
+                    match oldcomm::select2(msg_po, weak_po) {
                       either::Left(MsgGetEnv(ref n, resp_ch)) => {
-                        comm::send(resp_ch, impl_::getenv(*n))
+                        oldcomm::send(resp_ch, impl_::getenv(*n))
                       }
                       either::Left(MsgSetEnv(ref n, ref v, resp_ch)) => {
-                        comm::send(resp_ch, impl_::setenv(*n, *v))
+                        oldcomm::send(resp_ch, impl_::setenv(*n, *v))
                       }
                       either::Left(MsgEnv(resp_ch)) => {
-                        comm::send(resp_ch, impl_::env())
+                        oldcomm::send(resp_ch, impl_::env())
                       }
                       either::Right(_) => break
                     }

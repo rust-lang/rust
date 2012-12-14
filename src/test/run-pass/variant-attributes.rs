@@ -15,7 +15,7 @@ enum crew_of_enterprise_d {
     #[captain]
     jean_luc_picard,
 
-    #[commander]
+    #[oldcommander]
     william_t_riker,
 
     #[chief_medical_officer]
@@ -24,7 +24,7 @@ enum crew_of_enterprise_d {
     #[ships_councellor]
     deanna_troi,
 
-    #[lieutenant_commander]
+    #[lieutenant_oldcommander]
     data,
 
     #[chief_of_security]

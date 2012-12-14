@@ -95,9 +95,9 @@ fn transform(aa: color, bb: color) -> color {
 fn creature(
     name: uint,
     color: color,
-    from_rendezvous: comm::Port<Option<creature_info>>,
-    to_rendezvous: comm::Chan<creature_info>,
-    to_rendezvous_log: comm::Chan<~str>
+    from_rendezvous: oldcomm::Port<Option<creature_info>>,
+    to_rendezvous: oldcomm::Chan<creature_info>,
+    to_rendezvous_log: oldcomm::Chan<~str>
 ) {
     let mut color = color;
     let mut creatures_met = 0;
@@ -105,8 +105,8 @@ fn creature(
 
     loop {
         // ask for a pairing
-        comm::send(to_rendezvous, {name: name, color: color});
-        let resp = comm::recv(from_rendezvous);
+        oldcomm::send(to_rendezvous, {name: name, color: color});
+        let resp = oldcomm::recv(from_rendezvous);
 
         // log and change, or print and quit
         match resp {
@@ -123,7 +123,7 @@ fn creature(
                 // log creatures met and evil clones of self
                 let report = fmt!("%u", creatures_met) + ~" " +
                              show_number(evil_clones_met);
-                comm::send(to_rendezvous_log, report);
+                oldcomm::send(to_rendezvous_log, report);
                 break;
             }
         }
@@ -131,22 +131,35 @@ fn creature(
 }
 
 fn rendezvous(nn: uint, set: ~[color]) {
+
+    pub fn spawn_listener<A: Send>(+f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
+        let setup_po = oldcomm::Port();
+        let setup_ch = oldcomm::Chan(&setup_po);
+        do task::spawn |move f| {
+            let po = oldcomm::Port();
+            let ch = oldcomm::Chan(&po);
+            oldcomm::send(setup_ch, ch);
+            f(move po);
+        }
+        oldcomm::recv(setup_po)
+    }
+
     // these ports will allow us to hear from the creatures
-    let from_creatures:     comm::Port<creature_info> = comm::Port();
-    let from_creatures_log: comm::Port<~str> = comm::Port();
+    let from_creatures:     oldcomm::Port<creature_info> = oldcomm::Port();
+    let from_creatures_log: oldcomm::Port<~str> = oldcomm::Port();
 
     // these channels will be passed to the creatures so they can talk to us
-    let to_rendezvous     = comm::Chan(&from_creatures);
-    let to_rendezvous_log = comm::Chan(&from_creatures_log);
+    let to_rendezvous     = oldcomm::Chan(&from_creatures);
+    let to_rendezvous_log = oldcomm::Chan(&from_creatures_log);
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[comm::Chan<Option<creature_info>>] =
+    let to_creature: ~[oldcomm::Chan<Option<creature_info>>] =
         vec::mapi(set, |ii, col| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
             let ii = ii;
             let col = *col;
-            do task::spawn_listener |from_rendezvous, move ii, move col| {
+            do spawn_listener |from_rendezvous, move ii, move col| {
                 creature(ii, col, from_rendezvous, to_rendezvous,
                          to_rendezvous_log);
             }
@@ -156,24 +169,24 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // set up meetings...
     for nn.times {
-        let fst_creature: creature_info = comm::recv(from_creatures);
-        let snd_creature: creature_info = comm::recv(from_creatures);
+        let fst_creature: creature_info = oldcomm::recv(from_creatures);
+        let snd_creature: creature_info = oldcomm::recv(from_creatures);
 
         creatures_met += 2;
 
-        comm::send(to_creature[fst_creature.name], Some(snd_creature));
-        comm::send(to_creature[snd_creature.name], Some(fst_creature));
+        oldcomm::send(to_creature[fst_creature.name], Some(snd_creature));
+        oldcomm::send(to_creature[snd_creature.name], Some(fst_creature));
     }
 
     // tell each creature to stop
     for vec::eachi(to_creature) |_ii, to_one| {
-        comm::send(*to_one, None);
+        oldcomm::send(*to_one, None);
     }
 
     // save each creature's meeting stats
     let mut report = ~[];
     for vec::each(to_creature) |_to_one| {
-        report.push(comm::recv(from_creatures_log));
+        report.push(oldcomm::recv(from_creatures_log));
     }
 
     // print each color in the set

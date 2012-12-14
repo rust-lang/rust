@@ -46,7 +46,7 @@ enum Msg {
 }
 
 pub enum Srv = {
-    ch: comm::Chan<Msg>
+    ch: oldcomm::Chan<Msg>
 };
 
 impl Srv: Clone {
@@ -64,17 +64,17 @@ pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
     let srv_ = Srv({
-        ch: do task::spawn_listener |move parse, po| {
+        ch: do util::spawn_listener |move parse, po| {
             act(po, source, parse);
         }
     });
 
     let res = owner(srv_);
-    comm::send(srv_.ch, Exit);
+    oldcomm::send(srv_.ch, Exit);
     move res
 }
 
-fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
+fn act(po: oldcomm::Port<Msg>, source: ~str, parse: Parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(
@@ -84,7 +84,7 @@ fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
 
     let mut keep_going = true;
     while keep_going {
-        match comm::recv(po) {
+        match oldcomm::recv(po) {
           HandleRequest(f) => {
             f(ctxt);
           }
@@ -99,13 +99,13 @@ pub fn exec<T:Owned>(
     srv: Srv,
     +f: fn~(ctxt: Ctxt) -> T
 ) -> T {
-    let po = comm::Port();
-    let ch = comm::Chan(&po);
+    let po = oldcomm::Port();
+    let ch = oldcomm::Chan(&po);
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
-        comm::send(ch, f(ctxt))
+        oldcomm::send(ch, f(ctxt))
     });
-    comm::send(srv.ch, move msg);
-    comm::recv(po)
+    oldcomm::send(srv.ch, move msg);
+    oldcomm::recv(po)
 }
 
 fn build_ctxt(sess: Session,

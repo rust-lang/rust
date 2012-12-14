@@ -12,8 +12,8 @@ extern mod std;
 
 fn main() {
     let c = {
-        let p = comm::Port();
-        comm::Chan(&p)
+        let p = oldcomm::Port();
+        oldcomm::Chan(&p)
     };
-    comm::send(c, ~"coffee");
+    oldcomm::send(c, ~"coffee");
 }

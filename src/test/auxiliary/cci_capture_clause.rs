@@ -12,7 +12,7 @@
 
 export foo;
 
-use core::comm::*;
+use core::oldcomm::*;
 
 fn foo<T: Owned Copy>(x: T) -> Port<T> {
     let p = Port();

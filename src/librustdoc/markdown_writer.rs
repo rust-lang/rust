@@ -151,8 +151,8 @@ fn readclose(fd: libc::c_int) -> ~str {
 fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
     let (setup_po, setup_ch) = pipes::stream();
     do task::spawn |move process, move setup_ch| {
-        let po: comm::Port<WriteInstr> = comm::Port();
-        let ch = comm::Chan(&po);
+        let po: oldcomm::Port<WriteInstr> = oldcomm::Port();
+        let ch = oldcomm::Chan(&po);
         setup_ch.send(ch);
 
         let mut markdown = ~"";
@@ -168,7 +168,7 @@ fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
     let ch = setup_po.recv();
 
     fn~(+instr: WriteInstr) {
-        comm::send(ch, instr);
+        oldcomm::send(ch, instr);
     }
 }
 
@@ -275,16 +275,16 @@ fn write_file(path: &Path, +s: ~str) {
 }
 
 pub fn future_writer_factory(
-) -> (WriterFactory, comm::Port<(doc::Page, ~str)>) {
-    let markdown_po = comm::Port();
-    let markdown_ch = comm::Chan(&markdown_po);
+) -> (WriterFactory, oldcomm::Port<(doc::Page, ~str)>) {
+    let markdown_po = oldcomm::Port();
+    let markdown_ch = oldcomm::Chan(&markdown_po);
     let writer_factory = fn~(+page: doc::Page) -> Writer {
         let (writer_po, writer_ch) = pipes::stream();
         do task::spawn |move writer_ch| {
             let (writer, future) = future_writer();
             writer_ch.send(move writer);
             let s = future.get();
-            comm::send(markdown_ch, (page, s));
+            oldcomm::send(markdown_ch, (page, s));
         }
         writer_po.recv()
     };

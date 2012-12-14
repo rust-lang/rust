@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*
-  Minimized version of core::comm for testing. 
+  Minimized version of core::oldcomm for testing. 
 
   Could probably be more minimal.
  */
@@ -22,7 +22,7 @@ export recv;
 
 
 /**
- * A communication endpoint that can receive messages
+ * A oldcommunication endpoint that can receive messages
  *
  * Each port has a unique per-task identity and may not be replicated or
  * transmitted. If a port value is copied, both copies refer to the same

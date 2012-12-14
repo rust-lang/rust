@@ -15,19 +15,19 @@
    https://github.com/graydon/rust/issues/507
 */
 
-fn grandchild(c: core::comm::Chan<int>) { core::comm::send(c, 42); }
+fn grandchild(c: core::oldcomm::Chan<int>) { core::oldcomm::send(c, 42); }
 
-fn child(c: core::comm::Chan<int>) {
+fn child(c: core::oldcomm::Chan<int>) {
     task::spawn(|| grandchild(c) )
 }
 
 fn main() {
-    let p = core::comm::Port();
-    let ch = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&p);
 
     task::spawn(|| child(ch) );
 
-    let x: int = core::comm::recv(p);
+    let x: int = core::oldcomm::recv(p);
 
     log(debug, x);
 

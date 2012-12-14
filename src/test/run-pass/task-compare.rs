@@ -18,7 +18,7 @@ extern mod std;
 fn child() { }
 
 struct notify {
-    ch: comm::Chan<bool>, v: @mut bool,
+    ch: oldcomm::Chan<bool>, v: @mut bool,
 }
 
 impl notify : Drop {
@@ -29,19 +29,19 @@ impl notify : Drop {
                task::failing(),
                *(self.v));
         let b = *(self.v);
-        comm::send(self.ch, b);
+        oldcomm::send(self.ch, b);
     }
 }
 
-fn notify(ch: comm::Chan<bool>, v: @mut bool) -> notify {
+fn notify(ch: oldcomm::Chan<bool>, v: @mut bool) -> notify {
     notify {
         ch: ch,
         v: v
     }
 }
 
-fn joinable(+f: fn~()) -> comm::Port<bool> {
-    fn wrapper(+c: comm::Chan<bool>, +f: fn()) {
+fn joinable(+f: fn~()) -> oldcomm::Port<bool> {
+    fn wrapper(+c: oldcomm::Chan<bool>, +f: fn()) {
         let b = @mut false;
         error!("wrapper: task=%? allocated v=%x",
                task::get_task(),
@@ -50,14 +50,14 @@ fn joinable(+f: fn~()) -> comm::Port<bool> {
         f();
         *b = true;
     }
-    let p = comm::Port();
-    let c = comm::Chan(&p);
+    let p = oldcomm::Port();
+    let c = oldcomm::Chan(&p);
     do task::spawn_unlinked { wrapper(c, copy f) };
     p
 }
 
-fn join(port: comm::Port<bool>) -> bool {
-    comm::recv(port)
+fn join(port: oldcomm::Port<bool>) -> bool {
+    oldcomm::recv(port)
 }
 
 fn main() {
@@ -76,15 +76,15 @@ fn main() {
     let p1;
     let p2;
 
-    p1 = comm::Port::<int>();
-    p2 = comm::Port::<int>();
+    p1 = oldcomm::Port::<int>();
+    p2 = oldcomm::Port::<int>();
 
     assert (p1 == p1);
     assert (p1 != p2);
 
     // channels
-    let c1 = comm::Chan(p1);
-    let c2 = comm::Chan(p2);
+    let c1 = oldcomm::Chan(p1);
+    let c2 = oldcomm::Chan(p2);
 
     assert (c1 == c1);
     assert (c1 != c2);

@@ -11,9 +11,9 @@
 extern mod std;
 
 fn main() {
-    let p = comm::Port();
-    let c = comm::Chan(&p);
-    comm::send(c, ~100);
-    let v = comm::recv(p);
+    let p = oldcomm::Port();
+    let c = oldcomm::Chan(&p);
+    oldcomm::send(c, ~100);
+    let v = oldcomm::recv(p);
     assert v == ~100;
 }

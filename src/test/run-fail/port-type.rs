@@ -10,10 +10,10 @@
 
 // error-pattern:meep
 extern mod std;
-use comm::Chan;
-use comm::Port;
-use comm::send;
-use comm::recv;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::send;
+use oldcomm::recv;
 
 fn echo<T: Owned>(c: Chan<T>, oc: Chan<Chan<T>>) {
     // Tests that the type argument in port gets

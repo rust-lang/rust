@@ -23,12 +23,12 @@ fn test(f: int) -> test {
 }
 
 fn main() {
-    let p = core::comm::Port();
-    let c = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let c = core::oldcomm::Chan(&p);
 
     do task::spawn() {
-        let p = core::comm::Port();
-        c.send(core::comm::Chan(&p));
+        let p = core::oldcomm::Port();
+        c.send(core::oldcomm::Chan(&p));
 
         let _r = p.recv();
     }

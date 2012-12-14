@@ -17,12 +17,12 @@ fn main() {
     test06();
 }
 
-fn test00_start(ch: core::comm::Chan<int>, message: int, count: int) {
+fn test00_start(ch: core::oldcomm::Chan<int>, message: int, count: int) {
     debug!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
         debug!("Sending Message");
-        core::comm::send(ch, message + 0);
+        core::oldcomm::send(ch, message + 0);
         i = i + 1;
     }
     debug!("Ending test00_start");
@@ -33,8 +33,8 @@ fn test00() {
     let number_of_messages: int = 4;
     debug!("Creating tasks");
 
-    let po = core::comm::Port();
-    let ch = core::comm::Chan(&po);
+    let po = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&po);
 
     let mut i: int = 0;
 
@@ -50,7 +50,7 @@ fn test00() {
     let mut sum: int = 0;
     for results.each |r| {
         i = 0;
-        while i < number_of_messages { sum += core::comm::recv(po); i = i + 1; }
+        while i < number_of_messages { sum += core::oldcomm::recv(po); i = i + 1; }
     }
 
     for results.each |r| { r.recv(); }
@@ -63,19 +63,19 @@ fn test00() {
 }
 
 fn test01() {
-    let p = core::comm::Port();
+    let p = core::oldcomm::Port();
     debug!("Reading from a port that is never written to.");
-    let value: int = core::comm::recv(p);
+    let value: int = core::oldcomm::recv(p);
     log(debug, value);
 }
 
 fn test02() {
-    let p = core::comm::Port();
-    let c = core::comm::Chan(&p);
+    let p = core::oldcomm::Port();
+    let c = core::oldcomm::Chan(&p);
     debug!("Writing to a local task channel.");
-    core::comm::send(c, 42);
+    core::oldcomm::send(c, 42);
     debug!("Reading from a local task port.");
-    let value: int = core::comm::recv(p);
+    let value: int = core::oldcomm::recv(p);
     log(debug, value);
 }
 
@@ -93,22 +93,22 @@ fn test04() {
     debug!("Finishing up.");
 }
 
-fn test05_start(ch: core::comm::Chan<int>) {
-    core::comm::send(ch, 10);
-    core::comm::send(ch, 20);
-    core::comm::send(ch, 30);
-    core::comm::send(ch, 30);
-    core::comm::send(ch, 30);
+fn test05_start(ch: core::oldcomm::Chan<int>) {
+    core::oldcomm::send(ch, 10);
+    core::oldcomm::send(ch, 20);
+    core::oldcomm::send(ch, 30);
+    core::oldcomm::send(ch, 30);
+    core::oldcomm::send(ch, 30);
 }
 
 fn test05() {
-    let po = core::comm::Port();
-    let ch = core::comm::Chan(&po);
+    let po = core::oldcomm::Port();
+    let ch = core::oldcomm::Chan(&po);
     task::spawn(|| test05_start(ch) );
     let mut value: int;
-    value = core::comm::recv(po);
-    value = core::comm::recv(po);
-    value = core::comm::recv(po);
+    value = core::oldcomm::recv(po);
+    value = core::oldcomm::recv(po);
+    value = core::oldcomm::recv(po);
     log(debug, value);
 }
 
