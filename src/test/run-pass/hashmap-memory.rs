@@ -41,8 +41,8 @@ mod map_reduce {
 
     fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
         for inputs.each |i| {
-            let i = *i;
-            task::spawn(|move i| map_task(ctrl, i) );
+            let i = copy *i;
+            task::spawn(|move i| map_task(ctrl, copy i) );
         }
     }
 
