@@ -25,9 +25,9 @@ match input_2 {
 # }
 ~~~~
 
-This code could become tiresome if repeated many times. However, there is no
-straightforward way to rewrite it without the repeated code, using functions
-alone. There is a solution, though: defining a macro to solve the problem. Macros are
+This code could become tiresome if repeated many times. However, no function
+can capture its functionality to make it possible to rewrite the repetition
+away. Rust's macro system, however, can eliminate the repetition. Macros are
 lightweight custom syntax extensions, themselves defined using the
 `macro_rules!` syntax extension. The following `early_return` macro captures
 the pattern in the above code:
@@ -65,7 +65,7 @@ macro. It appears on the left-hand side of the `=>` in a macro definition. It
 conforms to the following rules:
 
 1. It must be surrounded by parentheses.
-2. `$` has special meaning.
+2. `$` has special meaning (described below).
 3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is
 forbidden.
 
@@ -118,10 +118,11 @@ expression, `() => (let $x=$val)` is a macro that expands to a statement, and
 `() => (1,2,3)` is a macro that expands to a syntax errror).
 
 Except for permissibility of `$name` (and `$(...)*`, discussed below), the
-right-hand side of a macro definition follows the same rules as ordinary
-Rust syntax. In particular, macro invocations (including invocations of the
-macro currently being defined) are permitted in expression, statement, and
-item locations.
+right-hand side of a macro definition is ordinary Rust syntax. In particular,
+macro invocations (including invocations of the macro currently being defined)
+are permitted in expression, statement, and item locations. However, nothing
+else about the code is examined or executed by the macro system; execution
+still has to wait until runtime.
 
 ## Interpolation location
 
