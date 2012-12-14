@@ -18,8 +18,8 @@ impl &X {
 fn main() {
     let mut x = X(Right(main));
     do (&mut x).with |opt| {  //~ ERROR illegal borrow
-        match *opt {
-            Right(f) => {
+        match opt {
+            &Right(f) => {
                 x = X(Left((0,0)));
                 f()
             },
