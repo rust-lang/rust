@@ -20,13 +20,13 @@ fn main() {
 
     // But only when it really is the last use
     let q = ~20;
-    let f = fn@() -> *int { ptr::addr_of(&(*q)) };
+    let f = fn@(copy q) -> *int { ptr::addr_of(&(*q)) };
     assert ptr::addr_of(&(*q)) != f();
 
     // Ensure function arguments and box arguments interact sanely.
     fn call_me(x: fn() -> int, y: ~int) { assert x() == *y; }
     let q = ~30;
-    call_me({|| *q}, q);
+    call_me({|copy q| *q}, q);
 
     // Check that no false positives are found in loops.
     let mut q = ~40, p = 10;
