@@ -173,8 +173,7 @@ enum ctor {
     variant(def_id),
     val(const_val),
     range(const_val, const_val),
-    vec(uint),
-    vec_with_tail(uint)
+    vec(uint)
 }
 
 impl ctor : cmp::Eq {
@@ -189,11 +188,8 @@ impl ctor : cmp::Eq {
                 (*cv0_self) == (*cv0_other) && (*cv1_self) == (*cv1_other)
             }
             (vec(n_self), vec(n_other)) => n_self == n_other,
-            (vec_with_tail(n_self), vec_with_tail(n_other)) => {
-                n_self == n_other
-            }
             (single, _) | (variant(_), _) | (val(_), _) |
-            (range(*), _) | (vec(*), _) | (vec_with_tail(*), _) => {
+            (range(*), _) | (vec(*), _) => {
                 false
             }
         }
@@ -328,7 +324,7 @@ fn pat_ctor_id(cx: @AltCheckCtxt, p: @pat) -> Option<ctor> {
       }
       pat_vec(elems, tail) => {
         match tail {
-          Some(_) => Some(vec_with_tail(elems.len())),
+          Some(_) => None,
           None => Some(vec(elems.len()))
         }
       }
@@ -465,7 +461,7 @@ fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
         match ctor {
-          vec(n) | vec_with_tail(n) => n,
+          vec(n) => n,
           _ => 0u
         }
       }
@@ -614,19 +610,12 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       }
       pat_vec(elems, tail) => {
         match ctor_id {
-          vec_with_tail(_) => {
-            if elems.len() >= arity {
-              Some(vec::append(elems.slice(0, arity), vec::tail(r)))
-            } else {
-              None
-            }
-          }
           vec(_) => {
             if elems.len() < arity && tail.is_some() {
               Some(vec::append(
                 vec::append(elems, vec::from_elem(
-                    arity - elems.len(), wild())
-                ),
+                    arity - elems.len(), wild()
+                )),
                 vec::tail(r)
               ))
             } else if elems.len() == arity {
