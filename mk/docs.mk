@@ -30,8 +30,12 @@ doc/rust.css: rust.css
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
+doc/manual.css: manual.css
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version_info.html doc/rust.css
+doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
@@ -40,6 +44,7 @@ doc/rust.html: rust.md doc/version_info.html doc/rust.css
          --number-sections \
          --from=markdown --to=html \
          --css=rust.css \
+         --css=manual.css \
 	 --include-before-body=doc/version_info.html \
          --output=$@
   endif
