@@ -28,7 +28,7 @@ Version 0.5 (December 2012)
       * `use` statements now take crate-relative paths
 
    * Improved support for language features
-      * Trait inheritance is much more complete
+      * Trait constraints work in many scenarios
       * More support for explicit self arguments in methods - `self`, `&self`
         `@self`, and `~self` all generally work as expected
       * Static methods work in more situations
