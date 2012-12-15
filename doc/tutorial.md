@@ -2252,22 +2252,46 @@ The unit of independent compilation in Rust is the crate: rustc
 compiles a single crate at a time, from which it produces either a
 library or executable.
 
-When compiling a single `.rs` file, the file acts as the whole crate.
+When compiling a single `.rs` source file, the file acts as the whole crate.
 You can compile it with the `--lib` compiler switch to create a shared
 library, or without, provided that your file contains a `fn main`
 somewhere, to create an executable.
 
-Larger crates typically span multiple files and are compiled from
-a crate (.rc) file. Crate files contain their own syntax for loading
-modules from .rs files and typically include metadata about the crate.
+Larger crates typically span multiple files and are, by convention,
+compiled from a source file with the `.rc` extension, called a *crate file*.
+The crate file extension distinguishes source files that represent
+crates from those that do not, but otherwise source files and crate files are identical.
+
+A typical crate file declares attributes associated with the crate that
+may affect how the compiler processes the source.
+Crate attributes specify metadata used for locating and linking crates,
+the type of crate (library or executable),
+and control warning and error behavior,
+among other things.
+Crate files additionally declare the external crates they depend on
+as well as any modules loaded from other files.
 
 ~~~~ { .xfail-test }
+// Crate linkage metadata
 #[link(name = "farm", vers = "2.5", author = "mjh")];
+
+// Make a library ("bin" is the default)
 #[crate_type = "lib"];
 
+// Turn on a warning
+#[warn(non_camel_case_types)]
+
+// Link to the standard library
+extern mod std;
+
+// Load some modules from other files
 mod cow;
 mod chicken;
 mod horse;
+
+fn main() {
+    ...
+}
 ~~~~
 
 Compiling this file will cause `rustc` to look for files named
@@ -2282,7 +2306,7 @@ module, which other crates can use to load the right module. More
 about that later.
 
 To have a nested directory structure for your source files, you can
-nest mods in your `.rc` file:
+nest mods:
 
 ~~~~ {.ignore}
 mod poultry {
@@ -2295,30 +2319,6 @@ The compiler will now look for `poultry/chicken.rs` and
 `poultry/turkey.rs`, and export their content in `poultry::chicken`
 and `poultry::turkey`. You can also provide a `poultry.rs` to add
 content to the `poultry` module itself.
-
-When compiling .rc files, if rustc finds a .rs file with the same
-name, then that .rs file provides the top-level content of the crate.
-
-~~~ {.xfail-test}
-// foo.rc
-#[link(name = "foo", vers="1.0")];
-
-mod bar;
-~~~
-
-~~~ {.xfail-test}
-// foo.rs
-fn main() { bar::baz(); }
-~~~
-
-> ***Note***: The way rustc looks for .rs files to pair with .rc
-> files is a major source of confusion and will change. It's likely
-> that the crate and source file grammars will merge.
-
-> ***Note***: The way that directory modules are handled will also
-> change. The code for directory modules currently lives in a .rs
-> file with the same name as the directory, _next to_ the directory.
-> A new scheme will make that file live _inside_ the directory.
 
 ## Using other crates
 

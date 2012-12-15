@@ -570,53 +570,29 @@ Semantic rules called "dynamic semantics" govern the behavior of programs at run
 A program that fails to compile due to violation of a compile-time rule has no defined dynamic semantics; the compiler should halt with an error report, and produce no executable artifact.
 
 The compilation model centres on artifacts called _crates_.
-Each compilation processes a single crate in source form, and if successful, produces a single crate in binary form: either an executable or a library.
+Each compilation processes a single crate in source form, and if successful, produces a single crate in binary form: either an executable or a library.^[A crate is somewhat
+analogous to an *assembly* in the ECMA-335 CLI model, a *library* in the
+SML/NJ Compilation Manager, a *unit* in the Owens and Flatt module system,
+or a *configuration* in Mesa.]
 
 A _crate_ is a unit of compilation and linking, as well as versioning, distribution and runtime loading.
 A crate contains a _tree_ of nested [module](#modules) scopes.
 The top level of this tree is a module that is anonymous (from the point of view of paths within the module) and any item within a crate has a canonical [module path](#paths) denoting its location within the crate's module tree.
 
-Crates are provided to the Rust compiler through two kinds of file:
+The Rust compiler is always invoked with a single source file as input, and always produces a single output crate.
+The processing of that source file may result in other source files being loaded as modules.
+Source files typically have the extension `.rs` but, by convention,
+source files that represent crates have the extension `.rc`, called *crate files*.
 
-  - _crate files_, that end in `.rc` and each define a `crate`.
-  - _source files_, that end in `.rs` and each define a `module`.
+A Rust source file describes a module, the name and
+location of which -- in the module tree of the current crate -- are defined
+from outside the source file: either by an explicit `mod_item` in
+a referencing source file, or by the name of the crate ittself.
 
-> **Note:** The functionality of crate files will be merged into source files in future versions of Rust.
-> The separate processing of crate files, both their grammar and file extension, will be removed.
-
-The Rust compiler is always invoked with a single crate file as input, and always produces a single output crate.
-
-When the Rust compiler is invoked with a crate file, it reads the _explicit_
-definition of the crate it's compiling from that file, and populates the
-crate with modules derived from all the source files referenced by the
-crate, reading and processing all the referenced modules at once.
-
-When the Rust compiler is invoked with a source file, it creates an _implicit_ crate and treats the source file as if it is the sole module populating this explicit crate.
-The module name is derived from the source file name, with the `.rs` extension removed.
-
-## Crate files
-
-~~~~~~~~ {.ebnf .gram}
-crate : attribute [ ';' | attribute* directive ]
-      | directive ;
-directive : view_item | dir_directive | source_directive ;
-~~~~~~~~
-
-A crate file contains a crate definition, for which the production above
-defines the grammar. It is a declarative grammar that guides the compiler in
-assembling a crate from component source files.^[A crate is somewhat
-analogous to an *assembly* in the ECMA-335 CLI model, a *library* in the
-SML/NJ Compilation Manager, a *unit* in the Owens and Flatt module system,
-or a *configuration* in Mesa.] A crate file describes:
-
-* [Attributes](#attributes) about the crate, such as author, name, version,
-  and copyright. These are used for linking, versioning and distributing
-  crates.
-* The source-file and directory modules that make up the crate.
-* Any `use` or `extern mod` [view items](#view-items) that apply to
-  the anonymous module at the top-level of the crate's module tree.
-
-An example of a crate file:
+Each source file contains a sequence of zero or more `item` definitions,
+and may optionally begin with any number of `attributes` that apply to the containing module.
+Atributes on the anonymous crate module define important metadata that influences
+the behavior of the compiler.
 
 ~~~~~~~~{.xfail-test}
 // Linkage attributes
@@ -629,39 +605,16 @@ An example of a crate file:
    license = "BSD" ];
    author = "Jane Doe" ];
 
-// Import a module.
-extern mod std (ver = "1.0");
+// Specify the output type
+#[ crate_type = "lib" ];
 
-// Define some modules.
-#[path = "foo.rs"]
-mod foo;
-mod bar {
-    #[path =  "quux.rs"]
-    mod quux;
-}
+// Turn on a warning
+#[ warn(non_camel_case_types) ];
 ~~~~~~~~
 
-### Dir directives
-
-A `dir_directive` forms a module in the module tree making up the crate, as
-well as implicitly relating that module to a directory in the filesystem
-containing source files and/or further subdirectories. The filesystem
-directory associated with a `dir_directive` module can either be explicit,
-or if omitted, is implicitly the same name as the module.
-
-A `source_directive` references a source file, either explicitly or implicitly, by combining the module name with the file extension `.rs`.
-The module contained in that source file is bound to the module path formed by the `dir_directive` modules containing the `source_directive`.
-
-## Source files
-
-A source file contains a `module`: that is, a sequence of zero or more
-`item` definitions. Each source file is an implicit module, the name and
-location of which -- in the module tree of the current crate -- is defined
-from outside the source file: either by an explicit `source_directive` in
-a referencing crate file, or by the filename of the source file itself.
-
-A source file that contains a `main` function can be compiled to an executable.
+A crate that contains a `main` function can be compiled to an executable.
 If a `main` function is present, its return type must be [`unit`](#primitive-types) and it must take no arguments.
+
 
 # Items and attributes
 
@@ -719,7 +672,7 @@ That is, Rust has no notion of type abstraction: there are no first-class "foral
 ### Modules
 
 ~~~~~~~~ {.ebnf .gram}
-mod_item : "mod" ident '{' mod '}' ;
+mod_item : "mod" ident ( ';' | '{' mod '}' );
 mod : [ view_item | item ] * ;
 ~~~~~~~~
 
@@ -756,6 +709,33 @@ Modules and types share the same namespace.
 Declaring a named type that has the same name as a module in scope is forbidden:
 that is, a type definition, trait, struct, enumeration, or type parameter
 can't shadow the name of a module in scope, or vice versa.
+
+A module without a body is loaded from an external file, by default with the same
+name as the module, plus the `.rs` extension.
+When a nested submodule is loaded from an external file,
+it is loaded from a subdirectory path that mirrors the module hierarchy.
+
+~~~ {.xfail-test}
+// Load the `vec` module from `vec.rs`
+mod vec;
+
+mod task {
+    // Load the `local_data` module from `task/local_data.rs`
+    mod local_data;
+}
+~~~
+
+The directories and files used for loading external file modules can be influenced
+with the `path` attribute.
+
+~~~ {.xfail-test}
+#[path = "task_files"]
+mod task {
+    // Load the `local_data` module from `task_files/tls.rs`
+    #[path = "tls.rs"]
+    mod local_data;
+}
+~~~
 
 #### View items
 
