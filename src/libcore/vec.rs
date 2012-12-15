@@ -29,6 +29,7 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn move_val_init<T>(dst: &mut T, -src: T);
+    fn init<T>() -> T;
 }
 
 
@@ -483,9 +484,15 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
 pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
     let mut v = v; // FIXME(#3488)
 
-    do as_imm_buf(v) |p, ln| {
+    do as_mut_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
-            let x = move *ptr::offset(p, i);
+            // NB: This unsafe operation counts on init writing 0s to the
+            // holes we create in the vector. That ensures that, if the
+            // iterator fails then we won't try to clean up the consumed
+            // elements during unwinding
+            let mut x = rusti::init();
+            let p = ptr::mut_offset(p, i);
+            x <-> *p;
             f(i, x);
         }
     }
@@ -505,7 +512,9 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        let val = move *valptr;
+        // XXX: Should be rusti::uninit() - we don't need this zeroed
+        let mut val = rusti::init();
+        val <-> *valptr;
         raw::set_len(v, ln - 1u);
         val
     }
@@ -574,9 +583,11 @@ pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
     let mut rhs = rhs; // FIXME(#3488)
     reserve(v, v.len() + rhs.len());
     unsafe {
-        do as_imm_buf(rhs) |p, len| {
+        do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                let x = move *ptr::offset(p, i);
+                // XXX Should be rusti::uninit() - don't need to zero
+                let mut x = rusti::init();
+                x <-> *ptr::mut_offset(p, i);
                 push(v, x);
             }
         }
@@ -586,12 +597,14 @@ pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
 
 /// Shorten a vector, dropping excess elements.
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
-    do as_imm_buf(*v) |p, oldlen| {
+    do as_mut_buf(*v) |p, oldlen| {
         assert(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                let _dropped = move *ptr::offset(p, i);
+                // XXX Should be rusti::uninit() - don't need to zero
+                let mut dropped = rusti::init();
+                dropped <-> *ptr::mut_offset(p, i);
             }
             raw::set_len(v, newlen);
         }
@@ -614,12 +627,14 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
             // last_written < next_to_read < ln
             if *ptr::mut_offset(p, next_to_read) ==
                 *ptr::mut_offset(p, last_written) {
-                let _dropped = move *ptr::mut_offset(p, next_to_read);
+                // XXX Should be rusti::uninit() - don't need to zero
+                let mut dropped = rusti::init();
+                dropped <-> *ptr::mut_offset(p, next_to_read);
             } else {
                 last_written += 1;
                 // last_written <= next_to_read < ln
                 if next_to_read != last_written {
-                    *ptr::mut_offset(p, last_written) = move
+                    *ptr::mut_offset(p, last_written) <->
                         *ptr::mut_offset(p, next_to_read);
                 }
             }
