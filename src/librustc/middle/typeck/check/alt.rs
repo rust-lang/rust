@@ -526,8 +526,26 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
       }
       ast::pat_vec(elts, tail) => {
-        let elt_type = match structure_of(fcx, pat.span, expected) {
-          ty::ty_evec(mt, _) | ty::ty_unboxed_vec(mt) => mt,
+        let default_region_var =
+            fcx.infcx().next_region_var_with_lb(
+                pat.span, pcx.block_region
+            );
+
+        let (elt_type, region_var) = match structure_of(
+          fcx, pat.span, expected
+        ) {
+          ty::ty_evec(mt, vstore) => {
+            let region_var = match vstore {
+                ty::vstore_slice(r) => r,
+                ty::vstore_box | ty::vstore_uniq | ty::vstore_fixed(_) => {
+                    default_region_var
+                }
+            };
+            (mt, region_var)
+          }
+          ty::ty_unboxed_vec(mt) => {
+            (mt, default_region_var)
+          },
           _ => {
             tcx.sess.span_fatal(
                 pat.span,
@@ -543,9 +561,6 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         match tail {
             Some(tail_pat) => {
-                let region_var = fcx.infcx().next_region_var_with_lb(
-                    pat.span, pcx.block_region
-                );
                 let slice_ty = ty::mk_evec(tcx,
                     {ty: elt_type.ty, mutbl: elt_type.mutbl},
                     ty::vstore_slice(region_var)
