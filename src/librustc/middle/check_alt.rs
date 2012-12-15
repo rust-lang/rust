@@ -392,49 +392,49 @@ fn missing_ctor(cx: @AltCheckCtxt,
         else { Some(val(const_bool(true))) }
       }
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-        let max_len = do m.foldr(0) |r, max_len| {
-          match r[0].node {
-            pat_vec(elems, _) => uint::max(elems.len(), max_len),
-            _ => max_len
-          }
-        };
-        let min_len_with_tail = do m.foldr(max_len + 1) |r, min_len| {
-          match r[0].node {
-            pat_vec(elems, tail) => {
-              if tail.is_some() && elems.len() < min_len {
-                elems.len()
-              } else {
-                min_len
-              }
-            }
-            _ => min_len
-          }
-        };
-        let vec_lens = do m.filter_map |r| {
-          match r[0].node {
-            pat_vec(elems, tail) => {
-              match tail {
-                None if elems.len() < min_len_with_tail => Some(elems.len()),
+
+        // Find the lengths and tails of all vector patterns.
+        let vec_pat_lens = do m.filter_map |r| {
+            match r[0].node {
+                pat_vec(elems, tail) => {
+                    Some((elems.len(), tail.is_some()))
+                }
                 _ => None
-              }
             }
-            _ => None
-          }
         };
-        let mut sorted_vec_lens = do sort::merge_sort(vec_lens) |a, b| {
-          a < b
-        };
+
+        // Sort them by length such that for patterns of the same length,
+        // those with a destructured tail come first.
+        let mut sorted_vec_lens = sort::merge_sort(vec_pat_lens,
+            |&(len1, tail1), &(len2, tail2)| {
+                if len1 == len2 {
+                    tail1 > tail2
+                } else {
+                    len1 <= len2
+                }
+            }
+        );
         vec::dedup(&mut sorted_vec_lens);
 
+        let mut found_tail = false;
+        let mut next = 0;
         let mut missing = None;
-        for uint::range(0, min_len_with_tail) |i| {
-          if i >= sorted_vec_lens.len() || i != sorted_vec_lens[i] {
-            missing = Some(i);
-            break;
-          }
-        };
-        if missing.is_none() && min_len_with_tail > max_len {
-          missing = Some(min_len_with_tail);
+        for sorted_vec_lens.each |&(length, tail)| {
+            if length != next {
+                missing = Some(next);
+                break;
+            }
+            if tail {
+                found_tail = true;
+                break;
+            }
+            next += 1;
+        }
+
+        // We found patterns of all lengths within <0, next), yet there was no
+        // pattern with a tail - therefore, we report vec(next) as missing.
+        if !found_tail {
+            missing = Some(next);
         }
         match missing {
           Some(k) => Some(vec(k)),
