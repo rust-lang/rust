@@ -66,6 +66,7 @@ enum lint {
     structural_records,
     type_limits,
     default_methods,
+    deprecated_self,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -207,6 +208,11 @@ fn get_lint_dict() -> lint_dict {
          @{lint: default_methods,
            desc: ~"allow default methods",
            default: forbid}),
+
+        (~"deprecated_self",
+         @{lint: deprecated_self,
+           desc: ~"warn about deprecated uses of `self`",
+           default: allow}),
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",
@@ -421,6 +427,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
+    check_item_deprecated_self(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -585,6 +592,41 @@ fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
                             ~"default methods are experimental");
                     }
                 }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
+    fn maybe_warn(cx: ty::ctxt,
+                  item: @ast::item,
+                  self_ty: ast::self_ty) {
+        cx.sess.span_lint(
+            deprecated_self,
+            item.id,
+            item.id,
+            self_ty.span,
+            ~"this method form is deprecated; use an explicit `self` \
+              parameter or mark the method as static");
+    }
+
+    match item.node {
+        ast::item_trait(_, _, methods) => {
+            for methods.each |method| {
+                match *method {
+                    ast::required(ty_method) => {
+                        maybe_warn(cx, item, ty_method.self_ty);
+                    }
+                    ast::provided(method) => {
+                        maybe_warn(cx, item, method.self_ty);
+                    }
+                }
+            }
+        }
+        ast::item_impl(_, _, _, methods) => {
+            for methods.each |method| {
+                maybe_warn(cx, item, method.self_ty);
             }
         }
         _ => {}
