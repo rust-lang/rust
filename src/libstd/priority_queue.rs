@@ -97,41 +97,39 @@ impl <T: Copy Ord> PriorityQueue<T> {
         q
     }
 
-    priv fn siftup(&mut self, startpos: uint, pos: uint) {
+    priv fn siftup(&mut self, start: uint, pos: uint) {
         let mut pos = pos;
-        let newitem = self.data[pos];
+        let new = self.data[pos];
 
-        while pos > startpos {
-            let parentpos = (pos - 1) >> 1;
-            let parent = self.data[parentpos];
-            if newitem > parent {
-                self.data[pos] = parent;
-                pos = parentpos;
+        while pos > start {
+            let parent = (pos - 1) >> 1;
+            if new > self.data[parent] {
+                self.data[pos] = self.data[parent];
+                pos = parent;
                 loop
             }
             break
         }
-        self.data[pos] = newitem;
+        self.data[pos] = new;
     }
 
-    priv fn siftdown_range(&mut self, pos: uint, endpos: uint) {
+    priv fn siftdown_range(&mut self, pos: uint, end: uint) {
         let mut pos = pos;
-        let startpos = pos;
-        let newitem = self.data[pos];
+        let start = pos;
+        let new = self.data[pos];
 
-        let mut childpos = 2 * pos + 1;
-        while childpos < endpos {
-            let rightpos = childpos + 1;
-            if rightpos < endpos &&
-                   !(self.data[childpos] > self.data[rightpos]) {
-                childpos = rightpos;
+        let mut child = 2 * pos + 1;
+        while child < end {
+            let right = child + 1;
+            if right < end && !(self.data[child] > self.data[right]) {
+                child = right;
             }
-            self.data[pos] = self.data[childpos];
-            pos = childpos;
-            childpos = 2 * pos + 1;
+            self.data[pos] = self.data[child];
+            pos = child;
+            child = 2 * pos + 1;
         }
-        self.data[pos] = newitem;
-        self.siftup(startpos, pos);
+        self.data[pos] = new;
+        self.siftup(start, pos);
     }
 
     priv fn siftdown(&mut self, pos: uint) {
