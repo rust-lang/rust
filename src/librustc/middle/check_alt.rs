@@ -40,15 +40,29 @@ fn check_crate(tcx: ty::ctxt, method_map: method_map, crate: @crate) {
     tcx.sess.abort_if_errors();
 }
 
+fn expr_is_non_moving_lvalue(cx: @AltCheckCtxt, expr: @expr) -> bool {
+    if !ty::expr_is_lval(cx.tcx, cx.method_map, expr) {
+        return false;
+    }
+
+    match cx.tcx.value_modes.find(expr.id) {
+        Some(MoveValue) => return false,
+        Some(CopyValue) | Some(ReadValue) => return true,
+        None => {
+            cx.tcx.sess.span_bug(expr.span, ~"no entry in value mode map");
+        }
+    }
+}
+
 fn check_expr(cx: @AltCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
       expr_match(scrut, ref arms) => {
         // First, check legality of move bindings.
-        let is_lvalue = ty::expr_is_lval(cx.tcx, cx.method_map, scrut);
+        let is_non_moving_lvalue = expr_is_non_moving_lvalue(cx, ex);
         for arms.each |arm| {
             check_legality_of_move_bindings(cx,
-                                            is_lvalue,
+                                            is_non_moving_lvalue,
                                             arm.guard.is_some(),
                                             arm.pats);
         }
@@ -524,7 +538,7 @@ fn check_local(cx: @AltCheckCtxt, loc: @local, &&s: (), v: visit::vt<()>) {
 
     // Check legality of move bindings.
     let is_lvalue = match loc.node.init {
-        Some(init) => ty::expr_is_lval(cx.tcx, cx.method_map, init),
+        Some(init) => expr_is_non_moving_lvalue(cx, init),
         None => true
     };
     check_legality_of_move_bindings(cx, is_lvalue, false, [ loc.node.pat ]);
@@ -616,40 +630,98 @@ fn check_legality_of_move_bindings(cx: @AltCheckCtxt,
         }
     }
 
+    let check_move: &fn(@pat, Option<@pat>) = |p, sub| {
+        // check legality of moving out of the enum
+        if sub.is_some() {
+            tcx.sess.span_err(
+                p.span,
+                ~"cannot bind by-move with sub-bindings");
+        } else if has_guard {
+            tcx.sess.span_err(
+                p.span,
+                ~"cannot bind by-move into a pattern guard");
+        } else if by_ref_span.is_some() {
+            tcx.sess.span_err(
+                p.span,
+                ~"cannot bind by-move and by-ref \
+                  in the same pattern");
+            tcx.sess.span_note(
+                by_ref_span.get(),
+                ~"by-ref binding occurs here");
+        } else if is_lvalue {
+            tcx.sess.span_err(
+                p.span,
+                ~"cannot bind by-move when \
+                  matching an lvalue");
+        }
+    };
+
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
         do walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
-                    pat_ident(bind_by_move, _, sub) => {
-                        // check legality of moving out of the enum
-                        if sub.is_some() {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move with sub-bindings");
-                        } else if has_guard {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move into a pattern guard");
-                        } else if by_ref_span.is_some() {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move and by-ref \
-                                  in the same pattern");
-                            tcx.sess.span_note(
-                                by_ref_span.get(),
-                                ~"by-ref binding occurs here");
-                        } else if is_lvalue {
-                            tcx.sess.span_err(
-                                p.span,
-                                ~"cannot bind by-move when \
-                                  matching an lvalue");
+                    pat_ident(bind_by_move, _, sub) => check_move(p, sub),
+                    pat_ident(bind_infer, _, sub) => {
+                        match tcx.value_modes.find(p.id) {
+                            Some(MoveValue) => check_move(p, sub),
+                            Some(CopyValue) | Some(ReadValue) => {}
+                            None => {
+                                cx.tcx.sess.span_bug(
+                                    pat.span, ~"no mode for pat binding");
+                            }
                         }
                     }
                     _ => {}
                 }
             }
         }
+
+        // Now check to ensure that any move binding is not behind an @ or &.
+        // This is always illegal.
+        let vt = visit::mk_vt(@{
+            visit_pat: |pat, behind_bad_pointer, v| {
+                let error_out = || {
+                    cx.tcx.sess.span_err(pat.span, ~"by-move pattern \
+                                                     bindings may not occur \
+                                                     behind @ or & bindings");
+                };
+                match pat.node {
+                    pat_ident(binding_mode, _, sub) => {
+                        debug!("(check legality of move) checking pat \
+                                ident with behind_bad_pointer %?",
+                                behind_bad_pointer);
+                        match binding_mode {
+                            bind_by_move if behind_bad_pointer => error_out(),
+                            bind_infer if behind_bad_pointer => {
+                                match cx.tcx.value_modes.find(pat.id) {
+                                    Some(MoveValue) => error_out(),
+                                    Some(CopyValue) |
+                                    Some(ReadValue) => {}
+                                    None => {
+                                        cx.tcx.sess.span_bug(pat.span,
+                                            ~"no mode for pat binding");
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                        match sub {
+                            None => {}
+                            Some(subpat) => {
+                                (v.visit_pat)(subpat, behind_bad_pointer, v);
+                            }
+                        }
+                    }
+                    pat_box(subpat) | pat_region(subpat) => {
+                        (v.visit_pat)(subpat, true, v);
+                    }
+                    _ => visit::visit_pat(pat, behind_bad_pointer, v)
+                }
+            },
+            .. *visit::default_visitor::<bool>()
+        });
+        (vt.visit_pat)(*pat, false, vt);
     }
 }
 
