@@ -143,7 +143,7 @@ impl <T: Copy Ord> PriorityQueue<T> {
 mod tests {
     use sort::merge_sort;
     use core::cmp::le;
-    use PriorityQueue::from_vec;
+    use priority_queue::PriorityQueue::from_vec;
 
     #[test]
     fn test_top_and_pop() {
