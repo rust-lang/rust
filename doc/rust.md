@@ -858,13 +858,14 @@ If a sequence of such redirections form a cycle or cannot be unambiguously resol
 
 An example of re-exporting:
 ~~~~
+# fn main() { }
 mod quux {
-    mod foo {
+    pub mod foo {
         pub fn bar() { }
         pub fn baz() { }
     }
     
-    pub use foo::*;
+    pub use quux::foo::*;
 }
 ~~~~
 
@@ -3034,67 +3035,6 @@ preemption point, and another task within is scheduled, pseudo-randomly.
 An executing task can yield control at any time, by making a library call to
 `core::task::yield`, which deschedules it immediately. Entering any other
 non-executing state (blocked, dead) similarly deschedules the task.
-
-
-### Spawning tasks
-
-A call to `core::task::spawn`, passing a 0-argument function as its single
-argument, causes the runtime to construct a new task executing the passed
-function. The passed function is referred to as the _entry function_ for
-the spawned task, and any captured environment it carries is moved from the
-spawning task to the spawned task before the spawned task begins execution.
-
-The result of a `spawn` call is a `core::task::Task` value.
-
-An example of a `spawn` call:
-
-~~~~
-let po = comm::Port();
-let ch = comm::Chan(&po);
-
-do task::spawn {
-    // let task run, do other things
-    ...
-    comm::send(ch, true);
-};
-
-let result = comm::recv(po);
-~~~~
-
-
-### Sending values into channels
-
-Sending a value into a channel is done by a library call to `core::comm::send`,
-which takes a channel and a value to send, and moves the value into the
-channel's outgoing buffer.
-
-An example of a send:
-
-~~~~
-let po = comm::Port();
-let ch = comm::Chan(&po);
-comm::send(ch, ~"hello, world");
-~~~~
-
-
-### Receiving values from ports
-
-Receiving a value is done by a call to the `recv` method on a value of type
-`core::comm::Port`. This call causes the receiving task to enter the *blocked
-reading* state until a value arrives in the port's receive queue, at which
-time the port deques a value to return, and un-blocks the receiving task.
-
-An example of a *receive*:
-
-~~~~~~~~
-# let po = comm::Port();
-# let ch = comm::Chan(&po);
-# comm::send(ch, ~"");
-let s = comm::recv(po);
-~~~~~~~~
-
-> **Note:** this communication system will be replaced by a higher-performance system called "pipes",
-> in future versions of Rust.
 
 
 # Runtime services, linkage and debugging
