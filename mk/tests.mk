@@ -245,6 +245,9 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
     check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
     check-stage$(1)-T-$(2)-H-$(3)-rusti       \
     check-stage$(1)-T-$(2)-H-$(3)-cargo       \
+    check-stage$(1)-T-$(2)-H-$(3)-doc       \
+
+check-stage$(1)-T-$(2)-H-$(3)-doc: \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-ffi  \
     check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-macros  \
@@ -799,6 +802,9 @@ check-stage$(1)-H-$(2)-rusti:					\
 check-stage$(1)-H-$(2)-cargo:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-cargo)
+check-stage$(1)-H-$(2)-doc:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-doc)
 check-stage$(1)-H-$(2)-doc-tutorial:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-doc-tutorial)
@@ -925,6 +931,7 @@ check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pret
 check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
 check-stage$(1)-rusti: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rusti
 check-stage$(1)-cargo: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cargo
+check-stage$(1)-doc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc
 check-stage$(1)-doc-tutorial: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial
 check-stage$(1)-doc-tutorial-ffi: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-ffi
 check-stage$(1)-doc-tutorial-macros: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-macros
