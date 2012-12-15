@@ -65,7 +65,6 @@ enum lint {
     non_camel_case_types,
     structural_records,
     type_limits,
-    default_methods,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -201,12 +200,7 @@ fn get_lint_dict() -> lint_dict {
         (~"type_limits",
          @{lint: type_limits,
            desc: ~"comparisons made useless by limits of the types involved",
-           default: warn}),
-
-        (~"default_methods",
-         @{lint: default_methods,
-           desc: ~"allow default methods",
-           default: forbid}),
+           default: warn})
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",
@@ -420,7 +414,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_structural_records(cx, i);
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
-    check_item_default_methods(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -568,27 +561,6 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         .. *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);
-}
-
-fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
-    match item.node {
-        ast::item_trait(_, _, methods) => {
-            for methods.each |method| {
-                match *method {
-                    ast::required(*) => {}
-                    ast::provided(*) => {
-                        cx.sess.span_lint(
-                            default_methods,
-                            item.id,
-                            item.id,
-                            item.span,
-                            ~"default methods are experimental");
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
 }
 
 fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
