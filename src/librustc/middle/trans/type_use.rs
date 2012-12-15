@@ -139,7 +139,18 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_dtor(_, dtor, _, _) => {
         handle_body(cx, dtor.node.body);
       }
-      _ => fail ~"unknown node type in type_use"
+      ast_map::node_struct_ctor(*) => {
+        // Similarly to node_variant, this monomorphized function just uses
+        // the representations of all of its type parameters.
+        for uint::range(0, n_tps) |n| { cx.uses[n] |= use_repr; }
+      }
+      _ => {
+        ccx.tcx.sess.bug(fmt!("unknown node type in type_use: %s",
+                              ast_map::node_id_to_str(
+                                ccx.tcx.items,
+                                fn_id_loc.node,
+                                ccx.tcx.sess.parse_sess.interner)));
+      }
     }
     let uses = vec::from_mut(copy cx.uses);
     ccx.type_use_cache.insert(fn_id, uses);
