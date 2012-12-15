@@ -93,6 +93,7 @@ impl <T: Ord> PriorityQueue<T> {
         q.to_vec()
     }
 
+    /// Create a PriorityQueue from a vector (heapify)
     static pub pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
