@@ -1,12 +1,18 @@
 
 /// A priority queue implemented with a binary heap
 use core::cmp::Ord;
+use ptr::addr_of;
 
-pub struct PriorityQueue <T: Copy Ord>{
+#[abi = "rust-intrinsic"]
+extern "C" mod rusti {
+    fn move_val_init<T>(dst: &mut T, -src: T);
+}
+
+pub struct PriorityQueue <T: Ord>{
     priv data: ~[T],
 }
 
-impl <T: Copy Ord> PriorityQueue<T> {
+impl <T: Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
     pure fn top(&self) -> &self/T { &self.data[0] }
 
@@ -97,26 +103,33 @@ impl <T: Copy Ord> PriorityQueue<T> {
         q
     }
 
-    priv fn siftup(&mut self, start: uint, pos: uint) {
+    // The implementations of siftup and siftdown use unsafe blocks in order to
+    // move an element out of the vector (leaving behind a junk element), shift
+    // along the others and move it back into the vector over the junk element.
+    // This reduces the constant factor compared to using swaps, which involves
+    // twice as many moves.
+
+    priv fn siftup(&mut self, start: uint, pos: uint) unsafe {
         let mut pos = pos;
-        let new = self.data[pos];
+        let new = move *addr_of(&self.data[pos]);
 
         while pos > start {
             let parent = (pos - 1) >> 1;
             if new > self.data[parent] {
-                self.data[pos] = self.data[parent];
+                rusti::move_val_init(&mut self.data[pos],
+                                     move *addr_of(&self.data[parent]));
                 pos = parent;
                 loop
             }
             break
         }
-        self.data[pos] = new;
+        rusti::move_val_init(&mut self.data[pos], move new);
     }
 
-    priv fn siftdown_range(&mut self, pos: uint, end: uint) {
+    priv fn siftdown_range(&mut self, pos: uint, end: uint) unsafe {
         let mut pos = pos;
         let start = pos;
-        let new = self.data[pos];
+        let new = move *addr_of(&self.data[pos]);
 
         let mut child = 2 * pos + 1;
         while child < end {
@@ -124,11 +137,12 @@ impl <T: Copy Ord> PriorityQueue<T> {
             if right < end && !(self.data[child] > self.data[right]) {
                 child = right;
             }
-            self.data[pos] = self.data[child];
+            rusti::move_val_init(&mut self.data[pos],
+                                 move *addr_of(&self.data[child]));
             pos = child;
             child = 2 * pos + 1;
         }
-        self.data[pos] = new;
+        rusti::move_val_init(&mut self.data[pos], move new);
         self.siftup(start, pos);
     }
 
