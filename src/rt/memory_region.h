@@ -73,7 +73,7 @@ private:
     // private and undefined to disable copying
     memory_region(const memory_region& rhs);
     memory_region& operator=(const memory_region& rhs);
-    
+
 public:
     memory_region(rust_env *env, bool synchronized);
     memory_region(memory_region *parent);

@@ -39,7 +39,7 @@ private:
     // private and undefined to disable copying
     circular_buffer(const circular_buffer& rhs);
     circular_buffer& operator=(const circular_buffer& rhs);
-    
+
 private:
     size_t initial_size();
     void grow();

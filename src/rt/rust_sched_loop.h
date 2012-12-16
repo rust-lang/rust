@@ -86,7 +86,7 @@ private:
     // private and undefined to disable copying
     rust_sched_loop(const rust_sched_loop& rhs);
     rust_sched_loop& operator=(const rust_sched_loop& rhs);
-    
+
 public:
     rust_kernel *kernel;
     rust_scheduler *sched;
