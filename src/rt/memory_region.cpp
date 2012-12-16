@@ -91,7 +91,7 @@ memory_region::realloc(void *mem, size_t orig_size) {
         fprintf(stderr,
                 "memory_region::realloc> "
                 "Out of memory allocating %ld bytes",
-                size);
+                (long int) size);
         abort();
     }
 
@@ -129,7 +129,7 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
         fprintf(stderr,
                 "memory_region::malloc> "
                 "Out of memory allocating %ld bytes",
-                size);
+                (long int) size);
         abort();
     }
 
