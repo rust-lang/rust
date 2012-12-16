@@ -88,7 +88,10 @@ memory_region::realloc(void *mem, size_t orig_size) {
     size_t size = orig_size + HEADER_SIZE;
     alloc_header *newMem = (alloc_header *)::realloc(alloc, size);
     if (newMem == NULL) {
-        fprintf(stderr, "memory_region::realloc> Out of memory allocating %ld bytes", size);
+        fprintf(stderr,
+                "memory_region::realloc> "
+                "Out of memory allocating %ld bytes",
+                size);
         abort();
     }
 
@@ -123,7 +126,10 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
     size += HEADER_SIZE;
     alloc_header *mem = (alloc_header *)::malloc(size);
     if (mem == NULL) {
-        fprintf(stderr, "memory_region::malloc> Out of memory allocating %ld bytes", size);
+        fprintf(stderr,
+                "memory_region::malloc> "
+                "Out of memory allocating %ld bytes",
+                size);
         abort();
     }
 
