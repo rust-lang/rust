@@ -105,8 +105,11 @@ impl <T: Ord> PriorityQueue<T> {
         q.to_vec()
     }
 
+    /// Create an empty PriorityQueue
+    static pure fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+
     /// Create a PriorityQueue from a vector (heapify)
-    static pub pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+    static pure fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
         while n > 0 {
@@ -168,7 +171,7 @@ impl <T: Ord> PriorityQueue<T> {
 mod tests {
     use sort::merge_sort;
     use core::cmp::le;
-    use priority_queue::PriorityQueue::from_vec;
+    use priority_queue::PriorityQueue::{from_vec, new};
 
     #[test]
     fn test_top_and_pop() {
@@ -279,30 +282,27 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_pop() { let mut heap = from_vec::<int>(~[]); heap.pop(); }
+    fn test_empty_pop() { let mut heap = new::<int>(); heap.pop(); }
 
     #[test]
     fn test_empty_maybe_pop() {
-        let mut heap = from_vec::<int>(~[]);
+        let mut heap = new::<int>();
         assert heap.maybe_pop().is_none();
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_top() { let empty = from_vec::<int>(~[]); empty.top(); }
+    fn test_empty_top() { let empty = new::<int>(); empty.top(); }
 
     #[test]
     fn test_empty_maybe_top() {
-        let empty = from_vec::<int>(~[]);
+        let empty = new::<int>();
         assert empty.maybe_top().is_none();
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_replace() {
-        let mut heap = from_vec::<int>(~[]);
-        heap.replace(5);
-    }
+    fn test_empty_replace() { let mut heap = new(); heap.replace(5); }
 }
