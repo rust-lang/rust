@@ -25,9 +25,9 @@ match input_2 {
 # }
 ~~~~
 
-This code could become tiresome if repeated many times. However, there is no
-straightforward way to rewrite it without the repeated code, using functions
-alone. There is a solution, though: defining a macro to solve the problem. Macros are
+This code could become tiresome if repeated many times. However, no function
+can capture its functionality to make it possible to rewrite the repetition
+away. Rust's macro system, however, can eliminate the repetition. Macros are
 lightweight custom syntax extensions, themselves defined using the
 `macro_rules!` syntax extension. The following `early_return` macro captures
 the pattern in the above code:
@@ -65,7 +65,7 @@ macro. It appears on the left-hand side of the `=>` in a macro definition. It
 conforms to the following rules:
 
 1. It must be surrounded by parentheses.
-2. `$` has special meaning.
+2. `$` has special meaning (described below).
 3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is
 forbidden.
 
@@ -118,10 +118,11 @@ expression, `() => (let $x=$val)` is a macro that expands to a statement, and
 `() => (1,2,3)` is a macro that expands to a syntax errror).
 
 Except for permissibility of `$name` (and `$(...)*`, discussed below), the
-right-hand side of a macro definition follows the same rules as ordinary
-Rust syntax. In particular, macro invocations (including invocations of the
-macro currently being defined) are permitted in expression, statement, and
-item locations.
+right-hand side of a macro definition is ordinary Rust syntax. In particular,
+macro invocations (including invocations of the macro currently being defined)
+are permitted in expression, statement, and item locations. However, nothing
+else about the code is examined or executed by the macro system; execution
+still has to wait until runtime.
 
 ## Interpolation location
 
@@ -199,7 +200,196 @@ parsing `e`. Changing the invocation syntax to require a distinctive token in
 front can solve the problem. In the above example, `$(T $t:ty)* E $e:exp`
 solves the problem.
 
-## A final note
+# Macro argument pattern matching
+
+Now consider code like the following:
+
+## Motivation
+
+~~~~
+# enum t1 { good_1(t2, uint), bad_1 };
+# pub struct t2 { body: t3 }
+# enum t3 { good_2(uint), bad_2};
+# fn f(x: t1) -> uint {
+match x {
+    good_1(g1, val) => {
+        match g1.body {
+            good_2(result) => {
+                // complicated stuff goes here
+                return result + val;
+            },
+            _ => fail ~"Didn't get good_2"
+        }
+    }
+    _ => return 0 // default value
+}
+# }
+~~~~
+
+All the complicated stuff is deeply indented, and the error-handling code is
+separated from matches that fail. We'd like to write a macro that performs
+a match, but with a syntax that suits the problem better. The following macro
+can solve the problem:
+
+~~~~
+macro_rules! biased_match (
+    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
+    ( ($e:expr) ~ ($p:pat) else $err:stmt ;
+      binds $bind_res:ident
+    ) => (
+        let $bind_res = match $e {
+            $p => ( $bind_res ),
+            _ => { $err }
+        };
+    );
+    // more than one name; use a tuple
+    ( ($e:expr) ~ ($p:pat) else $err:stmt ;
+      binds $( $bind_res:ident ),*
+    ) => (
+        let ( $( $bind_res ),* ) = match $e {
+            $p => ( $( $bind_res ),* ),
+            _ => { $err }
+        };
+    )
+)
+
+# enum t1 { good_1(t2, uint), bad_1 };
+# pub struct t2 { body: t3 }
+# enum t3 { good_2(uint), bad_2};
+# fn f(x: t1) -> uint {
+biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };
+              binds g1, val )
+biased_match!((g1.body) ~ (good_2(result) )
+                  else { fail ~"Didn't get good_2" };
+              binds result )
+// complicated stuff goes here
+return result + val;
+# }
+~~~~
+
+This solves the indentation problem. But if we have a lot of chained matches
+like this, we might prefer to write a single macro invocation. The input
+pattern we want is clear:
+~~~~
+# macro_rules! b(
+    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+      binds $( $bind_res:ident ),*
+    )
+# => (0))
+~~~~
+
+However, it's not possible to directly expand to nested match statements. But
+there is a solution.
+
+## The recusive approach to macro writing
+
+A macro may accept multiple different input grammars. The first one to
+successfully match the actual argument to a macro invocation is the one that
+"wins".
+
+
+In the case of the example above, we want to write a recursive macro to
+process the semicolon-terminated lines, one-by-one. So, we want the following
+input patterns:
+
+~~~~
+# macro_rules! b(
+    ( binds $( $bind_res:ident ),* )
+# => (0))
+~~~~
+...and:
+
+~~~~
+# macro_rules! b(
+    (    ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
+      $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
+      binds  $( $bind_res:ident ),*
+    )
+# => (0))
+~~~~
+
+The resulting macro looks like this. Note that the separation into
+`biased_match!` and `biased_match_rec!` occurs only because we have an outer
+piece of syntax (the `let`) which we only want to transcribe once.
+
+~~~~
+
+macro_rules! biased_match_rec (
+    // Handle the first layer
+    (   ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
+     $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
+     binds $( $bind_res:ident ),*
+    ) => (
+        match $e {
+            $p => {
+                // Recursively handle the next layer
+                biased_match_rec!($( ($e_rest) ~ ($p_rest) else $err_rest ; )*
+                                  binds $( $bind_res ),*
+                )
+            }
+            _ => { $err }
+        }
+    );
+    ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )
+)
+
+// Wrap the whole thing in a `let`.
+macro_rules! biased_match (
+    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
+    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+      binds $bind_res:ident
+    ) => (
+        let ( $( $bind_res ),* ) = biased_match_rec!(
+            $( ($e) ~ ($p) else $err ; )*
+            binds $bind_res
+        );
+    );
+    // more than one name: use a tuple
+    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+      binds  $( $bind_res:ident ),*
+    ) => (
+        let ( $( $bind_res ),* ) = biased_match_rec!(
+            $( ($e) ~ ($p) else $err ; )*
+            binds $( $bind_res ),*
+        );
+    )
+)
+
+
+# enum t1 { good_1(t2, uint), bad_1 };
+# pub struct t2 { body: t3 }
+# enum t3 { good_2(uint), bad_2};
+# fn f(x: t1) -> uint {
+biased_match!(
+    (x)       ~ (good_1(g1, val)) else { return 0 };
+    (g1.body) ~ (good_2(result) ) else { fail ~"Didn't get good_2" };
+    binds val, result )
+// complicated stuff goes here
+return result + val;
+# }
+~~~~
+
+This technique is applicable in many cases where transcribing a result "all
+at once" is not possible. It resembles ordinary functional programming in some
+respects, but it is important to recognize the differences.
+
+The first difference is important, but also easy to forget: the transcription
+(right-hand) side of a `macro_rules!` rule is literal syntax, which can only
+be executed at run-time. If a piece of transcription syntax does not itself
+appear inside another macro invocation, it will become part of the final
+program. If it is inside a macro invocation (for example, the recursive
+invocation of `biased_match_rec!`), it does have the opprotunity to affect
+transcription, but only through the process of attempted pattern matching.
+
+The second difference is related: the evaluation order of macros feels
+"backwards" compared to ordinary programming. Given an invocation
+`m1!(m2!())`, the expander first expands `m1!`, giving it as input the literal
+syntax `m2!()`. If it transcribes its argument unchanged into an appropriate
+position (in particular, not as an argument to yet another macro invocation),
+the expander will then proceed to evaluate `m2!()` (along with any other macro
+invocations `m1!(m2!())` produced).
+
+# A final note
 
 Macros, as currently implemented, are not for the faint of heart. Even
 ordinary syntax errors can be more difficult to debug when they occur inside a
@@ -208,3 +398,4 @@ tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
 states, invoking `trace_macros!(true)` will automatically print those
 intermediate states out, and passing the flag `--pretty expanded` as a
 command-line argument to the compiler will show the result of expansion.
+
