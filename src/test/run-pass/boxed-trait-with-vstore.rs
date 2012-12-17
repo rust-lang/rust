@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo() {}
+    fn foo();
 }
 
 impl int : Foo {
