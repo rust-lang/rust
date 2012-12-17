@@ -202,6 +202,28 @@ mod tests {
     }
 
     #[test]
+    fn test_push_unique() {
+        let mut heap = from_vec(~[~2, ~4, ~9]);
+        assert heap.len() == 3;
+        assert *heap.top() == ~9;
+        heap.push(~11);
+        assert heap.len() == 4;
+        assert *heap.top() == ~11;
+        heap.push(~5);
+        assert heap.len() == 5;
+        assert *heap.top() == ~11;
+        heap.push(~27);
+        assert heap.len() == 6;
+        assert *heap.top() == ~27;
+        heap.push(~3);
+        assert heap.len() == 7;
+        assert *heap.top() == ~27;
+        heap.push(~103);
+        assert heap.len() == 8;
+        assert *heap.top() == ~103;
+    }
+
+    #[test]
     fn test_push_pop() {
         let mut heap = from_vec(~[5, 5, 2, 1, 3]);
         assert heap.len() == 5;
