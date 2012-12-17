@@ -1,5 +1,6 @@
 
-/// A priority queue implemented with a binary heap
+//! A priority queue implemented with a binary heap
+
 use core::cmp::Ord;
 use ptr::addr_of;
 
