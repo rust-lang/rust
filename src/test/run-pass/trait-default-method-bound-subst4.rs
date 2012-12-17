@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(default_methods)];
+
 trait A<T> {
     fn g(x: uint) -> uint { move x }
 }
