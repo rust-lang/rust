@@ -44,10 +44,11 @@ Version 0.5 (December 2012)
       * Moved futures to `std`
       * More functions are pure now
       * `core::comm` renamed to `oldcomm`. Still deprecated
-
-   * Tools
-      * Added a new (still immature) REPL, `rusti`
       * `rustdoc` and `cargo` are libraries now
+
+   * Misc
+      * Added a preliminary REPL, `rusti`
+      * License changed from MIT to dual MIT/APL2
 
 Version 0.4 (October 2012)
 --------------------------
