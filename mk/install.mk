@@ -55,8 +55,6 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBSYNTAX_GLOB))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBFUZZER_GLOB))
-	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBCARGO_GLOB))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTDOC_GLOB))
@@ -89,12 +87,10 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X))
-	$(Q)$(call INSTALL,$(HB2),$(PHB),fuzzer$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),cargo$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTC))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBFUZZER))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBCARGO))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTDOC))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_LIBRUSTI))
@@ -119,9 +115,7 @@ uninstall:
 	$(Q)rm -f $(PHB)/cargo$(X)
 	$(Q)rm -f $(PHB)/rusti$(X)
 	$(Q)rm -f $(PHB)/rustdoc$(X)
-	$(Q)rm -f $(PHB)/fuzzer$(X)
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM)
-	$(Q)rm -f $(PHL)/$(CFG_LIBFUZZER)
 	$(Q)rm -f $(PHL)/$(CFG_LIBCARGO)
 	$(Q)rm -f $(PHL)/$(CFG_LIBRUSTC)
 	$(Q)rm -f $(PHL)/$(CFG_LIBRUSTDOC)
@@ -133,7 +127,6 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBCARGO_GLOB)) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBFUZZER_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTDOC_GLOB)) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTI_GLOB)) \
         ; \
