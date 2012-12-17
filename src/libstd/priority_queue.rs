@@ -79,9 +79,19 @@ impl <T: Ord> PriorityQueue<T> {
     }
 
     /// Consume the PriorityQueue and return the underlying vector
+    #[cfg(stage0)]
+    pure fn to_vec(self) -> ~[T] { fail }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
     pure fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted (ascending) order
+    #[cfg(stage0)]
+    pure fn to_sorted_vec(self) -> ~[T] { fail }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
     pure fn to_sorted_vec(self) -> ~[T] {
         let mut q = self;
         let mut end = q.len();
@@ -244,6 +254,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_empty_pop() { let mut heap = from_vec::<int>(~[]); heap.pop(); }
 
     #[test]
@@ -254,6 +265,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_empty_top() { let empty = from_vec::<int>(~[]); empty.top(); }
 
     #[test]
@@ -264,6 +276,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_empty_replace() {
         let mut heap = from_vec::<int>(~[]);
         heap.replace(5);
