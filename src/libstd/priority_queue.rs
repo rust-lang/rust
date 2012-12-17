@@ -87,7 +87,8 @@ impl <T: Ord> PriorityQueue<T> {
     #[cfg(stage3)]
     pure fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
 
-    /// Consume the PriorityQueue and return a vector in sorted (ascending) order
+    /// Consume the PriorityQueue and return a vector in sorted
+    /// (ascending) order
     #[cfg(stage0)]
     pure fn to_sorted_vec(self) -> ~[T] { fail }
     #[cfg(stage1)]
@@ -115,11 +116,11 @@ impl <T: Ord> PriorityQueue<T> {
         q
     }
 
-    // The implementations of siftup and siftdown use unsafe blocks in order to
-    // move an element out of the vector (leaving behind a junk element), shift
-    // along the others and move it back into the vector over the junk element.
-    // This reduces the constant factor compared to using swaps, which involves
-    // twice as many moves.
+    // The implementations of siftup and siftdown use unsafe blocks in
+    // order to move an element out of the vector (leaving behind a
+    // junk element), shift along the others and move it back into the
+    // vector over the junk element.  This reduces the constant factor
+    // compared to using swaps, which involves twice as many moves.
 
     priv fn siftup(&mut self, start: uint, pos: uint) unsafe {
         let mut pos = pos;
