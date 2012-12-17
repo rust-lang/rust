@@ -117,6 +117,7 @@ Stefan Plantikow <stefan.plantikow@googlemail.com>
 Taras Shpot <mrshpot@gmail.com>
 Ted Horst <ted.horst@earthlink.net>
 Tim Chevalier <chevalier@alum.wellesley.edu>
+Tim Taubert <tim@timtaubert.de>
 Tom Lee <github@tomlee.co>
 Tomoki Aonuma <uasi@99cm.org>
 Tony Young <tony@rfw.name>
