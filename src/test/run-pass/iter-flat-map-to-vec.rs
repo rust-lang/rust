@@ -9,10 +9,9 @@
 // except according to those terms.
 
 // xfail-test -- flat_map_to_vec currently disable
+fn repeat(x: &uint) -> ~[uint] { ~[x, x] }
 
-fn repeat(&&x: uint) -> ~[uint] { ~[x, x] }
-
-fn incd_if_even(&&x: uint) -> option<uint> {
+fn incd_if_even(x: &uint) -> option<uint> {
     if (x % 2u) == 0u {some(x + 1u)} else {none}
 }
 

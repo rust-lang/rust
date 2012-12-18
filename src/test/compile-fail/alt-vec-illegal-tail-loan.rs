@@ -1,7 +1,7 @@
 fn a() -> &[int] {
     let vec = [1, 2, 3, 4];
     let tail = match vec {
-        [a, ..tail] => tail, //~ ERROR illegal borrow
+        [_a, ..tail] => tail, //~ ERROR illegal borrow
         _ => fail ~"foo"
     };
     move tail

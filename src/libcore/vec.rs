@@ -2013,57 +2013,60 @@ pub mod bytes {
 // required in the slice.
 
 impl<A> &[A]: iter::BaseIter<A> {
-    pub pure fn each(blk: fn(v: &A) -> bool) {
+    pub pure fn each(&self, blk: fn(v: &A) -> bool) {
         // FIXME(#2263)---should be able to call each(self, blk)
-        for each(self) |e| {
+        for each(*self) |e| {
             if (!blk(e)) {
                 return;
             }
         }
     }
-    pure fn size_hint() -> Option<uint> { Some(len(self)) }
+    pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
 impl<A> &[A]: iter::ExtendedIter<A> {
-    pub pure fn eachi(blk: fn(uint, v: &A) -> bool) {
-        iter::eachi(&self, blk)
+    pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
+        iter::eachi(self, blk)
     }
-    pub pure fn all(blk: fn(&A) -> bool) -> bool { iter::all(&self, blk) }
-    pub pure fn any(blk: fn(&A) -> bool) -> bool { iter::any(&self, blk) }
-    pub pure fn foldl<B>(b0: B, blk: fn(&B, &A) -> B) -> B {
-        iter::foldl(&self, b0, blk)
+    pub pure fn all(&self, blk: fn(&A) -> bool) -> bool {
+        iter::all(self, blk)
     }
-    pub pure fn position(f: fn(&A) -> bool) -> Option<uint> {
-        iter::position(&self, f)
+    pub pure fn any(&self, blk: fn(&A) -> bool) -> bool {
+        iter::any(self, blk)
+    }
+    pub pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
+        iter::foldl(self, b0, blk)
+    }
+    pub pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
+        iter::position(self, f)
+    }
+    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+        -> ~[B] {
+        iter::flat_map_to_vec(self, op)
     }
 }
 
 impl<A: Eq> &[A]: iter::EqIter<A> {
-    pub pure fn contains(x: &A) -> bool { iter::contains(&self, x) }
-    pub pure fn count(x: &A) -> uint { iter::count(&self, x) }
+    pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
+    pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 impl<A: Copy> &[A]: iter::CopyableIter<A> {
-    pure fn filter_to_vec(pred: fn(a: A) -> bool) -> ~[A] {
-        iter::filter_to_vec(&self, pred)
+    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
+        iter::filter_to_vec(self, pred)
     }
-    pure fn map_to_vec<B>(op: fn(v: A) -> B) -> ~[B] {
-        iter::map_to_vec(&self, op)
-    }
-    pure fn to_vec() -> ~[A] { iter::to_vec(&self) }
-
-    pure fn flat_map_to_vec<B:Copy,IB:BaseIter<B>>(op: fn(A) -> IB) -> ~[B] {
-        iter::flat_map_to_vec(&self, op)
-    }
-
-    pub pure fn find(p: fn(a: A) -> bool) -> Option<A> {
-        iter::find(&self, p)
+    pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
+    pub pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
+        iter::find(self, f)
     }
 }
 
 impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {
-    pure fn min() -> A { iter::min(&self) }
-    pure fn max() -> A { iter::max(&self) }
+    pure fn min(&self) -> A { iter::min(self) }
+    pure fn max(&self) -> A { iter::max(self) }
 }
 
 impl<A:Copy> &[A] : iter::CopyableNonstrictIter<A> {
