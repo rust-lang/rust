@@ -26,6 +26,7 @@ use reflect::{MovePtr, MovePtrAdaptor, align};
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
 pub use managed::raw::BoxRepr;
+use dvec::DVec;
 
 /// Helpers
 
@@ -121,18 +122,35 @@ impl char : Repr {
 
 // New implementation using reflect::MovePtr
 
+enum VariantState {
+    Degenerate,
+    TagMatch,
+    TagMismatch,
+}
+
 pub struct ReprVisitor {
     mut ptr: *c_void,
+    ptr_stk: DVec<*c_void>,
+    var_stk: DVec<VariantState>,
     writer: @Writer
 }
 pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
-    ReprVisitor { ptr: ptr, writer: writer }
+    ReprVisitor { ptr: ptr,
+                  ptr_stk: DVec(),
+                  var_stk: DVec(),
+                  writer: writer }
 }
 
 impl ReprVisitor : MovePtr {
     #[inline(always)]
     fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
         self.ptr = adjustment(self.ptr);
+    }
+    fn push_ptr() {
+        self.ptr_stk.push(self.ptr);
+    }
+    fn pop_ptr() {
+        self.ptr = self.ptr_stk.pop();
     }
 }
 
@@ -146,6 +164,18 @@ impl ReprVisitor {
             f(transmute::<*c_void,&T>(copy self.ptr));
         }
         true
+    }
+
+    #[inline(always)]
+    fn bump(sz: uint) {
+      do self.move_ptr() |p| {
+            ((p as uint) + sz) as *c_void
+      };
+    }
+
+    #[inline(always)]
+    fn bump_past<T>() {
+        self.bump(sys::size_of::<T>());
     }
 
     #[inline(always)]
@@ -402,23 +432,79 @@ impl ReprVisitor : TyVisitor {
         true
     }
 
-    fn visit_enter_enum(_n_variants: uint,
+    fn visit_enter_enum(n_variants: uint,
                         _sz: uint, _align: uint) -> bool {
+        if n_variants == 1 {
+            self.var_stk.push(Degenerate)
+        } else {
+            self.var_stk.push(TagMatch)
+        }
         true
     }
     fn visit_enter_enum_variant(_variant: uint,
-                                _disr_val: int,
-                                _n_fields: uint,
-                                _name: &str) -> bool { true }
-    fn visit_enum_variant_field(_i: uint, inner: *TyDesc) -> bool {
-        self.visit_inner(inner)
+                                disr_val: int,
+                                n_fields: uint,
+                                name: &str) -> bool {
+        let mut write = false;
+        match self.var_stk.pop() {
+            Degenerate => {
+                write = true;
+                self.var_stk.push(Degenerate);
+            }
+            TagMatch | TagMismatch => {
+                do self.get::<int>() |t| {
+                    if disr_val == *t {
+                        write = true;
+                        self.var_stk.push(TagMatch);
+                    } else {
+                        self.var_stk.push(TagMismatch);
+                    }
+                };
+                self.bump_past::<int>();
+            }
+        }
+
+        if write {
+            self.writer.write_str(name);
+            if n_fields > 0 {
+                self.writer.write_char('(');
+            }
+        }
+        true
+    }
+    fn visit_enum_variant_field(i: uint, inner: *TyDesc) -> bool {
+        match self.var_stk.last() {
+            Degenerate | TagMatch => {
+                if i != 0 {
+                    self.writer.write_str(", ");
+                }
+                if ! self.visit_inner(inner) {
+                    return false;
+                }
+            }
+            TagMismatch => ()
+        }
+        true
     }
     fn visit_leave_enum_variant(_variant: uint,
                                 _disr_val: int,
-                                _n_fields: uint,
-                                _name: &str) -> bool { true }
+                                n_fields: uint,
+                                _name: &str) -> bool {
+        match self.var_stk.last() {
+            Degenerate | TagMatch => {
+                if n_fields > 0 {
+                    self.writer.write_char(')');
+                }
+            }
+            TagMismatch => ()
+        }
+        true
+    }
     fn visit_leave_enum(_n_variants: uint,
-                        _sz: uint, _align: uint) -> bool { true }
+                        _sz: uint, _align: uint) -> bool {
+        self.var_stk.pop();
+        true
+    }
 
     fn visit_enter_fn(_purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
