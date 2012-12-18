@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
+
 struct X { x: (), }
 
 impl X : Drop {

@@ -1,7 +1,7 @@
 #[forbid(default_methods)];
 
-trait Foo {
-    fn bar() { io::println("hi"); } //~ ERROR default methods are experimental
+trait Foo { //~ ERROR default methods are experimental
+    fn bar() { io::println("hi"); }
 }
 
 fn main() {}

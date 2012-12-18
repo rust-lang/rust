@@ -19,9 +19,9 @@ fn main() {
     let mut x = X(Right(main));
     do (&mut x).with |opt| {  //~ ERROR illegal borrow
         match opt {
-            &Right(f) => {
+            &Right(ref f) => {
                 x = X(Left((0,0)));
-                f()
+                (*f)()
             },
             _ => fail
         }
