@@ -1131,7 +1131,7 @@ A _trait_ describes a set of method types.
 Traits can include default implementations of methods,
 written in terms of some unknown [`self` type](#self-types);
 the `self` type may either be completely unspecified,
-or constrained by some other [trait type](#trait-types).
+or constrained by some other trait.
 
 Traits are implemented for specific types through separate [implementations](#implementations).
 
@@ -1176,7 +1176,7 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ~~~~
 
-Traits also define a [type](#trait-types) with the same name as the trait.
+Traits also define an [object type](#object-types) with the same name as the trait.
 Values of this type are created by [casting](#type-cast-expressions) pointer values
 (pointing to a type for which an implementation of the given trait is in scope)
 to pointers to the trait name, used as a type.
@@ -1542,7 +1542,7 @@ method_call_expr : expr '.' ident paren_expr_list ;
 A _method call_ consists of an expression followed by a single dot, an identifier, and a parenthesized expression-list.
 Method calls are resolved to methods on specific traits,
 either statically dispatching to a method if the exact `self`-type of the left-hand-side is known,
-or dynamically dispatching if the left-hand-side expression is an indirect [trait type](#trait-types).
+or dynamically dispatching if the left-hand-side expression is an indirect [object type](#object-types).
 
 
 ### Field expressions
@@ -2656,10 +2656,21 @@ let bo: Binop = add;
 x = bo(5,7);
 ~~~~~~~~
 
-### Trait types
+### Object types
 
-Every trait item (see [traits](#traits)) defines a type with the same name
-as the trait. For a trait `T`, cast expressions introduce values of type `T`:
+Every trait item (see [traits](#traits)) defines a type with the same name as the trait.
+This type is called the _object type_ of the trait.
+Object types permit "late binding" of methods, dispatched using _virtual method tables_ ("vtables").
+Whereas most calls to trait methods are "early bound" (statically resolved) to specific implementations at compile time,
+a call to a method on an object type is only resolved to a vtable entry at compile time.
+The actual implementation for each vtable entry can vary on an object-by-object basis.
+
+Given a pointer-typed expression `E` of type `&T`, `~T` or `@T`, where `T` implements trait `R`,
+casting `E` to the corresponding pointer type `&R`, `~R` or `@R` results in a value of the _object type_ `R`.
+This result is represented as a pair of pointers:
+the vtable pointer for the `T` implementation of `R`, and the pointer value of `E`.
+
+An example of an object type:
 
 ~~~~~~~~
 trait Printable {
@@ -2679,8 +2690,8 @@ fn main() {
 }
 ~~~~~~~~
 
-In this example, the trait `Printable` occurs as a type in both the type signature of
-`print`, and the cast expression in `main`.
+In this example, the trait `Printable` occurs as an object type in both the type signature of `print`,
+and the cast expression in `main`.
 
 ### Type parameters
 
