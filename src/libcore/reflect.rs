@@ -28,6 +28,8 @@ use libc::c_void;
  */
 pub trait MovePtr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void);
+    fn push_ptr();
+    fn pop_ptr();
 }
 
 /// Helper function for alignment calculation.
@@ -402,6 +404,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool {
+        self.inner.push_ptr();
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
                                                  n_fields, name) {
             return false;
@@ -410,7 +413,9 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
     }
 
     fn visit_enum_variant_field(i: uint, inner: *TyDesc) -> bool {
+        unsafe { self.align((*inner).align); }
         if ! self.inner.visit_enum_variant_field(i, inner) { return false; }
+        unsafe { self.bump((*inner).size); }
         true
     }
 
@@ -422,6 +427,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
                                                  n_fields, name) {
             return false;
         }
+        self.inner.pop_ptr();
         true
     }
 
@@ -429,6 +435,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
         if ! self.inner.visit_leave_enum(n_variants, sz, align) {
             return false;
         }
+        self.bump(sz);
         true
     }
 
