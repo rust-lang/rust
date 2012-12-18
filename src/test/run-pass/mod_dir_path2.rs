@@ -11,9 +11,9 @@
 // xfail-pretty
 // xfail-fast
 
-#[path2 = "mod_dir_simple"]
+#[path = "mod_dir_simple"]
 mod pancakes {
-    #[path2 = "test.rs"]
+    #[path = "test.rs"]
     pub mod syrup;
 }
 
