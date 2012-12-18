@@ -39,6 +39,7 @@ Version 0.5 (December 2012)
       * New condition handling system in `core::condition`
       * Timsort added to `std::sort`
       * New priority queue, `std::priority_queue`
+      * Pipes for serializable types, `std::flatpipes'
       * Serialization overhauled to be trait-based
       * Expanded `getopts` definitions
       * Moved futures to `std`
