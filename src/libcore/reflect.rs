@@ -32,12 +32,12 @@ pub trait MovePtr {
 
 /// Helper function for alignment calculation.
 #[inline(always)]
-fn align(size: uint, align: uint) -> uint {
+pub fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
 /// Adaptor to wrap around visitors implementing MovePtr.
-struct MovePtrAdaptor<V: TyVisitor MovePtr> {
+pub struct MovePtrAdaptor<V: TyVisitor MovePtr> {
     inner: V
 }
 pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
