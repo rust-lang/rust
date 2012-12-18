@@ -70,12 +70,12 @@ Constructors for flat pipes that using serialization-based flattening.
 */
 pub mod serial {
 
-    pub use DefaultSerializer = ebml::writer::Serializer;
-    pub use DefaultDeserializer = ebml::reader::Deserializer;
+    pub use DefaultEncoder = ebml::writer::Encoder;
+    pub use DefaultDecoder = ebml::reader::Decoder;
 
     use core::io::{Reader, Writer};
     use core::pipes::{Port, Chan};
-    use serialization::{Deserializable, Serializable};
+    use serialize::{Decodable, Encodable};
     use flatpipes::flatteners::{DeserializingUnflattener,
                                 SerializingFlattener};
     use flatpipes::flatteners::{deserialize_buffer, serialize_value};
@@ -83,60 +83,60 @@ pub mod serial {
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
 
     pub type ReaderPort<T, R> = FlatPort<
-        T, DeserializingUnflattener<DefaultDeserializer, T>,
+        T, DeserializingUnflattener<DefaultDecoder, T>,
         ReaderBytePort<R>>;
     pub type WriterChan<T, W> = FlatChan<
-        T, SerializingFlattener<DefaultSerializer, T>, WriterByteChan<W>>;
+        T, SerializingFlattener<DefaultEncoder, T>, WriterByteChan<W>>;
     pub type PipePort<T> = FlatPort<
-        T, DeserializingUnflattener<DefaultDeserializer, T>, PipeBytePort>;
+        T, DeserializingUnflattener<DefaultDecoder, T>, PipeBytePort>;
     pub type PipeChan<T> = FlatChan<
-        T, SerializingFlattener<DefaultSerializer, T>, PipeByteChan>;
+        T, SerializingFlattener<DefaultEncoder, T>, PipeByteChan>;
 
     /// Create a `FlatPort` from a `Reader`
-    pub fn reader_port<T: Deserializable<DefaultDeserializer>,
+    pub fn reader_port<T: Decodable<DefaultDecoder>,
                        R: Reader>(reader: R) -> ReaderPort<T, R> {
-        let unflat: DeserializingUnflattener<DefaultDeserializer, T> =
+        let unflat: DeserializingUnflattener<DefaultDecoder, T> =
             DeserializingUnflattener::new(
-                deserialize_buffer::<DefaultDeserializer, T>);
+                deserialize_buffer::<DefaultDecoder, T>);
         let byte_port = ReaderBytePort::new(move reader);
         FlatPort::new(move unflat, move byte_port)
     }
 
     /// Create a `FlatChan` from a `Writer`
-    pub fn writer_chan<T: Serializable<DefaultSerializer>,
+    pub fn writer_chan<T: Encodable<DefaultEncoder>,
                        W: Writer>(writer: W) -> WriterChan<T, W> {
-        let flat: SerializingFlattener<DefaultSerializer, T> =
+        let flat: SerializingFlattener<DefaultEncoder, T> =
             SerializingFlattener::new(
-                serialize_value::<DefaultSerializer, T>);
+                serialize_value::<DefaultEncoder, T>);
         let byte_chan = WriterByteChan::new(move writer);
         FlatChan::new(move flat, move byte_chan)
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
-    pub fn pipe_port<T: Deserializable<DefaultDeserializer>>(
+    pub fn pipe_port<T: Decodable<DefaultDecoder>>(
         port: Port<~[u8]>
     ) -> PipePort<T> {
-        let unflat: DeserializingUnflattener<DefaultDeserializer, T> =
+        let unflat: DeserializingUnflattener<DefaultDecoder, T> =
             DeserializingUnflattener::new(
-                deserialize_buffer::<DefaultDeserializer, T>);
+                deserialize_buffer::<DefaultDecoder, T>);
         let byte_port = PipeBytePort::new(move port);
         FlatPort::new(move unflat, move byte_port)
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
-    pub fn pipe_chan<T: Serializable<DefaultSerializer>>(
+    pub fn pipe_chan<T: Encodable<DefaultEncoder>>(
         chan: Chan<~[u8]>
     ) -> PipeChan<T> {
-        let flat: SerializingFlattener<DefaultSerializer, T> =
+        let flat: SerializingFlattener<DefaultEncoder, T> =
             SerializingFlattener::new(
-                serialize_value::<DefaultSerializer, T>);
+                serialize_value::<DefaultEncoder, T>);
         let byte_chan = PipeByteChan::new(move chan);
         FlatChan::new(move flat, move byte_chan)
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
-    pub fn pipe_stream<T: Serializable<DefaultSerializer>
-                          Deserializable<DefaultDeserializer>>(
+    pub fn pipe_stream<T: Encodable<DefaultEncoder>
+                          Decodable<DefaultDecoder>>(
                           ) -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = pipes::stream();
         return (pipe_port(move port), pipe_chan(move chan));
@@ -322,9 +322,9 @@ pub mod flatteners {
 
     use core::sys::size_of;
 
-    use serialization::{Serializer, Deserializer,
-                        Serializable, Deserializable};
-    use serialization::deserialize;
+    use serialize::{Encoder, Decoder,
+                        Encodable, Decodable};
+    use serialize::decode;
 
     use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
     use flatpipes::util::BufReader;
@@ -376,32 +376,32 @@ pub mod flatteners {
 
     pub type DeserializeBuffer<T> = ~fn(buf: &[u8]) -> T;
 
-    pub struct DeserializingUnflattener<D: Deserializer,
-                                        T: Deserializable<D>> {
+    pub struct DeserializingUnflattener<D: Decoder,
+                                        T: Decodable<D>> {
         deserialize_buffer: DeserializeBuffer<T>
     }
 
     pub type SerializeValue<T> = ~fn(val: &T) -> ~[u8];
 
-    pub struct SerializingFlattener<S: Serializer, T: Serializable<S>> {
+    pub struct SerializingFlattener<S: Encoder, T: Encodable<S>> {
         serialize_value: SerializeValue<T>
     }
 
-    pub impl<D: Deserializer, T: Deserializable<D>>
+    pub impl<D: Decoder, T: Decodable<D>>
         DeserializingUnflattener<D, T>: Unflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             (self.deserialize_buffer)(buf)
         }
     }
 
-    pub impl<S: Serializer, T: Serializable<S>>
+    pub impl<S: Encoder, T: Encodable<S>>
         SerializingFlattener<S, T>: Flattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
             (self.serialize_value)(&val)
         }
     }
 
-    pub impl<D: Deserializer, T: Deserializable<D>>
+    pub impl<D: Decoder, T: Decodable<D>>
         DeserializingUnflattener<D, T> {
 
         static fn new(deserialize_buffer: DeserializeBuffer<T>
@@ -412,7 +412,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<S: Serializer, T: Serializable<S>>
+    pub impl<S: Encoder, T: Encodable<S>>
         SerializingFlattener<S, T> {
 
         static fn new(serialize_value: SerializeValue<T>
@@ -428,21 +428,21 @@ pub mod flatteners {
     SerializingFlattener
     */
 
-    pub fn deserialize_buffer<D: Deserializer FromReader,
-                          T: Deserializable<D>>(buf: &[u8]) -> T {
+    pub fn deserialize_buffer<D: Decoder FromReader,
+                          T: Decodable<D>>(buf: &[u8]) -> T {
         let buf = vec::from_slice(buf);
         let buf_reader = @BufReader::new(move buf);
         let reader = buf_reader as @Reader;
         let deser: D = from_reader(reader);
-        deserialize(&deser)
+        decode(&deser)
     }
 
-    pub fn serialize_value<D: Serializer FromWriter,
-                       T: Serializable<D>>(val: &T) -> ~[u8] {
+    pub fn serialize_value<D: Encoder FromWriter,
+                       T: Encodable<D>>(val: &T) -> ~[u8] {
         let bytes_writer = @BytesWriter();
         let writer = bytes_writer as @Writer;
         let ser = from_writer(writer);
-        val.serialize(&ser);
+        val.encode(&ser);
         let bytes = bytes_writer.bytes.check_out(|bytes| move bytes);
         return move bytes;
     }
@@ -455,34 +455,34 @@ pub mod flatteners {
         static fn from_writer(w: Writer) -> self;
     }
 
-    impl json::Deserializer: FromReader {
-        static fn from_reader(r: Reader) -> json::Deserializer {
+    impl json::Decoder: FromReader {
+        static fn from_reader(r: Reader) -> json::Decoder {
             match json::from_reader(r) {
                 Ok(move json) => {
-                    json::Deserializer(move json)
+                    json::Decoder(move json)
                 }
                 Err(e) => fail fmt!("flatpipe: can't parse json: %?", e)
             }
         }
     }
 
-    impl json::Serializer: FromWriter {
-        static fn from_writer(w: Writer) -> json::Serializer {
-            json::Serializer(move w)
+    impl json::Encoder: FromWriter {
+        static fn from_writer(w: Writer) -> json::Encoder {
+            json::Encoder(move w)
         }
     }
 
-    impl ebml::reader::Deserializer: FromReader {
-        static fn from_reader(r: Reader) -> ebml::reader::Deserializer {
+    impl ebml::reader::Decoder: FromReader {
+        static fn from_reader(r: Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
-            ebml::reader::Deserializer(move doc)
+            ebml::reader::Decoder(move doc)
         }
     }
 
-    impl ebml::writer::Serializer: FromWriter {
-        static fn from_writer(w: Writer) -> ebml::writer::Serializer {
-            ebml::writer::Serializer(move w)
+    impl ebml::writer::Encoder: FromWriter {
+        static fn from_writer(w: Writer) -> ebml::writer::Encoder {
+            ebml::writer::Encoder(move w)
         }
     }
 
@@ -669,12 +669,12 @@ mod util {
 #[cfg(test)]
 mod test {
 
-    // XXX: json::Deserializer doesn't work because of problems related to
+    // XXX: json::Decoder doesn't work because of problems related to
     // its interior pointers
-    //use DefaultSerializer = json::Serializer;
-    //use DefaultDeserializer = json::Deserializer;
-    use DefaultSerializer = ebml::writer::Serializer;
-    use DefaultDeserializer = ebml::reader::Deserializer;
+    //use DefaultEncoder = json::Encoder;
+    //use DefaultDecoder = json::Decoder;
+    use DefaultEncoder = ebml::writer::Encoder;
+    use DefaultDecoder = ebml::reader::Decoder;
 
     use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
