@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn is_even(+x: uint) -> bool { (x % 2) == 0 }
+fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
 fn main() {
     assert [1, 3].filter_to_vec(is_even) == ~[];
