@@ -53,174 +53,121 @@ mod middle {
     mod trans {
         #[legacy_exports];
         #[legacy_exports]
-        #[path = "middle/trans/inline.rs"]
         mod inline;
         #[legacy_exports]
-        #[path = "middle/trans/monomorphize.rs"]
         mod monomorphize;
         #[legacy_exports]
-        #[path = "middle/trans/controlflow.rs"]
         mod controlflow;
         #[legacy_exports]
-        #[path = "middle/trans/glue.rs"]
         mod glue;
         #[legacy_exports]
-        #[path = "middle/trans/datum.rs"]
         mod datum;
         #[legacy_exports]
-        #[path = "middle/trans/callee.rs"]
         mod callee;
         #[legacy_exports]
-        #[path = "middle/trans/expr.rs"]
         mod expr;
         #[legacy_exports]
-        #[path = "middle/trans/common.rs"]
         mod common;
         #[legacy_exports]
-        #[path = "middle/trans/consts.rs"]
         mod consts;
         #[legacy_exports]
-        #[path = "middle/trans/type_of.rs"]
         mod type_of;
         #[legacy_exports]
-        #[path = "middle/trans/build.rs"]
         mod build;
         #[legacy_exports]
-        #[path = "middle/trans/base.rs"]
         mod base;
         #[legacy_exports]
-        #[path = "middle/trans/alt.rs"]
         mod alt;
         #[legacy_exports]
-        #[path = "middle/trans/uniq.rs"]
         mod uniq;
         #[legacy_exports]
-        #[path = "middle/trans/closure.rs"]
         mod closure;
         #[legacy_exports]
-        #[path = "middle/trans/tvec.rs"]
         mod tvec;
         #[legacy_exports]
-        #[path = "middle/trans/meth.rs"]
         mod meth;
         #[legacy_exports]
-        #[path = "middle/trans/foreign.rs"]
         mod foreign;
         #[legacy_exports]
-        #[path = "middle/trans/reflect.rs"]
         mod reflect;
         #[legacy_exports]
-        #[path = "middle/trans/shape.rs"]
         mod shape;
         #[legacy_exports]
-        #[path = "middle/trans/debuginfo.rs"]
         mod debuginfo;
         #[legacy_exports]
-        #[path = "middle/trans/type_use.rs"]
         mod type_use;
         #[legacy_exports]
-        #[path = "middle/trans/reachable.rs"]
         mod reachable;
-        #[path = "middle/trans/machine.rs"]
         mod machine;
     }
     #[legacy_exports]
-    #[path = "middle/ty.rs"]
     mod ty;
     #[legacy_exports]
-    #[path = "middle/resolve.rs"]
     mod resolve;
-    #[path = "middle/typeck/mod.rs"]
+    #[path2 = "typeck/mod.rs"]
     pub mod typeck;
     #[legacy_exports]
-    #[path = "middle/check_loop.rs"]
     mod check_loop;
     #[legacy_exports]
-    #[path = "middle/check_alt.rs"]
     mod check_alt;
     #[legacy_exports]
-    #[path = "middle/check_const.rs"]
     mod check_const;
     #[legacy_exports]
-    #[path = "middle/lint.rs"]
     mod lint;
-    #[path = "middle/borrowck/mod.rs"]
+    #[path2 = "borrowck/mod.rs"]
     pub mod borrowck;
     #[legacy_exports]
-    #[path = "middle/mem_categorization.rs"]
     mod mem_categorization;
     #[legacy_exports]
-    #[path = "middle/liveness.rs"]
     mod liveness;
     #[legacy_exports]
-    #[path = "middle/kind.rs"]
     mod kind;
     #[legacy_exports]
-    #[path = "middle/freevars.rs"]
     mod freevars;
     #[legacy_exports]
-    #[path = "middle/capture.rs"]
     mod capture;
     #[legacy_exports]
-    #[path = "middle/pat_util.rs"]
     mod pat_util;
     #[legacy_exports]
-    #[path = "middle/region.rs"]
     mod region;
     #[legacy_exports]
-    #[path = "middle/const_eval.rs"]
     mod const_eval;
     #[legacy_exports]
-    #[path = "middle/astencode.rs"]
     mod astencode;
     #[legacy_exports]
-    #[path = "middle/lang_items.rs"]
     mod lang_items;
     #[legacy_exports]
-    #[path = "middle/privacy.rs"]
     mod privacy;
-    #[path = "middle/mode.rs"]
     mod mode;
 }
 
 mod front {
     #[legacy_exports];
     #[legacy_exports]
-    #[path = "front/config.rs"]
     mod config;
     #[legacy_exports]
-    #[path = "front/test.rs"]
     mod test;
     #[legacy_exports]
-    #[path = "front/core_inject.rs"]
     mod core_inject;
     #[legacy_exports]
-    #[path = "front/intrinsic_inject.rs"]
     mod intrinsic_inject;
 }
 
 mod back {
     #[legacy_exports];
     #[legacy_exports]
-    #[path = "back/link.rs"]
     mod link;
     #[legacy_exports]
-    #[path = "back/abi.rs"]
     mod abi;
     #[legacy_exports]
-    #[path = "back/upcall.rs"]
     mod upcall;
     #[legacy_exports]
-    #[path = "back/x86.rs"]
     mod x86;
     #[legacy_exports]
-    #[path = "back/x86_64.rs"]
     mod x86_64;
     #[legacy_exports]
-    #[path = "back/rpath.rs"]
     mod rpath;
     #[legacy_exports]
-    #[path = "back/target_strs.rs"]
     mod target_strs;
 }
 
@@ -233,17 +180,14 @@ mod driver;
 mod util {
     #[legacy_exports];
     #[legacy_exports]
-    #[path = "util/common.rs"]
     mod common;
     #[legacy_exports]
-    #[path = "util/ppaux.rs"]
     mod ppaux;
 }
 
 mod lib {
     #[legacy_exports];
     #[legacy_exports]
-    #[path = "lib/llvm.rs"]
     mod llvm;
 }
 

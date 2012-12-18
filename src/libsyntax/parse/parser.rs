@@ -3018,7 +3018,7 @@ impl Parser {
     fn push_mod_path(id: ident, attrs: ~[ast::attribute]) {
         let default_path = self.sess.interner.get(id);
         let file_path = match ::attr::first_attr_value_str_by_name(
-            attrs, ~"path2") {
+            attrs, ~"path") {
 
             Some(ref d) => (*d),
             None => copy *default_path
@@ -3038,13 +3038,14 @@ impl Parser {
         let prefix = prefix.dir_path();
         let mod_path = Path(".").push_many(self.mod_path_stack);
         let default_path = self.sess.interner.get(id) + ~".rs";
+        // XXX path2 and path are synonyms. Remove path2 after snapshot
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path2") {
 
             Some(ref d) => mod_path.push(*d),
             None => match ::attr::first_attr_value_str_by_name(
                 outer_attrs, ~"path") {
-                Some(ref d) => Path(*d),
+                Some(ref d) => mod_path.push(*d),
                 None => mod_path.push(default_path)
             }
         };

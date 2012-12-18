@@ -11,12 +11,12 @@
 // xfail-pretty
 // xfail-fast
 
-#[path2 = "mod_dir_simple"]
+#[path = "mod_dir_simple"]
 mod biscuits {
     pub mod test;
 }
 
-#[path2 = "mod_dir_simple"]
+#[path = "mod_dir_simple"]
 mod gravy {
     pub mod test;
 }

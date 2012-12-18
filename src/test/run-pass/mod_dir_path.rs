@@ -12,7 +12,7 @@
 // xfail-fast
 
 mod mod_dir_simple {
-    #[path2 = "test.rs"]
+    #[path = "test.rs"]
     pub mod syrup;
 }
 
