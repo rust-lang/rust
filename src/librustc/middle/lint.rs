@@ -207,7 +207,7 @@ fn get_lint_dict() -> lint_dict {
         (~"default_methods",
          @{lint: default_methods,
            desc: ~"allow default methods",
-           default: forbid}),
+           default: deny}),
 
         (~"deprecated_self",
          @{lint: deprecated_self,
