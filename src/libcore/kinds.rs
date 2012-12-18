@@ -44,6 +44,15 @@ pub trait Copy {
     // Empty.
 }
 
+#[cfg(stage0)]
+#[lang="send"]
+pub trait Owned {
+    // Empty.
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 #[lang="owned"]
 pub trait Owned {
     // Empty.
@@ -54,6 +63,15 @@ pub trait Const {
     // Empty.
 }
 
+#[cfg(stage0)]
+#[lang="owned"]
+pub trait Durable {
+    // Empty.
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
 #[lang="durable"]
 pub trait Durable {
     // Empty.
