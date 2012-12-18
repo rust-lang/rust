@@ -80,20 +80,10 @@ impl <T: Ord> PriorityQueue<T> {
     }
 
     /// Consume the PriorityQueue and return the underlying vector
-    #[cfg(stage0)]
-    pure fn to_vec(self) -> ~[T] { fail }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     pure fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    #[cfg(stage0)]
-    pure fn to_sorted_vec(self) -> ~[T] { fail }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     pure fn to_sorted_vec(self) -> ~[T] {
         let mut q = self;
         let mut end = q.len();

@@ -10,10 +10,6 @@
 
 //! Operations and constants for `int`
 
-#[cfg(stage0)]
-pub use inst::pow;
-#[cfg(stage1)]
-#[cfg(stage2)]
 pub use self::inst::pow;
 
 mod inst {
