@@ -1,7 +1,7 @@
 Version 0.5 (December 2012)
 ---------------------------
 
-   * ~800 changes, numerous bugfixes
+   * ~900 changes, numerous bugfixes
 
    * Syntax changes
       * Removed `<-` move operator
