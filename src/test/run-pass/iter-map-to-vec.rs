@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn inc(+x: uint) -> uint { x + 1 }
+fn inc(x: &uint) -> uint { *x + 1 }
 
 fn main() {
     assert [1, 3].map_to_vec(inc) == ~[2, 4];
