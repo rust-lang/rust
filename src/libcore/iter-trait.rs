@@ -40,6 +40,14 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
+    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    pure fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: fn(&A) -> IB)
+        -> ~[B] {
+        iter::flat_map_to_vec(self, op)
+    }
+
 }
 
 impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
@@ -48,19 +56,11 @@ impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
 }
 
 impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
-    pure fn filter_to_vec(&self, pred: fn(a: A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
-    pure fn map_to_vec<B>(&self, op: fn(v: A) -> B) -> ~[B] {
-        iter::map_to_vec(self, op)
-    }
     pure fn to_vec(&self) -> ~[A] { iter::to_vec(self) }
-
-    pure fn flat_map_to_vec<B:Copy,IB:BaseIter<B>>(&self, op: fn(a: A) -> IB)
-        -> ~[B] {
-        iter::flat_map_to_vec(self, op)
-    }
-    pure fn find(&self, f: fn(A) -> bool) -> Option<A> {
+    pure fn find(&self, f: fn(&A) -> bool) -> Option<A> {
         iter::find(self, f)
     }
 }

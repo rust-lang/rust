@@ -115,7 +115,7 @@ fn parse_desc_should_parse_simple_doc_attributes() {
 
 pub fn parse_hidden(+attrs: ~[ast::attribute]) -> bool {
     do doc_metas(attrs).find |meta| {
-        match attr::get_meta_item_list(meta) {
+        match attr::get_meta_item_list(*meta) {
           Some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
             vec::is_not_empty(hiddens)
