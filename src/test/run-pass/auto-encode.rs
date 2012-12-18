@@ -22,16 +22,16 @@ use std::ebml;
 use EBReader = std::ebml::reader;
 use EBWriter = std::ebml::writer;
 use io::Writer;
-use std::serialization::{Serializable, Deserializable, deserialize};
+use std::serialize::{Encodable, Decodable, decode};
 use std::prettyprint;
 use std::time;
 
-fn test_prettyprint<A: Serializable<prettyprint::Serializer>>(
+fn test_prettyprint<A: Encodable<prettyprint::Encoder>>(
     a: &A,
     expected: &~str
 ) {
     let s = do io::with_str_writer |w| {
-        a.serialize(&prettyprint::Serializer(w))
+        a.encode(&prettyprint::Encoder(w))
     };
     debug!("s == %?", s);
     assert s == *expected;
@@ -39,20 +39,20 @@ fn test_prettyprint<A: Serializable<prettyprint::Serializer>>(
 
 fn test_ebml<A:
     Eq
-    Serializable<EBWriter::Serializer>
-    Deserializable<EBReader::Deserializer>
+    Encodable<EBWriter::Encoder>
+    Decodable<EBReader::Decoder>
 >(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = &EBWriter::Serializer(wr);
-        a1.serialize(ebml_w)
+        let ebml_w = &EBWriter::Encoder(wr);
+        a1.encode(ebml_w)
     };
     let d = EBReader::Doc(@move bytes);
-    let a2: A = deserialize(&EBReader::Deserializer(d));
+    let a2: A = decode(&EBReader::Decoder(d));
     assert *a1 == a2;
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum Expr {
     Val(uint),
     Plus(@Expr, @Expr),
@@ -126,8 +126,8 @@ impl CLike : cmp::Eq {
     pure fn ne(&self, other: &CLike) -> bool { !(*self).eq(other) }
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 type Spanned<T> = {lo: uint, hi: uint, node: T};
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
@@ -139,27 +139,27 @@ impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
     pure fn ne(&self, other: &Spanned<T>) -> bool { !(*self).eq(other) }
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 type SomeRec = {v: ~[uint]};
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum AnEnum = SomeRec;
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 struct Point {x: uint, y: uint}
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum Quark<T> {
     Top(T),
     Bottom(T)
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum CLike { A, B, C }
 
 fn main() {

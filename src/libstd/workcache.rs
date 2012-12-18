@@ -15,8 +15,7 @@ use either::{Right,Left,Either};
 
 use json;
 use sha1;
-use serialization::{Serializer,Serializable,
-                    Deserializer,Deserializable};
+use serialize::{Encoder, Encodable, Decoder, Decodable, decode};
 
 /**
 *
@@ -162,13 +161,13 @@ struct Work<T:Owned> {
     res: Option<Either<T,PortOne<(Exec,T)>>>
 }
 
-fn digest<T:Serializable<json::Serializer>
-            Deserializable<json::Deserializer>>(t: &T) -> ~str {
+fn digest<T:Encodable<json::Encoder>
+            Decodable<json::Decoder>>(t: &T) -> ~str {
     let sha = sha1::sha1();
     let s = do io::with_str_writer |wr| {
         // XXX: sha1 should be a writer itself, shouldn't
         // go via strings.
-        t.serialize(&json::Serializer(wr));
+        t.encode(&json::Encoder(wr));
     };
     sha.input_str(s);
     sha.result_str()
@@ -189,8 +188,8 @@ impl Context {
     }
 
     fn prep<T:Owned
-              Serializable<json::Serializer>
-              Deserializable<json::Deserializer>>(
+              Encodable<json::Encoder>
+              Decodable<json::Decoder>>(
                   @self,
                   fn_name:&str,
                   blk: fn((@mut Prep))->Work<T>) -> Work<T> {
@@ -237,8 +236,8 @@ impl Prep {
     }
 
     fn exec<T:Owned
-              Serializable<json::Serializer>
-              Deserializable<json::Deserializer>>(
+              Encodable<json::Encoder>
+              Decodable<json::Decoder>>(
                   @mut self, blk: ~fn(&Exec) -> T) -> Work<T> {
 
         let cached = self.ctxt.db.prepare(self.fn_name,
@@ -260,8 +259,7 @@ impl Prep {
 
                     let v : T = do io::with_str_reader(res) |rdr| {
                         let j = result::unwrap(json::from_reader(rdr));
-                        Deserializable::deserialize(
-                            &json::Deserializer(move j))
+                        Decodable::decode(&json::Decoder(move j))
                     };
                     return Work::new(self, move Left(move v));
                 }
@@ -284,8 +282,8 @@ impl Prep {
 }
 
 impl<T:Owned
-       Serializable<json::Serializer>
-       Deserializable<json::Deserializer>>
+       Encodable<json::Encoder>
+       Decodable<json::Decoder>>
     Work<T> {
     static fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         move Work { prep: p, res: Some(move e) }
@@ -294,8 +292,8 @@ impl<T:Owned
 
 // FIXME (#3724): movable self. This should be in impl Work.
 fn unwrap<T:Owned
-            Serializable<json::Serializer>
-            Deserializable<json::Deserializer>>(w: Work<T>) -> T {
+            Encodable<json::Encoder>
+            Decodable<json::Decoder>>(w: Work<T>) -> T {
 
     let mut ww = move w;
     let mut s = None;
@@ -312,7 +310,7 @@ fn unwrap<T:Owned
             };
 
             let s = do io::with_str_writer |wr| {
-                v.serialize(&json::Serializer(wr));
+                v.encode(&json::Encoder(wr));
             };
 
             ww.prep.ctxt.db.cache(ww.prep.fn_name,

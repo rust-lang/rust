@@ -31,8 +31,8 @@ extern mod rustrt {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 pub struct Timespec { sec: i64, nsec: i32 }
 
 impl Timespec {
@@ -83,8 +83,8 @@ pub fn tzset() {
     rustrt::rust_tzset();
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 pub struct Tm {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]

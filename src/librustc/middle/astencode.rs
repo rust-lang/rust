@@ -24,12 +24,11 @@ use util::ppaux::ty_to_str;
 
 use reader = std::ebml::reader;
 use std::ebml::reader::get_doc;
-use std::ebml::writer::Serializer;
+use std::ebml::writer::Encoder;
 use std::ebml;
 use std::map::HashMap;
-use std::serialization::{DeserializerHelpers, deserialize};
-use std::serialization::{Serializable, SerializerHelpers};
-use std::serialization;
+use std::serialize;
+use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers, decode};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -84,7 +83,7 @@ trait tr_intern {
 // Top-level methods.
 
 fn encode_inlined_item(ecx: @e::encode_ctxt,
-                       ebml_w: writer::Serializer,
+                       ebml_w: writer::Encoder,
                        path: ast_map::path,
                        ii: ast::inlined_item,
                        maps: maps) {
@@ -95,7 +94,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
     do ebml_w.wr_tag(c::tag_ast as uint) {
-        id_range.serialize(&ebml_w);
+        id_range.encode(&ebml_w);
         encode_ast(ebml_w, simplify_ast(ii));
         encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
     }
@@ -117,8 +116,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
       Some(ast_doc) => {
         debug!("> Decoding inlined fn: %s::?",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner));
-        let ast_dsr = &reader::Deserializer(ast_doc);
-        let from_id_range = deserialize(ast_dsr);
+        let ast_dsr = &reader::Decoder(ast_doc);
+        let from_id_range = decode(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
         let xcx = extended_decode_ctxt_(@{dcx: dcx,
                                           from_id_range: from_id_range,
@@ -194,24 +193,24 @@ impl span: tr {
     }
 }
 
-trait def_id_serializer_helpers {
+trait def_id_encoder_helpers {
     fn emit_def_id(did: ast::def_id);
 }
 
-impl<S: serialization::Serializer> S: def_id_serializer_helpers {
+impl<S: serialize::Encoder> S: def_id_encoder_helpers {
     fn emit_def_id(did: ast::def_id) {
-        did.serialize(&self)
+        did.encode(&self)
     }
 }
 
-trait def_id_deserializer_helpers {
+trait def_id_decoder_helpers {
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id;
 }
 
-impl<D: serialization::Deserializer> D: def_id_deserializer_helpers {
+impl<D: serialize::Decoder> D: def_id_decoder_helpers {
 
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
-        let did: ast::def_id = deserialize(&self);
+        let did: ast::def_id = decode(&self);
         did.tr(xcx)
     }
 }
@@ -231,9 +230,9 @@ impl<D: serialization::Deserializer> D: def_id_deserializer_helpers {
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
 
-fn encode_ast(ebml_w: writer::Serializer, item: ast::inlined_item) {
+fn encode_ast(ebml_w: writer::Encoder, item: ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_tree as uint) {
-        item.serialize(&ebml_w)
+        item.encode(&ebml_w)
     }
 }
 
@@ -287,8 +286,8 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 
 fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
     let chi_doc = par_doc[c::tag_tree as uint];
-    let d = &reader::Deserializer(chi_doc);
-    deserialize(d)
+    let d = &reader::Decoder(chi_doc);
+    decode(d)
 }
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
@@ -327,13 +326,13 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn encode_def(ebml_w: writer::Serializer, def: ast::def) {
-    def.serialize(&ebml_w)
+fn encode_def(ebml_w: writer::Encoder, def: ast::def) {
+    def.encode(&ebml_w)
 }
 
 fn decode_def(xcx: extended_decode_ctxt, doc: ebml::Doc) -> ast::def {
-    let dsr = &reader::Deserializer(doc);
-    let def: ast::def = deserialize(dsr);
+    let dsr = &reader::Decoder(doc);
+    let def: ast::def = decode(dsr);
     def.tr(xcx)
 }
 
@@ -421,17 +420,17 @@ impl ty::bound_region: tr {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(ebml_w: writer::Serializer, fv: @freevar_entry) {
-    (*fv).serialize(&ebml_w)
+fn encode_freevar_entry(ebml_w: writer::Encoder, fv: @freevar_entry) {
+    (*fv).encode(&ebml_w)
 }
 
-trait ebml_deserializer_helper {
+trait ebml_decoder_helper {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry;
 }
 
-impl reader::Deserializer: ebml_deserializer_helper {
+impl reader::Decoder: ebml_decoder_helper {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
-        let fv: freevar_entry = deserialize(&self);
+        let fv: freevar_entry = decode(&self);
         fv.tr(xcx)
     }
 }
@@ -449,23 +448,23 @@ trait read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry;
 }
 
-fn serialize_method_map_entry(ecx: @e::encode_ctxt,
-                              ebml_w: writer::Serializer,
+fn encode_method_map_entry(ecx: @e::encode_ctxt,
+                              ebml_w: writer::Encoder,
                               mme: method_map_entry) {
     do ebml_w.emit_rec {
         do ebml_w.emit_field(~"self_arg", 0u) {
             ebml_w.emit_arg(ecx, mme.self_arg);
         }
         do ebml_w.emit_field(~"explicit_self", 2u) {
-            mme.explicit_self.serialize(&ebml_w);
+            mme.explicit_self.encode(&ebml_w);
         }
         do ebml_w.emit_field(~"origin", 1u) {
-            mme.origin.serialize(&ebml_w);
+            mme.origin.encode(&ebml_w);
         }
     }
 }
 
-impl reader::Deserializer: read_method_map_entry_helper {
+impl reader::Decoder: read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
         do self.read_rec {
             {self_arg:
@@ -474,12 +473,12 @@ impl reader::Deserializer: read_method_map_entry_helper {
                  }),
              explicit_self:
                  self.read_field(~"explicit_self", 2u, || {
-                    let self_type: ast::self_ty_ = deserialize(&self);
+                    let self_type: ast::self_ty_ = decode(&self);
                     self_type
                  }),
              origin:
                  self.read_field(~"origin", 1u, || {
-                     let method_origin: method_origin = deserialize(&self);
+                     let method_origin: method_origin = decode(&self);
                      method_origin.tr(xcx)
                  })}
         }
@@ -509,11 +508,11 @@ impl method_origin: tr {
 // Encoding and decoding vtable_res
 
 fn encode_vtable_res(ecx: @e::encode_ctxt,
-                     ebml_w: writer::Serializer,
+                     ebml_w: writer::Encoder,
                      dr: typeck::vtable_res) {
-    // can't autogenerate this code because automatic serialization of
+    // can't autogenerate this code because automatic code of
     // ty::t doesn't work, and there is no way (atm) to have
-    // hand-written serialization routines combine with auto-generated
+    // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
     do ebml_w.emit_from_vec(*dr) |vtable_origin| {
         encode_vtable_origin(ecx, ebml_w, *vtable_origin)
@@ -521,7 +520,7 @@ fn encode_vtable_res(ecx: @e::encode_ctxt,
 }
 
 fn encode_vtable_origin(ecx: @e::encode_ctxt,
-                      ebml_w: writer::Serializer,
+                      ebml_w: writer::Encoder,
                       vtable_origin: typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
         match vtable_origin {
@@ -563,12 +562,12 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
 
 }
 
-trait vtable_deserialization_helpers {
+trait vtable_decoder_helpers {
     fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res;
     fn read_vtable_origin(xcx: extended_decode_ctxt) -> typeck::vtable_origin;
 }
 
-impl reader::Deserializer: vtable_deserialization_helpers {
+impl reader::Decoder: vtable_decoder_helpers {
     fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res {
         @self.read_to_vec(|| self.read_vtable_origin(xcx) )
     }
@@ -645,7 +644,7 @@ trait ebml_writer_helpers {
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty);
 }
 
-impl writer::Serializer: ebml_writer_helpers {
+impl writer::Encoder: ebml_writer_helpers {
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t) {
         do self.emit_opaque {
             e::write_type(ecx, self, ty)
@@ -684,7 +683,7 @@ impl writer::Serializer: ebml_writer_helpers {
                 }
             }
             do self.emit_field(~"region_param", 1u) {
-                tpbt.region_param.serialize(&self);
+                tpbt.region_param.encode(&self);
             }
             do self.emit_field(~"ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
@@ -698,7 +697,7 @@ trait write_tag_and_id {
     fn id(id: ast::node_id);
 }
 
-impl writer::Serializer: write_tag_and_id {
+impl writer::Encoder: write_tag_and_id {
     fn tag(tag_id: c::astencode_tag, f: fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
@@ -710,7 +709,7 @@ impl writer::Serializer: write_tag_and_id {
 
 fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
                              maps: maps,
-                             ebml_w: writer::Serializer,
+                             ebml_w: writer::Encoder,
                              ii: ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_table as uint) {
         ast_util::visit_ids_for_inlined_item(
@@ -726,7 +725,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
 
 fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
                              maps: maps,
-                             ebml_w: writer::Serializer,
+                             ebml_w: writer::Encoder,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
 
@@ -736,7 +735,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_def) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (*def).serialize(&ebml_w)
+                (*def).encode(&ebml_w)
             }
         }
     }
@@ -813,7 +812,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
                 do ebml_w.emit_from_vec((*m).get()) |id| {
-                    id.serialize(&ebml_w);
+                    id.encode(&ebml_w);
                 }
             }
         }
@@ -823,7 +822,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                serialize_method_map_entry(ecx, ebml_w, *mme)
+                encode_method_map_entry(ecx, ebml_w, *mme)
             }
         }
     }
@@ -841,7 +840,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_adjustments) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (**adj).serialize(&ebml_w)
+                (**adj).encode(&ebml_w)
             }
         }
     }
@@ -856,7 +855,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_value_mode) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (*vm).serialize(&ebml_w)
+                (*vm).encode(&ebml_w)
             }
         }
     }
@@ -874,7 +873,7 @@ impl ebml::Doc: doc_decoder_helpers {
     }
 }
 
-trait ebml_deserializer_decoder_helpers {
+trait ebml_decoder_decoder_helpers {
     fn read_arg(xcx: extended_decode_ctxt) -> ty::arg;
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t;
     fn read_tys(xcx: extended_decode_ctxt) -> ~[ty::t];
@@ -883,7 +882,7 @@ trait ebml_deserializer_decoder_helpers {
                                 -> ty::ty_param_bounds_and_ty;
 }
 
-impl reader::Deserializer: ebml_deserializer_decoder_helpers {
+impl reader::Decoder: ebml_decoder_decoder_helpers {
 
     fn read_arg(xcx: extended_decode_ctxt) -> ty::arg {
         do self.read_opaque |doc| {
@@ -927,7 +926,7 @@ impl reader::Deserializer: ebml_deserializer_decoder_helpers {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
                 region_param: self.read_field(~"region_param", 1u, || {
-                    deserialize(&self)
+                    decode(&self)
                 }),
                 ty: self.read_field(~"ty", 2u, || {
                     self.read_ty(xcx)
@@ -955,7 +954,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.tcx.legacy_boxed_traits.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val as uint];
-            let val_dsr = &reader::Deserializer(val_doc);
+            let val_dsr = &reader::Decoder(val_doc);
             if tag == (c::tag_table_def as uint) {
                 let def = decode_def(xcx, val_doc);
                 dcx.tcx.def_map.insert(id, def);
@@ -991,11 +990,11 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
             } else if tag == (c::tag_table_adjustments as uint) {
-                let adj: @ty::AutoAdjustment = @deserialize(val_dsr);
+                let adj: @ty::AutoAdjustment = @decode(val_dsr);
                 adj.tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
             } else if tag == (c::tag_table_value_mode as uint) {
-                let vm: ty::ValueMode = deserialize(val_dsr);
+                let vm: ty::ValueMode = decode(val_dsr);
                 dcx.tcx.value_modes.insert(id, vm);
             } else {
                 xcx.dcx.tcx.sess.bug(
@@ -1011,17 +1010,17 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
 // Testing of astencode_gen
 
 #[cfg(test)]
-fn encode_item_ast(ebml_w: writer::Serializer, item: @ast::item) {
+fn encode_item_ast(ebml_w: writer::Encoder, item: @ast::item) {
     do ebml_w.wr_tag(c::tag_tree as uint) {
-        (*item).serialize(&ebml_w)
+        (*item).encode(&ebml_w)
     }
 }
 
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
     let chi_doc = par_doc[c::tag_tree as uint];
-    let d = &reader::Deserializer(chi_doc);
-    @deserialize(d)
+    let d = &reader::Decoder(chi_doc);
+    @decode(d)
 }
 
 #[cfg(test)]
@@ -1060,17 +1059,17 @@ fn mk_ctxt() -> fake_ext_ctxt {
 fn roundtrip(in_item: Option<@ast::item>) {
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
-        let ebml_w = writer::Serializer(wr);
+        let ebml_w = writer::Encoder(wr);
         encode_item_ast(ebml_w, in_item);
     };
     let ebml_doc = reader::Doc(@bytes);
     let out_item = decode_item_ast(ebml_doc);
 
     let exp_str = do io::with_str_writer |w| {
-        in_item.serialize(&std::prettyprint::Serializer(w))
+        in_item.encode(&std::prettyprint::Encoder(w))
     };
     let out_str = do io::with_str_writer |w| {
-        out_item.serialize(&std::prettyprint::Serializer(w))
+        out_item.encode(&std::prettyprint::Encoder(w))
     };
 
     debug!("expected string: %s", exp_str);

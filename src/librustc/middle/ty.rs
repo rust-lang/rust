@@ -106,7 +106,7 @@ export ty_estr, mk_estr, type_is_str;
 export ty_evec, mk_evec, type_is_vec;
 export ty_unboxed_vec, mk_unboxed_vec, mk_mut_unboxed_vec;
 export vstore, vstore_fixed, vstore_uniq, vstore_box, vstore_slice;
-export serialize_vstore, deserialize_vstore;
+export encode_vstore, decode_vstore;
 export ty_nil, mk_nil, type_is_nil;
 export ty_trait, mk_trait;
 export ty_param, mk_param, ty_params_to_tys;
@@ -238,8 +238,8 @@ type method = {ident: ast::ident,
 
 type mt = {ty: t, mutbl: ast::mutability};
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -255,8 +255,8 @@ type field_ty = {
 };
 
 /// How an lvalue is to be used.
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 pub enum ValueMode {
     ReadValue,  // Non-destructively read the value; do not copy or move.
     CopyValue,  // Copy the value.
@@ -307,8 +307,8 @@ enum ast_ty_to_ty_cache_entry {
 
 type opt_region_variance = Option<region_variance>;
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
 impl region_variance : cmp::Eq {
@@ -325,23 +325,23 @@ impl region_variance : cmp::Eq {
     pure fn ne(&self, other: &region_variance) -> bool { !(*self).eq(other) }
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 pub type AutoAdjustment = {
     autoderefs: uint,
     autoref: Option<AutoRef>
 };
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 pub type AutoRef = {
     kind: AutoRefKind,
     region: Region,
     mutbl: ast::mutability
 };
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum AutoRefKind {
     /// Convert from T to &T
     AutoPtr,
@@ -544,8 +544,8 @@ impl param_ty : to_bytes::IterBytes {
 
 
 /// Representation of regions:
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -573,8 +573,8 @@ enum Region {
     re_infer(InferRegion)
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &self/T)
     br_self,
@@ -712,8 +712,8 @@ enum TyVid = uint;
 enum IntVid = uint;
 enum FloatVid = uint;
 enum FnVid = uint;
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum RegionVid = uint;
 
 enum InferTy {
@@ -732,8 +732,8 @@ impl InferTy : to_bytes::IterBytes {
     }
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, bound_region)
