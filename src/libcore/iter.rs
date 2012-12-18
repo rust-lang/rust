@@ -33,6 +33,9 @@ pub trait ExtendedIter<A> {
     pure fn any(&self, blk: fn(&A) -> bool) -> bool;
     pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B;
     pure fn position(&self, f: fn(&A) -> bool) -> Option<uint>;
+    pure fn map_to_vec<B>(&self, op: fn(&A) -> B) -> ~[B];
+    pure fn flat_map_to_vec<B,IB: BaseIter<B>>(&self, op: fn(&A) -> IB)
+        -> ~[B];
 }
 
 pub trait EqIter<A:Eq> {
@@ -45,12 +48,9 @@ pub trait Times {
 }
 
 pub trait CopyableIter<A:Copy> {
-    pure fn filter_to_vec(&self, pred: fn(a: A) -> bool) -> ~[A];
-    pure fn map_to_vec<B>(&self, op: fn(v: A) -> B) -> ~[B];
-    pure fn flat_map_to_vec<B:Copy,IB: BaseIter<B>>(&self, op: fn(A) -> IB)
-        -> ~[B];
+    pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A];
     pure fn to_vec(&self) -> ~[A];
-    pure fn find(&self, p: fn(A) -> bool) -> Option<A>;
+    pure fn find(&self, p: fn(&A) -> bool) -> Option<A>;
 }
 
 pub trait CopyableOrderedIter<A:Copy Ord> {
@@ -82,11 +82,11 @@ pub trait Buildable<A> {
      *             onto the sequence being constructed.
      */
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(v: A))) -> self;
+                                builder: fn(push: pure fn(A))) -> self;
 }
 
 pub pure fn eachi<A,IA:BaseIter<A>>(self: &IA,
-                                    blk: fn(uint, v: &A) -> bool) {
+                                    blk: fn(uint, &A) -> bool) {
     let mut i = 0;
     for self.each |a| {
         if !blk(i, a) { break; }
@@ -111,30 +111,30 @@ pub pure fn any<A,IA:BaseIter<A>>(self: &IA,
 }
 
 pub pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(
-    self: &IA, prd: fn(a: A) -> bool) -> ~[A] {
+    self: &IA, prd: fn(&A) -> bool) -> ~[A] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            if prd(*a) { push(*a); }
+            if prd(a) { push(*a); }
         }
     }
 }
 
-pub pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: &IA,
-                                                op: fn(v: A) -> B)
+pub pure fn map_to_vec<A,B,IA:BaseIter<A>>(self: &IA,
+                                           op: fn(&A) -> B)
     -> ~[B] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            push(op(*a));
+            push(op(a));
         }
     }
 }
 
-pub pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
-    self: &IA, op: fn(a: A) -> IB) -> ~[B] {
+pub pure fn flat_map_to_vec<A,B,IA:BaseIter<A>,IB:BaseIter<B>>(
+    self: &IA, op: fn(&A) -> IB) -> ~[B] {
     do vec::build |push| {
         for self.each |a| {
-            for op(*a).each |b| {
-                push(*b);
+            for op(a).each |&b| {
+                push(b);
             }
         }
     }
@@ -223,9 +223,9 @@ pub pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
 }
 
 pub pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
-                                   f: fn(A) -> bool) -> Option<A> {
+                                   f: fn(&A) -> bool) -> Option<A> {
     for self.each |i| {
-        if f(*i) { return Some(*i) }
+        if f(i) { return Some(*i) }
     }
     return None;
 }
@@ -243,7 +243,7 @@ pub pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
  *             onto the sequence being constructed.
  */
 #[inline(always)]
-pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(v: A)))
+pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(A)))
     -> B {
     Buildable::build_sized(4, builder)
 }
@@ -264,7 +264,7 @@ pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(v: A)))
 #[inline(always)]
 pub pure fn build_sized_opt<A,B: Buildable<A>>(
     size: Option<uint>,
-    builder: fn(push: pure fn(v: A))) -> B {
+    builder: fn(push: pure fn(A))) -> B {
 
     Buildable::build_sized(size.get_default(4), builder)
 }

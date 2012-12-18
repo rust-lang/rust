@@ -861,7 +861,7 @@ impl LookupContext {
         -> Option<method_map_entry>
     {
         let relevant_candidates =
-            candidates.filter_to_vec(|c| self.is_relevant(self_ty, &c));
+            candidates.filter_to_vec(|c| self.is_relevant(self_ty, c));
 
         let relevant_candidates = self.merge_candidates(relevant_candidates);
 
