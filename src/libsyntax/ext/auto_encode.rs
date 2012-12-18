@@ -818,6 +818,8 @@ fn mk_deser_fields(
                     cx.expr_path(span, ~[
                         cx.ident_of(~"std"),
                         cx.ident_of(~"serialize"),
+                        cx.ident_of(~"traits"),
+                        cx.ident_of(~"Decodable"),
                         cx.ident_of(~"decode"),
                     ]),
                     ~[cx.expr_var(span, ~"__d")]
