@@ -12,8 +12,8 @@ use util::interner;
 use util::interner::Interner;
 use std::map::HashMap;
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum binop {
     PLUS,
     MINUS,
@@ -27,8 +27,8 @@ enum binop {
     SHR,
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -85,8 +85,8 @@ enum Token {
     EOF,
 }
 
-#[auto_serialize]
-#[auto_deserialize]
+#[auto_encode]
+#[auto_decode]
 /// For interpolation during macro expansion.
 enum nonterminal {
     nt_item(@ast::item),
@@ -351,7 +351,7 @@ impl ident_interner {
 }
 
 /* Key for thread-local data for sneaking interner information to the
- * serializer/deserializer. It sounds like a hack because it is one.
+ * encoder/decoder. It sounds like a hack because it is one.
  * Bonus ultra-hack: functions as keys don't work across crates,
  * so we have to use a unique number. See taskgroup_key! in task.rs
  * for another case of this. */

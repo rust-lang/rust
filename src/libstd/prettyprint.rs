@@ -12,17 +12,17 @@
 
 use io::Writer;
 use io::WriterUtil;
-use serialization;
+use serialize;
 
-pub struct Serializer {
+pub struct Encoder {
     wr: io::Writer,
 }
 
-pub fn Serializer(wr: io::Writer) -> Serializer {
-    Serializer { wr: wr }
+pub fn Encoder(wr: io::Writer) -> Encoder {
+    Encoder { wr: wr }
 }
 
-pub impl Serializer: serialization::Serializer {
+pub impl Encoder: serialize::Encoder {
     fn emit_nil(&self) {
         self.wr.write_str(~"()")
     }

@@ -25,7 +25,7 @@ use reader = std::ebml::reader;
 use std::ebml;
 use std::map::HashMap;
 use std::map;
-use std::serialization::deserialize;
+use std::serialize::decode;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
@@ -284,7 +284,7 @@ fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        deserialize(&reader::Deserializer(*doc))
+        decode(&reader::Decoder(*doc))
     })
 }
 
