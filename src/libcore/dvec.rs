@@ -110,6 +110,9 @@ priv impl<A> DVec<A> {
             self.data = move data;
         }
     }
+
+    #[inline(always)]
+    fn unwrap(self) -> ~[A] { unwrap(self) }
 }
 
 // In theory, most everything should work with any A, but in practice
