@@ -441,6 +441,8 @@ pub fn loop_leaves(rope: Rope, it: fn(node::Leaf) -> bool) -> bool{
 
 pub mod iterator {
     pub mod leaf {
+        use rope::node;
+
         pub fn start(rope: Rope) -> node::leaf_iterator::T {
             match (rope) {
               node::Empty      => return node::leaf_iterator::empty(),
@@ -452,6 +454,8 @@ pub mod iterator {
         }
     }
     pub mod char {
+        use rope::node;
+
         pub fn start(rope: Rope) -> node::char_iterator::T {
             match (rope) {
               node::Empty      => return node::char_iterator::empty(),
@@ -543,7 +547,8 @@ pub fn char_at(rope: Rope, pos: uint) -> char {
 /*
  Section: Implementation
 */
-mod node {
+pub mod node {
+    use rope::node;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1153,6 +1158,8 @@ mod node {
     }
 
     pub mod char_iterator {
+        use rope::node::leaf_iterator;
+
         pub type T = {
             leaf_iterator: leaf_iterator::T,
             mut leaf:  Option<Leaf>,

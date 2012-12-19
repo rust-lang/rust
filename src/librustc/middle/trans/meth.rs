@@ -9,16 +9,24 @@
 // except according to those terms.
 
 use back::{link, abi};
+use driver;
 use lib::llvm::llvm::LLVMGetParam;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
+use lib;
 use metadata::csearch;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::expr::{SaveIn, Ignore};
+use middle::trans::expr;
+use middle::trans::glue;
+use middle::trans::inline;
+use middle::trans::monomorphize;
 use middle::trans::type_of::*;
+use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;

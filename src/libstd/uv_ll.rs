@@ -32,8 +32,8 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use libc::size_t;
-use ptr::to_unsafe_ptr;
+use core::libc::size_t;
+use core::ptr::to_unsafe_ptr;
 
 // libuv struct mappings
 pub type uv_ip4_addr = {

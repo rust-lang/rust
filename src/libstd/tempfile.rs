@@ -12,9 +12,6 @@
 
 #[forbid(deprecated_mode)];
 
-use core::option;
-use option::{None, Some};
-
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let r = rand::Rng();
     let mut i = 0u;

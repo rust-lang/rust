@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+
 use serialization;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
@@ -54,6 +55,7 @@ enum EbmlSerializerTag {
 // --------------------------------------
 
 pub mod reader {
+    use serialization;
 
     // ebml reading
 
@@ -271,7 +273,7 @@ pub mod reader {
         fn read_u8 (&self) -> u8  { doc_as_u8 (self.next_doc(EsU8 )) }
         fn read_uint(&self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
-            if v > (core::uint::max_value as u64) {
+            if v > (::core::uint::max_value as u64) {
                 fail fmt!("uint %? too large for this architecture", v);
             }
             v as uint
@@ -546,7 +548,7 @@ pub mod writer {
         }
     }
 
-    impl Serializer: serialization::Serializer {
+    impl Serializer: ::serialization::Serializer {
         fn emit_nil(&self) {}
 
         fn emit_uint(&self, v: uint) {

@@ -10,17 +10,21 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use syntax::diagnostic::span_handler;
-use syntax::{ast, ast_util};
-use syntax::attr;
-use syntax::visit;
-use syntax::codemap::span;
-use std::map::HashMap;
-use syntax::print::pprust;
-use metadata::filesearch::FileSearch;
+use metadata::cstore;
 use metadata::common::*;
-use dvec::DVec;
+use metadata::decoder;
+use metadata::filesearch::FileSearch;
+use metadata::loader;
+
+use core::dvec::DVec;
+use syntax::attr;
+use syntax::codemap::span;
+use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
+use syntax::print::pprust;
+use syntax::visit;
+use syntax::{ast, ast_util};
+use std::map::HashMap;
 
 export read_crates;
 

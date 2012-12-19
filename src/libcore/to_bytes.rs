@@ -18,7 +18,9 @@ The `ToBytes` and `IterBytes` traits
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use io;
 use io::Writer;
+use str;
 
 pub type Cb = fn(buf: &[const u8]) -> bool;
 

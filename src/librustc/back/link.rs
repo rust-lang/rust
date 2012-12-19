@@ -8,24 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_int, c_uint, c_char};
+use back::rpath;
 use driver::session;
-use session::Session;
 use lib::llvm::llvm;
-use syntax::attr;
-use middle::ty;
+use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
+use lib::llvm::{PassManagerRef, FileType};
+use lib;
+use metadata::common::link_meta;
+use metadata::filesearch;
 use metadata::{encoder, cstore};
 use middle::trans::common::crate_ctxt;
-use metadata::common::link_meta;
+use middle::ty;
+use session::Session;
+use session;
+use util::ppaux;
+
+use core::io::{Writer, WriterUtil};
+use core::libc::{c_int, c_uint, c_char};
 use std::map::HashMap;
 use std::sha1::sha1;
 use syntax::ast;
-use syntax::print::pprust;
-use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
-        PassManagerRef, FileType};
-use metadata::filesearch;
 use syntax::ast_map::{path, path_mod, path_name};
-use io::{Writer, WriterUtil};
+use syntax::attr;
+use syntax::print::pprust;
 
 enum output_type {
     output_type_none,
@@ -65,8 +70,15 @@ fn WriteOutputFile(sess: Session,
     }
 }
 
-mod jit {
+pub mod jit {
     #[legacy_exports];
+
+    use lib::llvm::llvm;
+    use metadata::cstore;
+
+    use core::cast;
+    use core::ptr;
+
     #[nolink]
     #[abi = "rust-intrinsic"]
     extern mod rusti {
@@ -133,6 +145,12 @@ mod jit {
 
 mod write {
     #[legacy_exports];
+
+    use back::link::jit;
+    use driver::session;
+    use lib::llvm::llvm;
+    use lib;
+
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
                ot == output_type_exe {
@@ -609,7 +627,7 @@ fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
                                      t: ty::t, name: ~str) ->
    ~str {
-    let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
+    let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
                   ~[path_name(ccx.sess.ident_of(name)),

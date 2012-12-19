@@ -14,6 +14,11 @@
 
 //! Operations and constants for `f64`
 
+use cmath;
+use cmp;
+use libc;
+use num;
+
 pub use cmath::c_double_utils::*;
 pub use cmath::c_double_targ_consts::*;
 

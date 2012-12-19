@@ -17,7 +17,7 @@
  * in std.
  */
 
-use private::{Exclusive, exclusive};
+use core::private::{Exclusive, exclusive};
 
 /****************************************************************************
  * Internals

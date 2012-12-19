@@ -15,10 +15,12 @@
 
 //! json serialization
 
-use core::cmp::{Eq, Ord};
-use io::{WriterUtil, ReaderUtil};
-use send_map::linear;
+use serialization;
 use sort::Sort;
+
+use core::cmp::{Eq, Ord};
+use core::io::{WriterUtil, ReaderUtil};
+use core::send_map::linear;
 
 /// Represents a json value
 pub enum Json {

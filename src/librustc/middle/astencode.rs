@@ -20,6 +20,7 @@ use middle::freevars::freevar_entry;
 use middle::typeck::{method_origin, method_map_entry, vtable_res};
 use middle::typeck::{vtable_origin};
 use middle::{ty, typeck};
+use middle;
 use util::ppaux::ty_to_str;
 
 use reader = std::ebml::reader;
@@ -41,6 +42,7 @@ use syntax::fold;
 use syntax::parse;
 use syntax::print::pprust;
 use syntax::visit;
+use syntax;
 use writer = std::ebml::writer;
 
 export maps;

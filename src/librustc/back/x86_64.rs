@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use back::target_strs;
 use driver::session;
-use session::sess_os_to_meta_os;
 use metadata::loader::meta_section_name;
+use session::sess_os_to_meta_os;
 
 fn get_target_strs(target_os: session::os) -> target_strs::t {
     return {

@@ -45,6 +45,8 @@ let unwrapped_msg = match move msg {
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
+use option;
+use util;
 
 /// The option type
 #[deriving_eq]

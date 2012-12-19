@@ -88,8 +88,11 @@ node twice.
 
 */
 
-use ext::base::*;
+use ast_util;
+use attr;
 use codemap::span;
+use ext::base::*;
+
 use std::map;
 use std::map::HashMap;
 
@@ -259,9 +262,18 @@ priv impl ext_ctxt {
         @{span: span, global: false, idents: strs, rp: None, types: ~[]}
     }
 
+    fn path_global(span: span, strs: ~[ast::ident]) -> @ast::path {
+        @{span: span, global: true, idents: strs, rp: None, types: ~[]}
+    }
+
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::Ty]) -> @ast::path {
         @{span: span, global: false, idents: strs, rp: None, types: tps}
+    }
+
+    fn path_tps_global(span: span, strs: ~[ast::ident],
+                       tps: ~[@ast::Ty]) -> @ast::path {
+        @{span: span, global: true, idents: strs, rp: None, types: tps}
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -332,6 +344,10 @@ priv impl ext_ctxt {
 
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
+    }
+
+    fn expr_path_global(span: span, strs: ~[ast::ident]) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
     fn expr_var(span: span, var: ~str) -> @ast::expr {

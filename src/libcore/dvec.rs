@@ -23,8 +23,10 @@ Note that recursive use is not permitted.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast;
 use cast::reinterpret_cast;
 use ptr::null;
+use vec;
 
 /**
  * A growable, modifiable vector type that accumulates elements into a

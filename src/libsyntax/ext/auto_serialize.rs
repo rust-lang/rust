@@ -88,8 +88,14 @@ node twice.
 
 */
 
-use ext::base::*;
+use ast;
+use attr;
+use ast_util;
 use codemap::span;
+use codemap;
+use ext::base::*;
+use print;
+
 use std::map;
 use std::map::HashMap;
 
@@ -291,7 +297,7 @@ fn mk_ser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__S"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -303,7 +309,7 @@ fn mk_ser_impl(
     );
 
     // Make a path to the std::serialization::Serializable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -335,7 +341,7 @@ fn mk_deser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__D"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -347,7 +353,7 @@ fn mk_deser_impl(
     );
 
     // Make a path to the std::serialization::Deserializable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -682,7 +688,7 @@ fn mk_deser_fields(
             cx.expr_blk(
                 cx.expr_call(
                     span,
-                    cx.expr_path(span, ~[
+                    cx.expr_path_global(span, ~[
                         cx.ident_of(~"std"),
                         cx.ident_of(~"serialization"),
                         cx.ident_of(~"deserialize"),
@@ -885,7 +891,7 @@ fn mk_enum_deser_variant_nary(
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
-                cx.expr_path(span, ~[
+                cx.expr_path_global(span, ~[
                     cx.ident_of(~"std"),
                     cx.ident_of(~"serialization"),
                     cx.ident_of(~"deserialize"),

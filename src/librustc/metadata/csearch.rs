@@ -11,10 +11,12 @@
 // Searching for information from the cstore
 
 use metadata::common::*;
+use metadata::cstore;
+use metadata::decoder;
+use metadata;
 use middle::ty;
 
 use core::dvec::DVec;
-use core::option::{Some, None};
 use reader = std::ebml::reader;
 use std::ebml;
 use std::map::HashMap;

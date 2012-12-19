@@ -11,8 +11,7 @@
 #[forbid(deprecated_mode)];
 //! Unsafe debugging functions for inspecting values.
 
-use cast::reinterpret_cast;
-
+use core::cast::reinterpret_cast;
 
 #[abi = "cdecl"]
 extern mod rustrt {

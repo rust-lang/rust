@@ -11,6 +11,9 @@
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
 use middle::trans::common::*;
+use middle::trans::common;
+use middle::trans::expr;
+use util::ppaux;
 
 use std::map::HashMap;
 use syntax::ast;
@@ -258,7 +261,7 @@ fn llvm_type_name(cx: @crate_ctxt,
     return fmt!(
         "%s %s[#%d]",
           name,
-        util::ppaux::parameterized(
+        ppaux::parameterized(
             cx.tcx,
             ty::item_path_str(cx.tcx, did),
             None,

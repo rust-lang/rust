@@ -13,8 +13,11 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast;
 use cmp::{Eq, Ord};
+use libc;
 use libc::{c_void, size_t};
+use sys;
 
 #[nolink]
 #[abi = "cdecl"]

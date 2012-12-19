@@ -139,6 +139,8 @@ pub fn get_addr(node: &str, iotask: iotask)
 }
 
 pub mod v4 {
+    use uv::ll;
+
     /**
      * Convert a str to `ip_addr`
      *

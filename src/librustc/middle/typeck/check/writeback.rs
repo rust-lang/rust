@@ -12,12 +12,17 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
+use middle::pat_util;
+use middle::ty;
 use middle::typeck::check::{fn_ctxt, lookup_local};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
+use middle::typeck::infer;
 use util::ppaux;
 
-use result::{Result, Ok, Err};
+use core::result::{Result, Ok, Err};
+use syntax::ast;
+use syntax::visit;
 
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;

@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty;
 use middle::typeck::infer::combine::combine;
 use middle::typeck::infer::floating::*;
+use middle::typeck::infer::floating;
 use middle::typeck::infer::integral::*;
+use middle::typeck::infer::integral;
 use middle::typeck::infer::to_str::ToStr;
 
 use std::smallintmap::SmallIntMap;

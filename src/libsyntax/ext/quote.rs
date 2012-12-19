@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use mod ast;
-use mod parse::token;
-
+use ast;
+use attr;
 use codemap::{span, BytePos};
 use ext::base::ext_ctxt;
+use ext::base;
+use ext::build;
 use parse::token::*;
+use parse::token;
+use parse;
 
 /**
 *
@@ -27,6 +30,9 @@ use parse::token::*;
 */
 
 pub mod rt {
+    use ast;
+    use parse;
+
     pub use ast::*;
     pub use parse::token::*;
     pub use parse::new_parser_from_tts;
@@ -577,15 +583,15 @@ fn expand_parse_call(cx: ext_ctxt,
                                  id_ext(cx, ~"parse_sess")), ~[]);
 
     let new_parser_call =
-        build::mk_call(cx, sp,
-                       ids_ext(cx, ~[~"syntax",
-                                     ~"ext",
-                                     ~"quote",
-                                     ~"rt",
-                                     ~"new_parser_from_tts"]),
-                       ~[parse_sess_call(),
-                         cfg_call(),
-                         tts_expr]);
+        build::mk_call_global(cx, sp,
+                              ids_ext(cx, ~[~"syntax",
+                                            ~"ext",
+                                            ~"quote",
+                                            ~"rt",
+                                            ~"new_parser_from_tts"]),
+                              ~[parse_sess_call(),
+                                cfg_call(),
+                                tts_expr]);
 
     build::mk_call_(cx, sp,
                     build::mk_access_(cx, sp, new_parser_call,

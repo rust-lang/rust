@@ -12,6 +12,7 @@
 
 #[forbid(deprecated_mode)];
 
+use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 

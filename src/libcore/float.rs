@@ -26,6 +26,13 @@
 
 use m_float = f64;
 
+use cmp::{Eq, Ord};
+use f64;
+use num;
+use num::Num::from_int;
+use str;
+use uint;
+
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
@@ -35,8 +42,6 @@ pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
 pub use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
 pub use f64::signbit;
 pub use f64::{j0, j1, jn, y0, y1, yn};
-use cmp::{Eq, Ord};
-use num::Num::from_int;
 
 pub const NaN: float = 0.0/0.0;
 

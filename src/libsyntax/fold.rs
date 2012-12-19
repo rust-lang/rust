@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::span;
 use ast::*;
+use ast;
+use codemap::span;
 
 export ast_fold_precursor;
 export ast_fold;

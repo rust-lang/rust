@@ -45,6 +45,12 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 pub mod linear {
+    use cmp;
+    use option;
+    use rand;
+    use uint;
+    use vec;
+
     const INITIAL_CAPACITY: uint = 32u; // 2^5
 
     struct Bucket<K:Eq Hash,V> {

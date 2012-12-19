@@ -28,8 +28,11 @@
 // invasive.)
 
 use metadata::csearch;
+use middle::freevars;
 use middle::trans::common::*;
+use middle::trans::inline;
 
+use core::vec;
 use std::list::{List, Cons, Nil};
 use std::list;
 use std::map::HashMap;

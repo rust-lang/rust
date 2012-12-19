@@ -16,11 +16,16 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use middle::mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
 use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
+use middle::mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
+use middle::pat_util;
 use middle::ty::{ty_region};
+use middle::ty;
 
 use core::send_map::linear::LinearMap;
+use syntax::ast;
+use syntax::print::pprust;
+use syntax::visit;
 
 export gather_loans;
 

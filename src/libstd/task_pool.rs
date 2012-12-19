@@ -11,8 +11,8 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
-use pipes::{Chan, Port};
-use task::{SchedMode, SingleThreaded};
+use core::pipes::{Chan, Port};
+use core::task::{SchedMode, SingleThreaded};
 
 enum Msg<T> {
     Execute(~fn(&T)),

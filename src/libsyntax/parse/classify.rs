@@ -12,6 +12,7 @@
   Predicates on exprs and stmts that the pretty-printer and parser use
  */
 
+use ast;
 use ast_util::operator_prec;
 
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {

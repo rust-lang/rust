@@ -13,9 +13,13 @@ use lib::llvm::{TypeRef, ValueRef};
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::{ArgVals, DontAutorefArg};
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::SaveIn;
+use middle::trans::glue;
+use middle::trans::meth;
+use middle::trans::shape;
 use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 

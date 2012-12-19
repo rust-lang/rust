@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use result::Result;
+use core::cmp;
+use core::os;
+use core::result;
+use core::run;
+use core::vec;
+use core::result::Result;
 use std::getopts;
 use std::cell::Cell;
 

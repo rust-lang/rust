@@ -14,10 +14,12 @@
  */
 #[forbid(deprecated_mode)];
 
+use map;
+use map::Map;
+
+use core::dvec::DVec;
 use core::option;
 use core::option::{Some, None};
-use dvec::DVec;
-use map::Map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.

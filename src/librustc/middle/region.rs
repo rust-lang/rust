@@ -19,6 +19,7 @@ region parameterized.
 
 use driver::session::Session;
 use metadata::csearch;
+use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
@@ -564,7 +565,7 @@ impl determine_rp_ctxt {
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
         debug!("with_item_id(%d, %b)", item_id, anon_implies_rp);
-        let _i = util::common::indenter();
+        let _i = ::util::common::indenter();
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;

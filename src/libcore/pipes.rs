@@ -90,7 +90,14 @@ bounded and unbounded protocols allows for less code duplication.
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use either::{Either, Left, Right};
+use libc;
+use option;
 use option::unwrap;
+use pipes;
+use ptr;
+use private;
+use task;
+use vec;
 
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;

@@ -10,6 +10,7 @@
 
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 

@@ -112,10 +112,18 @@ lvalues are *never* stored by value.
 */
 
 use lib::llvm::ValueRef;
+use middle::resolve;
 use middle::trans::base::*;
 use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::trans::callee;
+use middle::trans::closure;
 use middle::trans::common::*;
+use middle::trans::consts;
+use middle::trans::controlflow;
 use middle::trans::datum::*;
+use middle::trans::machine;
+use middle::trans::meth;
+use middle::trans::tvec;
 use middle::ty::MoveValue;
 use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};

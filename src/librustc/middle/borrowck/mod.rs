@@ -226,8 +226,11 @@ Borrowck results in two maps.
 
 #[legacy_exports];
 
+use middle::liveness;
 use middle::mem_categorization::*;
+use middle::region;
 use middle::ty::to_str;
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, note_and_explain_region};
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
@@ -333,7 +336,7 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-type mutbl_map = std::map::HashMap<ast::node_id, ()>;
+type mutbl_map = HashMap<ast::node_id, ()>;
 
 // Errors that can occur"]
 enum bckerr_code {

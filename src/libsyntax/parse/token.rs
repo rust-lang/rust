@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use util::interner;
+use ast;
+use ast_util;
+use parse::token;
 use util::interner::Interner;
+use util::interner;
+
 use std::map::HashMap;
 
 #[auto_serialize]
@@ -332,7 +336,7 @@ mod special_idents {
 }
 
 struct ident_interner {
-    priv interner: util::interner::Interner<@~str>,
+    priv interner: Interner<@~str>,
 }
 
 impl ident_interner {

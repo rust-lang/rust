@@ -22,8 +22,7 @@
  */
 
 use core::cmp::{Eq, Ord};
-use option::{Some, None};
-use option = option;
+use core::option::{Some, None};
 
 pub type Treemap<K, V> = @TreeNode<K, V>;
 

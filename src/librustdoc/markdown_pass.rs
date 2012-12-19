@@ -10,10 +10,20 @@
 
 //! Generate markdown from a document tree
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use fold;
+use markdown_pass;
 use markdown_writer::Writer;
 use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
+use sort_pass;
+
+use core::str;
+use core::vec;
+use std::par;
+use syntax;
 
 pub fn mk_pass(+writer_factory: WriterFactory) -> Pass {
     let f = fn~(move writer_factory,

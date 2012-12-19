@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast;
 use codemap::span;
+use ext::base;
 use ext::base::ext_ctxt;
 use ast::tt_delim;
 use parse::lexer::{new_tt_reader, reader};

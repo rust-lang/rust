@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Eq;
-use send_map::linear::LinearMap;
-use pipes::{recv, oneshot, PortOne, send_one};
-use either::{Right,Left,Either};
-
 use json;
 use sha1;
-use serialization::{Serializer,Serializable,
-                    Deserializer,Deserializable};
+use serialization::{Serializer,Serializable,Deserializer,Deserializable};
+
+use core::either::{Either, Left, Right};
+use core::pipes::{recv, oneshot, PortOne, send_one};
+use core::send_map::linear::LinearMap;
 
 /**
 *

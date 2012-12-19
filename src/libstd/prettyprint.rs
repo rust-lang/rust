@@ -10,9 +10,10 @@
 
 #[forbid(deprecated_mode)];
 
-use io::Writer;
-use io::WriterUtil;
 use serialization;
+
+use core::io::Writer;
+use core::io::WriterUtil;
 
 pub struct Serializer {
     wr: io::Writer,

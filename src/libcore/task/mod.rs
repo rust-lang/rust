@@ -38,11 +38,16 @@
  * ~~~
  */
 
+use cmp;
 use cmp::Eq;
+use oldcomm;
+use option;
 use result::Result;
 use pipes::{stream, Chan, Port};
+use result;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::{task_id, rust_task};
+use util;
 use util::replace;
 
 mod local_data_priv;

@@ -13,6 +13,10 @@
 // the scope S.
 //
 
+use middle::ty;
+
+use syntax::ast;
+
 export public_methods, preserve_condition, pc_ok, pc_if_pure;
 
 enum preserve_condition {

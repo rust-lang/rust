@@ -30,14 +30,24 @@
  * to write OS-ignorant code by default.
  */
 
-use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
-           mode_t, pid_t, FILE};
-pub use libc::{close, fclose};
-
+use cast;
+use either;
+use io;
+use libc;
+use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
+use libc::{mode_t, pid_t, FILE};
+use option;
 use option::{Some, None};
-
-pub use os::consts::*;
+use private;
+use ptr;
+use str;
+use task;
 use task::TaskBuilder;
+use uint;
+use vec;
+
+pub use libc::{close, fclose};
+pub use os::consts::*;
 
 // FIXME: move these to str perhaps? #2620
 
@@ -127,6 +137,12 @@ pub fn env() -> ~[(~str,~str)] {
 
 mod global_env {
     //! Internal module for serializing access to getenv/setenv
+    use either;
+    use libc;
+    use oldcomm;
+    use private;
+    use str;
+    use task;
 
     extern mod rustrt {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
@@ -142,7 +158,7 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     oldcomm::Chan(&po)));
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -150,8 +166,8 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgSetEnv(str::from_slice(n),
-                                     str::from_slice(v),
-                                     oldcomm::Chan(&po)));
+                                        str::from_slice(v),
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -195,6 +211,13 @@ mod global_env {
     }
 
     mod impl_ {
+        use cast;
+        use libc;
+        use option;
+        use ptr;
+        use str;
+        use vec;
+
         extern mod rustrt {
             fn rust_env_pairs() -> ~[~str];
         }

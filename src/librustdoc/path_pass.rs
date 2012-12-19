@@ -10,8 +10,12 @@
 
 //! Records the full path to items
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+
 use syntax::ast;
 
 pub fn mk_pass() -> Pass {

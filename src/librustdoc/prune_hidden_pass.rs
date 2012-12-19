@@ -10,8 +10,14 @@
 
 //! Prunes things with the #[doc(hidden)] attribute
 
+use astsrv;
+use attr_parser;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+
+use core::vec;
 use std::map::HashMap;
 
 pub fn mk_pass() -> Pass {

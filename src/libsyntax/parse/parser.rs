@@ -8,30 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast;
+use classify;
 use print::pprust::expr_to_str;
-
-use result::Result;
+use core::result::Result;
 use either::{Either, Left, Right};
 use std::map::HashMap;
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
                    INTERPOLATED, special_idents};
 use codemap::{span,FssNone, BytePos};
+use codemap;
 use util::interner::Interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
+use ast_util;
+use parse::token;
 use parse::lexer::reader;
 use parse::prec::{as_prec, token_to_binop};
 use parse::attr::parser_attr;
-use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                    seq_sep_none, token_to_str};
-use dvec::DVec;
-use vec::{push};
-use parse::obsolete::{
-    ObsoleteSyntax,
-    ObsoleteLowerCaseKindBounds, ObsoleteLet,
-    ObsoleteFieldTerminator, ObsoleteStructCtor,
-    ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
-    ObsoleteModeInFnType, ObsoleteMoveInit, ObsoleteBinaryMove,
-};
+use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
+use parse::common::{seq_sep_none, token_to_str};
+use core::dvec::DVec;
+use core::vec::push;
+use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
+use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
+use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith, ObsoleteClassMethod};
+use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
+use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use ast::{_mod, add, arg, arm, attribute,
              bind_by_ref, bind_infer, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
@@ -195,7 +197,7 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         keywords: token::keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
-        obsolete_set: std::map::HashMap(),
+        obsolete_set: HashMap(),
         mod_path_stack: ~[],
     }
 }

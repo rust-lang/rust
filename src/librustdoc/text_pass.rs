@@ -10,9 +10,14 @@
 
 //! Generic pass for performing an operation on all descriptions
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
 use util::NominalOp;
+
+use std::par;
 
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {

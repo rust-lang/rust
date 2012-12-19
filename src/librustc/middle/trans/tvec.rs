@@ -14,7 +14,11 @@ use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::trans::shape::llsize_of;
+use middle::trans::type_of;
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 

@@ -14,8 +14,11 @@
 
 //! A type that represents one of two alternatives
 
+use cmp;
 use cmp::Eq;
+use result;
 use result::Result;
+use vec;
 
 /// The either type
 #[deriving_eq]

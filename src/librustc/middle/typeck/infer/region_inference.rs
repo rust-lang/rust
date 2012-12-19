@@ -454,6 +454,8 @@ write it)
 #[warn(deprecated_pattern)];
 
 use middle::region::is_subregion_of;
+use middle::region;
+use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized};
 use middle::typeck::infer::to_str::ToStr;

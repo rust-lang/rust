@@ -450,6 +450,7 @@ enum FailType {
  *  groups of short and long option names, together.
  */
 pub mod groups {
+    use getopts::Result;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties

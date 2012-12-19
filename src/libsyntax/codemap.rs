@@ -21,11 +21,11 @@ source code snippets, etc.
 
 */
 
-use dvec::DVec;
-use std::serialization::{Serializable,
-                         Deserializable,
-                         Serializer,
-                         Deserializer};
+use ast_util;
+
+use core::dvec::DVec;
+use std::serialization::{Serializable, Deserializable, Serializer};
+use std::serialization::{Deserializer};
 
 trait Pos {
     static pure fn from_uint(n: uint) -> self;

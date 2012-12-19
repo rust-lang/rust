@@ -10,7 +10,7 @@
 
 #[forbid(deprecated_mode)];
 
-use vec::{to_mut, from_elem};
+use core::vec::{to_mut, from_elem};
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.

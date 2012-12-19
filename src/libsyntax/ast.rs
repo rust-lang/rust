@@ -10,12 +10,12 @@
 
 // The Rust abstract syntax tree.
 
-use std::serialization::{Serializable,
-                         Deserializable,
-                         Serializer,
-                         Deserializer};
+use ast;
 use codemap::{span, FileName};
 use parse::token;
+
+use std::serialization::{Serializable, Deserializable, Serializer};
+use std::serialization::{Deserializer};
 
 #[auto_serialize]
 #[auto_deserialize]

@@ -12,8 +12,12 @@
 // Loan(Ex, M, S) = Ls holds if ToAddr(Ex) will remain valid for the entirety
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
+use middle::ty;
+
+use core::result::{Result, Ok, Err};
+use syntax::ast;
+
 export public_methods;
-use result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,

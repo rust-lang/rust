@@ -16,11 +16,12 @@
  */
 #[forbid(deprecated_mode)];
 
-use libc::c_void;
-use ptr::addr_of;
-use core::oldcomm::{Port, Chan, listen};
-use task::TaskBuilder;
 use ll = uv_ll;
+
+use core::libc::c_void;
+use core::oldcomm::{Port, Chan, listen};
+use core::ptr::addr_of;
+use core::task::TaskBuilder;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 pub enum IoTask {

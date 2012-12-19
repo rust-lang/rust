@@ -11,9 +11,9 @@
 #[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
-use libc::{c_char, c_int, c_long, size_t, time_t};
-use io::{Reader, ReaderUtil};
-use result::{Result, Ok, Err};
+use core::libc::{c_char, c_int, c_long, size_t, time_t};
+use core::io::{Reader, ReaderUtil};
+use core::result::{Result, Ok, Err};
 
 #[abi = "cdecl"]
 extern mod rustrt {

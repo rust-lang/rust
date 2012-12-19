@@ -11,14 +11,16 @@
 //! Types/fns concerning URLs (see RFC 3986)
 #[forbid(deprecated_mode)];
 
-use core::cmp::Eq;
+use map;
 use map::HashMap;
-use io::{Reader, ReaderUtil};
-use dvec::DVec;
-use from_str::FromStr;
-use result::{Err, Ok};
-use to_str::ToStr;
-use to_bytes::IterBytes;
+
+use core::cmp::Eq;
+use core::dvec::DVec;
+use core::from_str::FromStr;
+use core::io::{Reader, ReaderUtil};
+use core::to_bytes::IterBytes;
+use core::to_str::ToStr;
+use core::util;
 
 struct Url {
     scheme: ~str,

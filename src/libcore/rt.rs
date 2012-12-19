@@ -15,10 +15,9 @@
 #[forbid(deprecated_pattern)];
 //! Runtime calls emitted by the compiler.
 
-use libc::c_char;
-use libc::c_void;
-use libc::size_t;
-use libc::uintptr_t;
+use libc::{c_char, c_void, size_t, uintptr_t};
+use str;
+use sys;
 
 use gc::{cleanup_stack_for_failure, gc, Word};
 

@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast, ast_util};
-use syntax::codemap::span;
-use std::map;
+use middle::freevars;
+use middle::ty;
+
 use std::map::HashMap;
+use std::map;
+use syntax::codemap::span;
+use syntax::{ast, ast_util};
 
 export capture_mode;
 export capture_var;

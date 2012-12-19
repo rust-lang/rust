@@ -17,12 +17,15 @@
 
 #[forbid(deprecated_mode)];
 
+use getopts;
+use sort;
+use term;
+
 use core::cmp::Eq;
-use either::Either;
-use result::{Ok, Err};
-use io::WriterUtil;
-use libc::size_t;
-use task::TaskBuilder;
+use core::either::Either;
+use core::io::WriterUtil;
+use core::libc::size_t;
+use core::task::TaskBuilder;
 
 #[abi = "cdecl"]
 extern mod rustrt {

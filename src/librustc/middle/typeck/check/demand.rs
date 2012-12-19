@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty;
 use middle::typeck::check::fn_ctxt;
+use middle::typeck::infer;
+
+use syntax::ast;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.

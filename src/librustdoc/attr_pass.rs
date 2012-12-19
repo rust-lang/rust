@@ -16,12 +16,20 @@ corresponding AST nodes. The information gathered here is the basis
 of the natural-language documentation for a crate.
 */
 
+use astsrv;
+use attr_parser;
 use doc::ItemUtils;
+use doc;
 use extract::to_str;
 use fold::Fold;
+use fold;
+
+use core::option;
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use std::map::HashMap;
+use std::par;
 
 pub fn mk_pass() -> Pass {
     {

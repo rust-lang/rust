@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::resolve;
+use middle::ty;
+use middle;
+
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 

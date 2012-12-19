@@ -16,6 +16,7 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use iter;
 
 #[cfg(stage0)]
 use inst::{IMPL_T, EACH, SIZE_HINT};
