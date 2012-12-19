@@ -412,7 +412,7 @@ Fails if the sender closes the connection.
 */
 pub fn recv<T: Owned, Tbuffer: Owned>(
     p: RecvPacketBuffered<T, Tbuffer>) -> T {
-    option::unwrap_expect(try_recv(move p), "connection closed")
+    try_recv(move p).expect("connection closed")
 }
 
 /** Attempts to receive a message from a pipe.
@@ -1102,7 +1102,7 @@ impl<T: Owned> PortSet<T> : GenericPort<T> {
     }
 
     fn recv() -> T {
-        option::unwrap_expect(self.try_recv(), "port_set: endpoints closed")
+        self.try_recv().expect("port_set: endpoints closed")
     }
 
 }
