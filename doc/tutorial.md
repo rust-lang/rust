@@ -1873,9 +1873,7 @@ is not defined for all Rust types. One reason is user-defined
 destructors: copying a type that has a destructor could result in the
 destructor running multiple times. Therefore, types with user-defined
 destructors cannot be copied, either implicitly or explicitly, and
-neither can types that own other types containing destructors (see the
-section on [structs](#structs) for the actual mechanism for defining
-destructors).
+neither can types that own other types containing destructors.
 
 This complicates handling of generic functions. If you have a type
 parameter `T`, can you copy values of that type? In Rust, you can't,
@@ -1924,10 +1922,11 @@ types by the compiler, and may not be overridden:
 > ***Note:*** These three traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
-There is also a special trait known as `Drop`. This trait defines one method
-called `finalize`, which is automatically called when value of the a type that
-implements this trait is destroyed, either because the value went out of scope
-or because the garbage collector reclaimed it.
+Additionally, the `Drop` trait is used to define destructors. This
+trait defines one method called `finalize`, which is automatically
+called when value of the a type that implements this trait is
+destroyed, either because the value went out of scope or because the
+garbage collector reclaimed it.
 
 ~~~
 struct TimeBomb {
@@ -2023,7 +2022,7 @@ trait Eq {
   fn equals(other: &self) -> bool;
 }
 
-// In an impl, self refers to the value of the receiver
+// In an impl, `self` refers to the value of the receiver
 impl int: Eq {
   fn equals(other: &int) -> bool { *other == self }
 }
@@ -2077,7 +2076,7 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
-## Casting to a trait type and dynamic method dispatch
+## Trait objects and dynamic method dispatch
 
 The above allows us to define functions that polymorphically act on
 values of a single unknown type that conforms to a given trait.
@@ -2099,7 +2098,8 @@ fn draw_all<T: Drawable>(shapes: ~[T]) {
 You can call that on an array of circles, or an array of squares
 (assuming those have suitable `Drawable` traits defined), but not on
 an array containing both circles and squares. When such behavior is
-needed, a trait name can alternately be used as a type.
+needed, a trait name can alternately be used as a type, called
+an _object_.
 
 ~~~~
 # trait Drawable { fn draw(); }
@@ -2111,7 +2111,7 @@ fn draw_all(shapes: &[@Drawable]) {
 In this example, there is no type parameter. Instead, the `@Drawable`
 type denotes any managed box value that implements the `Drawable`
 trait. To construct such a value, you use the `as` operator to cast a
-value to a trait type:
+value to an object:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
@@ -2120,9 +2120,9 @@ value to a trait type:
 # fn new_rectangle() -> Rectangle { true }
 # fn draw_all(shapes: &[@Drawable]) {}
 
-impl @Circle: Drawable { fn draw() { ... } }
+impl Circle: Drawable { fn draw() { ... } }
 
-impl @Rectangle: Drawable { fn draw() { ... } }
+impl Rectangle: Drawable { fn draw() { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
@@ -2131,12 +2131,13 @@ draw_all([c as @Drawable, r as @Drawable]);
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
 these just return `Circle`s and `Rectangle`s with a default size. Note
-that, like strings and vectors, trait types have dynamic size and may
-only be referred to via one of the pointer types. That's why the `impl` is
-defined for `@Circle` and `@Rectangle` instead of for just `Circle`
-and `Rectangle`. Other pointer types work as well.
+that, like strings and vectors, objects have dynamic size and may
+only be referred to via one of the pointer types.
+Other pointer types work as well.
+Casts to traits may only be done with compatible pointers so,
+for example, an `@Circle` may not be cast to an `~Drawable`.
 
-~~~{.xfail-test}
+~~~
 # type Circle = int; type Rectangle = int;
 # trait Drawable { fn draw(); }
 # impl int: Drawable { fn draw() {} }
@@ -2149,9 +2150,6 @@ let owny: ~Drawable = ~new_circle() as ~Drawable;
 // A borrowed trait instance
 let stacky: &Drawable = &new_circle() as &Drawable;
 ~~~
-
-> ***Note:*** Other pointer types actually _do not_ work here yet. This is
-> an evolving corner of the language.
 
 Method calls to trait types are _dynamically dispatched_. Since the
 compiler doesn't know specifically which functions to call at compile
