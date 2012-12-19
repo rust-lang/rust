@@ -55,7 +55,7 @@ mod fold;
 mod util {
     #[legacy_exports];
     #[legacy_exports]
-    #[path2 = "interner.rs"]
+    #[path = "interner.rs"]
     mod interner;
 }
 
@@ -110,7 +110,7 @@ mod ext {
     mod source_util;
 
     #[legacy_exports]
-    #[path2 = "pipes/mod.rs"]
+    #[path = "pipes/mod.rs"]
     mod pipes;
 
     #[legacy_exports]
