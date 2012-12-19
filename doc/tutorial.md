@@ -1924,7 +1924,7 @@ types by the compiler, and may not be overridden:
 
 Additionally, the `Drop` trait is used to define destructors. This
 trait defines one method called `finalize`, which is automatically
-called when value of the a type that implements this trait is
+called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
 
