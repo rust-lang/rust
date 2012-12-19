@@ -3045,7 +3045,14 @@ impl Parser {
             Some(ref d) => mod_path.push(*d),
             None => match ::attr::first_attr_value_str_by_name(
                 outer_attrs, ~"path") {
-                Some(ref d) => mod_path.push(*d),
+                Some(ref d) => {
+                    let path = Path(*d);
+                    if !path.is_absolute {
+                        mod_path.push(*d)
+                    } else {
+                        path
+                    }
+                }
                 None => mod_path.push(default_path)
             }
         };
