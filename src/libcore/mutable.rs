@@ -73,6 +73,9 @@ impl<T> Data<T> {
             op(unsafe{transmute_immut(&mut self.value)})
         }
     }
+
+    #[inline(always)]
+    fn unwrap(self) -> T { unwrap(self) }
 }
 
 #[test]
