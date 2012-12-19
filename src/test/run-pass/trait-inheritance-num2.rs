@@ -13,7 +13,7 @@
 // A more complex example of numeric extensions
 
 use cmp::{Eq, Ord};
-use num::from_int;
+use num::Num::from_int;
 
 extern mod std;
 use std::cmp::FuzzyEq;

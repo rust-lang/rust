@@ -11,7 +11,7 @@
 // Using the real Num from core
 
 use cmp::Ord;
-use num::from_int;
+use num::Num::from_int;
 
 pub trait NumExt: Num Ord { }
 

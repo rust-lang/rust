@@ -22,7 +22,7 @@ use std::ebml;
 use EBReader = std::ebml::reader;
 use EBWriter = std::ebml::writer;
 use io::Writer;
-use std::serialize::{Encodable, Decodable, decode};
+use std::serialize::traits::{Encodable, Decodable};
 use std::prettyprint;
 use std::time;
 
@@ -47,7 +47,7 @@ fn test_ebml<A:
         a1.encode(ebml_w)
     };
     let d = EBReader::Doc(@move bytes);
-    let a2: A = decode(&EBReader::Decoder(d));
+    let a2: A = Decodable::decode(&EBReader::Decoder(d));
     assert *a1 == a2;
 }
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cmp::{Eq, Ord};
-use num::from_int;
+use num::Num::from_int;
 
 pub trait NumExt: Eq Num {}
 

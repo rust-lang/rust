@@ -30,7 +30,7 @@ impl S: MyNum {
 
 impl S: NumExt { }
 
-fn greater_than_one<T:NumExt>() -> T { from_int(1) }
+fn greater_than_one<T:NumExt>() -> T { MyNum::from_int(1) }
 
 fn main() {
     let v: S = greater_than_one();

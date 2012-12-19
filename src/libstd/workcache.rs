@@ -15,7 +15,7 @@ use either::{Right,Left,Either};
 
 use json;
 use sha1;
-use serialize::{Encoder, Encodable, Decoder, Decodable, decode};
+use serialize::{Encoder, Encodable, Decoder, Decodable};
 
 /**
 *

@@ -37,9 +37,9 @@ enum ColorTree {
 impl ColorTree : Equal {
     static fn isEq(a: ColorTree, b: ColorTree) -> bool {
         match (a, b) {
-          (leaf(x), leaf(y)) => { isEq(x, y) }
+          (leaf(x), leaf(y)) => { Equal::isEq(x, y) }
           (branch(l1, r1), branch(l2, r2)) => { 
-            isEq(*l1, *l2) && isEq(*r1, *r2)
+            Equal::isEq(*l1, *l2) && Equal::isEq(*r1, *r2)
           }
           _ => { false }
         }
@@ -47,18 +47,18 @@ impl ColorTree : Equal {
 }
 
 fn main() {
-    assert isEq(cyan, cyan);
-    assert isEq(magenta, magenta);
-    assert !isEq(cyan, yellow);
-    assert !isEq(magenta, cyan);
+    assert Equal::isEq(cyan, cyan);
+    assert Equal::isEq(magenta, magenta);
+    assert !Equal::isEq(cyan, yellow);
+    assert !Equal::isEq(magenta, cyan);
 
-    assert isEq(leaf(cyan), leaf(cyan));
-    assert !isEq(leaf(cyan), leaf(yellow));
+    assert Equal::isEq(leaf(cyan), leaf(cyan));
+    assert !Equal::isEq(leaf(cyan), leaf(yellow));
 
-    assert isEq(branch(@leaf(magenta), @leaf(cyan)),
+    assert Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
                 branch(@leaf(magenta), @leaf(cyan)));
 
-    assert !isEq(branch(@leaf(magenta), @leaf(cyan)),
+    assert !Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
                  branch(@leaf(magenta), @leaf(magenta)));
 
     log(error, "Assertions all succeeded!");

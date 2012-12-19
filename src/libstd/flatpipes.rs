@@ -324,7 +324,6 @@ pub mod flatteners {
 
     use serialize::{Encoder, Decoder,
                         Encodable, Decodable};
-    use serialize::decode;
 
     use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
     use flatpipes::util::BufReader;
@@ -433,15 +432,15 @@ pub mod flatteners {
         let buf = vec::from_slice(buf);
         let buf_reader = @BufReader::new(move buf);
         let reader = buf_reader as @Reader;
-        let deser: D = from_reader(reader);
-        decode(&deser)
+        let deser: D = FromReader::from_reader(reader);
+        Decodable::decode(&deser)
     }
 
     pub fn serialize_value<D: Encoder FromWriter,
                        T: Encodable<D>>(val: &T) -> ~[u8] {
         let bytes_writer = @BytesWriter();
         let writer = bytes_writer as @Writer;
-        let ser = from_writer(writer);
+        let ser = FromWriter::from_writer(writer);
         val.encode(&ser);
         let bytes = bytes_writer.bytes.check_out(|bytes| move bytes);
         return move bytes;

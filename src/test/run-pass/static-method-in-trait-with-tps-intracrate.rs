@@ -30,6 +30,6 @@ impl FromThinAir: Deserializer {
 
 fn main() {
     let d = FromThinAir { dummy: () };
-    let i: int = deserialize(&d);
+    let i: int = Deserializable::deserialize(&d);
     assert i == 22;
 }
