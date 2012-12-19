@@ -114,7 +114,7 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
  *         ok(parse_bytes(buf))
  *     }
  */
-pub fn chain<T, U, V>(res: Result<T, V>, op: fn(t: T)
+pub pure fn chain<T, U, V>(res: Result<T, V>, op: fn(T)
     -> Result<U, V>) -> Result<U, V> {
     match move res {
         Ok(move t) => op(move t),
@@ -130,7 +130,7 @@ pub fn chain<T, U, V>(res: Result<T, V>, op: fn(t: T)
  * immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-pub fn chain_err<T, U, V>(
+pub pure fn chain_err<T, U, V>(
     res: Result<T, V>,
     op: fn(t: V) -> Result<T, U>)
     -> Result<T, U> {
@@ -154,7 +154,7 @@ pub fn chain_err<T, U, V>(
  *         print_buf(buf)
  *     }
  */
-pub fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
+pub pure fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
     match *res {
       Ok(ref t) => f(t),
       Err(_) => ()
@@ -169,7 +169,7 @@ pub fn iter<T, E>(res: &Result<T, E>, f: fn(&T)) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-pub fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
+pub pure fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
     match *res {
       Ok(_) => (),
       Err(ref e) => f(e)
@@ -190,7 +190,7 @@ pub fn iter_err<T, E>(res: &Result<T, E>, f: fn(&E)) {
  *         parse_bytes(buf)
  *     }
  */
-pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
+pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
   -> Result<U, E> {
     match *res {
       Ok(ref t) => Ok(op(t)),
@@ -206,7 +206,7 @@ pub fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
+pub pure fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -215,58 +215,55 @@ pub fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
 }
 
 impl<T, E> Result<T, E> {
+    #[inline(always)]
     pure fn get_ref(&self) -> &self/T { get_ref(self) }
 
-    pure fn is_ok() -> bool { is_ok(&self) }
+    #[inline(always)]
+    pure fn is_ok(&self) -> bool { is_ok(self) }
 
-    pure fn is_err() -> bool { is_err(&self) }
+    #[inline(always)]
+    pure fn is_err(&self) -> bool { is_err(self) }
 
-    pure fn iter(f: fn(&T)) {
-        match self {
-          Ok(ref t) => f(t),
-          Err(_) => ()
-        }
+    #[inline(always)]
+    pure fn iter(&self, f: fn(&T)) { iter(self, f) }
+
+    #[inline(always)]
+    pure fn iter_err(&self, f: fn(&E)) { iter_err(self, f) }
+
+    #[inline(always)]
+    pure fn unwrap(self) -> T { unwrap(self) }
+
+    #[inline(always)]
+    pure fn unwrap_err(self) -> T { unwrap(self) }
+
+    #[inline(always)]
+    pure fn chain<U>(self, op: fn(T) -> Result<U,E>) -> Result<U,E> {
+        chain(self, op)
     }
 
-    fn iter_err(f: fn(&E)) {
-        match self {
-          Ok(_) => (),
-          Err(ref e) => f(e)
-        }
+    #[inline(always)]
+    pure fn chain_err<F>(self, op: fn(E) -> Result<T,F>) -> Result<T,F> {
+        chain_err(self, op)
     }
 }
 
 impl<T: Copy, E> Result<T, E> {
-    pure fn get() -> T { get(&self) }
+    #[inline(always)]
+    pure fn get(&self) -> T { get(self) }
 
-    fn map_err<F:Copy>(op: fn(&E) -> F) -> Result<T,F> {
-        match self {
-          Ok(copy t) => Ok(t),
-          Err(ref e) => Err(op(e))
-        }
+    #[inline(always)]
+    pure fn map_err<F:Copy>(&self, op: fn(&E) -> F) -> Result<T,F> {
+        map_err(self, op)
     }
 }
 
 impl<T, E: Copy> Result<T, E> {
-    pure fn get_err() -> E { get_err(&self) }
+    #[inline(always)]
+    pure fn get_err(&self) -> E { get_err(self) }
 
-    fn map<U:Copy>(op: fn(&T) -> U) -> Result<U,E> {
-        match self {
-          Ok(ref t) => Ok(op(t)),
-          Err(copy e) => Err(e)
-        }
-    }
-}
-
-impl<T: Copy, E: Copy> Result<T, E> {
-    fn chain<U:Copy>(op: fn(t: T) -> Result<U,E>) -> Result<U,E> {
-        // XXX: Bad copy
-        chain(copy self, op)
-    }
-
-    fn chain_err<F:Copy>(op: fn(t: E) -> Result<T,F>) -> Result<T,F> {
-        // XXX: Bad copy
-        chain_err(copy self, op)
+    #[inline(always)]
+    pure fn map<U:Copy>(&self, op: fn(&T) -> U) -> Result<U,E> {
+        map(self, op)
     }
 }
 
@@ -360,7 +357,8 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
-pub fn unwrap<T, U>(res: Result<T, U>) -> T {
+#[inline(always)]
+pub pure fn unwrap<T, U>(res: Result<T, U>) -> T {
     match move res {
       Ok(move t) => move t,
       Err(_) => fail ~"unwrap called on an err result"
@@ -368,7 +366,8 @@ pub fn unwrap<T, U>(res: Result<T, U>) -> T {
 }
 
 /// Unwraps a result, assuming it is an `err(U)`
-pub fn unwrap_err<T, U>(res: Result<T, U>) -> U {
+#[inline(always)]
+pub pure fn unwrap_err<T, U>(res: Result<T, U>) -> U {
     match move res {
       Err(move u) => move u,
       Ok(_) => fail ~"unwrap called on an ok result"
