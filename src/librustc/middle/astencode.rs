@@ -28,7 +28,8 @@ use std::ebml::writer::Encoder;
 use std::ebml;
 use std::map::HashMap;
 use std::serialize;
-use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers, decode};
+use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
+use std::serialize::traits::Decodable;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -117,7 +118,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         debug!("> Decoding inlined fn: %s::?",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner));
         let ast_dsr = &reader::Decoder(ast_doc);
-        let from_id_range = decode(ast_dsr);
+        let from_id_range = Decodable::decode(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
         let xcx = extended_decode_ctxt_(@{dcx: dcx,
                                           from_id_range: from_id_range,
@@ -210,7 +211,7 @@ trait def_id_decoder_helpers {
 impl<D: serialize::Decoder> D: def_id_decoder_helpers {
 
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
-        let did: ast::def_id = decode(&self);
+        let did: ast::def_id = Decodable::decode(&self);
         did.tr(xcx)
     }
 }
@@ -287,7 +288,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
 fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
     let chi_doc = par_doc[c::tag_tree as uint];
     let d = &reader::Decoder(chi_doc);
-    decode(d)
+    Decodable::decode(d)
 }
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
@@ -332,7 +333,7 @@ fn encode_def(ebml_w: writer::Encoder, def: ast::def) {
 
 fn decode_def(xcx: extended_decode_ctxt, doc: ebml::Doc) -> ast::def {
     let dsr = &reader::Decoder(doc);
-    let def: ast::def = decode(dsr);
+    let def: ast::def = Decodable::decode(dsr);
     def.tr(xcx)
 }
 
@@ -430,7 +431,7 @@ trait ebml_decoder_helper {
 
 impl reader::Decoder: ebml_decoder_helper {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
-        let fv: freevar_entry = decode(&self);
+        let fv: freevar_entry = Decodable::decode(&self);
         fv.tr(xcx)
     }
 }
@@ -473,12 +474,13 @@ impl reader::Decoder: read_method_map_entry_helper {
                  }),
              explicit_self:
                  self.read_field(~"explicit_self", 2u, || {
-                    let self_type: ast::self_ty_ = decode(&self);
+                    let self_type: ast::self_ty_ = Decodable::decode(&self);
                     self_type
                  }),
              origin:
                  self.read_field(~"origin", 1u, || {
-                     let method_origin: method_origin = decode(&self);
+                     let method_origin: method_origin =
+                         Decodable::decode(&self);
                      method_origin.tr(xcx)
                  })}
         }
@@ -926,7 +928,7 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
                 region_param: self.read_field(~"region_param", 1u, || {
-                    decode(&self)
+                    Decodable::decode(&self)
                 }),
                 ty: self.read_field(~"ty", 2u, || {
                     self.read_ty(xcx)
@@ -990,11 +992,11 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
             } else if tag == (c::tag_table_adjustments as uint) {
-                let adj: @ty::AutoAdjustment = @decode(val_dsr);
+                let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
                 adj.tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
             } else if tag == (c::tag_table_value_mode as uint) {
-                let vm: ty::ValueMode = decode(val_dsr);
+                let vm: ty::ValueMode = Decodable::decode(val_dsr);
                 dcx.tcx.value_modes.insert(id, vm);
             } else {
                 xcx.dcx.tcx.sess.bug(
@@ -1020,7 +1022,7 @@ fn encode_item_ast(ebml_w: writer::Encoder, item: @ast::item) {
 fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
     let chi_doc = par_doc[c::tag_tree as uint];
     let d = &reader::Decoder(chi_doc);
-    @decode(d)
+    @Decodable::decode(d)
 }
 
 #[cfg(test)]

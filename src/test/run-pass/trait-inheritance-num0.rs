@@ -12,7 +12,7 @@
 
 // Extending Num and using inherited static methods
 
-use num::from_int;
+use Num::from_int;
 
 trait Num {
     static fn from_int(i: int) -> self;

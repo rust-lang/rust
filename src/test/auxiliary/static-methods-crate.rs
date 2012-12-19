@@ -36,7 +36,7 @@ impl bool: read {
 }
 
 fn read<T: read Copy>(s: ~str) -> T {
-    match readMaybe(s) {
+    match read::readMaybe(s) {
       Some(x) => x,
       _ => fail ~"read failed!"
     }

@@ -272,8 +272,9 @@ fn run(repl: Repl, input: ~str) -> Repl {
                 vtable_map: vtable_map};
 
     debug!("translation");
+    let path = ~path::GenericPath::from_str("<repl>");
     let (llmod, _) = trans::base::trans_crate(sess, crate, ty_cx,
-                                              ~path::from_str("<repl>"),
+                                              path,
                                               exp_map2, maps);
     let pm = llvm::LLVMCreatePassManager();
 

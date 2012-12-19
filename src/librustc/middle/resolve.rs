@@ -1336,17 +1336,6 @@ impl Resolver {
                                 Some(local_def(item.id)),
                                 ty_m.purity);
 
-                            // For now, add to both the trait module and the
-                            // enclosing module, for backwards compatibility.
-                            let (method_name_bindings, _) =
-                                self.add_child(ident,
-                                               new_parent,
-                                               ForbidDuplicateValues,
-                                               ty_m.span);
-                            method_name_bindings.define_value(Public,
-                                                              def,
-                                                              ty_m.span);
-
                             let (method_name_bindings, _) =
                                 self.add_child(ident,
                                                module_parent_opt.get(),

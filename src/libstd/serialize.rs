@@ -298,7 +298,7 @@ pub impl<S: Encoder, T: Encodable<S>> ~T: Encodable<S> {
 
 pub impl<D: Decoder, T: Decodable<D>> ~T: Decodable<D> {
     static fn decode(&self, d: &D) -> ~T {
-        d.read_owned(|| ~decode(d))
+        d.read_owned(|| ~Decodable::decode(d))
     }
 }
 
@@ -310,7 +310,7 @@ pub impl<S: Encoder, T: Encodable<S>> @T: Encodable<S> {
 
 pub impl<D: Decoder, T: Decodable<D>> @T: Decodable<D> {
     static fn decode(&self, d: &D) -> @T {
-        d.read_managed(|| @decode(d))
+        d.read_managed(|| @Decodable::decode(d))
     }
 }
 
@@ -338,7 +338,7 @@ pub impl<D: Decoder, T: Decodable<D>> ~[T]: Decodable<D> {
     static fn decode(&self, d: &D) -> ~[T] {
         do d.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
-                d.read_vec_elt(i, || decode(d))
+                d.read_vec_elt(i, || Decodable::decode(d))
             }
         }
     }
@@ -358,7 +358,7 @@ pub impl<D: Decoder, T: Decodable<D>> @[T]: Decodable<D> {
     static fn decode(&self, d: &D) -> @[T] {
         do d.read_managed_vec |len| {
             do at_vec::from_fn(len) |i| {
-                d.read_vec_elt(i, || decode(d))
+                d.read_vec_elt(i, || Decodable::decode(d))
             }
         }
     }
@@ -385,7 +385,8 @@ pub impl<D: Decoder, T: Decodable<D>> Option<T>: Decodable<D> {
             do d.read_enum_variant |i| {
                 match i {
                   0 => None,
-                  1 => Some(d.read_enum_variant_arg(0u, || decode(d))),
+                  1 => Some(d.read_enum_variant_arg(
+                      0u, || Decodable::decode(d))),
                   _ => fail(fmt!("Bad variant for option: %u", i))
                 }
             }
@@ -418,8 +419,8 @@ pub impl<
     static fn decode(&self, d: &D) -> (T0, T1) {
         do d.read_tup(2) {
             (
-                d.read_tup_elt(0, || decode(d)),
-                d.read_tup_elt(1, || decode(d))
+                d.read_tup_elt(0, || Decodable::decode(d)),
+                d.read_tup_elt(1, || Decodable::decode(d))
             )
         }
     }
@@ -453,9 +454,9 @@ pub impl<
     static fn decode(&self, d: &D) -> (T0, T1, T2) {
         do d.read_tup(3) {
             (
-                d.read_tup_elt(0, || decode(d)),
-                d.read_tup_elt(1, || decode(d)),
-                d.read_tup_elt(2, || decode(d))
+                d.read_tup_elt(0, || Decodable::decode(d)),
+                d.read_tup_elt(1, || Decodable::decode(d)),
+                d.read_tup_elt(2, || Decodable::decode(d))
             )
         }
     }
@@ -492,10 +493,10 @@ pub impl<
     static fn decode(&self, d: &D) -> (T0, T1, T2, T3) {
         do d.read_tup(4) {
             (
-                d.read_tup_elt(0, || decode(d)),
-                d.read_tup_elt(1, || decode(d)),
-                d.read_tup_elt(2, || decode(d)),
-                d.read_tup_elt(3, || decode(d))
+                d.read_tup_elt(0, || Decodable::decode(d)),
+                d.read_tup_elt(1, || Decodable::decode(d)),
+                d.read_tup_elt(2, || Decodable::decode(d)),
+                d.read_tup_elt(3, || Decodable::decode(d))
             )
         }
     }
@@ -536,11 +537,11 @@ pub impl<
       -> (T0, T1, T2, T3, T4) {
         do d.read_tup(5) {
             (
-                d.read_tup_elt(0, || decode(d)),
-                d.read_tup_elt(1, || decode(d)),
-                d.read_tup_elt(2, || decode(d)),
-                d.read_tup_elt(3, || decode(d)),
-                d.read_tup_elt(4, || decode(d))
+                d.read_tup_elt(0, || Decodable::decode(d)),
+                d.read_tup_elt(1, || Decodable::decode(d)),
+                d.read_tup_elt(2, || Decodable::decode(d)),
+                d.read_tup_elt(3, || Decodable::decode(d)),
+                d.read_tup_elt(4, || Decodable::decode(d))
             )
         }
     }

@@ -37,6 +37,6 @@ mod base {
 }
 
 fn main() {
-    let f: base::Foo = base::new::<base::Foo, base::Foo>();
-	let b: base::Bar = base::new::<base::Bar, base::Bar>();
+    let f: base::Foo = base::HasNew::new::<base::Foo, base::Foo>();
+	let b: base::Bar = base::HasNew::new::<base::Bar, base::Bar>();
 }
