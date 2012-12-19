@@ -2143,11 +2143,11 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 # impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-// A managed trait instance
+// A managed object
 let boxy: @Drawable = @new_circle() as @Drawable;
-// An owned trait instance
+// An owned object
 let owny: ~Drawable = ~new_circle() as ~Drawable;
-// A borrowed trait instance
+// A borrowed object
 let stacky: &Drawable = &new_circle() as &Drawable;
 ~~~
 
