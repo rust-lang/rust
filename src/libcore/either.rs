@@ -142,6 +142,14 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     }
 }
 
+impl<T, U> Either<T, U> {
+    #[inline(always)]
+    fn unwrap_left(self) -> T { unwrap_left(self) }
+
+    #[inline(always)]
+    fn unwrap_right(self) -> U { unwrap_right(self) }
+}
+
 #[test]
 fn test_either_left() {
     let val = Left(10);
