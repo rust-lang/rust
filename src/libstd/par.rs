@@ -85,7 +85,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
 
 /// A parallel version of map.
 pub fn map<A: Copy Owned, B: Copy Owned>(
-    xs: &[A], f: fn~((&A)) -> B) -> ~[B] {
+    xs: &[A], f: fn~(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
             vec::map(slice, |x| f(x))
@@ -95,7 +95,7 @@ pub fn map<A: Copy Owned, B: Copy Owned>(
 
 /// A parallel version of mapi.
 pub fn mapi<A: Copy Owned, B: Copy Owned>(xs: &[A],
-                                    f: fn~(uint, (&A)) -> B) -> ~[B] {
+                                    f: fn~(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
             vec::mapi(slice, |i, x| {
@@ -132,7 +132,7 @@ pub fn mapi_factory<A: Copy Owned, B: Copy Owned>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, (&A)) -> bool) -> bool {
+pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, &A) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
@@ -143,7 +143,7 @@ pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, (&A)) -> bool) -> bool {
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A: Copy Owned>(xs: &[A], f: fn~(&(A)) -> bool) -> bool {
+pub fn any<A: Copy Owned>(xs: &[A], f: fn~(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, |x| f(x))
