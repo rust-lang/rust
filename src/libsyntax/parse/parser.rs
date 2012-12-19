@@ -3038,23 +3038,17 @@ impl Parser {
         let prefix = prefix.dir_path();
         let mod_path = Path(".").push_many(self.mod_path_stack);
         let default_path = self.sess.interner.get(id) + ~".rs";
-        // XXX path2 and path are synonyms. Remove path2 after snapshot
         let file_path = match ::attr::first_attr_value_str_by_name(
-            outer_attrs, ~"path2") {
-
-            Some(ref d) => mod_path.push(*d),
-            None => match ::attr::first_attr_value_str_by_name(
-                outer_attrs, ~"path") {
-                Some(ref d) => {
-                    let path = Path(*d);
-                    if !path.is_absolute {
-                        mod_path.push(*d)
-                    } else {
-                        path
-                    }
+            outer_attrs, ~"path") {
+            Some(ref d) => {
+                let path = Path(*d);
+                if !path.is_absolute {
+                    mod_path.push(*d)
+                } else {
+                    path
                 }
-                None => mod_path.push(default_path)
             }
+            None => mod_path.push(default_path)
         };
 
         self.eval_src_mod_from_path(prefix, file_path,

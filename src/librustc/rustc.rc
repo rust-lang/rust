@@ -104,7 +104,7 @@ mod middle {
     mod ty;
     #[legacy_exports]
     mod resolve;
-    #[path2 = "typeck/mod.rs"]
+    #[path = "typeck/mod.rs"]
     pub mod typeck;
     #[legacy_exports]
     mod check_loop;
@@ -114,7 +114,7 @@ mod middle {
     mod check_const;
     #[legacy_exports]
     mod lint;
-    #[path2 = "borrowck/mod.rs"]
+    #[path = "borrowck/mod.rs"]
     pub mod borrowck;
     #[legacy_exports]
     mod mem_categorization;
