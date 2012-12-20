@@ -193,6 +193,14 @@ impl f64: num::Num {
     static pure fn from_int(n: int) -> f64 { return n as f64;    }
 }
 
+impl f64: num::Zero {
+    static pure fn zero() -> f64 { 0.0 }
+}
+
+impl f64: num::One {
+    static pure fn one() -> f64 { 1.0 }
+}
+
 //
 // Local Variables:
 // mode: rust

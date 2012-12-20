@@ -22,3 +22,11 @@ pub trait Num {
     pure fn to_int(&self) -> int;
     static pure fn from_int(n: int) -> self;
 }
+
+pub trait Zero {
+    static pure fn zero() -> self;
+}
+
+pub trait One {
+    static pure fn one() -> self;
+}
