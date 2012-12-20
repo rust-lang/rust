@@ -902,6 +902,22 @@ match mytup {
 }
 ~~~~
 
+## Tuple structs
+
+Rust also has _nominal tuples_, which behave like both structs and tuples,
+except that nominal tuple types have names
+(so `Foo(1, 2)` has a different type from `Bar(1, 2)`),
+and nominal tuple types' _fields_ do not have names.
+
+For example:
+~~~~
+struct MyTup(int, int, float);
+let mytup: MyTup = MyTup(10, 20, 30.0);
+match mytup {
+  MyTup(a, b, c) => log(info, a + b + (c as int))
+}
+~~~~
+
 # Functions and methods
 
 We've already seen several function definitions. Like all other static
