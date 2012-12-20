@@ -1465,6 +1465,14 @@ when evaluated in an _rvalue context_, it denotes the value held _in_ that memor
 When an rvalue is used in lvalue context, a temporary un-named lvalue is created and used instead.
 A temporary's lifetime equals the largest lifetime of any borrowed pointer that points to it.
 
+#### Moved and copied types
+
+When a [local variable](#memory-slots) is used as an [rvalue](#lvalues-rvalues-and-temporaries)
+the variable will either be [moved](#move-expressions) or [copied](#copy-expressions),
+depending on its type.
+For types that contain mutable fields or [owning pointers](#owning-pointers), the variable is moved.
+All other types are copied.
+
 
 ### Literal expressions
 
@@ -1787,7 +1795,7 @@ y.z <-> b.c;
 An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
 equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
-Evaluating an assignment expression copies the expression on the right-hand side and stores it in the location on the left-hand side.
+Evaluating an assignment expression [either copies or moves](#moved-and-copied-types) its right-hand operand to its left-hand operand.
 
 ~~~~
 # let mut x = 0;
@@ -1860,7 +1868,7 @@ copy.
 as are raw and borrowed pointers.
 [Owned boxes](#pointer-types), [owned vectors](#vector-types) and similar owned types are deep-copied.
 
-Since the binary [assignment operator](#assignment-expressions) `=` performs a copy implicitly,
+Since the binary [assignment operator](#assignment-expressions) `=` performs a copy or move implicitly,
 the unary copy operator is typically only used to cause an argument to a function to be copied and passed by value.
 
 An example of a copy expression:
@@ -1884,11 +1892,15 @@ move_expr : "move" expr ;
 ~~~~~~~~
 
 A _unary move expression_ is similar to a [unary copy](#unary-copy-expressions) expression,
-except that it can only be applied to an [lvalue](#lvalues-rvalues-and-temporaries),
+except that it can only be applied to a [local variable](#memory-slots),
 and it performs a _move_ on its operand, rather than a copy.
 That is, the memory location denoted by its operand is de-initialized after evaluation,
 and the resulting value is a shallow copy of the operand,
 even if the operand is an [owning type](#type-kinds).
+
+
+> **Note:** In future versions of Rust, `move` may be removed as a separate operator;
+> moves are now [automatically performed](#moved-and-copied-types) for most cases `move` would be appropriate.
 
 
 ### Call expressions
