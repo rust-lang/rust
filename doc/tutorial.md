@@ -918,7 +918,7 @@ match mytup {
 }
 ~~~~
 
-# Functions and methods
+# Functions
 
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
@@ -967,52 +967,6 @@ fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
 assert 8  == line(5, 3, 1);
 assert () == oops(5, 3, 1);
 ~~~~
-
-Methods are like functions, except that they have an implicit argument
-called `self`, which has the type that the method's receiver has. The
-`self` argument is like 'this' in C++. An expression with dot
-notation, as in `my_vec.len()`, denotes a method
-call. Implementations, written with the `impl` keyword, can define
-methods on most Rust types. As an example, let's define a `draw`
-method on our `Shape` enum.
-
-~~~
-# fn draw_circle(p: Point, f: float) { }
-# fn draw_rectangle(p: Point, p: Point) { }
-struct Point {
-    x: float,
-    y: float
-}
-
-enum Shape {
-    Circle(Point, float),
-    Rectangle(Point, Point)
-}
-
-impl Shape {
-    fn draw() {
-        match self {
-            Circle(p, f) => draw_circle(p, f),
-            Rectangle(p1, p2) => draw_rectangle(p1, p2)
-        }
-    }
-}
-
-let s = Circle(Point { x: 1f, y: 2f }, 3f);
-s.draw();
-~~~
-
-This defines an _implementation_ for `Shape` containing a single
-method, `draw`. In most respects the `draw` method is defined
-like any other function, except for the name `self`. `self`
-is a special value that is automatically in scope inside each method,
-referring to the value being operated on. If we wanted we could add
-additional methods to the same impl, or multiple impls for the same
-type. We'll discuss methods more in the context of [traits and
-generics](#generics).
-
-> ***Note:*** In the future, the method definition syntax will change to
-> require declaring the `self` type explicitly, as the first argument.
 
 # The Rust memory model
 
@@ -1525,6 +1479,115 @@ if favorite_crayon_name.len() > 5 {
    println(favorite_crayon_name.substr(0, 5));
 }
 ~~~
+
+# Methods
+
+Methods are like functions except that they always begin with a special argument,
+called `self`,
+which has the type of the method's receiver. The
+`self` argument is like `this` in C++ and many other languages.
+Methods are called with dot notation, as in `my_vec.len()`.
+
+_Implementations_, written with the `impl` keyword, can define
+methods on most Rust types, including structs and enums.
+As an example, let's define a `draw` method on our `Shape` enum.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+struct Point {
+    x: float,
+    y: float
+}
+
+enum Shape {
+    Circle(Point, float),
+    Rectangle(Point, Point)
+}
+
+impl Shape {
+    fn draw(&self) {
+        match *self {
+            Circle(p, f) => draw_circle(p, f),
+            Rectangle(p1, p2) => draw_rectangle(p1, p2)
+        }
+    }
+}
+
+let s = Circle(Point { x: 1f, y: 2f }, 3f);
+s.draw();
+~~~
+
+This defines an _implementation_ for `Shape` containing a single
+method, `draw`. In most respects the `draw` method is defined
+like any other function, except for the name `self`.
+
+The type of `self` is the type on which the method is implemented,
+or a pointer thereof. As an argument it is written either `self`,
+`&self`, `@self`, or `~self`.
+A caller must in turn have a compatible pointer type to call the method.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+# struct Point { x: float, y: float }
+# enum Shape {
+#     Circle(Point, float),
+#     Rectangle(Point, Point)
+# }
+impl Shape {
+    fn draw_borrowed(&self) { ... }
+    fn draw_managed(@self) { ... }
+    fn draw_owned(~self) { ... }
+    fn draw_value(self) { ... }
+}
+
+let s = Circle(Point { x: 1f, y: 2f }, 3f);
+
+(@s).draw_managed();
+(~s).draw_owned();
+(&s).draw_borrowed();
+s.draw_value();
+~~~
+
+Methods typically take a borrowed pointer self type,
+so the compiler will go to great lengths to convert a callee
+to a borrowed pointer.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+# struct Point { x: float, y: float }
+# enum Shape {
+#     Circle(Point, float),
+#     Rectangle(Point, Point)
+# }
+# impl Shape {
+#    fn draw_borrowed(&self) { ... }
+#    fn draw_managed(@self) { ... }
+#    fn draw_owned(~self) { ... }
+#    fn draw_value(self) { ... }
+# }
+# let s = Circle(Point { x: 1f, y: 2f }, 3f);
+// As with typical function arguments, managed and unique pointers
+// are automatically converted to borrowed pointers
+
+(@s).draw_borrowed();
+(~s).draw_borrowed();
+
+// Unlike typical function arguments, the self value will
+// automatically be referenced ...
+s.draw_borrowed();
+
+// ... and dereferenced
+(& &s).draw_borrowed();
+
+// ... and dereferenced, and borrowed, and
+(&@~s).draw_borrowed();
+~~~
+
+We'll discuss implementations more in the context of [traits and
+generics](#generics).
 
 # Closures
 
