@@ -26,6 +26,7 @@ use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
 use metadata::filesearch;
 use syntax::ast_map::{path, path_mod, path_name};
 use io::{Writer, WriterUtil};
+use os::consts::{macos, freebsd, linux, win32};
 
 enum output_type {
     output_type_none,
@@ -631,6 +632,21 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
+
+fn output_dll_filename(os: session::os, lm: &link_meta) -> ~str {
+    let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
+    match os {
+        session::os_macos =>
+            macos::dll_prefix() + libname + macos::dll_suffix(),
+        session::os_freebsd =>
+            freebsd::dll_prefix() + libname + macos::dll_suffix(),
+        session::os_linux =>
+            freebsd::dll_prefix() + libname + macos::dll_suffix(),
+        session::os_win32 =>
+            win32::dll_prefix() + libname + win32::dll_suffix(),
+    }
+}
+
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
 fn link_binary(sess: Session,
@@ -648,9 +664,7 @@ fn link_binary(sess: Session,
     }
 
     let output = if sess.building_library {
-        let long_libname =
-            os::dll_filename(fmt!("%s-%s-%s",
-                                  lm.name, lm.extras_hash, lm.vers));
+        let long_libname = output_dll_filename(sess.targ_cfg.os, &lm);
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
         debug!("out_filename: %s", out_filename.to_str());
