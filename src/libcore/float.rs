@@ -443,6 +443,14 @@ impl float: num::Num {
     static pure fn from_int(&self, n: int) -> float { return n as float;  }
 }
 
+impl float: num::Zero {
+    static pure fn zero() -> float { 0.0 }
+}
+
+impl float: num::One {
+    static pure fn one() -> float { 1.0 }
+}
+
 #[test]
 pub fn test_from_str() {
    assert from_str(~"3") == Some(3.);
