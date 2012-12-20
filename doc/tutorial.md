@@ -1586,6 +1586,36 @@ s.draw_borrowed();
 (&@~s).draw_borrowed();
 ~~~
 
+Implementations may also define _static_ methods,
+which don't have an explicit `self` argument.
+The `static` keyword distinguishes static methods from methods that have a `self`:
+
+~~~~ {.xfail-test}
+impl Circle {
+    fn area(&self) -> float { ... }
+    static fn new(area: float) -> Circle { ... }
+}
+~~~~
+
+> ***Note***: In the future the `static` keyword will be removed and static methods
+> will be distinguished solely by the presence or absence of the `self` argument.
+> In the current langugage instance methods may also be declared without an explicit
+> `self` argument, in which case `self` is an implicit reference.
+> That form of method is deprecated.
+
+Constructors are one common application for static methods, as in `new` above.
+To call a static method, you have to prefix it with the type name and a double colon:
+
+~~~~
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+impl Circle {
+    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+let c = Circle::new(42.5);
+~~~~
+
 We'll discuss implementations more in the context of [traits and
 generics](#generics).
 
@@ -2113,6 +2143,29 @@ second parameter of type `self`.
 In contrast, in the `impl`, `equals` takes a second parameter of
 type `int`, only using `self` as the name of the receiver.
 
+Traits can also define static methods which are called by prefixing
+the method name with the trait name.
+The compiler will use type inference to decide which implementation to call.
+
+~~~~
+# trait Shape { static fn new(area: float) -> self; }
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+struct Square { length: float }
+
+impl Circle: Shape {
+    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+impl Square: Shape {
+     static fn new(area: float) -> Square { Square { length: sqrt(area) } }
+}
+
+let area = 42.5;
+let c: Circle = Shape::new(area);
+let s: Square = Shape::new(area);
+~~~~
+
 ## Bounded type parameters and static method dispatch
 
 Traits give us a language for defining predicates on types, or
@@ -2237,32 +2290,6 @@ time, it uses a lookup table (also known as a vtable or dictionary) to
 select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
-
-## Static methods
-
-Traits can define _static_ methods, which don't have an implicit `self` argument.
-The `static` keyword distinguishes static methods from methods that have a `self`:
-
-~~~~
-trait Shape {
-    fn area(&self) -> float;
-    static fn new_shape(area: float) -> Shape;
-}
-~~~~
-
-Constructors are one application for static methods, as in `new_shape` above.
-To call a static method, you have to prefix it with the trait name and a double colon:
-
-~~~~
-# trait Shape { static fn new_shape(area: float) -> self; }
-# use float::consts::pi;
-# use float::sqrt;
-struct Circle { radius: float }
-impl Circle: Shape {
-    static fn new_shape(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
-}
-let s: Circle = Shape::new_shape(42.5);
-~~~~
 
 ## Trait inheritance
 
