@@ -217,7 +217,7 @@ while count < 10 {
 
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
-name. Constants, an the other hand, always require a type annotation.
+name. Constants, on the other hand, always require a type annotation.
 
 ~~~~
 const monster_factor: float = 57.8;
