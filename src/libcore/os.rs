@@ -382,13 +382,8 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return pre() + str::from_slice(base) + dll_suffix();
-
-    #[cfg(unix)]
-    fn pre() -> ~str { ~"lib" }
-
-    #[cfg(windows)]
-    fn pre() -> ~str { ~"" }
+    return str::from_slice(DLL_PREFIX) + str::from_slice(base) +
+           str::from_slice(DLL_SUFFIX)
 }
 
 
@@ -878,48 +873,83 @@ extern {
     pub fn _NSGetArgv() -> ***c_char;
 }
 
-#[cfg(unix)]
-pub fn family() -> ~str { ~"unix" }
-
-#[cfg(windows)]
-pub fn family() -> ~str { ~"windows" }
-
-#[cfg(target_os = "macos")]
 mod consts {
-    pub fn sysname() -> ~str { ~"macos" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".dylib" }
+
+    #[cfg(unix)]
+    use os::consts::unix::*;
+
+    #[cfg(windows)]
+    use os::consts::windows::*;
+
+    pub mod unix {
+        pub const FAMILY: &str = "unix";
+    }
+
+    pub mod windows {
+        pub const FAMILY: &str = "windows";
+    }
+
+
+    #[cfg(target_os = "macos")]
+    use os::consts::macos::*;
+
+    #[cfg(target_os = "freebsd")]
+    use os::consts::freebsd::*;
+
+    #[cfg(target_os = "linux")]
+    use os::consts::linux::*;
+
+    #[cfg(target_os = "win32")]
+    use os::consts::win32::*;
+
+    pub mod macos {
+        pub const SYSNAME: &str = "macos";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".dylib";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod freebsd {
+        pub const SYSNAME: &str = "freebsd";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod linux {
+        pub const SYSNAME: &str = "linux";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod win32 {
+        pub const SYSNAME: &str = "win32";
+        pub const DLL_PREFIX: &str = "";
+        pub const DLL_SUFFIX: &str = ".dll";
+        pub const EXE_SUFFIX: &str = ".exe";
+    }
+
+
+    #[cfg(target_arch = "x86")]
+    use os::consts::x86::*;
+
+    #[cfg(target_arch = "x86_64")]
+    use os::consts::x86_64::*;
+
+    #[cfg(target_arch = "arm")]
+    use os::consts::arm::*;
+
+    pub mod x86 {
+        pub const ARCH: &str = "x86";
+    }
+    pub mod x86_64 {
+        pub const ARCH: &str = "x86_64";
+    }
+    pub mod arm {
+        pub const ARCH: &str = "arm";
+    }
 }
-
-#[cfg(target_os = "freebsd")]
-mod consts {
-    pub fn sysname() -> ~str { ~"freebsd" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "linux")]
-mod consts {
-    pub fn sysname() -> ~str { ~"linux" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "win32")]
-mod consts {
-    pub fn sysname() -> ~str { ~"win32" }
-    pub fn exe_suffix() -> ~str { ~".exe" }
-    pub fn dll_suffix() -> ~str { ~".dll" }
-}
-
-#[cfg(target_arch = "x86")]
-pub fn arch() -> ~str { ~"x86" }
-
-#[cfg(target_arch = "x86_64")]
-pub fn arch() -> ~str { ~"x86_64" }
-
-#[cfg(target_arch = "arm")]
-pub fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]

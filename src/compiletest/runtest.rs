@@ -501,7 +501,8 @@ fn make_lib_name(config: config, auxfile: &Path, testfile: &Path) -> Path {
 }
 
 fn make_exe_name(config: config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() + os::exe_suffix())
+    Path(output_base_name(config, testfile).to_str() +
+            str::from_slice(os::EXE_SUFFIX))
 }
 
 fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
