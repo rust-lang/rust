@@ -174,6 +174,14 @@ impl f32: num::Num {
     static pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
+impl f32: num::Zero {
+    static pure fn zero() -> f32 { 0.0 }
+}
+
+impl f32: num::One {
+    static pure fn one() -> f32 { 1.0 }
+}
+
 //
 // Local Variables:
 // mode: rust

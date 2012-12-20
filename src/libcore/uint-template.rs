@@ -85,6 +85,14 @@ impl T: num::Num {
     static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
+impl T: num::Zero {
+    static pure fn zero() -> T { 0 }
+}
+
+impl T: num::One {
+    static pure fn one() -> T { 1 }
+}
+
 impl T: iter::Times {
     #[inline(always)]
     #[doc = "A convenience form for basic iteration. Given a variable `x` \
