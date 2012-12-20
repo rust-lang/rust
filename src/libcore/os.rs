@@ -850,7 +850,7 @@ pub fn family() -> ~str { ~"unix" }
 
 #[cfg(windows)]
 pub fn family() -> ~str { ~"windows" }
-    
+
 
 mod consts {
 
@@ -886,7 +886,7 @@ mod consts {
         pub fn dll_suffix() -> ~str { ~".so" }
         pub fn exe_suffix() -> ~str { ~"" }
     }
-    
+
     pub mod win32 {
         pub fn sysname() -> ~str { ~"win32" }
         pub fn dll_prefix() -> ~str { ~"" }

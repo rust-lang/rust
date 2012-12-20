@@ -642,7 +642,7 @@ fn output_dll_filename(os: session::os, lm: &link_meta) -> ~str {
             freebsd::dll_prefix() + libname + macos::dll_suffix(),
         session::os_linux =>
             freebsd::dll_prefix() + libname + macos::dll_suffix(),
-        session::os_win32 => 
+        session::os_win32 =>
             win32::dll_prefix() + libname + win32::dll_suffix(),
     }
 }
@@ -665,8 +665,7 @@ fn link_binary(sess: Session,
 
     let output = if sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, &lm);
-        
-		debug!("link_meta.name:  %s", lm.name);
+        debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
         debug!("out_filename: %s", out_filename.to_str());
         debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
