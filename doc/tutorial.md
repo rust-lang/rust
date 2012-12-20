@@ -733,6 +733,24 @@ fn point_from_direction(dir: Direction) -> Point {
 }
 ~~~~
 
+A special kind of enum variant, called _struct-like enums_,
+can have its fields extracted with dot notation and not just destructuring.
+For example:
+
+~~~~
+# struct Point {x: float, y: float}
+# fn square(x: float) -> float { x * x }
+enum Shape {
+    Circle { center: Point, radius: float },
+    Rectangle { left: Point, right: Point }
+}
+fn area(sh: Shape) -> float {
+   match sh {
+      Circle(c) => float::consts::pi * square(c.radius),
+      Rectangle(r) => r.right.x - r.left.x * r.right.y - r.right.y
+   }
+}
+~~~~
 ## Tuples
 
 Tuples in Rust behave exactly like structs, except that their fields
