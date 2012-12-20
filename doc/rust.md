@@ -1107,6 +1107,19 @@ let mut a: Animal = Dog;
 a = Cat;
 ~~~~
 
+Enumeration constructors can have either named or unnamed fields:
+~~~~
+enum Animal {
+    Dog (~str, float),
+    Cat { name: ~str, weight: float }
+}
+
+let mut a: Animal = Dog(~"Cocoa", 37.2);
+a = Cat{ name: ~"Spotty", weight: 2.7 };
+~~~~
+
+In this example, `Cat` is a _struct-like enum variant_,
+whereas `Dog` is simply called an enum variant.
 ### Constants
 
 ~~~~~~~~ {.ebnf .gram}
