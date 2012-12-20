@@ -2092,6 +2092,88 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
+## Trait objects and dynamic method dispatch
+
+The above allows us to define functions that polymorphically act on
+values of a single unknown type that conforms to a given trait.
+However, consider this function:
+
+~~~~
+# type Circle = int; type Rectangle = int;
+# impl int: Drawable { fn draw() {} }
+# fn new_circle() -> int { 1 }
+trait Drawable { fn draw(); }
+
+fn draw_all<T: Drawable>(shapes: ~[T]) {
+    for shapes.each |shape| { shape.draw(); }
+}
+# let c: Circle = new_circle();
+# draw_all(~[c]);
+~~~~
+
+You can call that on an array of circles, or an array of squares
+(assuming those have suitable `Drawable` traits defined), but not on
+an array containing both circles and squares. When such behavior is
+needed, a trait name can alternately be used as a type, called
+an _object_.
+
+~~~~
+# trait Drawable { fn draw(); }
+fn draw_all(shapes: &[@Drawable]) {
+    for shapes.each |shape| { shape.draw(); }
+}
+~~~~
+
+In this example, there is no type parameter. Instead, the `@Drawable`
+type denotes any managed box value that implements the `Drawable`
+trait. To construct such a value, you use the `as` operator to cast a
+value to an object:
+
+~~~~
+# type Circle = int; type Rectangle = bool;
+# trait Drawable { fn draw(); }
+# fn new_circle() -> Circle { 1 }
+# fn new_rectangle() -> Rectangle { true }
+# fn draw_all(shapes: &[@Drawable]) {}
+
+impl Circle: Drawable { fn draw() { ... } }
+
+impl Rectangle: Drawable { fn draw() { ... } }
+
+let c: @Circle = @new_circle();
+let r: @Rectangle = @new_rectangle();
+draw_all([c as @Drawable, r as @Drawable]);
+~~~~
+
+We omit the code for `new_circle` and `new_rectangle`; imagine that
+these just return `Circle`s and `Rectangle`s with a default size. Note
+that, like strings and vectors, objects have dynamic size and may
+only be referred to via one of the pointer types.
+Other pointer types work as well.
+Casts to traits may only be done with compatible pointers so,
+for example, an `@Circle` may not be cast to an `~Drawable`.
+
+~~~
+# type Circle = int; type Rectangle = int;
+# trait Drawable { fn draw(); }
+# impl int: Drawable { fn draw() {} }
+# fn new_circle() -> int { 1 }
+# fn new_rectangle() -> int { 2 }
+// A managed object
+let boxy: @Drawable = @new_circle() as @Drawable;
+// An owned object
+let owny: ~Drawable = ~new_circle() as ~Drawable;
+// A borrowed object
+let stacky: &Drawable = &new_circle() as &Drawable;
+~~~
+
+Method calls to trait types are _dynamically dispatched_. Since the
+compiler doesn't know specifically which functions to call at compile
+time, it uses a lookup table (also known as a vtable or dictionary) to
+select the method to call at runtime.
+
+This usage of traits is similar to Java interfaces.
+
 ## Static methods
 
 Traits can define _static_ methods, which don't have an implicit `self` argument.
@@ -2178,88 +2260,6 @@ let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
 > ***Note:*** Trait inheritance does not actually work with objects yet
-
-## Trait objects and dynamic method dispatch
-
-The above allows us to define functions that polymorphically act on
-values of a single unknown type that conforms to a given trait.
-However, consider this function:
-
-~~~~
-# type Circle = int; type Rectangle = int;
-# impl int: Drawable { fn draw() {} }
-# fn new_circle() -> int { 1 }
-trait Drawable { fn draw(); }
-
-fn draw_all<T: Drawable>(shapes: ~[T]) {
-    for shapes.each |shape| { shape.draw(); }
-}
-# let c: Circle = new_circle();
-# draw_all(~[c]);
-~~~~
-
-You can call that on an array of circles, or an array of squares
-(assuming those have suitable `Drawable` traits defined), but not on
-an array containing both circles and squares. When such behavior is
-needed, a trait name can alternately be used as a type, called
-an _object_.
-
-~~~~
-# trait Drawable { fn draw(); }
-fn draw_all(shapes: &[@Drawable]) {
-    for shapes.each |shape| { shape.draw(); }
-}
-~~~~
-
-In this example, there is no type parameter. Instead, the `@Drawable`
-type denotes any managed box value that implements the `Drawable`
-trait. To construct such a value, you use the `as` operator to cast a
-value to an object:
-
-~~~~
-# type Circle = int; type Rectangle = bool;
-# trait Drawable { fn draw(); }
-# fn new_circle() -> Circle { 1 }
-# fn new_rectangle() -> Rectangle { true }
-# fn draw_all(shapes: &[@Drawable]) {}
-
-impl Circle: Drawable { fn draw() { ... } }
-
-impl Rectangle: Drawable { fn draw() { ... } }
-
-let c: @Circle = @new_circle();
-let r: @Rectangle = @new_rectangle();
-draw_all([c as @Drawable, r as @Drawable]);
-~~~~
-
-We omit the code for `new_circle` and `new_rectangle`; imagine that
-these just return `Circle`s and `Rectangle`s with a default size. Note
-that, like strings and vectors, objects have dynamic size and may
-only be referred to via one of the pointer types.
-Other pointer types work as well.
-Casts to traits may only be done with compatible pointers so,
-for example, an `@Circle` may not be cast to an `~Drawable`.
-
-~~~
-# type Circle = int; type Rectangle = int;
-# trait Drawable { fn draw(); }
-# impl int: Drawable { fn draw() {} }
-# fn new_circle() -> int { 1 }
-# fn new_rectangle() -> int { 2 }
-// A managed object
-let boxy: @Drawable = @new_circle() as @Drawable;
-// An owned object
-let owny: ~Drawable = ~new_circle() as ~Drawable;
-// A borrowed object
-let stacky: &Drawable = &new_circle() as &Drawable;
-~~~
-
-Method calls to trait types are _dynamically dispatched_. Since the
-compiler doesn't know specifically which functions to call at compile
-time, it uses a lookup table (also known as a vtable or dictionary) to
-select the method to call at runtime.
-
-This usage of traits is similar to Java interfaces.
 
 # Modules and crates
 
