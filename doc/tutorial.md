@@ -2033,7 +2033,7 @@ console, with a single method:
 
 ~~~~
 trait Printable {
-    fn print();
+    fn print(&self);
 }
 ~~~~
 
@@ -2045,13 +2045,13 @@ and `~str`.
 [impls]: #functions-and-methods
 
 ~~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 impl int: Printable {
-    fn print() { io::println(fmt!("%d", self)) }
+    fn print(&self) { io::println(fmt!("%d", *self)) }
 }
 
 impl &str: Printable {
-    fn print() { io::println(self) }
+    fn print(&self) { io::println(*self) }
 }
 
 # 1.print();
@@ -2065,14 +2065,14 @@ types might look like the following:
 
 ~~~~
 trait Seq<T> {
-    fn len() -> uint;
-    fn iter(b: fn(v: &T));
+    fn len(&self) -> uint;
+    fn iter(&self, b: fn(v: &T));
 }
 
 impl<T> ~[T]: Seq<T> {
-    fn len() -> uint { vec::len(self) }
-    fn iter(b: fn(v: &T)) {
-        for vec::each(self) |elt| { b(elt); }
+    fn len(&self) -> uint { vec::len(*self) }
+    fn iter(&self, b: fn(v: &T)) {
+        for vec::each(*self) |elt| { b(elt); }
     }
 }
 ~~~~
@@ -2096,21 +2096,22 @@ trait, `self` is a type, and in an impl, `self` is a value. The
 following trait describes types that support an equality operation:
 
 ~~~~
-// In a trait, `self` refers to the type implementing the trait
+// In a trait, `self` refers both to the self argument
+// and to the type implementing the trait
 trait Eq {
-  fn equals(other: &self) -> bool;
+  fn equals(&self, other: &self) -> bool;
 }
 
-// In an impl, `self` refers to the value of the receiver
+// In an impl, `self` refers just to the value of the receiver
 impl int: Eq {
-  fn equals(other: &int) -> bool { *other == self }
+  fn equals(&self, other: &int) -> bool { *other == *self }
 }
 ~~~~
 
-Notice that in the trait definition, `equals` takes a parameter of
-type `self`. In contrast, in the `impl`, `equals` takes a parameter of
-type `int`, and uses `self` as the name of the receiver (analogous to
-the `this` pointer in C++).
+Notice that in the trait definition, `equals` takes a
+second parameter of type `self`.
+In contrast, in the `impl`, `equals` takes a second parameter of
+type `int`, only using `self` as the name of the receiver.
 
 ## Bounded type parameters and static method dispatch
 
@@ -2120,7 +2121,7 @@ define _bounds_ on type parameters, so that we can then operate on
 generic types.
 
 ~~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
     for printable_things.each |thing| {
         thing.print();
@@ -2138,7 +2139,7 @@ Type parameters can have multiple bounds by separating them with spaces,
 as in this version of `print_all` that copies elements.
 
 ~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 fn print_all<T: Printable Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
@@ -2163,9 +2164,9 @@ However, consider this function:
 
 ~~~~
 # type Circle = int; type Rectangle = int;
-# impl int: Drawable { fn draw() {} }
+# impl int: Drawable { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
-trait Drawable { fn draw(); }
+trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
@@ -2181,7 +2182,7 @@ needed, a trait name can alternately be used as a type, called
 an _object_.
 
 ~~~~
-# trait Drawable { fn draw(); }
+# trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
     for shapes.each |shape| { shape.draw(); }
 }
@@ -2194,14 +2195,14 @@ value to an object:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
-# trait Drawable { fn draw(); }
+# trait Drawable { fn draw(&self); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
 # fn draw_all(shapes: &[@Drawable]) {}
 
-impl Circle: Drawable { fn draw() { ... } }
+impl Circle: Drawable { fn draw(&self) { ... } }
 
-impl Rectangle: Drawable { fn draw() { ... } }
+impl Rectangle: Drawable { fn draw(&self) { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
@@ -2218,8 +2219,8 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 
 ~~~
 # type Circle = int; type Rectangle = int;
-# trait Drawable { fn draw(); }
-# impl int: Drawable { fn draw() {} }
+# trait Drawable { fn draw(&self); }
+# impl int: Drawable { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
 // A managed object
@@ -2244,7 +2245,7 @@ The `static` keyword distinguishes static methods from methods that have a `self
 
 ~~~~
 trait Shape {
-    fn area() -> float;
+    fn area(&self) -> float;
     static fn new_shape(area: float) -> Shape;
 }
 ~~~~
@@ -2271,25 +2272,25 @@ Types that implement a trait must also implement its supertraits.
 For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
 
 ~~~~
-trait Shape { fn area() -> float; }
-trait Circle : Shape { fn radius() -> float; }
+trait Shape { fn area(&self) -> float; }
+trait Circle : Shape { fn radius(&self) -> float; }
 ~~~~
 
 Now, implementations of `Circle` methods can call `Shape` methods:
 
 ~~~~
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
 # use float::consts::pi;
 # use float::sqrt;
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
 impl CircleStruct: Circle {
-     fn radius() -> float { sqrt(self.area() / pi) }
+     fn radius(&self) -> float { sqrt(self.area() / pi) }
 }
 impl CircleStruct: Shape {
-     fn area() -> float { pi * square(self.radius) }
+     fn area(&self) -> float { pi * square(self.radius) }
 }   
 ~~~~
 
@@ -2301,8 +2302,8 @@ methods of the supertrait may be called on values of subtrait-bound type paramet
 Refering to the previous example of `trait Circle : Shape`:
 
 ~~~
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
 fn radius_times_area<T: Circle>(c: T) -> float {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
@@ -2312,10 +2313,10 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
-# impl int: Shape { fn area() -> float { 0.0 } }
-# impl int: Circle { fn radius() -> float { 0.0 } }
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
+# impl int: Shape { fn area(&self) -> float { 0.0 } }
+# impl int: Circle { fn radius(&self) -> float { 0.0 } }
 # let mycircle = 0;
 
 let mycircle: Circle = @mycircle as @Circle;
@@ -2385,9 +2386,9 @@ mod farm {
 
     // Note - visibility modifiers on impls currently have no effect
     impl Farm {
-        priv fn feed_chickens() { ... }
-        priv fn feed_cows() { ... }
-        fn add_chicken(c: Chicken) { ... }
+        priv fn feed_chickens(&self) { ... }
+        priv fn feed_cows(&self) { ... }
+        fn add_chicken(&self, c: Chicken) { ... }
     }
 
     pub fn feed_animals(farm: &Farm) {
@@ -2407,7 +2408,7 @@ fn main() {
 # enum Human = int;
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
 # fn make_me_a_chicken() -> Chicken { 0 }
-# impl Human { fn rest() { } }
+# impl Human { fn rest(&self) { } }
 ~~~
 
 ## Crates
