@@ -100,9 +100,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://dl.rust-lang.org/dist/rust-0.4.tar.gz
-$ tar -xzf rust-0.4.tar.gz
-$ cd rust-0.4
+$ curl -O http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+$ tar -xzf rust-0.5.tar.gz
+$ cd rust-0.5
 $ ./configure
 $ make && make install
 ~~~~
@@ -118,8 +118,8 @@ When complete, `make install` will place several programs into
 API-documentation tool, and `cargo`, the Rust package manager.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
-[win-exe]: http://dl.rust-lang.org/dist/rust-0.4-install.exe
+[tarball]: http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+[win-exe]: http://dl.rust-lang.org/dist/rust-0.5-install.exe
 
 ## Compiling your first program
 
