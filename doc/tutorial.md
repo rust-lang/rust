@@ -373,8 +373,8 @@ assert y == 4u;
 but are instead provided by the libraries. To make it clear to the reader when
 a name refers to a syntax extension, the names of all syntax extensions end
 with `!`. The standard library defines a few syntax extensions, the most
-useful of which is `fmt!`, a `sprintf`-style text formatter that an early
-compiler phase expands statically.
+useful of which is `fmt!`, a `sprintf`-style text formatter that you will
+often see in examples.
 
 `fmt!` supports most of the directives that [printf][pf] supports, but unlike
 printf, will give you a compile-time error when the types of the directives
