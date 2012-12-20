@@ -221,11 +221,11 @@ qualified name. For more details, see the section on [crates](#crates).
 
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
-name.
+name. Constants, an the other hand, always require a type annotation.
 
 ~~~~
-let monster_size: float = 57.8;
-let imaginary_size = monster_size * 10.0;
+const monster_factor: float = 57.8;
+let monster_size: float = monster_factor * 10.0;
 let monster_size: int = 50;
 ~~~~
 
