@@ -1072,6 +1072,15 @@ let p = Point {x: 10, y: 11};
 let px: int = p.x;
 ~~~~
 
+A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with the keyword `struct`.
+For example:
+
+~~~~
+struct Point(int, int);
+let p = Point(10, 11);
+let px: int = match p { Point(x, _) => x };
+~~~~
+
 ### Enumerations
 
 An _enumeration_ is a simultaneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
@@ -1534,22 +1543,32 @@ values.
 ~~~~~~~~{.ebnf .gram}
 struct_expr : expr_path '{' ident ':' expr
                       [ ',' ident ':' expr ] *
-                      [ ".." expr ] '}'
+                      [ ".." expr ] '}' |
+              expr_path '(' expr
+                      [ ',' expr ] * ')'
 ~~~~~~~~
 
+There are several forms of structure expressions.
 A _structure expression_ consists of the [path](#paths) of a [structure item](#structures),
 followed by a brace-enclosed list of one or more comma-separated name-value pairs,
 providing the field values of a new instance of the structure.
 A field name can be any identifier, and is separated from its value expression by a colon.
 To indicate that a field is mutable, the `mut` keyword is written before its name.
 
+A _tuple structure expression_ constists of the [path](#paths) of a [structure item](#structures),
+followed by a parenthesized list of one or more comma-separated expressions
+(in other words, the path of a structured item followed by a tuple expression).
+The structure item must be a tuple structure item.
+
 The following are examples of structure expressions:
 
 ~~~~
 # struct Point { x: float, y: float }
+# struct TuplePoint(float, float);
 # mod game { pub struct User { name: &str, age: uint, mut score: uint } } 
 # use game;
 Point {x: 10f, y: 20f};
+TuplePoint(10f, 20f);
 let u = game::User {name: "Joe", age: 35u, mut score: 100_000};
 ~~~~
 
@@ -2597,6 +2616,7 @@ the resulting `struct` value will always be laid out in memory in the order spec
 The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
 to restrict access to implementation-private data in a structure.
 
+A `tuple struct` type is just like a structure type, except that the fields are anonymous.
 
 ### Enumerated types
 
