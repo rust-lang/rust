@@ -2076,6 +2076,39 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
+## Trait constraints
+
+We can write a trait declaration that is _constrained_ to only be implementable on types that
+also implement some other trait.
+
+For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
+
+~~~~
+trait Shape { fn area() -> float; }
+trait Circle : Shape { fn radius() -> float; }
+~~~~
+
+Now, implementations of `Circle` methods can call `Shape` methods:
+
+~~~~
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+# struct Point { x: float, y: float }
+# use float::consts::pi;
+# use float::sqrt;
+# fn square(x: float) -> float { x * x }
+struct CircleStruct { center: Point, radius: float }
+impl CircleStruct: Circle {
+     fn radius() -> float { sqrt(self.area() / pi) }
+}
+impl CircleStruct: Shape {
+     fn area() -> float { pi * square(self.radius) }
+}   
+~~~~
+
+This is a silly way to compute the radius of a circle
+(since we could just return the `circle` field), but you get the idea.
+
 ## Trait objects and dynamic method dispatch
 
 The above allows us to define functions that polymorphically act on
