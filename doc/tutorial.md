@@ -1124,13 +1124,16 @@ _exchange heap_, where their uniquely-owned nature allows tasks to
 exchange them efficiently.
 
 Because owned boxes are uniquely owned, copying them requires allocating
-a new owned box and duplicating the contents. Copying owned boxes
-is expensive so the compiler will complain if you do so without writing
-the word `copy`.
+a new owned box and duplicating the contents.
+Instead, owned boxes are _moved_ by default, transferring ownership,
+and deinitializing the previously owning variable.
+Any attempt to access a variable after the value has been moved out
+will result in a compile error.
 
 ~~~~
 let x = ~10;
-let y = x; // error: copying a non-implicitly copyable type
+// Move x to y, deinitializing x
+let y = x;
 ~~~~
 
 If you really want to copy an owned box you must say so explicitly.
@@ -1141,19 +1144,6 @@ let y = copy x;
 
 let z = *x + *y;
 assert z == 20;
-~~~~
-
-This is where the 'move' operator comes in. It is similar to `copy`,
-but it de-initializes its source. Thus, the owned box can move from
-`x` to `y`, without violating the constraint that it only has a single
-owner (using assignment instead of the move operator would, in
-principle, copy the box).
-
-~~~~ {.xfail-test}
-let x = ~10;
-let y = move x;
-
-let z = *x + *y; // would cause an error: use of moved variable: `x`
 ~~~~
 
 Owned boxes, when they do not contain any managed boxes, can be sent
@@ -1360,7 +1350,7 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 let our_crayons = my_crayons + your_crayons;
 
 // += will append to a vector, provided it lives in a mutable slot
-let mut my_crayons = move my_crayons;
+let mut my_crayons = my_crayons;
 my_crayons += your_crayons;
 ~~~~
 
@@ -1899,7 +1889,7 @@ fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     for vec::each(vector) |element| {
         accumulator.push(function(element));
     }
-    return (move accumulator);
+    return accumulator;
 }
 ~~~~
 
