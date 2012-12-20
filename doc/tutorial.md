@@ -238,7 +238,7 @@ programmer error). For occasions where unused variables are intentional, their
 name may be prefixed with an underscore to silence the warning, like `let
 _monster_size = 50;`.
 
-Rust identifiers follow the same rules as C; they start with an alphabetic
+Rust identifiers start with an alphabetic
 character or an underscore, and after that may contain any sequence of
 alphabetic characters, numbers, or underscores. The preferred style is to
 begin function, variable, and module names with a lowercase letter, using
