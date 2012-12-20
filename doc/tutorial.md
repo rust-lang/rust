@@ -241,12 +241,12 @@ _monster_size = 50;`.
 Rust identifiers start with an alphabetic
 character or an underscore, and after that may contain any sequence of
 alphabetic characters, numbers, or underscores. The preferred style is to
-begin function, variable, and module names with a lowercase letter, using
+write function, variable, and module names with lowercase letters, using
 underscores where they help readability, while writing types in camel case.
 
 ~~~
 let my_variable = 100;
-type MyType = int;     // some built-in types are _not_ camel case
+type MyType = int;     // primitive types are _not_ camel case
 ~~~
 
 ## Expressions and semicolons
