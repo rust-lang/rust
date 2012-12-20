@@ -371,11 +371,6 @@ let y: uint = x as uint;
 assert y == 4u;
 ~~~~
 
-The main difference with C is that `++` and `--` are missing, and that
-the logical bitwise operators have higher precedence—in C, `x & 2 > 0`
-means `x & (2 > 0)`, but in Rust, it means `(x & 2) > 0`, which is
-more likely to be what a novice expects.
-
 ## Syntax extensions
 
 *Syntax extensions* are special forms that are not built into the language,
