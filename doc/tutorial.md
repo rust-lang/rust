@@ -2076,6 +2076,32 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
+## Static methods
+
+Traits can define _static_ methods, which don't have an implicit `self` argument.
+The `static` keyword distinguishes static methods from methods that have a `self`:
+
+~~~~
+trait Shape {
+    fn area() -> float;
+    static fn new_shape(area: float) -> Shape;
+}
+~~~~
+
+Constructors are one application for static methods, as in `new_shape` above.
+To call a static method, you have to prefix it with the trait name and a double colon:
+
+~~~~
+# trait Shape { static fn new_shape(area: float) -> self; }
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+impl Circle: Shape {
+    static fn new_shape(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+let s: Circle = Shape::new_shape(42.5);
+~~~~
+
 ## Trait constraints
 
 We can write a trait declaration that is _constrained_ to only be implementable on types that
