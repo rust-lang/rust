@@ -1195,8 +1195,23 @@ Values with a trait type can have [methods called](#method-call-expressions) on 
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
 
-Trait methods may be static.
-Currently, implementations of static methods behave like functions declared in the implementation's module.
+Trait methods may be static,
+which means that they lack a `self` argument.
+This means that they can only be called with function call syntax (`f(x)`)
+and not method call syntax (`obj.f()`).
+The way to refer to the name of a static method is to qualify it with the trait name,
+treating the trait name like a module.
+For example:
+
+~~~~
+trait Num {
+    static pure fn from_int(n: int) -> self;
+}
+impl float: Num {
+    static pure fn from_int(n: int) -> float { n as float }
+}
+let x: float = Num::from_int(42);     
+~~~~
 
 Traits can have _constraints_ for example, in
 
