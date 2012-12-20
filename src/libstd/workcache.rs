@@ -335,7 +335,7 @@ fn test() {
         let pth = Path("foo.c");
         {
             let file = io::file_writer(&pth, [io::Create]).get();
-            file.write_str("void main() { }");
+            file.write_str("int main() { return 0; }");
         }
 
         prep.declare_input("file", pth.to_str(), digest_file(&pth));
