@@ -82,7 +82,7 @@ fn is_test_ignored(config: config, testfile: &Path) -> bool {
     return found;
 
     fn xfail_target() -> ~str {
-        ~"xfail-" + os::sysname()
+        ~"xfail-" + str::from_slice(os::SYSNAME)
     }
 }
 

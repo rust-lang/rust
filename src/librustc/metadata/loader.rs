@@ -32,6 +32,8 @@ use core::str;
 use core::uint;
 use core::vec;
 
+use core::os::consts::{macos, freebsd, linux, win32};
+
 export os;
 export os_macos, os_win32, os_linux, os_freebsd;
 export ctxt;
@@ -79,11 +81,15 @@ fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
 
 fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
     if cx.static { return {prefix: ~"lib", suffix: ~".rlib"}; }
-    match cx.os {
-      os_win32 => return {prefix: ~"", suffix: ~".dll"},
-      os_macos => return {prefix: ~"lib", suffix: ~".dylib"},
-      os_linux => return {prefix: ~"lib", suffix: ~".so"},
-      os_freebsd => return {prefix: ~"lib", suffix: ~".so"}
+    let (dll_prefix, dll_suffix) = match cx.os {
+        os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+    };
+    return {
+        prefix: str::from_slice(dll_prefix),
+        suffix: str::from_slice(dll_suffix)
     }
 }
 

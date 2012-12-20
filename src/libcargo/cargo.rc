@@ -805,7 +805,7 @@ fn install_one_crate(c: &Cargo, path: &Path, cf: &Path) {
       Some(bp) => bp
     };
     let newv = os::list_dir_path(&buildpath);
-    let exec_suffix = os::exe_suffix();
+    let exec_suffix = str::from_slice(os::EXE_SUFFIX);
     for newv.each |ct| {
         if (exec_suffix != ~"" && str::ends_with(ct.to_str(),
                                                  exec_suffix)) ||
