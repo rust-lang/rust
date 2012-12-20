@@ -657,7 +657,7 @@ mod tests {
             };
             let ebml_doc = reader::Doc(@bytes);
             let deser = reader::Decoder(ebml_doc);
-            let v1 = serialize::traits::Decodable::decode(&deser);
+            let v1 = serialize::Decodable::decode(&deser);
             debug!("v1 == %?", v1);
             assert v == v1;
         }
