@@ -1195,8 +1195,19 @@ Values with a trait type can have [methods called](#method-call-expressions) on 
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
 
-Trait methods may be static. Currently implementations of static methods behave like
-functions declared in the implentation's module.
+Trait methods may be static.
+Currently, implementations of static methods behave like functions declared in the implementation's module.
+
+Traits can have _constraints_ for example, in
+
+~~~~
+trait Shape { fn area() -> float; }
+trait Circle : Shape { fn radius() -> float; }
+~~~~
+
+the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
+In an implementation of `Circle` for a given type `T`, methods can refer to `Shape` methods,
+since the typechecker checks that any type with an implementation of `Circle` also has an implementation of `Shape`.
 
 ### Implementations
 
@@ -1520,8 +1531,11 @@ To indicate that a field is mutable, the `mut` keyword is written before its nam
 The following are examples of structure expressions:
 
 ~~~~
+# struct Point { x: float, y: float }
+# mod game { pub struct User { name: &str, age: uint, mut score: uint } } 
+# use game;
 Point {x: 10f, y: 20f};
-game::User {name: "Joe", age: 35u, mut score: 100_000};
+let u = game::User {name: "Joe", age: 35u, mut score: 100_000};
 ~~~~
 
 A structure expression forms a new value of the named structure type.
@@ -1532,6 +1546,7 @@ A new structure will be created, of the same type as the base expression, with t
 and the values in the base record for all other fields.
 
 ~~~~
+# struct Point3d { x: int, y: int, z: int }
 let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
 ~~~~
