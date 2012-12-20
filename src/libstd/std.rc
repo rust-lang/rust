@@ -30,7 +30,7 @@ not required in or otherwise suitable for the core library.
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
-// XXX this is set to allow because there are two methods in serialization
+// XXX this is set to allow because there are two methods in encoding
 // that can't be silenced otherwise. Most every module is set to forbid
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
@@ -107,8 +107,6 @@ mod unicode;
 
 pub mod test;
 pub mod serialize;
-#[cfg(stage0)]
-pub mod serialization;
 
 // A curious inner-module that's not exported that contains the binding
 // 'std' so that macro-expanded references to std::serialize and such
@@ -116,8 +114,6 @@ pub mod serialization;
 #[doc(hidden)] // FIXME #3538
 mod std {
     pub use serialize;
-    #[cfg(stage0)]
-    pub use serialization;
 }
 
 // Local Variables:

@@ -1072,6 +1072,15 @@ let p = Point {x: 10, y: 11};
 let px: int = p.x;
 ~~~~
 
+A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with the keyword `struct`.
+For example:
+
+~~~~
+struct Point(int, int);
+let p = Point(10, 11);
+let px: int = match p { Point(x, _) => x };
+~~~~
+
 ### Enumerations
 
 An _enumeration_ is a simultaneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
@@ -1195,8 +1204,34 @@ Values with a trait type can have [methods called](#method-call-expressions) on 
 for any method in the trait,
 and can be used to instantiate type parameters that are bounded by the trait.
 
-Trait methods may be static. Currently implementations of static methods behave like
-functions declared in the implentation's module.
+Trait methods may be static,
+which means that they lack a `self` argument.
+This means that they can only be called with function call syntax (`f(x)`)
+and not method call syntax (`obj.f()`).
+The way to refer to the name of a static method is to qualify it with the trait name,
+treating the trait name like a module.
+For example:
+
+~~~~
+trait Num {
+    static pure fn from_int(n: int) -> self;
+}
+impl float: Num {
+    static pure fn from_int(n: int) -> float { n as float }
+}
+let x: float = Num::from_int(42);     
+~~~~
+
+Traits can have _constraints_ for example, in
+
+~~~~
+trait Shape { fn area() -> float; }
+trait Circle : Shape { fn radius() -> float; }
+~~~~
+
+the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
+In an implementation of `Circle` for a given type `T`, methods can refer to `Shape` methods,
+since the typechecker checks that any type with an implementation of `Circle` also has an implementation of `Shape`.
 
 ### Implementations
 
@@ -1465,6 +1500,14 @@ when evaluated in an _rvalue context_, it denotes the value held _in_ that memor
 When an rvalue is used in lvalue context, a temporary un-named lvalue is created and used instead.
 A temporary's lifetime equals the largest lifetime of any borrowed pointer that points to it.
 
+#### Moved and copied types
+
+When a [local variable](#memory-slots) is used as an [rvalue](#lvalues-rvalues-and-temporaries)
+the variable will either be [moved](#move-expressions) or [copied](#copy-expressions),
+depending on its type.
+For types that contain mutable fields or [owning pointers](#owning-pointers), the variable is moved.
+All other types are copied.
+
 
 ### Literal expressions
 
@@ -1495,6 +1538,53 @@ values.
 ("a", 4u, true);
 ~~~~~~~~
 
+### Structure expressions
+
+~~~~~~~~{.ebnf .gram}
+struct_expr : expr_path '{' ident ':' expr
+                      [ ',' ident ':' expr ] *
+                      [ ".." expr ] '}' |
+              expr_path '(' expr
+                      [ ',' expr ] * ')'
+~~~~~~~~
+
+There are several forms of structure expressions.
+A _structure expression_ consists of the [path](#paths) of a [structure item](#structures),
+followed by a brace-enclosed list of one or more comma-separated name-value pairs,
+providing the field values of a new instance of the structure.
+A field name can be any identifier, and is separated from its value expression by a colon.
+To indicate that a field is mutable, the `mut` keyword is written before its name.
+
+A _tuple structure expression_ constists of the [path](#paths) of a [structure item](#structures),
+followed by a parenthesized list of one or more comma-separated expressions
+(in other words, the path of a structured item followed by a tuple expression).
+The structure item must be a tuple structure item.
+
+The following are examples of structure expressions:
+
+~~~~
+# struct Point { x: float, y: float }
+# struct TuplePoint(float, float);
+# mod game { pub struct User { name: &str, age: uint, mut score: uint } } 
+# use game;
+Point {x: 10f, y: 20f};
+TuplePoint(10f, 20f);
+let u = game::User {name: "Joe", age: 35u, mut score: 100_000};
+~~~~
+
+A structure expression forms a new value of the named structure type.
+
+A structure expression can terminate with the syntax `..` followed by an expression to denote a functional update.
+The expression following `..` (the base) must be of the same structure type as the new structure type being formed.
+A new structure will be created, of the same type as the base expression, with the given values for the fields that were explicitly specified,
+and the values in the base record for all other fields.
+
+~~~~
+# struct Point3d { x: int, y: int, z: int }
+let base = Point3d {x: 1, y: 2, z: 3};
+Point3d {y: 0, z: 10, .. base};
+~~~~
+
 ### Record expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -1503,9 +1593,11 @@ rec_expr : '{' ident ':' expr
                [ ".." expr ] '}'
 ~~~~~~~~
 
+> **Note:** In future versions of Rust, record expressions and [record types](#record-types) will be removed.
+
 A [_record_](#record-types) _expression_ is one or more comma-separated
-name-value pairs enclosed by braces. A fieldname can be any identifier
-(including keywords), and is separated from its value expression by a
+name-value pairs enclosed by braces. A fieldname can be any identifier,
+and is separated from its value expression by a
 colon. To indicate that a field is mutable, the `mut` keyword is
 written before its name.
 
@@ -1787,7 +1879,7 @@ y.z <-> b.c;
 An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
 equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
-Evaluating an assignment expression copies the expression on the right-hand side and stores it in the location on the left-hand side.
+Evaluating an assignment expression [either copies or moves](#moved-and-copied-types) its right-hand operand to its left-hand operand.
 
 ~~~~
 # let mut x = 0;
@@ -1860,7 +1952,7 @@ copy.
 as are raw and borrowed pointers.
 [Owned boxes](#pointer-types), [owned vectors](#vector-types) and similar owned types are deep-copied.
 
-Since the binary [assignment operator](#assignment-expressions) `=` performs a copy implicitly,
+Since the binary [assignment operator](#assignment-expressions) `=` performs a copy or move implicitly,
 the unary copy operator is typically only used to cause an argument to a function to be copied and passed by value.
 
 An example of a copy expression:
@@ -1884,11 +1976,15 @@ move_expr : "move" expr ;
 ~~~~~~~~
 
 A _unary move expression_ is similar to a [unary copy](#unary-copy-expressions) expression,
-except that it can only be applied to an [lvalue](#lvalues-rvalues-and-temporaries),
+except that it can only be applied to a [local variable](#memory-slots),
 and it performs a _move_ on its operand, rather than a copy.
 That is, the memory location denoted by its operand is de-initialized after evaluation,
 and the resulting value is a shallow copy of the operand,
 even if the operand is an [owning type](#type-kinds).
+
+
+> **Note:** In future versions of Rust, `move` may be removed as a separate operator;
+> moves are now [automatically performed](#moved-and-copied-types) for most cases `move` would be appropriate.
 
 
 ### Call expressions
@@ -2520,6 +2616,7 @@ the resulting `struct` value will always be laid out in memory in the order spec
 The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
 to restrict access to implementation-private data in a structure.
 
+A `tuple struct` type is just like a structure type, except that the fields are anonymous.
 
 ### Enumerated types
 

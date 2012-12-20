@@ -100,9 +100,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://dl.rust-lang.org/dist/rust-0.4.tar.gz
-$ tar -xzf rust-0.4.tar.gz
-$ cd rust-0.4
+$ curl -O http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+$ tar -xzf rust-0.5.tar.gz
+$ cd rust-0.5
 $ ./configure
 $ make && make install
 ~~~~
@@ -118,8 +118,8 @@ When complete, `make install` will place several programs into
 API-documentation tool, and `cargo`, the Rust package manager.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
-[win-exe]: http://dl.rust-lang.org/dist/rust-0.4-install.exe
+[tarball]: http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+[win-exe]: http://dl.rust-lang.org/dist/rust-0.5-install.exe
 
 ## Compiling your first program
 
@@ -899,6 +899,22 @@ unit, `()`, as the empty tuple if you like).
 let mytup: (int, int, float) = (10, 20, 30.0);
 match mytup {
   (a, b, c) => log(info, a + b + (c as int))
+}
+~~~~
+
+## Tuple structs
+
+Rust also has _nominal tuples_, which behave like both structs and tuples,
+except that nominal tuple types have names
+(so `Foo(1, 2)` has a different type from `Bar(1, 2)`),
+and nominal tuple types' _fields_ do not have names.
+
+For example:
+~~~~
+struct MyTup(int, int, float);
+let mytup: MyTup = MyTup(10, 20, 30.0);
+match mytup {
+  MyTup(a, b, c) => log(info, a + b + (c as int))
 }
 ~~~~
 
@@ -1924,7 +1940,7 @@ types by the compiler, and may not be overridden:
 
 Additionally, the `Drop` trait is used to define destructors. This
 trait defines one method called `finalize`, which is automatically
-called when value of the a type that implements this trait is
+called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
 
@@ -2075,6 +2091,65 @@ imposing no more overhead than normal function invocation, so are
 the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
+
+## Static methods
+
+Traits can define _static_ methods, which don't have an implicit `self` argument.
+The `static` keyword distinguishes static methods from methods that have a `self`:
+
+~~~~
+trait Shape {
+    fn area() -> float;
+    static fn new_shape(area: float) -> Shape;
+}
+~~~~
+
+Constructors are one application for static methods, as in `new_shape` above.
+To call a static method, you have to prefix it with the trait name and a double colon:
+
+~~~~
+# trait Shape { static fn new_shape(area: float) -> self; }
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+impl Circle: Shape {
+    static fn new_shape(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+let s: Circle = Shape::new_shape(42.5);
+~~~~
+
+## Trait constraints
+
+We can write a trait declaration that is _constrained_ to only be implementable on types that
+also implement some other trait.
+
+For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
+
+~~~~
+trait Shape { fn area() -> float; }
+trait Circle : Shape { fn radius() -> float; }
+~~~~
+
+Now, implementations of `Circle` methods can call `Shape` methods:
+
+~~~~
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+# struct Point { x: float, y: float }
+# use float::consts::pi;
+# use float::sqrt;
+# fn square(x: float) -> float { x * x }
+struct CircleStruct { center: Point, radius: float }
+impl CircleStruct: Circle {
+     fn radius() -> float { sqrt(self.area() / pi) }
+}
+impl CircleStruct: Shape {
+     fn area() -> float { pi * square(self.radius) }
+}   
+~~~~
+
+This is a silly way to compute the radius of a circle
+(since we could just return the `circle` field), but you get the idea.
 
 ## Trait objects and dynamic method dispatch
 

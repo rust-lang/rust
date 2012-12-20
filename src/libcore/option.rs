@@ -96,19 +96,6 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pub pure fn expect<T>(opt: Option<T>, reason: ~str) -> T {
-    /*!
-     * Gets the value out of an option without copying, printing a
-     * specified message on failure.
-     *
-     * # Failure
-     *
-     * Fails if the value equals `none`
-     */
-    if opt.is_some() { move option::unwrap(move opt) }
-    else { fail reason }
-}
-
 pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
@@ -235,35 +222,46 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
     unwrap(util::replace(opt, None))
 }
 
-pub pure fn unwrap_expect<T>(opt: Option<T>, reason: &str) -> T {
+pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
-    if opt.is_none() { fail reason.to_owned(); }
-    unwrap(move opt)
+    match move opt {
+        Some(move val) => val,
+        None => fail reason.to_owned(),
+    }
 }
 
-// Some of these should change to be &Option<T>, some should not. See below.
 impl<T> Option<T> {
     /// Returns true if the option equals `none`
-    pure fn is_none() -> bool { is_none(&self) }
-    /// Returns true if the option contains some value
-    pure fn is_some() -> bool { is_some(&self) }
-}
+    #[inline(always)]
+    pure fn is_none(&self) -> bool { is_none(self) }
 
-impl<T> &Option<T> {
+    /// Returns true if the option contains some value
+    #[inline(always)]
+    pure fn is_some(&self) -> bool { is_some(self) }
+
     /**
      * Update an optional value by optionally running its content by reference
      * through a function that returns an option.
      */
-    pure fn chain_ref<U>(f: fn(x: &T) -> Option<U>) -> Option<U> {
+    #[inline(always)]
+    pure fn chain_ref<U>(&self, f: fn(x: &T) -> Option<U>) -> Option<U> {
         chain_ref(self, f)
     }
-    /// Applies a function to the contained value or returns a default
-    pure fn map_default<U>(def: U, f: fn(x: &T) -> U) -> U
-        { map_default(self, move def, f) }
-    /// Performs an operation on the contained value by reference
-    pure fn iter(f: fn(x: &T)) { iter(self, f) }
+
     /// Maps a `some` value from one type to another by reference
-    pure fn map<U>(f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
+    #[inline(always)]
+    pure fn map<U>(&self, f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
+
+    /// Applies a function to the contained value or returns a default
+    #[inline(always)]
+    pure fn map_default<U>(&self, def: U, f: fn(x: &T) -> U) -> U {
+        map_default(self, move def, f)
+    }
+
+    /// Performs an operation on the contained value by reference
+    #[inline(always)]
+    pure fn iter(&self, f: fn(x: &T)) { iter(self, f) }
+
     /**
     Gets an immutable reference to the value inside an option.
 
@@ -278,7 +276,29 @@ impl<T> &Option<T> {
     Instead, prefer to use pattern matching and handle the `None`
     case explicitly.
      */
-    pure fn get_ref() -> &self/T { get_ref(self) }
+    #[inline(always)]
+    pure fn get_ref(&self) -> &self/T { get_ref(self) }
+
+    /**
+     * Gets the value out of an option without copying.
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
+    #[inline(always)]
+    pure fn unwrap(self) -> T { unwrap(self) }
+
+    /**
+     * Gets the value out of an option, printing a specified message on
+     * failure
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
+    #[inline(always)]
+    pure fn expect(self, reason: &str) -> T { expect(self, reason) }
 }
 
 impl<T: Copy> Option<T> {
@@ -296,19 +316,17 @@ impl<T: Copy> Option<T> {
     Instead, prefer to use pattern matching and handle the `None`
     case explicitly.
     */
-    pure fn get() -> T { get(self) }
-    pure fn get_default(def: T) -> T { get_default(self, def) }
-    /**
-     * Gets the value out of an option, printing a specified message on
-     * failure
-     *
-     * # Failure
-     *
-     * Fails if the value equals `none`
-     */
-    pure fn expect(reason: ~str) -> T { expect(self, move reason) }
+    #[inline(always)]
+    pure fn get(self) -> T { get(self) }
+
+    #[inline(always)]
+    pure fn get_default(self, def: T) -> T { get_default(self, def) }
+
     /// Applies a function zero or more times until the result is none.
-    pure fn while_some(blk: fn(v: T) -> Option<T>) { while_some(self, blk) }
+    #[inline(always)]
+    pure fn while_some(self, blk: fn(v: T) -> Option<T>) {
+        while_some(self, blk)
+    }
 }
 
 #[test]

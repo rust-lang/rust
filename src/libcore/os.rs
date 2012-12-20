@@ -355,13 +355,7 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return pre() + str::from_slice(base) + dll_suffix();
-
-    #[cfg(unix)]
-    fn pre() -> ~str { ~"lib" }
-
-    #[cfg(windows)]
-    fn pre() -> ~str { ~"" }
+    return dll_prefix() + str::from_slice(base) + dll_suffix();
 }
 
 
@@ -857,32 +851,48 @@ pub fn family() -> ~str { ~"unix" }
 #[cfg(windows)]
 pub fn family() -> ~str { ~"windows" }
 
-#[cfg(target_os = "macos")]
-mod consts {
-    pub fn sysname() -> ~str { ~"macos" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".dylib" }
-}
 
-#[cfg(target_os = "freebsd")]
 mod consts {
-    pub fn sysname() -> ~str { ~"freebsd" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
 
-#[cfg(target_os = "linux")]
-mod consts {
-    pub fn sysname() -> ~str { ~"linux" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
+    #[cfg(target_os = "macos")]
+    use os::consts::macos::*;
 
-#[cfg(target_os = "win32")]
-mod consts {
-    pub fn sysname() -> ~str { ~"win32" }
-    pub fn exe_suffix() -> ~str { ~".exe" }
-    pub fn dll_suffix() -> ~str { ~".dll" }
+    #[cfg(target_os = "freebsd")]
+    use os::consts::freebsd::*;
+
+    #[cfg(target_os = "linux")]
+    use os::consts::linux::*;
+
+    #[cfg(target_os = "win32")]
+    use os::consts::win32::*;
+
+    pub mod macos {
+        pub fn sysname() -> ~str { ~"macos" }
+        pub fn dll_prefix() -> ~str { ~"lib" }
+        pub fn dll_suffix() -> ~str { ~".dylib" }
+        pub fn exe_suffix() -> ~str { ~"" }
+    }
+
+    pub mod freebsd {
+        pub fn sysname() -> ~str { ~"freebsd" }
+        pub fn dll_prefix() -> ~str { ~"lib" }
+        pub fn dll_suffix() -> ~str { ~".so" }
+        pub fn exe_suffix() -> ~str { ~"" }
+    }
+
+    pub mod linux {
+        pub fn sysname() -> ~str { ~"linux" }
+        pub fn dll_prefix() -> ~str { ~"lib" }
+        pub fn dll_suffix() -> ~str { ~".so" }
+        pub fn exe_suffix() -> ~str { ~"" }
+    }
+
+    pub mod win32 {
+        pub fn sysname() -> ~str { ~"win32" }
+        pub fn dll_prefix() -> ~str { ~"" }
+        pub fn dll_suffix() -> ~str { ~".dll" }
+        pub fn exe_suffix() -> ~str { ~".exe" }
+    }
 }
 
 #[cfg(target_arch = "x86")]

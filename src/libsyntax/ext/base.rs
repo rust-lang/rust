@@ -74,12 +74,6 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"fmt",
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
-        ~"auto_serialize",
-        item_decorator(ext::auto_serialize::expand_auto_serialize));
-    syntax_expanders.insert(
-        ~"auto_deserialize",
-        item_decorator(ext::auto_serialize::expand_auto_deserialize));
-    syntax_expanders.insert(
         ~"auto_encode",
         item_decorator(ext::auto_encode::expand_auto_encode));
     syntax_expanders.insert(

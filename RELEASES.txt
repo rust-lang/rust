@@ -26,6 +26,9 @@ Version 0.5 (December 2012)
       * `&T` may now be coerced to `*T`
       * Coercions happen in `let` statements as well as function calls
       * `use` statements now take crate-relative paths
+      * The module and type namespaces have been merged so that static
+        method names can be resolved under the trait in which they are
+        declared
 
    * Improved support for language features
       * Trait inheritance works in many scenarios

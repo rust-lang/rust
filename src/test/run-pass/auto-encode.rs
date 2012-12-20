@@ -22,7 +22,7 @@ use std::ebml;
 use EBReader = std::ebml::reader;
 use EBWriter = std::ebml::writer;
 use io::Writer;
-use std::serialize::traits::{Encodable, Decodable};
+use std::serialize::{Encodable, Decodable};
 use std::prettyprint;
 use std::time;
 
