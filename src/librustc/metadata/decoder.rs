@@ -25,10 +25,6 @@ use reader = std::ebml::reader;
 use std::ebml;
 use std::map::HashMap;
 use std::map;
-#[cfg(stage0)]
-use std::serialize::traits::Decodable;
-#[cfg(stage1)]
-#[cfg(stage2)]
 use std::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
