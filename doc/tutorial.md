@@ -128,7 +128,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    io::println("hello? yes, this is rust");
+    io::println("hello?");
 }
 ~~~~
 
@@ -143,7 +143,7 @@ an error message like this:
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
-hello.rs:2     io::print_with_unicorns("hello? yes, this is rust");
+hello.rs:2     io::print_with_unicorns("hello?");
                ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
