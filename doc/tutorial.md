@@ -128,7 +128,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    io::println("hello?");
+    core::io::println("hello?");
 }
 ~~~~
 
@@ -142,8 +142,8 @@ error. If you introduce an error into the program (for example, by changing
 an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
-hello.rs:2     io::print_with_unicorns("hello?");
+hello.rs:2:4: 2:16 error: unresolved name: core::io::print_with_unicorns
+hello.rs:2     core::io::print_with_unicorns("hello?");
                ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
@@ -180,7 +180,8 @@ JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
 in blocks delineated by curly braces; there are control structures
 for branching and looping, like the familiar `if` and `while`; function
 calls are written `myfunc(arg1, arg2)`; operators are written the same
-and mostly have the same precedence as in C; comments are again like C.
+and mostly have the same precedence as in C; comments are again like C;
+module names are separated with double-colon, `::`, as with C++.
 
 The main surface difference to be aware of is that the condition at
 the head of control structures like `if` and `while` do not require
@@ -188,12 +189,12 @@ parentheses, while their bodies *must* be wrapped in
 braces. Single-statement, unbraced bodies are not allowed.
 
 ~~~~
-# fn recalibrate_universe() -> bool { true }
+# mod universe { fn recalibrate() -> bool { true } }
 fn main() {
     /* A simple loop */
     loop {
         // A tricky calculation
-        if recalibrate_universe() {
+        if universe::recalibrate() {
             return;
         }
     }
@@ -209,15 +210,10 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    io::println(hi);
+    core::io::println(fmt!("count: %?", i));
     count += 1;
 }
 ~~~~
-
-The name of the function that prints a line of text, `io::println`, is
-qualified: it refers to the function named `println` that's defined in the
-module `io`. In Rust, a double colon separates parts of a
-qualified name. For more details, see the section on [crates](#crates).
 
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
