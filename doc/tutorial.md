@@ -128,7 +128,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    core::io::println("hello?");
+    io::println("hello?");
 }
 ~~~~
 
@@ -142,8 +142,8 @@ error. If you introduce an error into the program (for example, by changing
 an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: core::io::print_with_unicorns
-hello.rs:2     core::io::print_with_unicorns("hello?");
+hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
+hello.rs:2     io::print_with_unicorns("hello?");
                ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
@@ -210,7 +210,7 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    core::io::println(fmt!("count: %?", i));
+    io::println(fmt!("count: %?", i));
     count += 1;
 }
 ~~~~
