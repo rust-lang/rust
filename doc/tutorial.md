@@ -1956,8 +1956,8 @@ fn radius(shape: Shape) -> Option<float> {
 
 The Rust compiler compiles generic functions very efficiently by
 *monomorphizing* them. *Monomorphization* is a fancy name for a simple
-idea: generate a separate copy of each generic function at each call
-site where it is called, a copy that is specialized to the argument
+idea: generate a separate copy of each generic function at each call site,
+a copy that is specialized to the argument
 types and can thus be optimized specifically for them. In this
 respect, Rust's generics have similar performance characteristics to
 C++ templates.
