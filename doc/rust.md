@@ -1503,6 +1503,39 @@ values.
 ("a", 4u, true);
 ~~~~~~~~
 
+### Structure expressions
+
+~~~~~~~~{.ebnf .gram}
+struct_expr : expr_path '{' ident ':' expr
+                      [ ',' ident ':' expr ] *
+                      [ ".." expr ] '}'
+~~~~~~~~
+
+A _structure expression_ consists of the [path](#paths) of a [structure item](#structures),
+followed by a brace-enclosed list of one or more comma-separated name-value pairs,
+providing the field values of a new instance of the structure.
+A field name can be any identifier, and is separated from its value expression by a colon.
+To indicate that a field is mutable, the `mut` keyword is written before its name.
+
+The following are examples of structure expressions:
+
+~~~~
+Point {x: 10f, y: 20f};
+game::User {name: "Joe", age: 35u, mut score: 100_000};
+~~~~
+
+A structure expression forms a new value of the named structure type.
+
+A structure expression can terminate with the syntax `..` followed by an expression to denote a functional update.
+The expression following `..` (the base) must be of the same structure type as the new structure type being formed.
+A new structure will be created, of the same type as the base expression, with the given values for the fields that were explicitly specified,
+and the values in the base record for all other fields.
+
+~~~~
+let base = Point3d {x: 1, y: 2, z: 3};
+Point3d {y: 0, z: 10, .. base};
+~~~~
+
 ### Record expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -1511,9 +1544,11 @@ rec_expr : '{' ident ':' expr
                [ ".." expr ] '}'
 ~~~~~~~~
 
+> **Note:** In future versions of Rust, record expressions and [record types](#record-types) will be removed.
+
 A [_record_](#record-types) _expression_ is one or more comma-separated
-name-value pairs enclosed by braces. A fieldname can be any identifier
-(including keywords), and is separated from its value expression by a
+name-value pairs enclosed by braces. A fieldname can be any identifier,
+and is separated from its value expression by a
 colon. To indicate that a field is mutable, the `mut` keyword is
 written before its name.
 
