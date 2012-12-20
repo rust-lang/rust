@@ -2118,10 +2118,10 @@ impl Circle: Shape {
 let s: Circle = Shape::new_shape(42.5);
 ~~~~
 
-## Trait constraints
+## Trait inheritance
 
-We can write a trait declaration that is _constrained_ to only be implementable on types that
-also implement some other trait.
+We can write a trait declaration that _inherits_ from other traits, called _supertraits_.
+Types that implement a trait must also implement its supertraits.
 
 For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
 
@@ -2150,6 +2150,34 @@ impl CircleStruct: Shape {
 
 This is a silly way to compute the radius of a circle
 (since we could just return the `circle` field), but you get the idea.
+
+In type-parameterized functions,
+methods of the supertrait may be called on values of subtrait-bound type parameters.
+Refering to the previous example of `trait Circle : Shape`:
+
+~~~
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+fn radius_times_area<T: Circle>(c: T) -> float {
+    // `c` is both a Circle and a Shape
+    c.radius() * c.area()
+}
+~~~
+
+Likewise, supertrait methods may also be called on trait objects.
+
+~~~ {.xfail-test}
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+# impl int: Shape { fn area() -> float { 0.0 } }
+# impl int: Circle { fn radius() -> float { 0.0 } }
+# let mycircle = 0;
+
+let mycircle: Circle = @mycircle as @Circle;
+let nonsense = mycircle.radius() * mycircle.area();
+~~~
+
+> ***Note:*** Trait inheritance does not actually work with objects yet
 
 ## Trait objects and dynamic method dispatch
 
