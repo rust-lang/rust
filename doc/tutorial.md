@@ -36,10 +36,9 @@ type system and memory model, generics, and modules. [Additional
 tutorials](#what-next) cover specific language features in greater
 depth.
 
-This tutorial assumes that the reader is familiar with the basic concepts of
-programming, and has programmed in one or more other languages
-before. We will often compare Rust to other languages,
-particularly those in the C family.
+This tutorial assumes that the reader is already familiar with one or more
+more languages in the C family. Understanding of pointers and general
+memory management techniques will help.
 
 ## Conventions
 
