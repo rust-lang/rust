@@ -249,7 +249,7 @@ let my_variable = 100;
 type MyType = int;     // some built-in types are _not_ camel case
 ~~~
 
-## Expression syntax
+## Expressions and semicolons
 
 Though it isn't apparent in all code, there is a fundamental
 difference between Rust's syntax and predecessors like C.
@@ -308,12 +308,14 @@ fn is_four(x: int) -> bool {
 }
 ~~~~
 
-## Literals
+## Primitive types and literals
 
+There are general signed and unsigned integer types, `int`, and `uint`,
+as well as 8-, 16-, 32-, and 64-bit variations, `i8`, `u16`, etc.
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), or
 binary (`0b10010000`) base. Each integral type has a corresponding literal
 suffix that can be used to indicate the type of a literal: `i` for `int`,
-`u` for `uint`, and `i8` for the `i8` type, etc.
+`u` for `uint`, `i8` for the `i8` type.
 
 In the absence of an integer literal suffix, Rust will infer the
 integer type based on type annotations and function signatures in the
@@ -328,19 +330,21 @@ let c = 100u;    // c is a uint
 let d = 1000i32; // d is an i32
 ~~~~
 
-Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
-a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
-(32-bit) and `f64` (64-bit) can be used to create literals of a
-specific type.
+There are three floating point types, `float`, `f32`, and `f64`.
+Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`.
+Like integers, floating point literals are inferred to the correct type.
+Suffixes `f`, `f32` and `f64` can be used to create literals of a specific type.
 
-The unit literal is written just like the type: `()`. The keywords
-`true` and `false` produce the boolean literals.
+The keywords `true` and `false` produce literals of type `bool`.
 
-Character literals are written between single quotes, as in `'x'`. Just like
-C, Rust understands a number of character escapes, using the backslash
+Characters, the `char` type, are 4-byte unicode codepoints,
+whose literals are written between single quotes, as in `'x'`.
+Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
-written between double quotes, allow the same escape sequences. Rust strings
-may contain newlines.
+written between double quotes, allow the same escape sequences.
+More on strings [later](#vectors-and-strings).
+
+The nil type, written `()`, has a single value, also written `()`.
 
 ## Operators
 
