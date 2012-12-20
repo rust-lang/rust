@@ -329,7 +329,6 @@ while N should be a literal number):
 
 ------------------------- -----------------------------------------------
 `[T * N]`                 Vector (like an array in other languages) with N elements
-`[mut T * N]`             Mutable vector with N elements
 `(T1, T2)`                Tuple type; any arity above 1 is supported
 `&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
 ------------------------- -----------------------------------------------
