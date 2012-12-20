@@ -308,46 +308,6 @@ fn is_four(x: int) -> bool {
 }
 ~~~~
 
-If all those things are expressions, you might conclude that you have
-to add a terminating semicolon after *every* statement, even ones that
-are not traditionally terminated with a semicolon in C (like `while`).
-That is not the case, though. Expressions that end in a block only
-need a semicolon if that block contains a trailing expression. `while`
-loops do not allow trailing expressions, and `if` statements tend to
-only have a trailing expression when you want to use their value for
-something—in which case you'll have embedded it in a bigger statement.
-
-~~~
-# fn foo() -> bool { true }
-# fn bar() -> bool { true }
-# fn baz() -> bool { true }
-// `let` is not an expression, so it is semicolon-terminated;
-let x = foo();
-
-// When used in statement position, bracy expressions do not
-// usually need to be semicolon terminated
-if x {
-    bar();
-} else {
-    baz();
-} // No semi-colon
-
-// Although, if `bar` and `baz` have non-nil return types, and
-// we try to use them as the tail expressions, rustc will
-// make us terminate the expression.
-if x {
-    bar()
-} else {
-    baz()
-}; // Semi-colon to ignore non-nil block type
-
-// An `if` embedded in `let` again requires a semicolon to terminate
-// the `let` statement
-let y = if x { foo() } else { bar() };
-~~~
-
-This may sound intricate, but it is super-useful and will grow on you.
-
 ## Types
 
 The basic types include the usual boolean, integral, and floating-point types.
