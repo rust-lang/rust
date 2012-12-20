@@ -225,7 +225,7 @@ name. Constants, an the other hand, always require a type annotation.
 
 ~~~~
 const monster_factor: float = 57.8;
-let monster_size: float = monster_factor * 10.0;
+let monster_size = monster_factor * 10.0;
 let monster_size: int = 50;
 ~~~~
 
