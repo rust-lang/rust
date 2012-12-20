@@ -1222,7 +1222,7 @@ impl float: Num {
 let x: float = Num::from_int(42);     
 ~~~~
 
-Traits can have _constraints_ for example, in
+Traits may inherit from other traits. For example, in
 
 ~~~~
 trait Shape { fn area() -> float; }
@@ -1230,8 +1230,35 @@ trait Circle : Shape { fn radius() -> float; }
 ~~~~
 
 the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
+Multiple supertraits are separated by spaces, `trait Circle : Shape Eq { }`.
 In an implementation of `Circle` for a given type `T`, methods can refer to `Shape` methods,
 since the typechecker checks that any type with an implementation of `Circle` also has an implementation of `Shape`.
+
+In type-parameterized functions,
+methods of the supertrait may be called on values of subtrait-bound type parameters.
+Refering to the previous example of `trait Circle : Shape`:
+
+~~~
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+fn radius_times_area<T: Circle>(c: T) -> float {
+    // `c` is both a Circle and a Shape
+    c.radius() * c.area()
+}
+~~~
+
+Likewise, supertrait methods may also be called on trait objects.
+
+~~~ {.xfail-test}
+# trait Shape { fn area() -> float; }
+# trait Circle : Shape { fn radius() -> float; }
+# impl int: Shape { fn area() -> float { 0.0 } }
+# impl int: Circle { fn radius() -> float { 0.0 } }
+# let mycircle = 0;
+
+let mycircle: Circle = @mycircle as @Circle;
+let nonsense = mycircle.radius() * mycircle.area();
+~~~
 
 ### Implementations
 

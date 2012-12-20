@@ -36,10 +36,9 @@ type system and memory model, generics, and modules. [Additional
 tutorials](#what-next) cover specific language features in greater
 depth.
 
-This tutorial assumes that the reader is familiar with the basic concepts of
-programming, and has programmed in one or more other languages
-before. We will often compare Rust to other languages,
-particularly those in the C family.
+This tutorial assumes that the reader is already familiar with one or more
+more languages in the C family. Understanding of pointers and general
+memory management techniques will help.
 
 ## Conventions
 
@@ -115,7 +114,8 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool, and `cargo`, the Rust package manager.
+API-documentation tool, `cargo`, the Rust package manager,
+and `rusti`, the Rust REPL.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://dl.rust-lang.org/dist/rust-0.5.tar.gz
@@ -128,7 +128,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    io::println("hello? yes, this is rust");
+    io::println("hello?");
 }
 ~~~~
 
@@ -143,7 +143,7 @@ an error message like this:
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
-hello.rs:2     io::print_with_unicorns("hello? yes, this is rust");
+hello.rs:2     io::print_with_unicorns("hello?");
                ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
@@ -180,7 +180,8 @@ JavaScript, C#, or PHP), Rust will feel familiar. Code is arranged
 in blocks delineated by curly braces; there are control structures
 for branching and looping, like the familiar `if` and `while`; function
 calls are written `myfunc(arg1, arg2)`; operators are written the same
-and mostly have the same precedence as in C; comments are again like C.
+and mostly have the same precedence as in C; comments are again like C;
+module names are separated with double-colon, `::`, as with C++.
 
 The main surface difference to be aware of is that the condition at
 the head of control structures like `if` and `while` do not require
@@ -188,12 +189,12 @@ parentheses, while their bodies *must* be wrapped in
 braces. Single-statement, unbraced bodies are not allowed.
 
 ~~~~
-# fn recalibrate_universe() -> bool { true }
+# mod universe { fn recalibrate() -> bool { true } }
 fn main() {
     /* A simple loop */
     loop {
         // A tricky calculation
-        if recalibrate_universe() {
+        if universe::recalibrate() {
             return;
         }
     }
@@ -209,23 +210,18 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    io::println(hi);
+    io::println(fmt!("count: %?", i));
     count += 1;
 }
 ~~~~
 
-The name of the function that prints a line of text, `io::println`, is
-qualified: it refers to the function named `println` that's defined in the
-module `io`. In Rust, a double colon---`::`---separates parts of a
-qualified name. For more details, see the section on [crates](#crates).
-
 Although Rust can almost always infer the types of local variables, you
 can specify a variable's type by following it with a colon, then the type
-name.
+name. Constants, on the other hand, always require a type annotation.
 
 ~~~~
-let monster_size: float = 57.8;
-let imaginary_size = monster_size * 10.0;
+const monster_factor: float = 57.8;
+let monster_size = monster_factor * 10.0;
 let monster_size: int = 50;
 ~~~~
 
@@ -238,18 +234,18 @@ programmer error). For occasions where unused variables are intentional, their
 name may be prefixed with an underscore to silence the warning, like `let
 _monster_size = 50;`.
 
-Rust identifiers follow the same rules as C; they start with an alphabetic
+Rust identifiers start with an alphabetic
 character or an underscore, and after that may contain any sequence of
 alphabetic characters, numbers, or underscores. The preferred style is to
-begin function, variable, and module names with a lowercase letter, using
+write function, variable, and module names with lowercase letters, using
 underscores where they help readability, while writing types in camel case.
 
 ~~~
 let my_variable = 100;
-type MyType = int;     // some built-in types are _not_ camel case
+type MyType = int;     // primitive types are _not_ camel case
 ~~~
 
-## Expression syntax
+## Expressions and semicolons
 
 Though it isn't apparent in all code, there is a fundamental
 difference between Rust's syntax and predecessors like C.
@@ -308,134 +304,14 @@ fn is_four(x: int) -> bool {
 }
 ~~~~
 
-If all those things are expressions, you might conclude that you have
-to add a terminating semicolon after *every* statement, even ones that
-are not traditionally terminated with a semicolon in C (like `while`).
-That is not the case, though. Expressions that end in a block only
-need a semicolon if that block contains a trailing expression. `while`
-loops do not allow trailing expressions, and `if` statements tend to
-only have a trailing expression when you want to use their value for
-something—in which case you'll have embedded it in a bigger statement.
+## Primitive types and literals
 
-~~~
-# fn foo() -> bool { true }
-# fn bar() -> bool { true }
-# fn baz() -> bool { true }
-// `let` is not an expression, so it is semicolon-terminated;
-let x = foo();
-
-// When used in statement position, bracy expressions do not
-// usually need to be semicolon terminated
-if x {
-    bar();
-} else {
-    baz();
-} // No semi-colon
-
-// Although, if `bar` and `baz` have non-nil return types, and
-// we try to use them as the tail expressions, rustc will
-// make us terminate the expression.
-if x {
-    bar()
-} else {
-    baz()
-}; // Semi-colon to ignore non-nil block type
-
-// An `if` embedded in `let` again requires a semicolon to terminate
-// the `let` statement
-let y = if x { foo() } else { bar() };
-~~~
-
-This may sound intricate, but it is super-useful and will grow on you.
-
-## Types
-
-The basic types include the usual boolean, integral, and floating-point types.
-
-------------------------- -----------------------------------------------
-`()`                      Unit, the type that has only a single value
-`bool`                    Boolean type, with values `true` and `false`
-`int`, `uint`             Machine-pointer-sized signed and unsigned integers
-`i8`, `i16`, `i32`, `i64` Signed integers with a specific size (in bits)
-`u8`, `u16`, `u32`, `u64` Unsigned integers with a specific size
-`float`                   The largest floating-point type efficiently supported on the target machine
-`f32`, `f64`              Floating-point types with a specific size
-`char`                    A Unicode character (32 bits)
-------------------------- -----------------------------------------------
-
-These can be combined in composite types, which will be described in
-more detail later on (the `T`s here stand for any other type,
-while N should be a literal number):
-
-------------------------- -----------------------------------------------
-`[T * N]`                 Vector (like an array in other languages) with N elements
-`[mut T * N]`             Mutable vector with N elements
-`(T1, T2)`                Tuple type; any arity above 1 is supported
-`&T`, `~T`, `@T`          [Pointer types](#boxes-and-pointers)
-------------------------- -----------------------------------------------
-
-Some types can only be manipulated by pointer, never directly. For instance,
-you cannot refer to a string (`str`); instead you refer to a pointer to a
-string (`@str`, `~str`, or `&str`). These *dynamically-sized* types consist
-of:
-
-------------------------- -----------------------------------------------
-`fn(a: T1, b: T2) -> T3`  Function types
-`str`                     String type (in UTF-8)
-`[T]`                     Vector with unknown size (also called a slice)
-`[mut T]`                 Mutable vector with unknown size
-------------------------- -----------------------------------------------
-
-> ***Note***: In the future, mutability for vectors may be defined by
-> the slot that contains the vector, not the type of the vector itself,
-> deprecating [mut T] syntax.
-
-In function types, the return type is specified with an arrow, as in
-the type `fn() -> bool` or the function declaration `fn foo() -> bool
-{ }`.  For functions that do not return a meaningful value, you can
-optionally write `-> ()`, but usually the return annotation is simply
-left off, as in `fn main() { ... }`.
-
-Types can be given names or aliases with `type` declarations:
-
-~~~~
-type MonsterSize = uint;
-~~~~
-
-This will provide a synonym, `MonsterSize`, for unsigned integers. It will not
-actually create a new, incompatible type—`MonsterSize` and `uint` can be used
-interchangeably, and using one where the other is expected is not a type
-error. In that sense, types declared with `type` are *structural*: their
-meaning follows from their structure, and their names are irrelevant in the
-type system.
-
-Sometimes, you want your data types to be *nominal* instead of structural: you
-want their name to be part of their meaning, so that types with the same
-structure but different names are not interchangeable. Rust has two ways to
-create nominal data types: `struct` and `enum`. They're described in more
-detail below, but they look like this:
-
-~~~~
-enum HidingPlaces {
-   Closet(uint),
-   UnderTheBed(uint)
-}
-
-struct HeroicBabysitter {
-   bedtime_stories: uint,
-   sharpened_stakes: uint
-}
-
-struct BabysitterSize(uint);  // a single-variant struct
-enum MonsterSize = uint;      // a single-variant enum
-~~~~
-
-## Literals
-
+There are general signed and unsigned integer types, `int`, and `uint`,
+as well as 8-, 16-, 32-, and 64-bit variations, `i8`, `u16`, etc.
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), or
 binary (`0b10010000`) base. Each integral type has a corresponding literal
 suffix that can be used to indicate the type of a literal: `i` for `int`,
-`u` for `uint`, and `i8` for the `i8` type, etc.
+`u` for `uint`, `i8` for the `i8` type.
 
 In the absence of an integer literal suffix, Rust will infer the
 integer type based on type annotations and function signatures in the
@@ -450,47 +326,21 @@ let c = 100u;    // c is a uint
 let d = 1000i32; // d is an i32
 ~~~~
 
-Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
-a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
-(32-bit) and `f64` (64-bit) can be used to create literals of a
-specific type.
+There are three floating point types, `float`, `f32`, and `f64`.
+Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`.
+Like integers, floating point literals are inferred to the correct type.
+Suffixes `f`, `f32` and `f64` can be used to create literals of a specific type.
 
-The unit literal is written just like the type: `()`. The keywords
-`true` and `false` produce the boolean literals.
+The keywords `true` and `false` produce literals of type `bool`.
 
-Character literals are written between single quotes, as in `'x'`. Just like
-C, Rust understands a number of character escapes, using the backslash
+Characters, the `char` type, are 4-byte unicode codepoints,
+whose literals are written between single quotes, as in `'x'`.
+Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
-written between double quotes, allow the same escape sequences. Rust strings
-may contain newlines.
+written between double quotes, allow the same escape sequences.
+More on strings [later](#vectors-and-strings).
 
-## Constants
-
-Compile-time constants are declared with `const`. A constant may have any
-scalar type (for example, integer or float). Other allowable constant types
-are fixed-length vectors, static strings (more on this later), and
-structs. Constants may be declared in any scope and may refer to other
-constants. The compiler does not infer types for constants, so constants must
-always be declared with a type annotation. By convention, they are written in
-all capital letters.
-
-~~~
-// Scalars can be constants
-const MY_PASSWORD: int = 12345;
-
-// Scalar constants can be combined with other constants
-const MY_DOGGIES_PASSWORD: int = MY_PASSWORD + 1;
-
-// Fixed-length vectors
-const MY_VECTORY_PASSWORD: [int * 5] = [1, 2, 3, 4, 5];
-
-// Static strings
-const MY_STRINGY_PASSWORD: &static/str = "12345";
-
-// Structs
-struct Password { value: int }
-const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
-~~~
+The nil type, written `()`, has a single value, also written `()`.
 
 ## Operators
 
@@ -517,19 +367,14 @@ let y: uint = x as uint;
 assert y == 4u;
 ~~~~
 
-The main difference with C is that `++` and `--` are missing, and that
-the logical bitwise operators have higher precedence—in C, `x & 2 > 0`
-means `x & (2 > 0)`, but in Rust, it means `(x & 2) > 0`, which is
-more likely to be what a novice expects.
-
 ## Syntax extensions
 
 *Syntax extensions* are special forms that are not built into the language,
 but are instead provided by the libraries. To make it clear to the reader when
 a name refers to a syntax extension, the names of all syntax extensions end
 with `!`. The standard library defines a few syntax extensions, the most
-useful of which is `fmt!`, a `sprintf`-style text formatter that an early
-compiler phase expands statically.
+useful of which is `fmt!`, a `sprintf`-style text formatter that you will
+often see in examples.
 
 `fmt!` supports most of the directives that [printf][pf] supports, but unlike
 printf, will give you a compile-time error when the types of the directives
@@ -918,7 +763,7 @@ match mytup {
 }
 ~~~~
 
-# Functions and methods
+# Functions
 
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
@@ -967,52 +812,6 @@ fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
 assert 8  == line(5, 3, 1);
 assert () == oops(5, 3, 1);
 ~~~~
-
-Methods are like functions, except that they have an implicit argument
-called `self`, which has the type that the method's receiver has. The
-`self` argument is like 'this' in C++. An expression with dot
-notation, as in `my_vec.len()`, denotes a method
-call. Implementations, written with the `impl` keyword, can define
-methods on most Rust types. As an example, let's define a `draw`
-method on our `Shape` enum.
-
-~~~
-# fn draw_circle(p: Point, f: float) { }
-# fn draw_rectangle(p: Point, p: Point) { }
-struct Point {
-    x: float,
-    y: float
-}
-
-enum Shape {
-    Circle(Point, float),
-    Rectangle(Point, Point)
-}
-
-impl Shape {
-    fn draw() {
-        match self {
-            Circle(p, f) => draw_circle(p, f),
-            Rectangle(p1, p2) => draw_rectangle(p1, p2)
-        }
-    }
-}
-
-let s = Circle(Point { x: 1f, y: 2f }, 3f);
-s.draw();
-~~~
-
-This defines an _implementation_ for `Shape` containing a single
-method, `draw`. In most respects the `draw` method is defined
-like any other function, except for the name `self`. `self`
-is a special value that is automatically in scope inside each method,
-referring to the value being operated on. If we wanted we could add
-additional methods to the same impl, or multiple impls for the same
-type. We'll discuss methods more in the context of [traits and
-generics](#generics).
-
-> ***Note:*** In the future, the method definition syntax will change to
-> require declaring the `self` type explicitly, as the first argument.
 
 # The Rust memory model
 
@@ -1170,13 +969,16 @@ _exchange heap_, where their uniquely-owned nature allows tasks to
 exchange them efficiently.
 
 Because owned boxes are uniquely owned, copying them requires allocating
-a new owned box and duplicating the contents. Copying owned boxes
-is expensive so the compiler will complain if you do so without writing
-the word `copy`.
+a new owned box and duplicating the contents.
+Instead, owned boxes are _moved_ by default, transferring ownership,
+and deinitializing the previously owning variable.
+Any attempt to access a variable after the value has been moved out
+will result in a compile error.
 
 ~~~~
 let x = ~10;
-let y = x; // error: copying a non-implicitly copyable type
+// Move x to y, deinitializing x
+let y = x;
 ~~~~
 
 If you really want to copy an owned box you must say so explicitly.
@@ -1187,19 +989,6 @@ let y = copy x;
 
 let z = *x + *y;
 assert z == 20;
-~~~~
-
-This is where the 'move' operator comes in. It is similar to `copy`,
-but it de-initializes its source. Thus, the owned box can move from
-`x` to `y`, without violating the constraint that it only has a single
-owner (using assignment instead of the move operator would, in
-principle, copy the box).
-
-~~~~ {.xfail-test}
-let x = ~10;
-let y = move x;
-
-let z = *x + *y; // would cause an error: use of moved variable: `x`
 ~~~~
 
 Owned boxes, when they do not contain any managed boxes, can be sent
@@ -1406,7 +1195,7 @@ let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 let our_crayons = my_crayons + your_crayons;
 
 // += will append to a vector, provided it lives in a mutable slot
-let mut my_crayons = move my_crayons;
+let mut my_crayons = my_crayons;
 my_crayons += your_crayons;
 ~~~~
 
@@ -1793,6 +1582,142 @@ fn contains(v: &[int], elt: int) -> bool {
 > the keywords `break`, `loop`, and `return` work, in varying degree,
 > with `while`, `loop`, `do`, and `for` constructs.
 
+# Methods
+
+Methods are like functions except that they always begin with a special argument,
+called `self`,
+which has the type of the method's receiver. The
+`self` argument is like `this` in C++ and many other languages.
+Methods are called with dot notation, as in `my_vec.len()`.
+
+_Implementations_, written with the `impl` keyword, can define
+methods on most Rust types, including structs and enums.
+As an example, let's define a `draw` method on our `Shape` enum.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+struct Point {
+    x: float,
+    y: float
+}
+
+enum Shape {
+    Circle(Point, float),
+    Rectangle(Point, Point)
+}
+
+impl Shape {
+    fn draw(&self) {
+        match *self {
+            Circle(p, f) => draw_circle(p, f),
+            Rectangle(p1, p2) => draw_rectangle(p1, p2)
+        }
+    }
+}
+
+let s = Circle(Point { x: 1f, y: 2f }, 3f);
+s.draw();
+~~~
+
+This defines an _implementation_ for `Shape` containing a single
+method, `draw`. In most respects the `draw` method is defined
+like any other function, except for the name `self`.
+
+The type of `self` is the type on which the method is implemented,
+or a pointer thereof. As an argument it is written either `self`,
+`&self`, `@self`, or `~self`.
+A caller must in turn have a compatible pointer type to call the method.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+# struct Point { x: float, y: float }
+# enum Shape {
+#     Circle(Point, float),
+#     Rectangle(Point, Point)
+# }
+impl Shape {
+    fn draw_borrowed(&self) { ... }
+    fn draw_managed(@self) { ... }
+    fn draw_owned(~self) { ... }
+    fn draw_value(self) { ... }
+}
+
+let s = Circle(Point { x: 1f, y: 2f }, 3f);
+
+(@s).draw_managed();
+(~s).draw_owned();
+(&s).draw_borrowed();
+s.draw_value();
+~~~
+
+Methods typically take a borrowed pointer self type,
+so the compiler will go to great lengths to convert a callee
+to a borrowed pointer.
+
+~~~
+# fn draw_circle(p: Point, f: float) { }
+# fn draw_rectangle(p: Point, p: Point) { }
+# struct Point { x: float, y: float }
+# enum Shape {
+#     Circle(Point, float),
+#     Rectangle(Point, Point)
+# }
+# impl Shape {
+#    fn draw_borrowed(&self) { ... }
+#    fn draw_managed(@self) { ... }
+#    fn draw_owned(~self) { ... }
+#    fn draw_value(self) { ... }
+# }
+# let s = Circle(Point { x: 1f, y: 2f }, 3f);
+// As with typical function arguments, managed and unique pointers
+// are automatically converted to borrowed pointers
+
+(@s).draw_borrowed();
+(~s).draw_borrowed();
+
+// Unlike typical function arguments, the self value will
+// automatically be referenced ...
+s.draw_borrowed();
+
+// ... and dereferenced
+(& &s).draw_borrowed();
+
+// ... and dereferenced, and borrowed, and
+(&@~s).draw_borrowed();
+~~~
+
+Implementations may also define _static_ methods,
+which don't have an explicit `self` argument.
+The `static` keyword distinguishes static methods from methods that have a `self`:
+
+~~~~ {.xfail-test}
+impl Circle {
+    fn area(&self) -> float { ... }
+    static fn new(area: float) -> Circle { ... }
+}
+~~~~
+
+> ***Note***: In the future the `static` keyword will be removed and static methods
+> will be distinguished solely by the presence or absence of the `self` argument.
+> In the current langugage instance methods may also be declared without an explicit
+> `self` argument, in which case `self` is an implicit reference.
+> That form of method is deprecated.
+
+Constructors are one common application for static methods, as in `new` above.
+To call a static method, you have to prefix it with the type name and a double colon:
+
+~~~~
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+impl Circle {
+    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+let c = Circle::new(42.5);
+~~~~
+
 # Generics
 
 Throughout this tutorial, we've been defining functions that act only
@@ -1809,7 +1734,7 @@ fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     for vec::each(vector) |element| {
         accumulator.push(function(element));
     }
-    return (move accumulator);
+    return accumulator;
 }
 ~~~~
 
@@ -1866,8 +1791,8 @@ fn radius(shape: Shape) -> Option<float> {
 
 The Rust compiler compiles generic functions very efficiently by
 *monomorphizing* them. *Monomorphization* is a fancy name for a simple
-idea: generate a separate copy of each generic function at each call
-site where it is called, a copy that is specialized to the argument
+idea: generate a separate copy of each generic function at each call site,
+a copy that is specialized to the argument
 types and can thus be optimized specifically for them. In this
 respect, Rust's generics have similar performance characteristics to
 C++ templates.
@@ -1970,7 +1895,7 @@ console, with a single method:
 
 ~~~~
 trait Printable {
-    fn print();
+    fn print(&self);
 }
 ~~~~
 
@@ -1982,13 +1907,13 @@ and `~str`.
 [impls]: #functions-and-methods
 
 ~~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 impl int: Printable {
-    fn print() { io::println(fmt!("%d", self)) }
+    fn print(&self) { io::println(fmt!("%d", *self)) }
 }
 
 impl &str: Printable {
-    fn print() { io::println(self) }
+    fn print(&self) { io::println(*self) }
 }
 
 # 1.print();
@@ -2002,14 +1927,14 @@ types might look like the following:
 
 ~~~~
 trait Seq<T> {
-    fn len() -> uint;
-    fn iter(b: fn(v: &T));
+    fn len(&self) -> uint;
+    fn iter(&self, b: fn(v: &T));
 }
 
 impl<T> ~[T]: Seq<T> {
-    fn len() -> uint { vec::len(self) }
-    fn iter(b: fn(v: &T)) {
-        for vec::each(self) |elt| { b(elt); }
+    fn len(&self) -> uint { vec::len(*self) }
+    fn iter(&self, b: fn(v: &T)) {
+        for vec::each(*self) |elt| { b(elt); }
     }
 }
 ~~~~
@@ -2033,21 +1958,45 @@ trait, `self` is a type, and in an impl, `self` is a value. The
 following trait describes types that support an equality operation:
 
 ~~~~
-// In a trait, `self` refers to the type implementing the trait
+// In a trait, `self` refers both to the self argument
+// and to the type implementing the trait
 trait Eq {
-  fn equals(other: &self) -> bool;
+  fn equals(&self, other: &self) -> bool;
 }
 
-// In an impl, `self` refers to the value of the receiver
+// In an impl, `self` refers just to the value of the receiver
 impl int: Eq {
-  fn equals(other: &int) -> bool { *other == self }
+  fn equals(&self, other: &int) -> bool { *other == *self }
 }
 ~~~~
 
-Notice that in the trait definition, `equals` takes a parameter of
-type `self`. In contrast, in the `impl`, `equals` takes a parameter of
-type `int`, and uses `self` as the name of the receiver (analogous to
-the `this` pointer in C++).
+Notice that in the trait definition, `equals` takes a
+second parameter of type `self`.
+In contrast, in the `impl`, `equals` takes a second parameter of
+type `int`, only using `self` as the name of the receiver.
+
+Traits can also define static methods which are called by prefixing
+the method name with the trait name.
+The compiler will use type inference to decide which implementation to call.
+
+~~~~
+# trait Shape { static fn new(area: float) -> self; }
+# use float::consts::pi;
+# use float::sqrt;
+struct Circle { radius: float }
+struct Square { length: float }
+
+impl Circle: Shape {
+    static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
+}
+impl Square: Shape {
+     static fn new(area: float) -> Square { Square { length: sqrt(area) } }
+}
+
+let area = 42.5;
+let c: Circle = Shape::new(area);
+let s: Square = Shape::new(area);
+~~~~
 
 ## Bounded type parameters and static method dispatch
 
@@ -2057,7 +2006,7 @@ define _bounds_ on type parameters, so that we can then operate on
 generic types.
 
 ~~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
     for printable_things.each |thing| {
         thing.print();
@@ -2075,7 +2024,7 @@ Type parameters can have multiple bounds by separating them with spaces,
 as in this version of `print_all` that copies elements.
 
 ~~~
-# trait Printable { fn print(); }
+# trait Printable { fn print(&self); }
 fn print_all<T: Printable Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
@@ -2092,65 +2041,6 @@ the preferred way to use traits polymorphically.
 
 This usage of traits is similar to Haskell type classes.
 
-## Static methods
-
-Traits can define _static_ methods, which don't have an implicit `self` argument.
-The `static` keyword distinguishes static methods from methods that have a `self`:
-
-~~~~
-trait Shape {
-    fn area() -> float;
-    static fn new_shape(area: float) -> Shape;
-}
-~~~~
-
-Constructors are one application for static methods, as in `new_shape` above.
-To call a static method, you have to prefix it with the trait name and a double colon:
-
-~~~~
-# trait Shape { static fn new_shape(area: float) -> self; }
-# use float::consts::pi;
-# use float::sqrt;
-struct Circle { radius: float }
-impl Circle: Shape {
-    static fn new_shape(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
-}
-let s: Circle = Shape::new_shape(42.5);
-~~~~
-
-## Trait constraints
-
-We can write a trait declaration that is _constrained_ to only be implementable on types that
-also implement some other trait.
-
-For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
-
-~~~~
-trait Shape { fn area() -> float; }
-trait Circle : Shape { fn radius() -> float; }
-~~~~
-
-Now, implementations of `Circle` methods can call `Shape` methods:
-
-~~~~
-# trait Shape { fn area() -> float; }
-# trait Circle : Shape { fn radius() -> float; }
-# struct Point { x: float, y: float }
-# use float::consts::pi;
-# use float::sqrt;
-# fn square(x: float) -> float { x * x }
-struct CircleStruct { center: Point, radius: float }
-impl CircleStruct: Circle {
-     fn radius() -> float { sqrt(self.area() / pi) }
-}
-impl CircleStruct: Shape {
-     fn area() -> float { pi * square(self.radius) }
-}   
-~~~~
-
-This is a silly way to compute the radius of a circle
-(since we could just return the `circle` field), but you get the idea.
-
 ## Trait objects and dynamic method dispatch
 
 The above allows us to define functions that polymorphically act on
@@ -2159,9 +2049,9 @@ However, consider this function:
 
 ~~~~
 # type Circle = int; type Rectangle = int;
-# impl int: Drawable { fn draw() {} }
+# impl int: Drawable { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
-trait Drawable { fn draw(); }
+trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
@@ -2177,7 +2067,7 @@ needed, a trait name can alternately be used as a type, called
 an _object_.
 
 ~~~~
-# trait Drawable { fn draw(); }
+# trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
     for shapes.each |shape| { shape.draw(); }
 }
@@ -2190,14 +2080,14 @@ value to an object:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
-# trait Drawable { fn draw(); }
+# trait Drawable { fn draw(&self); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
 # fn draw_all(shapes: &[@Drawable]) {}
 
-impl Circle: Drawable { fn draw() { ... } }
+impl Circle: Drawable { fn draw(&self) { ... } }
 
-impl Rectangle: Drawable { fn draw() { ... } }
+impl Rectangle: Drawable { fn draw(&self) { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
@@ -2214,8 +2104,8 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 
 ~~~
 # type Circle = int; type Rectangle = int;
-# trait Drawable { fn draw(); }
-# impl int: Drawable { fn draw() {} }
+# trait Drawable { fn draw(&self); }
+# impl int: Drawable { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
 // A managed object
@@ -2232,6 +2122,67 @@ time, it uses a lookup table (also known as a vtable or dictionary) to
 select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
+
+## Trait inheritance
+
+We can write a trait declaration that _inherits_ from other traits, called _supertraits_.
+Types that implement a trait must also implement its supertraits.
+
+For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
+
+~~~~
+trait Shape { fn area(&self) -> float; }
+trait Circle : Shape { fn radius(&self) -> float; }
+~~~~
+
+Now, implementations of `Circle` methods can call `Shape` methods:
+
+~~~~
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
+# struct Point { x: float, y: float }
+# use float::consts::pi;
+# use float::sqrt;
+# fn square(x: float) -> float { x * x }
+struct CircleStruct { center: Point, radius: float }
+impl CircleStruct: Circle {
+     fn radius(&self) -> float { sqrt(self.area() / pi) }
+}
+impl CircleStruct: Shape {
+     fn area(&self) -> float { pi * square(self.radius) }
+}   
+~~~~
+
+This is a silly way to compute the radius of a circle
+(since we could just return the `circle` field), but you get the idea.
+
+In type-parameterized functions,
+methods of the supertrait may be called on values of subtrait-bound type parameters.
+Refering to the previous example of `trait Circle : Shape`:
+
+~~~
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
+fn radius_times_area<T: Circle>(c: T) -> float {
+    // `c` is both a Circle and a Shape
+    c.radius() * c.area()
+}
+~~~
+
+Likewise, supertrait methods may also be called on trait objects.
+
+~~~ {.xfail-test}
+# trait Shape { fn area(&self) -> float; }
+# trait Circle : Shape { fn radius(&self) -> float; }
+# impl int: Shape { fn area(&self) -> float { 0.0 } }
+# impl int: Circle { fn radius(&self) -> float { 0.0 } }
+# let mycircle = 0;
+
+let mycircle: Circle = @mycircle as @Circle;
+let nonsense = mycircle.radius() * mycircle.area();
+~~~
+
+> ***Note:*** Trait inheritance does not actually work with objects yet
 
 # Modules and crates
 
@@ -2294,9 +2245,9 @@ mod farm {
 
     // Note - visibility modifiers on impls currently have no effect
     impl Farm {
-        priv fn feed_chickens() { ... }
-        priv fn feed_cows() { ... }
-        fn add_chicken(c: Chicken) { ... }
+        priv fn feed_chickens(&self) { ... }
+        priv fn feed_cows(&self) { ... }
+        fn add_chicken(&self, c: Chicken) { ... }
     }
 
     pub fn feed_animals(farm: &Farm) {
@@ -2316,7 +2267,7 @@ fn main() {
 # enum Human = int;
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
 # fn make_me_a_chicken() -> Chicken { 0 }
-# impl Human { fn rest() { } }
+# impl Human { fn rest(&self) { } }
 ~~~
 
 ## Crates
