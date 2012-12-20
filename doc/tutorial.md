@@ -342,34 +342,6 @@ character, such as `\n`, `\r`, and `\t`. String literals,
 written between double quotes, allow the same escape sequences. Rust strings
 may contain newlines.
 
-## Constants
-
-Compile-time constants are declared with `const`. A constant may have any
-scalar type (for example, integer or float). Other allowable constant types
-are fixed-length vectors, static strings (more on this later), and
-structs. Constants may be declared in any scope and may refer to other
-constants. The compiler does not infer types for constants, so constants must
-always be declared with a type annotation. By convention, they are written in
-all capital letters.
-
-~~~
-// Scalars can be constants
-const MY_PASSWORD: int = 12345;
-
-// Scalar constants can be combined with other constants
-const MY_DOGGIES_PASSWORD: int = MY_PASSWORD + 1;
-
-// Fixed-length vectors
-const MY_VECTORY_PASSWORD: [int * 5] = [1, 2, 3, 4, 5];
-
-// Static strings
-const MY_STRINGY_PASSWORD: &static/str = "12345";
-
-// Structs
-struct Password { value: int }
-const MY_STRUCTY_PASSWORD: Password = Password { value: MY_PASSWORD };
-~~~
-
 ## Operators
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
