@@ -813,6 +813,15 @@ assert 8  == line(5, 3, 1);
 assert () == oops(5, 3, 1);
 ~~~~
 
+As with `match` expressions and `let` bindings, function arguments support
+pattern destructuring. Like `let`, argument patterns must be irrefutable,
+as in this example that unpacks a tuple and returns it.
+
+~~~
+fn first((value, _): (int, float)) -> int { value }
+~~~
+
+
 # The Rust memory model
 
 At this junction, let's take a detour to explain the concepts involved
@@ -1574,6 +1583,21 @@ fn contains(v: &[int], elt: int) -> bool {
     }
     false
 }
+~~~~
+
+Notice that, because `each` passes each value by borrowed pointer,
+the iteratee needs to dereference it before using.
+In these situations it can be convenient to lean on Rust's
+argument patterns to bind `x` to the actual value, not the pointer.
+
+~~~~
+# use each = vec::each;
+# fn contains(v: &[int], elt: int) -> bool {
+    for each(v) |&x| {
+        if (x == elt) { return true; }
+    }
+#    false
+# }
 ~~~~
 
 `for` syntax only works with stack closures.
