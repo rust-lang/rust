@@ -2127,15 +2127,15 @@ This usage of traits is similar to Java interfaces.
 
 We can write a trait declaration that _inherits_ from other traits, called _supertraits_.
 Types that implement a trait must also implement its supertraits.
-
-For example, we can define a `Circle` trait that only types that also have the `Shape` trait can have:
+For example,
+we can define a `Circle` trait that inherits from `Shape`.
 
 ~~~~
 trait Shape { fn area(&self) -> float; }
 trait Circle : Shape { fn radius(&self) -> float; }
 ~~~~
 
-Now, implementations of `Circle` methods can call `Shape` methods:
+Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
 # trait Shape { fn area(&self) -> float; }
@@ -2153,6 +2153,8 @@ impl CircleStruct: Shape {
 }   
 ~~~~
 
+Notice that methods of `Circle` can call methods on `Shape`, as our
+`radius` implementation calls the `area` method.
 This is a silly way to compute the radius of a circle
 (since we could just return the `circle` field), but you get the idea.
 
