@@ -876,6 +876,13 @@ fn add(x: int, y: int) -> int {
 }
 ~~~~
 
+As with `let` bindings, function arguments are irrefutable patterns,
+so any pattern that is valid in a let binding is also valid as an argument.
+
+~~~
+fn first((value, _): (int, int)) -> int { value }
+~~~
+
 
 #### Generic functions
 
