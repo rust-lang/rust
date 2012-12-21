@@ -51,7 +51,13 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg],
 
         // ... then explicit args.
         atys.push_all(type_of_explicit_args(cx, inputs));
-        return T_fn(atys, llvm::LLVMVoidType());
+
+        // return-unwind form returns a boolean: true=ok / false=fail.
+        if cx.sess.return_unwind() {
+            T_fn(atys, T_bool())
+        } else {
+            T_fn(atys, llvm::LLVMVoidType())
+        }
     }
 }
 

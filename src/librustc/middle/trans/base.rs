@@ -1728,7 +1728,11 @@ pub fn finish_fn(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("finish_fn");
     tie_up_header_blocks(fcx, lltop);
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
-    RetVoid(ret_cx);
+    if fcx.ccx.sess.return_unwind() {
+        Ret(ret_cx, C_bool(true));
+    } else {
+        RetVoid(ret_cx);
+    }
 }
 
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
