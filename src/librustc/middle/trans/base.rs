@@ -838,7 +838,7 @@ pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
 }
 
 pub fn need_invoke(bcx: block) -> bool {
-    if (bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
+    if (bcx.ccx().sess.no_landing_pads()) {
         return false;
     }
 
@@ -1258,8 +1258,7 @@ pub fn trans_block_cleanups_(bcx: block,
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
-    let no_lpads =
-        bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
+    let no_lpads = bcx.ccx().sess.no_landing_pads();
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
     for vec::rev_each(cleanups) |cu| {

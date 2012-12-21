@@ -67,6 +67,7 @@ pub const jit: uint = 1 << 19;
 pub const debug_info: uint = 1 << 20;
 pub const extra_debug_info: uint = 1 << 21;
 pub const static: uint = 1 << 22;
+pub const return_unwind: uint = 1 << 23;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -100,7 +101,10 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       extra_debug_info),
      (~"debug-info", ~"Produce debug info (experimental)", debug_info),
      (~"static", ~"Use or produce static libraries or binaries " +
-      "(experimental)", static)
+      "(experimental)", static),
+     (~"return-unwind",
+      ~"use return codes for unwinding (implies no-landing-pads)",
+      return_unwind),
     ]
 }
 
@@ -240,6 +244,10 @@ pub impl Session_ {
     }
     fn verbose(@self) -> bool { self.debugging_opt(verbose) }
     fn time_passes(@self) -> bool { self.debugging_opt(time_passes) }
+    fn no_landing_pads(@self) -> bool {
+        self.debugging_opt(no_landing_pads) ||
+            self.debugging_opt(return_unwind)
+    }
     fn count_llvm_insns(@self) -> bool {
         self.debugging_opt(count_llvm_insns)
     }
@@ -265,7 +273,9 @@ pub impl Session_ {
     fn no_monomorphic_collapse(@self) -> bool {
         self.debugging_opt(no_monomorphic_collapse)
     }
-
+    fn return_unwind(@self) -> bool {
+        self.debugging_opt(return_unwind)
+    }
     fn str_of(@self, id: ast::ident) -> @~str {
         self.parse_sess.interner.get(id)
     }
