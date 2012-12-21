@@ -1170,6 +1170,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(reason = "randomred")]
     fn test_ctime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1185,6 +1186,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(reason = "randomred")]
     fn test_strftime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
