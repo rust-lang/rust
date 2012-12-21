@@ -189,7 +189,7 @@ parentheses, while their bodies *must* be wrapped in
 braces. Single-statement, unbraced bodies are not allowed.
 
 ~~~~
-# mod universe { fn recalibrate() -> bool { true } }
+# mod universe { pub fn recalibrate() -> bool { true } }
 fn main() {
     /* A simple loop */
     loop {
@@ -210,7 +210,7 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    io::println(fmt!("count: %?", i));
+    io::println(fmt!("count: %?", count));
     count += 1;
 }
 ~~~~
