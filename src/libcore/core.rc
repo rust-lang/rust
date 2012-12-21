@@ -36,7 +36,7 @@ Implicitly, all crates behave as if they included the following prologue:
 
 
 #[link(name = "core",
-       vers = "0.5",
+       vers = "0.6",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -103,7 +103,7 @@ pub mod owned;
 #[cfg(notest)] pub mod cmp;
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.5");
+#[cfg(test)] extern mod realcore(name = "core", vers = "0.6");
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;
@@ -249,7 +249,7 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    extern mod std(vers = "0.5");
+    extern mod std(vers = "0.6");
     pub use std::std::test;
 }
 

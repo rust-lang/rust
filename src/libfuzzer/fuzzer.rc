@@ -11,7 +11,7 @@
 
 
 #[link(name = "fuzzer",
-       vers = "0.5",
+       vers = "0.6",
        uuid = "d6418797-2736-4833-bd82-d3c684b7c1b0",
        url = "https://github.com/mozilla/rust/tree/master/src/libfuzzer")];
 
@@ -28,9 +28,9 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.5");
-extern mod std(vers = "0.5");
-extern mod syntax(vers = "0.5");
+extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+extern mod syntax(vers = "0.6");
 
 use core::*;
 
