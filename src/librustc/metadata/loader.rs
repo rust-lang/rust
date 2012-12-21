@@ -80,15 +80,15 @@ fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
 
 fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
     if cx.static { return {prefix: ~"lib", suffix: ~".rlib"}; }
-    match cx.os {
-      os_win32 => return {prefix: win32::dll_prefix(),
-                          suffix: win32::dll_suffix()},
-      os_macos => return {prefix: macos::dll_prefix(),
-                          suffix: macos::dll_suffix()},
-      os_linux => return {prefix: linux::dll_prefix(),
-                          suffix: linux::dll_suffix()},
-      os_freebsd => return {prefix: freebsd::dll_prefix(),
-                            suffix: freebsd::dll_suffix()}
+    let (dll_prefix, dll_suffix) = match cx.os {
+        os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+    };
+    return {
+        prefix: str::from_slice(dll_prefix),
+        suffix: str::from_slice(dll_suffix)
     }
 }
 
