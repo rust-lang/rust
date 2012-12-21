@@ -3156,7 +3156,55 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         (0u, ~[arg(ast::by_copy, ty::mk_f64(tcx))],
          ty::mk_f64(tcx))
      }
-      ref other => {
+     ~"ctpop8" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
+         ty::mk_i8(tcx))
+     }
+     ~"ctpop16" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
+         ty::mk_i16(tcx))
+     }
+     ~"ctpop32" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_i32(tcx))
+     }
+     ~"ctpop64" => {
+        (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
+         ty::mk_i64(tcx))
+     }
+     ~"ctlz8" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
+         ty::mk_i8(tcx))
+     }
+     ~"ctlz16" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
+         ty::mk_i16(tcx))
+     }
+     ~"ctlz32" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_i32(tcx))
+     }
+     ~"ctlz64" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
+         ty::mk_i64(tcx))
+     }
+     ~"cttz8" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i8(tcx))],
+         ty::mk_i8(tcx))
+     }
+     ~"cttz16" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
+         ty::mk_i16(tcx))
+     }
+     ~"cttz32" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_i32(tcx))
+     }
+     ~"cttz64" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
+         ty::mk_i64(tcx))
+     }
+     ref other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
                           (*other) + ~"`");
         return;
