@@ -154,7 +154,7 @@ LIBRUSTI_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rusti)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.5
+CFG_RELEASE = 0.6
 CFG_VERSION = $(CFG_RELEASE)
 
 ifneq ($(wildcard $(CFG_GIT)),)

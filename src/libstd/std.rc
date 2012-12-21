@@ -18,7 +18,7 @@ not required in or otherwise suitable for the core library.
 */
 
 #[link(name = "std",
-       vers = "0.5",
+       vers = "0.6",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
@@ -35,7 +35,7 @@ not required in or otherwise suitable for the core library.
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-extern mod core(vers = "0.5");
+extern mod core(vers = "0.6");
 use core::*;
 
 // General io and system-services modules

@@ -11,7 +11,7 @@
 //! Rustdoc - The Rust documentation generator
 
 #[link(name = "rustdoc",
-       vers = "0.5",
+       vers = "0.6",
        uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
@@ -27,10 +27,10 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.5");
-extern mod std(vers = "0.5");
-extern mod rustc(vers = "0.5");
-extern mod syntax(vers = "0.5");
+extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+extern mod rustc(vers = "0.6");
+extern mod syntax(vers = "0.6");
 
 use core::*;
 use std::par;
