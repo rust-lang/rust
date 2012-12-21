@@ -234,7 +234,7 @@ impl<T, E> Result<T, E> {
     pure fn unwrap(self) -> T { unwrap(self) }
 
     #[inline(always)]
-    pure fn unwrap_err(self) -> T { unwrap(self) }
+    pure fn unwrap_err(self) -> E { unwrap_err(self) }
 
     #[inline(always)]
     pure fn chain<U>(self, op: fn(T) -> Result<U,E>) -> Result<U,E> {
