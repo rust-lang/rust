@@ -290,6 +290,13 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
   if (Ptr) return Ptr;
 
+  // If it wasn't found and if it starts with an underscore ('_') character,
+  // try again without the underscore.
+  if (NameStr[0] == '_') {
+    Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr+1);
+    if (Ptr) return Ptr;
+  }
+
   if (AbortOnFailure)
     report_fatal_error("Program used external function '" + Name +
                       "' which could not be resolved!");
