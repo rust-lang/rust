@@ -275,11 +275,10 @@ pub impl BigUint {
 
     static pub pure fn zero() -> BigUint { BigUint::from_at_vec(@[]) }
     static pub pure fn one() -> BigUint { BigUint::from_at_vec(@[1]) }
-
-    pure fn abs() -> BigUint { self }
+    pure fn abs(&self) -> BigUint { *self }
 
     /// Compare two BigUint value.
-    pure fn cmp(other: &BigUint) -> int {
+    pure fn cmp(&self, other: &BigUint) -> int {
         let s_len = self.data.len(), o_len = other.data.len();
         if s_len < o_len { return -1; }
         if s_len > o_len { return  1;  }
@@ -294,13 +293,13 @@ pub impl BigUint {
         return 0;
     }
 
-    pure fn divmod(other: &BigUint) -> (BigUint, BigUint) {
+    pure fn divmod(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail }
         if self.is_zero() { return (BigUint::zero(), BigUint::zero()); }
-        if *other == BigUint::one() { return (self, BigUint::zero()); }
+        if *other == BigUint::one() { return (*self, BigUint::zero()); }
 
         match self.cmp(other) {
-            s if s < 0 => return (BigUint::zero(), self),
+            s if s < 0 => return (BigUint::zero(), *self),
             0          => return (BigUint::one(), BigUint::zero()),
             _          => {} // Do nothing
         }
@@ -363,20 +362,24 @@ pub impl BigUint {
         }
     }
 
-    pure fn quot(other: &BigUint) -> BigUint { self.quotrem(other).first() }
-    pure fn rem(other: &BigUint) -> BigUint { self.quotrem(other).second() }
-    pure fn quotrem(other: &BigUint) -> (BigUint, BigUint) {
+    pure fn quot(&self, other: &BigUint) -> BigUint {
+        self.quotrem(other).first()
+    }
+    pure fn rem(&self, other: &BigUint) -> BigUint {
+        self.quotrem(other).second()
+    }
+    pure fn quotrem(&self, other: &BigUint) -> (BigUint, BigUint) {
         self.divmod(other)
     }
 
-    pure fn is_zero() -> bool { self.data.is_empty() }
-    pure fn is_not_zero() -> bool { self.data.is_not_empty() }
-    pure fn is_positive() -> bool { self.is_not_zero() }
-    pure fn is_negative() -> bool { false }
-    pure fn is_nonpositive() -> bool { self.is_zero() }
-    pure fn is_nonnegative() -> bool { true }
+    pure fn is_zero(&self) -> bool { self.data.is_empty() }
+    pure fn is_not_zero(&self) -> bool { self.data.is_not_empty() }
+    pure fn is_positive(&self) -> bool { self.is_not_zero() }
+    pure fn is_negative(&self) -> bool { false }
+    pure fn is_nonpositive(&self) -> bool { self.is_zero() }
+    pure fn is_nonnegative(&self) -> bool { true }
 
-    pure fn to_uint() -> uint {
+    pure fn to_uint(&self) -> uint {
         match self.data.len() {
             0 => 0,
             1 => self.data[0] as uint,
@@ -385,14 +388,14 @@ pub impl BigUint {
         }
     }
 
-    pure fn to_str_radix(radix: uint) -> ~str {
+    pure fn to_str_radix(&self, radix: uint) -> ~str {
         assert 1 < radix && radix <= 16;
 
-        pure fn convert_base(n: BigUint, base: uint) -> @[BigDigit] {
+        pure fn convert_base(n: &BigUint, base: uint) -> @[BigDigit] {
             if base == BigDigit::base { return n.data; }
             let divider    = BigUint::from_uint(base);
             let mut result = @[];
-            let mut r      = n;
+            let mut r      = *n;
             while r > divider {
                 let (d, r0) = r.divmod(&divider);
                 result += [r0.to_uint() as BigDigit];
@@ -416,14 +419,14 @@ pub impl BigUint {
         return fill_concat(convert_base(self, base), radix, max_len);
     }
 
-    priv pure fn shl_unit(n_unit: uint) -> BigUint {
-        if n_unit == 0 || self.is_zero() { return self; }
+    priv pure fn shl_unit(&self, n_unit: uint) -> BigUint {
+        if n_unit == 0 || self.is_zero() { return *self; }
 
         return BigUint::from_at_vec(at_vec::from_elem(n_unit, 0) + self.data);
     }
 
-    priv pure fn shl_bits(n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.is_zero() { return self; }
+    priv pure fn shl_bits(&self, n_bits: uint) -> BigUint {
+        if n_bits == 0 || self.is_zero() { return *self; }
 
         let mut carry = 0;
         let shifted = do at_vec::map(self.data) |elem| {
@@ -437,16 +440,16 @@ pub impl BigUint {
         return BigUint::from_at_vec(shifted + [carry]);
     }
 
-    priv pure fn shr_unit(n_unit: uint) -> BigUint {
-        if n_unit == 0 { return self; }
+    priv pure fn shr_unit(&self, n_unit: uint) -> BigUint {
+        if n_unit == 0 { return *self; }
         if self.data.len() < n_unit { return BigUint::zero(); }
         return BigUint::from_slice(
             vec::view(self.data, n_unit, self.data.len())
         );
     }
 
-    priv pure fn shr_bits(n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.data.is_empty() { return self; }
+    priv pure fn shr_bits(&self, n_bits: uint) -> BigUint {
+        if n_bits == 0 || self.data.is_empty() { return *self; }
 
         let mut borrow = 0;
         let mut shifted = @[];
@@ -499,8 +502,8 @@ impl Sign : Ord {
 
 pub impl Sign {
     /// Compare two Sign.
-    pure fn cmp(other: &Sign) -> int {
-        match (self, *other) {
+    pure fn cmp(&self, other: &Sign) -> int {
+        match (*self, *other) {
           (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) =>  0,
           (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => -1,
           _                                             =>  1
@@ -508,8 +511,8 @@ pub impl Sign {
     }
 
     /// Negate Sign value.
-    pure fn neg() -> Sign {
-        match(self) {
+    pure fn neg(&self) -> Sign {
+        match *self {
           Minus => Plus,
           Zero  => Zero,
           Plus  => Minus
@@ -682,9 +685,9 @@ pub impl BigInt {
         BigInt::from_biguint(Plus, BigUint::one())
     }
 
-    pure fn abs() -> BigInt { BigInt::from_biguint(Plus, self.data) }
+    pure fn abs(&self) -> BigInt { BigInt::from_biguint(Plus, self.data) }
 
-    pure fn cmp(other: &BigInt) -> int {
+    pure fn cmp(&self, other: &BigInt) -> int {
         let ss = self.sign, os = other.sign;
         if ss < os { return -1; }
         if ss > os { return  1; }
@@ -697,7 +700,7 @@ pub impl BigInt {
         }
     }
 
-    pure fn divmod(other: &BigInt) -> (BigInt, BigInt) {
+    pure fn divmod(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.divmod(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui),
@@ -719,10 +722,14 @@ pub impl BigInt {
         }
     }
 
-    pure fn quot(other: &BigInt) -> BigInt { self.quotrem(other).first() }
-    pure fn rem(other: &BigInt) -> BigInt { self.quotrem(other).second() }
+    pure fn quot(&self, other: &BigInt) -> BigInt {
+        self.quotrem(other).first()
+    }
+    pure fn rem(&self, other: &BigInt) -> BigInt {
+        self.quotrem(other).second()
+    }
 
-    pure fn quotrem(other: &BigInt) -> (BigInt, BigInt) {
+    pure fn quotrem(&self, other: &BigInt) -> (BigInt, BigInt) {
         // r.sign == self.sign
         let (q_ui, r_ui) = self.data.quotrem(&other.data);
         let q = BigInt::from_biguint(Plus, q_ui);
@@ -736,14 +743,14 @@ pub impl BigInt {
         }
     }
 
-    pure fn is_zero() -> bool { self.sign == Zero }
-    pure fn is_not_zero() -> bool { self.sign != Zero }
-    pure fn is_positive() -> bool { self.sign == Plus }
-    pure fn is_negative() -> bool { self.sign == Minus }
-    pure fn is_nonpositive() -> bool { self.sign != Plus }
-    pure fn is_nonnegative() -> bool { self.sign != Minus }
+    pure fn is_zero(&self) -> bool { self.sign == Zero }
+    pure fn is_not_zero(&self) -> bool { self.sign != Zero }
+    pure fn is_positive(&self) -> bool { self.sign == Plus }
+    pure fn is_negative(&self) -> bool { self.sign == Minus }
+    pure fn is_nonpositive(&self) -> bool { self.sign != Plus }
+    pure fn is_nonnegative(&self) -> bool { self.sign != Minus }
 
-    pure fn to_uint() -> uint {
+    pure fn to_uint(&self) -> uint {
         match self.sign {
             Plus  => self.data.to_uint(),
             Zero  => 0,
@@ -751,7 +758,7 @@ pub impl BigInt {
         }
     }
 
-    pure fn to_str_radix(radix: uint) -> ~str {
+    pure fn to_str_radix(&self, radix: uint) -> ~str {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => ~"0",
