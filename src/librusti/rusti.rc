@@ -246,6 +246,9 @@ fn run(repl: Repl, input: ~str) -> Repl {
     debug!("loop checking");
     middle::check_loop::check_crate(ty_cx, crate);
 
+    debug!("mode computation");
+    middle::mode::compute_modes(ty_cx, method_map, crate);
+
     debug!("alt checking");
     middle::check_alt::check_crate(ty_cx, method_map, crate);
 
