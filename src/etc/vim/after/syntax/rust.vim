@@ -7,10 +7,6 @@ if exists('g:rust_conceal_mod_path')
 	syn match rustNiceOperator "::" conceal cchar=ㆍ
 endif
 
-syn match rustLeftArrowHead contained "-" conceal cchar= 
-syn match rustLeftArrowTail contained "<" conceal cchar=⟵
-syn match rustNiceOperator "<-" contains=rustLeftArrowHead,rustLeftArrowTail
-
 syn match rustRightArrowHead contained ">" conceal cchar= 
 syn match rustRightArrowTail contained "-" conceal cchar=⟶
 syn match rustNiceOperator "->" contains=rustRightArrowHead,rustRightArrowTail
