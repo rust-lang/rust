@@ -2419,10 +2419,10 @@ these two files:
 pub fn explore() -> &str { "world" }
 ~~~~
 
-~~~~ {.xfail-test}
+~~~~
 // main.rs
 extern mod world;
-fn main() { io::println("hello " + world::explore()); }
+fn main() { io::println(~"hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
