@@ -104,7 +104,7 @@ mod inst {
 
     /// Returns the smallest power of 2 greater than or equal to `n`
     #[inline(always)]
-    pub fn next_power_of_two(n: uint) -> uint {
+    pub pure fn next_power_of_two(n: uint) -> uint {
         let halfbits: uint = sys::size_of::<uint>() * 4u;
         let mut tmp: uint = n - 1u;
         let mut shift: uint = 1u;

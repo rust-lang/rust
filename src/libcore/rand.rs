@@ -309,12 +309,12 @@ impl XorShiftState: Rng {
     }
 }
 
-pub fn xorshift() -> Rng {
+pub pure fn xorshift() -> Rng {
     // constants taken from http://en.wikipedia.org/wiki/Xorshift
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
 
-pub fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
+pub pure fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
     {mut x: x, mut y: y, mut z: z, mut w: w} as Rng
 }
 
