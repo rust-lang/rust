@@ -12,17 +12,13 @@
 //  http://shootout.alioth.debian.org/
 //   u64q/program.php?test=mandelbrot&lang=python3&id=2
 //
-//  takes 3 optional args:
+//  takes 2 optional args:
 //   square image size, defaults to 80_u
-//   yield frequency, defaults to 10_u (yield every 10 spawns)
 //   output path, default is "" (no output), "-" means stdout
 //
 //  in the shootout, they use 16000 as image size
-//  yield frequency doesn't seem to have much effect
 //
 //  writes pbm image to output path
-
-#[legacy_modes];
 
 extern mod std;
 use io::WriterUtil;
@@ -51,7 +47,7 @@ impl cmplx : ops::Add<cmplx,cmplx> {
     }
 }
 
-type line = {i: uint, b: ~[u8]};
+struct Line {i: uint, b: ~[u8]}
 
 pure fn cabs(x: cmplx) -> f64
 {
@@ -87,7 +83,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
     rv
 }
 
-fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<line>) -> ()
+fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<Line>) -> ()
 {
     let mut crv = ~[];
     let incr = 2f64/(size as f64);
@@ -97,22 +93,22 @@ fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<line>) -> ()
         let x = cmplx {re: xincr*(j as f64) - 1.5f64, im: y};
         crv.push(fillbyte(x, incr));
     };
-    oldcomm::send(ch, {i:i, b:crv});
+    oldcomm::send(ch, Line {i:i, b: move crv});
 }
 
 type devnull = {dn: int};
 
 impl devnull: io::Writer {
     fn write(_b: &[const u8]) {}
-    fn seek(+_i: int, +_s: io::SeekStyle) {}
+    fn seek(_i: int, _s: io::SeekStyle) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
     fn get_type() -> io::WriterType { io::File }
 }
 
-fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<line>>, size: uint)
+fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<Line>>, size: uint)
 {
-    let p: oldcomm::Port<line> = oldcomm::Port();
+    let p: oldcomm::Port<Line> = oldcomm::Port();
     let ch = oldcomm::Chan(&p);
     oldcomm::send(writech, ch);
     let cout: io::Writer = match path {
@@ -164,16 +160,13 @@ fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<line>>, size: uint)
 fn main() {
     let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
-        ~[~"", ~"4000", ~"10"]
+        ~[~"", ~"4000"]
     } else {
         args
     };
 
-    let path = if vec::len(args) < 4_u { ~"" }
-    else { copy args[3] };  // FIXME: bad for perf
-
-    let yieldevery = if vec::len(args) < 3_u { 10_u }
-    else { uint::from_str(args[2]).get() };
+    let path = if vec::len(args) < 3_u { ~"" }
+    else { copy args[2] };  // FIXME: bad for perf
 
     let size = if vec::len(args) < 2_u { 80_u }
     else { uint::from_str(args[1]).get() };
@@ -185,10 +178,6 @@ fn main() {
     };
     let ch = oldcomm::recv(writep);
     for uint::range(0_u, size) |j| {
-        task::spawn(|| chanmb(j, size, ch) );
-        if j % yieldevery == 0_u {
-            debug!("Y %u", j);
-            task::yield();
-        };
+        do task::spawn { chanmb(j, size, ch) };
     };
 }
