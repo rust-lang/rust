@@ -170,13 +170,13 @@ pub pure fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
   (I couldn't think of a cutesy name for this one.)
 */
 #[inline(always)]
-pub fn to_uint<T>(thing: &T) -> uint unsafe {
+pub pure fn to_uint<T>(thing: &T) -> uint unsafe {
     cast::reinterpret_cast(&thing)
 }
 
 /// Determine if two borrowed pointers point to the same thing.
 #[inline(always)]
-pub fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
+pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 

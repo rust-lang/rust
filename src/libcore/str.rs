@@ -214,7 +214,7 @@ pub pure fn connect(v: &[~str], sep: &str) -> ~str {
 }
 
 /// Given a string, make a new string with repeated copies of it
-pub fn repeat(ss: &str, nn: uint) -> ~str {
+pub pure fn repeat(ss: &str, nn: uint) -> ~str {
     let mut acc = ~"";
     for nn.times { acc += ss; }
     acc
@@ -1684,9 +1684,7 @@ pub struct CharRange {
  *
  * This function can be used to iterate over a unicode string in reverse.
  */
-pure fn char_range_at_reverse(ss: &str, start: uint)
-    -> CharRange {
-
+pure fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
     let mut prev = start;
 
     // while there is a previous byte == 10......
