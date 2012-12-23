@@ -135,7 +135,7 @@ pub fn set<T: Copy>(t: CVec<T>, ofs: uint, v: T) {
  */
 
 /// Returns the length of the vector
-pub fn len<T>(t: CVec<T>) -> uint {
+pub pure fn len<T>(t: CVec<T>) -> uint {
     return (*t).len;
 }
 

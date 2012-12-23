@@ -67,17 +67,17 @@ pub pure fn DVec<A>() -> DVec<A> {
 }
 
 /// Creates a new dvec with a single element
-pub fn from_elem<A>(e: A) -> DVec<A> {
+pub pure fn from_elem<A>(e: A) -> DVec<A> {
     DVec {mut data: ~[move e]}
 }
 
 /// Creates a new dvec with the contents of a vector
-pub fn from_vec<A>(v: ~[A]) -> DVec<A> {
+pub pure fn from_vec<A>(v: ~[A]) -> DVec<A> {
     DVec {mut data: move v}
 }
 
 /// Consumes the vector and returns its contents
-pub fn unwrap<A>(d: DVec<A>) -> ~[A] {
+pub pure fn unwrap<A>(d: DVec<A>) -> ~[A] {
     let DVec {data: v} = move d;
     move v
 }
