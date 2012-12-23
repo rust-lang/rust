@@ -1309,6 +1309,8 @@ pub mod funcs {
                       overwrite: c_int) -> c_int;
             fn unsetenv(name: *c_char) -> c_int;
             fn putenv(string: *c_char) -> c_int;
+
+            fn symlink(path1: *c_char, path2: *c_char) -> c_int;
         }
 
         #[nolink]
@@ -1364,7 +1366,6 @@ pub mod funcs {
     #[cfg(target_os = "win32")]
     pub mod bsd44 {
     }
-
 
     #[cfg(target_os = "macos")]
     #[nolink]
