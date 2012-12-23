@@ -11,15 +11,22 @@
 
 use back::link;
 use back::target_strs;
+use back;
+use driver;
+use driver::session;
 use metadata::filesearch;
+use metadata;
 use middle::lint;
 
+use core::cmp;
+use core::option;
 use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;
+use syntax::diagnostic;
 use syntax::parse::parse_sess;
 use syntax::{ast, codemap};
-
+use syntax;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 

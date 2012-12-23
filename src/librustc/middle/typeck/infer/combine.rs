@@ -54,10 +54,14 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
+use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 
+use core::vec;
 use syntax::ast::Onceness;
+use syntax::ast;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

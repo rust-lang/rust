@@ -16,13 +16,18 @@ use middle::ty;
 use middle::typeck::method_map;
 use util::ppaux::ty_to_str;
 
+use core::cmp;
+use core::option;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
+use std::sort;
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
+use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
-use std::sort;
 
 struct AltCheckCtxt {
     tcx: ty::ctxt,
@@ -470,7 +475,7 @@ fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
 }
 
 fn wild() -> @pat {
-    @{id: 0, node: pat_wild, span: syntax::ast_util::dummy_sp()}
+    @{id: 0, node: pat_wild, span: ast_util::dummy_sp()}
 }
 
 fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,

@@ -12,7 +12,12 @@
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
-use result::Result;
+use core::option;
+use core::os;
+use core::result::Result;
+use core::result;
+use core::str;
+
 export FileSearch;
 export mk_filesearch;
 export pick;

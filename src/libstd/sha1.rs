@@ -24,6 +24,10 @@
 
 #[forbid(deprecated_mode)];
 
+use core::str;
+use core::uint;
+use core::vec;
+
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
  * implementation, which is written for clarity, not speed. At some

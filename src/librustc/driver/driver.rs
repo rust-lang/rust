@@ -9,27 +9,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use metadata::{creader, cstore, filesearch};
-use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
-use syntax::parse;
-use syntax::{ast, codemap};
-use syntax::attr;
-use middle::{trans, freevars, kind, ty, typeck, lint};
-use syntax::print::{pp, pprust};
-use util::ppaux;
 use back::link;
-use result::{Ok, Err};
-use std::getopts;
-use std::getopts::{opt_present};
-use std::getopts::groups;
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use io::WriterUtil;
 use back::{x86, x86_64};
-use std::map::HashMap;
+use front;
 use lib::llvm::llvm;
+use metadata::{creader, cstore, filesearch};
+use metadata;
+use middle::{trans, freevars, kind, ty, typeck, lint};
+use middle;
+use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
+use session;
+use util::ppaux;
 
-enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
-              ppm_expanded_identified }
+use core::cmp;
+use core::int;
+use core::io::WriterUtil;
+use core::io;
+use core::option;
+use core::os;
+use core::result::{Ok, Err};
+use core::str;
+use core::vec;
+use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use std::getopts::groups;
+use std::getopts::{opt_present};
+use std::getopts;
+use std::map::HashMap;
+use std;
+use syntax::ast;
+use syntax::ast_map;
+use syntax::attr;
+use syntax::codemap;
+use syntax::diagnostic;
+use syntax::parse;
+use syntax::print::{pp, pprust};
+use syntax;
+
+enum pp_mode {
+    ppm_normal,
+    ppm_expanded,
+    ppm_typed,
+    ppm_identified,
+    ppm_expanded_identified
+}
 
 /**
  * The name used for source code that doesn't originate in a file

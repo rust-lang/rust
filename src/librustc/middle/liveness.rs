@@ -103,10 +103,20 @@
  */
 
 use middle::capture::{cap_move, cap_drop, cap_copy, cap_ref};
+use middle::capture;
+use middle::pat_util;
 use middle::ty::MoveValue;
+use middle::ty;
+use middle::typeck;
 
+use core::cmp;
 use core::dvec::DVec;
 use core::io::WriterUtil;
+use core::io;
+use core::ptr;
+use core::to_str;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
@@ -414,7 +424,7 @@ impl IrMaps {
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id, &&self: @IrMaps, v: vt<@IrMaps>) {
     debug!("visit_fn: id=%d", id);
-    let _i = util::common::indenter();
+    let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
     let fn_maps = @IrMaps(self.tcx, self.method_map,

@@ -14,6 +14,9 @@
 
 //! Operations and constants for `f32`
 
+use cmp;
+use num;
+
 pub use cmath::c_float_utils::*;
 pub use cmath::c_float_targ_consts::*;
 

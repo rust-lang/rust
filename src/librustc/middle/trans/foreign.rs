@@ -17,21 +17,26 @@ use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{Struct, Array, ModuleRef, CallConv, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
 use lib::llvm::{llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double};
+use lib;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore};
+use middle::trans::glue;
+use middle::trans::machine;
+use middle::trans::shape;
 use middle::trans::type_of::*;
+use middle::trans::type_of;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
-use std::map::HashMap;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
+use syntax::parse::token::special_idents;
 
 export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;
@@ -1284,7 +1289,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(
-                syntax::parse::token::special_idents::clownshoe_abi
+                special_idents::clownshoe_abi
             )));
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
@@ -1323,7 +1328,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         let shim_name = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(
-                syntax::parse::token::special_idents::clownshoe_stack_shim
+                special_idents::clownshoe_stack_shim
             )));
         return build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,

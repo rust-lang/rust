@@ -18,8 +18,16 @@
 // 4. moves to dnot affect things loaned out in any way
 
 use middle::ty::{CopyValue, MoveValue, ReadValue};
+use middle::ty;
 
-use dvec::DVec;
+use core::cmp;
+use core::dvec::DVec;
+use core::uint;
+use core::vec;
+use syntax::ast;
+use syntax::ast_util;
+use syntax::print::pprust;
+use syntax::visit;
 
 export check_loans;
 

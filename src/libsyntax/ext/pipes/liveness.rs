@@ -37,6 +37,7 @@ updating the states using rule (2) until there are no changes.
 
 */
 
+use core::str;
 use std::bitv::{Bitv};
 
 fn analyze(proto: protocol, _cx: ext_ctxt) {

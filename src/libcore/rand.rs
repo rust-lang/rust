@@ -14,6 +14,14 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use int;
+use str;
+use task;
+use u32;
+use uint;
+use util;
+use vec;
+
 #[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 

@@ -10,28 +10,42 @@
 
 // Metadata encoding
 
+use metadata::common::*;
+use metadata::csearch;
+use metadata::cstore;
+use metadata::decoder;
+use metadata::tyencode;
+use middle::resolve;
+use middle::ty::node_id_to_type;
+use middle::ty;
+use middle;
 use util::ppaux::ty_to_str;
 
-use std::{ebml, map};
+use core::dvec;
+use core::flate;
+use core::float;
+use core::hash::{Hash, HashUtil};
+use core::int;
+use core::io::WriterUtil;
+use core::io;
+use core::str::to_bytes;
+use core::str;
+use core::to_bytes::IterBytes;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
-use io::WriterUtil;
-use writer = std::ebml::writer;
+use std::{ebml, map};
+use std;
 use syntax::ast::*;
+use syntax::ast;
+use syntax::ast_map;
+use syntax::ast_util::*;
+use syntax::attr;
+use syntax::diagnostic::span_handler;
 use syntax::print::pprust;
 use syntax::{ast_util, visit};
-use syntax::ast_util::*;
-use metadata::common::*;
-use middle::ty;
-use middle::ty::node_id_to_type;
-use middle::resolve;
-use syntax::ast_map;
-use syntax::attr;
-use str::to_bytes;
-use syntax::ast;
-use syntax::diagnostic::span_handler;
-
-use hash::{Hash, HashUtil};
-use to_bytes::IterBytes;
+use syntax;
+use writer = std::ebml::writer;
 
 export encode_parms;
 export encode_metadata;
@@ -458,7 +472,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         let its_ty = node_id_to_type(ecx.tcx, id);
         debug!("fn name = %s ty = %s its node id = %d",
                ecx.tcx.sess.str_of(ident),
-               util::ppaux::ty_to_str(ecx.tcx, its_ty), id);
+               ty_to_str(ecx.tcx, its_ty), id);
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
         match item {

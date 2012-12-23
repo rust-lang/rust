@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
-use parse::parser;
-use diagnostic::span_handler;
-use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
+use ast;
 use ast_util::dummy_sp;
-use parse::token;
+use codemap;
+use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
+use diagnostic::span_handler;
+use ext;
+use parse;
+use parse::{parser, token};
+
+use core::io;
+use core::vec;
+use std::map::HashMap;
 
 // new-style macro! tt code:
 //

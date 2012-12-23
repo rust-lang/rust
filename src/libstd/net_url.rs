@@ -11,8 +11,24 @@
 //! Types/fns concerning URLs (see RFC 3986)
 #[forbid(deprecated_mode)];
 
-use io::ReaderUtil;
-use send_map::linear::LinearMap;
+use map;
+use map::HashMap;
+
+use core::cmp::Eq;
+use core::dvec::DVec;
+use core::from_str::FromStr;
+use core::io::{Reader, ReaderUtil};
+use core::io;
+use core::send_map::linear::LinearMap;
+use core::send_map;
+use core::str;
+use core::to_bytes::IterBytes;
+use core::to_bytes;
+use core::to_str::ToStr;
+use core::to_str;
+use core::uint;
+use core::util;
+use core::vec;
 
 #[deriving_eq]
 struct Url {
@@ -654,7 +670,7 @@ pub pure fn from_str(rawurl: &str) -> Result<Url, ~str> {
     Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
 }
 
-impl Url: from_str::FromStr {
+impl Url: FromStr {
     static pure fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
             Ok(move url) => Some(url),

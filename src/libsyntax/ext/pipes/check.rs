@@ -29,9 +29,10 @@ that.
 
 */
 
+use ast;
 use ext::base::ext_ctxt;
-
 use ext::pipes::proto::{state, protocol, next_state};
+use ext::pipes::proto;
 
 impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_proto(_proto: protocol,

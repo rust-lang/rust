@@ -19,9 +19,15 @@
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_item_val, trans_external_path};
 use middle::trans::build::*;
+use middle::trans::callee;
+use middle::trans::closure;
 use middle::trans::common::{block, node_id_type_params};
 use middle::trans::datum::*;
 use middle::trans::datum::Datum;
+use middle::trans::inline;
+use middle::trans::meth;
+use middle::trans::monomorphize;
+use middle::typeck;
 use util::common::indenter;
 
 use syntax::ast;

@@ -10,25 +10,36 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
-use syntax::diagnostic::span_handler;
-use syntax::{ast, ast_util};
-use syntax::attr;
-use syntax::visit;
-use syntax::codemap::span;
-use std::map::HashMap;
-use syntax::print::pprust;
-use metadata::filesearch::FileSearch;
+use metadata::cstore;
 use metadata::common::*;
-use dvec::DVec;
+use metadata::decoder;
+use metadata::filesearch::FileSearch;
+use metadata::loader;
+
+use core::dvec::DVec;
+use core::either;
+use core::option;
+use core::vec;
+use syntax::attr;
+use syntax::codemap::span;
+use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
+use syntax::print::pprust;
+use syntax::visit;
+use syntax::{ast, ast_util};
+use std::map::HashMap;
 
 export read_crates;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
-fn read_crates(diag: span_handler, crate: ast::crate,
-               cstore: cstore::CStore, filesearch: FileSearch,
-               os: loader::os, static: bool, intr: @ident_interner) {
+fn read_crates(diag: span_handler,
+               crate: ast::crate,
+               cstore: cstore::CStore,
+               filesearch: FileSearch,
+               os: loader::os,
+               static: bool,
+               intr: @ident_interner) {
     let e = @{diag: diag,
               filesearch: filesearch,
               cstore: cstore,

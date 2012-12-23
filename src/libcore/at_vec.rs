@@ -15,13 +15,18 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
+use iter;
+use libc;
 use ptr::addr_of;
+use sys;
+use uint;
+use vec;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
 #[abi = "cdecl"]
-extern mod rustrt {
+pub extern mod rustrt {
     #[legacy_exports];
     fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                  ++v: **vec::raw::VecRepr,
@@ -29,7 +34,7 @@ extern mod rustrt {
 }
 
 #[abi = "rust-intrinsic"]
-extern mod rusti {
+pub extern mod rusti {
     #[legacy_exports];
     fn move_val_init<T>(dst: &mut T, -src: T);
 }
@@ -157,6 +162,13 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
+    use at_vec::{rusti, rustrt};
+    use libc;
+    use ptr;
+    use sys;
+    use uint;
+    use vec;
+
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
 

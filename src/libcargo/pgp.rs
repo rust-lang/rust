@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::os;
+use core::run;
+
 fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
     return run::program_output(~"gpgv", args);
 }

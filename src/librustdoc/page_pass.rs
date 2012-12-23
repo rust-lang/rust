@@ -15,10 +15,20 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
+use astsrv;
+use config;
 use doc::{ItemUtils, PageUtils};
+use doc;
 use fold::Fold;
-use syntax::ast;
+use fold;
+use sort_pass;
 use util::NominalOp;
+use util;
+
+use core::oldcomm;
+use core::option;
+use core::vec;
+use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {

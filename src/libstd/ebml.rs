@@ -9,7 +9,13 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+
 use serialize;
+
+use core::io;
+use core::ops;
+use core::str;
+use core::vec;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
@@ -54,6 +60,13 @@ enum EbmlEncoderTag {
 // --------------------------------------
 
 pub mod reader {
+    use serialize;
+
+    use core::int;
+    use core::io;
+    use core::ops;
+    use core::str;
+    use core::vec;
 
     // ebml reading
 
@@ -271,7 +284,7 @@ pub mod reader {
         fn read_u8 (&self) -> u8  { doc_as_u8 (self.next_doc(EsU8 )) }
         fn read_uint(&self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
-            if v > (core::uint::max_value as u64) {
+            if v > (::core::uint::max_value as u64) {
                 fail fmt!("uint %? too large for this architecture", v);
             }
             v as uint
@@ -385,6 +398,9 @@ pub mod reader {
 }
 
 pub mod writer {
+    use core::io;
+    use core::str;
+    use core::vec;
 
     // ebml writing
     pub struct Encoder {
@@ -546,7 +562,7 @@ pub mod writer {
         }
     }
 
-    impl Encoder: serialize::Encoder {
+    impl Encoder: ::serialize::Encoder {
         fn emit_nil(&self) {}
 
         fn emit_uint(&self, v: uint) {

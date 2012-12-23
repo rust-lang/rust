@@ -10,19 +10,21 @@
 
 #[forbid(deprecated_mode)];
 
-use io::Writer;
-use io::WriterUtil;
 use serialize;
 
-pub struct Encoder {
+use core::io::Writer;
+use core::io::WriterUtil;
+use core::io;
+
+pub struct Serializer {
     wr: io::Writer,
 }
 
-pub fn Encoder(wr: io::Writer) -> Encoder {
-    Encoder { wr: wr }
+pub fn Serializer(wr: io::Writer) -> Serializer {
+    Serializer { wr: wr }
 }
 
-pub impl Encoder: serialize::Encoder {
+pub impl Serializer: serialize::Encoder {
     fn emit_nil(&self) {
         self.wr.write_str(~"()")
     }

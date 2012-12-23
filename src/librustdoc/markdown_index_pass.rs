@@ -10,8 +10,17 @@
 
 //! Build indexes as appropriate for the markdown pass
 
+use astsrv;
+use config;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+use markdown_pass;
+use markdown_writer;
+
+use core::str;
+use std::par;
 
 pub fn mk_pass(+config: config::Config) -> Pass {
     {

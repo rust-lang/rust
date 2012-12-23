@@ -10,12 +10,16 @@
 
 // Type encoding
 
-use io::WriterUtil;
+use middle::ty;
+use middle::ty::vid;
+
+use core::io::WriterUtil;
+use core::io;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
-use middle::ty;
-use middle::ty::vid;
 use syntax::print::pprust::*;
 
 export ctxt;

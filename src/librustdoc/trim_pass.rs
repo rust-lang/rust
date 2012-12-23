@@ -16,6 +16,10 @@ is interpreted as the brief description.
 */
 
 use doc::ItemUtils;
+use doc;
+use text_pass;
+
+use core::str;
 
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"trim", |s| str::trim(s) )

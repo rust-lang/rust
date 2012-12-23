@@ -16,8 +16,6 @@
 
 #[crate_type = "lib"];
 
-#[no_core];
-
 #[legacy_modes];
 #[legacy_exports];
 
@@ -26,10 +24,12 @@
 #[allow(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-extern mod core(vers = "0.6");
-extern mod std(vers = "0.6");
+#[no_core];
 
+extern mod core(vers = "0.6");
 use core::*;
+
+extern mod std(vers = "0.6");
 
 pub mod syntax {
     pub use ext;

@@ -8,19 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use driver::session;
 use driver::session::Session;
+use driver::session;
+use middle::pat_util::{pat_bindings};
 use middle::ty;
-use syntax::{ast, ast_util, visit};
+use util::ppaux::{ty_to_str};
+
+use core::char;
+use core::cmp;
+use core::either;
+use core::i8;
+use core::i16;
+use core::i32;
+use core::i64;
+use core::int;
+use core::io::WriterUtil;
+use core::str;
+use core::u8;
+use core::u16;
+use core::u32;
+use core::u64;
+use core::uint;
+use core::vec;
+use std::map::{Map, HashMap};
+use std::map;
+use std::smallintmap::{Map, SmallIntMap};
+use std::smallintmap;
+use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
-use std::map::{Map,HashMap};
-use std::smallintmap::{Map,SmallIntMap};
-use io::WriterUtil;
-use util::ppaux::{ty_to_str};
-use middle::pat_util::{pat_bindings};
-use syntax::ast_util::{path_to_ident};
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
+use syntax::{ast, ast_util, visit};
+
 export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
 export unrecognized_lint, non_implicitly_copyable_typarams;
 export vecs_implicitly_copyable, implicit_copies, legacy_modes;
@@ -226,7 +245,7 @@ fn get_lint_dict() -> lint_dict {
            default: warn}),
         */
     ];
-    std::map::hash_from_vec(v)
+    map::hash_from_vec(v)
 }
 
 // This is a highly not-optimal set of data structure decisions.
@@ -242,7 +261,7 @@ type lint_settings = {
 };
 
 fn mk_lint_settings() -> lint_settings {
-    {default_settings: std::smallintmap::mk(),
+    {default_settings: smallintmap::mk(),
      settings_map: HashMap()}
 }
 
@@ -266,7 +285,7 @@ fn get_lint_settings_level(settings: lint_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    std::smallintmap::SmallIntMap_(@{v: copy modes.v})
+    smallintmap::SmallIntMap_(@{v: copy modes.v})
 }
 
 type ctxt_ = {dict: lint_dict,
@@ -386,7 +405,7 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
 fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     let cx = ctxt_({dict: get_lint_dict(),
-                    curr: std::smallintmap::mk(),
+                    curr: smallintmap::mk(),
                     is_default: true,
                     sess: sess});
 

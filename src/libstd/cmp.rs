@@ -11,6 +11,10 @@
 #[forbid(deprecated_mode)];
 /// Additional general-purpose comparison functionality.
 
+use core::f32;
+use core::f64;
+use core::float;
+
 const fuzzy_epsilon: float = 1.0e-6;
 
 pub trait FuzzyEq {

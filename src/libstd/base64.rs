@@ -9,7 +9,11 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
-use io::Reader;
+
+use core::io::Reader;
+use core::iter;
+use core::str;
+use core::vec;
 
 pub trait ToBase64 {
     pure fn to_base64() -> ~str;

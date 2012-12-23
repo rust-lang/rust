@@ -13,8 +13,8 @@
 
 use core::cmp::Eq;
 use core::option;
-use option::*;
-use option::{Some, None};
+use core::option::*;
+use core::vec;
 
 #[deriving_eq]
 pub enum List<T> {

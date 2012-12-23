@@ -11,6 +11,14 @@
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 #[forbid(deprecated_mode)];
 
+use core::libc;
+use core::oldcomm;
+use core::ptr;
+use core::result;
+use core::str;
+use core::uint;
+use core::vec;
+
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
 
@@ -139,6 +147,14 @@ pub fn get_addr(node: &str, iotask: iotask)
 }
 
 pub mod v4 {
+    use uv::ll;
+
+    use core::ptr;
+    use core::result;
+    use core::str;
+    use core::uint;
+    use core::vec;
+
     /**
      * Convert a str to `ip_addr`
      *
@@ -225,6 +241,9 @@ pub mod v4 {
     }
 }
 pub mod v6 {
+    use core::result;
+    use core::str;
+
     /**
      * Convert a str to `ip_addr`
      *

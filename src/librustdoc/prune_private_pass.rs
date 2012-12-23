@@ -12,7 +12,13 @@
 
 #[legacy_exports];
 
+use astsrv;
+use doc;
 use fold::Fold;
+use fold;
+
+use core::util;
+use syntax::ast;
 
 export mk_pass;
 
@@ -56,7 +62,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
             ast_map::node_item(item, _) => {
                 item.vis == ast::public
             }
-            _ => core::util::unreachable()
+            _ => util::unreachable()
         }
     }
 }

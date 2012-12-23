@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
 use middle::ty;
 use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
@@ -33,6 +32,10 @@ use syntax::print::pprust::{path_to_str, proto_to_str,
                             onceness_to_str};
 use syntax::{ast, ast_util};
 use syntax::ast_map;
+
+use core::str;
+use core::vec;
+use std::map::HashMap;
 
 fn note_and_explain_region(cx: ctxt,
                            prefix: ~str,

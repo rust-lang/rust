@@ -58,8 +58,12 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
+use middle::ty;
 use middle::typeck::infer::combine::combine_fields;
 use middle::typeck::infer::to_str::ToStr;
+
+use core::option;
+use syntax::ast;
 
 fn to_ares(+c: cres<ty::t>) -> ares {
     match c {

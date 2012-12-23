@@ -18,6 +18,7 @@ The iteration traits and common implementation
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use vec;
 
 /// A function used to initialize the elements of a sequence
 pub type InitOp<T> = &fn(uint) -> T;

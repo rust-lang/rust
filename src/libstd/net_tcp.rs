@@ -12,13 +12,23 @@
 // XXX Need FFI fixes
 #[allow(deprecated_mode)];
 
+use future;
+use future_spawn = future::spawn;
 use ip = net_ip;
+use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
-use future_spawn = future::spawn;
-use result::{Result};
-use libc::size_t;
-use io::{Reader, ReaderUtil, Writer};
+
+use core::io::{Reader, ReaderUtil, Writer};
+use core::io;
+use core::libc::size_t;
+use core::libc;
+use core::oldcomm;
+use core::ptr;
+use core::result::{Result};
+use core::result;
+use core::uint;
+use core::vec;
 
 #[nolink]
 extern mod rustrt {
@@ -901,6 +911,8 @@ fn tear_down_socket_data(socket_data: @TcpSocketData) unsafe {
 // shared implementation for tcp::read
 fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
     -> result::Result<~[u8],TcpErrData> unsafe {
+    use timer;
+
     log(debug, ~"starting tcp::read");
     let iotask = (*socket_data).iotask;
     let rs_result = read_start_common_impl(socket_data);
@@ -1258,6 +1270,17 @@ type TcpBufferedSocketData = {
 
 //#[cfg(test)]
 mod test {
+    use net;
+    use net::ip;
+    use uv;
+
+    use core::io;
+    use core::oldcomm;
+    use core::result;
+    use core::str;
+    use core::task;
+    use core::vec;
+
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
@@ -1566,7 +1589,8 @@ mod test {
     }
 
     fn impl_tcp_socket_impl_reader_handles_eof() {
-        use io::{Reader,ReaderUtil};
+        use core::io::{Reader,ReaderUtil};
+
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 10041u;

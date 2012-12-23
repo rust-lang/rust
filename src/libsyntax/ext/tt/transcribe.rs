@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use diagnostic::span_handler;
+use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
+use ast_util;
 use codemap::span;
+use diagnostic::span_handler;
+use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
+
+use core::option;
+use core::vec;
+use std;
 use std::map::HashMap;
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;

@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::cast;
+use core::cmp;
+use core::int;
+use core::io;
+use core::libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
+use core::option;
+use core::ptr;
+use core::str;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
-
-use libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
 
 type Opcode = u32;
 type Bool = c_uint;
+
 const True: Bool = 1 as Bool;
 const False: Bool = 0 as Bool;
 
@@ -1058,8 +1067,8 @@ fn SetLinkage(Global: ValueRef, Link: Linkage) {
 
 /* Memory-managed object interface to type handles. */
 
-type type_names = @{type_names: std::map::HashMap<TypeRef, ~str>,
-                    named_types: std::map::HashMap<~str, TypeRef>};
+type type_names = @{type_names: HashMap<TypeRef, ~str>,
+                    named_types: HashMap<~str, TypeRef>};
 
 fn associate_type(tn: type_names, s: ~str, t: TypeRef) {
     assert tn.type_names.insert(t, s);
@@ -1075,8 +1084,8 @@ fn name_has_type(tn: type_names, s: ~str) -> Option<TypeRef> {
 }
 
 fn mk_type_names() -> type_names {
-    @{type_names: std::map::HashMap(),
-      named_types: std::map::HashMap()}
+    @{type_names: HashMap(),
+      named_types: HashMap()}
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> ~str {

@@ -21,9 +21,18 @@ use result::Result;
 
 use cmp::Eq;
 use dvec::DVec;
+use int;
+use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use libc::consts::os::extra::*;
+use option;
+use os;
+use ptr;
+use result;
+use str;
+use uint;
+use vec;
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 type fd_t = c_int;
@@ -1019,6 +1028,9 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
+    use libc;
+    use option;
+    use os;
 
     pub enum Level {
         // whatever fsync does on that platform

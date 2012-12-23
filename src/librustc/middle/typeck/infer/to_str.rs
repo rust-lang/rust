@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty;
 use middle::typeck::infer::integral::int_ty_set;
 use middle::typeck::infer::floating::float_ty_set;
 use middle::typeck::infer::unify::{redirect, root, var_value};
+use util::ppaux;
+
+use core::uint;
 
 trait ToStr {
     fn to_str(cx: infer_ctxt) -> ~str;
@@ -30,7 +34,7 @@ impl ty::mt: ToStr {
 
 impl ty::Region: ToStr {
     fn to_str(cx: infer_ctxt) -> ~str {
-        util::ppaux::region_to_str(cx.tcx, self)
+        ppaux::region_to_str(cx.tcx, self)
     }
 }
 

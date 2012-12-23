@@ -82,7 +82,7 @@ debug!("hello, %s!", "world");
 
 use cmp::Eq;
 use option::{Some, None};
-
+use str;
 
 /*
  * We have a 'ct' (compile-time) module that parses format strings into a
@@ -98,6 +98,10 @@ use option::{Some, None};
 // Functions used by the fmt extension at compile time
 #[doc(hidden)]
 pub mod ct {
+    use char;
+    use str;
+    use vec;
+
     pub enum Signedness { Signed, Unsigned, }
     pub enum Caseness { CaseUpper, CaseLower, }
     pub enum Ty {
@@ -332,6 +336,12 @@ pub mod ct {
 // implement it 0this way, I think.
 #[doc(hidden)]
 pub mod rt {
+    use float;
+    use str;
+    use sys;
+    use uint;
+    use vec;
+
     pub const flag_none : u32 = 0u32;
     pub const flag_left_justify   : u32 = 0b00000000000001u32;
     pub const flag_left_zero_pad  : u32 = 0b00000000000010u32;

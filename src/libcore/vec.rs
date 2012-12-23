@@ -14,20 +14,27 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
+use cast;
 use cmp::{Eq, Ord};
-use option::{Some, None};
-use ptr::addr_of;
+use iter;
+use libc;
 use libc::size_t;
+use option::{Some, None};
+use ptr;
+use ptr::addr_of;
+use sys;
+use uint;
+use vec;
 
 #[abi = "cdecl"]
-extern mod rustrt {
+pub extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **raw::VecRepr,
                           ++n: libc::size_t);
 }
 
 #[abi = "rust-intrinsic"]
-extern mod rusti {
+pub extern mod rusti {
     fn move_val_init<T>(dst: &mut T, -src: T);
     fn init<T>() -> T;
 }
@@ -1799,6 +1806,11 @@ pub struct UnboxedVecRepr {
 
 /// Unsafe operations
 pub mod raw {
+    use managed;
+    use option;
+    use ptr;
+    use sys;
+    use vec::rusti;
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
@@ -1939,6 +1951,10 @@ pub mod raw {
 
 /// Operations on `[u8]`
 pub mod bytes {
+    use libc;
+    use uint;
+    use vec;
+    use vec::raw;
 
     /// Bytewise string comparison
     pub pure fn cmp(a: &~[u8], b: &~[u8]) -> int {

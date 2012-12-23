@@ -18,7 +18,10 @@ Simple compression
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use libc;
 use libc::{c_void, size_t, c_int};
+use ptr;
+use vec;
 
 extern mod rustrt {
     fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,

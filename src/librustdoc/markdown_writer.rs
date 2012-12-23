@@ -8,9 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use config;
 use doc::ItemUtils;
-use io::ReaderUtil;
+use doc;
+
+use core::io::ReaderUtil;
+use core::io;
+use core::libc;
+use core::oldcomm;
+use core::os;
+use core::pipes;
+use core::result;
+use core::run;
+use core::str;
+use core::task;
 use std::future;
+use syntax;
 
 pub enum WriteInstr {
     Write(~str),

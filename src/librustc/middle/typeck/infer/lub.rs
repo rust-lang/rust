@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 
+use std::list;
 use syntax::ast::{Many, Once};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.

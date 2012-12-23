@@ -35,6 +35,13 @@
 
 #[forbid(deprecated_mode)];
 
+use core::cast;
+use core::char;
+use core::option;
+use core::str;
+use core::uint;
+use core::vec;
+
 /// The type of ropes.
 pub type Rope = node::Root;
 
@@ -441,6 +448,8 @@ pub fn loop_leaves(rope: Rope, it: fn(node::Leaf) -> bool) -> bool{
 
 pub mod iterator {
     pub mod leaf {
+        use rope::node;
+
         pub fn start(rope: Rope) -> node::leaf_iterator::T {
             match (rope) {
               node::Empty      => return node::leaf_iterator::empty(),
@@ -452,6 +461,8 @@ pub mod iterator {
         }
     }
     pub mod char {
+        use rope::node;
+
         pub fn start(rope: Rope) -> node::char_iterator::T {
             match (rope) {
               node::Empty      => return node::char_iterator::empty(),
@@ -543,7 +554,15 @@ pub fn char_at(rope: Rope, pos: uint) -> char {
 /*
  Section: Implementation
 */
-mod node {
+pub mod node {
+    use rope::node;
+
+    use core::cast;
+    use core::char;
+    use core::option;
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1116,6 +1135,9 @@ mod node {
     }
 
     pub mod leaf_iterator {
+        use core::option;
+        use core::vec;
+
         pub type T = {
             stack:            ~[mut @Node],
             mut stackpos: int
@@ -1153,6 +1175,11 @@ mod node {
     }
 
     pub mod char_iterator {
+        use rope::node::leaf_iterator;
+
+        use core::option;
+        use core::str;
+
         pub type T = {
             leaf_iterator: leaf_iterator::T,
             mut leaf:  Option<Leaf>,

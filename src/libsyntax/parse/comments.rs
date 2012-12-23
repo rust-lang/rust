@@ -8,11 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::ReaderUtil;
+use ast;
+use codemap::{CodeMap, FileMap, CharPos};
+use diagnostic;
+use parse::lexer::{is_whitespace, get_str_from, reader};
+use parse::lexer::{string_reader, bump, is_eof, nextch};
+use parse::lexer;
+use parse::token;
+use parse;
 use util::interner;
-use parse::lexer::{string_reader, bump, is_eof, nextch,
-                   is_whitespace, get_str_from, reader};
-use codemap::{FileMap, CharPos};
+
+use core::cmp;
+use core::io::ReaderUtil;
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 
 export cmnt;
 export lit;

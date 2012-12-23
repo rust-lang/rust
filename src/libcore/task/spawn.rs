@@ -73,8 +73,16 @@
 #[doc(hidden)]; // FIXME #3538
 #[warn(deprecated_mode)];
 
+use cast;
+use option;
+use private;
+use ptr;
+use send_map;
+use task::rt;
 use task::rt::rust_task;
 use task::rt::rust_closure;
+use uint;
+use util;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )

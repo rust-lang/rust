@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use driver::session::Session;
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+use util::ppaux;
+
+use core::dvec::DVec;
+use core::option;
+use std::map::HashMap;
 use syntax::ast::*;
 use syntax::{visit, ast_util, ast_map};
-use driver::session::Session;
-use std::map::HashMap;
-use dvec::DVec;
 
 fn check_crate(sess: Session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::DefMap,
@@ -88,7 +94,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
-                              util::ppaux::ty_to_str(tcx, ety) +
+                              ppaux::ty_to_str(tcx, ety) +
                               ~"` in a constant expression");
             }
           }

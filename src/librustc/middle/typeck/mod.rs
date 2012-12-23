@@ -52,6 +52,7 @@ independently:
 
 use metadata::csearch;
 use middle::pat_util::{pat_id_map, PatIdMap};
+use middle::resolve;
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
 use middle::ty;
@@ -62,6 +63,8 @@ use util::ppaux;
 
 use core::dvec::DVec;
 use core::result::Result;
+use core::result;
+use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
 use std::map::HashMap;
@@ -390,8 +393,8 @@ fn check_crate(tcx: ty::ctxt,
     -> (method_map, vtable_map) {
 
     let ccx = @crate_ctxt_({trait_map: trait_map,
-                            method_map: std::map::HashMap(),
-                            vtable_map: std::map::HashMap(),
+                            method_map: map::HashMap(),
+                            vtable_map: map::HashMap(),
                             coherence_info: @coherence::CoherenceInfo(),
                             tcx: tcx
                            });

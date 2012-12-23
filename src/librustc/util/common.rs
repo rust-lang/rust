@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
 use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 use syntax::print;
+use syntax;
+
+use core::option;
+use core::str;
+use core::vec;
+use std::map::HashMap;
 
 fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`

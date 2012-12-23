@@ -34,10 +34,18 @@
 
 #[forbid(deprecated_mode)];
 
+use list;
 use list::{List, Cons, Nil};
-use cast::reinterpret_cast;
-use sys::TypeDesc;
-use libc::size_t;
+
+use core::at_vec;
+use core::cast::reinterpret_cast;
+use core::cast;
+use core::libc::size_t;
+use core::ptr;
+use core::sys::TypeDesc;
+use core::sys;
+use core::uint;
+use core::vec;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {

@@ -10,8 +10,14 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+
+use core::str;
+use std::par;
 
 pub fn mk_pass() -> Pass {
     {

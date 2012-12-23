@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
-
-use ast::{crate, expr_, expr_mac, mac_invoc_tt,
-          tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
-use fold::*;
+use ast::{crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast;
+use codemap::{span, ExpandedFrom};
 use ext::base::*;
+use fold::*;
 use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
 
-
-use codemap::{span, ExpandedFrom};
-
+use core::option;
+use core::vec;
+use std::map::HashMap;
 
 fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
@@ -276,18 +276,17 @@ fn core_macros() -> ~str {
     macro_rules! ignore (($($x:tt)*) => (()))
 
     macro_rules! error ( ($( $arg:expr ),+) => (
-        log(core::error, fmt!( $($arg),+ )) ))
+        log(::core::error, fmt!( $($arg),+ )) ))
     macro_rules! warn ( ($( $arg:expr ),+) => (
-        log(core::warn, fmt!( $($arg),+ )) ))
+        log(::core::warn, fmt!( $($arg),+ )) ))
     macro_rules! info ( ($( $arg:expr ),+) => (
-        log(core::info, fmt!( $($arg),+ )) ))
+        log(::core::info, fmt!( $($arg),+ )) ))
     macro_rules! debug ( ($( $arg:expr ),+) => (
-        log(core::debug, fmt!( $($arg),+ )) ))
+        log(::core::debug, fmt!( $($arg),+ )) ))
 
     macro_rules! die(
         ($msg: expr) => (
-            core::sys::begin_unwind($msg,
-                                    file!().to_owned(), line!())
+            ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
         );
         () => (
             die!(~\"explicit failure\")

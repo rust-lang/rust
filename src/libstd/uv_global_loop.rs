@@ -16,10 +16,15 @@ use ll = uv_ll;
 use iotask = uv_iotask;
 use get_gl = get;
 use uv_iotask::{IoTask, spawn_iotask};
-use private::{chan_from_global_ptr, weaken_task};
+
+use core::either::{Left, Right};
+use core::libc;
 use core::oldcomm::{Port, Chan, select2, listen};
-use task::TaskBuilder;
-use either::{Left, Right};
+use core::private::{chan_from_global_ptr, weaken_task};
+use core::str;
+use core::task::TaskBuilder;
+use core::task;
+use core::vec;
 
 extern mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;

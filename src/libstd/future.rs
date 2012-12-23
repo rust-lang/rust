@@ -21,9 +21,12 @@
  * ~~~
  */
 
-use either::Either;
-use pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
-use cast::copy_lifetime;
+use core::cast::copy_lifetime;
+use core::cast;
+use core::either::Either;
+use core::option;
+use core::pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::task;
 
 #[doc = "The future type"]
 pub struct Future<A> {

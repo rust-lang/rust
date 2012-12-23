@@ -12,8 +12,15 @@
 
 #[forbid(deprecated_mode)];
 
+use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
+
+use core::either;
+use core::libc;
+use core::oldcomm;
+use core::ptr;
+use core;
 
 /**
  * Wait for timeout period then send provided value over a channel
@@ -32,7 +39,9 @@ use uv::iotask::IoTask;
  * * val - a value of type T to send over the provided `ch`
  */
 pub fn delayed_send<T: Owned>(iotask: IoTask,
-                                  msecs: uint, ch: oldcomm::Chan<T>, val: T) {
+                              msecs: uint,
+                              ch: oldcomm::Chan<T>,
+                              val: T) {
         unsafe {
             let timer_done_po = oldcomm::Port::<()>();
             let timer_done_ch = oldcomm::Chan(&timer_done_po);
@@ -108,8 +117,9 @@ pub fn sleep(iotask: IoTask, msecs: uint) {
  * be a `some(T)`. If not, then `none` will be returned.
  */
 pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
-                              msecs: uint,
-                              wait_po: oldcomm::Port<T>) -> Option<T> {
+                                   msecs: uint,
+                                   wait_po: oldcomm::Port<T>)
+                                -> Option<T> {
     let timeout_po = oldcomm::Port::<()>();
     let timeout_ch = oldcomm::Chan(&timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());

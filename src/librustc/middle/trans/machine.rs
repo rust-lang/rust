@@ -11,6 +11,10 @@
 // Information concerning the machine representation of various types.
 
 use middle::trans::common::*;
+use middle::trans::type_of;
+use middle::ty;
+
+use syntax::parse::token::special_idents;
 
 // Creates a simpler, size-equivalent type. The resulting type is guaranteed
 // to have (a) the same size as the type that was passed in; (b) to be non-
@@ -39,7 +43,7 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_struct(did, ref substs) => {
             let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
                 // remember the drop flag
-                  ~[{ident: syntax::parse::token::special_idents::dtor,
+                  ~[{ident: special_idents::dtor,
                      mt: {ty: ty::mk_u8(tcx),
                           mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +

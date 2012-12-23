@@ -30,15 +30,28 @@ are represented as `ty_param()` instances.
 
 */
 
+use metadata::csearch;
 use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef};
+use middle::ty;
 use middle::typeck::astconv::{ast_conv, ty_of_fn_decl, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
+use middle::typeck::astconv;
+use middle::typeck::infer;
 use middle::typeck::rscope::*;
+use middle::typeck::rscope;
 use util::common::pluralize;
 use util::ppaux;
 use util::ppaux::bound_to_str;
 
+use core::dvec;
+use core::option;
+use core::vec;
+use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util::trait_method_to_ty_method;
+use syntax::ast_util;
+use syntax::codemap;
+use syntax::visit;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
@@ -47,7 +60,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
     for crate.node.module.items.each |crate_item| {
         if crate_item.ident
-            == syntax::parse::token::special_idents::intrinsic {
+            == ::syntax::parse::token::special_idents::intrinsic {
 
             match crate_item.node {
               ast::item_mod(m) => {

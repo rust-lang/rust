@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::term;
-use io::WriterUtil;
 use codemap::span;
+use codemap;
+
+use core::cmp;
+use core::io::WriterUtil;
+use core::io;
+use core::option;
+use core::str;
+use core::vec;
+use std::term;
 
 export emitter, emit;
 export level, fatal, error, warning, note;

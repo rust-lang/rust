@@ -13,9 +13,18 @@
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
-use option::{Some, None};
-use libc::{pid_t, c_void, c_int};
+use io;
 use io::ReaderUtil;
+use libc;
+use libc::{pid_t, c_void, c_int};
+use oldcomm;
+use option::{Some, None};
+use os;
+use ptr;
+use run;
+use str;
+use task;
+use vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
