@@ -314,34 +314,6 @@ fn compare_impl_method(tcx: ty::ctxt,
 
     let impl_m = &cm.mty;
 
-    // FIXME(#2687)---this check is too strict.  For example, a trait
-    // method with self type `&self` or `&mut self` should be
-    // implementable by an `&const self` method (the impl assumes less
-    // than the trait provides).
-    if impl_m.self_ty != trait_m.self_ty {
-        if impl_m.self_ty == ast::sty_static {
-            // Needs to be a fatal error because otherwise,
-            // method::transform_self_type_for_method ICEs
-            tcx.sess.span_fatal(cm.span,
-                 fmt!("method `%s` is declared as \
-                       static in its impl, but not in \
-                       its trait", tcx.sess.str_of(impl_m.ident)));
-        }
-        else if trait_m.self_ty == ast::sty_static {
-            tcx.sess.span_fatal(cm.span,
-                 fmt!("method `%s` is declared as \
-                       static in its trait, but not in \
-                       its impl", tcx.sess.str_of(impl_m.ident)));
-        }
-        else {
-            tcx.sess.span_err(
-                cm.span,
-                fmt!("method `%s`'s self type does \
-                      not match the trait method's \
-                      self type", tcx.sess.str_of(impl_m.ident)));
-        }
-    }
-
     if impl_m.tps.len() != trait_m.tps.len() {
         tcx.sess.span_err(
             cm.span,
@@ -483,11 +455,36 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     // we'll catch it in coherence
     let trait_ms = ty::trait_methods(tcx, did);
     for impl_ms.each |impl_m| {
-        match trait_ms.find(|trait_m| trait_m.ident == impl_m.mty.ident) {
-            Some(ref trait_m) => {
+        match find_matching_trait_method(impl_m, trait_ms) {
+            Some(ref trait_m) if trait_m.self_ty == impl_m.mty.self_ty => {
                 compare_impl_method(
                     ccx.tcx, tps.len(), impl_m, trait_m,
                     &tpt.substs, selfty);
+            }
+            Some(ref trait_m) => {
+                // Method name matches, self-type differs.
+                // Needs to be a fatal error because otherwise,
+                // method::transform_self_type_for_method ICEs
+                if (impl_m.mty.self_ty == ast::sty_static) {
+                    tcx.sess.span_fatal(impl_m.span,
+                        fmt!("method `%s` is declared as \
+                              static in its impl, but not in \
+                              its trait", tcx.sess.str_of(impl_m.mty.ident)));
+                } else if (trait_m.self_ty == ast::sty_static) {
+                    tcx.sess.span_fatal(impl_m.span,
+                        fmt!("method `%s` is declared as \
+                              static in its trait, but not in \
+                              its impl", tcx.sess.str_of(impl_m.mty.ident)));
+                } else {
+                    // FIXME(#2687)---this check is too strict. For example,
+                    // a trait method with self type `&self` or `&mut self`
+                    // should be implementable by an `&const self` method
+                    // (the impl assumes less than the trait provides).
+                    tcx.sess.span_err(impl_m.span,
+                        fmt!("method `%s`'s self type does \
+                              not match the trait method's \
+                              self type", tcx.sess.str_of(impl_m.mty.ident)));
+                }
             }
             None => {
                 // This method is not part of the trait
@@ -500,6 +497,26 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
         }
     }
 } // fn
+
+// Find a matching method in the trait. We favor those
+// with the same name and self-type as the impl method.
+// At least, we try to find one with the same name to
+// fail with an explicit error message.
+fn find_matching_trait_method(impl_m: &ConvertedMethod,
+                              trait_ms: &~[ty::method])
+    -> Option<ty::method> {
+
+    let mut last_name_match = None;
+    for trait_ms.each |m| {
+        if (m.ident == impl_m.mty.ident) {
+            last_name_match = Some(*m);
+            if (m.self_ty == impl_m.mty.self_ty) {
+                return last_name_match;
+            }
+        }
+    }
+    last_name_match
+}
 
 fn convert_field(ccx: @crate_ctxt,
                  rp: Option<ty::region_variance>,
