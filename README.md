@@ -42,7 +42,7 @@ packages:
 Assuming you're on a relatively modern *nix system and have met the
 prerequisites, something along these lines should work.
 
-    $ wget http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+    $ wget http://static.rust-lang.org/dist/rust-0.5.tar.gz
     $ tar -xzf rust-0.5.tar.gz
     $ cd rust-0.5
     $ ./configure
@@ -59,8 +59,8 @@ When complete, `make install` will place several programs into
 API-documentation tool, and `cargo`, the Rust package manager.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://dl.rust-lang.org/dist/rust-0.5.tar.gz
-[win-exe]: http://dl.rust-lang.org/dist/rust-0.5-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.5-install.exe
 
 
 ## License
@@ -74,4 +74,4 @@ See LICENSE.txt for details.
 
 The [tutorial] is a good starting point.
 
-[tutorial]: http://dl.rust-lang.org/doc/tutorial.html
+[tutorial]: http://static.rust-lang.org/doc/tutorial.html

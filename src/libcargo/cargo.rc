@@ -20,7 +20,7 @@
 // End:
 
 #[link(name = "cargo",
-       vers = "0.5",
+       vers = "0.6",
        uuid = "9ff87a04-8fed-4295-9ff8-f99bb802650b",
        url = "https://github.com/mozilla/rust/tree/master/src/cargo")];
 
@@ -37,10 +37,10 @@
 #[allow(deprecated_mode)];
 #[allow(deprecated_pattern)];
 
-extern mod core(vers = "0.5");
-extern mod std(vers = "0.5");
-extern mod rustc(vers = "0.5");
-extern mod syntax(vers = "0.5");
+extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+extern mod rustc(vers = "0.6");
+extern mod syntax(vers = "0.6");
 
 #[legacy_exports]
 mod pgp;

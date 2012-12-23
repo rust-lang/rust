@@ -99,7 +99,7 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://dl.rust-lang.org/dist/rust-0.5.tar.gz
+$ curl -O http://static.rust-lang.org/dist/rust-0.5.tar.gz
 $ tar -xzf rust-0.5.tar.gz
 $ cd rust-0.5
 $ ./configure
@@ -118,8 +118,8 @@ API-documentation tool, `cargo`, the Rust package manager,
 and `rusti`, the Rust REPL.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://dl.rust-lang.org/dist/rust-0.5.tar.gz
-[win-exe]: http://dl.rust-lang.org/dist/rust-0.5-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.5-install.exe
 
 ## Compiling your first program
 
