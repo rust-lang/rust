@@ -22,8 +22,8 @@ pub enum List<T> {
     Nil,
 }
 
-/// Cregate a list from a vector
-pub fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
+/// Create a list from a vector
+pub pure fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
     vec::foldr(v, @Nil::<T>, |h, t| @Cons(*h, t))
 }
 
@@ -53,7 +53,7 @@ pub fn foldl<T: Copy, U>(z: T, ls: @List<U>, f: fn(&T, &U) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub fn find<T: Copy>(ls: @List<T>, f: fn(&T) -> bool) -> Option<T> {
+pub pure fn find<T: Copy>(ls: @List<T>, f: fn(&T) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
@@ -88,7 +88,7 @@ pub pure fn is_not_empty<T: Copy>(ls: @List<T>) -> bool {
 }
 
 /// Returns the length of a list
-pub fn len<T>(ls: @List<T>) -> uint {
+pub pure fn len<T>(ls: @List<T>) -> uint {
     let mut count = 0u;
     iter(ls, |_e| count += 1u);
     count
@@ -131,7 +131,7 @@ pure fn push<T: Copy>(ll: &mut @list<T>, vv: T) {
 */
 
 /// Iterate over a list
-pub fn iter<T>(l: @List<T>, f: fn(&T)) {
+pub pure fn iter<T>(l: @List<T>, f: fn(&T)) {
     let mut cur = l;
     loop {
         cur = match *cur {
@@ -145,7 +145,7 @@ pub fn iter<T>(l: @List<T>, f: fn(&T)) {
 }
 
 /// Iterate over a list
-pub fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
+pub pure fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
     let mut cur = l;
     loop {
         cur = match *cur {
