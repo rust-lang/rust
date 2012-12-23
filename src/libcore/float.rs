@@ -188,7 +188,7 @@ pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
  * * num - The float value
  * * digits - The number of significant digits
  */
-pub fn to_str_exact(num: float, digits: uint) -> ~str {
+pub pure fn to_str_exact(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, true)
 }
 
@@ -238,7 +238,7 @@ pub pure fn to_str(num: float, digits: uint) -> ~str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-pub fn from_str(num: &str) -> Option<float> {
+pub pure fn from_str(num: &str) -> Option<float> {
    if num == "inf" {
        return Some(infinity as float);
    } else if num == "-inf" {
