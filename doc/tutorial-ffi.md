@@ -22,7 +22,7 @@ extern mod crypto {
 
 fn as_hex(data: ~[u8]) -> ~str {
     let mut acc = ~"";
-    for data.each |byte| { acc += fmt!("%02x", byte as uint); }
+    for data.each |&byte| { acc += fmt!("%02x", byte as uint); }
     return acc;
 }
 
@@ -33,8 +33,8 @@ fn sha1(data: ~str) -> ~str unsafe {
     return as_hex(vec::from_buf(hash, 20));
 }
 
-fn main(args: ~[~str]) {
-    io::println(sha1(args[1]));
+fn main() {
+    io::println(sha1(core::os::args()[1]));
 }
 ~~~~
 
