@@ -15,9 +15,15 @@ use middle::pat_util::*;
 use middle::trans::base;
 use middle::trans::build::B;
 use middle::trans::common::*;
+use middle::trans::shape;
+use middle::trans::type_of;
+use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::libc;
+use core::option;
+use core::sys;
 use std::map::HashMap;
 use std::map;
 use syntax::ast::Ty;

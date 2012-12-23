@@ -8,15 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::resolve;
+use middle::ty;
 use middle::typeck::check::{fn_ctxt, impl_self_ty};
 use middle::typeck::infer::{fixup_err_to_str, infer_ctxt};
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
+use middle::typeck::infer;
 use util::common::indenter;
 use util::ppaux;
 
+use core::result;
+use core::uint;
+use core::vec;
 use result::{Result, Ok, Err};
+use syntax::ast;
+use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;
+use syntax::visit;
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some

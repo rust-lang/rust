@@ -13,26 +13,48 @@
 
 */
 
-use libc::c_uint;
-use vec::raw::to_ptr;
-use std::map::{HashMap,Set};
-use syntax::{ast, ast_map};
-use driver::session;
-use session::Session;
-use middle::ty;
 use back::{link, abi, upcall};
-use syntax::codemap::span;
-use lib::llvm::{llvm, target_data, type_names, associate_type,
-                   name_has_type};
+use driver::session;
+use driver::session::Session;
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use metadata::{csearch};
+use lib::llvm::{llvm, target_data, type_names, associate_type, name_has_type};
+use lib;
 use metadata::common::link_meta;
-use syntax::ast_map::path;
-use util::ppaux::ty_to_str;
-use syntax::print::pprust::expr_to_str;
-use syntax::parse::token::ident_interner;
+use metadata::{csearch};
+use middle::astencode;
+use middle::resolve;
+use middle::trans::base;
+use middle::trans::build;
+use middle::trans::callee;
+use middle::trans::datum;
+use middle::trans::debuginfo;
+use middle::trans::glue;
+use middle::trans::meth;
+use middle::trans::reachable;
+use middle::trans::shape;
+use middle::trans::type_of;
+use middle::trans::type_use;
+use middle::ty;
+use middle::typeck;
+use util::ppaux::{expr_repr, ty_to_str};
+
+use core::cast;
+use core::cmp;
+use core::hash;
+use core::libc::c_uint;
+use core::ptr;
+use core::str;
+use core::to_bytes;
+use core::vec::raw::to_ptr;
+use core::vec;
+use std::map::{HashMap, Set};
 use syntax::ast::ident;
+use syntax::ast_map::path;
+use syntax::codemap::span;
+use syntax::parse::token::ident_interner;
+use syntax::print::pprust::expr_to_str;
+use syntax::{ast, ast_map};
 
 type namegen = fn@(~str) -> ident;
 fn new_namegen(intr: @ident_interner) -> namegen {
@@ -633,7 +655,7 @@ impl block {
     }
 
     fn expr_to_str(e: @ast::expr) -> ~str {
-        util::ppaux::expr_repr(self.tcx(), e)
+        expr_repr(self.tcx(), e)
     }
 
     fn expr_is_lval(e: @ast::expr) -> bool {
@@ -1196,7 +1218,7 @@ impl mono_param_id : to_bytes::IterBytes {
     }
 }
 
-impl mono_id_ : core::to_bytes::IterBytes {
+impl mono_id_ : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }

@@ -76,8 +76,11 @@
 
 use core::cmp::Eq;
 use core::result::{Err, Ok};
+use core::result;
 use core::option;
 use core::option::{Some, None};
+use core::str;
+use core::vec;
 
 #[deriving_eq]
 enum Name {
@@ -450,6 +453,10 @@ enum FailType {
  *  groups of short and long option names, together.
  */
 pub mod groups {
+    use getopts::Result;
+
+    use core::str;
+    use core::vec;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties

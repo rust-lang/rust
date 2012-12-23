@@ -15,8 +15,14 @@
 
 #[doc(hidden)];
 
-use task::TaskBuilder;
-use task::atomically;
+use cast;
+use libc;
+use oldcomm;
+use option;
+use pipes;
+use ptr;
+use task;
+use task::{TaskBuilder, atomically};
 
 extern mod rustrt {
     #[legacy_exports];

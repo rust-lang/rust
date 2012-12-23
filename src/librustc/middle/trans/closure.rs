@@ -13,10 +13,14 @@ use back::link::{mangle_internal_name_by_path_and_seq};
 use back::link::{mangle_internal_name_by_path};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
+use middle::capture;
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 

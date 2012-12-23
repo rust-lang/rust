@@ -10,8 +10,14 @@
 
 use middle::pat_util::{pat_is_binding, pat_is_const};
 use middle::pat_util::{pat_is_variant_or_struct};
+use middle::ty;
+use middle::typeck::check::demand;
 
+use core::vec;
+use std::map::HashMap;
+use syntax::ast;
 use syntax::ast_util::walk_pat;
+use syntax::ast_util;
 use syntax::print::pprust;
 
 fn check_alt(fcx: @fn_ctxt,
@@ -195,13 +201,13 @@ fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let field_map = std::map::HashMap();
+    let field_map = HashMap();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let found_fields = std::map::HashMap();
+    let found_fields = HashMap();
     for fields.each |field| {
         match field_map.find(field.ident) {
             Some(index) => {

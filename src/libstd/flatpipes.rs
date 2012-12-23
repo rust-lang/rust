@@ -38,10 +38,13 @@ block the scheduler thread, so will their pipes.
 */
 
 // The basic send/recv interface FlatChan and PortChan will implement
+use core::io;
 use core::pipes::GenericChan;
 use core::pipes::GenericPort;
-
+use core::pipes;
 use core::sys::size_of;
+use core::uint;
+use core::vec;
 
 /**
 A FlatPort, consisting of a `BytePort` that recieves byte vectors,
@@ -69,18 +72,20 @@ pub struct FlatChan<T, F: Flattener<T>, C: ByteChan> {
 Constructors for flat pipes that using serialization-based flattening.
 */
 pub mod serial {
-
     pub use DefaultEncoder = ebml::writer::Encoder;
     pub use DefaultDecoder = ebml::reader::Decoder;
 
-    use core::io::{Reader, Writer};
-    use core::pipes::{Port, Chan};
     use serialize::{Decodable, Encodable};
     use flatpipes::flatteners::{DeserializingUnflattener,
                                 SerializingFlattener};
     use flatpipes::flatteners::{deserialize_buffer, serialize_value};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
+    use flatpipes::{FlatPort, FlatChan};
+
+    use core::io::{Reader, Writer};
+    use core::pipes::{Port, Chan};
+    use core::pipes;
 
     pub type ReaderPort<T, R> = FlatPort<
         T, DeserializingUnflattener<DefaultDecoder, T>,
@@ -141,7 +146,6 @@ pub mod serial {
         let (port, chan) = pipes::stream();
         return (pipe_port(move port), pipe_chan(move chan));
     }
-
 }
 
 // FIXME #4074 this doesn't correctly enforce POD bounds
@@ -159,9 +163,11 @@ pub mod pod {
 
     use core::io::{Reader, Writer};
     use core::pipes::{Port, Chan};
+    use core::pipes;
     use flatpipes::flatteners::{PodUnflattener, PodFlattener};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
+    use flatpipes::{FlatPort, FlatChan};
 
     pub type ReaderPort<T: Copy Owned, R> =
         FlatPort<T, PodUnflattener<T>, ReaderBytePort<R>>;
@@ -242,7 +248,7 @@ pub trait ByteChan {
 
 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
-impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P>: GenericPort<T> {
+pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
     fn recv() -> T {
         match self.try_recv() {
             Some(move val) => move val,
@@ -287,7 +293,7 @@ impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P>: GenericPort<T> {
     }
 }
 
-impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C>: GenericChan<T> {
+impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C>: GenericChan<T> {
     fn send(val: T) {
         self.byte_chan.send(CONTINUE.to_vec());
         let bytes = self.flattener.flatten(move val);
@@ -299,7 +305,7 @@ impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C>: GenericChan<T> {
     }
 }
 
-impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P> {
+pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
     static fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: move u,
@@ -308,7 +314,7 @@ impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P> {
     }
 }
 
-impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C> {
+pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
     static fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: move f,
@@ -319,14 +325,16 @@ impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C> {
 
 
 pub mod flatteners {
-
-    use core::sys::size_of;
-
-    use serialize::{Encoder, Decoder,
-                        Encodable, Decodable};
-
-    use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
+    use ebml;
     use flatpipes::util::BufReader;
+    use json;
+    use serialize::{Encoder, Decoder, Encodable, Decodable};
+
+    use core::cast;
+    use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
+    use core::ptr;
+    use core::sys::size_of;
+    use core::vec;
 
     // XXX: Is copy/send equivalent to pod?
     pub struct PodUnflattener<T: Copy Owned> {
@@ -488,9 +496,9 @@ pub mod flatteners {
 }
 
 pub mod bytepipes {
-
     use core::io::{Writer, Reader, ReaderUtil};
     use core::pipes::{Port, Chan};
+    use core::pipes;
 
     pub struct ReaderBytePort<R: Reader> {
         reader: R
@@ -556,12 +564,12 @@ pub mod bytepipes {
     pub impl PipeBytePort: BytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if self.buf.len() >= count {
-                let mut bytes = core::util::replace(&mut self.buf, ~[]);
+                let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
                 self.buf = bytes.slice(count, bytes.len());
                 bytes.truncate(count);
                 return Some(bytes);
             } else if self.buf.len() > 0 {
-                let mut bytes = core::util::replace(&mut self.buf, ~[]);
+                let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
                 assert count > bytes.len();
                 match self.try_recv(count - bytes.len()) {
                     Some(move rest) => {
@@ -580,7 +588,7 @@ pub mod bytepipes {
                     None => return None
                 }
             } else {
-                core::util::unreachable()
+                ::core::util::unreachable()
             }
         }
     }
@@ -612,8 +620,8 @@ pub mod bytepipes {
 
 // XXX: This belongs elsewhere
 mod util {
-
-    use io::{Reader, BytesReader};
+    use core::io::{Reader, BytesReader};
+    use core::io;
 
     pub struct BufReader {
         buf: ~[u8],
@@ -632,7 +640,7 @@ mod util {
             // Recreating the BytesReader state every call since
             // I can't get the borrowing to work correctly
             let bytes_reader = BytesReader {
-                bytes: core::util::id::<&[u8]>(self.buf),
+                bytes: ::core::util::id::<&[u8]>(self.buf),
                 pos: self.pos
             };
 

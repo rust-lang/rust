@@ -10,6 +10,12 @@
 
 //! The document model
 
+use doc;
+
+use core::cmp;
+use core::option;
+use core::vec;
+
 pub type AstId = int;
 
 pub type Doc_ = {

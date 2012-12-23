@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use ast::*;
+use ast;
+use ast_util;
 use codemap::span;
+use parse;
+
+use core::option;
+use core::vec;
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's

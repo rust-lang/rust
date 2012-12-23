@@ -16,6 +16,10 @@
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util;

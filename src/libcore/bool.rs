@@ -16,6 +16,7 @@
 
 //! Boolean logic
 
+use cmp;
 use cmp::Eq;
 
 /// Negation / inverse

@@ -22,6 +22,10 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use managed;
+use option;
+use vec;
+
 type DListLink<T> = Option<DListNode<T>>;
 
 enum DListNode<T> = @{

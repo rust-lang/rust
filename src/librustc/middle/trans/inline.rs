@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
 use middle::trans::common::*;
+use middle::trans::common;
+use middle::trans::inline;
+use middle::trans::monomorphize;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;

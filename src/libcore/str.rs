@@ -20,10 +20,19 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use at_vec;
+use cast;
+use char;
 use cmp::{Eq, Ord};
+use libc;
 use libc::size_t;
 use io::WriterUtil;
+use ptr;
+use str;
 use to_str::ToStr;
+use u8;
+use uint;
+use vec;
 
 /*
 Section: Creating a string
@@ -1936,6 +1945,11 @@ pub pure fn escape_unicode(s: &str) -> ~str {
 
 /// Unsafe operations
 pub mod raw {
+    use cast;
+    use libc;
+    use ptr;
+    use str::raw;
+    use vec;
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {

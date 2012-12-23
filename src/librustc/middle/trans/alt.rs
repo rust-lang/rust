@@ -145,17 +145,24 @@
 use back::abi;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, BasicBlockRef};
+use middle::const_eval;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::consts;
+use middle::trans::controlflow;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use util::common::indenter;
 
 use core::dvec::DVec;
+use core::dvec;
 use std::map::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
@@ -279,7 +286,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
                     return var(v.disr_val, {enm: enum_id, var: var_id});
                 }
             }
-            core::util::unreachable();
+            ::core::util::unreachable();
         }
         ast::def_struct(_) => {
             return lit(UnitLikeStructLit(pat_id));
@@ -1543,7 +1550,7 @@ fn trans_alt_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let bindings_map = std::map::HashMap();
+        let bindings_map = HashMap();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);

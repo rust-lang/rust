@@ -16,6 +16,10 @@ use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use libc::{c_uint, c_int};
 use middle::trans::common::*;
 
+use core::cast;
+use core::libc;
+use core::str;
+use core::vec;
 use std::map::HashMap;
 use syntax::codemap;
 

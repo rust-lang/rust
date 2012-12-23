@@ -15,17 +15,22 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use driver::session::*;
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+
+use core::vec;
+use std::map::HashMap;
 use syntax::ast::*;
-use syntax::{visit, ast_util, ast_map};
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::print::pprust::expr_to_str;
-use std::map::HashMap;
-use driver::session::*;
+use syntax::{visit, ast_util, ast_map};
 
 export map, find_reachable;
 
-type map = std::map::HashMap<node_id, ()>;
+type map = HashMap<node_id, ()>;
 
 type ctx = {exp_map2: resolve::ExportMap2,
             tcx: ty::ctxt,
@@ -34,7 +39,7 @@ type ctx = {exp_map2: resolve::ExportMap2,
 
 fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = std::map::HashMap();
+    let rmap = HashMap();
     let cx = {exp_map2: exp_map2, tcx: tcx,
               method_map: method_map, rmap: rmap};
     traverse_public_mod(cx, ast::crate_node_id, crate_mod);

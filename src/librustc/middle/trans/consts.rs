@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::const_eval;
 use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
+use middle::trans::consts;
+use middle::trans::expr;
+use middle::ty;
 
 use syntax::{ast, ast_util, codemap, ast_map};
 

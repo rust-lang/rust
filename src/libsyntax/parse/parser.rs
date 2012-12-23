@@ -8,76 +8,79 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use print::pprust::expr_to_str;
-
-use result::Result;
-use either::{Either, Left, Right};
-use std::map::HashMap;
-use parse::token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
-                   INTERPOLATED, special_idents};
-use codemap::{span,FssNone, BytePos};
-use util::interner::Interner;
+use ast::{ProtoBox, ProtoUniq, provided, public, pure_fn, purity, re_static};
+use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
+use ast::{bind_by_value, bind_by_move, bitand, bitor, bitxor, blk};
+use ast::{blk_check_mode, box, by_copy, by_move, by_ref, by_val};
+use ast::{capture_clause, capture_item, crate, crate_cfg, decl, decl_item};
+use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
+use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
+use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
+use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
+use ast::{expr_fail, expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
+use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
+use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
+use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
+use ast::{expr_unary_move, expr_vec, expr_vstore, expr_vstore_mut_box};
+use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
+use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
+use ast::{expr_vstore_uniq, TyFn, Onceness, Once, Many};
+use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
+use ast::{ident, impure_fn, infer, inherited, item, item_, item_const};
+use ast::{item_const, item_enum, item_fn, item_foreign_mod, item_impl};
+use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
+use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
+use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
+use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
+use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
+use ast::{named_field, neg, noreturn, not, pat, pat_box, pat_enum, pat_ident};
+use ast::{pat_lit, pat_range, pat_rec, pat_region, pat_struct, pat_tup};
+use ast::{pat_uniq, pat_wild, path, private, Proto, ProtoBare, ProtoBorrowed};
+use ast::{re_self, re_anon, re_named, region, rem, required, ret_style};
+use ast::{return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr};
+use ast::{stmt_semi, stmt_mac, struct_def, struct_field, struct_immutable};
+use ast::{struct_mutable, struct_variant_kind, subtract, sty_box, sty_by_ref};
+use ast::{sty_region, sty_static, sty_uniq, sty_value, token_tree};
+use ast::{trait_method, trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal};
+use ast::{tuple_variant_kind, Ty, ty_, ty_bot, ty_box, ty_field, ty_fn};
+use ast::{ty_fixed_length_vec, type_value_ns, uniq, unnamed_field};
+use ast::{ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound};
+use ast::{ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec};
+use ast::{unsafe_blk, unsafe_fn, variant, view_item, view_item_};
+use ast::{view_item_export, view_item_import, view_item_use, view_path};
+use ast::{view_path_glob, view_path_list, view_path_simple, visibility};
+use ast::{vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+use ast;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-use parse::lexer::reader;
-use parse::prec::{as_prec, token_to_binop};
+use ast_util;
+use classify;
+use codemap::{span,FssNone, BytePos};
+use codemap;
 use parse::attr::parser_attr;
-use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
-                    seq_sep_none, token_to_str};
-use dvec::DVec;
-use vec::{push};
-use parse::obsolete::{
-    ObsoleteSyntax,
-    ObsoleteLowerCaseKindBounds, ObsoleteLet,
-    ObsoleteFieldTerminator, ObsoleteStructCtor,
-    ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits,
-    ObsoleteModeInFnType, ObsoleteMoveInit, ObsoleteBinaryMove,
-};
-use ast::{_mod, add, arg, arm, attribute,
-             bind_by_ref, bind_infer, bind_by_value, bind_by_move,
-             bitand, bitor, bitxor, blk, blk_check_mode, box, by_copy,
-             by_move, by_ref, by_val, capture_clause,
-             capture_item, struct_immutable, struct_mutable,
-             crate, crate_cfg, decl, decl_item, decl_local,
-             default_blk, deref, div, enum_def, enum_variant_kind, expl, expr,
-             expr_, expr_addr_of, expr_match, expr_again, expr_assert,
-             expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
-             expr_call, expr_cast, expr_copy, expr_do_body, expr_fail,
-             expr_field, expr_fn, expr_fn_block, expr_if, expr_index,
-             expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac,
-             expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat,
-             expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
-             expr_unary_move, expr_vec, expr_vstore, expr_vstore_mut_box,
-             expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl,
-             foreign_item, foreign_item_const, foreign_item_fn, foreign_mod,
-             ident, impure_fn, infer, inherited,
-             item, item_, item_struct, item_const, item_enum, item_fn,
-             item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
-             item_ty, lit, lit_, lit_bool, lit_float, lit_float_unsuffixed,
-             lit_int, lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local,
-             m_const, m_imm, m_mutbl, mac_,
-             mac_invoc_tt, matcher, match_nonterminal, match_seq,
-             match_tok, method, mode, module_ns, mt, mul, mutability,
-             named_field, neg, noreturn, not, pat, pat_box, pat_enum,
-             pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct,
-             pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare,
-             ProtoBorrowed, ProtoBox, ProtoUniq, provided, public, pure_fn,
-             purity, re_static, re_self, re_anon, re_named, region,
-             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
-             stmt_decl, stmt_expr, stmt_semi, stmt_mac, struct_def,
-             struct_field, struct_variant_kind, subtract, sty_box, sty_by_ref,
-             sty_region, sty_static, sty_uniq, sty_value, token_tree,
-             trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
-             tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot,
-             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
-             ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
-             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length_vec,
-             type_value_ns, uniq, unnamed_field, unsafe_blk, unsafe_fn,
-             variant, view_item, view_item_, view_item_export,
-             view_item_import, view_item_use, view_path, view_path_glob,
-             view_path_list, view_path_simple, visibility, vstore, vstore_box,
-             vstore_fixed, vstore_slice, vstore_uniq,
-             expr_vstore_fixed, expr_vstore_slice, expr_vstore_box,
-             expr_vstore_uniq, TyFn, Onceness, Once, Many};
+use parse::common::{seq_sep_none, token_to_str};
+use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
+use parse::lexer::reader;
+use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
+use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
+use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
+use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith, ObsoleteClassMethod};
+use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
+use parse::prec::{as_prec, token_to_binop};
+use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
+use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
+use parse::token;
+use print::pprust::expr_to_str;
+use util::interner::Interner;
+
+use core::cmp;
+use core::dvec::DVec;
+use core::dvec;
+use core::either::{Either, Left, Right};
+use core::either;
+use core::result::Result;
+use core::vec::push;
+use core::vec;
+use std::map::HashMap;
 
 export Parser;
 
@@ -195,7 +198,7 @@ fn Parser(sess: parse_sess, cfg: ast::crate_cfg,
         keywords: token::keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
-        obsolete_set: std::map::HashMap(),
+        obsolete_set: HashMap(),
         mod_path_stack: ~[],
     }
 }

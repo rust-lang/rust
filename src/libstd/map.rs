@@ -11,14 +11,17 @@
 //! A map type
 #[forbid(deprecated_mode)];
 
-use io::WriterUtil;
-use to_str::ToStr;
-use mutable::Mut;
-use send_map::linear::LinearMap;
-
 use core::cmp::Eq;
-use hash::Hash;
-use to_bytes::IterBytes;
+use core::hash::Hash;
+use core::io::WriterUtil;
+use core::io;
+use core::ops;
+use core::to_str::ToStr;
+use core::mutable::Mut;
+use core::send_map::linear::LinearMap;
+use core::to_bytes::IterBytes;
+use core::uint;
+use core::vec;
 
 /// A convenience type to treat a hashmap as a set
 pub type Set<K:Eq IterBytes Hash> = HashMap<K, ()>;
@@ -103,7 +106,7 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
     pure fn each_value_ref(fn(value: &V) -> bool);
 }
 
-mod util {
+pub mod util {
     pub type Rational = {num: int, den: int}; // : int::positive(*.den);
 
     pub pure fn rational_leq(x: Rational, y: Rational) -> bool {
@@ -117,6 +120,13 @@ mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 pub mod chained {
+    use map::util;
+
+    use core::io;
+    use core::ops;
+    use core::option;
+    use core::uint;
+    use core::vec;
 
     const initial_capacity: uint = 32u; // 2^5
 

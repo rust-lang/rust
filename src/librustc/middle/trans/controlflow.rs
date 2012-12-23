@@ -10,8 +10,11 @@
 
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
+
+use core::str;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

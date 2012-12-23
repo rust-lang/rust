@@ -10,6 +10,9 @@
 
 use syntax::{ast, fold, attr};
 
+use core::option;
+use core::vec;
+
 export strip_unconfigured_items;
 export metas_in_cfg;
 export strip_items;

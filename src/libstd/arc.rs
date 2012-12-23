@@ -15,12 +15,17 @@
  * between tasks.
  */
 
-use private::{SharedMutableState, shared_mutable_state,
-                clone_shared_mutable_state, unwrap_shared_mutable_state,
-                get_shared_mutable_state, get_shared_immutable_state};
-use sync::{Mutex,  mutex_with_condvars,
-              RWlock, rwlock_with_condvars};
+use sync;
+use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
+use core::cast;
+use core::pipes;
+use core::private::{SharedMutableState, shared_mutable_state};
+use core::private::{clone_shared_mutable_state, unwrap_shared_mutable_state};
+use core::private::{get_shared_mutable_state, get_shared_immutable_state};
+use core::ptr;
+use core::task;
+use core::util;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }

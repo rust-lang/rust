@@ -80,14 +80,22 @@ obtained the type `Foo`, we would never match this method.
 */
 
 use middle::resolve::{Impl, MethodInfo};
+use middle::resolve;
 use middle::ty::*;
+use middle::ty;
 use middle::typeck::check;
+use middle::typeck::check::vtable;
 use middle::typeck::coherence::get_base_type_def_id;
+use middle::typeck::infer;
 
 use core::dvec::DVec;
+use core::result;
+use core::uint;
+use core::vec;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
+use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::node_id_to_str;
 use syntax::ast_util::dummy_sp;

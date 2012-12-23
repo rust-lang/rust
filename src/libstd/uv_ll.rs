@@ -32,8 +32,12 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use libc::size_t;
-use ptr::to_unsafe_ptr;
+use core::libc::size_t;
+use core::libc;
+use core::ptr::to_unsafe_ptr;
+use core::ptr;
+use core::str;
+use core::vec;
 
 // libuv struct mappings
 pub type uv_ip4_addr = {
@@ -315,6 +319,8 @@ pub type uv_getaddrinfo_t = {
 };
 
 pub mod uv_ll_struct_stubgen {
+    use core::ptr;
+
     pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
         return gen_stub_os();
         #[cfg(target_os = "linux")]

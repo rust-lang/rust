@@ -17,10 +17,17 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use codemap::span;
 use ast::{expr, expr_lit, lit_nil};
+use ast;
 use ast_util::{respan};
+use codemap::span;
 use parse::token::Token;
+use parse::token;
+
+use core::cmp;
+use core::option;
+use core::str;
+use core::to_bytes;
 
 /// The specific types of unsupported syntax
 pub enum ObsoleteSyntax {

@@ -10,16 +10,19 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-use syntax::{ast, ast_util};
+use driver::session;
+use front::config;
+use session::Session;
+
+use core::dvec::DVec;
+use core::option;
+use core::vec;
 use syntax::ast_util::*;
-//import syntax::ast_util::dummy_sp;
+use syntax::attr;
+use syntax::codemap::span;
 use syntax::fold;
 use syntax::print::pprust;
-use syntax::codemap::span;
-use driver::session;
-use session::Session;
-use syntax::attr;
-use dvec::DVec;
+use syntax::{ast, ast_util};
 
 export modify_for_testing;
 

@@ -14,8 +14,10 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+use driver;
 use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
 use metadata::csearch::{get_impls_for_mod};
+use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
@@ -27,6 +29,7 @@ use middle::ty::{ty_rec, ty_rptr, ty_struct, ty_trait, ty_tup, ty_uint};
 use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box, ty_uniq};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
+use middle::ty;
 use middle::typeck::infer::{infer_ctxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
@@ -35,10 +38,13 @@ use syntax::ast::{item, item_struct, item_const, item_enum, item_fn};
 use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
 use syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
 use syntax::ast::{trait_ref};
+use syntax::ast;
 use syntax::ast_map::node_item;
+use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, dummy_sp};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::parse;
 use syntax::visit::{default_simple_visitor, default_visitor};
 use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 use syntax::visit::{visit_mod};
@@ -46,9 +52,12 @@ use util::ppaux::ty_to_str;
 
 use core::dvec::DVec;
 use core::result::Ok;
-use std::map::HashMap;
+use core::send_map;
 use core::uint::range;
+use core::uint;
 use core::vec::{len, push};
+use core::vec;
+use std::map::HashMap;
 
 struct UniversalQuantificationResult {
     monotype: t,
@@ -307,7 +316,7 @@ impl CoherenceChecker {
         for self.each_provided_trait_method(trait_did) |trait_method| {
             // Synthesize an ID.
             let tcx = self.crate_context.tcx;
-            let new_id = syntax::parse::next_node_id(tcx.sess.parse_sess);
+            let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
 
             // XXX: Perform substitutions.
@@ -883,7 +892,7 @@ impl CoherenceChecker {
 
             // Create a new def ID for this provided method.
             let parse_sess = &self.crate_context.tcx.sess.parse_sess;
-            let new_did = local_def(syntax::parse::next_node_id(*parse_sess));
+            let new_did = local_def(parse::next_node_id(*parse_sess));
 
             let provided_method_info =
                 @ProvidedMethodInfo {

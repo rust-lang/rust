@@ -46,8 +46,15 @@ will once again be the preferred module for intertask communication.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast;
+use either;
 use either::Either;
+use libc;
 use libc::size_t;
+use ptr;
+use sys;
+use task;
+use vec;
 // After snapshot, change p2::addr_of => addr_of
 
 /**

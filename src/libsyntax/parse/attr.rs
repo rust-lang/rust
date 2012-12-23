@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use either::{Either, Left, Right};
+use ast;
 use ast_util::spanned;
 use parse::common::*; //resolve bug?
+use parse::token;
+
+use core::either::{Either, Left, Right};
 
 export parser_attr;
 

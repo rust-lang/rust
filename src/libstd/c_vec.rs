@@ -37,6 +37,12 @@
  */
 #[forbid(deprecated_mode)];
 
+use core::libc;
+use core::oldcomm;
+use core::option;
+use core::ptr;
+use core::task;
+
 /**
  * The type representing a foreign chunk of memory
  *

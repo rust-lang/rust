@@ -11,9 +11,11 @@
 //! Sorting methods
 #[forbid(deprecated_mode)];
 
-use vec::{len, push};
 use core::cmp::{Eq, Ord};
-use dvec::DVec;
+use core::dvec::DVec;
+use core::util;
+use core::vec::{len, push};
+use core::vec;
 
 type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
 

@@ -15,8 +15,11 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cmp;
 use cmp::Eq;
+use either;
 use either::Either;
+use vec;
 
 /// The result type
 #[deriving_eq]

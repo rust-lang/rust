@@ -17,17 +17,28 @@
 
 #[forbid(deprecated_mode)];
 
+use getopts;
+use sort;
+use term;
+
 use core::cmp::Eq;
-use either::Either;
-use result::{Ok, Err};
-use io::WriterUtil;
-use libc::size_t;
-use task::TaskBuilder;
+use core::either::Either;
+use core::either;
+use core::io::WriterUtil;
+use core::io;
+use core::libc::size_t;
+use core::oldcomm;
+use core::option;
+use core::result;
+use core::str;
+use core::task::TaskBuilder;
+use core::task;
+use core::vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_sched_threads() -> libc::size_t;
+    fn rust_sched_threads() -> size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust

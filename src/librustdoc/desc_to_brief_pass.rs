@@ -15,8 +15,15 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+
+use core::str;
+use core::vec;
+use std::par;
 
 pub fn mk_pass() -> Pass {
     {

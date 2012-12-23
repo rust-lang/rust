@@ -76,24 +76,44 @@ type parameter).
 
 */
 
+use middle::capture;
+use middle::const_eval;
+use middle::pat_util;
 use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
+use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
+use middle::typeck::astconv;
 use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::infer::{resolve_type, force_tvar};
+use middle::typeck::infer;
 use middle::typeck::rscope::{anon_rscope, binding_rscope, bound_self_region};
 use middle::typeck::rscope::{empty_rscope, in_anon_rscope};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
+use middle::typeck::rscope;
 use util::ppaux;
 
+use core::either;
+use core::option;
+use core::ptr;
 use core::result::{Result, Ok, Err};
+use core::result;
+use core::str;
+use core::vec;
 use std::map::HashMap;
+use std::map;
 use syntax::ast::ty_i;
+use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util::{is_local, visibility_to_privacy, Private, Public};
+use syntax::ast_util;
+use syntax::codemap;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
+use syntax::visit;
+use syntax;
 
 export alt;
 export vtable;
@@ -1688,7 +1708,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn check_struct_constructor(fcx: @fn_ctxt,
                                 id: ast::node_id,
-                                span: syntax::codemap::span,
+                                span: codemap::span,
                                 class_id: ast::def_id,
                                 fields: ~[ast::field],
                                 base_expr: Option<@ast::expr>) -> bool {
@@ -1769,7 +1789,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn check_struct_enum_variant(fcx: @fn_ctxt,
                                  id: ast::node_id,
-                                 span: syntax::codemap::span,
+                                 span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
                                  fields: ~[ast::field]) -> bool {
@@ -2997,7 +3017,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         (1u, ~[], ty::mk_nil_ptr(tcx))
       }
       ~"visit_tydesc" => {
-          let tydesc_name = syntax::parse::token::special_idents::tydesc;
+          let tydesc_name = special_idents::tydesc;
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
           assert tcx.intrinsic_defs.contains_key(tydesc_name);
           assert ccx.tcx.intrinsic_defs.contains_key(ty_visitor_name);

@@ -10,13 +10,21 @@
 
 // Functions dealing with attributes and meta_items
 
-use std::map;
-use std::map::HashMap;
-use either::Either;
-use diagnostic::span_handler;
+use ast;
 use ast_util::{spanned, dummy_spanned};
-use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use attr;
 use codemap::BytePos;
+use diagnostic::span_handler;
+use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+
+use core::cmp;
+use core::either::Either;
+use core::either;
+use core::option;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+use std;
 
 // Constructors
 export mk_name_value_item_str;

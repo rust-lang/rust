@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use back;
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::datum::immediate_rvalue;
+use middle::trans::datum;
+use middle::trans::glue;
 
 use syntax::ast;
 

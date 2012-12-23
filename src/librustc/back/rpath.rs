@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map;
-use std::map::HashMap;
-use metadata::cstore;
 use driver::session;
+use metadata::cstore;
 use metadata::filesearch;
+
+use core::os;
+use core::uint;
+use core::util;
+use core::vec;
+use std::map::HashMap;
+use std::map;
 
 export get_rpath_flags;
 
@@ -116,7 +121,7 @@ fn get_rpath_relative_to_output(os: session::os,
     let prefix = match os {
         session::os_linux | session::os_freebsd => "$ORIGIN",
         session::os_macos => "@executable_path",
-        session::os_win32 => core::util::unreachable()
+        session::os_win32 => util::unreachable()
     };
 
     Path(prefix).push_rel(&get_relative_to(&os::make_absolute(output),

@@ -10,25 +10,43 @@
 
 #[warn(deprecated_pattern)];
 
-use core::dvec::DVec;
-use std::{map, smallintmap};
-use result::Result;
-use std::map::HashMap;
 use driver::session;
-use session::Session;
-use syntax::{ast, ast_map};
-use syntax::ast_util;
-use syntax::ast_util::{is_local, local_def};
-use syntax::codemap::span;
 use metadata::csearch;
-use util::ppaux::{region_to_str, explain_region, vstore_to_str,
-                  note_and_explain_region, bound_region_to_str};
-use middle::lint;
+use metadata;
+use middle::const_eval;
+use middle::freevars;
 use middle::lint::{get_lint_level, allow};
-use syntax::ast::*;
-use syntax::print::pprust::*;
-use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+use middle::lint;
 use middle::resolve::{Impl, MethodInfo};
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+use middle;
+use session::Session;
+use util::ppaux::{note_and_explain_region, bound_region_to_str};
+use util::ppaux::{region_to_str, explain_region, vstore_to_str};
+use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+
+use core::cast;
+use core::cmp;
+use core::dvec::DVec;
+use core::dvec;
+use core::ops;
+use core::option;
+use core::result::Result;
+use core::result;
+use core::to_bytes;
+use core::uint;
+use core::vec;
+use std::map::HashMap;
+use std::{map, smallintmap};
+use syntax::ast::*;
+use syntax::ast_util::{is_local, local_def};
+use syntax::ast_util;
+use syntax::codemap::span;
+use syntax::print::pprust::*;
+use syntax::{ast, ast_map};
+use syntax;
 
 export ProvidedMethodSource;
 export ProvidedMethodInfo;
@@ -1542,7 +1560,8 @@ fn substs_is_noop(substs: &substs) -> bool {
 fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default(~"none", |r| region_to_str(cx, *r)),
-         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, *t)),
+         substs.self_ty.map_default(~"none",
+                                    |t| ::util::ppaux::ty_to_str(cx, *t)),
          tys_to_str(cx, substs.tps))
 }
 
@@ -1552,7 +1571,7 @@ fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
         bound_durable => ~"durable",
         bound_owned => ~"owned",
         bound_const => ~"const",
-        bound_trait(t) => ty_to_str(cx, t)
+        bound_trait(t) => ::util::ppaux::ty_to_str(cx, t)
     }
 }
 
@@ -1566,11 +1585,11 @@ fn subst(cx: ctxt,
 
     debug!("subst(substs=%s, typ=%s)",
            substs_to_str(cx, substs),
-           ty_to_str(cx, typ));
+           ::util::ppaux::ty_to_str(cx, typ));
 
     if substs_is_noop(substs) { return typ; }
     let r = do_subst(cx, substs, typ);
-    debug!("  r = %s", ty_to_str(cx, r));
+    debug!("  r = %s", ::util::ppaux::ty_to_str(cx, r));
     return r;
 
     fn do_subst(cx: ctxt,
@@ -1588,7 +1607,8 @@ fn subst(cx: ctxt,
                     re_bound(br_self) => substs.self_r.expect(
                         fmt!("ty::subst: \
                       Reference to self region when given substs with no \
-                      self region, ty = %s", ty_to_str(cx, typ))),
+                      self region, ty = %s",
+                      ::util::ppaux::ty_to_str(cx, typ))),
                     _ => r
                 },
                 |t| do_subst(cx, substs, t),
@@ -2351,8 +2371,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     fn type_requires(cx: ctxt, seen: @mut ~[def_id],
                      r_ty: t, ty: t) -> bool {
         debug!("type_requires(%s, %s)?",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty));
 
         let r = {
             get(r_ty).sty == get(ty).sty ||
@@ -2360,8 +2380,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         };
 
         debug!("type_requires(%s, %s)? %b",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty),
                r);
         return r;
     }
@@ -2369,8 +2389,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
                         r_ty: t, ty: t) -> bool {
         debug!("subtypes_require(%s, %s)?",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty));
 
         let r = match get(ty).sty {
           ty_nil |
@@ -2447,8 +2467,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         };
 
         debug!("subtypes_require(%s, %s)? %b",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty),
                r);
 
         return r;
@@ -2461,7 +2481,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
    bool {
     let sty = &get(ty).sty;
-    debug!("type_structurally_contains: %s", ty_to_str(cx, ty));
+    debug!("type_structurally_contains: %s",
+           ::util::ppaux::ty_to_str(cx, ty));
     if test(sty) { return true; }
     match *sty {
       ty_enum(did, ref substs) => {
@@ -3260,8 +3281,8 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
             tcx.sess.span_fatal
                 (sp, ~"type inference failed because I \
                      could not find a type\n that's both of the form "
-                 + ty_to_str(tcx, mk_var(tcx, vid)) +
-                 ~" and of the form " + ty_to_str(tcx, rt) +
+                 + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
+                 ~" and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
                  ~" - such a type would have to be infinitely large.");
     }
 }
@@ -3343,7 +3364,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_estr(_) |
       ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
-        ty_to_str(cx, t)
+        ::util::ppaux::ty_to_str(cx, t)
       }
 
       ty_enum(id, _) => fmt!("enum %s", item_path_str(cx, id)),

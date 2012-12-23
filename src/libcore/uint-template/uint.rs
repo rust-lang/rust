@@ -16,6 +16,8 @@ pub use self::inst::{
 };
 
 mod inst {
+    use sys;
+
     pub type T = uint;
 
     #[cfg(target_arch = "x86")]

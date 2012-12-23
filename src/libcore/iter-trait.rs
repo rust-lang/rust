@@ -16,6 +16,7 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use iter;
 
 use self::inst::{IMPL_T, EACH, SIZE_HINT};
 

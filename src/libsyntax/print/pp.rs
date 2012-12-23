@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::WriterUtil;
-use dvec::DVec;
+use core::cmp;
+use core::dvec::DVec;
+use core::io::WriterUtil;
+use core::io;
+use core::str;
+use core::vec;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's

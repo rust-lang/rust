@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use task;
+
 // helper for transmutation, shown below.
 type RustClosure = (int,int);
 pub struct Handler<T, U> {

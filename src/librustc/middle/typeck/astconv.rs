@@ -53,10 +53,16 @@
  */
 
 use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty;
 use middle::typeck::check::fn_ctxt;
+use middle::typeck::collect;
 use middle::typeck::rscope::{anon_rscope, binding_rscope, empty_rscope};
 use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope};
+
+use core::result;
+use core::vec;
+use syntax::ast;
 
 pub trait ast_conv {
     fn tcx() -> ty::ctxt;

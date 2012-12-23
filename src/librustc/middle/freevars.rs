@@ -11,11 +11,16 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-use syntax::print::pprust::path_to_str;
+use middle::resolve;
+use middle::ty;
+
+use core::int;
+use core::option::*;
+use core::vec;
 use std::map::*;
-use option::*;
-use syntax::{ast, ast_util, visit};
 use syntax::codemap::span;
+use syntax::print::pprust::path_to_str;
+use syntax::{ast, ast_util, visit};
 
 export annotate_freevars;
 export freevar_map;

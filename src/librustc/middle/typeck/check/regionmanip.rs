@@ -11,8 +11,10 @@
 // #[warn(deprecated_mode)];
 // #[warn(deprecated_pattern)];
 
+use middle::ty;
 use util::ppaux;
 
+use syntax::ast;
 use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.

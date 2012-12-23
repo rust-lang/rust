@@ -16,6 +16,10 @@ use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::pat_util::{pat_bindings};
+
+use core::cmp;
+use core::str;
+use core::vec;
 use syntax::ast::{_mod, add, arm, binding_mode, bitand, bitor, bitxor, blk};
 use syntax::ast::{capture_clause};
 use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
@@ -35,16 +39,16 @@ use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 use syntax::ast::{gt, ident, impure_fn, inherited, item, item_struct};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul, ne};
-use syntax::ast::{neg, node_id, pat, pat_enum, pat_ident, path, prim_ty};
-use syntax::ast::{pat_box, pat_lit, pat_range, pat_rec, pat_struct};
-use syntax::ast::{pat_tup, pat_uniq, pat_wild, private, provided, public};
-use syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl, struct_dtor};
-use syntax::ast::{struct_field, struct_variant_kind, sty_by_ref, sty_static};
-use syntax::ast::{subtract, trait_ref, tuple_variant_kind, Ty, ty_bool};
-use syntax::ast::{ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16};
-use syntax::ast::{ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str};
-use syntax::ast::{ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
+use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul};
+use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
+use syntax::ast::{path, pat_box, pat_lit, pat_range, pat_rec, pat_struct};
+use syntax::ast::{pat_tup, pat_uniq, pat_wild, prim_ty, private, provided};
+use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
+use syntax::ast::{struct_dtor, struct_field, struct_variant_kind, sty_by_ref};
+use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
+use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
+use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
+use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
 use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
@@ -54,6 +58,8 @@ use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
 use syntax::ast_util::has_legacy_export_attr;
 use syntax::attr::{attr_metas, contains_name};
+use syntax::parse::token::ident_interner;
+use syntax::parse::token::special_idents;
 use syntax::print::pprust::{pat_to_str, path_to_str};
 use syntax::codemap::span;
 use syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
@@ -66,7 +72,6 @@ use dvec::DVec;
 use option::{Some, get, is_some, is_none};
 use str::{connect, split_str};
 use vec::pop;
-use syntax::parse::token::ident_interner;
 
 use std::list::{Cons, List, Nil};
 use std::map::HashMap;
@@ -317,9 +322,14 @@ enum UseLexicalScopeFlag {
     UseLexicalScope
 }
 
-struct ModulePrefixResult {
-    result: ResolveResult<@Module>,
-    prefix_len: uint
+enum SearchThroughModulesFlag {
+    DontSearchThroughModules,
+    SearchThroughModules
+}
+
+enum ModulePrefixResult {
+    NoPrefixFound,
+    PrefixFound(@Module, uint)
 }
 
 impl XrayFlag : cmp::Eq {
@@ -475,10 +485,19 @@ enum ParentLink {
     BlockParentLink(@Module, node_id)
 }
 
+/// The type of module this is.
+enum ModuleKind {
+    NormalModuleKind,
+    ExternModuleKind,
+    TraitModuleKind,
+    AnonymousModuleKind,
+}
+
 /// One node in the tree of modules.
 struct Module {
     parent_link: ParentLink,
     mut def_id: Option<def_id>,
+    kind: ModuleKind,
 
     children: HashMap<ident,@NameBindings>,
     imports: DVec<@ImportDirective>,
@@ -527,10 +546,12 @@ struct Module {
 
 fn Module(parent_link: ParentLink,
           def_id: Option<def_id>,
+          kind: ModuleKind,
           legacy_exports: bool) -> Module {
     Module {
         parent_link: parent_link,
         def_id: def_id,
+        kind: kind,
         children: HashMap(),
         imports: DVec(),
         anonymous_children: HashMap(),
@@ -589,10 +610,11 @@ impl NameBindings {
     fn define_module(privacy: Privacy,
                      parent_link: ParentLink,
                      def_id: Option<def_id>,
+                     kind: ModuleKind,
                      legacy_exports: bool,
                      sp: span) {
         // Merges the module with the existing type def or creates a new one.
-        let module_ = @Module(parent_link, def_id, legacy_exports);
+        let module_ = @Module(parent_link, def_id, kind, legacy_exports);
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
@@ -794,6 +816,7 @@ fn Resolver(session: Session, lang_items: LanguageItems,
     (*graph_root).define_module(Public,
                                 NoParentLink,
                                 Some({ crate: 0, node: 0 }),
+                                NormalModuleKind,
                                 has_legacy_export_attr(crate.node.attrs),
                                 crate.span);
 
@@ -824,7 +847,7 @@ fn Resolver(session: Session, lang_items: LanguageItems,
         xray_context: NoXray,
         current_trait_refs: None,
 
-        self_ident: syntax::parse::token::special_idents::self_,
+        self_ident: special_idents::self_,
         primitive_type_table: @PrimitiveTypeTable(session.
                                                   parse_sess.interner),
 
@@ -1111,8 +1134,12 @@ impl Resolver {
 
                 let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = { crate: 0, node: item.id };
-                (*name_bindings).define_module(privacy, parent_link,
-                                               Some(def_id), legacy, sp);
+                (*name_bindings).define_module(privacy,
+                                               parent_link,
+                                               Some(def_id),
+                                               NormalModuleKind,
+                                               legacy,
+                                               sp);
 
                 let new_parent =
                     ModuleReducedGraphParent((*name_bindings).get_module());
@@ -1134,6 +1161,7 @@ impl Resolver {
                         (*name_bindings).define_module(privacy,
                                                        parent_link,
                                                        Some(def_id),
+                                                       ExternModuleKind,
                                                        legacy,
                                                        sp);
 
@@ -1251,8 +1279,12 @@ impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         let def_id = local_def(item.id);
-                        name_bindings.define_module(privacy, parent_link,
-                                                    Some(def_id), false, sp);
+                        name_bindings.define_module(privacy,
+                                                    parent_link,
+                                                    Some(def_id),
+                                                    TraitModuleKind,
+                                                    false,
+                                                    sp);
 
                         let new_parent = ModuleReducedGraphParent(
                             name_bindings.get_module());
@@ -1313,6 +1345,7 @@ impl Resolver {
                     name_bindings.define_module(privacy,
                                                 parent_link,
                                                 Some(local_def(item.id)),
+                                                TraitModuleKind,
                                                 false,
                                                 sp);
                     module_parent_opt = Some(ModuleReducedGraphParent(
@@ -1568,6 +1601,7 @@ impl Resolver {
                         (*child_name_bindings).define_module(privacy,
                                                              parent_link,
                                                              Some(def_id),
+                                                             NormalModuleKind,
                                                              false,
                                                              view_item.span);
                         self.build_reduced_graph_for_external_crate
@@ -1626,7 +1660,9 @@ impl Resolver {
 
             let parent_module = self.get_module_from_parent(parent);
             let new_module = @Module(BlockParentLink(parent_module, block_id),
-                                     None, false);
+                                     None,
+                                     AnonymousModuleKind,
+                                     false);
             parent_module.anonymous_children.insert(block_id, new_module);
             new_parent = ModuleReducedGraphParent(new_module);
         } else {
@@ -1660,6 +1696,7 @@ impl Resolver {
                     child_name_bindings.define_module(Public,
                                                       parent_link,
                                                       Some(def_id),
+                                                      NormalModuleKind,
                                                       false,
                                                       dummy_sp());
                     modules.insert(def_id,
@@ -1791,6 +1828,7 @@ impl Resolver {
                         (*child_name_bindings).define_module(Public,
                                                              parent_link,
                                                              None,
+                                                             NormalModuleKind,
                                                              false,
                                                              dummy_sp());
                     }
@@ -1804,6 +1842,7 @@ impl Resolver {
                         (*child_name_bindings).define_module(Public,
                                                              parent_link,
                                                              None,
+                                                             NormalModuleKind,
                                                              false,
                                                              dummy_sp());
                     }
@@ -1874,6 +1913,7 @@ impl Resolver {
                                                 Public,
                                                 parent_link,
                                                 Some(def),
+                                                NormalModuleKind,
                                                 false,
                                                 dummy_sp());
                                             type_module =
@@ -2722,23 +2762,13 @@ impl Resolver {
                self.idents_to_str((*module_path).get()),
                self.module_to_str(module_));
 
-        // The first element of the module path must be in the current scope
-        // chain.
-
-        let resolve_result = match use_lexical_scope {
-            DontUseLexicalScope => {
-                self.resolve_module_prefix(module_, module_path)
-            }
-            UseLexicalScope => {
-                let result = self.resolve_module_in_lexical_scope(
-                    module_,
-                    module_path.get_elt(0));
-                ModulePrefixResult { result: result, prefix_len: 1 }
-            }
-        };
+        // Resolve the module prefix, if any.
+        let module_prefix_result = self.resolve_module_prefix(module_,
+                                                              module_path);
 
         let mut search_module;
-        match resolve_result.result {
+        let mut start_index;
+        match module_prefix_result {
             Failed => {
                 self.session.span_err(span, ~"unresolved name");
                 return Failed;
@@ -2748,21 +2778,61 @@ impl Resolver {
                         bailing");
                 return Indeterminate;
             }
-            Success(resulting_module) => {
-                search_module = resulting_module;
+            Success(NoPrefixFound) => {
+                // There was no prefix, so we're considering the first element
+                // of the path. How we handle this depends on whether we were
+                // instructed to use lexical scope or not.
+                match use_lexical_scope {
+                    DontUseLexicalScope => {
+                        // This is a crate-relative path. We will start the
+                        // resolution process at index zero.
+                        search_module = self.graph_root.get_module();
+                        start_index = 0;
+                    }
+                    UseLexicalScope => {
+                        // This is not a crate-relative path. We resolve the
+                        // first component of the path in the current lexical
+                        // scope and then proceed to resolve below that.
+                        let result = self.resolve_module_in_lexical_scope(
+                            module_,
+                            module_path.get_elt(0));
+                        match result {
+                            Failed => {
+                                self.session.span_err(span,
+                                                      ~"unresolved name");
+                                return Failed;
+                            }
+                            Indeterminate => {
+                                debug!("(resolving module path for import) \
+                                        indeterminate; bailing");
+                                return Indeterminate;
+                            }
+                            Success(containing_module) => {
+                                search_module = containing_module;
+                                start_index = 1;
+                            }
+                        }
+                    }
+                }
+            }
+            Success(PrefixFound(containing_module, index)) => {
+                search_module = containing_module;
+                start_index = index;
             }
         }
 
         return self.resolve_module_path_from_root(search_module,
                                                   module_path,
-                                                  resolve_result.prefix_len,
+                                                  start_index,
                                                   xray,
                                                   span);
     }
 
     fn resolve_item_in_lexical_scope(module_: @Module,
                                      name: ident,
-                                     namespace: Namespace)
+                                     namespace: Namespace,
+                                     search_through_modules:
+                                        SearchThroughModulesFlag)
                                   -> ResolveResult<Target> {
 
         debug!("(resolving item in lexical scope) resolving `%s` in \
@@ -2818,7 +2888,30 @@ impl Resolver {
                             module");
                     return Failed;
                 }
-                ModuleParentLink(parent_module_node, _) |
+                ModuleParentLink(parent_module_node, _) => {
+                    match search_through_modules {
+                        DontSearchThroughModules => {
+                            match search_module.kind {
+                                NormalModuleKind => {
+                                    // We stop the search here.
+                                    debug!("(resolving item in lexical \
+                                            scope) unresolved module: not \
+                                            searching through module \
+                                            parents");
+                                    return Failed;
+                                }
+                                ExternModuleKind |
+                                TraitModuleKind |
+                                AnonymousModuleKind => {
+                                    search_module = parent_module_node;
+                                }
+                            }
+                        }
+                        SearchThroughModules => {
+                            search_module = parent_module_node;
+                        }
+                    }
+                }
                 BlockParentLink(parent_module_node, _) => {
                     search_module = parent_module_node;
                 }
@@ -2854,9 +2947,8 @@ impl Resolver {
                                     -> ResolveResult<@Module> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(module_,
-                                                                name,
-                                                                TypeNS);
+        let resolve_result = self.resolve_item_in_lexical_scope(
+            module_, name, TypeNS, DontSearchThroughModules);
         match resolve_result {
             Success(target) => {
                 match target.bindings.type_def {
@@ -2894,39 +2986,93 @@ impl Resolver {
     }
 
     /**
-     * Resolves a "module prefix". A module prefix is one of (a) the name of a
-     * module; (b) "self::"; (c) some chain of "super::".
+     * Returns the nearest normal module parent of the given module.
+     */
+    fn get_nearest_normal_module_parent(module_: @Module) -> Option<@Module> {
+        let mut module_ = module_;
+        loop {
+            match module_.parent_link {
+                NoParentLink => return None,
+                ModuleParentLink(new_module, _) |
+                BlockParentLink(new_module, _) => {
+                    match new_module.kind {
+                        NormalModuleKind => return Some(new_module),
+                        ExternModuleKind |
+                        TraitModuleKind |
+                        AnonymousModuleKind => module_ = new_module,
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the nearest normal module parent of the given module, or the
+     * module itself if it is a normal module.
+     */
+    fn get_nearest_normal_module_parent_or_self(module_: @Module) -> @Module {
+        match module_.kind {
+            NormalModuleKind => return module_,
+            ExternModuleKind | TraitModuleKind | AnonymousModuleKind => {
+                match self.get_nearest_normal_module_parent(module_) {
+                    None => module_,
+                    Some(new_module) => new_module
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves a "module prefix". A module prefix is one of (a) `self::`;
+     * (b) some chain of `super::`.
      */
     fn resolve_module_prefix(module_: @Module,
                              module_path: @DVec<ident>)
-                          -> ModulePrefixResult {
+                          -> ResolveResult<ModulePrefixResult> {
         let interner = self.session.parse_sess.interner;
 
-        let mut containing_module = self.graph_root.get_module();
-        let mut i = 0;
-        loop {
-            if *interner.get(module_path.get_elt(i)) == ~"self" {
-                containing_module = module_;
-                i += 1;
-                break;
-            }
-            if *interner.get(module_path.get_elt(i)) == ~"super" {
-                match containing_module.parent_link {
-                    NoParentLink => {
-                        return ModulePrefixResult {
-                            result: Failed,
-                            prefix_len: i
-                        };
-                    }
-                    BlockParentLink(new_module, _) |
-                    ModuleParentLink(new_module, _) => {
-                        containing_module = new_module;
-                    }
+        // Start at the current module if we see `self` or `super`, or at the
+        // top of the crate otherwise.
+        let mut containing_module;
+        let mut i;
+        if *interner.get(module_path.get_elt(0)) == ~"self" {
+            containing_module =
+                self.get_nearest_normal_module_parent_or_self(module_);
+            i = 1;
+        } else if *interner.get(module_path.get_elt(0)) == ~"super" {
+            containing_module =
+                self.get_nearest_normal_module_parent_or_self(module_);
+            i = 0;  // We'll handle `super` below.
+        } else {
+            return Success(NoPrefixFound);
+        }
+
+        // Now loop through all the `super`s we find.
+        while i < module_path.len() &&
+                *interner.get(module_path.get_elt(i)) == ~"super" {
+            debug!("(resolving module prefix) resolving `super` at %s",
+                   self.module_to_str(containing_module));
+            match self.get_nearest_normal_module_parent(containing_module) {
+                None => return Failed,
+                Some(new_module) => {
+                    containing_module = new_module;
+                    i += 1;
                 }
-                i += 1;
-            } else {
-                break;
             }
+        }
+
+        debug!("(resolving module prefix) finished resolving prefix at %s",
+               self.module_to_str(containing_module));
+
+        return Success(PrefixFound(containing_module, i));
+
+        /*
+        // If we reached the end, return the containing module.
+        if i == module_path.len() {
+            return ModulePrefixResult {
+                result: Success(containing_module),
+                prefix_len: i
+            };
         }
 
         // Is the containing module the current module? If so, we allow
@@ -2934,6 +3080,8 @@ impl Resolver {
         let allow_globs = core::managed::ptr_eq(containing_module, module_);
 
         let name = module_path.get_elt(i);
+        i += 1;
+
         let resolve_result = self.resolve_name_in_module(containing_module,
                                                          name,
                                                          TypeNS,
@@ -2950,13 +3098,13 @@ impl Resolver {
                                         module!");
                                 return ModulePrefixResult {
                                     result: Failed,
-                                    prefix_len: i + 1
+                                    prefix_len: i
                                 };
                             }
                             Some(module_def) => {
                                 return ModulePrefixResult {
                                     result: Success(module_def),
-                                    prefix_len: i + 1
+                                    prefix_len: i
                                 };
                             }
                         }
@@ -2966,7 +3114,7 @@ impl Resolver {
                                 wasn't actually a module!");
                         return ModulePrefixResult {
                             result: Failed,
-                            prefix_len: i + 1
+                            prefix_len: i
                         };
                     }
                 }
@@ -2976,17 +3124,18 @@ impl Resolver {
                         bailing");
                 return ModulePrefixResult {
                     result: Indeterminate,
-                    prefix_len: i + 1
+                    prefix_len: i
                 };
             }
             Failed => {
                 debug!("(resolving crate-relative module) failed to resolve");
                 return ModulePrefixResult {
                     result: Failed,
-                    prefix_len: i + 1
+                    prefix_len: i
                 };
             }
         }
+        */
     }
 
     fn name_is_exported(module_: @Module, name: ident) -> bool {
@@ -3109,7 +3258,8 @@ impl Resolver {
         debug!("(resolving one-level naming result) searching for module");
         match self.resolve_item_in_lexical_scope(module_,
                                                  source_name,
-                                                 TypeNS) {
+                                                 TypeNS,
+                                                 SearchThroughModules) {
             Failed => {
                 debug!("(resolving one-level renaming import) didn't find \
                         module result");
@@ -3135,8 +3285,9 @@ impl Resolver {
         } else {
             debug!("(resolving one-level naming result) searching for value");
             match self.resolve_item_in_lexical_scope(module_,
-                                                   source_name,
-                                                   ValueNS) {
+                                                     source_name,
+                                                     ValueNS,
+                                                     SearchThroughModules) {
 
                 Failed => {
                     debug!("(resolving one-level renaming import) didn't \
@@ -3157,8 +3308,9 @@ impl Resolver {
 
             debug!("(resolving one-level naming result) searching for type");
             match self.resolve_item_in_lexical_scope(module_,
-                                                   source_name,
-                                                   TypeNS) {
+                                                     source_name,
+                                                     TypeNS,
+                                                     SearchThroughModules) {
 
                 Failed => {
                     debug!("(resolving one-level renaming import) didn't \
@@ -3831,7 +3983,7 @@ impl Resolver {
 
                 if !self.session.building_library &&
                     is_none(&self.session.main_fn) &&
-                    item.ident == syntax::parse::token::special_idents::main {
+                    item.ident == special_idents::main {
 
                     self.session.main_fn = Some((item.id, item.span));
                 }
@@ -4571,7 +4723,8 @@ impl Resolver {
                                     -> BareIdentifierPatternResolution {
         match self.resolve_item_in_lexical_scope(self.current_module,
                                                  name,
-                                                 ValueNS) {
+                                                 ValueNS,
+                                                 SearchThroughModules) {
             Success(target) => {
                 match target.bindings.value_def {
                     None => {
@@ -4608,10 +4761,11 @@ impl Resolver {
      * If `check_ribs` is true, checks the local definitions first; i.e.
      * doesn't skip straight to the containing module.
      */
-    fn resolve_path(path: @path, namespace: Namespace, check_ribs: bool,
+    fn resolve_path(path: @path,
+                    namespace: Namespace,
+                    check_ribs: bool,
                     visitor: ResolveVisitor)
                  -> Option<def> {
-
         // First, resolve the types.
         for path.types.each |ty| {
             self.resolve_type(*ty, visitor);
@@ -4625,8 +4779,8 @@ impl Resolver {
 
         if path.idents.len() > 1 {
             return self.resolve_module_relative_path(path,
-                                                  self.xray_context,
-                                                  namespace);
+                                                     self.xray_context,
+                                                     namespace);
         }
 
         return self.resolve_identifier(path.idents.last(),
@@ -4797,10 +4951,10 @@ impl Resolver {
 
         let mut containing_module;
         match self.resolve_module_path_from_root(root_module,
-                                               module_path_idents,
-                                               0,
-                                               xray,
-                                               path.span) {
+                                                 module_path_idents,
+                                                 0,
+                                                 xray,
+                                                 path.span) {
 
             Failed => {
                 self.session.span_err(path.span,
@@ -4821,9 +4975,9 @@ impl Resolver {
 
         let name = path.idents.last();
         match self.resolve_definition_of_name_in_module(containing_module,
-                                                      name,
-                                                      namespace,
-                                                      xray) {
+                                                        name,
+                                                        namespace,
+                                                        xray) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
                 return None;
@@ -4870,8 +5024,9 @@ impl Resolver {
                                                 -> Option<def> {
         // Check the items.
         match self.resolve_item_in_lexical_scope(self.current_module,
-                                               ident,
-                                               namespace) {
+                                                 ident,
+                                                 namespace,
+                                                 SearchThroughModules) {
             Success(target) => {
                 match (*target.bindings).def_for_namespace(namespace) {
                     None => {
@@ -4909,10 +5064,8 @@ impl Resolver {
                     item_struct(class_def, _) => {
                       for vec::each(class_def.fields) |field| {
                         match field.node.kind {
-                          syntax::ast::unnamed_field
-                            => {},
-                          syntax::ast::named_field(ident, _, _)
-                            => {
+                          unnamed_field => {},
+                          named_field(ident, _, _) => {
                               if str::eq_slice(self.session.str_of(ident),
                                                name) {
                                 return true
@@ -5352,7 +5505,7 @@ impl Resolver {
                     current_module = module_;
                 }
                 BlockParentLink(module_, _) => {
-                    idents.push(syntax::parse::token::special_idents::opaque);
+                    idents.push(special_idents::opaque);
                     current_module = module_;
                 }
             }
