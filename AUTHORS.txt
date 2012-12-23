@@ -90,6 +90,7 @@ Magnus Auvinen <magnus.auvinen@gmail.com>
 Mahmut Bulut <mahmutbulut0@gmail.com>
 Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
+Martin DeMello <martindemello@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Matthew O'Connor <thegreendragon@gmail.com>
 Max Penet <max.penet@gmail.com>
