@@ -788,7 +788,7 @@ impl TcpSocket {
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
-    fn read(buf: &[mut u8], len: uint) -> uint {
+    fn read(&self, buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
             let read_result = read(&self.data.sock, 0u);
@@ -821,7 +821,7 @@ impl TcpSocketBuf: io::Reader {
 
         count
     }
-    fn read_byte() -> int {
+    fn read_byte(&self) -> int {
         let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 {
             if self.end_of_stream {
@@ -833,21 +833,21 @@ impl TcpSocketBuf: io::Reader {
             bytes[0] as int
         }
     }
-    fn eof() -> bool {
+    fn eof(&self) -> bool {
         self.end_of_stream
     }
-    fn seek(dist: int, seek: io::SeekStyle) {
+    fn seek(&self, dist: int, seek: io::SeekStyle) {
         log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
-    fn tell() -> uint {
+    fn tell(&self) -> uint {
         0u // noop
     }
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Writer {
-    pub fn write(data: &[const u8]) unsafe {
+    pub fn write(&self, data: &[const u8]) unsafe {
         let socket_data_ptr =
             ptr::addr_of(&(*((*(self.data)).sock).socket_data));
         let w_result = write_common_impl(socket_data_ptr,
@@ -858,17 +858,17 @@ impl TcpSocketBuf: io::Writer {
                              err_data.err_name, err_data.err_msg));
         }
     }
-    fn seek(dist: int, seek: io::SeekStyle) {
+    fn seek(&self, dist: int, seek: io::SeekStyle) {
       log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
         // noop
     }
-    fn tell() -> uint {
+    fn tell(&self) -> uint {
         0u
     }
-    fn flush() -> int {
+    fn flush(&self) -> int {
         0
     }
-    fn get_type() -> io::WriterType {
+    fn get_type(&self) -> io::WriterType {
         io::File
     }
 }
