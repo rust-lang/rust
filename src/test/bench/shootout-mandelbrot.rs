@@ -99,11 +99,11 @@ fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<Line>) -> ()
 type devnull = {dn: int};
 
 impl devnull: io::Writer {
-    fn write(_b: &[const u8]) {}
-    fn seek(_i: int, _s: io::SeekStyle) {}
-    fn tell() -> uint {0_u}
-    fn flush() -> int {0}
-    fn get_type() -> io::WriterType { io::File }
+    fn write(&self, _b: &[const u8]) {}
+    fn seek(&self, _i: int, _s: io::SeekStyle) {}
+    fn tell(&self) -> uint {0_u}
+    fn flush(&self) -> int {0}
+    fn get_type(&self) -> io::WriterType { io::File }
 }
 
 fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<Line>>, size: uint)
