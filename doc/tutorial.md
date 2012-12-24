@@ -2419,7 +2419,7 @@ these two files:
 pub fn explore() -> &str { "world" }
 ~~~~
 
-~~~~
+~~~~ {.xfail-test}
 // main.rs
 extern mod world;
 fn main() { io::println(~"hello " + world::explore()); }
