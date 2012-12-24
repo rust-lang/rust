@@ -43,7 +43,7 @@ pub type Rope = node::Root;
  */
 
 /// Create an empty rope
-pub fn empty() -> Rope {
+pub pure fn empty() -> Rope {
    return node::Empty;
 }
 
@@ -479,7 +479,7 @@ pub mod iterator {
  *
  * Constant time.
  */
-pub fn height(rope: Rope) -> uint {
+pub pure fn height(rope: Rope) -> uint {
    match (rope) {
       node::Empty      => return 0u,
       node::Content(x) => return node::height(x)
@@ -1019,7 +1019,7 @@ mod node {
                     })
     }
 
-    pub fn height(node: @Node) -> uint {
+    pub pure fn height(node: @Node) -> uint {
         match (*node) {
           Leaf(_)   => return 0u,
           Concat(ref x) => return x.height
@@ -1100,7 +1100,7 @@ mod node {
      * proportional to the height of the rope + the (bounded)
      * length of the largest leaf.
      */
-    pub fn char_at(node: @Node, pos: uint) -> char {
+    pub pure fn char_at(node: @Node, pos: uint) -> char {
         let mut node    = node;
         let mut pos     = pos;
         loop {
