@@ -646,19 +646,19 @@ mod util {
     }
 
     impl BufReader: Reader {
-        fn read(bytes: &[mut u8], len: uint) -> uint {
+        fn read(&self, bytes: &[mut u8], len: uint) -> uint {
             self.as_bytes_reader(|r| r.read(bytes, len) )
         }
-        fn read_byte() -> int {
+        fn read_byte(&self) -> int {
             self.as_bytes_reader(|r| r.read_byte() )
         }
-        fn eof() -> bool {
+        fn eof(&self) -> bool {
             self.as_bytes_reader(|r| r.eof() )
         }
-        fn seek(offset: int, whence: io::SeekStyle) {
+        fn seek(&self, offset: int, whence: io::SeekStyle) {
             self.as_bytes_reader(|r| r.seek(offset, whence) )
         }
-        fn tell() -> uint {
+        fn tell(&self) -> uint {
             self.as_bytes_reader(|r| r.tell() )
         }
     }
