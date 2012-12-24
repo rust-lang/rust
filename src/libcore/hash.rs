@@ -188,11 +188,11 @@ fn SipState(key0: u64, key1: u64) -> SipState {
 }
 
 
-impl &SipState : io::Writer {
+impl SipState : io::Writer {
 
     // Methods for io::writer
     #[inline(always)]
-    fn write(msg: &[const u8]) {
+    fn write(&self, msg: &[const u8]) {
 
         macro_rules! u8to64_le (
             ($buf:expr, $i:expr) =>
@@ -282,16 +282,16 @@ impl &SipState : io::Writer {
         self.ntail = left;
     }
 
-    fn seek(_x: int, _s: io::SeekStyle) {
+    fn seek(&self, _x: int, _s: io::SeekStyle) {
         fail;
     }
-    fn tell() -> uint {
+    fn tell(&self) -> uint {
         self.length
     }
-    fn flush() -> int {
+    fn flush(&self) -> int {
         0
     }
-    fn get_type() -> io::WriterType {
+    fn get_type(&self) -> io::WriterType {
         io::File
     }
 }
