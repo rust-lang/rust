@@ -49,122 +49,122 @@ pub trait Reader {
     /// Read up to len bytes (or EOF) and put them into bytes (which
     /// must be at least len bytes long). Return number of bytes read.
     // FIXME (#2982): This should probably return an error.
-    fn read(bytes: &[mut u8], len: uint) -> uint;
+    fn read(&self, bytes: &[mut u8], len: uint) -> uint;
 
     /// Read a single byte, returning a negative value for EOF or read error.
-    fn read_byte() -> int;
+    fn read_byte(&self) -> int;
 
     /// Return whether the stream is currently at EOF position.
-    fn eof() -> bool;
+    fn eof(&self) -> bool;
 
     /// Move the current position within the stream. The second parameter
     /// determines the position that the first parameter is relative to.
-    fn seek(position: int, style: SeekStyle);
+    fn seek(&self, position: int, style: SeekStyle);
 
     /// Return the current position within the stream.
-    fn tell() -> uint;
+    fn tell(&self) -> uint;
 }
 
 /// Generic utility functions defined on readers.
 pub trait ReaderUtil {
 
     /// Read len bytes into a new vec.
-    fn read_bytes(len: uint) -> ~[u8];
+    fn read_bytes(&self, len: uint) -> ~[u8];
 
     /// Read up until the first '\n' char (which is not returned), or EOF.
-    fn read_line() -> ~str;
+    fn read_line(&self) -> ~str;
 
     /// Read n utf-8 encoded chars.
-    fn read_chars(n: uint) -> ~[char];
+    fn read_chars(&self, n: uint) -> ~[char];
 
     /// Read a single utf-8 encoded char.
-    fn read_char() -> char;
+    fn read_char(&self) -> char;
 
     /// Read up until the first null byte (which is not returned), or EOF.
-    fn read_c_str() -> ~str;
+    fn read_c_str(&self) -> ~str;
 
     /// Read all the data remaining in the stream in one go.
-    fn read_whole_stream() -> ~[u8];
+    fn read_whole_stream(&self) -> ~[u8];
 
     /// Iterate over every byte until the iterator breaks or EOF.
-    fn each_byte(it: fn(int) -> bool);
+    fn each_byte(&self, it: fn(int) -> bool);
 
     /// Iterate over every char until the iterator breaks or EOF.
-    fn each_char(it: fn(char) -> bool);
+    fn each_char(&self, it: fn(char) -> bool);
 
     /// Iterate over every line until the iterator breaks or EOF.
-    fn each_line(it: fn(&str) -> bool);
+    fn each_line(&self, it: fn(&str) -> bool);
 
     /// Read n (between 1 and 8) little-endian unsigned integer bytes.
-    fn read_le_uint_n(nbytes: uint) -> u64;
+    fn read_le_uint_n(&self, nbytes: uint) -> u64;
 
     /// Read n (between 1 and 8) little-endian signed integer bytes.
-    fn read_le_int_n(nbytes: uint) -> i64;
+    fn read_le_int_n(&self, nbytes: uint) -> i64;
 
     /// Read n (between 1 and 8) big-endian unsigned integer bytes.
-    fn read_be_uint_n(nbytes: uint) -> u64;
+    fn read_be_uint_n(&self, nbytes: uint) -> u64;
 
     /// Read n (between 1 and 8) big-endian signed integer bytes.
-    fn read_be_int_n(nbytes: uint) -> i64;
+    fn read_be_int_n(&self, nbytes: uint) -> i64;
 
     /// Read a little-endian uint (number of bytes depends on system).
-    fn read_le_uint() -> uint;
+    fn read_le_uint(&self) -> uint;
 
     /// Read a little-endian int (number of bytes depends on system).
-    fn read_le_int() -> int;
+    fn read_le_int(&self) -> int;
 
     /// Read a big-endian uint (number of bytes depends on system).
-    fn read_be_uint() -> uint;
+    fn read_be_uint(&self) -> uint;
 
     /// Read a big-endian int (number of bytes depends on system).
-    fn read_be_int() -> int;
+    fn read_be_int(&self) -> int;
 
     /// Read a big-endian u64 (8 bytes).
-    fn read_be_u64() -> u64;
+    fn read_be_u64(&self) -> u64;
 
     /// Read a big-endian u32 (4 bytes).
-    fn read_be_u32() -> u32;
+    fn read_be_u32(&self) -> u32;
 
     /// Read a big-endian u16 (2 bytes).
-    fn read_be_u16() -> u16;
+    fn read_be_u16(&self) -> u16;
 
     /// Read a big-endian i64 (8 bytes).
-    fn read_be_i64() -> i64;
+    fn read_be_i64(&self) -> i64;
 
     /// Read a big-endian i32 (4 bytes).
-    fn read_be_i32() -> i32;
+    fn read_be_i32(&self) -> i32;
 
     /// Read a big-endian i16 (2 bytes).
-    fn read_be_i16() -> i16;
+    fn read_be_i16(&self) -> i16;
 
     /// Read a little-endian u64 (8 bytes).
-    fn read_le_u64() -> u64;
+    fn read_le_u64(&self) -> u64;
 
     /// Read a little-endian u32 (4 bytes).
-    fn read_le_u32() -> u32;
+    fn read_le_u32(&self) -> u32;
 
     /// Read a little-endian u16 (2 bytes).
-    fn read_le_u16() -> u16;
+    fn read_le_u16(&self) -> u16;
 
     /// Read a litle-endian i64 (8 bytes).
-    fn read_le_i64() -> i64;
+    fn read_le_i64(&self) -> i64;
 
     /// Read a litle-endian i32 (4 bytes).
-    fn read_le_i32() -> i32;
+    fn read_le_i32(&self) -> i32;
 
     /// Read a litle-endian i16 (2 bytes).
-    fn read_le_i16() -> i16;
+    fn read_le_i16(&self) -> i16;
 
     /// Read a u8 (1 byte).
-    fn read_u8() -> u8;
+    fn read_u8(&self) -> u8;
 
     /// Read a i8 (1 byte).
-    fn read_i8() -> i8;
+    fn read_i8(&self) -> i8;
 }
 
 impl<T: Reader> T : ReaderUtil {
 
-    fn read_bytes(len: uint) -> ~[u8] {
+    fn read_bytes(&self,len: uint) -> ~[u8] {
         let mut bytes = vec::with_capacity(len);
         unsafe { vec::raw::set_len(&mut bytes, len); }
 
@@ -174,7 +174,7 @@ impl<T: Reader> T : ReaderUtil {
         move bytes
     }
 
-    fn read_line() -> ~str {
+    fn read_line(&self) -> ~str {
         let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
@@ -184,7 +184,7 @@ impl<T: Reader> T : ReaderUtil {
         str::from_bytes(bytes)
     }
 
-    fn read_chars(n: uint) -> ~[char] {
+    fn read_chars(&self, n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_bytes<T: Reader>(bytes: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
@@ -245,7 +245,7 @@ impl<T: Reader> T : ReaderUtil {
         move chars
     }
 
-    fn read_char() -> char {
+    fn read_char(&self) -> char {
         let c = self.read_chars(1);
         if vec::len(c) == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
@@ -254,7 +254,7 @@ impl<T: Reader> T : ReaderUtil {
         return c[0];
     }
 
-    fn read_c_str() -> ~str {
+    fn read_c_str(&self) -> ~str {
         let mut bytes: ~[u8] = ~[];
         loop {
             let ch = self.read_byte();
@@ -263,25 +263,25 @@ impl<T: Reader> T : ReaderUtil {
         str::from_bytes(bytes)
     }
 
-    fn read_whole_stream() -> ~[u8] {
+    fn read_whole_stream(&self) -> ~[u8] {
         let mut bytes: ~[u8] = ~[];
         while !self.eof() { bytes.push_all(self.read_bytes(2048u)); }
         move bytes
     }
 
-    fn each_byte(it: fn(int) -> bool) {
+    fn each_byte(&self, it: fn(int) -> bool) {
         while !self.eof() {
             if !it(self.read_byte()) { break; }
         }
     }
 
-    fn each_char(it: fn(char) -> bool) {
+    fn each_char(&self, it: fn(char) -> bool) {
         while !self.eof() {
             if !it(self.read_char()) { break; }
         }
     }
 
-    fn each_line(it: fn(s: &str) -> bool) {
+    fn each_line(&self, it: fn(s: &str) -> bool) {
         while !self.eof() {
             if !it(self.read_line()) { break; }
         }
@@ -289,7 +289,7 @@ impl<T: Reader> T : ReaderUtil {
 
     // FIXME int reading methods need to deal with eof - issue #2004
 
-    fn read_le_uint_n(nbytes: uint) -> u64 {
+    fn read_le_uint_n(&self, nbytes: uint) -> u64 {
         assert nbytes > 0 && nbytes <= 8;
 
         let mut val = 0u64, pos = 0, i = nbytes;
@@ -301,11 +301,11 @@ impl<T: Reader> T : ReaderUtil {
         val
     }
 
-    fn read_le_int_n(nbytes: uint) -> i64 {
+    fn read_le_int_n(&self, nbytes: uint) -> i64 {
         extend_sign(self.read_le_uint_n(nbytes), nbytes)
     }
 
-    fn read_be_uint_n(nbytes: uint) -> u64 {
+    fn read_be_uint_n(&self, nbytes: uint) -> u64 {
         assert nbytes > 0 && nbytes <= 8;
 
         let mut val = 0u64, i = nbytes;
@@ -316,79 +316,79 @@ impl<T: Reader> T : ReaderUtil {
         val
     }
 
-    fn read_be_int_n(nbytes: uint) -> i64 {
+    fn read_be_int_n(&self, nbytes: uint) -> i64 {
         extend_sign(self.read_be_uint_n(nbytes), nbytes)
     }
 
-    fn read_le_uint() -> uint {
+    fn read_le_uint(&self) -> uint {
         self.read_le_uint_n(uint::bytes) as uint
     }
 
-    fn read_le_int() -> int {
+    fn read_le_int(&self) -> int {
         self.read_le_int_n(int::bytes) as int
     }
 
-    fn read_be_uint() -> uint {
+    fn read_be_uint(&self) -> uint {
         self.read_be_uint_n(uint::bytes) as uint
     }
 
-    fn read_be_int() -> int {
+    fn read_be_int(&self) -> int {
         self.read_be_int_n(int::bytes) as int
     }
 
-    fn read_be_u64() -> u64 {
+    fn read_be_u64(&self) -> u64 {
         self.read_be_uint_n(8) as u64
     }
 
-    fn read_be_u32() -> u32 {
+    fn read_be_u32(&self) -> u32 {
         self.read_be_uint_n(4) as u32
     }
 
-    fn read_be_u16() -> u16 {
+    fn read_be_u16(&self) -> u16 {
         self.read_be_uint_n(2) as u16
     }
 
-    fn read_be_i64() -> i64 {
+    fn read_be_i64(&self) -> i64 {
         self.read_be_int_n(8) as i64
     }
 
-    fn read_be_i32() -> i32 {
+    fn read_be_i32(&self) -> i32 {
         self.read_be_int_n(4) as i32
     }
 
-    fn read_be_i16() -> i16 {
+    fn read_be_i16(&self) -> i16 {
         self.read_be_int_n(2) as i16
     }
 
-    fn read_le_u64() -> u64 {
+    fn read_le_u64(&self) -> u64 {
         self.read_le_uint_n(8) as u64
     }
 
-    fn read_le_u32() -> u32 {
+    fn read_le_u32(&self) -> u32 {
         self.read_le_uint_n(4) as u32
     }
 
-    fn read_le_u16() -> u16 {
+    fn read_le_u16(&self) -> u16 {
         self.read_le_uint_n(2) as u16
     }
 
-    fn read_le_i64() -> i64 {
+    fn read_le_i64(&self) -> i64 {
         self.read_le_int_n(8) as i64
     }
 
-    fn read_le_i32() -> i32 {
+    fn read_le_i32(&self) -> i32 {
         self.read_le_int_n(4) as i32
     }
 
-    fn read_le_i16() -> i16 {
+    fn read_le_i16(&self) -> i16 {
         self.read_le_int_n(2) as i16
     }
 
-    fn read_u8() -> u8 {
+    fn read_u8(&self) -> u8 {
         self.read_byte() as u8
     }
 
-    fn read_i8() -> i8 {
+    fn read_i8(&self) -> i8 {
         self.read_byte() as i8
     }
 }
@@ -409,36 +409,38 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 }
 
 impl *libc::FILE: Reader {
-    fn read(bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
         do vec::as_mut_buf(bytes) |buf_p, buf_len| {
             assert buf_len >= len;
 
             let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
-                                    len as size_t, self);
+                                    len as size_t, *self);
 
             count as uint
         }
     }
-    fn read_byte() -> int { return libc::fgetc(self) as int; }
-    fn eof() -> bool { return libc::feof(self) != 0 as c_int; }
-    fn seek(offset: int, whence: SeekStyle) {
-        assert libc::fseek(self, offset as c_long, convert_whence(whence))
+    fn read_byte(&self) -> int { return libc::fgetc(*self) as int; }
+    fn eof(&self) -> bool { return libc::feof(*self) != 0 as c_int; }
+    fn seek(&self, offset: int, whence: SeekStyle) {
+        assert libc::fseek(*self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
-    fn tell() -> uint { return libc::ftell(self) as uint; }
+    fn tell(&self) -> uint { return libc::ftell(*self) as uint; }
 }
 
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
 impl<T: Reader, C> {base: T, cleanup: C}: Reader {
-    fn read(bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
-    fn read_byte() -> int { self.base.read_byte() }
-    fn eof() -> bool { self.base.eof() }
-    fn seek(off: int, whence: SeekStyle) { self.base.seek(off, whence) }
-    fn tell() -> uint { self.base.tell() }
+    fn read_byte(&self) -> int { self.base.read_byte() }
+    fn eof(&self) -> bool { self.base.eof() }
+    fn seek(&self, off: int, whence: SeekStyle) {
+        self.base.seek(off, whence)
+    }
+    fn tell(&self) -> uint { self.base.tell() }
 }
 
 struct FILERes {
@@ -487,7 +489,7 @@ pub struct BytesReader {
 }
 
 impl BytesReader: Reader {
-    fn read(bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 
         let view = vec::view(self.bytes, self.pos, self.bytes.len());
@@ -497,18 +499,18 @@ impl BytesReader: Reader {
 
         count
     }
-    fn read_byte() -> int {
+    fn read_byte(&self) -> int {
         if self.pos == self.bytes.len() { return -1; }
         let b = self.bytes[self.pos];
         self.pos += 1u;
         return b as int;
     }
-    fn eof() -> bool { self.pos == self.bytes.len() }
-    fn seek(offset: int, whence: SeekStyle) {
+    fn eof(&self) -> bool { self.pos == self.bytes.len() }
+    fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = self.pos;
         self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
     }
-    fn tell() -> uint { self.pos }
+    fn tell(&self) -> uint { self.pos }
 }
 
 pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
@@ -532,34 +534,34 @@ pub enum WriterType { Screen, File }
 pub trait Writer {
 
     /// Write all of the given bytes.
-    fn write(v: &[const u8]);
+    fn write(&self, v: &[const u8]);
 
     /// Move the current position within the stream. The second parameter
     /// determines the position that the first parameter is relative to.
-    fn seek(int, SeekStyle);
+    fn seek(&self, int, SeekStyle);
 
     /// Return the current position within the stream.
-    fn tell() -> uint;
+    fn tell(&self) -> uint;
 
     /// Flush the output buffer for this stream (if there is one).
-    fn flush() -> int;
+    fn flush(&self) -> int;
 
     /// Determine if this Writer is writing to a file or not.
-    fn get_type() -> WriterType;
+    fn get_type(&self) -> WriterType;
 }
 
 impl<T: Writer, C> {base: T, cleanup: C}: Writer {
-    fn write(bs: &[const u8]) { self.base.write(bs); }
-    fn seek(off: int, style: SeekStyle) { self.base.seek(off, style); }
-    fn tell() -> uint { self.base.tell() }
-    fn flush() -> int { self.base.flush() }
-    fn get_type() -> WriterType { File }
+    fn write(&self, bs: &[const u8]) { self.base.write(bs); }
+    fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
+    fn tell(&self) -> uint { self.base.tell() }
+    fn flush(&self) -> int { self.base.flush() }
+    fn get_type(&self) -> WriterType { File }
 }
 
 impl *libc::FILE: Writer {
-    fn write(v: &[const u8]) {
+    fn write(&self, v: &[const u8]) {
         do vec::as_const_buf(v) |vbuf, len| {
-            let nout = libc::fwrite(vbuf as *c_void, 1, len as size_t, self);
+            let nout = libc::fwrite(vbuf as *c_void, 1, len as size_t, *self);
             if nout != len as size_t {
                 error!("error writing buffer");
                 log(error, os::last_os_error());
@@ -567,14 +569,14 @@ impl *libc::FILE: Writer {
             }
         }
     }
-    fn seek(offset: int, whence: SeekStyle) {
-        assert libc::fseek(self, offset as c_long, convert_whence(whence))
+    fn seek(&self, offset: int, whence: SeekStyle) {
+        assert libc::fseek(*self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
-    fn tell() -> uint { libc::ftell(self) as uint }
-    fn flush() -> int { libc::fflush(self) as int }
-    fn get_type() -> WriterType {
-        let fd = libc::fileno(self);
+    fn tell(&self) -> uint { libc::ftell(*self) as uint }
+    fn flush(&self) -> int { libc::fflush(*self) as int }
+    fn get_type(&self) -> WriterType {
+        let fd = libc::fileno(*self);
         if libc::isatty(fd) == 0 { File   }
         else                     { Screen }
     }
@@ -589,12 +591,12 @@ pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
 }
 
 impl fd_t: Writer {
-    fn write(v: &[const u8]) {
+    fn write(&self, v: &[const u8]) {
         let mut count = 0u;
         do vec::as_const_buf(v) |vbuf, len| {
             while count < len {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
-                let nout = libc::write(self, vb, len as size_t);
+                let nout = libc::write(*self, vb, len as size_t);
                 if nout < 0 as ssize_t {
                     error!("error writing buffer");
                     log(error, os::last_os_error());
@@ -604,17 +606,17 @@ impl fd_t: Writer {
             }
         }
     }
-    fn seek(_offset: int, _whence: SeekStyle) {
+    fn seek(&self, _offset: int, _whence: SeekStyle) {
         error!("need 64-bit foreign calls for seek, sorry");
         fail;
     }
-    fn tell() -> uint {
+    fn tell(&self) -> uint {
         error!("need 64-bit foreign calls for tell, sorry");
         fail;
     }
-    fn flush() -> int { 0 }
-    fn get_type() -> WriterType {
-        if libc::isatty(self) == 0 { File } else { Screen }
+    fn flush(&self) -> int { 0 }
+    fn get_type(&self) -> WriterType {
+        if libc::isatty(*self) == 0 { File } else { Screen }
     }
 }
 
@@ -752,145 +754,145 @@ pub fn u64_from_be_bytes(data: &[const u8],
 pub trait WriterUtil {
 
     /// Write a single utf-8 encoded char.
-    fn write_char(ch: char);
+    fn write_char(&self, ch: char);
 
     /// Write every char in the given str, encoded as utf-8.
-    fn write_str(s: &str);
+    fn write_str(&self, s: &str);
 
     /// Write the given str, as utf-8, followed by '\n'.
-    fn write_line(s: &str);
+    fn write_line(&self, s: &str);
 
     /// Write the result of passing n through `int::to_str_bytes`.
-    fn write_int(n: int);
+    fn write_int(&self, n: int);
 
     /// Write the result of passing n through `uint::to_str_bytes`.
-    fn write_uint(n: uint);
+    fn write_uint(&self, n: uint);
 
     /// Write a little-endian uint (number of bytes depends on system).
-    fn write_le_uint(n: uint);
+    fn write_le_uint(&self, n: uint);
 
     /// Write a little-endian int (number of bytes depends on system).
-    fn write_le_int(n: int);
+    fn write_le_int(&self, n: int);
 
     /// Write a big-endian uint (number of bytes depends on system).
-    fn write_be_uint(n: uint);
+    fn write_be_uint(&self, n: uint);
 
     /// Write a big-endian int (number of bytes depends on system).
-    fn write_be_int(n: int);
+    fn write_be_int(&self, n: int);
 
     /// Write a big-endian u64 (8 bytes).
-    fn write_be_u64(n: u64);
+    fn write_be_u64(&self, n: u64);
 
     /// Write a big-endian u32 (4 bytes).
-    fn write_be_u32(n: u32);
+    fn write_be_u32(&self, n: u32);
 
     /// Write a big-endian u16 (2 bytes).
-    fn write_be_u16(n: u16);
+    fn write_be_u16(&self, n: u16);
 
     /// Write a big-endian i64 (8 bytes).
-    fn write_be_i64(n: i64);
+    fn write_be_i64(&self, n: i64);
 
     /// Write a big-endian i32 (4 bytes).
-    fn write_be_i32(n: i32);
+    fn write_be_i32(&self, n: i32);
 
     /// Write a big-endian i16 (2 bytes).
-    fn write_be_i16(n: i16);
+    fn write_be_i16(&self, n: i16);
 
     /// Write a little-endian u64 (8 bytes).
-    fn write_le_u64(n: u64);
+    fn write_le_u64(&self, n: u64);
 
     /// Write a little-endian u32 (4 bytes).
-    fn write_le_u32(n: u32);
+    fn write_le_u32(&self, n: u32);
 
     /// Write a little-endian u16 (2 bytes).
-    fn write_le_u16(n: u16);
+    fn write_le_u16(&self, n: u16);
 
     /// Write a little-endian i64 (8 bytes).
-    fn write_le_i64(n: i64);
+    fn write_le_i64(&self, n: i64);
 
     /// Write a little-endian i32 (4 bytes).
-    fn write_le_i32(n: i32);
+    fn write_le_i32(&self, n: i32);
 
     /// Write a little-endian i16 (2 bytes).
-    fn write_le_i16(n: i16);
+    fn write_le_i16(&self, n: i16);
 
     /// Write a u8 (1 byte).
-    fn write_u8(n: u8);
+    fn write_u8(&self, n: u8);
 
     /// Write a i8 (1 byte).
-    fn write_i8(n: i8);
+    fn write_i8(&self, n: i8);
 }
 
 impl<T: Writer> T : WriterUtil {
-    fn write_char(ch: char) {
+    fn write_char(&self, ch: char) {
         if ch as uint < 128u {
             self.write(&[ch as u8]);
         } else {
             self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(s: &str) { str::byte_slice(s, |v| self.write(v)) }
-    fn write_line(s: &str) {
+    fn write_str(&self, s: &str) { str::byte_slice(s, |v| self.write(v)) }
+    fn write_line(&self, s: &str) {
         self.write_str(s);
         self.write_str(&"\n");
     }
-    fn write_int(n: int) {
+    fn write_int(&self, n: int) {
         int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
-    fn write_uint(n: uint) {
+    fn write_uint(&self, n: uint) {
         uint::to_str_bytes(false, n, 10u, |bytes| self.write(bytes))
     }
-    fn write_le_uint(n: uint) {
+    fn write_le_uint(&self, n: uint) {
         u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
     }
-    fn write_le_int(n: int) {
+    fn write_le_int(&self, n: int) {
         u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
     }
-    fn write_be_uint(n: uint) {
+    fn write_be_uint(&self, n: uint) {
         u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
     }
-    fn write_be_int(n: int) {
+    fn write_be_int(&self, n: int) {
         u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
     }
-    fn write_be_u64(n: u64) {
+    fn write_be_u64(&self, n: u64) {
         u64_to_be_bytes(n, 8u, |v| self.write(v))
     }
-    fn write_be_u32(n: u32) {
+    fn write_be_u32(&self, n: u32) {
         u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
-    fn write_be_u16(n: u16) {
+    fn write_be_u16(&self, n: u16) {
         u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
-    fn write_be_i64(n: i64) {
+    fn write_be_i64(&self, n: i64) {
         u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
     }
-    fn write_be_i32(n: i32) {
+    fn write_be_i32(&self, n: i32) {
         u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
-    fn write_be_i16(n: i16) {
+    fn write_be_i16(&self, n: i16) {
         u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
-    fn write_le_u64(n: u64) {
+    fn write_le_u64(&self, n: u64) {
         u64_to_le_bytes(n, 8u, |v| self.write(v))
     }
-    fn write_le_u32(n: u32) {
+    fn write_le_u32(&self, n: u32) {
         u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
-    fn write_le_u16(n: u16) {
+    fn write_le_u16(&self, n: u16) {
         u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
-    fn write_le_i64(n: i64) {
+    fn write_le_i64(&self, n: i64) {
         u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
     }
-    fn write_le_i32(n: i32) {
+    fn write_le_i32(&self, n: i32) {
         u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
-    fn write_le_i16(n: i16) {
+    fn write_le_i16(&self, n: i16) {
         u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
-    fn write_u8(n: u8) { self.write([n]) }
-    fn write_i8(n: i8) { self.write([n as u8]) }
+    fn write_u8(&self, n: u8) { self.write([n]) }
+    fn write_i8(&self, n: i8) { self.write([n as u8]) }
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -926,7 +928,7 @@ pub struct BytesWriter {
 }
 
 impl BytesWriter: Writer {
-    fn write(v: &[const u8]) {
+    fn write(&self, v: &[const u8]) {
         do self.bytes.swap |bytes| {
             let mut bytes = move bytes;
             let v_len = v.len();
@@ -946,22 +948,14 @@ impl BytesWriter: Writer {
             move bytes
         }
     }
-    fn seek(offset: int, whence: SeekStyle) {
+    fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = self.pos;
         let len = self.bytes.len();
         self.pos = seek_in_buf(offset, pos, len, whence);
     }
-    fn tell() -> uint { self.pos }
-    fn flush() -> int { 0 }
-    fn get_type() -> WriterType { File }
-}
-
-impl @BytesWriter : Writer {
-    fn write(v: &[const u8]) { (*self).write(v) }
-    fn seek(offset: int, whence: SeekStyle) { (*self).seek(offset, whence) }
-    fn tell() -> uint { (*self).tell() }
-    fn flush() -> int { (*self).flush() }
-    fn get_type() -> WriterType { (*self).get_type() }
+    fn tell(&self) -> uint { self.pos }
+    fn flush(&self) -> int { 0 }
+    fn get_type(&self) -> WriterType { File }
 }
 
 pub pure fn BytesWriter() -> BytesWriter {
@@ -1091,7 +1085,7 @@ pub mod fsync {
     }
 
     // Type of objects that may want to fsync
-    pub trait FSyncable { fn fsync(l: Level) -> int; }
+    pub trait FSyncable { fn fsync(&self, l: Level) -> int; }
 
     // Call o.fsync after executing blk
     pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
