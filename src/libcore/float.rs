@@ -466,9 +466,9 @@ pub fn test_from_str() {
    assert from_str(~".e-1") == Some(0.);
    assert from_str(~"5.") == Some(5.);
    assert from_str(~".5") == Some(0.5);
-   assert from_str(~"0.6") == Some(0.5);
-   assert from_str(~"0.6") == Some(0.5);
-   assert from_str(~"0.6") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
    assert from_str(~"-.5") == Some(-0.5);
    assert from_str(~"-.5") == Some(-0.5);
    assert from_str(~"-5") == Some(-5.);
