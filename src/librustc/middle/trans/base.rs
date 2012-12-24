@@ -545,7 +545,10 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                 j += 1u;
             }
           }
-          _ => cx.tcx().sess.bug(~"iter_variant: not a function type")
+          _ => cx.tcx().sess.bug(fmt!("iter_variant: not a function type: \
+                                       %s (variant name = %s)",
+                                      cx.ty_to_str(fn_ty),
+                                      cx.sess().str_of(variant.name)))
         }
         return cx;
     }

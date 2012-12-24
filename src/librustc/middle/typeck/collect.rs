@@ -158,13 +158,26 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 result_ty = Some(enum_ty);
             }
             ast::struct_variant_kind(struct_def) => {
-                result_ty = Some(enum_ty);
                 // XXX: Merge with computation of the the same value below?
                 let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                            region_param: rp,
                            ty: enum_ty};
                 convert_struct(
                     ccx, rp, struct_def, ty_params, tpt, variant.node.id);
+                // Compute the ctor arg types from the struct fields
+                let struct_fields = do struct_def.fields.map |struct_field| {
+                    {mode: ast::expl(ast::by_val),
+                     ty: ty::node_id_to_type(ccx.tcx, (*struct_field).node.id)
+                    }
+                };
+                result_ty = Some(ty::mk_fn(tcx, FnTyBase {
+                    meta: FnMeta {purity: ast::pure_fn,
+                                  proto: ast::ProtoBare,
+                                  onceness: ast::Many,
+                                  bounds: @~[],
+                                  region: ty::re_static,
+                                  ret_style: ast::return_val},
+                    sig: FnSig {inputs: struct_fields, output: enum_ty }}));
             }
             ast::enum_variant_kind(ref enum_definition) => {
                 get_enum_variant_types(ccx,
