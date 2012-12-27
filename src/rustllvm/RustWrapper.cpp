@@ -281,7 +281,7 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   if (Name == "mknod") return (void*)(intptr_t)&mknod;
 #endif
 
-  if (Name == "__morestack") return &__morestack;
+  if (Name == "__morestack" || Name == "___morestack") return &__morestack;
 
   const char *NameStr = Name.c_str();
 
