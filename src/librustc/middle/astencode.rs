@@ -23,12 +23,13 @@ use middle::{ty, typeck};
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::{dvec, option, vec};
+use core::{dvec, io, option, vec};
 use std::ebml::reader::get_doc;
 use std::ebml::reader;
 use std::ebml::writer::Encoder;
 use std::ebml;
 use std::map::HashMap;
+use std::prettyprint;
 use std::serialize;
 use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
 use std::serialize::Decodable;
@@ -1071,10 +1072,10 @@ fn roundtrip(in_item: Option<@ast::item>) {
     let out_item = decode_item_ast(ebml_doc);
 
     let exp_str = do io::with_str_writer |w| {
-        in_item.encode(&std::prettyprint::Encoder(w))
+        in_item.encode(&prettyprint::Serializer(w))
     };
     let out_str = do io::with_str_writer |w| {
-        out_item.encode(&std::prettyprint::Encoder(w))
+        out_item.encode(&prettyprint::Serializer(w))
     };
 
     debug!("expected string: %s", exp_str);

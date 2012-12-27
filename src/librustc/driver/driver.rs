@@ -828,6 +828,11 @@ fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
 mod test {
     #[legacy_exports];
 
+    use core::vec;
+    use std::getopts;
+    use syntax::attr;
+    use syntax::diagnostic;
+
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
