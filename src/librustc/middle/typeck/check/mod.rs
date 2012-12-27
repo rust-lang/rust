@@ -3224,6 +3224,18 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
          (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
          ty::mk_i64(tcx))
      }
+     ~"bswap16" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i16(tcx))],
+         ty::mk_i16(tcx))
+     }
+     ~"bswap32" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i32(tcx))],
+         ty::mk_i32(tcx))
+     }
+     ~"bswap64" => {
+         (0u, ~[arg(ast::by_copy, ty::mk_i64(tcx))],
+         ty::mk_i64(tcx))
+     }
      ref other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
                           (*other) + ~"`");
