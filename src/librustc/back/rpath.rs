@@ -114,7 +114,10 @@ fn get_rpaths_relative_to_output(os: session::os,
 
 fn get_rpath_relative_to_output(os: session::os,
                                 output: &Path,
-                                lib: &Path) -> Path {
+                                lib: &Path)
+                             -> Path {
+    use core::os;
+
     assert not_win32(os);
 
     // Mac doesn't appear to support $ORIGIN
@@ -197,6 +200,12 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 #[cfg(unix)]
 mod test {
     #[legacy_exports];
+
+    use driver::session;
+
+    use core::os;
+    use core::str;
+
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(~[Path("path1"),
