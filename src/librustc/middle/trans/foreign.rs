@@ -1267,6 +1267,21 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let cttz = ccx.intrinsics.get(~"llvm.cttz.i64");
             Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
         }
+        ~"bswap16" => {
+            let x = get_param(decl, first_real_arg);
+            let cttz = ccx.intrinsics.get(~"llvm.bswap.i16");
+            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr)
+        }
+        ~"bswap32" => {
+            let x = get_param(decl, first_real_arg);
+            let cttz = ccx.intrinsics.get(~"llvm.bswap.i32");
+            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr)
+        }
+        ~"bswap64" => {
+            let x = get_param(decl, first_real_arg);
+            let cttz = ccx.intrinsics.get(~"llvm.bswap.i64");
+            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr)
+        }
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?

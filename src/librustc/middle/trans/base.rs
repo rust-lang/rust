@@ -2446,6 +2446,12 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                                 T_fn(~[T_i32(), T_i1()], T_i32()));
     let cttz64 = decl_cdecl_fn(llmod, ~"llvm.cttz.i64",
                                 T_fn(~[T_i64(), T_i1()], T_i64()));
+    let bswap16 = decl_cdecl_fn(llmod, ~"llvm.bswap.i16",
+                                T_fn(~[T_i16()], T_i16()));
+    let bswap32 = decl_cdecl_fn(llmod, ~"llvm.bswap.i32",
+                                T_fn(~[T_i32()], T_i32()));
+    let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
+                                T_fn(~[T_i64()], T_i64()));
 
     let intrinsics = HashMap();
     intrinsics.insert(~"llvm.gcroot", gcroot);
@@ -2498,6 +2504,9 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.cttz.i16", cttz16);
     intrinsics.insert(~"llvm.cttz.i32", cttz32);
     intrinsics.insert(~"llvm.cttz.i64", cttz64);
+    intrinsics.insert(~"llvm.bswap.i16", bswap16);
+    intrinsics.insert(~"llvm.bswap.i32", bswap32);
+    intrinsics.insert(~"llvm.bswap.i64", bswap64);
 
     return intrinsics;
 }
