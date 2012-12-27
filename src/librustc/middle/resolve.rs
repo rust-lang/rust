@@ -2086,8 +2086,11 @@ impl Resolver {
             match self.resolve_import_for_module(module_, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
-                    self.session.span_err(import_directive.span,
-                                          ~"failed to resolve import");
+                    let idents = import_directive.module_path.get();
+                    let msg = fmt!("failed to resolve import: %s",
+                                   self.import_path_to_str(idents,
+                                   *import_directive.subclass));
+                    self.session.span_err(import_directive.span, msg);
                 }
                 Indeterminate => {
                     // Bail out. We'll come around next time.
@@ -2117,6 +2120,26 @@ impl Resolver {
         // XXX: Shouldn't copy here. We need string builder functionality.
         return result;
     }
+    
+    fn import_directive_subclass_to_str(subclass: ImportDirectiveSubclass)
+                                                                     -> ~str {
+        match subclass {
+            SingleImport(_target, source, _ns) => self.session.str_of(source),
+            GlobImport => ~"*"
+        }
+    }
+    
+    fn import_path_to_str(idents: ~[ident], subclass: ImportDirectiveSubclass)
+                                                                     -> ~str {
+        if idents.is_empty() {
+            self.import_directive_subclass_to_str(subclass)
+        } else {
+            fmt!("%s::%s",
+                 self.idents_to_str(idents),
+                 self.import_directive_subclass_to_str(subclass))
+        }
+    }
+    
     /**
      * Attempts to resolve the given import. The return value indicates
      * failure if we're certain the name does not exist, indeterminate if we
