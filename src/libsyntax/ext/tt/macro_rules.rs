@@ -33,7 +33,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                      arg: ~[ast::token_tree]) -> base::mac_result {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: dummy_sp()}
+        ast::spanned { node: m, span: dummy_sp() }
     }
 
     let lhs_nm =  cx.parse_sess().interner.gensym(@~"lhs");

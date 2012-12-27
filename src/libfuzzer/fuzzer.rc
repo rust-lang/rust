@@ -81,7 +81,7 @@ fn common_exprs() -> ~[ast::expr] {
     }
 
     fn dsl(l: ast::lit_) -> ast::lit {
-        { node: l, span: ast_util::dummy_sp() }
+        ast::spanned { node: l, span: ast_util::dummy_sp() }
     }
 
     ~[dse(ast::expr_break(option::None)),

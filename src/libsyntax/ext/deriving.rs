@@ -16,10 +16,10 @@ use core::prelude::*;
 use ast::{Ty, and, bind_by_ref, binop, deref, enum_def, enum_variant_kind};
 use ast::{expr, expr_match, ident, item, item_, item_struct, item_enum};
 use ast::{item_impl, m_imm, meta_item, method, named_field, or, pat};
-use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, stmt, struct_def};
-use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
-use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_rptr, unnamed_field};
-use ast::{variant};
+use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, spanned, stmt};
+use ast::{struct_def, struct_variant_kind, sty_by_ref, sty_region};
+use ast::{tuple_variant_kind, ty_nil, ty_param, ty_param_bound, ty_path};
+use ast::{ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
 use codemap::span;
@@ -159,7 +159,7 @@ fn create_eq_method(cx: ext_ctxt,
     let body_block = build::mk_simple_block(cx, span, body);
 
     // Create the method.
-    let self_ty = { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(m_imm), span: span };
     return @{
         ident: method_ident,
         attrs: ~[],
@@ -309,7 +309,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     let body_block = build::mk_block_(cx, span, move statements);
 
     // Create the method.
-    let self_ty = { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
     return @{
         ident: method_ident,

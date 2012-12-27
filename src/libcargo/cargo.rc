@@ -294,7 +294,8 @@ fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
     let mut uuid = None;
     for mis.each |a| {
         match a.node {
-            ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
+            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(s),
+                                                   _ }) => {
                 match v {
                     ~"name" => name = Some(*s),
                     ~"vers" => vers = Some(*s),
@@ -321,7 +322,8 @@ fn load_crate(filename: &Path) -> Option<Crate> {
 
     for c.node.attrs.each |a| {
         match a.node.value.node {
-            ast::meta_name_value(v, {node: ast::lit_str(_), span: _}) => {
+            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(_),
+                                                   _ }) => {
                 match v {
                     ~"desc" => desc = Some(v),
                     ~"sigs" => sigs = Some(v),

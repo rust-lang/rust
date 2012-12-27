@@ -552,11 +552,12 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let self_ty = ty::node_id_to_type(tcx, id);
 
     do struct_def.dtor.iter() |dtor| {
-        let class_t = {self_ty: self_ty,
-                       self_id: dtor.node.self_id,
-                       def_id: local_def(id),
-                       explicit_self: {node: ast::sty_by_ref,
-                                       span: ast_util::dummy_sp()}};
+        let class_t = { self_ty: self_ty,
+                        self_id: dtor.node.self_id,
+                        def_id: local_def(id),
+                        explicit_self:
+                            spanned { node: ast::sty_by_ref,
+                                      span: ast_util::dummy_sp() } };
         // typecheck the dtor
         check_bare_fn(ccx, ast_util::dtor_dec(),
                       dtor.node.body, dtor.node.id,
@@ -1911,7 +1912,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     match /*bad*/copy expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match /*bad*/copy ev.node {
-          ast::expr_lit(@{node: ast::lit_str(s), span:_}) => {
+          ast::expr_lit(@ast::spanned { node: ast::lit_str(s), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
             ty::mk_estr(tcx, tt)
           }
@@ -2600,7 +2601,8 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
         for blk.node.stmts.each |s| {
             if bot && !warned &&
                 match s.node {
-                  ast::stmt_decl(@{node: ast::decl_local(_), _}, _) |
+                  ast::stmt_decl(@ast::spanned { node: ast::decl_local(_),
+                                                 _}, _) |
                   ast::stmt_expr(_, _) | ast::stmt_semi(_, _) => {
                     true
                   }

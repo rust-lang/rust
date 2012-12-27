@@ -242,7 +242,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
 }
 
 fn nospan<T: Copy>(t: T) -> ast::spanned<T> {
-    return {node: t, span: dummy_sp()};
+    ast::spanned { node: t, span: dummy_sp() }
 }
 
 fn path_node(+ids: ~[ast::ident]) -> @ast::path {
@@ -489,7 +489,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let body_: ast::blk_ =
         default_block(~[], option::Some(test_main_call_expr),
                       cx.sess.next_node_id());
-    let body = {node: body_, span: dummy_sp()};
+    let body = ast::spanned { node: body_, span: dummy_sp() };
 
     let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
     let item: ast::item =

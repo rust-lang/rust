@@ -1938,7 +1938,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         } else {
             for vec::each((*body).node.stmts) |stmt| {
                 match stmt.node {
-                  ast::stmt_decl(@{node: ast::decl_item(i), _}, _) => {
+                  ast::stmt_decl(@ast::spanned { node: ast::decl_item(i),
+                                                 _ }, _) => {
                     trans_item(ccx, *i);
                   }
                   _ => ()
