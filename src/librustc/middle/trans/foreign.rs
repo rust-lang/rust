@@ -1194,6 +1194,74 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let truncf = ccx.intrinsics.get(~"llvm.trunc.f64");
             Store(bcx, Call(bcx, truncf, ~[x]), fcx.llretptr);
         }
+        ~"ctpop8" => {
+            let x = get_param(decl, first_real_arg);
+            let ctpop = ccx.intrinsics.get(~"llvm.ctpop.i8");
+            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr)
+        }
+        ~"ctpop16" => {
+            let x = get_param(decl, first_real_arg);
+            let ctpop = ccx.intrinsics.get(~"llvm.ctpop.i16");
+            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr)
+        }
+        ~"ctpop32" => {
+            let x = get_param(decl, first_real_arg);
+            let ctpop = ccx.intrinsics.get(~"llvm.ctpop.i32");
+            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr)
+        }
+        ~"ctpop64" => {
+            let x = get_param(decl, first_real_arg);
+            let ctpop = ccx.intrinsics.get(~"llvm.ctpop.i64");
+            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr)
+        }
+        ~"ctlz8" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let ctlz = ccx.intrinsics.get(~"llvm.ctlz.i8");
+            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
+        }
+        ~"ctlz16" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let ctlz = ccx.intrinsics.get(~"llvm.ctlz.i16");
+            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
+        }
+        ~"ctlz32" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let ctlz = ccx.intrinsics.get(~"llvm.ctlz.i32");
+            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
+        }
+        ~"ctlz64" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let ctlz = ccx.intrinsics.get(~"llvm.ctlz.i64");
+            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
+        }
+        ~"cttz8" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let cttz = ccx.intrinsics.get(~"llvm.cttz.i8");
+            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
+        }
+        ~"cttz16" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let cttz = ccx.intrinsics.get(~"llvm.cttz.i16");
+            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
+        }
+        ~"cttz32" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let cttz = ccx.intrinsics.get(~"llvm.cttz.i32");
+            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
+        }
+        ~"cttz64" => {
+            let x = get_param(decl, first_real_arg);
+            let y = C_bool(false);
+            let cttz = ccx.intrinsics.get(~"llvm.cttz.i64");
+            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
+        }
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
