@@ -299,8 +299,8 @@ priv impl ext_ctxt {
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @{node: ast::stmt_semi(expr, self.next_id()),
-          span: expr.span}
+        @ast::spanned { node: ast::stmt_semi(expr, self.next_id()),
+                       span: expr.span }
     }
 
     fn lit_str(span: span, s: @~str) -> @ast::expr {
@@ -310,8 +310,8 @@ priv impl ext_ctxt {
                 self.expr(
                     span,
                     ast::expr_lit(
-                        @{node: ast::lit_str(s),
-                          span: span})),
+                        @ast::spanned { node: ast::lit_str(s),
+                                        span: span})),
                 ast::expr_vstore_uniq))
     }
 
@@ -319,8 +319,8 @@ priv impl ext_ctxt {
         self.expr(
             span,
             ast::expr_lit(
-                @{node: ast::lit_uint(i as u64, ast::ty_u),
-                  span: span}))
+                @ast::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
+                                span: span}))
     }
 
     fn lambda(blk: ast::blk) -> @ast::expr {
@@ -330,21 +330,21 @@ priv impl ext_ctxt {
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: stmts,
-                expr: None,
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: span}
+        ast::spanned { node: { view_items: ~[],
+                               stmts: stmts,
+                               expr: None,
+                               id: self.next_id(),
+                               rules: ast::default_blk},
+                       span: span }
     }
 
     fn expr_blk(expr: @ast::expr) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: ~[],
-                expr: Some(expr),
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: expr.span}
+        ast::spanned { node: { view_items: ~[],
+                               stmts: ~[],
+                               expr: Some(expr),
+                               id: self.next_id(),
+                               rules: ast::default_blk},
+                       span: expr.span }
     }
 
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
@@ -570,7 +570,8 @@ fn mk_ser_method(
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: { node: ast::sty_region(ast::m_imm), span: span },
+        self_ty: ast::spanned { node: ast::sty_region(ast::m_imm),
+                                span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
         body: ser_body,
@@ -624,7 +625,8 @@ fn mk_deser_method(
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: { node: ast::sty_static, span: span },
+        self_ty: ast::spanned { node: ast::sty_static,
+                                span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -862,7 +864,7 @@ fn mk_deser_fields(
             ]
         );
 
-        {
+        ast::spanned {
             node: { mutbl: field.mutbl, ident: field.ident, expr: expr },
             span: span,
         }

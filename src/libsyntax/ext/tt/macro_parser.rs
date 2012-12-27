@@ -189,13 +189,13 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
              ret_val: HashMap<ident, @named_match>) {
         match m {
-          {node: match_tok(_), span: _} => (),
-          {node: match_seq(ref more_ms, _, _, _, _), span: _} => {
+          spanned {node: match_tok(_), _} => (),
+          spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
             for (*more_ms).each() |next_m| {
                 n_rec(p_s, *next_m, res, ret_val)
             };
           }
-          {node: match_nonterminal(bind_name, _, idx), span: sp} => {
+          spanned {node: match_nonterminal(bind_name, _, idx), span: sp} => {
             if ret_val.contains_key(bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
                                                *p_s.interner.get(bind_name))

@@ -409,7 +409,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     match stmt.node {
-      stmt_decl(@{node: decl_local(ref locals), _}, _) => {
+      stmt_decl(@spanned {node: decl_local(ref locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
               Some(expr) =>

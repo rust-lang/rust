@@ -23,8 +23,7 @@ use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[auto_encode]
 #[auto_decode]
-type spanned<T> = {node: T, span: span};
-
+struct spanned<T> { node: T, span: span }
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */

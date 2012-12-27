@@ -772,7 +772,7 @@ impl Parser {
             self.bump();
             self.lit_from_token(tok)
         };
-        return {node: lit, span: mk_sp(lo, self.last_span.hi)};
+        spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
     fn parse_path_without_tps() -> @path {
@@ -844,7 +844,7 @@ impl Parser {
                 self.parse_seq_lt_gt(Some(token::COMMA),
                                      |p| p.parse_ty(false))
             } else {
-                {node: ~[], span: path.span}
+                spanned {node: ~[], span: path.span}
             }
         };
 
@@ -880,14 +880,14 @@ impl Parser {
     fn mk_mac_expr(+lo: BytePos, +hi: BytePos, m: mac_) -> @expr {
         return @{id: self.get_id(),
               callee_id: self.get_id(),
-              node: expr_mac({node: m, span: mk_sp(lo, hi)}),
+              node: expr_mac(spanned {node: m, span: mk_sp(lo, hi)}),
               span: mk_sp(lo, hi)};
     }
 
     fn mk_lit_u32(i: u32) -> @expr {
         let span = self.span;
-        let lv_lit = @{node: lit_uint(i as u64, ty_u32),
-                       span: span};
+        let lv_lit = @spanned { node: lit_uint(i as u64, ty_u32),
+                                span: span };
 
         return @{id: self.get_id(), callee_id: self.get_id(),
               node: expr_lit(lv_lit), span: span};
@@ -1363,7 +1363,7 @@ impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
-                  expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
+                  expr_vec(*) | expr_lit(@spanned {node: lit_str(_), span: _})
                   if m == m_imm => {
                     expr_vstore(e, expr_vstore_slice)
                   }
@@ -1386,7 +1386,7 @@ impl Parser {
               expr_vec(*) if m == m_mutbl =>
                 expr_vstore(e, expr_vstore_mut_box),
               expr_vec(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
-              expr_lit(@{node: lit_str(_), span: _}) if m == m_imm =>
+              expr_lit(@spanned {node: lit_str(_), span: _}) if m == m_imm =>
                 expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
             };
@@ -1398,7 +1398,7 @@ impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
-              expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
+              expr_vec(*) | expr_lit(@spanned {node: lit_str(_), span: _})
               if m == m_imm => expr_vstore(e, expr_vstore_uniq),
               _ => expr_unary(uniq(m), e)
             };
@@ -1748,12 +1748,12 @@ impl Parser {
                 self.eat(token::COMMA);
             }
 
-            let blk = {node: {view_items: ~[],
-                              stmts: ~[],
-                              expr: Some(expr),
-                              id: self.get_id(),
-                              rules: default_blk},
-                       span: expr.span};
+            let blk = spanned { node: { view_items: ~[],
+                                        stmts: ~[],
+                                        expr: Some(expr),
+                                        id: self.get_id(),
+                                        rules: default_blk},
+                                span: expr.span };
 
             arms.push({pats: pats, guard: guard, body: blk});
         }
@@ -1893,7 +1893,7 @@ impl Parser {
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
               pat_lit(e@@{
-                node: expr_lit(@{node: lit_str(_), span: _}), _
+                node: expr_lit(@spanned {node: lit_str(_), span: _}), _
               }) => {
                 let vst = @{id: self.get_id(), callee_id: self.get_id(),
                             node: expr_vstore(e, expr_vstore_box),
@@ -1910,7 +1910,7 @@ impl Parser {
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
               pat_lit(e@@{
-                node: expr_lit(@{node: lit_str(_), span: _}), _
+                node: expr_lit(@spanned {node: lit_str(_), span: _}), _
               }) => {
                 let vst = @{id: self.get_id(), callee_id: self.get_id(),
                             node: expr_vstore(e, expr_vstore_uniq),
@@ -1929,7 +1929,7 @@ impl Parser {
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
                   pat_lit(e@@{
-                      node: expr_lit(@{node: lit_str(_), span: _}), _
+                      node: expr_lit(@spanned {node: lit_str(_), span: _}), _
                   }) => {
                       let vst = @{
                           id: self.get_id(),
@@ -1954,7 +1954,7 @@ impl Parser {
             if self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
-                let lit = @{node: lit_nil, span: mk_sp(lo, hi)};
+                let lit = @spanned {node: lit_nil, span: mk_sp(lo, hi)};
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
@@ -2319,8 +2319,9 @@ impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@{node: stmt_semi(e, stmt_id),
-                                                 ..*stmt});
+                                    stmts.push(@spanned {
+                                        node: stmt_semi(e, stmt_id),
+                                        .. *stmt});
                                 }
                                 token::RBRACE => {
                                     expr = Some(e);
@@ -2343,8 +2344,9 @@ impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@{node: stmt_mac((*m), true),
-                                                 ..*stmt});
+                                    stmts.push(@spanned {
+                                        node: stmt_mac((*m), true),
+                                        .. *stmt});
                                 }
                                 token::RBRACE => {
                                     // if a block ends in `m!(arg)` without
@@ -2811,11 +2813,11 @@ impl Parser {
 
         let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            {node: {id: self.get_id(),
-                    attrs: d_attrs,
-                    self_id: self.get_id(),
-                    body: d_body},
-             span: d_s}};
+            spanned { node: { id: self.get_id(),
+                              attrs: d_attrs,
+                              self_id: self.get_id(),
+                              body: d_body},
+                       span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
@@ -3308,11 +3310,11 @@ impl Parser {
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            {node: {id: self.get_id(),
-                    attrs: d_attrs,
-                    self_id: self.get_id(),
-                    body: d_body},
-             span: d_s}
+            spanned { node: { id: self.get_id(),
+                              attrs: d_attrs,
+                              self_id: self.get_id(),
+                              body: d_body },
+                      span: d_s }
         };
 
         return @{
@@ -3592,9 +3594,9 @@ impl Parser {
               _ => self.fatal(~"expected open delimiter")
             };
             let m = ast::mac_invoc_tt(pth, tts);
-            let m: ast::mac = {node: m,
-                               span: mk_sp(self.span.lo,
-                                           self.span.hi)};
+            let m: ast::mac = spanned { node: m,
+                                        span: mk_sp(self.span.lo,
+                                                    self.span.hi) };
             let item_ = item_mac(m);
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));

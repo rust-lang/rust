@@ -467,7 +467,8 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
            match e.node {
              ast::expr_while(cond, _) => {
                 match cond.node {
-                    ast::expr_lit(@{node: ast::lit_bool(true),_}) => {
+                    ast::expr_lit(@ast::spanned { node: ast::lit_bool(true),
+                                                  _}) => {
                             cx.sess.span_lint(
                                 while_true, e.id, it.id,
                                 e.span,

@@ -176,12 +176,15 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     match fk {
-      visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
-          let dt = @{node: {id: id, attrs: (*attrs), self_id: self_id,
-                     body: /* FIXME (#2543) */ copy body}, span: sp};
-          cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
-                                      parent_id,
-                                      @/* FIXME (#2543) */ copy cx.path));
+        visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
+            let dt = @spanned {
+                node: {id: id, attrs: (*attrs), self_id: self_id,
+                     body: /* FIXME (#2543) */ copy body},
+                span: sp,
+            };
+            cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
+                                        parent_id,
+                                        @/* FIXME (#2543) */ copy cx.path));
       }
       _ => ()
     }

@@ -692,7 +692,10 @@ fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
         is_refutable(cx, sub)
       }
       pat_wild | pat_ident(_, _, None) => { false }
-      pat_lit(@{node: expr_lit(@{node: lit_nil, _}), _}) => { false } // "()"
+      pat_lit(@{node: expr_lit(@spanned { node: lit_nil, _}), _}) => {
+        // "()"
+        false
+      }
       pat_lit(_) | pat_range(_, _) => { true }
       pat_rec(fields, _) => {
         fields.any(|f| is_refutable(cx, f.pat))

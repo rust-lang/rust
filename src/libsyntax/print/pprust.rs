@@ -599,7 +599,8 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac({node: ast::mac_invoc_tt(pth, ref tts), _}) => {
+      ast::item_mac(ast::spanned { node: ast::mac_invoc_tt(pth, ref tts),
+                                   _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
         word(s.s, ~"! ");

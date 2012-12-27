@@ -259,8 +259,10 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         let stmts_sans_items = do vec::filter(blk.stmts) |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) => true,
-              ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) => false,
+              ast::stmt_decl(@ast::spanned { node: ast::decl_local(_),
+                                             span: _}, _) => true,
+              ast::stmt_decl(@ast::spanned { node: ast::decl_item(_),
+                                             span: _}, _) => false,
               ast::stmt_mac(*) => fail ~"unexpanded macro in astencode"
             }
         };
@@ -286,9 +288,10 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       }
       ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
-        ast::ii_dtor({node: {body: dtor_body,
-                              .. /*bad*/copy (*dtor).node},
-            .. (/*bad*/copy *dtor)}, nm, /*bad*/copy *tps, parent_id)
+        ast::ii_dtor(ast::spanned { node: { body: dtor_body,
+                                            .. /*bad*/copy (*dtor).node },
+                                    .. (/*bad*/copy *dtor) },
+                     nm, /*bad*/copy *tps, parent_id)
       }
     }
 }
@@ -324,9 +327,11 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
-        ast::ii_dtor({node: {id: dtor_id, attrs: dtor_attrs,
-                self_id: new_self, body: dtor_body},
-                        .. (/*bad*/copy *dtor)},
+        ast::ii_dtor(ast::spanned { node: { id: dtor_id,
+                                            attrs: dtor_attrs,
+                                            self_id: new_self,
+                                            body: dtor_body },
+                                    .. (/*bad*/copy *dtor)},
           nm, new_params, new_parent)
       }
      }

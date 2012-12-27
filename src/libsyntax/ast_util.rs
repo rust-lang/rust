@@ -29,7 +29,7 @@ pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
 }
 
 pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
-    {node: move t, span: sp}
+    spanned {node: t, span: sp}
 }
 
 pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
@@ -284,7 +284,7 @@ impl def_id : to_bytes::IterBytes {
 
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
-    return {node: blk_, span: e.span};
+    return spanned {node: blk_, span: e.span};
 }
 
 fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->

@@ -39,7 +39,7 @@ fn use_core(crate: @ast::crate) -> bool {
 fn inject_libcore_ref(sess: Session,
                       crate: @ast::crate) -> @ast::crate {
     fn spanned<T: Copy>(x: T) -> ast::spanned<T> {
-        return {node: x, span: dummy_sp()};
+        ast::spanned { node: x, span: dummy_sp() }
     }
 
     let precursor = @{

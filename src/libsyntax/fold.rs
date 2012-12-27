@@ -93,27 +93,27 @@ type ast_fold_precursor = @{
 
 //used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
 fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
-    return @{node:
-              match mi.node {
+    @spanned {
+        node:
+            match mi.node {
                 meta_word(ref id) => meta_word((*id)),
                 meta_list(ref id, mis) => {
-                  let fold_meta_item = |x|fold_meta_item_(x, fld);
-                  meta_list(/* FIXME: (#2543) */ copy (*id),
-                            vec::map(mis, |e| fold_meta_item(*e)))
+                    let fold_meta_item = |x|fold_meta_item_(x, fld);
+                    meta_list(/* FIXME: (#2543) */ copy (*id),
+                        vec::map(mis, |e| fold_meta_item(*e)))
                 }
                 meta_name_value(ref id, s) => {
-                  meta_name_value((*id), /* FIXME (#2543) */ copy s)
+                    meta_name_value((*id), /* FIXME (#2543) */ copy s)
                 }
-              },
-          span: fld.new_span(mi.span)};
+            },
+        span: fld.new_span(mi.span) }
 }
 //used in noop_fold_item and noop_fold_crate
-fn fold_attribute_(at: attribute, fld: ast_fold) ->
-   attribute {
-    return {node: {style: at.node.style,
-                value: *fold_meta_item_(@at.node.value, fld),
-                is_sugared_doc: at.node.is_sugared_doc },
-         span: fld.new_span(at.span)};
+fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
+    spanned { node: { style: at.node.style,
+                      value: *fold_meta_item_(@at.node.value, fld),
+                      is_sugared_doc: at.node.is_sugared_doc },
+              span: fld.new_span(at.span) }
 }
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
@@ -124,11 +124,10 @@ fn fold_arg_(a: arg, fld: ast_fold) -> arg {
 }
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: mac, fld: ast_fold) -> mac {
-    return {node:
-             match m.node {
-               mac_invoc_tt(*) => m.node,
-             },
-         span: fld.new_span(m.span)};
+    spanned { node: match m.node {
+                        mac_invoc_tt(*) => m.node,
+                    },
+              span: fld.new_span(m.span) }
 }
 
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
@@ -206,10 +205,10 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
 
 fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
                        -> @struct_field {
-    @{node: {kind: copy sf.node.kind,
-             id: sf.node.id,
-             ty: fld.fold_ty(sf.node.ty)},
-      span: sf.span}
+    @spanned { node: { kind: copy sf.node.kind,
+                       id: sf.node.id,
+                       ty: fld.fold_ty(sf.node.ty) },
+               span: sf.span }
 }
 
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
@@ -266,9 +265,10 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
     let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
-        {node: {body: dtor_body,
-                id: dtor_id,.. dtor.node},
-            .. *dtor}};
+        spanned { node: { body: dtor_body,
+                          id: dtor_id, .. dtor.node},
+                  span: dtor.span }
+    };
     return @{
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         dtor: dtor,
@@ -281,10 +281,10 @@ fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
 }
 
 fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
-    @{node: {kind: copy f.node.kind,
-             id: fld.new_id(f.node.id),
-             ty: fld.fold_ty(f.node.ty)},
-      span: fld.new_span(f.span)}
+    @spanned { node: { kind: copy f.node.kind,
+                       id: fld.new_id(f.node.id),
+                       ty: fld.fold_ty(f.node.ty) },
+               span: fld.new_span(f.span) }
 }
 
 fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
@@ -390,11 +390,10 @@ fn wrap<T>(f: fn@(T, ast_fold) -> T)
 
 fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: ast_fold) -> field {
-        return {node:
-                 {mutbl: field.node.mutbl,
-                  ident: fld.fold_ident(field.node.ident),
-                  expr: fld.fold_expr(field.node.expr)},
-             span: fld.new_span(field.span)};
+        spanned { node: { mutbl: field.node.mutbl,
+                          ident: fld.fold_ident(field.node.ident),
+                          expr: fld.fold_expr(field.node.expr)},
+                  span: fld.new_span(field.span) }
     }
     let fold_field = |x| fold_field_(x, fld);
 
@@ -508,9 +507,9 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
         {ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl}
     }
     fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
-        {node: {ident: fld.fold_ident(f.node.ident),
-                mt: fold_mt(f.node.mt, fld)},
-         span: fld.new_span(f.span)}
+        spanned { node: { ident: fld.fold_ident(f.node.ident),
+                          mt: fold_mt(f.node.mt, fld) },
+                  span: fld.new_span(f.span) }
     }
     match t {
       ty_nil | ty_bot | ty_infer => copy t,
@@ -566,9 +565,10 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
             let dtor = do option::map(&struct_def.dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
-                {node: {body: dtor_body,
-                        id: dtor_id,.. dtor.node},
-                    .. *dtor}};
+                spanned { node: { body: dtor_body,
+                                  id: dtor_id, .. dtor.node},
+                          .. *dtor }
+            };
             kind = struct_variant_kind(@{
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
@@ -661,7 +661,7 @@ impl ast_fold_precursor: ast_fold {
     /* naturally, a macro to write these would be nice */
     fn fold_crate(c: crate) -> crate {
         let (n, s) = (self.fold_crate)(c.node, c.span, self as ast_fold);
-        return {node: n, span: (self.new_span)(s)};
+        spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_view_item(&&x: @view_item) ->
        @view_item {
@@ -679,10 +679,10 @@ impl ast_fold_precursor: ast_fold {
         return (self.fold_item)(i, self as ast_fold);
     }
     fn fold_struct_field(&&sf: @struct_field) -> @struct_field {
-        @{node: {kind: copy sf.node.kind,
-                 id: sf.node.id,
-                 ty: (self as ast_fold).fold_ty(sf.node.ty)},
-          span: (self.new_span)(sf.span)}
+        @spanned { node: { kind: copy sf.node.kind,
+                           id: sf.node.id,
+                           ty: (self as ast_fold).fold_ty(sf.node.ty) },
+                   span: (self.new_span)(sf.span) }
     }
     fn fold_item_underscore(i: item_) ->
        item_ {
@@ -694,11 +694,11 @@ impl ast_fold_precursor: ast_fold {
     }
     fn fold_block(x: blk) -> blk {
         let (n, s) = (self.fold_block)(x.node, x.span, self as ast_fold);
-        return {node: n, span: (self.new_span)(s)};
+        spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_stmt(&&x: @stmt) -> @stmt {
         let (n, s) = (self.fold_stmt)(x.node, x.span, self as ast_fold);
-        return @{node: n, span: (self.new_span)(s)};
+        @spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_arm(x: arm) -> arm {
         return (self.fold_arm)(x, self as ast_fold);
@@ -711,7 +711,7 @@ impl ast_fold_precursor: ast_fold {
     }
     fn fold_decl(&&x: @decl) -> @decl {
         let (n, s) = (self.fold_decl)(x.node, x.span, self as ast_fold);
-        return @{node: n, span: (self.new_span)(s)};
+        @spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_expr(&&x: @expr) -> @expr {
         let (n, s) = (self.fold_expr)(x.node, x.span, self as ast_fold);
@@ -734,7 +734,7 @@ impl ast_fold_precursor: ast_fold {
     fn fold_variant(x: variant) ->
        variant {
         let (n, s) = (self.fold_variant)(x.node, x.span, self as ast_fold);
-        return {node: n, span: (self.new_span)(s)};
+        spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_ident(&&x: ident) -> ident {
         return (self.fold_ident)(x, self as ast_fold);
@@ -744,7 +744,7 @@ impl ast_fold_precursor: ast_fold {
     }
     fn fold_local(&&x: @local) -> @local {
         let (n, s) = (self.fold_local)(x.node, x.span, self as ast_fold);
-        return @{node: n, span: (self.new_span)(s)};
+        @spanned { node: n, span: (self.new_span)(s) }
     }
     fn map_exprs(f: fn@(&&v: @expr) -> @expr, e: ~[@expr]) -> ~[@expr] {
         (self.map_exprs)(f, e)

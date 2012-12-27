@@ -156,7 +156,9 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                    fld: ast_fold) -> Option<@ast::item> {
 
     let (pth, tts) = match it.node {
-        item_mac({node: mac_invoc_tt(pth, ref tts), _}) => (pth, (*tts)),
+        item_mac(ast::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
+            (pth, (*tts))
+        }
         _ => cx.span_bug(it.span, ~"invalid item macro invocation")
     };
 
@@ -234,7 +236,8 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                 {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             let expanded = match exp(cx, mac.span, tts) {
                 mr_expr(e) =>
-                    @{node: stmt_expr(e, cx.next_id()), span: e.span},
+                    @ast::spanned { node: stmt_expr(e, cx.next_id()),
+                                    span: e.span},
                 mr_any(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
