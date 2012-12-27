@@ -83,7 +83,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
     rv
 }
 
-fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<Line>) -> ()
+fn chanmb(i: uint, size: uint) -> Line
 {
     let mut crv = ~[];
     let incr = 2f64/(size as f64);
@@ -93,7 +93,7 @@ fn chanmb(i: uint, size: uint, ch: oldcomm::Chan<Line>) -> ()
         let x = cmplx {re: xincr*(j as f64) - 1.5f64, im: y};
         crv.push(fillbyte(x, incr));
     };
-    oldcomm::send(ch, Line {i:i, b: move crv});
+    Line {i:i, b:crv}
 }
 
 type devnull = {dn: int};
@@ -106,11 +106,8 @@ impl devnull: io::Writer {
     fn get_type(&self) -> io::WriterType { io::File }
 }
 
-fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<Line>>, size: uint)
+fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
 {
-    let p: oldcomm::Port<Line> = oldcomm::Port();
-    let ch = oldcomm::Chan(&p);
-    oldcomm::send(writech, ch);
     let cout: io::Writer = match path {
         ~"" => {
             {dn: 0} as io::Writer
@@ -130,7 +127,7 @@ fn writer(path: ~str, writech: oldcomm::Chan<oldcomm::Chan<Line>>, size: uint)
     let mut done = 0_u;
     let mut i = 0_u;
     while i < size {
-        let aline = oldcomm::recv(p);
+        let aline = pport.recv();
         if aline.i == done {
             debug!("W %u", aline.i);
             cout.write(aline.b);
@@ -171,13 +168,11 @@ fn main() {
     let size = if vec::len(args) < 2_u { 80_u }
     else { uint::from_str(args[1]).get() };
 
-    let writep = oldcomm::Port();
-    let writech = oldcomm::Chan(&writep);
-    do task::spawn |move path| {
-        writer(copy path, writech, size);
-    };
-    let ch = oldcomm::recv(writep);
+    let (pport, pchan) = pipes::stream();
+    let pchan = pipes::SharedChan(pchan);
     for uint::range(0_u, size) |j| {
-        do task::spawn { chanmb(j, size, ch) };
+        let cchan = pchan.clone();
+        do task::spawn |move cchan| { cchan.send(chanmb(j, size)) };
     };
+    writer(path, pport, size);
 }
