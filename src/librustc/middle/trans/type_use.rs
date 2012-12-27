@@ -130,6 +130,11 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                 ~"floorf32"| ~"floorf64"| ~"ceilf32" | ~"ceilf64" |
                 ~"truncf32"| ~"truncf64" => 0,
 
+                ~"ctpop8" | ~"ctpop16" | ~"ctpop32" | ~"ctpop64" => 0,
+
+                ~"ctlz8" | ~"ctlz16" | ~"ctlz32" | ~"ctlz64" => 0,
+                ~"cttz8" | ~"cttz16" | ~"cttz32" | ~"cttz64" => 0,
+
                 // would be cool to make these an enum instead of strings!
                 _ => fail ~"unknown intrinsic in type_use"
             };

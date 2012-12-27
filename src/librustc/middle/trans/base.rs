@@ -2399,6 +2399,30 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                                 T_fn(~[T_f32()], T_f32()));
     let truncf64 = decl_cdecl_fn(llmod, ~"llvm.trunc.f64",
                                 T_fn(~[T_f64()], T_f64()));
+    let ctpop8 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i8",
+                                T_fn(~[T_i8()], T_i8()));
+    let ctpop16 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i16",
+                                T_fn(~[T_i16()], T_i16()));
+    let ctpop32 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i32",
+                                T_fn(~[T_i32()], T_i32()));
+    let ctpop64 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i64",
+                                T_fn(~[T_i64()], T_i64()));
+    let ctlz8 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i8",
+                                T_fn(~[T_i8(), T_i1()], T_i8()));
+    let ctlz16 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i16",
+                                T_fn(~[T_i16(), T_i1()], T_i16()));
+    let ctlz32 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i32",
+                                T_fn(~[T_i32(), T_i1()], T_i32()));
+    let ctlz64 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i64",
+                                T_fn(~[T_i64(), T_i1()], T_i64()));
+    let cttz8 = decl_cdecl_fn(llmod, ~"llvm.cttz.i8",
+                                T_fn(~[T_i8(), T_i1()], T_i8()));
+    let cttz16 = decl_cdecl_fn(llmod, ~"llvm.cttz.i16",
+                                T_fn(~[T_i16(), T_i1()], T_i16()));
+    let cttz32 = decl_cdecl_fn(llmod, ~"llvm.cttz.i32",
+                                T_fn(~[T_i32(), T_i1()], T_i32()));
+    let cttz64 = decl_cdecl_fn(llmod, ~"llvm.cttz.i64",
+                                T_fn(~[T_i64(), T_i1()], T_i64()));
 
     let intrinsics = HashMap();
     intrinsics.insert(~"llvm.gcroot", gcroot);
@@ -2439,6 +2463,18 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.ceil.f64", ceilf64);
     intrinsics.insert(~"llvm.trunc.f32", truncf32);
     intrinsics.insert(~"llvm.trunc.f64", truncf64);
+    intrinsics.insert(~"llvm.ctpop.i8", ctpop8);
+    intrinsics.insert(~"llvm.ctpop.i16", ctpop16);
+    intrinsics.insert(~"llvm.ctpop.i32", ctpop32);
+    intrinsics.insert(~"llvm.ctpop.i64", ctpop64);
+    intrinsics.insert(~"llvm.ctlz.i8", ctlz8);
+    intrinsics.insert(~"llvm.ctlz.i16", ctlz16);
+    intrinsics.insert(~"llvm.ctlz.i32", ctlz32);
+    intrinsics.insert(~"llvm.ctlz.i64", ctlz64);
+    intrinsics.insert(~"llvm.cttz.i8", cttz8);
+    intrinsics.insert(~"llvm.cttz.i16", cttz16);
+    intrinsics.insert(~"llvm.cttz.i32", cttz32);
+    intrinsics.insert(~"llvm.cttz.i64", cttz64);
 
     return intrinsics;
 }
