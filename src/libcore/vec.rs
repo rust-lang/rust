@@ -1177,9 +1177,41 @@ pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
 }
 
 /**
- * Iterates over a vector, with option to break
+ * Iterates over a vector, yielding each element to a closure.
  *
- * Return true to continue, false to break.
+ * # Arguments
+ *
+ * * `v` - A vector, to be iterated over
+ * * `f` - A closure to do the iterating. Within this closure, return true to continue iterating, false to break.
+ *
+ * # Examples
+ * ~~~
+ * [1,2,3].each(|&i| {
+ *     io::println(int::str(i));
+ *     true
+ * });
+ * ~~~
+ *
+ * ~~~
+ * [1,2,3,4,5].each(|&i| {
+ *     if i < 4 {
+ *         io::println(int::str(i));
+ *         true
+ *     }
+ *     else {
+ *         false
+ *     }
+ * });
+ * ~~~
+ *
+ * You probably will want to use each with a `for`/`do` expression, depending
+ * on your iteration needs:
+ *
+ * ~~~
+ * for [1,2,3].each |&i| {
+ *     io::println(int::str(i));
+ * }
+ * ~~~
  */
 #[inline(always)]
 pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
