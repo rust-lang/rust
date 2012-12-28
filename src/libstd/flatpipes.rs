@@ -685,11 +685,18 @@ mod test {
 
     use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
+    use flatpipes::pod;
+    use flatpipes::serial;
+    use flatpipes::util::BufReader;
+    use net::ip;
+    use net::tcp::TcpSocketBuf;
 
     use core::dvec::DVec;
-    use io::BytesReader;
-    use util::BufReader;
-    use net::tcp::TcpSocketBuf;
+    use core::int;
+    use core::io::BytesReader;
+    use core::io;
+    use core::sys;
+    use core::task;
 
     #[test]
     fn test_serializing_memory_stream() {

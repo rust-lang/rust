@@ -968,6 +968,9 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
+    use core::rand;
+    use core::task;
+    use core::vec;
 
     #[test]
     fn test_unique() {

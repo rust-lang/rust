@@ -1193,6 +1193,9 @@ impl Error: to_str::ToStr {
 
 #[cfg(test)]
 mod tests {
+    use core::result;
+    use core::send_map::linear;
+
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~linear::LinearMap();
 

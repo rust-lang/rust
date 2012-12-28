@@ -663,6 +663,12 @@ pub mod writer {
 
 #[cfg(test)]
 mod tests {
+    use ebml::reader;
+    use ebml::writer;
+    use serialize;
+
+    use core::io;
+
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {

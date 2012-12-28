@@ -634,8 +634,11 @@ pub mod groups {
 mod tests {
     #[legacy_exports];
     use opt = getopts;
-    use result::{Err, Ok};
     use getopts::groups::OptGroup;
+    use getopts::groups;
+
+    use core::result::{Err, Ok};
+    use core::result;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {

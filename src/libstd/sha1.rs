@@ -276,6 +276,11 @@ pub fn sha1() -> Sha1 {
 mod tests {
     #[legacy_exports];
 
+    use sha1;
+
+    use core::str;
+    use core::vec;
+
     #[test]
     fn test() unsafe {
         type Test = {input: ~str, output: ~[u8]};

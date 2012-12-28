@@ -1259,6 +1259,12 @@ pub mod node {
 
 #[cfg(test)]
 mod tests {
+    use rope::iterator;
+    use rope::node;
+
+    use core::option;
+    use core::str;
+    use core::vec;
 
     //Utility function, used for sanity check
     fn rope_to_string(r: Rope) -> ~str {

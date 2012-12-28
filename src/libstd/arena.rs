@@ -34,6 +34,7 @@
 
 #[forbid(deprecated_mode)];
 
+use arena;
 use list;
 use list::{List, Cons, Nil};
 

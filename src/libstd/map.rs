@@ -613,6 +613,10 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
 
 #[cfg(test)]
 mod tests {
+    use map;
+
+    use core::option;
+    use core::uint;
 
     #[test]
     fn test_simple() {
