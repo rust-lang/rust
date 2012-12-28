@@ -210,13 +210,18 @@ mod __test {
 */
 
 fn mk_test_module(cx: test_ctxt) -> @ast::item {
+    // Link to std
+    let std = mk_std(cx);
+    let view_items = if is_std(cx) { ~[] } else { ~[std] };
     // A function that generates a vector of test descriptors to feed to the
     // test runner
     let testsfn = mk_tests(cx);
     // The synthesized main function which will call the console test runner
     // with our list of tests
     let mainfn = mk_main(cx);
-    let testmod: ast::_mod = {view_items: ~[], items: ~[mainfn, testsfn]};
+    let testmod: ast::_mod = {
+        view_items: view_items, items: ~[mainfn, testsfn]
+    };
     let item_ = ast::item_mod(testmod);
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
@@ -247,6 +252,24 @@ fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
     @{span: dummy_sp(), global: true, idents: ids, rp: None, types: ~[]}
 }
 
+fn mk_std(cx: test_ctxt) -> @ast::view_item {
+    let vers = ast::lit_str(@~"0.6");
+    let vers = nospan(vers);
+    let mi = ast::meta_name_value(~"vers", vers);
+    let mi = nospan(mi);
+    let vi = ast::view_item_use(cx.sess.ident_of(~"std"),
+                                ~[@mi],
+                                cx.sess.next_node_id());
+    let vi = {
+        node: vi,
+        attrs: ~[],
+        vis: ast::private,
+        span: dummy_sp()
+    };
+
+    return @vi;
+}
+
 fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
@@ -273,9 +296,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     return @item;
 }
 
-fn mk_path(cx: test_ctxt, +path: ~[ast::ident]) -> ~[ast::ident] {
-    // For tests that are inside of std we don't want to prefix
-    // the paths with std::
+fn is_std(cx: test_ctxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(/*bad*/copy cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
@@ -283,15 +304,26 @@ fn mk_path(cx: test_ctxt, +path: ~[ast::ident]) -> ~[ast::ident] {
           _ => false
         }
     };
-    if is_std { path }
-    else { vec::append(~[cx.sess.ident_of(~"std")], path) }
+    return is_std;
+}
+
+fn mk_path(cx: test_ctxt, +path: ~[ast::ident]) -> @ast::path {
+    // For tests that are inside of std we don't want to prefix
+    // the paths with std::
+    if is_std(cx) { path_node_global(path) }
+    else {
+        path_node(
+            ~[cx.sess.ident_of(~"self"),
+              cx.sess.ident_of(~"std")]
+            + path)
+    }
 }
 
 // The ast::Ty of ~[std::test::test_desc]
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::Ty {
     let test_desc_ty_path =
-        path_node_global(mk_path(cx, ~[cx.sess.ident_of(~"test"),
-                                       cx.sess.ident_of(~"TestDesc")]));
+        mk_path(cx, ~[cx.sess.ident_of(~"test"),
+                      cx.sess.ident_of(~"TestDesc")]);
 
     let test_desc_ty: ast::Ty =
         {id: cx.sess.next_node_id(),
@@ -504,9 +536,9 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
          node: test_call_expr_, span: dummy_sp()};
 
     // Call std::test::test_main
-    let test_main_path = path_node_global(
+    let test_main_path =
         mk_path(cx, ~[cx.sess.ident_of(~"test"),
-                      cx.sess.ident_of(~"test_main")]));
+                      cx.sess.ident_of(~"test_main")]);
 
     let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
 
