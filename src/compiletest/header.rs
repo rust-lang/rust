@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common;
 use common::config;
+use io;
 use io::ReaderUtil;
+use os;
+use str;
 
 export test_props;
 export load_props;

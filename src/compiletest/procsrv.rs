@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use run::spawn_process;
+use io;
 use io::{ReaderUtil, WriterUtil};
+use libc;
 use libc::{c_int, pid_t};
+use os;
+use run;
+use run::spawn_process;
+use pipes;
+use str;
+use task;
 
 export run;
 
