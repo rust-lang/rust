@@ -246,14 +246,6 @@ pub mod core {
 }
 
 
-// Similar to above. Some magic to make core testable.
-#[cfg(test)]
-mod std {
-    extern mod std(vers = "0.6");
-    pub use std::std::test;
-}
-
-
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
