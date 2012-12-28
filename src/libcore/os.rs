@@ -920,6 +920,13 @@ pub fn arch() -> str { ~"arm" }
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use libc;
+    use option;
+    use os;
+    use rand;
+    use run;
+    use str;
+    use vec;
 
     #[test]
     pub fn last_os_error() {

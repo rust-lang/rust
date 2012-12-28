@@ -473,6 +473,10 @@ impl<T: Copy> DList<T> {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use iter;
+    use vec;
+
     #[test]
     fn test_dlist_concat() {
         let a = from_vec(~[1,2]);

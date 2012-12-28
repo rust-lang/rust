@@ -418,6 +418,8 @@ pub fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
     use io::WriterUtil;
+    use os;
+    use run;
 
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)

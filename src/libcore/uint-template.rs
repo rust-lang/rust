@@ -20,6 +20,7 @@ use from_str::FromStr;
 use iter;
 use num;
 use str;
+use uint;
 use vec;
 
 pub const bits : uint = inst::bits;

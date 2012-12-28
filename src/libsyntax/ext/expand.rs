@@ -298,10 +298,10 @@ fn core_macros() -> ~str {
         { $c:ident: $in:ty -> $out:ty; } => {
 
             mod $c {
-                fn key(_x: @core::condition::Handler<$in,$out>) { }
+                fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
-                pub const cond : core::condition::Condition<$in,$out> =
-                    core::condition::Condition {
+                pub const cond : ::core::condition::Condition<$in,$out> =
+                    ::core::condition::Condition {
                     name: stringify!(c),
                     key: key
                 };

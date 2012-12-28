@@ -27,6 +27,7 @@
 use m_float = f64;
 
 use cmp::{Eq, Ord};
+use cmp;
 use f64;
 use num;
 use num::Num::from_int;
