@@ -8,15 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use io;
 use io::WriterUtil;
+use os;
+use str;
+use uint;
+use vec;
 
+use common;
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
 use common::mode_pretty;
 use common::config;
+use errors;
+use header;
 use header::load_props;
 use header::test_props;
+use procsrv;
+use util;
 use util::logv;
 
 export run;

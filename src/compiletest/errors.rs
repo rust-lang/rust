@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use common::config;
+use io;
 use io::ReaderUtil;
+use str;
 
 export load_errors;
 export expected_error;

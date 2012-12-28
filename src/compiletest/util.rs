@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use io;
+use os;
 use os::getenv;
 
+use common;
 use common::config;
 
 fn make_new_path(path: ~str) -> ~str {
