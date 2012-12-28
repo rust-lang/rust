@@ -1264,6 +1264,7 @@ mod tests {
 
     use core::option;
     use core::str;
+    use core::uint;
     use core::vec;
 
     //Utility function, used for sanity check

@@ -130,6 +130,7 @@ mod test {
     use core::libc;
     use core::oldcomm;
     use core::ptr;
+    use core::task;
 
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(

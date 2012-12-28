@@ -581,6 +581,7 @@ mod tests {
     use bitv;
 
     use core::uint;
+    use core::vec;
 
     #[test]
     fn test_to_str() {

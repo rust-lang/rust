@@ -178,8 +178,11 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 mod test {
     use uv::ll;
 
+    use core::iter;
+    use core::libc;
     use core::oldcomm;
     use core::ptr;
+    use core::task;
 
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, fmt!("async_close_cb handle %?", handle));

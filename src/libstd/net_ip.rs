@@ -350,6 +350,13 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
 #[cfg(test)]
 mod test {
+    use net_ip::v4;
+    use net_ip::v6;
+    use uv;
+
+    use core::result;
+    use core::vec;
+
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = ~"127.0.0.1";

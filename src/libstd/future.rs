@@ -145,6 +145,9 @@ pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
 
 #[allow(non_implicitly_copyable_typarams)]
 pub mod test {
+    use core::pipes::oneshot;
+    use core::task;
+
     #[test]
     pub fn test_from_value() {
         let f = from_value(~"snail");

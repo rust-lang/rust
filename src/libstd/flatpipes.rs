@@ -695,6 +695,7 @@ mod test {
     use core::int;
     use core::io::BytesReader;
     use core::io;
+    use core::result;
     use core::sys;
     use core::task;
 
@@ -818,6 +819,7 @@ mod test {
         use net::ip;
         use cell::Cell;
         use net::tcp::TcpSocket;
+        use uv;
 
         // Indicate to the client task that the server is listening
         let (begin_connect_port, begin_connect_chan) = pipes::stream();
@@ -916,6 +918,14 @@ mod test {
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
     mod broken_protocol {
+        use flatpipes::pod;
+        use flatpipes::util::BufReader;
+
+        use core::io;
+        use core::pipes;
+        use core::sys;
+        use core::task;
+
         type PortLoader<P: BytePort> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;
 

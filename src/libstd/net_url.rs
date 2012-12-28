@@ -735,6 +735,11 @@ impl Url: to_bytes::IterBytes {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+    use net_url::UserInfo;
+
+    use core::result;
+    use core::str;
+
     #[test]
     fn test_split_char_first() {
         let (u,v) = split_char_first(~"hello, sweet world", ',');
