@@ -1182,7 +1182,8 @@ pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
  * # Arguments
  *
  * * `v` - A vector, to be iterated over
- * * `f` - A closure to do the iterating. Within this closure, return true to continue iterating, false to break.
+ * * `f` - A closure to do the iterating. Within this closure, return true to
+ * * continue iterating, false to break.
  *
  * # Examples
  * ~~~
