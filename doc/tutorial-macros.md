@@ -43,7 +43,7 @@ macro_rules! early_return(
             _ => {}
         }
     );
-);
+)
 // ...
 early_return!(input_1 special_a);
 // ...
@@ -160,7 +160,7 @@ macro_rules! early_return(
             _ => {}
         }
     );
-);
+)
 // ...
 early_return!(input_1, [special_a|special_c|special_d]);
 // ...
