@@ -34,12 +34,12 @@ fn load_props(testfile: &Path) -> test_props {
     let mut error_patterns = ~[];
     let mut aux_builds = ~[];
     let mut exec_env = ~[];
-    let mut compile_flags = option::None;
-    let mut pp_exact = option::None;
+    let mut compile_flags = None;
+    let mut pp_exact = None;
     for iter_header(testfile) |ln| {
         match parse_error_pattern(ln) {
-          option::Some(ep) => error_patterns.push(ep),
-          option::None => ()
+          Some(ep) => error_patterns.push(ep),
+          None => ()
         };
 
         if compile_flags.is_none() {
@@ -124,12 +124,12 @@ fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {
 
 fn parse_pp_exact(line: ~str, testfile: &Path) -> Option<Path> {
     match parse_name_value_directive(line, ~"pp-exact") {
-      option::Some(s) => option::Some(Path(s)),
-      option::None => {
+      Some(s) => Some(Path(s)),
+      None => {
         if parse_name_directive(line, ~"pp-exact") {
-            option::Some(testfile.file_path())
+            Some(testfile.file_path())
         } else {
-            option::None
+            None
         }
       }
     }
@@ -143,12 +143,12 @@ fn parse_name_value_directive(line: ~str,
                               directive: ~str) -> Option<~str> unsafe {
     let keycolon = directive + ~":";
     match str::find_str(line, keycolon) {
-        option::Some(colon) => {
+        Some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),
                                    str::len(line));
             debug!("%s: %s", directive,  value);
-            option::Some(value)
+            Some(value)
         }
-        option::None => option::None
+        None => None
     }
 }
