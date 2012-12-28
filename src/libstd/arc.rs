@@ -469,7 +469,13 @@ impl<T: Const Owned> &RWReadMode<T> {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
-    use comm::*;
+
+    use core::oldcomm::*;
+    use core::option::{Some, None};
+    use core::option;
+    use core::pipes;
+    use core::task;
+    use core::vec;
 
     #[test]
     fn manually_share_arc() {

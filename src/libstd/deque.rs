@@ -131,6 +131,8 @@ pub fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
+    use deque;
+
     #[test]
     fn test_simple() {
         let d: deque::Deque<int> = deque::create::<int>();

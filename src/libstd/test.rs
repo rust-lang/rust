@@ -425,6 +425,11 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 mod tests {
     #[legacy_exports];
 
+    use core::either;
+    use core::oldcomm;
+    use core::option;
+    use core::vec;
+
     #[test]
     fn do_not_run_ignored_tests() {
         fn f() { fail; }

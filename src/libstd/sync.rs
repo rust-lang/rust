@@ -708,6 +708,12 @@ impl &RWlockReadMode {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::pipes;
+    use core::ptr;
+    use core::result;
+    use core::task;
+
     /************************************************************************
      * Semaphore tests
      ************************************************************************/

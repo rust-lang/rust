@@ -162,6 +162,10 @@ pub pure fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
 mod tests {
     #[legacy_exports];
 
+    use list;
+
+    use core::option;
+
     #[test]
     fn test_is_empty() {
         let empty : @list::List<int> = from_vec(~[]);

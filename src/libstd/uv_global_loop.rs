@@ -123,6 +123,14 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
+    use uv::iotask;
+    use uv::ll;
+
+    use core::iter;
+    use core::libc;
+    use core::oldcomm;
+    use core::ptr;
+
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *oldcomm::Chan<bool>;

@@ -17,6 +17,7 @@ use core::io;
 use core::option;
 use core::pipes::{recv, oneshot, PortOne, send_one};
 use core::result;
+use core::run;
 use core::send_map::linear::LinearMap;
 use core::task;
 use core::to_bytes;
@@ -331,6 +332,7 @@ fn unwrap<T:Owned
 #[test]
 fn test() {
     use io::WriterUtil;
+
     let db = @Database { a: () };
     let lg = @Logger { a: () };
     let cfg = @LinearMap();

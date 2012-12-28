@@ -577,6 +577,11 @@ impl Bitv: ops::Index<uint,bool> {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use bitv;
+
+    use core::uint;
+
     #[test]
     fn test_to_str() {
         let zerolen = Bitv(0u, false);
