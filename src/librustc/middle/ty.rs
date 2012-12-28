@@ -162,10 +162,11 @@ export kind_is_durable;
 export meta_kind, kind_lteq, type_kind, type_kind_ext;
 export operators;
 export type_err, terr_vstore_kind;
-export terr_mismatch, terr_onceness_mismatch;
+export terr_integer_as_char, terr_mismatch, terr_onceness_mismatch;
 export type_err_to_str, note_and_explain_type_err;
 export expected_found;
 export type_needs_drop;
+export type_is_char;
 export type_is_empty;
 export type_is_integral;
 export type_is_numeric;
@@ -714,6 +715,7 @@ enum type_err {
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
     terr_self_substs,
+    terr_integer_as_char,
     terr_no_integral_type,
     terr_no_floating_point_type,
 }
@@ -2541,6 +2543,13 @@ fn type_is_integral(ty: t) -> bool {
     }
 }
 
+fn type_is_char(ty: t) -> bool {
+    match get(ty).sty {
+        ty_int(ty_char) => true,
+        _ => false
+    }
+}
+
 fn type_is_fp(ty: t) -> bool {
     match get(ty).sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
@@ -3509,6 +3518,10 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_no_integral_type => {
             ~"couldn't determine an appropriate integral type for integer \
               literal"
+        }
+        terr_integer_as_char => {
+            ~"integer literals can't be inferred to char type \
+              (try an explicit cast)"
         }
         terr_no_floating_point_type => {
             ~"couldn't determine an appropriate floating point type for \

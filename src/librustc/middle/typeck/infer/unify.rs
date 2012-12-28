@@ -366,6 +366,10 @@ impl infer_ctxt {
     }
 
     fn int_var_sub_t(a_id: ty::IntVid, b: ty::t) -> ures {
+        if ty::type_is_char(b) {
+            return Err(ty::terr_integer_as_char);
+        }
+
         assert ty::type_is_integral(b);
 
         let vb = &self.int_var_bindings;
