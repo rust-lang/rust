@@ -54,7 +54,7 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
      * Add a value to the map.
      *
      * If the map contains a value for the key, use the function to
-     * set a new value.  (Like `insert_or_update_with_key`, but with a
+     * set a new value.  (Like `update_with_key`, but with a
      * function of only values.)
      */
     fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
