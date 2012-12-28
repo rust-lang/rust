@@ -470,6 +470,8 @@ impl<T: Const Owned> &RWReadMode<T> {
 mod tests {
     #[legacy_exports];
 
+    use arc;
+
     use core::oldcomm::*;
     use core::option::{Some, None};
     use core::option;

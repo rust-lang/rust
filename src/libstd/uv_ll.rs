@@ -1040,6 +1040,13 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 pub mod test {
+    use core::libc;
+    use core::oldcomm;
+    use core::ptr;
+    use core::str;
+    use core::sys;
+    use core::task;
+    use core::vec;
 
     enum tcp_read_data {
         tcp_read_eof,
@@ -1562,7 +1569,8 @@ pub mod test {
     // struct size tests
     #[test]
     fn test_uv_ll_struct_size_uv_tcp_t() {
-        let foreign_handle_size = rustrt::rust_uv_helper_uv_tcp_t_size();
+        let foreign_handle_size =
+            ::uv_ll::rustrt::rust_uv_helper_uv_tcp_t_size();
         let rust_handle_size = sys::size_of::<uv_tcp_t>();
         let output = fmt!("uv_tcp_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1572,7 +1580,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_connect_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_connect_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_connect_t_size();
         let rust_handle_size = sys::size_of::<uv_connect_t>();
         let output = fmt!("uv_connect_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1582,7 +1590,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_buf_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_buf_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_buf_t_size();
         let rust_handle_size = sys::size_of::<uv_buf_t>();
         let output = fmt!("uv_buf_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1592,7 +1600,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_write_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_write_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_write_t_size();
         let rust_handle_size = sys::size_of::<uv_write_t>();
         let output = fmt!("uv_write_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1603,7 +1611,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_sockaddr_in() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_sockaddr_in_size();
+            ::uv_ll::rustrt::rust_uv_helper_sockaddr_in_size();
         let rust_handle_size = sys::size_of::<sockaddr_in>();
         let output = fmt!("sockaddr_in -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1613,7 +1621,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_sockaddr_in6() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_sockaddr_in6_size();
+            ::uv_ll::rustrt::rust_uv_helper_sockaddr_in6_size();
         let rust_handle_size = sys::size_of::<sockaddr_in6>();
         let output = fmt!("sockaddr_in6 -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1628,7 +1636,7 @@ pub mod test {
     #[ignore(reason = "questionable size calculations")]
     fn test_uv_ll_struct_size_addr_in() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_addr_in_size();
+            ::uv_ll::rustrt::rust_uv_helper_addr_in_size();
         let rust_handle_size = sys::size_of::<addr_in>();
         let output = fmt!("addr_in -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1640,7 +1648,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_async_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_async_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_async_t_size();
         let rust_handle_size = sys::size_of::<uv_async_t>();
         let output = fmt!("uv_async_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1651,7 +1659,7 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_timer_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_timer_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size();
         let rust_handle_size = sys::size_of::<uv_timer_t>();
         let output = fmt!("uv_timer_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1663,7 +1671,7 @@ pub mod test {
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
+            ::uv_ll::rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
         let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
         let output = fmt!("uv_getaddrinfo_t -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);
@@ -1675,7 +1683,7 @@ pub mod test {
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_addrinfo() {
         let foreign_handle_size =
-            rustrt::rust_uv_helper_addrinfo_size();
+            ::uv_ll::rustrt::rust_uv_helper_addrinfo_size();
         let rust_handle_size = sys::size_of::<addrinfo>();
         let output = fmt!("addrinfo -- foreign: %u rust: %u",
                           foreign_handle_size as uint, rust_handle_size);

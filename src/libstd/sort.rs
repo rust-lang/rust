@@ -714,6 +714,9 @@ fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
 #[cfg(test)]
 mod test_qsort3 {
     #[legacy_exports];
+
+    use core::vec;
+
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
@@ -754,6 +757,10 @@ mod test_qsort3 {
 #[cfg(test)]
 mod test_qsort {
     #[legacy_exports];
+
+    use core::int;
+    use core::vec;
+
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
@@ -814,6 +821,8 @@ mod test_qsort {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::vec;
 
     fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
@@ -878,6 +887,9 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
+    use core::rand;
+    use core::vec;
+
     struct CVal {
         val: float,
     }
@@ -970,6 +982,7 @@ mod test_tim_sort {
 mod big_tests {
     use core::rand;
     use core::task;
+    use core::uint;
     use core::vec;
 
     #[test]
