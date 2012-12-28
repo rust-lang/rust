@@ -65,10 +65,11 @@ API-documentation tool, and `cargo`, the Rust package manager.
 
 ## License
 
-Rust is primarily distributed under the terms of both the MIT license and the Apache License (Version 2.0), with
-portions covered by various BSD-like licenses.
+Rust is primarily distributed under the terms of both the MIT license
+and the Apache License (Version 2.0), with portions covered by various
+BSD-like licenses.
 
-See LICENSE-APACHE and LICENSE-MIT for details.
+See LICENSE-APACHE, LICENSE-MIT, and COPYRIGHT for details.
 
 ## More help
 
