@@ -1113,6 +1113,12 @@ pub mod fsync {
 
 #[cfg(test)]
 mod tests {
+    use i32;
+    use io;
+    use result;
+    use str;
+    use u64;
+    use vec;
 
     #[test]
     fn test_simple() {

@@ -21,6 +21,7 @@ Simple compression
 use libc;
 use libc::{c_void, size_t, c_int};
 use ptr;
+use rand;
 use vec;
 
 extern mod rustrt {
@@ -91,8 +92,8 @@ fn test_flate_round_trip() {
         }
         debug!("de/inflate of %u bytes of random word-sequences",
                in.len());
-        let cmp = flate::deflate_bytes(in);
-        let out = flate::inflate_bytes(cmp);
+        let cmp = deflate_bytes(in);
+        let out = inflate_bytes(cmp);
         debug!("%u bytes deflated to %u (%.1f%% size)",
                in.len(), cmp.len(),
                100.0 * ((cmp.len() as float) / (in.len() as float)));

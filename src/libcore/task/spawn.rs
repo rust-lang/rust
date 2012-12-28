@@ -74,7 +74,9 @@
 #[warn(deprecated_mode)];
 
 use cast;
+use oldcomm;
 use option;
+use pipes;
 use private;
 use ptr;
 use send_map;

@@ -2307,8 +2307,12 @@ impl &str: StrSlice {
 
 #[cfg(test)]
 mod tests {
-
+    use char;
     use libc::c_char;
+    use libc;
+    use ptr;
+    use str::raw;
+    use vec;
 
     #[test]
     fn test_eq() {

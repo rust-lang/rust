@@ -2245,6 +2245,8 @@ impl<A:Copy> @[A] : iter::CopyableNonstrictIter<A> {
 
 #[cfg(test)]
 mod tests {
+    use option;
+    use vec::raw;
 
     fn square(n: uint) -> uint { return n * n; }
 
@@ -2597,7 +2599,9 @@ mod tests {
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
                 return option::Some::<int>(*i / 2);
-            } else { return option::None::<int>; }
+            } else {
+                return option::None::<int>;
+            }
         }
         fn halve_for_sure(i: &int) -> int { return *i / 2; }
         let all_even: ~[int] = ~[0, 2, 8, 6];

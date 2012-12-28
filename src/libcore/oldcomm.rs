@@ -49,9 +49,11 @@ will once again be the preferred module for intertask communication.
 use cast;
 use either;
 use either::Either;
+use iter;
 use libc;
 use libc::size_t;
 use ptr;
+use result;
 use sys;
 use task;
 use vec;

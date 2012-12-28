@@ -458,6 +458,8 @@ pub mod linear {
 #[test]
 pub mod test {
     use send_map::linear::LinearMap;
+    use send_map::linear;
+    use uint;
 
     #[test]
     pub fn inserts() {

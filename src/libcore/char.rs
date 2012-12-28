@@ -14,6 +14,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use char;
 use cmp::Eq;
 use str;
 use u32;

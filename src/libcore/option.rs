@@ -46,6 +46,8 @@ let unwrapped_msg = match move msg {
 
 use cmp::Eq;
 use option;
+use ptr;
+use str;
 use util;
 
 /// The option type

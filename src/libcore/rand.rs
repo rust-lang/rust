@@ -362,6 +362,9 @@ pub fn random() -> uint {
 
 #[cfg(test)]
 pub mod tests {
+    use option::Option;
+    use rand;
+
     #[test]
     pub fn rng_seeded() {
         let seed = rand::seed();

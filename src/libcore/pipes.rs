@@ -1246,6 +1246,9 @@ pub mod rt {
 
 #[cfg(test)]
 pub mod test {
+    use pipes::oneshot;
+    use pipes;
+
     #[test]
     pub fn test_select2() {
         let (p1, c1) = pipes::stream();

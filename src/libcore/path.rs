@@ -748,7 +748,7 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
 }
 
 // Various windows helpers, and tests for the impl.
-mod windows {
+pub mod windows {
     use libc;
 
     #[inline(always)]
@@ -792,6 +792,9 @@ mod windows {
 
 #[cfg(test)]
 mod tests {
+    use path::windows;
+    use str;
+
     #[test]
     fn test_double_slash_collapsing() {
         let path = PosixPath("tmp/");
