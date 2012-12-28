@@ -119,6 +119,7 @@ Sean Stangl <sstangl@mozilla.com>
 Simon Barber-Dueck <sbarberdueck@gmail.com>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
+Steve Klabnik <steve@steveklabnik.com>
 Taras Shpot <mrshpot@gmail.com>
 Ted Horst <ted.horst@earthlink.net>
 Tim Chevalier <chevalier@alum.wellesley.edu>
