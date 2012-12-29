@@ -18,8 +18,7 @@
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
 mod pingpong {
-    #[legacy_exports];
-    use pipes::*;
+    use core::pipes::*;
 
     type packets = {
         // This is probably a resolve bug, I forgot to export packet,
@@ -42,11 +41,10 @@ mod pingpong {
             ptr::addr_of(&(data.ping))
         }
     }
-    enum ping = server::pong;
-    enum pong = client::ping;
-    mod client {
-        #[legacy_exports];
-        fn ping(+pipe: ping) -> pong {
+    pub enum ping = server::pong;
+    pub enum pong = client::ping;
+    pub mod client {
+        pub fn ping(+pipe: ping) -> pong {
             {
                 let b = pipe.reuse_buffer();
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
@@ -56,16 +54,15 @@ mod pingpong {
                 move c
             }
         }
-        type ping = pipes::SendPacketBuffered<pingpong::ping,
+        pub type ping = pipes::SendPacketBuffered<pingpong::ping,
         pingpong::packets>;
-        type pong = pipes::RecvPacketBuffered<pingpong::pong,
+        pub type pong = pipes::RecvPacketBuffered<pingpong::pong,
         pingpong::packets>;
     }
-    mod server {
-        #[legacy_exports];
-        type ping = pipes::RecvPacketBuffered<pingpong::ping,
+    pub mod server {
+        pub type ping = pipes::RecvPacketBuffered<pingpong::ping,
         pingpong::packets>;
-        fn pong(+pipe: pong) -> ping {
+        pub fn pong(+pipe: pong) -> ping {
             {
                 let b = pipe.reuse_buffer();
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
@@ -75,17 +72,16 @@ mod pingpong {
                 move c
             }
         }
-        type pong = pipes::SendPacketBuffered<pingpong::pong,
+        pub type pong = pipes::SendPacketBuffered<pingpong::pong,
         pingpong::packets>;
     }
 }
 
 mod test {
-    #[legacy_exports];
     use pipes::recv;
     use pingpong::{ping, pong};
 
-    fn client(-chan: pingpong::client::ping) {
+    pub fn client(-chan: pingpong::client::ping) {
         use pingpong::client;
 
         let chan = client::ping(move chan); return;
@@ -94,7 +90,7 @@ mod test {
         log(error, "Received pong");
     }
     
-    fn server(-chan: pingpong::server::ping) {
+    pub fn server(-chan: pingpong::server::ping) {
         use pingpong::server;
 
         let ping(chan) = recv(move chan); return;
