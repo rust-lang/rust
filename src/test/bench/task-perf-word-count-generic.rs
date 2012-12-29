@@ -22,22 +22,20 @@
 
 extern mod std;
 
-use option = option;
-use option::Some;
-use option::None;
+use core::option;
 use std::map;
 use std::map::HashMap;
-use hash::Hash;
-use io::{ReaderUtil, WriterUtil};
+use core::hash::Hash;
+use core::io::{ReaderUtil, WriterUtil};
 
 use std::time;
 
-use oldcomm::Chan;
-use oldcomm::Port;
-use oldcomm::recv;
-use oldcomm::send;
-use cmp::Eq;
-use to_bytes::IterBytes;
+use core::oldcomm::Chan;
+use core::oldcomm::Port;
+use core::oldcomm::recv;
+use core::oldcomm::send;
+use core::cmp::Eq;
+use core::to_bytes::IterBytes;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
@@ -117,20 +115,15 @@ fn box<T>(+x: T) -> box<T> {
 }
 
 mod map_reduce {
-    #[legacy_exports];
-    export putter;
-    export getter;
-    export mapper;
-    export reducer;
-    export map_reduce;
+    use std::map;
 
-    type putter<K: Owned, V: Owned> = fn(&K, V);
+    pub type putter<K: Owned, V: Owned> = fn(&K, V);
 
-    type mapper<K1: Owned, K2: Owned, V: Owned> = fn~(K1, putter<K2, V>);
+    pub type mapper<K1: Owned, K2: Owned, V: Owned> = fn~(K1, putter<K2, V>);
 
-    type getter<V: Owned> = fn() -> Option<V>;
+    pub type getter<V: Owned> = fn() -> Option<V>;
 
-    type reducer<K: Copy Owned, V: Copy Owned> = fn~(&K, getter<V>);
+    pub type reducer<K: Copy Owned, V: Copy Owned> = fn~(&K, getter<V>);
 
     enum ctrl_proto<K: Copy Owned, V: Copy Owned> {
         find_reducer(K, Chan<Chan<reduce_proto<V>>>),
@@ -245,7 +238,7 @@ mod map_reduce {
         (*reduce)(&key, || get(p, &mut ref_count, &mut is_done) );
     }
 
-    fn map_reduce<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned, V: Copy Owned>(
+    pub fn map_reduce<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned, V: Copy Owned>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
         inputs: ~[K1])
