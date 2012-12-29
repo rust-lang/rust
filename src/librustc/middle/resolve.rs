@@ -2120,7 +2120,7 @@ impl Resolver {
         // XXX: Shouldn't copy here. We need string builder functionality.
         return result;
     }
-    
+
     fn import_directive_subclass_to_str(subclass: ImportDirectiveSubclass)
                                                                      -> ~str {
         match subclass {
@@ -2128,7 +2128,7 @@ impl Resolver {
             GlobImport => ~"*"
         }
     }
-    
+
     fn import_path_to_str(idents: ~[ident], subclass: ImportDirectiveSubclass)
                                                                      -> ~str {
         if idents.is_empty() {
@@ -2139,7 +2139,7 @@ impl Resolver {
                  self.import_directive_subclass_to_str(subclass))
         }
     }
-    
+
     /**
      * Attempts to resolve the given import. The return value indicates
      * failure if we're certain the name does not exist, indeterminate if we
