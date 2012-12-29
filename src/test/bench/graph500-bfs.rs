@@ -25,9 +25,9 @@ use std::map::HashMap;
 use std::deque;
 use std::deque::Deque;
 use std::par;
-use io::WriterUtil;
-use oldcomm::*;
-use int::abs;
+use core::io::WriterUtil;
+use core::oldcomm::*;
+use core::int::abs;
 
 type node_id = i64;
 type graph = ~[~[node_id]];
