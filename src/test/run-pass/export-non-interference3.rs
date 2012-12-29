@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    pub fn x() { bar::x(); }
+pub mod foo {
+    pub fn x() { ::bar::x(); }
 }
 
-mod bar {
+pub mod bar {
     pub fn x() { debug!("x"); }
 }
 
