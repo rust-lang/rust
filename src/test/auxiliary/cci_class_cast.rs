@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
+use core::to_str::*;
 
-use to_str::*;
-use to_str::ToStr;
-
-mod kitty {
+pub mod kitty {
     pub struct cat {
       priv mut meows : uint,
       mut how_hungry : int,
