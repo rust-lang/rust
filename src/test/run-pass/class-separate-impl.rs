@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
-use to_str::*;
-use to_str::ToStr;
+use core::to_str::*;
 
 struct cat {
   priv mut meows : uint,

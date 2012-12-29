@@ -16,7 +16,7 @@ pub mod num {
 }
 
 pub mod float {
-    impl float: num::Num2 {
+    impl float: ::num::Num2 {
         #[inline]
         static pure fn from_int2(n: int) -> float { return n as float;  }
     }

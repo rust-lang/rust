@@ -14,15 +14,13 @@ use to_str::*;
 use to_str::ToStr;
 
 mod kitty {
-    #[legacy_exports];
+    pub struct cat {
+      priv mut meows : uint,
+      mut how_hungry : int,
+      name : ~str,
+    }
 
-struct cat {
-  priv mut meows : uint,
-  mut how_hungry : int,
-  name : ~str,
-}
-
-    impl cat : ToStr {
+    pub impl cat : ToStr {
        pure fn to_str() -> ~str { copy self.name }
     }
 
@@ -37,7 +35,7 @@ struct cat {
 
     }
 
-    impl cat {
+    pub impl cat {
         fn speak() { self.meow(); }
 
         fn eat() -> bool {
@@ -52,14 +50,14 @@ struct cat {
             }
         }
     }
-fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
-    cat {
-        meows: in_x,
-        how_hungry: in_y,
-        name: in_name
-    }
-}
 
+    pub fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
+        cat {
+            meows: in_x,
+            how_hungry: in_y,
+            name: in_name
+        }
+    }
 }
 
 
