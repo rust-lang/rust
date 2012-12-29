@@ -2106,19 +2106,8 @@ impl Resolver {
     }
 
     fn idents_to_str(idents: ~[ident]) -> ~str {
-        // XXX: str::connect should do this.
-        let mut result = ~"";
-        let mut first = true;
-        for idents.each() |ident| {
-            if first {
-                first = false;
-            } else {
-                result += ~"::";
-            }
-            result += self.session.str_of(*ident);
-        }
-        // XXX: Shouldn't copy here. We need string builder functionality.
-        return result;
+        let ident_strs = idents.map(|&ident| self.session.str_of(ident));
+        return str::connect(ident_strs, "::");
     }
 
     fn import_directive_subclass_to_str(subclass: ImportDirectiveSubclass)
@@ -4524,17 +4513,14 @@ impl Resolver {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `%s` \
                                 (id %d)",
-                               connect(path.idents.map(
-                                   |x| self.session.str_of(*x)), ~"::"),
+                               self.idents_to_str(path.idents),
                                path_id);
                         self.record_def(path_id, def);
                     }
                     None => {
                         self.session.span_err
                             (ty.span, fmt!("use of undeclared type name `%s`",
-                                           connect(path.idents.map(
-                                               |x| self.session.str_of(*x)),
-                                                   ~"::")));
+                                           self.idents_to_str(path.idents)));
                     }
                 }
             }
@@ -4728,9 +4714,7 @@ impl Resolver {
                             self.session.span_err(
                                 path.span,
                                 fmt!("`%s` does not name a structure",
-                                     connect(path.idents.map(
-                                         |x| self.session.str_of(*x)),
-                                             ~"::")));
+                                     self.idents_to_str(path.idents)));
                         }
                     }
                 }
@@ -5126,14 +5110,11 @@ impl Resolver {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
-                               connect(path.idents.map(
-                                   |x| self.session.str_of(*x)), ~"::"));
+                               self.idents_to_str(path.idents));
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name =
-                            connect(path.idents.map(
-                                |x| self.session.str_of(*x)), ~"::") ;
+                        let wrong_name = self.idents_to_str(path.idents);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.session.span_err(expr.span,
                                         fmt!("unresolved name: `%s`. \
@@ -5193,9 +5174,7 @@ impl Resolver {
                         self.session.span_err(
                             path.span,
                             fmt!("`%s` does not name a structure",
-                                 connect(path.idents.map(
-                                     |x| self.session.str_of(*x)),
-                                         ~"::")));
+                                 self.idents_to_str(path.idents)));
                     }
                 }
 
@@ -5514,7 +5493,7 @@ impl Resolver {
     // hit.
     //
 
-    /// A somewhat inefficient routine to print out the name of a module.
+    /// A somewhat inefficient routine to obtain the name of a module.
     fn module_to_str(module_: @Module) -> ~str {
         let idents = DVec();
         let mut current_module = module_;
@@ -5537,22 +5516,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-
-        let mut string = ~"";
-        let mut i = idents.len() - 1;
-        loop {
-            if i < idents.len() - 1 {
-                string += ~"::";
-            }
-            string += self.session.str_of(idents.get_elt(i));
-
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-
-        return string;
+        return self.idents_to_str(vec::reversed(idents.get()));
     }
 
     fn dump_module(module_: @Module) {
