@@ -733,9 +733,7 @@ fn point_from_direction(dir: Direction) -> Point {
 }
 ~~~~
 
-A special kind of enum variant, called _struct-like enums_,
-can have its fields extracted with dot notation and not just destructuring.
-For example:
+Enum variants may also be structs. For example:
 
 ~~~~
 # use core::float;
@@ -743,12 +741,14 @@ For example:
 # fn square(x: float) -> float { x * x }
 enum Shape {
     Circle { center: Point, radius: float },
-    Rectangle { left: Point, right: Point }
+    Rectangle { top_left: Point, bottom_right: Point }
 }
 fn area(sh: Shape) -> float {
    match sh {
-      Circle(c) => float::consts::pi * square(c.radius),
-      Rectangle(r) => r.right.x - r.left.x * r.right.y - r.right.y
+      Circle { radius: radius, _ } => float::consts::pi * square(radius),
+      Rectangle { top_left: top_left, bottom_right: bottom_right } => {
+        (bottom_right.x - top_left.x) * (bottom_right.y - top_left.y)
+      }
    }
 }
 ~~~~
