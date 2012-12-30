@@ -37,7 +37,7 @@ fn should_trim_text() {
 mod test {
     #[legacy_exports];
 
-    use astrsrv;
+    use astsrv;
     use attr_pass;
     use doc;
     use extract;
