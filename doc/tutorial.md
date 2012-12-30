@@ -1282,7 +1282,7 @@ distinct type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil (for
 example, `"foo"`) is treated differently than a comparable vector
 (`[foo]`).  Whereas plain vectors are stack-allocated fixed-length
-vectors, plain strings are region pointers to read-only
+vectors, plain strings are borrowed pointers to read-only
 memory. All strings are immutable.
 
 ~~~
