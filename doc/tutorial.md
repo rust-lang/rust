@@ -80,7 +80,7 @@ supported build environments that are most likely to work.
 > "[getting started][wiki-start]" notes on the wiki. Even when using
 > the binary installer, the Windows build requires a MinGW installation,
 > the precise details of which are not discussed here. Finally, `rustc` may
-> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, I
+> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, we
 > know.
 
 [bug-3319]: https://github.com/mozilla/rust/issues/3319
@@ -114,7 +114,7 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool, `cargo`, the Rust package manager,
+API-documentation tool; `cargo`, the Rust package manager;
 and `rusti`, the Rust REPL.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
@@ -181,10 +181,10 @@ in blocks delineated by curly braces; there are control structures
 for branching and looping, like the familiar `if` and `while`; function
 calls are written `myfunc(arg1, arg2)`; operators are written the same
 and mostly have the same precedence as in C; comments are again like C;
-module names are separated with double-colon, `::`, as with C++.
+module names are separated with double-colon (`::`) as with C++.
 
 The main surface difference to be aware of is that the condition at
-the head of control structures like `if` and `while` do not require
+the head of control structures like `if` and `while` does not require
 parentheses, while their bodies *must* be wrapped in
 braces. Single-statement, unbraced bodies are not allowed.
 
@@ -226,12 +226,12 @@ let monster_size: int = 50;
 ~~~~
 
 Local variables may shadow earlier declarations, as in the previous example:
-`monster_size` was first declared as a `float`, and then then a second
-`monster_size` was declared as an int. If you were to actually compile this
-example, though, the compiler will determine that the second `monster_size` is
+`monster_size` was first declared as a `float`, and then a second
+`monster_size` was declared as an `int`. If you were to actually compile this
+example, though, the compiler would determine that the second `monster_size` is
 unused and issue a warning (because this situation is likely to indicate a
 programmer error). For occasions where unused variables are intentional, their
-name may be prefixed with an underscore to silence the warning, like `let
+names may be prefixed with an underscore to silence the warning, like `let
 _monster_size = 50;`.
 
 Rust identifiers start with an alphabetic
@@ -292,7 +292,7 @@ branch has a different value, and `price` gets the value of the branch that
 was taken.
 
 In short, everything that's not a declaration (declarations are `let` for
-variables, `fn` for functions, and any top-level named items such as
+variables; `fn` for functions; and any top-level named items such as
 [traits](#traits), [enum types](#enums), and [constants](#constants)) is an
 expression, including function bodies.
 
@@ -306,8 +306,8 @@ fn is_four(x: int) -> bool {
 
 ## Primitive types and literals
 
-There are general signed and unsigned integer types, `int`, and `uint`,
-as well as 8-, 16-, 32-, and 64-bit variations, `i8`, `u16`, etc.
+There are general signed and unsigned integer types, `int` and `uint`,
+as well as 8-, 16-, 32-, and 64-bit variants, `i8`, `u16`, etc.
 Integers can be written in decimal (`144`), hexadecimal (`0x90`), or
 binary (`0b10010000`) base. Each integral type has a corresponding literal
 suffix that can be used to indicate the type of a literal: `i` for `int`,
@@ -326,14 +326,14 @@ let c = 100u;    // c is a uint
 let d = 1000i32; // d is an i32
 ~~~~
 
-There are three floating point types, `float`, `f32`, and `f64`.
-Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`.
-Like integers, floating point literals are inferred to the correct type.
-Suffixes `f`, `f32` and `f64` can be used to create literals of a specific type.
+There are three floating-point types: `float`, `f32`, and `f64`.
+Floating-point numbers are written `0.0`, `1e6`, or `2.1e-4`.
+Like integers, floating-point literals are inferred to the correct type.
+Suffixes `f`, `f32`, and `f64` can be used to create literals of a specific type.
 
 The keywords `true` and `false` produce literals of type `bool`.
 
-Characters, the `char` type, are 4-byte unicode codepoints,
+Characters, the `char` type, are four-byte Unicode codepoints,
 whose literals are written between single quotes, as in `'x'`.
 Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
@@ -345,8 +345,8 @@ The nil type, written `()`, has a single value, also written `()`.
 ## Operators
 
 Rust's set of operators contains very few surprises. Arithmetic is done with
-`*`, `/`, `%`, `+`, and `-` (multiply, divide, take remainder, add, subtract). `-` is
-also a unary prefix operator that negates numbers. As in C, the bit operators
+`*`, `/`, `%`, `+`, and `-` (multiply, divide, take remainder, add, and subtract). `-` is
+also a unary prefix operator that negates numbers. As in C, the bitwise operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
 Note that, if applied to an integer value, `!` flips all the bits (like `~` in
@@ -444,7 +444,7 @@ match my_number {
 }
 ~~~~
 
-Unlike in C, there is no 'falling through' between arms: only one arm
+Unlike in C, there is no "falling through" between arms: only one arm
 executes, and it doesn't have to explicitly `break` out of the
 construct when it is finished.
 
@@ -494,7 +494,7 @@ fn angle(vector: (float, float)) -> float {
 A variable name in a pattern matches any value, *and* binds that name
 to the value of the matched value inside of the arm's action. Thus, `(0f,
 y)` matches any tuple whose first element is zero, and binds `y` to
-the second element. `(x, y)` matches any tuple, and binds both
+the second element. `(x, y)` matches any two-element tuple, and binds both
 elements to variables.
 
 Any `match` arm can have a guard clause (written `if EXPR`), called a
@@ -575,7 +575,7 @@ With a value of such a type, you can do `mystack.head += 1`. If `mut` were
 omitted from the type, such an assignment would result in a type error.
 
 `match` patterns destructure structs. The basic syntax is
-`Name {fieldname: pattern, ...}`:
+`Name { fieldname: pattern, ... }`:
 
 ~~~~
 # struct Point { x: float, y: float }
@@ -589,7 +589,7 @@ match mypoint {
 In general, the field names of a struct do not have to appear in the same
 order they appear in the type. When you are not interested in all
 the fields of a struct, a struct pattern may end with `, _` (as in
-`Name {field1, _}`) to indicate that you're ignoring all other fields.
+`Name { field1, _ }`) to indicate that you're ignoring all other fields.
 Additionally, struct fields have a shorthand matching form that simply
 reuses the field name as the binding name.
 
@@ -618,15 +618,15 @@ A value of this type is either a `Circle`, in which case it contains a
 `Point` struct and a float, or a `Rectangle`, in which case it contains
 two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
-'tagged union' pattern in C, but with better static guarantees.
+"tagged union" pattern in C, but with better static guarantees.
 
 The above declaration will define a type `Shape` that can refer to
 such shapes, and two functions, `Circle` and `Rectangle`, which can be
 used to construct values of the type (taking arguments of the
-specified types). So `Circle(Point {x: 0f, y: 0f}, 10f)` is the way to
+specified types). So `Circle(Point { x: 0f, y: 0f }, 10f)` is the way to
 create a new circle.
 
-Enum variants need not have type parameters. This `enum` declaration,
+Enum variants need not have parameters. This `enum` declaration,
 for example, is equivalent to a C enum:
 
 ~~~~
@@ -659,7 +659,7 @@ variant does not have a discriminator, it defaults to 0. For example,
 the value of `North` is 0, `East` is 1, `South` is 2, and `West` is 3.
 
 When an enum is C-like, you can apply the `as` cast operator to
-convert it to its discriminator value as an int.
+convert it to its discriminator value as an `int`.
 
 <a name="single_variant_enum"></a>
 
@@ -710,7 +710,7 @@ patterns, as in this definition of `area`:
 fn area(sh: Shape) -> float {
     match sh {
         Circle(_, size) => float::consts::pi * size * size,
-        Rectangle(Point {x, y}, Point {x: x2, y: y2}) => (x2 - x) * (y2 - y)
+        Rectangle(Point { x, y }, Point { x: x2, y: y2 }) => (x2 - x) * (y2 - y)
     }
 }
 ~~~~
@@ -721,14 +721,14 @@ introduction form, nullary enum patterns are written without
 parentheses.
 
 ~~~~
-# struct Point {x: float, y: float}
+# struct Point { x: float, y: float }
 # enum Direction { North, East, South, West }
 fn point_from_direction(dir: Direction) -> Point {
     match dir {
-        North => Point {x:  0f, y:  1f},
-        East  => Point {x:  1f, y:  0f},
-        South => Point {x:  0f, y: -1f},
-        West  => Point {x: -1f, y:  0f}
+        North => Point { x:  0f, y:  1f },
+        East  => Point { x:  1f, y:  0f },
+        South => Point { x:  0f, y: -1f },
+        West  => Point { x: -1f, y:  0f }
     }
 }
 ~~~~
@@ -737,21 +737,22 @@ Enum variants may also be structs. For example:
 
 ~~~~
 # use core::float;
-# struct Point {x: float, y: float}
+# struct Point { x: float, y: float }
 # fn square(x: float) -> float { x * x }
 enum Shape {
     Circle { center: Point, radius: float },
     Rectangle { top_left: Point, bottom_right: Point }
 }
 fn area(sh: Shape) -> float {
-   match sh {
-      Circle { radius: radius, _ } => float::consts::pi * square(radius),
-      Rectangle { top_left: top_left, bottom_right: bottom_right } => {
-        (bottom_right.x - top_left.x) * (bottom_right.y - top_left.y)
-      }
-   }
+    match sh {
+        Circle { radius: radius, _ } => float::consts::pi * square(radius),
+        Rectangle { top_left: top_left, bottom_right: bottom_right } => {
+            (bottom_right.x - top_left.x) * (bottom_right.y - top_left.y)
+        }
+    }
 }
 ~~~~
+
 ## Tuples
 
 Tuples in Rust behave exactly like structs, except that their fields
@@ -800,7 +801,7 @@ fn line(a: int, b: int, x: int) -> int {
 
 The `return` keyword immediately returns from the body of a function. It
 is optionally followed by an expression to return. A function can
-also return a value by having its top level block produce an
+also return a value by having its top-level block produce an
 expression.
 
 ~~~~
@@ -834,7 +835,7 @@ assert () == oops(5, 3, 1);
 
 As with `match` expressions and `let` bindings, function arguments support
 pattern destructuring. Like `let`, argument patterns must be irrefutable,
-as in this example that unpacks a tuple and returns it.
+as in this example that unpacks the first value from a tuple and returns it.
 
 ~~~
 fn first((value, _): (int, float)) -> int { value }
@@ -917,7 +918,7 @@ aggregate types like structs and enums, so as to represent these types
 as pointers to heap memory by default. In contrast, Rust, like C and
 C++, represents such types directly. Another way to say this is that
 aggregate data in Rust are *unboxed*. This means that if you `let x =
-Point {x: 1f, y: 1f};`, you are creating a struct on the stack. If you
+Point { x: 1f, y: 1f };`, you are creating a struct on the stack. If you
 then copy it into a data structure, you copy the entire struct, not
 just a pointer.
 
@@ -927,7 +928,7 @@ those with mutable fields, it can be useful to have a single copy on
 the stack or on the heap, and refer to that through a pointer.
 
 Rust supports several types of pointers. The safe pointer types are
-`@T` for managed boxes allocated on the local heap, `~T`, for
+`@T`, for managed boxes allocated on the local heap, `~T`, for
 uniquely-owned boxes allocated on the exchange heap, and `&T`, for
 borrowed pointers, which may point to any memory, and whose lifetimes
 are governed by the call stack.
@@ -941,8 +942,8 @@ All pointer types can be dereferenced with the `*` unary operator.
 
 ## Managed boxes
 
-Managed boxes are pointers to heap-allocated, garbage collected
-memory.  Applying the unary `@` operator to an expression creates a
+Managed boxes are pointers to heap-allocated, garbage-collected
+memory. Applying the unary `@` operator to an expression creates a
 managed box. The resulting box contains the result of the
 expression. Copying a managed box, as happens during assignment, only
 copies a pointer, never the contents of the box.
@@ -1037,7 +1038,8 @@ As an example, consider a simple struct type, `Point`:
 
 ~~~
 struct Point {
-    x: float, y: float
+    x: float,
+    y: float
 }
 ~~~~
 
@@ -1047,9 +1049,9 @@ contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: float, y: float }
-let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
-let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
-let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
+let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
+let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
+let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance
@@ -1078,9 +1080,9 @@ Now we can call `compute_distance()` in various ways:
 
 ~~~
 # struct Point{ x: float, y: float };
-# let on_the_stack : Point  =  Point {x: 3.0, y: 4.0};
-# let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
-# let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
+# let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
+# let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
+# let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
@@ -1090,14 +1092,14 @@ Here the `&` operator is used to take the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
-`on_the_stack`, because we are created an alias: that is, another
+`on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
 In the case of the boxes `managed_box` and `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
 a box like `@point` or `~point` to a borrowed pointer like
 `&point`. This is another form of borrowing; in this case, the
-contents of the managed/owned box is being lent out.
+contents of the managed/owned box are being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable
@@ -1157,7 +1159,7 @@ let area = (*rect).area();
 ~~~
 
 To combat this ugliness the dot operator applies _automatic pointer
-dereferencing_ to the receiver (the value on the left hand side of the
+dereferencing_ to the receiver (the value on the left-hand side of the
 dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 
 ~~~
@@ -1199,7 +1201,7 @@ pointers to vectors are also called 'slices'.
 // A fixed-size stack vector
 let stack_crayons: [Crayon * 3] = [Almond, AntiqueBrass, Apricot];
 
-// A borrowed pointer to stack allocated vector
+// A borrowed pointer to stack-allocated vector
 let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
 
 // A local heap (managed) vector of crayons
@@ -1526,7 +1528,7 @@ do spawn() || {
 }
 ~~~~
 
-Look at all those bars and parentheses - that's two empty argument
+Look at all those bars and parentheses -- that's two empty argument
 lists back to back. Since that is so unsightly, empty argument lists
 may be omitted from `do` expressions.
 
@@ -1605,7 +1607,7 @@ fn contains(v: &[int], elt: int) -> bool {
 ~~~~
 
 Notice that, because `each` passes each value by borrowed pointer,
-the iteratee needs to dereference it before using.
+the iteratee needs to dereference it before using it.
 In these situations it can be convenient to lean on Rust's
 argument patterns to bind `x` to the actual value, not the pointer.
 
@@ -1727,7 +1729,7 @@ s.draw_borrowed();
 // ... and dereferenced
 (& &s).draw_borrowed();
 
-// ... and dereferenced, and borrowed, and
+// ... and dereferenced and borrowed
 (&@~s).draw_borrowed();
 ~~~
 
@@ -1790,9 +1792,9 @@ Inside a generic function, the names of the type parameters
 (capitalized by convention) stand for opaque types. All you can do
 with instances of these types is pass them around: you can't apply any
 operations to them or pattern-match on them. Note that instances of
-generic types are often passed by pointer.  For example, the parameter
+generic types are often passed by pointer. For example, the parameter
 `function()` is supplied with a pointer to a value of type `T` and not
-a value of type `T` itself.  This ensures that the function works with
+a value of type `T` itself. This ensures that the function works with
 the broadest set of types possible, since some types are expensive or
 illegal to copy and pass by value.
 
@@ -1813,7 +1815,7 @@ enum Option<T> {
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,
-`Stack<int>` and `Option<int>`.
+`Stack<int>`, and `Option<int>`.
 
 The last type in that example, `Option`, appears frequently in Rust code.
 Because Rust does not have null pointers (except in unsafe code), we need
@@ -1822,13 +1824,13 @@ combination of arguments of the appropriate types. The usual way is to write
 a function that returns `Option<T>` instead of `T`.
 
 ~~~~
-# struct Point {x: float, y: float}
+# struct Point { x: float, y: float }
 # enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn radius(shape: Shape) -> Option<float> {
-   match shape {
-       Circle(_, radius) => Some(radius),
-       Rectangle(*)      => None
-   }      
+    match shape {
+        Circle(_, radius) => Some(radius),
+        Rectangle(*)      => None
+    }
 }
 ~~~~
 
@@ -1892,12 +1894,12 @@ While most traits can be defined and implemented by user code, three
 traits are automatically derived and implemented for all applicable
 types by the compiler, and may not be overridden:
 
-* `Copy` - Types that can be copied: either implicitly, or explicitly with the
+* `Copy` - Types that can be copied, either implicitly, or explicitly with the
   `copy` operator. All types are copyable unless they have destructors or
   contain types with destructors.
 
 * `Owned` - Owned types. Types are owned unless they contain managed
-  boxes, managed closures, or borrowed pointers.  Owned types may or
+  boxes, managed closures, or borrowed pointers. Owned types may or
   may not be copyable.
 
 * `Const` - Constant (immutable) types. These are types that do not contain
@@ -1914,7 +1916,7 @@ garbage collector reclaimed it.
 
 ~~~
 struct TimeBomb {
-    explosivity: uint,
+    explosivity: uint
 }
 
 impl TimeBomb : Drop {
@@ -2004,12 +2006,12 @@ following trait describes types that support an equality operation:
 // In a trait, `self` refers both to the self argument
 // and to the type implementing the trait
 trait Eq {
-  fn equals(&self, other: &self) -> bool;
+    fn equals(&self, other: &self) -> bool;
 }
 
 // In an impl, `self` refers just to the value of the receiver
 impl int: Eq {
-  fn equals(&self, other: &int) -> bool { *other == *self }
+    fn equals(&self, other: &int) -> bool { *other == *self }
 }
 ~~~~
 
@@ -2033,7 +2035,7 @@ impl Circle: Shape {
     static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
 }
 impl Square: Shape {
-     static fn new(area: float) -> Square { Square { length: sqrt(area) } }
+    static fn new(area: float) -> Square { Square { length: sqrt(area) } }
 }
 
 let area = 42.5;
@@ -2103,9 +2105,9 @@ fn draw_all<T: Drawable>(shapes: ~[T]) {
 # draw_all(~[c]);
 ~~~~
 
-You can call that on an array of circles, or an array of squares
+You can call that on an array of circles, or an array of rectangles
 (assuming those have suitable `Drawable` traits defined), but not on
-an array containing both circles and squares. When such behavior is
+an array containing both circles and rectangles. When such behavior is
 needed, a trait name can alternately be used as a type, called
 an _object_.
 
@@ -2189,10 +2191,10 @@ Now, we can implement `Circle` on a type only if we also implement `Shape`.
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
 impl CircleStruct: Circle {
-     fn radius(&self) -> float { sqrt(self.area() / pi) }
+    fn radius(&self) -> float { sqrt(self.area() / pi) }
 }
 impl CircleStruct: Shape {
-     fn area(&self) -> float { pi * square(self.radius) }
+    fn area(&self) -> float { pi * square(self.radius) }
 }   
 ~~~~
 
@@ -2266,7 +2268,7 @@ fn chicken_farmer() {
 ~~~
 
 These farm animal functions have a new keyword, `pub`, attached to
-them.  The `pub` keyword modifies an item's visibility, making it
+them. The `pub` keyword modifies an item's visibility, making it
 visible outside its containing module. An expression with `::`, like
 `farm::chicken`, can name an item outside of its containing
 module. Items, such as those declared with `fn`, `struct`, `enum`,
@@ -2276,7 +2278,7 @@ Visibility restrictions in Rust exist only at module boundaries. This
 is quite different from most object-oriented languages that also
 enforce restrictions on objects themselves. That's not to say that
 Rust doesn't support encapsulation: both struct fields and methods can
-be private.  But this encapsulation is at the module level, not the
+be private. But this encapsulation is at the module level, not the
 struct level. Note that fields and methods are _public_ by default.
 
 ~~~
@@ -2320,7 +2322,7 @@ fn main() {
 
 The unit of independent compilation in Rust is the crate: rustc
 compiles a single crate at a time, from which it produces either a
-library or executable.
+library or an executable.
 
 When compiling a single `.rs` source file, the file acts as the whole crate.
 You can compile it with the `--lib` compiler switch to create a shared
@@ -2368,7 +2370,7 @@ Compiling this file will cause `rustc` to look for files named
 `cow.rs`, `chicken.rs`, and `horse.rs` in the same directory as the
 `.rc` file, compile them all together, and, based on the presence of
 the `crate_type = "lib"` attribute, output a shared library or an
-executable.  (If the line `#[crate_type = "lib"];` was omitted,
+executable. (If the line `#[crate_type = "lib"];` was omitted,
 `rustc` would create an executable.)
 
 The `#[link(...)]` attribute provides meta information about the
