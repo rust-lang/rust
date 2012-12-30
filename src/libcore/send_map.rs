@@ -173,6 +173,7 @@ pub mod linear {
             let mut old_buckets = vec::from_fn(new_capacity, |_i| None);
             self.buckets <-> old_buckets;
 
+            self.size = 0;
             for uint::range(0, old_capacity) |i| {
                 let mut bucket = None;
                 bucket <-> old_buckets[i];
@@ -582,5 +583,23 @@ pub mod test {
         m2.insert(3, 4);
 
         assert m1 == m2;
+    }
+
+    #[test]
+    pub fn test_expand() {
+        let mut m = ~LinearMap();
+
+        assert m.len() == 0;
+        assert m.is_empty();
+
+        let mut i = 0u;
+        let old_resize_at = m.resize_at;
+        while old_resize_at == m.resize_at {
+            m.insert(i, i);
+            i += 1;
+        }
+
+        assert m.len() == i;
+        assert !m.is_empty();
     }
 }
