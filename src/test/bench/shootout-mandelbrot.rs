@@ -96,9 +96,9 @@ fn chanmb(i: uint, size: uint) -> Line
     Line {i:i, b:crv}
 }
 
-type devnull = {dn: int};
+struct Devnull();
 
-impl devnull: io::Writer {
+impl Devnull: io::Writer {
     fn write(&self, _b: &[const u8]) {}
     fn seek(&self, _i: int, _s: io::SeekStyle) {}
     fn tell(&self) -> uint {0_u}
@@ -110,7 +110,7 @@ fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
 {
     let cout: io::Writer = match path {
         ~"" => {
-            {dn: 0} as io::Writer
+            Devnull as io::Writer
         }
         ~"-" => {
             io::stdout()
