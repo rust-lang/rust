@@ -344,6 +344,12 @@ fn should_extract_struct_fields() {
 mod test {
     #[legacy_exports];
 
+    use astsrv;
+    use doc;
+    use parse;
+
+    use core::vec;
+
     fn mk_doc(+source: ~str) -> doc::Doc {
         let ast = parse::from_str(source);
         extract(ast, ~"")

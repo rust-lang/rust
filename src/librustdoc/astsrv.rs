@@ -21,6 +21,7 @@ use parse;
 use util;
 
 use core::oldcomm;
+use core::vec;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session::Session;

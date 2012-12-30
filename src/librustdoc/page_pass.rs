@@ -183,6 +183,12 @@ fn should_remove_foreign_mods_from_containing_mods() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use config;
+    use doc;
+    use extract;
+
     fn mk_doc_(
         output_style: config::OutputStyle,
         source: ~str

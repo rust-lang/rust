@@ -31,6 +31,9 @@ pub type CrateAttrs = {
 mod test {
     #[legacy_exports];
 
+    use syntax::ast;
+    use syntax;
+
     fn parse_attributes(+source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
         use syntax::parse::parser;

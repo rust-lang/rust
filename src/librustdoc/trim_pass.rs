@@ -36,6 +36,12 @@ fn should_trim_text() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astrsrv;
+    use attr_pass;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
