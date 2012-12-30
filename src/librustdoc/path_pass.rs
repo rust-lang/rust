@@ -13,6 +13,7 @@
 use astsrv;
 use doc::ItemUtils;
 use doc;
+use extract;
 use fold::Fold;
 use fold;
 

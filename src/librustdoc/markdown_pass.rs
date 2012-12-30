@@ -11,15 +11,28 @@
 //! Generate markdown from a document tree
 
 use astsrv;
+use attr_pass;
+use config;
+use desc_to_brief_pass;
 use doc::ItemUtils;
 use doc;
+use extract;
 use fold;
+use markdown_index_pass;
 use markdown_pass;
 use markdown_writer::Writer;
 use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
+use markdown_writer;
+use page_pass;
+use path_pass;
+use sectionalize_pass;
 use sort_pass;
+use trim_pass;
+use unindent_pass;
 
+use core::iter;
+use core::oldcomm;
 use core::str;
 use core::vec;
 use std::par;
@@ -817,6 +830,24 @@ fn should_write_struct_header() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use config;
+    use desc_to_brief_pass;
+    use doc;
+    use extract;
+    use markdown_index_pass;
+    use markdown_writer;
+    use path_pass;
+    use sectionalize_pass;
+    use trim_pass;
+    use tystr_pass;
+    use unindent_pass;
+
+    use core::oldcomm;
+    use core::str;
+
     fn render(+source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);
