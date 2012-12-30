@@ -738,6 +738,7 @@ can have its fields extracted with dot notation and not just destructuring.
 For example:
 
 ~~~~
+# use core::float;
 # struct Point {x: float, y: float}
 # fn square(x: float) -> float { x * x }
 enum Shape {
@@ -2280,6 +2281,7 @@ struct level. Note that fields and methods are _public_ by default.
 
 ~~~
 mod farm {
+# use farm;
 # pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv mut chickens: ~[Chicken],
