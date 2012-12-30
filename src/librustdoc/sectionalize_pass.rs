@@ -251,6 +251,12 @@ fn should_sectionalize_impl_methods() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
