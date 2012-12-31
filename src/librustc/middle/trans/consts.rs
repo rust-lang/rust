@@ -398,7 +398,6 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                 // forbids paths that don't map to C-like enum variants.
                 let ety = ty::expr_ty(cx.tcx, e);
                 let llty = type_of::type_of(cx, ety);
-                let llstructtys = lib::llvm::struct_element_types(llty);
 
                 // Can't use `discrims` from the crate context here because
                 // those discriminants have an extra level of indirection,
@@ -422,8 +421,14 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                         lldiscrim = found_lldiscrim;
                     }
                 }
+                let fields = if ty::enum_is_univariant(cx.tcx, enum_did) {
+                    ~[lldiscrim]
+                } else {
+                    let llstructtys = lib::llvm::struct_element_types(llty);
+                    ~[lldiscrim, C_null(llstructtys[1])]
+                };
 
-                C_named_struct(llty, ~[ lldiscrim, C_null(llstructtys[1]) ])
+                C_named_struct(llty, fields)
             }
             Some(ast::def_struct(_)) => {
                 let ety = ty::expr_ty(cx.tcx, e);
