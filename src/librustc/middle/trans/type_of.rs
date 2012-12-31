@@ -230,7 +230,7 @@ fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
     debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
-        let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
+        let degen = ty::enum_is_univariant(cx.tcx, did);
         let size = shape::static_size_of_enum(cx, t);
         if !degen {
             ~[T_enum_discrim(cx), T_array(T_i8(), size)]
