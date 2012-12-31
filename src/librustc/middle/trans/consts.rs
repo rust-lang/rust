@@ -454,6 +454,24 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                         C_named_struct(llty, ~[ llstructbody ])
                     }
                 }
+            Some(ast::def_variant(tid, vid)) => {
+                let ety = ty::expr_ty(cx.tcx, e);
+                let degen = ty::enum_is_univariant(cx.tcx, tid);
+                let size = shape::static_size_of_enum(cx, ety);
+
+                let discrim = base::get_discrim_val(cx, e.span, tid, vid);
+                let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
+
+                let fields = if !degen {
+                    ~[discrim, c_args]
+                } else if size == 0 {
+                    ~[discrim]
+                } else {
+                    ~[c_args]
+                };
+
+                C_struct(fields)
+            }
                 _ => cx.sess.span_bug(e.span, ~"expected a struct def")
             }
           }
