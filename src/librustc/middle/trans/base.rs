@@ -2308,16 +2308,21 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
             match i.node {
-              ast::item_const(_, _) => {
+              ast::item_const(_, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
-                let g = str::as_c_str(s, |buf| {
-                    unsafe {
-                        llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
-                    }
-                });
-                ccx.item_symbols.insert(i.id, s);
-                g
+                // We need the translated value here, because for enums the
+                // LLVM type is not fully determined by the Rust type.
+                let v = consts::const_expr(ccx, expr);
+                ccx.const_values.insert(id, v);
+                unsafe {
+                    let llty = llvm::LLVMTypeOf(v);
+                    let g = str::as_c_str(s, |buf| {
+                        llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
+                    });
+                    ccx.item_symbols.insert(i.id, s);
+                    g
+                }
               }
               ast::item_fn(_, purity, _, _) => {
                 let llfn = if purity != ast::extern_fn {

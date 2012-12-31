@@ -464,12 +464,13 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
+fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
     unsafe {
         let _icx = ccx.insn_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
-        let v = const_expr(ccx, e);
-        ccx.const_values.insert(id, v);
+        // At this point, get_item_val has already translated the
+        // constant's initializer to determine its LLVM type.
+        let v = ccx.const_values.get(id);
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
     }
