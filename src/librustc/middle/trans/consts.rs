@@ -416,31 +416,10 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     // variants.
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
+                    let lldiscrim = base::get_discrim_val(cx, e.span,
+                                                          enum_did,
+                                                          variant_did);
 
-                    // Can't use `discrims` from the crate context here
-                    // because those discriminants have an extra level of
-                    // indirection, and there's no LLVM constant load
-                    // instruction.
-                    let mut lldiscrim_opt = None;
-                    for ty::enum_variants(cx.tcx, enum_did).each
-                            |variant_info| {
-                        if variant_info.id == variant_did {
-                            lldiscrim_opt = Some(C_int(cx,
-                                variant_info.disr_val));
-                            break;
-                        }
-                    }
-
-                    let lldiscrim;
-                    match lldiscrim_opt {
-                        None => {
-                            cx.tcx.sess.span_bug(e.span,
-                                ~"didn't find discriminant?!");
-                        }
-                        Some(found_lldiscrim) => {
-                            lldiscrim = found_lldiscrim;
-                        }
-                    }
                     let fields = if ty::enum_is_univariant(cx.tcx, enum_did) {
                         ~[lldiscrim]
                     } else {
