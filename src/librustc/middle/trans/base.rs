@@ -779,6 +779,30 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     };
 }
 
+fn get_discrim_val(cx: @crate_ctxt, span: span, enum_did: ast::def_id,
+                   variant_did: ast::def_id) -> ValueRef {
+    // Can't use `discrims` from the crate context here because
+    // those discriminants have an extra level of indirection,
+    // and there's no LLVM constant load instruction.
+    let mut lldiscrim_opt = None;
+    for ty::enum_variants(cx.tcx, enum_did).each |variant_info| {
+        if variant_info.id == variant_did {
+            lldiscrim_opt = Some(C_int(cx,
+                                       variant_info.disr_val));
+            break;
+        }
+    }
+
+    match lldiscrim_opt {
+        None => {
+            cx.tcx.sess.span_bug(span, ~"didn't find discriminant?!");
+        }
+        Some(found_lldiscrim) => {
+            found_lldiscrim
+        }
+    }
+}
+
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("lookup_discriminant");
