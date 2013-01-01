@@ -36,7 +36,7 @@ type system and memory model, generics, and modules. [Additional
 tutorials](#what-next) cover specific language features in greater
 depth.
 
-This tutorial assumes that the reader is already familiar with one or more
+This tutorial assumes that the reader is already familiar with one or
 more languages in the C family. Understanding of pointers and general
 memory management techniques will help.
 
@@ -1284,7 +1284,7 @@ distinct type. They support most of the same allocation options as
 vectors, though the string literal without a storage sigil (for
 example, `"foo"`) is treated differently than a comparable vector
 (`[foo]`).  Whereas plain vectors are stack-allocated fixed-length
-vectors, plain strings are region pointers to read-only
+vectors, plain strings are borrowed pointers to read-only (static)
 memory. All strings are immutable.
 
 ~~~
@@ -1947,7 +1947,7 @@ trait Printable {
 Traits may be implemented for specific types with [impls]. An impl
 that implements a trait includes the name of the trait at the start of
 the definition, as in the following impls of `Printable` for `int`
-and `~str`.
+and `&str`.
 
 [impls]: #functions-and-methods
 
