@@ -3258,12 +3258,12 @@ crate name the crate is given a default name that matches the source file,
 with the extension removed. In that case, to turn on logging for a program
 compiled from, e.g. `helloworld.rs`, `RUST_LOG` should be set to `helloworld`.
 
-As a convenience, the logging spec can also be set to a special psuedo-crate,
+As a convenience, the logging spec can also be set to a special pseudo-crate,
 `::help`. In this case, when the application starts, the runtime will
 simply output a list of loaded modules containing log expressions, then exit.
 
 The Rust runtime itself generates logging information. The runtime's logs are
-generated for a number of artificial modules in the `::rt` psuedo-crate,
+generated for a number of artificial modules in the `::rt` pseudo-crate,
 and can be enabled just like the logs for any standard module. The full list
 of runtime logging modules follows.
 
@@ -3341,7 +3341,7 @@ have come and gone during the course of Rust's development:
 
 * The Newsqueak (1988), Alef (1995), and Limbo (1996) family. These
   languages were developed by Rob Pike, Phil Winterbottom, Sean Dorward and
-  others in their group at Bell labs Computing Sciences Research Center
+  others in their group at Bell Labs Computing Sciences Research Center
   (Murray Hill, NJ, USA).
 
 * The Napier (1985) and Napier88 (1988) family. These languages were
