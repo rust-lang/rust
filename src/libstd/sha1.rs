@@ -37,9 +37,9 @@ use core::vec;
 /// The SHA-1 interface
 trait Sha1 {
     /// Provide message input as bytes
-    fn input((&[const u8]));
+    fn input(&[const u8]);
     /// Provide message input as string
-    fn input_str((&str));
+    fn input_str(&str);
     /**
      * Read the digest as a vector of 20 bytes. After calling this no further
      * input may be provided until reset is called.
