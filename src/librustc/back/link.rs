@@ -667,16 +667,14 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
 
 fn output_dll_filename(os: session::os, lm: &link_meta) -> ~str {
     let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
-    match os {
-        session::os_macos =>
-            macos::dll_prefix() + libname + macos::dll_suffix(),
-        session::os_freebsd =>
-            freebsd::dll_prefix() + libname + macos::dll_suffix(),
-        session::os_linux =>
-            freebsd::dll_prefix() + libname + macos::dll_suffix(),
-        session::os_win32 =>
-            win32::dll_prefix() + libname + win32::dll_suffix(),
-    }
+    let (dll_prefix, dll_suffix) = match os {
+        session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        session::os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        session::os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+    };
+    return str::from_slice(dll_prefix) + libname +
+           str::from_slice(dll_suffix);
 }
 
 // If the user wants an exe generated we need to invoke
