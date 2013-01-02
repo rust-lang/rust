@@ -910,7 +910,6 @@ mod consts {
         pub const FAMILY: &str = "windows";
     }
 
-
     pub mod macos {
         pub const SYSNAME: &str = "macos";
         pub const DLL_PREFIX: &str = "lib";
