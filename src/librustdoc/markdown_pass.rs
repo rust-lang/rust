@@ -235,7 +235,7 @@ pub fn header_kind(+doc: doc::ItemTag) -> ~str {
         ~"Enum"
       }
       doc::TraitTag(_) => {
-        ~"Interface"
+        ~"Trait"
       }
       doc::ImplTag(_) => {
         ~"Implementation"
@@ -724,7 +724,7 @@ fn write_method(ctxt: &Ctxt, +doc: doc::MethodDoc) {
 #[test]
 fn should_write_trait_header() {
     let markdown = test::render(~"trait i { fn a(); }");
-    assert str::contains(markdown, ~"## Interface `i`");
+    assert str::contains(markdown, ~"## Trait `i`");
 }
 
 #[test]
