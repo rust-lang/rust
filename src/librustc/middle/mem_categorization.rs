@@ -453,7 +453,7 @@ impl &mem_categorization_ctxt {
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_arg(vid, mode) => {
+          ast::def_arg(vid, mode, _) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
