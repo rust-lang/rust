@@ -287,6 +287,7 @@ fn mk_arg(cx: ext_ctxt,
     let arg_pat = mk_pat_ident(cx, span, ident);
     {
         mode: ast::infer(cx.next_id()),
+        is_mutbl: false,
         ty: ty,
         pat: arg_pat,
         id: cx.next_id()

@@ -1138,7 +1138,7 @@ impl Ty : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
-type arg = {mode: mode, ty: @Ty, pat: @pat, id: node_id};
+type arg = {mode: mode, is_mutbl: bool, ty: @Ty, pat: @pat, id: node_id};
 
 #[auto_encode]
 #[auto_decode]
