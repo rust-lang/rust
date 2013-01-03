@@ -49,6 +49,7 @@ use option;
 use ptr;
 use str;
 use util;
+use num::Zero;
 
 /// The option type
 #[deriving_eq]
@@ -168,6 +169,12 @@ pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
+}
+
+pub pure fn get_zero<T: Copy Zero>(opt: Option<T>) -> T {
+    //! Returns the contained value or zero (for this type)
+
+    match opt { Some(copy x) => x, None => Zero::zero() }
 }
 
 pub pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
@@ -333,6 +340,11 @@ impl<T: Copy> Option<T> {
     }
 }
 
+impl<T: Copy Zero> Option<T> {
+    #[inline(always)]
+    pure fn get_zero(self) -> T { get_zero(self) }
+}
+
 #[test]
 fn test_unwrap_ptr() {
     let x = ~0;
@@ -405,6 +417,14 @@ fn test_option_while_some() {
         }
     }
     assert i == 11;
+}
+
+#[test]
+fn test_get_zero() {
+    let some_stuff = Some(42);
+    assert some_stuff.get_zero() == 42;
+    let no_stuff: Option<int> = None;
+    assert no_stuff.get_zero() == 0;
 }
 
 // Local Variables:
