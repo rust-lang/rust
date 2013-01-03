@@ -4606,7 +4606,8 @@ impl Resolver {
                                 }
                                 ArgumentIrrefutableMode(argument_mode) => {
                                     // And for function arguments, `def_arg`.
-                                    def_arg(pattern.id, argument_mode)
+                                    def_arg(pattern.id, argument_mode,
+                                            is_mutable)
                                 }
                             };
 
