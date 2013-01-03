@@ -127,6 +127,7 @@ fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
     ast::arg {
         mode: a.mode,
+        is_mutbl: a.is_mutbl,
         ty: fld.fold_ty(a.ty),
         pat: fld.fold_pat(a.pat),
         id: fld.new_id(a.id),

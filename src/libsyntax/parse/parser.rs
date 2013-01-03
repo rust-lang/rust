@@ -716,6 +716,7 @@ impl Parser {
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
         let mut m;
+        let is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             m = self.parse_arg_mode();
             let pat = self.parse_pat(false);
@@ -730,7 +731,8 @@ impl Parser {
 
         let t = self.parse_ty(false);
 
-        ast::arg { mode: m, ty: t, pat: pat, id: self.get_id() }
+        ast::arg { mode: m, is_mutbl: is_mutbl,
+                  ty: t, pat: pat, id: self.get_id() }
     }
 
     fn parse_arg() -> arg_or_capture_item {
@@ -756,6 +758,7 @@ impl Parser {
             };
             either::Left(ast::arg {
                 mode: m,
+                is_mutbl: false,
                 ty: t,
                 pat: pat,
                 id: p.get_id()

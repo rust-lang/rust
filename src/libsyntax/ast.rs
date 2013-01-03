@@ -1194,11 +1194,11 @@ impl Ty : to_bytes::IterBytes {
     }
 }
 
-
 #[auto_encode]
 #[auto_decode]
 struct arg {
     mode: mode,
+    is_mutbl: bool,
     ty: @Ty,
     pat: @pat,
     id: node_id,
