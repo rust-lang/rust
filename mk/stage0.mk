@@ -11,7 +11,7 @@ $(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X):		\
 ifdef CFG_ENABLE_LOCAL_RUST
 	$(Q)$(S)src/etc/local_stage0.sh $(CFG_HOST_TRIPLE) $(CFG_LOCAL_RUST_ROOT)
 else 
-	$(Q)$(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE) $(SNAPSHOT_FILE)
+	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE) $(SNAPSHOT_FILE)
 ifdef CFG_ENABLE_PAX_FLAGS
 	@$(call E, apply PaX flags: $@)
 	@"$(CFG_PAXCTL)" -cm "$@"
