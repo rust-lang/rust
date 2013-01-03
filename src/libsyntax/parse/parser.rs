@@ -716,9 +716,10 @@ impl Parser {
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
         let mut m;
-        let is_mutbl = false;
+        let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             m = self.parse_arg_mode();
+            is_mutbl = self.eat_keyword(~"mut");
             let pat = self.parse_pat(false);
             self.expect(token::COLON);
             pat
