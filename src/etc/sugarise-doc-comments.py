@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #
 # this script attempts to turn doc comment attributes (#[doc = "..."])
