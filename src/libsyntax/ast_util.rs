@@ -86,7 +86,7 @@ pure fn def_id_of_def(d: def) -> def_id {
       def_use(id) | def_struct(id) => {
         id
       }
-      def_arg(id, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)
+      def_arg(id, _, _) | def_local(id, _) | def_self(id, _) | def_self_ty(id)
       | def_upvar(id, _, _, _) | def_binding(id, _) | def_region(id)
       | def_typaram_binder(id) | def_label(id) => {
         local_def(id)

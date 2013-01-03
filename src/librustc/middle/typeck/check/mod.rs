@@ -2818,7 +2818,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
     ty_param_bounds_and_ty {
 
     match defn {
-      ast::def_arg(nid, _) | ast::def_local(nid, _) |
+      ast::def_arg(nid, _, _) | ast::def_local(nid, _) |
       ast::def_self(nid, _) | ast::def_binding(nid, _) => {
         assert (fcx.inh.locals.contains_key(nid));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));

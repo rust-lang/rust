@@ -854,7 +854,7 @@ fn trans_local_var(bcx: block,
                 }
             }
         }
-        ast::def_arg(nid, _) => {
+        ast::def_arg(nid, _, _) => {
             take_local(bcx, bcx.fcx.llargs, nid, expr_id_opt)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {

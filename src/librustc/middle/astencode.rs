@@ -415,7 +415,7 @@ impl ast::def: tr {
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
           ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
           ast::def_const(did) => { ast::def_const(did.tr(xcx)) }
-          ast::def_arg(nid, m) => { ast::def_arg(xcx.tr_id(nid), m) }
+          ast::def_arg(nid, m, b) => { ast::def_arg(xcx.tr_id(nid), m, b) }
           ast::def_local(nid, b) => { ast::def_local(xcx.tr_id(nid), b) }
           ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
