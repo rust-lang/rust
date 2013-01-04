@@ -347,6 +347,7 @@ pub fn cleanup_stack_for_failure() {
 
             if ptr::is_null(tydesc) {
                 // FIXME #4420: Destroy this box
+                // FIXME #4330: Destroy this box
             } else {
                 rustrt::rust_call_tydesc_glue(*root, tydesc, 3 as size_t);
             }
