@@ -206,14 +206,17 @@ pub type Packet<T: Owned> = {
 
 #[doc(hidden)]
 pub trait HasBuffer {
-    // FIXME #4421: This should not have a trailing underscore
+    fn set_buffer(b: *libc::c_void);
+    // FIXME #4421 remove after snapshot
     fn set_buffer_(b: *libc::c_void);
 }
 
 impl<T: Owned> Packet<T>: HasBuffer {
-    fn set_buffer_(b: *libc::c_void) {
+    fn set_buffer(b: *libc::c_void) {
         self.header.buffer = b;
     }
+    // FIXME #4421 remove after snapshot
+    fn set_buffer_(b: *libc::c_void) { self.set_buffer(b) }
 }
 
 #[doc(hidden)]
