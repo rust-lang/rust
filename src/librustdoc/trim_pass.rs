@@ -17,6 +17,7 @@ is interpreted as the brief description.
 
 use doc::ItemUtils;
 use doc;
+use pass::Pass;
 use text_pass;
 
 use core::str;

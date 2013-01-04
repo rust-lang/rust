@@ -16,6 +16,8 @@ corresponding AST nodes. The information gathered here is the basis
 of the natural-language documentation for a crate.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use attr_parser;
 use doc::ItemUtils;
@@ -23,6 +25,7 @@ use doc;
 use extract::to_str;
 use fold::Fold;
 use fold;
+use pass::Pass;
 
 use core::option;
 use core::vec;

@@ -26,6 +26,7 @@ magic.
 
 */
 
+use prelude::*;
 use rt;
 use task::local_data_priv::{local_get, local_pop, local_modify, local_set};
 use task;

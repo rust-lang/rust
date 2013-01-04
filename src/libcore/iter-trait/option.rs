@@ -9,6 +9,8 @@
 // except according to those terms.
 
 mod inst {
+    use option::{None, Option, Some};
+
     #[allow(non_camel_case_types)]
     pub type IMPL_T<A> = Option<A>;
 

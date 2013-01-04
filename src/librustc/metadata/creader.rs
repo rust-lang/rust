@@ -10,6 +10,8 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
+use core::prelude::*;
+
 use metadata::cstore;
 use metadata::common::*;
 use metadata::decoder;

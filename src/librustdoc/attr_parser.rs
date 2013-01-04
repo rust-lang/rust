@@ -15,6 +15,8 @@ The attribute parser provides methods for pulling documentation out of
 an AST's attributes.
 */
 
+use core::prelude::*;
+
 use core::str;
 use core::tuple;
 use core::vec;

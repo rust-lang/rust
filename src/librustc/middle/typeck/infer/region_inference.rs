@@ -440,7 +440,7 @@ not: `fn(&a, &a)` and `fn(&x, &x)`.  In this case, we'll get `F=fn(&g,
 &h)` where `Tainted($g) = {$g, $a, $x}` and `Tainted($h) = {$h, $a,
 $x}`.  Both of these sets contain exactly one bound variable from each
 side, so we'll map them both to `&a`, resulting in `fn(&a, &a)`.
-Horray!
+Hooray!
 
 ### Why are these correct?
 
@@ -453,13 +453,16 @@ write it)
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
+use core::prelude::*;
+
 use middle::region::is_subregion_of;
 use middle::region;
 use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized};
+use middle::typeck::infer::cres;
 use middle::typeck::infer::to_str::ToStr;
-use syntax::codemap;
+use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
 use core::cmp;
@@ -472,6 +475,8 @@ use result::{Ok, Err};
 use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
+use syntax::codemap::span;
+use syntax::codemap;
 
 export RegionVarBindings;
 export make_subregion;

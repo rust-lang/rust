@@ -10,6 +10,8 @@
 
 //! Converts the Rust AST to the rustdoc document model
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;

@@ -10,6 +10,8 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use core::prelude::*;
+
 use astsrv;
 use attr_pass;
 use doc::ItemUtils;
@@ -17,6 +19,7 @@ use doc;
 use extract;
 use fold::Fold;
 use fold;
+use pass::Pass;
 
 use core::str;
 use core::vec;

@@ -26,6 +26,7 @@ use core::cast;
 use core::either::Either;
 use core::option;
 use core::pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::prelude::*;
 use core::task;
 
 #[doc = "The future type"]
@@ -145,6 +146,10 @@ pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
 
 #[allow(non_implicitly_copyable_typarams)]
 pub mod test {
+    use core::prelude::*;
+
+    use future::*;
+
     use core::pipes::oneshot;
     use core::task;
 

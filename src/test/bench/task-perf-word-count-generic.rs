@@ -115,6 +115,8 @@ fn box<T>(+x: T) -> box<T> {
 }
 
 mod map_reduce {
+    use core::oldcomm::*;
+
     use std::map;
 
     pub type putter<K: Owned, V: Owned> = fn(&K, V);

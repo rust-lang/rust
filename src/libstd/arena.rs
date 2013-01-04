@@ -42,6 +42,7 @@ use core::at_vec;
 use core::cast::reinterpret_cast;
 use core::cast;
 use core::libc::size_t;
+use core::prelude::*;
 use core::ptr;
 use core::sys::TypeDesc;
 use core::sys;

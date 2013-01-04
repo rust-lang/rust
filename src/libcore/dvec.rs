@@ -25,6 +25,7 @@ Note that recursive use is not permitted.
 
 use cast;
 use cast::reinterpret_cast;
+use prelude::*;
 use ptr::null;
 use vec;
 

@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
-use codemap::{CodeMap, FileMap, CharPos};
+use codemap::{BytePos, CharPos, CodeMap, FileMap};
 use diagnostic;
 use parse::lexer::{is_whitespace, get_str_from, reader};
 use parse::lexer::{string_reader, bump, is_eof, nextch};

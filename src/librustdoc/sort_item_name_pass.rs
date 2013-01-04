@@ -14,6 +14,7 @@ use astsrv;
 use doc::ItemUtils;
 use doc;
 use extract;
+use pass::Pass;
 use sort_pass;
 
 pub fn mk_pass() -> Pass {

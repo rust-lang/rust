@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::rpath;
 use driver::session;
 use lib::llvm::llvm;
@@ -40,7 +42,7 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
 
-enum output_type {
+pub enum output_type {
     output_type_none,
     output_type_bitcode,
     output_type_assembly,
@@ -56,14 +58,14 @@ impl output_type : cmp::Eq {
     pure fn ne(&self, other: &output_type) -> bool { !(*self).eq(other) }
 }
 
-fn llvm_err(sess: Session, msg: ~str) -> ! unsafe {
+pub fn llvm_err(sess: Session, msg: ~str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {
         sess.fatal(msg);
     } else { sess.fatal(msg + ~": " + str::raw::from_c_str(cstr)); }
 }
 
-fn WriteOutputFile(sess: Session,
+pub fn WriteOutputFile(sess: Session,
         PM: lib::llvm::PassManagerRef, M: ModuleRef,
         Triple: *c_char,
         // FIXME: When #2334 is fixed, change
@@ -81,10 +83,14 @@ fn WriteOutputFile(sess: Session,
 pub mod jit {
     #[legacy_exports];
 
+    use back::link::llvm_err;
     use lib::llvm::llvm;
+    use lib::llvm::{ModuleRef, PassManagerRef, mk_target_data};
     use metadata::cstore;
+    use session::Session;
 
     use core::cast;
+    use core::libc::c_int;
     use core::ptr;
     use core::str;
 
@@ -156,11 +162,19 @@ mod write {
     #[legacy_exports];
 
     use back::link::jit;
+    use back::link::{ModuleRef, WriteOutputFile, output_type};
+    use back::link::{output_type_assembly, output_type_bitcode};
+    use back::link::{output_type_exe, output_type_llvm_assembly};
+    use back::link::{output_type_object};
     use driver::session;
     use lib::llvm::llvm;
+    use lib::llvm::{False, True, mk_pass_manager, mk_target_data};
     use lib;
+    use session::Session;
 
     use core::char;
+    use core::libc::{c_char, c_int, c_uint};
+    use core::path::Path;
     use core::str;
     use core::vec;
 
