@@ -763,7 +763,10 @@ fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef]) -> block {
 }
 
 fn need_invoke(bcx: block) -> bool {
-    if (bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
+    if bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0 {
+        return false;
+    }
+    if !bcx.ccx().unwinding_enabled {
         return false;
     }
 
@@ -2759,6 +2762,12 @@ fn write_abi_version(ccx: @crate_ctxt) {
                      false);
 }
 
+// Returns true if unwinding is enabled (the default) or false if unwinding
+// was disabled due to a crate attribute.
+fn get_unwinding_enabled(crate: @ast::crate) -> bool {
+    !attr::attrs_contains_name(crate.node.attrs, ~"disable_unwinding")
+}
+
 fn trans_crate(sess: session::Session,
                crate: @ast::crate,
                tcx: ty::ctxt,
@@ -2877,7 +2886,8 @@ fn trans_crate(sess: session::Session,
           crate_map: crate_map,
           mut uses_gc: false,
           dbg_cx: dbg_cx,
-          mut do_not_commit_warning_issued: false};
+          mut do_not_commit_warning_issued: false,
+          unwinding_enabled: get_unwinding_enabled(crate)};
 
 
     gather_rtcalls(ccx, crate);

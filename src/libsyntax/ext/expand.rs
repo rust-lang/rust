@@ -299,7 +299,7 @@ fn core_macros() -> ~str {
 
         { $c:ident: $in:ty -> $out:ty; } => {
 
-            mod $c {
+            pub mod $c {
                 fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
                 pub const cond : ::core::condition::Condition<$in,$out> =

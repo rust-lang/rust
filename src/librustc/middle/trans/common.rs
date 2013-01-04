@@ -213,7 +213,8 @@ type crate_ctxt = {
      // is not emitted by LLVM's GC pass when no functions use GC.
      mut uses_gc: bool,
      dbg_cx: Option<debuginfo::debug_ctxt>,
-     mut do_not_commit_warning_issued: bool};
+     mut do_not_commit_warning_issued: bool,
+     unwinding_enabled: bool};
 
 // Types used for llself.
 struct ValSelfData {

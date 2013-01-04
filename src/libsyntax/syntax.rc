@@ -19,6 +19,8 @@
 #[legacy_modes];
 #[legacy_exports];
 
+#[disable_unwinding];
+
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
