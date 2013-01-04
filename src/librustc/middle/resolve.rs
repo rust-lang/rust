@@ -4104,9 +4104,11 @@ impl Resolver {
                     for declaration.inputs.each |argument| {
                         let binding_mode =
                             ArgumentIrrefutableMode(argument.mode);
+                        let mutability =
+                            if argument.is_mutbl {Mutable} else {Immutable};
                         self.resolve_pattern(argument.pat,
                                              binding_mode,
-                                             Immutable,
+                                             mutability,
                                              None,
                                              visitor);
 
@@ -4295,12 +4297,7 @@ impl Resolver {
     }
 
     fn resolve_local(local: @local, visitor: ResolveVisitor) {
-        let mut mutability;
-        if local.node.is_mutbl {
-            mutability = Mutable;
-        } else {
-            mutability = Immutable;
-        }
+        let mutability = if local.node.is_mutbl {Mutable} else {Immutable};
 
         // Resolve the type.
         self.resolve_type(local.node.ty, visitor);

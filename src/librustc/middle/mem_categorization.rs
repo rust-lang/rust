@@ -453,18 +453,19 @@ impl &mem_categorization_ctxt {
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_arg(vid, mode, _) => {
+          ast::def_arg(vid, mode, mutbl) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
-            let {m,lp} = match ty::resolved_mode(self.tcx, mode) {
+            let m = if mutbl {m_mutbl} else {m_imm};
+            let lp = match ty::resolved_mode(self.tcx, mode) {
               ast::by_move | ast::by_copy => {
-                {m: m_imm, lp: Some(@lp_arg(vid))}
+                Some(@lp_arg(vid))
               }
               ast::by_ref => {
-                {m: m_imm, lp: None}
+                None
               }
               ast::by_val => {
                 // by-value is this hybrid mode where we have a
@@ -472,7 +473,7 @@ impl &mem_categorization_ctxt {
                 // considered loanable because, for example, a by-ref
                 // and and by-val argument might both actually contain
                 // the same unique ptr.
-                {m: m_imm, lp: None}
+                None
               }
             };
             @{id:id, span:span,
