@@ -12,10 +12,13 @@
 
 #[legacy_exports];
 
+use core::prelude::*;
+
 use astsrv;
 use doc;
 use fold::Fold;
 use fold;
+use pass::Pass;
 
 use core::util;
 use core::vec;

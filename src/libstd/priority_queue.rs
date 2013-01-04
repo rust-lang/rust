@@ -2,6 +2,7 @@
 //! A priority queue implemented with a binary heap
 
 use core::cmp::Ord;
+use core::prelude::*;
 use core::ptr::addr_of;
 use core::vec;
 

@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use ast_util::spanned;
+use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;
 

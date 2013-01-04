@@ -19,6 +19,7 @@
 
 use core::option;
 use core::pipes;
+use core::prelude::*;
 use core::private::{Exclusive, exclusive};
 use core::ptr;
 use core::task;
@@ -708,6 +709,10 @@ impl &RWlockReadMode {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use sync::*;
 
     use core::cast;
     use core::option;

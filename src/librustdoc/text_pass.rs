@@ -10,11 +10,14 @@
 
 //! Generic pass for performing an operation on all descriptions
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
 use fold::Fold;
 use fold;
+use pass::Pass;
 use util::NominalOp;
 
 use std::par;

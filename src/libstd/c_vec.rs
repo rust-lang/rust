@@ -40,6 +40,7 @@
 use core::libc;
 use core::oldcomm;
 use core::option;
+use core::prelude::*;
 use core::ptr;
 use core::task;
 
@@ -152,6 +153,10 @@ pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
+    use c_vec::*;
+
     use core::libc::*;
     use core::libc;
 

@@ -19,12 +19,12 @@ trait plus {
 
 mod a {
     #[legacy_exports];
-    impl uint: plus { fn plus() -> int { self as int + 20 } }
+    impl uint: ::plus { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
     #[legacy_exports];
-    impl ~str: plus { fn plus() -> int { 200 } }
+    impl ~str: ::plus { fn plus() -> int { 200 } }
 }
 
 trait uint_utils {

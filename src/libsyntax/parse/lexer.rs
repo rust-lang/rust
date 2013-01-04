@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use ast_util;
 use codemap::{span, CodeMap, CharPos, BytePos};
 use codemap;
 use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};
-use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader};
+use ext::tt::transcribe::{tt_reader, new_tt_reader, dup_tt_reader};
 use parse::token;
 
 use core::char;

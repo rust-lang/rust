@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
@@ -19,7 +21,13 @@ use core::vec;
 use std::map::HashMap;
 use std::map;
 
+export get_absolute_rpath;
+export get_install_prefix_rpath;
+export get_relative_to;
 export get_rpath_flags;
+export get_rpath_relative_to_output;
+export minimize_rpaths;
+export rpaths_to_flags;
 
 pure fn not_win32(os: session::os) -> bool {
   match os {
@@ -201,6 +209,11 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 mod test {
     #[legacy_exports];
 
+    use core::prelude::*;
+
+    use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
+    use back::rpath::{get_relative_to, get_rpath_relative_to_output};
+    use back::rpath::{minimize_rpaths, rpaths_to_flags};
     use driver::session;
 
     use core::os;

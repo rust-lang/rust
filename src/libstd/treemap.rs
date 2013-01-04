@@ -18,8 +18,8 @@
 #[forbid(deprecated_mode)];
 
 use core::cmp::{Eq, Ord};
-use core::option::{Some, None};
-use Option = core::Option;
+use core::option::{Option, Some, None};
+use core::prelude::*;
 
 pub type TreeMap<K: Copy Eq Ord, V: Copy> = @mut TreeEdge<K, V>;
 
@@ -107,6 +107,9 @@ pub fn equals<K: Copy Eq Ord, V: Copy Eq>(t1: &const TreeEdge<K, V>,
 mod tests {
     #[legacy_exports];
 
+    use treemap::*;
+
+    use core::option::{None, Option, Some};
     use core::str;
 
     #[test]

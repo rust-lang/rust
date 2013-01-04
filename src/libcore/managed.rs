@@ -15,10 +15,12 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
-use intrinsic::TyDesc;
+use prelude::*;
 use ptr;
 
 pub mod raw {
+    use intrinsic::TyDesc;
+
     pub struct BoxHeaderRepr {
         ref_count: uint,
         type_desc: *TyDesc,

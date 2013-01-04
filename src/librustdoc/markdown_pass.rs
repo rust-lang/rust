@@ -10,6 +10,8 @@
 
 //! Generate markdown from a document tree
 
+use core::prelude::*;
+
 use astsrv;
 use attr_pass;
 use config;
@@ -25,6 +27,7 @@ use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
 use markdown_writer;
 use page_pass;
+use pass::Pass;
 use path_pass;
 use sectionalize_pass;
 use sort_pass;

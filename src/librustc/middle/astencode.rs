@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use c = metadata::common;
 use cstore = metadata::cstore;
 use driver::session::Session;

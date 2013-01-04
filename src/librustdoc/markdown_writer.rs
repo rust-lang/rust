@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use config;
 use doc::ItemUtils;
 use doc;
+use pass::Pass;
 
 use core::io::ReaderUtil;
 use core::io;

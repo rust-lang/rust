@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::{ProtoBox, ProtoUniq, provided, public, pure_fn, purity, re_static};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_value, bind_by_move, bitand, bitor, bitxor, blk};
@@ -33,23 +35,24 @@ use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
-use ast::{named_field, neg, noreturn, not, pat, pat_box, pat_enum, pat_ident};
-use ast::{pat_lit, pat_range, pat_rec, pat_region, pat_struct, pat_tup};
-use ast::{pat_uniq, pat_wild, path, private, Proto, ProtoBare, ProtoBorrowed};
-use ast::{re_self, re_anon, re_named, region, rem, required, ret_style};
-use ast::{return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr};
-use ast::{stmt_semi, stmt_mac, struct_def, struct_field, struct_immutable};
-use ast::{struct_mutable, struct_variant_kind, subtract, sty_box, sty_by_ref};
-use ast::{sty_region, sty_static, sty_uniq, sty_value, token_tree};
-use ast::{trait_method, trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal};
-use ast::{tuple_variant_kind, Ty, ty_, ty_bot, ty_box, ty_field, ty_fn};
-use ast::{ty_fixed_length_vec, type_value_ns, uniq, unnamed_field};
-use ast::{ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound};
-use ast::{ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec};
-use ast::{unsafe_blk, unsafe_fn, variant, view_item, view_item_};
-use ast::{view_item_export, view_item_import, view_item_use, view_path};
-use ast::{view_path_glob, view_path_list, view_path_simple, visibility};
-use ast::{vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
+use ast::{pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct};
+use ast::{pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare};
+use ast::{ProtoBorrowed, re_self, re_anon, re_named, region, rem, required};
+use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
+use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
+use ast::{struct_immutable, struct_mutable, struct_variant_kind, subtract};
+use ast::{sty_box, sty_by_ref, sty_region, sty_static, sty_uniq, sty_value};
+use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
+use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
+use ast::{ty_field, ty_fixed_length_vec, ty_fn, ty_infer, ty_mac, ty_method};
+use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr};
+use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
+use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
+use ast::{view_item_, view_item_export, view_item_import, view_item_use};
+use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
+use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
+use ast::{vstore_uniq};
 use ast;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
 use ast_util;
@@ -69,6 +72,7 @@ use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
 use parse::token;
+use parse::{new_sub_parser_from_file, next_node_id, parse_sess};
 use print::pprust::expr_to_str;
 use util::interner::Interner;
 
