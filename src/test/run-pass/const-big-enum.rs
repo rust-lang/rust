@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,22 +9,30 @@
 // except according to those terms.
 
 enum Foo {
-    Bar,
+    Bar(u32),
     Baz,
-    Boo,
+    Quux(u64, u16)
 }
 
-const X: Foo = Bar;
+const X: Foo = Baz;
 
 fn main() {
     match X {
-        Bar => {}
-        Baz | Boo => fail
+        Baz => {}
+        _ => fail
     }
     match Y {
-        Baz => {}
-        Bar | Boo => fail
+        Bar(s) => assert(s == 2654435769),
+        _ => fail
+    }
+    match Z {
+        Quux(d,h) => {
+            assert(d == 0x123456789abcdef0);
+            assert(h == 0x1234);
+        }
+        _ => fail
     }
 }
 
-const Y: Foo = Baz;
+const Y: Foo = Bar(2654435769);
+const Z: Foo = Quux(0x123456789abcdef0, 0x1234);
