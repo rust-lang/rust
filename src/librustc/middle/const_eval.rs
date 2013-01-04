@@ -46,7 +46,7 @@ use syntax::ast::*;
 //        & and * pointers
 //        copies of general constants
 //
-//        (in theory, probably not at first: if/alt on integer-const
+//        (in theory, probably not at first: if/match on integer-const
 //         conditions / descriminants)
 //
 //   - Non-constants: everything else.

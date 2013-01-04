@@ -195,15 +195,15 @@ priv impl &preserve_ctxt {
                 self.attempt_root(cmt, base, derefs)
             }
           }
-          cat_discr(base, alt_id) => {
-            // Subtle: in an alt, we must ensure that each binding
+          cat_discr(base, match_id) => {
+            // Subtle: in a match, we must ensure that each binding
             // variable remains valid for the duration of the arm in
             // which it appears, presuming that this arm is taken.
             // But it is inconvenient in trans to root something just
             // for one arm.  Therefore, we insert a cat_discr(),
             // basically a special kind of category that says "if this
             // value must be dynamically rooted, root it for the scope
-            // `alt_id`.
+            // `match_id`.
             //
             // As an example, consider this scenario:
             //
@@ -213,7 +213,7 @@ priv impl &preserve_ctxt {
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans
             // before we know what arm will be taken, so we just
-            // always root it for the duration of the alt.
+            // always root it for the duration of the match.
             //
             // As a second example, consider *this* scenario:
             //
@@ -225,7 +225,7 @@ priv impl &preserve_ctxt {
             // found only when checking which pattern matches: but
             // this check is done before entering the arm.  Therefore,
             // even in this case we just choose to keep the value
-            // rooted for the entire alt.  This means the value will be
+            // rooted for the entire match.  This means the value will be
             // rooted even if the none arm is taken.  Oh well.
             //
             // At first, I tried to optimize the second case to only
@@ -247,12 +247,12 @@ priv impl &preserve_ctxt {
             // Nonetheless, if you decide to optimize this case in the
             // future, you need only adjust where the cat_discr()
             // node appears to draw the line between what will be rooted
-            // in the *arm* vs the *alt*.
+            // in the *arm* vs the *match*.
 
-            let alt_rooting_ctxt =
-                preserve_ctxt({scope_region: ty::re_scope(alt_id),
+            let match_rooting_ctxt =
+                preserve_ctxt({scope_region: ty::re_scope(match_id),
                                .. **self});
-            (&alt_rooting_ctxt).preserve(base)
+            (&match_rooting_ctxt).preserve(base)
           }
         }
     }

@@ -940,7 +940,7 @@ impl Parser {
         } else if self.eat_keyword(~"loop") {
             return self.parse_loop_expr();
         } else if self.eat_keyword(~"match") {
-            return self.parse_alt_expr();
+            return self.parse_match_expr();
         } else if self.eat_keyword(~"fn") {
             let opt_proto = self.parse_fn_ty_proto();
             let proto = match opt_proto {
@@ -1722,7 +1722,7 @@ impl Parser {
         return expr_rec(fields, base);
     }
 
-    fn parse_alt_expr() -> @expr {
+    fn parse_match_expr() -> @expr {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr();
         self.expect(token::LBRACE);

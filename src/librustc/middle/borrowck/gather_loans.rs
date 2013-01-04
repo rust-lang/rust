@@ -506,7 +506,7 @@ impl gather_loan_ctxt {
                   discr_cmt: cmt,
                   root_pat: @ast::pat,
                   arm_id: ast::node_id,
-                  alt_id: ast::node_id) {
+                  match_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
               ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
@@ -514,11 +514,11 @@ impl gather_loan_ctxt {
                   ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check
                     // is required
-                    // as for move, check::alt ensures it's from an rvalue.
+                    // as for move, check::_match ensures it's from an rvalue.
                   }
                   ast::bind_by_ref(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
-                    // remain valid for the scope of the alt
+                    // remain valid for the scope of the match
 
                     // find the region of the resulting pointer (note that
                     // the type of such a pattern will *always* be a
@@ -531,7 +531,7 @@ impl gather_loan_ctxt {
                     // of the function of this node in method preserve():
                     let arm_scope = ty::re_scope(arm_id);
                     if self.bccx.is_subregion_of(scope_r, arm_scope) {
-                        let cmt_discr = self.bccx.cat_discr(cmt, alt_id);
+                        let cmt_discr = self.bccx.cat_discr(cmt, match_id);
                         self.guarantee_valid(cmt_discr, mutbl, scope_r);
                     } else {
                         self.guarantee_valid(cmt, mutbl, scope_r);
