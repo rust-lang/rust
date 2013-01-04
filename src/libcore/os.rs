@@ -88,6 +88,10 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 pub mod win32 {
+    use libc;
+    use vec;
+    use str;
+    use option;
     use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
