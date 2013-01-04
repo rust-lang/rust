@@ -41,7 +41,7 @@ use metadata::{csearch, cstore, decoder, encoder};
 use middle::astencode;
 use middle::pat_util::*;
 use middle::resolve;
-use middle::trans::alt;
+use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
@@ -1045,11 +1045,11 @@ fn init_local(bcx: block, local: @ast::local) -> block {
            bcx.to_str());
     add_clean(bcx, llptr, ty);
 
-    return alt::bind_irrefutable_pat(bcx,
-                                     local.node.pat,
-                                     llptr,
-                                     false,
-                                     alt::BindLocal);
+    return _match::bind_irrefutable_pat(bcx,
+                                       local.node.pat,
+                                       llptr,
+                                       false,
+                                       _match::BindLocal);
 }
 
 fn trans_stmt(cx: block, s: ast::stmt) -> block {
@@ -1597,11 +1597,11 @@ fn copy_args_to_allocas(fcx: fn_ctxt,
             }
         }
 
-        bcx = alt::bind_irrefutable_pat(bcx,
-                                        args[arg_n].pat,
-                                        llarg,
-                                        false,
-                                        alt::BindArgument);
+        bcx = _match::bind_irrefutable_pat(bcx,
+                                          args[arg_n].pat,
+                                          llarg,
+                                          false,
+                                          _match::BindArgument);
 
         fcx.llargs.insert(arg_id, local_mem(llarg));
 

@@ -494,8 +494,8 @@ impl borrowck_ctxt {
         cat_variant(self.tcx, self.method_map, arg, enum_did, cmt)
     }
 
-    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, alt_id),.. *cmt};
+    fn cat_discr(cmt: cmt, match_id: ast::node_id) -> cmt {
+        return @{cat:cat_discr(cmt, match_id),.. *cmt};
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
