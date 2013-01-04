@@ -219,6 +219,7 @@ mod stat {
 #[cfg(target_os = "win32")]
 mod stat {
     pub mod arch {
+        use libc;
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
