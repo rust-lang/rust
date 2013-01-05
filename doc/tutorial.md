@@ -228,7 +228,7 @@ let monster_size: int = 50;
 Local variables may shadow earlier declarations, as in the previous example:
 `monster_size` was first declared as a `float`, and then a second
 `monster_size` was declared as an `int`. If you were to actually compile this
-example, though, the compiler would determine that the second `monster_size` is
+example, though, the compiler would determine that the first `monster_size` is
 unused and issue a warning (because this situation is likely to indicate a
 programmer error). For occasions where unused variables are intentional, their
 names may be prefixed with an underscore to silence the warning, like `let
