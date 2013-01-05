@@ -100,7 +100,7 @@ pub pure fn build<A>(builder: &fn(push: pure fn(v: A))) -> @[A] {
 #[inline(always)]
 pub pure fn build_sized_opt<A>(size: Option<uint>,
                                builder: &fn(push: pure fn(v: A))) -> @[A] {
-    build_sized(size.get_default(4), builder)
+    build_sized(size.get_or_default(4), builder)
 }
 
 // Appending

@@ -69,7 +69,7 @@ fn fold_crate(
     {
         topmod: doc::ModDoc_({
             item: {
-                name: option::get_default(attrs.name, doc.topmod.name()),
+                name: option::get_or_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
             .. *doc.topmod

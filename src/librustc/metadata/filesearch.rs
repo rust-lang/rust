@@ -113,7 +113,7 @@ fn make_target_lib_path(sysroot: &Path,
     sysroot.push_rel(&relative_target_lib_path(target_triple))
 }
 
-fn get_default_sysroot() -> Path {
+fn get_or_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::Some(ref p) => (*p).pop(),
       option::None => fail ~"can't determine value for sysroot"
@@ -123,12 +123,12 @@ fn get_default_sysroot() -> Path {
 fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     match maybe_sysroot {
       option::Some(ref sr) => (*sr),
-      option::None => get_default_sysroot()
+      option::None => get_or_default_sysroot()
     }
 }
 
 fn get_cargo_sysroot() -> Result<Path, ~str> {
-    result::Ok(get_default_sysroot().push_many([libdir(), ~"cargo"]))
+    result::Ok(get_or_default_sysroot().push_many([libdir(), ~"cargo"]))
 }
 
 fn get_cargo_root() -> Result<Path, ~str> {

@@ -267,7 +267,7 @@ pub pure fn build_sized_opt<A,B: Buildable<A>>(
     size: Option<uint>,
     builder: fn(push: pure fn(A))) -> B {
 
-    Buildable::build_sized(size.get_default(4), builder)
+    Buildable::build_sized(size.get_or_default(4), builder)
 }
 
 // Functions that combine iteration and building
