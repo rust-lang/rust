@@ -259,6 +259,8 @@ section on "Type Combining" below for details.
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
+use core::prelude::*;
+
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, vid};
 use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
@@ -280,21 +282,25 @@ use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 use middle::typeck::infer::unify::{vals_and_bindings, root};
+use middle::typeck::isr_alist;
 use util::common::{indent, indenter};
-use util::ppaux::{ty_to_str, mt_to_str};
+use util::ppaux::{bound_region_to_str, ty_to_str, mt_to_str};
 
 use core::cmp::Eq;
 use core::dvec::DVec;
 use core::result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 use core::result;
 use core::vec;
+use std::list::Nil;
 use std::map::HashMap;
 use std::smallintmap;
 use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
+use syntax::ast;
 use syntax::ast_util::dummy_sp;
-use syntax::{ast, ast_util};
+use syntax::ast_util;
+use syntax::codemap::span;
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -325,6 +331,13 @@ export resolve;
 export sub;
 export to_str;
 export unify;
+export uok;
+export cyclic_ty, unresolved_ty, region_var_bound_by_region_var;
+export bound, bounds;
+export ures;
+export ares;
+export infer_ctxt;
+export fixup_err;
 
 #[legacy_exports]
 mod assignment;
@@ -557,7 +570,7 @@ impl<T:Copy Eq> cres<T>: CresCompare<T> {
     }
 }
 
-fn uok() -> ures {
+pub fn uok() -> ures {
     Ok(())
 }
 

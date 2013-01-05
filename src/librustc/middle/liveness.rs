@@ -102,6 +102,8 @@
  *   to return explicitly.
  */
 
+use core::prelude::*;
+
 use middle::capture::{cap_move, cap_drop, cap_copy, cap_ref};
 use middle::capture;
 use middle::pat_util;

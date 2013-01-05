@@ -20,6 +20,7 @@ use parse::*;
 use util::interner;
 
 use core::dvec::DVec;
+use core::prelude::*;
 use core::str;
 use core::to_str::ToStr;
 use core::vec;
@@ -385,7 +386,8 @@ impl protocol: gen_init {
             }
         }
 
-        cx.ty_path_ast_builder(path(~[cx.ident_of(~"__Buffer")], self.span)
+        cx.ty_path_ast_builder(path(~[cx.ident_of(~"super"),
+                                      cx.ident_of(~"__Buffer")], self.span)
                                .add_tys(cx.ty_vars_global(params)))
     }
 

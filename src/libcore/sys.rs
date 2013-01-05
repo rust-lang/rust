@@ -121,8 +121,16 @@ pub pure fn log_str<T>(t: &T) -> ~str {
     }
 }
 
+condition! {
+    failing: () -> ();
+}
+
 /** Initiate task failure */
 pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
+    unsafe {
+        failing::cond.raise_default(&(), || ());
+    }
+
     do str::as_buf(msg) |msg_buf, _msg_len| {
         do str::as_buf(file) |file_buf, _file_len| {
             unsafe {
@@ -137,6 +145,10 @@ pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
 // XXX: Temorary until rt::rt_fail_ goes away
 pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     unsafe {
+        failing::cond.raise(&());
+    }
+
+    unsafe {
         gc::cleanup_stack_for_failure();
         rustrt::rust_upcall_fail(msg, file, line);
         cast::transmute(())
@@ -146,6 +158,7 @@ pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 #[cfg(test)]
 pub mod tests {
     use cast;
+    use sys::{Closure, pref_align_of, size_of};
 
     #[test]
     pub fn size_of_basic() {

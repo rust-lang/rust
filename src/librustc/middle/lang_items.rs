@@ -19,6 +19,8 @@
 //
 // * Functions called by the compiler itself.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch::{each_path, get_item_attrs};
 use metadata::cstore::{iter_crate_data};
@@ -33,7 +35,7 @@ use core::ptr;
 use std::map::HashMap;
 use str_eq = str::eq;
 
-struct LanguageItems {
+pub struct LanguageItems {
     mut const_trait: Option<def_id>,
     mut copy_trait: Option<def_id>,
     mut owned_trait: Option<def_id>,
@@ -64,8 +66,11 @@ struct LanguageItems {
 }
 
 mod language_items {
-    #[legacy_exports];
-    fn make() -> LanguageItems {
+    use middle::lang_items::LanguageItems;
+
+    use core::option::None;
+
+    pub fn make() -> LanguageItems {
         LanguageItems {
             const_trait: None,
             copy_trait: None,

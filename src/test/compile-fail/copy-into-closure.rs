@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn closure2(+x: util::NonCopyable) -> (util::NonCopyable,
-                                       fn@() -> util::NonCopyable) {
+fn closure2(+x: core::util::NonCopyable)
+        -> (core::util::NonCopyable, fn@() -> core::util::NonCopyable) {
     let f = fn@(copy x) -> util::NonCopyable {
         //~^ ERROR copying a noncopyable value
         //~^^ NOTE non-copyable value cannot be copied into a @fn closure

@@ -18,6 +18,8 @@ The iteration traits and common implementation
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use kinds::Copy;
+use option::{None, Option, Some};
 use vec;
 
 /// A function used to initialize the elements of a sequence

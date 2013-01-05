@@ -38,6 +38,7 @@ use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
 use libc::{mode_t, pid_t, FILE};
 use option;
 use option::{Some, None};
+use prelude::*;
 use private;
 use ptr;
 use str;
@@ -144,6 +145,7 @@ mod global_env {
     use either;
     use libc;
     use oldcomm;
+    use option::Option;
     use private;
     use str;
     use task;
@@ -217,6 +219,7 @@ mod global_env {
     mod impl_ {
         use cast;
         use libc;
+        use option::Option;
         use option;
         use ptr;
         use str;
@@ -785,7 +788,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as c_int,
                             *_NSGetArgv() as **c_char);
@@ -795,7 +798,7 @@ fn real_args() -> ~[~str] {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     unsafe {
         let argc = rustrt::rust_get_argc();
         let argv = rustrt::rust_get_argv();
@@ -804,7 +807,7 @@ fn real_args() -> ~[~str] {
 }
 
 #[cfg(windows)]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     let mut nArgs: c_int = 0;
     let lpArgCount = ptr::to_mut_unsafe_ptr(&mut nArgs);
     let lpCmdLine = GetCommandLineW();
@@ -924,9 +927,15 @@ pub fn arch() -> str { ~"arm" }
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use debug;
+    use libc::{c_int, c_void, size_t};
     use libc;
+    use option::{None, Option, Some};
     use option;
+    use os::{as_c_charp, env, getcwd, getenv, make_absolute, real_args};
+    use os::{remove_file, setenv}; 
     use os;
+    use path::Path;
     use rand;
     use run;
     use str;
@@ -934,7 +943,7 @@ mod tests {
 
     #[test]
     pub fn last_os_error() {
-        log(debug, last_os_error());
+        log(debug, os::last_os_error());
     }
 
     #[test]

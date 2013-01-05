@@ -16,6 +16,7 @@ use doc::ItemUtils;
 use doc;
 use fold::Fold;
 use fold;
+use pass::Pass;
 
 use core::vec;
 use std::map::HashMap;

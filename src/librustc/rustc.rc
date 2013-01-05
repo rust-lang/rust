@@ -22,6 +22,8 @@
 #[legacy_modes];
 #[legacy_exports];
 
+#[disable_unwinding];
+
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
@@ -377,11 +379,12 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
+#[cfg(stage0)]
 fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = oldcomm::Port();
     let ch = oldcomm::Chan(&p);
 
-    match do task::try |move f| {
+    do task::spawn |move f| {
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -401,9 +404,33 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         let _finally = finally { ch: ch };
 
         f(demitter)
-    } {
-        result::Ok(_) => { /* fallthrough */ }
-        result::Err(_) => {
+    }
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+fn monitor(+f: fn~(diagnostic::emitter)) {
+    do task::spawn |move f| {
+        let p = oldcomm::Port::<monitor_msg>();
+        let ch = oldcomm::Chan::<monitor_msg>(&p);
+
+        // The 'diagnostics emitter'. Every error, warning, etc. should
+        // go through this function.
+        let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
+                           msg: &str, lvl: diagnostic::level) {
+            if lvl == diagnostic::fatal {
+                oldcomm::send(ch, fatal);
+            }
+            diagnostic::emit(cmsp, msg, lvl);
+        };
+
+        struct finally {
+            ch: oldcomm::Chan<monitor_msg>,
+            drop { oldcomm::send(self.ch, done); }
+        }
+
+        let _finally = finally { ch: ch };
+
+        do sys::failing::cond.trap(|_| {
             // Task failed without emitting a fatal diagnostic
             if oldcomm::recv(p) == done {
                 diagnostic::emit(
@@ -421,8 +448,10 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                     diagnostic::emit(None, *note, diagnostic::note)
                 }
             }
-            // Fail so the process returns a failure code
-            fail;
+
+            libc::exit(1)
+        }).in {
+            f(demitter)
         }
     }
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::callee;

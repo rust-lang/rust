@@ -15,7 +15,7 @@ mod foo {
 
     mod bar {
         #[legacy_exports];
-        fn y() { x(); }
+        fn y() { ::foo::x(); }
     }
 
     fn x() { debug!("x"); }

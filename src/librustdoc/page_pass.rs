@@ -15,12 +15,15 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::{ItemUtils, PageUtils};
 use doc;
 use fold::Fold;
 use fold;
+use pass::Pass;
 use sort_pass;
 use util::NominalOp;
 use util;

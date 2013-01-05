@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};

@@ -30,8 +30,11 @@ are represented as `ty_param()` instances.
 
 */
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef};
+use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{ast_conv, ty_of_fn_decl, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
@@ -39,7 +42,8 @@ use middle::typeck::astconv;
 use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
-use util::common::pluralize;
+use middle::typeck::{crate_ctxt, lookup_def_tcx, no_params, write_ty_to_tcx};
+use util::common::{indenter, pluralize};
 use util::ppaux;
 use util::ppaux::bound_to_str;
 
@@ -48,9 +52,12 @@ use core::option;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::trait_method_to_ty_method;
+use syntax::ast_util::{local_def, split_trait_methods};
+use syntax::ast_util::{trait_method_to_ty_method};
 use syntax::ast_util;
+use syntax::codemap::span;
 use syntax::codemap;
+use syntax::print::pprust::path_to_str;
 use syntax::visit;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {

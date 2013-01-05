@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};

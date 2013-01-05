@@ -21,6 +21,7 @@ use from_str::FromStr;
 use iter;
 use num;
 use num::Num::from_int;
+use prelude::*;
 use str;
 use uint;
 use vec;

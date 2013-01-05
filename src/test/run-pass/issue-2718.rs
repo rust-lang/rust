@@ -250,7 +250,7 @@ pub mod pingpong {
         pub fn do_ping(-c: ping) -> pong {
             let (sp, rp) = ::pipes::entangle();
 
-            ::pipes::send(move c, ping(move sp));
+            ::pipes::send(move c, pingpong::ping(move sp));
             move rp
         }
 
@@ -259,7 +259,7 @@ pub mod pingpong {
             if packet.is_none() {
                 fail ~"sender closed the connection"
             }
-            (liberate_pong(option::unwrap(move packet)), ())
+            (pingpong::liberate_pong(option::unwrap(move packet)), ())
         }
     }
 
@@ -274,12 +274,12 @@ pub mod pingpong {
             if packet.is_none() {
                 fail ~"sender closed the connection"
             }
-            (liberate_ping(option::unwrap(move packet)), ())
+            (pingpong::liberate_ping(option::unwrap(move packet)), ())
         }
 
         pub fn do_pong(-c: pong) -> ping {
             let (sp, rp) = ::pipes::entangle();
-            ::pipes::send(move c, pong(move sp));
+            ::pipes::send(move c, pingpong::pong(move sp));
             move rp
         }
     }

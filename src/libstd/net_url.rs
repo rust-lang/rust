@@ -19,6 +19,7 @@ use core::dvec::DVec;
 use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
+use core::prelude::*;
 use core::send_map::linear::LinearMap;
 use core::send_map;
 use core::str;
@@ -735,6 +736,10 @@ impl Url: to_bytes::IterBytes {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use net_url::*;
     use net_url::UserInfo;
 
     use core::result;

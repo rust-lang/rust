@@ -10,6 +10,8 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -17,6 +19,7 @@ use extract::to_str;
 use extract;
 use fold::Fold;
 use fold;
+use pass::Pass;
 
 use core::vec;
 use std::map::HashMap;

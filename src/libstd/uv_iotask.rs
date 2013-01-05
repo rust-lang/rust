@@ -21,6 +21,7 @@ use ll = uv_ll;
 use core::libc::c_void;
 use core::libc;
 use core::oldcomm::{Port, Chan, listen};
+use core::prelude::*;
 use core::ptr::addr_of;
 use core::task::TaskBuilder;
 use core::task;
@@ -176,7 +177,10 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use uv::ll;
+    use uv_iotask::*;
 
     use core::iter;
     use core::libc;

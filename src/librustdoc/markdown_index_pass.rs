@@ -10,6 +10,8 @@
 
 //! Build indexes as appropriate for the markdown pass
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::ItemUtils;
@@ -18,6 +20,7 @@ use fold::Fold;
 use fold;
 use markdown_pass;
 use markdown_writer;
+use pass::Pass;
 
 use core::str;
 use std::par;

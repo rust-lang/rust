@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
