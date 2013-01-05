@@ -83,7 +83,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     // drop leftmost columns that contain only values in chars
     fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
 
-        let mut i = max.get_default(uint::max_value);
+        let mut i = max.get_or_default(uint::max_value);
         for lines.each |line| {
             if line.trim().is_empty() {
                 loop;

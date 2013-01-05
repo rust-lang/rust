@@ -136,7 +136,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
 
     ccx.stats.n_monos += 1;
 
-    let depth = option::get_default(ccx.monomorphizing.find(fn_id), 0u);
+    let depth = option::get_or_default(ccx.monomorphizing.find(fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be
     // causing an infinite expansion.

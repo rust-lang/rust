@@ -171,13 +171,13 @@ pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     !is_none(opt)
 }
 
-pub pure fn get_zero<T: Copy Zero>(opt: Option<T>) -> T {
+pub pure fn get_or_zero<T: Copy Zero>(opt: Option<T>) -> T {
     //! Returns the contained value or zero (for this type)
 
     match opt { Some(copy x) => x, None => Zero::zero() }
 }
 
-pub pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
+pub pure fn get_or_default<T: Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(copy x) => x, None => def }
@@ -331,7 +331,7 @@ impl<T: Copy> Option<T> {
     pure fn get(self) -> T { get(self) }
 
     #[inline(always)]
-    pure fn get_default(self, def: T) -> T { get_default(self, def) }
+    pure fn get_or_default(self, def: T) -> T { get_or_default(self, def) }
 
     /// Applies a function zero or more times until the result is none.
     #[inline(always)]
@@ -342,7 +342,7 @@ impl<T: Copy> Option<T> {
 
 impl<T: Copy Zero> Option<T> {
     #[inline(always)]
-    pure fn get_zero(self) -> T { get_zero(self) }
+    pure fn get_or_zero(self) -> T { get_or_zero(self) }
 }
 
 #[test]
@@ -420,11 +420,11 @@ fn test_option_while_some() {
 }
 
 #[test]
-fn test_get_zero() {
+fn test_get_or_zero() {
     let some_stuff = Some(42);
-    assert some_stuff.get_zero() == 42;
+    assert some_stuff.get_or_zero() == 42;
     let no_stuff: Option<int> = None;
-    assert no_stuff.get_zero() == 0;
+    assert no_stuff.get_or_zero() == 0;
 }
 
 // Local Variables:
