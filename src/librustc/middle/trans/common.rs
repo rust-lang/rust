@@ -1094,6 +1094,8 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
     return g;
 }
 
+// NB: Do not use `do_spill_noroot` to make this into a constant string, or
+// you will be kicked off fast isel. See issue #4352 for an example of this.
 fn C_estr_slice(cx: @crate_ctxt, s: ~str) -> ValueRef {
     let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
     C_struct(~[cs, C_uint(cx, str::len(s) + 1u /* +1 for null */)])
