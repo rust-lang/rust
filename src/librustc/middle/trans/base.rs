@@ -2697,7 +2697,7 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     subcrates.push(C_int(ccx, 0));
 
     let llannihilatefn;
-    let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn.get();
+    let annihilate_def_id = ccx.tcx.lang_items.annihilate_fn();
     if annihilate_def_id.crate == ast::local_crate {
         llannihilatefn = get_item_val(ccx, annihilate_def_id.node);
     } else {

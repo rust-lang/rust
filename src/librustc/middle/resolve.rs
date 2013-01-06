@@ -5225,60 +5225,60 @@ impl Resolver {
             }
             expr_binary(add, _, _) | expr_assign_op(add, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.add_trait);
+                                              self.lang_items.add_trait());
             }
             expr_binary(subtract, _, _) | expr_assign_op(subtract, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.sub_trait);
+                                              self.lang_items.sub_trait());
             }
             expr_binary(mul, _, _) | expr_assign_op(mul, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.mul_trait);
+                                              self.lang_items.mul_trait());
             }
             expr_binary(div, _, _) | expr_assign_op(div, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.div_trait);
+                                              self.lang_items.div_trait());
             }
             expr_binary(rem, _, _) | expr_assign_op(rem, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.modulo_trait);
+                                              self.lang_items.modulo_trait());
             }
             expr_binary(bitxor, _, _) | expr_assign_op(bitxor, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.bitxor_trait);
+                                              self.lang_items.bitxor_trait());
             }
             expr_binary(bitand, _, _) | expr_assign_op(bitand, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.bitand_trait);
+                                              self.lang_items.bitand_trait());
             }
             expr_binary(bitor, _, _) | expr_assign_op(bitor, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.bitor_trait);
+                                              self.lang_items.bitor_trait());
             }
             expr_binary(shl, _, _) | expr_assign_op(shl, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.shl_trait);
+                                              self.lang_items.shl_trait());
             }
             expr_binary(shr, _, _) | expr_assign_op(shr, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.shr_trait);
+                                              self.lang_items.shr_trait());
             }
             expr_binary(lt, _, _) | expr_binary(le, _, _) |
             expr_binary(ge, _, _) | expr_binary(gt, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.ord_trait);
+                                              self.lang_items.ord_trait());
             }
             expr_binary(eq, _, _) | expr_binary(ne, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.eq_trait);
+                                              self.lang_items.eq_trait());
             }
             expr_unary(neg, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.neg_trait);
+                                              self.lang_items.neg_trait());
             }
             expr_index(*) => {
                 self.add_fixed_trait_for_expr(expr.id,
-                                              self.lang_items.index_trait);
+                                              self.lang_items.index_trait());
             }
             _ => {
                 // Nothing to do.
@@ -5397,9 +5397,9 @@ impl Resolver {
         }
     }
 
-    fn add_fixed_trait_for_expr(expr_id: node_id, +trait_id: Option<def_id>) {
+    fn add_fixed_trait_for_expr(expr_id: node_id, +trait_id: def_id) {
         let traits = @DVec();
-        traits.push(trait_id.get());
+        traits.push(trait_id);
         self.trait_map.insert(expr_id, traits);
     }
 
