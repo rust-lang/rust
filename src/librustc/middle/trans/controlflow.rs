@@ -224,7 +224,11 @@ fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
     let mut target;
     loop {
         match unwind.kind {
-          block_scope({loop_break: Some(brk), loop_label: l, _}) => {
+          block_scope(scope_info {
+            loop_break: Some(brk),
+            loop_label: l,
+            _
+          }) => {
               // If we're looking for a labeled loop, check the label...
               target = if to_end {
                   brk

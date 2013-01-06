@@ -84,6 +84,7 @@ use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
+use middle::typeck::check::alt::pat_ctxt;
 use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
@@ -421,7 +422,7 @@ fn check_fn(ccx: @crate_ctxt,
 
             // Check the pattern.
             let region = fcx.block_region();
-            let pcx = {
+            let pcx = pat_ctxt {
                 fcx: fcx,
                 map: pat_id_map(tcx.def_map, input.pat),
                 alt_region: region,
@@ -2485,7 +2486,7 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
 
     let region =
         ty::re_scope(tcx.region_map.get(local.node.id));
-    let pcx = {
+    let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),
         alt_region: region,

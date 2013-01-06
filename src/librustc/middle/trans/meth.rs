@@ -59,7 +59,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
             match self_ty {
                 None => param_substs_opt = None,
                 Some(self_ty) => {
-                    param_substs_opt = Some({
+                    param_substs_opt = Some(param_substs {
                         tys: ~[],
                         vtables: None,
                         bounds: @~[],
@@ -112,7 +112,7 @@ fn trans_method(ccx: @crate_ctxt,
         }
         let self_ty = match param_substs {
             None => self_ty,
-            Some({tys: ref tys, _}) => {
+            Some(param_substs {tys: ref tys, _}) => {
                 ty::subst_tps(ccx.tcx, *tys, None, self_ty)
             }
         };
@@ -722,9 +722,11 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
                 None)
         }
         typeck::vtable_trait(trait_id, substs) => {
-            @{def: trait_id,
-              params: vec::map(substs, |t| mono_precise(*t, None)),
-              impl_did_opt: None}
+            @mono_id_ {
+                def: trait_id,
+                params: vec::map(substs, |t| mono_precise(*t, None)),
+                impl_did_opt: None
+            }
         }
         // can't this be checked at the callee?
         _ => fail ~"vtable_id"

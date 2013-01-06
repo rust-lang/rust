@@ -216,16 +216,17 @@ impl vtable_origin {
 
 type vtable_map = HashMap<ast::node_id, vtable_res>;
 
-type crate_ctxt_ = {// A mapping from method call sites to traits that have
-                    // that method.
-                    trait_map: resolve::TraitMap,
-                    method_map: method_map,
-                    vtable_map: vtable_map,
-                    coherence_info: @coherence::CoherenceInfo,
-                    tcx: ty::ctxt};
+struct crate_ctxt__ {
+    // A mapping from method call sites to traits that have that method.
+    trait_map: resolve::TraitMap,
+    method_map: method_map,
+    vtable_map: vtable_map,
+    coherence_info: @coherence::CoherenceInfo,
+    tcx: ty::ctxt
+}
 
 enum crate_ctxt {
-    crate_ctxt_(crate_ctxt_)
+    crate_ctxt_(crate_ctxt__)
 }
 
 // Functions that write types into the node type table
@@ -392,12 +393,13 @@ fn check_crate(tcx: ty::ctxt,
                crate: @ast::crate)
     -> (method_map, vtable_map) {
 
-    let ccx = @crate_ctxt_({trait_map: trait_map,
-                            method_map: map::HashMap(),
-                            vtable_map: map::HashMap(),
-                            coherence_info: @coherence::CoherenceInfo(),
-                            tcx: tcx
-                           });
+    let ccx = @crate_ctxt_(crate_ctxt__ {
+        trait_map: trait_map,
+        method_map: map::HashMap(),
+        vtable_map: map::HashMap(),
+        coherence_info: @coherence::CoherenceInfo(),
+        tcx: tcx
+    });
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
 

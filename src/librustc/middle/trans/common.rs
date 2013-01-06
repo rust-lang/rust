@@ -141,7 +141,7 @@ fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
 }
 
 // Crate context.  Every crate we compile has one of these.
-type crate_ctxt = {
+struct crate_ctxt {
      sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
@@ -211,7 +211,8 @@ type crate_ctxt = {
      // is not emitted by LLVM's GC pass when no functions use GC.
      mut uses_gc: bool,
      dbg_cx: Option<debuginfo::debug_ctxt>,
-     mut do_not_commit_warning_issued: bool};
+     mut do_not_commit_warning_issued: bool
+}
 
 // Types used for llself.
 struct ValSelfData {
@@ -224,10 +225,12 @@ enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
-type param_substs = {tys: ~[ty::t],
-                     vtables: Option<typeck::vtable_res>,
-                     bounds: @~[ty::param_bounds],
-                     self_ty: Option<ty::t>};
+struct param_substs {
+    tys: ~[ty::t],
+    vtables: Option<typeck::vtable_res>,
+    bounds: @~[ty::param_bounds],
+    self_ty: Option<ty::t>
+}
 
 fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
     fmt!("param_substs {tys:%?, vtables:%?, bounds:%?}",
@@ -238,7 +241,7 @@ fn param_substs_to_str(tcx: ty::ctxt, substs: &param_substs) -> ~str {
 
 // Function context.  Every LLVM function we create will have one of
 // these.
-type fn_ctxt = @{
+struct fn_ctxt_ {
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
     // instructions for this function that will go in the .text
@@ -302,7 +305,9 @@ type fn_ctxt = @{
 
     // This function's enclosing crate context.
     ccx: @crate_ctxt
-};
+}
+
+pub type fn_ctxt = @fn_ctxt_;
 
 fn warn_not_to_commit(ccx: @crate_ctxt, msg: ~str) {
     if !ccx.do_not_commit_warning_issued {
@@ -484,7 +489,7 @@ enum block_kind {
     block_non_scope,
 }
 
-type scope_info = {
+struct scope_info {
     loop_break: Option<block>,
     loop_label: Option<ident>,
     // A list of functions that must be run at when leaving this
@@ -496,7 +501,7 @@ type scope_info = {
     mut cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
     mut landing_pad: Option<BasicBlockRef>,
-};
+}
 
 trait get_node_info {
     fn info() -> Option<node_info>;
@@ -1171,11 +1176,11 @@ enum mono_param_id {
               datum::DatumMode),
 }
 
-type mono_id_ = {
+struct mono_id_ {
     def: ast::def_id,
     params: ~[mono_param_id],
     impl_did_opt: Option<ast::def_id>
-};
+}
 
 type mono_id = @mono_id_;
 

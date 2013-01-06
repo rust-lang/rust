@@ -33,7 +33,7 @@ fn check_alt(fcx: @fn_ctxt,
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
     for arms.each |arm| {
-        let pcx = {
+        let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
             alt_region: ty::re_scope(expr.id),
@@ -61,12 +61,12 @@ fn check_alt(fcx: @fn_ctxt,
     return bot;
 }
 
-type pat_ctxt = {
+struct pat_ctxt {
     fcx: @fn_ctxt,
     map: PatIdMap,
     alt_region: ty::Region,   // Region for the alt as a whole
     block_region: ty::Region, // Region for the block of the arm
-};
+}
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                      subpats: Option<~[@ast::pat]>, expected: ty::t) {

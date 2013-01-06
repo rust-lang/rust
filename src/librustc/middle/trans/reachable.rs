@@ -32,16 +32,22 @@ export map, find_reachable;
 
 type map = HashMap<node_id, ()>;
 
-type ctx = {exp_map2: resolve::ExportMap2,
-            tcx: ty::ctxt,
-            method_map: typeck::method_map,
-            rmap: map};
+struct ctx {
+    exp_map2: resolve::ExportMap2,
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    rmap: map
+}
 
 fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = HashMap();
-    let cx = {exp_map2: exp_map2, tcx: tcx,
-              method_map: method_map, rmap: rmap};
+    let cx = ctx {
+        exp_map2: exp_map2,
+        tcx: tcx,
+        method_map: method_map,
+        rmap: rmap
+    };
     traverse_public_mod(cx, ast::crate_node_id, crate_mod);
     traverse_all_resources_and_impls(cx, crate_mod);
     rmap
