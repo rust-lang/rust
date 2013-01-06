@@ -17,6 +17,7 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves to dnot affect things loaned out in any way
 
+
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
 
@@ -631,7 +632,7 @@ fn check_loans_in_expr(expr: @ast::expr,
         Some(ReadValue) | Some(CopyValue) | None => {}
     }
 
-    match expr.node {
+    match /*bad*/copy expr.node {
       ast::expr_path(*) if self.bccx.last_use_map.contains_key(expr.id) => {
         self.check_last_use(expr);
       }

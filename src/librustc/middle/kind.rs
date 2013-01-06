@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};
@@ -296,7 +297,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
     }
 
-    match e.node {
+    match /*bad*/copy e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(Some(ex)) => {
@@ -329,7 +330,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           Some(ex) => {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
-            let ty_fields = match ty::get(t).sty {
+            let ty_fields = match /*bad*/copy ty::get(t).sty {
               ty::ty_rec(f) => f,
               ty::ty_struct(did, ref substs) =>
                   ty::struct_fields(cx.tcx, did, &(*substs)),
@@ -407,7 +408,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     match stmt.node {
-      stmt_decl(@{node: decl_local(locals), _}, _) => {
+      stmt_decl(@{node: decl_local(ref locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
               Some(expr) =>
@@ -614,7 +615,7 @@ fn check_cast_for_escaping_regions(
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = match ty::get(target_ty).sty {
-      ty::ty_trait(_, ref substs, _) => {(*substs)}
+      ty::ty_trait(_, ref substs, _) => {(/*bad*/copy *substs)}
       _ => { return; /* not a cast to a trait */ }
     };
 

@@ -10,6 +10,7 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
+
 use driver::session;
 use front::config;
 use session::Session;
@@ -45,7 +46,7 @@ fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains(crate.node.config,
+    let should_test = attr::contains(/*bad*/copy crate.node.config,
                                      attr::mk_word_item(~"test"));
 
     if should_test {
@@ -101,7 +102,7 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     }
 
     let mod_nomain =
-        {view_items: m.view_items,
+        {view_items: /*bad*/copy m.view_items,
          items: vec::filter_map(m.items, |i| nomain(cx, *i))};
     return fold::noop_fold_mod(mod_nomain, fld);
 }
@@ -112,7 +113,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    return {module: add_test_module(cx, folded.module),.. folded};
+    return {module: add_test_module(cx, /*bad*/copy folded.module),.. folded};
 }
 
 
@@ -133,7 +134,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
           _ => {
             debug!("this is a test function");
             let test = {span: i.span,
-                        path: cx.path, ignore: is_ignored(cx, i),
+                        path: /*bad*/copy cx.path, ignore: is_ignored(cx, i),
                         should_fail: should_fail(i)};
             cx.testfns.push(test);
             debug!("have %u test functions", cx.testfns.len());
@@ -151,7 +152,7 @@ fn is_test_fn(i: @ast::item) -> bool {
         vec::len(attr::find_attrs_by_name(i.attrs, ~"test")) > 0u;
 
     fn has_test_signature(i: @ast::item) -> bool {
-        match i.node {
+        match /*bad*/copy i.node {
           ast::item_fn(decl, _, tps, _) => {
             let input_cnt = vec::len(decl.inputs);
             let no_output = match decl.output.node {
@@ -169,12 +170,13 @@ fn is_test_fn(i: @ast::item) -> bool {
 }
 
 fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
-    let ignoreattrs = attr::find_attrs_by_name(i.attrs, ~"ignore");
+    let ignoreattrs = attr::find_attrs_by_name(/*bad*/copy i.attrs,
+                                               ~"ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
         |i| attr::get_meta_item_list(*i)));
     return if vec::is_not_empty(ignoreitems) {
-        config::metas_in_cfg(cx.crate.node.config, cfg_metas)
+        config::metas_in_cfg(/*bad*/copy cx.crate.node.config, cfg_metas)
     } else {
         false
     }
@@ -184,9 +186,9 @@ fn should_fail(i: @ast::item) -> bool {
     vec::len(attr::find_attrs_by_name(i.attrs, ~"should_fail")) > 0u
 }
 
-fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
+fn add_test_module(cx: test_ctxt, +m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
-    return {items: vec::append_one(m.items, testmod),.. m};
+    return {items: vec::append_one(/*bad*/copy m.items, testmod),.. m};
 }
 
 /*
@@ -228,7 +230,7 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
          span: dummy_sp()};
 
     debug!("Synthetic test module:\n%s\n",
-           pprust::item_to_str(@item, cx.sess.intr()));
+           pprust::item_to_str(@copy item, cx.sess.intr()));
 
     return @item;
 }
@@ -237,11 +239,11 @@ fn nospan<T: Copy>(t: T) -> ast::spanned<T> {
     return {node: t, span: dummy_sp()};
 }
 
-fn path_node(ids: ~[ast::ident]) -> @ast::path {
+fn path_node(+ids: ~[ast::ident]) -> @ast::path {
     @{span: dummy_sp(), global: false, idents: ids, rp: None, types: ~[]}
 }
 
-fn path_node_global(ids: ~[ast::ident]) -> @ast::path {
+fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
     @{span: dummy_sp(), global: true, idents: ids, rp: None, types: ~[]}
 }
 
@@ -271,11 +273,11 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     return @item;
 }
 
-fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
+fn mk_path(cx: test_ctxt, +path: ~[ast::ident]) -> ~[ast::ident] {
     // For tests that are inside of std we don't want to prefix
     // the paths with std::
     let is_std = {
-        let items = attr::find_linkage_metas(cx.crate.node.attrs);
+        let items = attr::find_linkage_metas(/*bad*/copy cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
           Some(~"std") => true,
           _ => false
@@ -325,14 +327,15 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
 
 fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let span = test.span;
-    let path = test.path;
+    let path = /*bad*/copy test.path;
 
     debug!("encoding %s", ast_util::path_name_i(path,
                                                 cx.sess.parse_sess.interner));
 
+    // XXX: Bad copy of `path`.
     let name_lit: ast::lit =
-        nospan(ast::lit_str(@ast_util::path_name_i(path, cx.sess.parse_sess
-                                                   .interner)));
+        nospan(ast::lit_str(@ast_util::path_name_i(
+            copy path, cx.sess.parse_sess.interner)));
     let name_expr_inner: @ast::expr =
         @{id: cx.sess.next_node_id(),
           callee_id: cx.sess.next_node_id(),
@@ -401,7 +404,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
 // FIXME (#1281): This can go away once fn is the type of bare function.
 fn mk_test_wrapper(cx: test_ctxt,
-                   fn_path_expr: ast::expr,
+                   +fn_path_expr: ast::expr,
                    span: span) -> @ast::expr {
     let call_expr: ast::expr = {
         id: cx.sess.next_node_id(),

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
 use metadata::csearch::{get_static_methods_if_impl, get_type_name_if_impl};
@@ -1126,7 +1127,7 @@ impl Resolver {
         };
         let privacy = visibility_to_privacy(item.vis, legacy);
 
-        match item.node {
+        match /*bad*/copy item.node {
             item_mod(module_) => {
                 let legacy = has_legacy_export_attr(item.attrs);
                 let (name_bindings, new_parent) =
@@ -1458,7 +1459,7 @@ impl Resolver {
           ModuleReducedGraphParent(m) => m.legacy_exports
         };
         let privacy = visibility_to_privacy(view_item.vis, legacy);
-        match view_item.node {
+        match /*bad*/copy view_item.node {
             view_item_import(view_paths) => {
                 for view_paths.each |view_path| {
                     // Extract and intern the module part of the path. For
@@ -1626,7 +1627,7 @@ impl Resolver {
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
 
-        match foreign_item.node {
+        match /*bad*/copy foreign_item.node {
             foreign_item_fn(_, purity, type_parameters) => {
                 let def = def_fn(local_def(foreign_item.id), purity);
                 (*name_bindings).define_value(Public, def, foreign_item.span);
@@ -1809,7 +1810,7 @@ impl Resolver {
 
             let mut current_module = root;
             for pieces.each |ident_str| {
-                let ident = self.session.ident_of(*ident_str);
+                let ident = self.session.ident_of(/*bad*/copy *ident_str);
                 // Create or reuse a graph node for the child.
                 let (child_name_bindings, new_parent) =
                     self.add_child(ident,
@@ -1869,9 +1870,6 @@ impl Resolver {
                 }
                 dl_impl(def) => {
                     // We only process static methods of impls here.
-                    debug!("(building reduced graph for external crate) \
-                            processing impl %s", final_ident_str);
-
                     match get_type_name_if_impl(self.session.cstore, def) {
                         None => {}
                         Some(final_ident) => {
@@ -1879,7 +1877,7 @@ impl Resolver {
                                 get_static_methods_if_impl(
                                     self.session.cstore, def);
                             match static_methods_opt {
-                                Some(static_methods) if
+                                Some(ref static_methods) if
                                     static_methods.len() >= 1 => {
                                     debug!("(building reduced graph for \
                                             external crate) processing \
@@ -1955,7 +1953,7 @@ impl Resolver {
                 }
                 dl_field => {
                     debug!("(building reduced graph for external crate) \
-                            ignoring field %s", final_ident_str);
+                            ignoring field");
                 }
             }
         }
@@ -3816,15 +3814,16 @@ impl Resolver {
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
-        if contains_name(attr_metas(item.attrs), ~"!resolve_unexported") {
+        if contains_name(attr_metas(/*bad*/copy item.attrs),
+                         ~"!resolve_unexported") {
             self.xray_context = Xray;
         }
 
-        match item.node {
+        match /*bad*/copy item.node {
 
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
-            item_enum(ref enum_def, type_parameters) => {
+            item_enum(ref enum_def, ref type_parameters) => {
 
                 for (*enum_def).variants.each() |variant| {
                     do variant.node.disr_expr.iter() |dis_expr| {
@@ -3839,11 +3838,9 @@ impl Resolver {
                 // n.b. the discr expr gets visted twice.
                 // but maybe it's okay since the first time will signal an
                 // error if there is one? -- tjc
-                do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, item.id, 0,
-                                           NormalRibKind))
-                        || {
-
+                do self.with_type_parameter_rib(
+                    HasTypeParameters(
+                        type_parameters, item.id, 0, NormalRibKind)) {
                     visit_item(item, (), visitor);
                 }
             }
@@ -3871,7 +3868,7 @@ impl Resolver {
                                             visitor);
             }
 
-            item_trait(type_parameters, traits, ref methods) => {
+            item_trait(ref type_parameters, ref traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -3880,10 +3877,11 @@ impl Resolver {
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, item.id, 0,
+                        (HasTypeParameters(type_parameters, item.id, 0,
                                            NormalRibKind)) {
 
-                    self.resolve_type_parameters(type_parameters, visitor);
+                    self.resolve_type_parameters(/*bad*/copy *type_parameters,
+                                                 visitor);
 
                     // Resolve derived traits.
                     for traits.each |trt| {
@@ -3922,8 +3920,9 @@ impl Resolver {
 
                                 // Resolve the method-specific type
                                 // parameters.
-                                self.resolve_type_parameters((*ty_m).tps,
-                                                             visitor);
+                                self.resolve_type_parameters(
+                                    /*bad*/copy (*ty_m).tps,
+                                    visitor);
 
                                 for (*ty_m).decl.inputs.each |argument| {
                                     self.resolve_type(argument.ty, visitor);
@@ -3949,7 +3948,7 @@ impl Resolver {
             item_struct(struct_def, ty_params) => {
                 self.resolve_struct(item.id,
                                    @copy ty_params,
-                                   struct_def.fields,
+                                   /*bad*/copy struct_def.fields,
                                    struct_def.dtor,
                                    visitor);
             }
@@ -3964,7 +3963,7 @@ impl Resolver {
             item_foreign_mod(foreign_module) => {
                 do self.with_scope(Some(item.ident)) {
                     for foreign_module.items.each |foreign_item| {
-                        match foreign_item.node {
+                        match /*bad*/copy foreign_item.node {
                             foreign_item_fn(_, _, type_parameters) => {
                                 do self.with_type_parameter_rib
                                     (HasTypeParameters(&type_parameters,
@@ -3986,7 +3985,7 @@ impl Resolver {
                 }
             }
 
-            item_fn(fn_decl, _, ty_params, ref block) => {
+            item_fn(ref fn_decl, _, ref ty_params, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
                 //
@@ -4001,9 +4000,9 @@ impl Resolver {
                 }
 
                 self.resolve_function(OpaqueFunctionRibKind,
-                                      Some(@fn_decl),
+                                      Some(@/*bad*/copy *fn_decl),
                                       HasTypeParameters
-                                        (&ty_params,
+                                        (ty_params,
                                          item.id,
                                          0,
                                          OpaqueFunctionRibKind),
@@ -4128,7 +4127,8 @@ impl Resolver {
                     // Continue.
                 }
                 HasTypeParameters(type_parameters, _, _, _) => {
-                    self.resolve_type_parameters(*type_parameters, visitor);
+                    self.resolve_type_parameters(/*bad*/copy *type_parameters,
+                                                 visitor);
                 }
             }
 
@@ -4200,7 +4200,8 @@ impl Resolver {
                                          OpaqueFunctionRibKind)) {
 
             // Resolve the type parameters.
-            self.resolve_type_parameters(*type_parameters, visitor);
+            self.resolve_type_parameters(/*bad*/copy *type_parameters,
+                                         visitor);
 
             // Resolve fields.
             for fields.each |field| {
@@ -4247,7 +4248,7 @@ impl Resolver {
         };
 
         self.resolve_function(rib_kind,
-                              Some(@method.decl),
+                              Some(@/*bad*/copy method.decl),
                               type_parameters,
                               method.body,
                               self_binding,
@@ -4269,7 +4270,8 @@ impl Resolver {
                                         (borrowed_type_parameters, id, 0,
                                          NormalRibKind)) {
             // Resolve the type parameters.
-            self.resolve_type_parameters(type_parameters, visitor);
+            self.resolve_type_parameters(/*bad*/copy type_parameters,
+                                         visitor);
 
             // Resolve the trait reference, if necessary.
             let original_trait_refs = self.current_trait_refs;
@@ -5114,7 +5116,8 @@ impl Resolver {
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name = self.idents_to_str(path.idents);
+                        let wrong_name = self.idents_to_str(
+                            /*bad*/copy path.idents);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.session.span_err(expr.span,
                                         fmt!("unresolved name: `%s`. \
@@ -5133,10 +5136,10 @@ impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, fn_decl, ref block, capture_clause) |
-            expr_fn_block(fn_decl, ref block, capture_clause) => {
+            expr_fn(_, ref fn_decl, ref block, capture_clause) |
+            expr_fn_block(ref fn_decl, ref block, capture_clause) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
-                                      Some(@fn_decl),
+                                      Some(@/*bad*/copy *fn_decl),
                                       NoTypeParameters,
                                       (*block),
                                       NoSelfBinding,

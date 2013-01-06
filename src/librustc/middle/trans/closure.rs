@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use back::link::{mangle_internal_name_by_path};
@@ -211,7 +212,8 @@ fn store_environment(bcx: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values);
+    // XXX: Bad copy.
+    let cdata_ty = mk_closure_tys(tcx, copy bound_values);
 
     // allocate closure in the heap
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, proto, cdata_ty);
@@ -374,8 +376,8 @@ fn load_environment(fcx: fn_ctxt,
 
 fn trans_expr_fn(bcx: block,
                  proto: ast::Proto,
-                 decl: ast::fn_decl,
-                 body: ast::blk,
+                 +decl: ast::fn_decl,
+                 +body: ast::blk,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
                  is_loop_body: Option<Option<ValueRef>>,
@@ -392,19 +394,24 @@ fn trans_expr_fn(bcx: block,
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = vec::append_one(bcx.fcx.path,
+    let sub_path = vec::append_one(/*bad*/copy bcx.fcx.path,
                                    path_name(special_idents::anon));
-    let s = mangle_internal_name_by_path_and_seq(ccx, sub_path, ~"expr_fn");
+    // XXX: Bad copy.
+    let s = mangle_internal_name_by_path_and_seq(ccx,
+                                                 copy sub_path,
+                                                 ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let trans_closure_env = fn@(proto: ast::Proto) -> Result {
+    // XXX: Bad copies.
+    let trans_closure_env = |proto, copy body, copy sub_path, copy decl| {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
+        // XXX: Bad copy.
+        let {llbox, cdata_ty, bcx} = build_closure(bcx, copy cap_vars, proto,
                                                    ret_handle);
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self,
-                      bcx.fcx.param_substs, id, None, |fcx| {
+        trans_closure(ccx, /*bad*/copy sub_path, decl, body, llfn, no_self,
+                      /*bad*/copy bcx.fcx.param_substs, id, None, |fcx| {
             load_environment(fcx, cdata_ty, cap_vars,
                              ret_handle.is_some(), proto);
                       }, |bcx| {

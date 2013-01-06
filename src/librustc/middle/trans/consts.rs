@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::const_eval;
 use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
@@ -36,12 +37,12 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
                                 ~"integer literal doesn't have a type")
         }
       }
-      ast::lit_float(fs, t) => C_floating(*fs, T_float_ty(cx, t)),
+      ast::lit_float(fs, t) => C_floating(/*bad*/copy *fs, T_float_ty(cx, t)),
       ast::lit_float_unsuffixed(fs) => {
         let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_float_ty).sty {
           ty::ty_float(t) => {
-            C_floating(*fs, T_float_ty(cx, t))
+            C_floating(/*bad*/copy *fs, T_float_ty(cx, t))
           }
           _ => {
             cx.sess.span_bug(lit.span,
@@ -52,7 +53,7 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
       }
       ast::lit_bool(b) => C_bool(b),
       ast::lit_nil => C_nil(),
-      ast::lit_str(s) => C_estr_slice(cx, *s)
+      ast::lit_str(s) => C_estr_slice(cx, /*bad*/copy *s)
     }
 }
 
@@ -129,7 +130,7 @@ fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
 
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt("const_expr");
-    return match e.node {
+    return match /*bad*/copy e.node {
       ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
       ast::expr_binary(b, e1, e2) => {
         let te1 = const_expr(cx, e1);
@@ -358,7 +359,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         const_expr(cx, e)
       }
       ast::expr_vstore(sub, ast::expr_vstore_slice) => {
-        match sub.node {
+        match /*bad*/copy sub.node {
           ast::expr_lit(lit) => {
             match lit.node {
               ast::lit_str(*) => { const_expr(cx, sub) }

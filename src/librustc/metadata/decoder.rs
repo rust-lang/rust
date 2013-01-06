@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Decoding metadata from a single crate's metadata
 
 use cmd = metadata::cstore::crate_metadata;
@@ -472,7 +473,7 @@ struct path_entry {
     def_like: def_like,
 }
 
-fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
+fn path_entry(+path_string: ~str, def_like: def_like) -> path_entry {
     path_entry {
         path_string: path_string,
         def_like: def_like
@@ -503,7 +504,8 @@ fn each_path(intr: @ident_interner, cdata: cmd,
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
                 // Hand the information off to the iteratee.
-                let this_path_entry = path_entry(path, def_like);
+                // XXX: Bad copy.
+                let this_path_entry = path_entry(copy path, def_like);
                 if !f(this_path_entry) {
                     broken = true;      // XXX: This is awful.
                 }
@@ -591,7 +593,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(intr, item_doc));
     match decode_inlined_item(cdata, tcx, path, item_doc) {
-      Some(ref ii) => csearch::found((*ii)),
+      Some(ref ii) => csearch::found((/*bad*/copy *ii)),
       None => {
         match item_parent_item(item_doc) {
           Some(did) => {
@@ -599,7 +601,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
             let parent_item = lookup_item(did.node, cdata.data);
             match decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
-              Some(ref ii) => csearch::found_parent(did, (*ii)),
+              Some(ref ii) => csearch::found_parent(did, (/*bad*/copy *ii)),
               None => csearch::not_found
             }
           }
@@ -738,7 +740,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ty = doc_type(mth, tcx, cdata);
         let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
-          ty::ty_fn(ref f) => (*f),
+          ty::ty_fn(ref f) => (/*bad*/copy *f),
           _ => {
             tcx.diag.handler().bug(
                 ~"get_trait_methods: id has non-function type");
@@ -769,7 +771,7 @@ fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         let fty;
         match ty::get(ty).sty {
-            ty::ty_fn(ref f) => fty = (*f),
+            ty::ty_fn(ref f) => fty = (/*bad*/copy *f),
             _ => {
                 tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
                                          has non-function type");
@@ -1010,7 +1012,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             attrs.push(
-                {node: {style: ast::attr_outer, value: *meta_item,
+                {node: {style: ast::attr_outer, value: /*bad*/copy *meta_item,
                         is_sugared_doc: false},
                  span: ast_util::dummy_sp()});
         };
@@ -1085,19 +1087,20 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (*ver),
+      Some(ref ver) => (/*bad*/copy *ver),
       None => ~"0.0"
     };
 }
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
-                    proc: fn(~str, ast::def_id)) {
+                    proc: fn(+path: ~str, ast::def_id)) {
     for each_path(intr, cdata, get_crate_data) |path_entry| {
         match path_entry.def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {
-                proc(path_entry.path_string, ast_util::def_id_of_def(def))
+                proc(/*bad*/copy path_entry.path_string,
+                     ast_util::def_id_of_def(def))
             }
         }
     }
@@ -1115,7 +1118,8 @@ fn get_crate_module_paths(intr: @ident_interner, cdata: cmd,
     let mut res = ~[];
     let mods = map::HashMap();
     do iter_crate_items(intr, cdata, get_crate_data) |path, did| {
-        let m = mod_of_path(path);
+        // XXX: Bad copy.
+        let m = mod_of_path(copy path);
         if str::is_not_empty(m) {
             // if m has a sub-item, it must be a module
             mods.insert(m, true);
@@ -1126,7 +1130,7 @@ fn get_crate_module_paths(intr: @ident_interner, cdata: cmd,
         res.push((did, path));
     }
     return do vec::filter(res) |x| {
-        let (_, xp) = *x;
+        let (_, xp) = /*bad*/copy *x;
         mods.contains_key(xp)
     }
 }

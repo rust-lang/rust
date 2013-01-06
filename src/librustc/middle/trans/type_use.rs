@@ -27,6 +27,7 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
+
 use metadata::csearch;
 use middle::freevars;
 use middle::trans::common::*;
@@ -84,11 +85,11 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     if fn_id_loc.crate != local_crate {
         let uses = vec::from_mut(copy cx.uses);
-        ccx.type_use_cache.insert(fn_id, uses);
+        ccx.type_use_cache.insert(fn_id, copy uses);
         return uses;
     }
     let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
-        Some(ref x) => (*x),
+        Some(ref x) => (/*bad*/copy *x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
     };
@@ -165,7 +166,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       }
     }
     let uses = vec::from_mut(copy cx.uses);
-    ccx.type_use_cache.insert(fn_id, uses);
+    // XXX: Bad copy, use @vec instead?
+    ccx.type_use_cache.insert(fn_id, copy uses);
     uses
 }
 

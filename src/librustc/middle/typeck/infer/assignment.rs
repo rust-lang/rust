@@ -58,6 +58,7 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
+
 use middle::ty;
 use middle::typeck::infer::combine::combine_fields;
 use middle::typeck::infer::to_str::ToStr;
@@ -84,7 +85,13 @@ impl Assign {
                b.to_str(self.infcx));
         let _r = indenter();
 
-        match (ty::get(a).sty, ty::get(b).sty) {
+        debug!("Assign.tys: copying first type");
+        let copy_a = copy ty::get(a).sty;
+        debug!("Assign.tys: copying second type");
+        let copy_b = copy ty::get(b).sty;
+        debug!("Assign.tys: performing match");
+
+        let r = match (copy_a, copy_b) {
             (ty::ty_bot, _) => {
                 Ok(None)
             }
@@ -119,7 +126,11 @@ impl Assign {
             (_, _) => {
                 self.assign_tys_or_sub(a, b, Some(a), Some(b))
             }
-        }
+        };
+
+        debug!("Assign.tys end");
+
+        move r
     }
 }
 
@@ -150,7 +161,8 @@ priv impl Assign {
 
         match (a_bnd, b_bnd) {
             (Some(a_bnd), Some(b_bnd)) => {
-                match (ty::get(a_bnd).sty, ty::get(b_bnd).sty) {
+                match (/*bad*/copy ty::get(a_bnd).sty,
+                       /*bad*/copy ty::get(b_bnd).sty) {
                     // check for a case where a non-region pointer (@, ~) is
                     // being assigned to a region pointer:
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
@@ -192,7 +204,7 @@ priv impl Assign {
                         let nr_b = ty::mk_fn(self.infcx.tcx, ty::FnTyBase {
                             meta: ty::FnMeta {proto: a_f.meta.proto,
                                               ..b_f.meta},
-                            sig: b_f.sig
+                            sig: /*bad*/copy b_f.sig
                         });
                         self.try_assign(0, ty::AutoBorrowFn,
                                         a, nr_b, m_imm, b_f.meta.region)
