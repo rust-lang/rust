@@ -27,7 +27,7 @@ use driver::driver::{optgroups, build_session_options, build_session,
 use driver::diagnostic;
 use syntax::{ast, attr, parse};
 use syntax::parse::parse_crate_from_source_str;
-use middle::lang_items::{LanguageItems, language_items};
+use middle::lang_items::LanguageItems;
 use util::ppaux::ty_to_str;
 use syntax::ast_util::dummy_sp;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
@@ -53,7 +53,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
     let freevars = HashMap();
     let region_paramd_items = HashMap();
     let region_map = HashMap();
-    let lang_items = language_items::make();
+    let lang_items = LanguageItems::new();
 
     let parse_sess = parse::new_parse_sess(None);
     let crate = parse_crate_from_source_str(

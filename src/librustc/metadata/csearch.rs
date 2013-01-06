@@ -48,6 +48,7 @@ export get_type;
 export get_impl_traits;
 export get_impl_method;
 export get_item_path;
+export get_lang_items;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 export ProvidedTraitMethodInfo;
 export StaticMethodInfo;

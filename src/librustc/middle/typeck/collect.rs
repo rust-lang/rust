@@ -897,20 +897,15 @@ fn compute_bounds(ccx: @crate_ctxt,
         let ity = ast_ty_to_ty(ccx, empty_rscope, **b);
         match ty::get(ity).sty {
             ty::ty_trait(did, _, _) => {
-                let d = Some(did);
-                if d == li.owned_trait {
+                if did == li.owned_trait() {
                     ~[ty::bound_owned]
-                }
-                else if d == li.copy_trait {
+                } else if did == li.copy_trait() {
                     ~[ty::bound_copy]
-                }
-                else if d == li.const_trait {
+                } else if did == li.const_trait() {
                     ~[ty::bound_const]
-                }
-                else if d == li.durable_trait {
+                } else if did == li.durable_trait() {
                     ~[ty::bound_durable]
-                }
-                else {
+                } else {
                     // Must be a user-defined trait
                     ~[ty::bound_trait(ity)]
                 }

@@ -208,7 +208,7 @@ fn trans_log(log_ex: @ast::expr,
 
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
-            let did = bcx.tcx().lang_items.log_type_fn.get();
+            let did = bcx.tcx().lang_items.log_type_fn();
             let bcx = callee::trans_rtcall_or_lang_call_with_type_params(
                 bcx, did, ~[level, val], ~[val_datum.ty], expr::Ignore);
             bcx
