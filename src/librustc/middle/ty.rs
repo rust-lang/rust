@@ -33,6 +33,7 @@ use core::dvec::DVec;
 use core::dvec;
 use core::ops;
 use core::option;
+use core::ptr::to_unsafe_ptr;
 use core::result::Result;
 use core::result;
 use core::to_bytes;
@@ -304,18 +305,22 @@ impl creader_cache_key : to_bytes::IterBytes {
     }
 }
 
-type intern_key = {sty: sty, o_def_id: Option<ast::def_id>};
+type intern_key = {sty: *sty, o_def_id: Option<ast::def_id>};
 
 impl intern_key : cmp::Eq {
     pure fn eq(&self, other: &intern_key) -> bool {
-        (*self).sty == (*other).sty && (*self).o_def_id == (*other).o_def_id
+        unsafe {
+            *self.sty == *other.sty && self.o_def_id == other.o_def_id
+        }
     }
     pure fn ne(&self, other: &intern_key) -> bool { !(*self).eq(other) }
 }
 
 impl intern_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
+        unsafe {
+            to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
+        }
     }
 }
 
@@ -1008,11 +1013,12 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
-    let key = {sty: st, o_def_id: o_def_id};
+    let key = {sty: to_unsafe_ptr(&st), o_def_id: o_def_id};
     match cx.interner.find(key) {
       Some(t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
     }
+
     let mut flags = 0u;
     fn rflags(r: Region) -> uint {
         (has_regions as uint) | {
@@ -1028,42 +1034,46 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         substs.self_r.iter(|r| f |= rflags(*r));
         return f;
     }
-    match st {
-      ty_estr(vstore_slice(r)) => {
+    match &st {
+      &ty_estr(vstore_slice(r)) => {
         flags |= rflags(r);
       }
-      ty_evec(mt, vstore_slice(r)) => {
+      &ty_evec(ref mt, vstore_slice(r)) => {
         flags |= rflags(r);
         flags |= get(mt.ty).flags;
       }
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box | ty_err => (),
-      ty_param(_) => flags |= has_params as uint,
-      ty_infer(_) => flags |= needs_infer as uint,
-      ty_self => flags |= has_self as uint,
-      ty_enum(_, ref substs) | ty_struct(_, ref substs)
-      | ty_trait(_, ref substs, _) => {
+      &ty_nil | &ty_bot | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
+      &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
+      &ty_opaque_box | &ty_err => (),
+      &ty_param(_) => flags |= has_params as uint,
+      &ty_infer(_) => flags |= needs_infer as uint,
+      &ty_self => flags |= has_self as uint,
+      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
+      &ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
       }
-      ty_box(m) | ty_uniq(m) | ty_evec(m, _) |
-      ty_ptr(m) | ty_unboxed_vec(m) => {
+      &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
+      &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
-      ty_rptr(r, m) => {
+      &ty_rptr(r, ref m) => {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
-      ty_tup(ts) => for ts.each |tt| { flags |= get(*tt).flags; },
-      ty_fn(ref f) => {
+      &ty_rec(ref flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
+      &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
+      &ty_fn(ref f) => {
         flags |= rflags(f.meta.region);
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.sig.output).flags;
       }
     }
-    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
-    cx.interner.insert(key, t);
+
+    let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+
+    let key = {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
+    cx.interner.insert(move key, t);
+
     cx.next_id += 1u;
     unsafe { cast::reinterpret_cast(&t) }
 }

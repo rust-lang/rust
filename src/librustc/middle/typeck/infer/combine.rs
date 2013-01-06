@@ -54,6 +54,8 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
+#[warn(vecs_implicitly_copyable)];
+
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use middle::typeck::infer::sub::Sub;

@@ -178,15 +178,15 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
 /* Searching */
 
 /// Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
+fn find_attrs_by_name(attrs: ~[ast::attribute], name: &str) ->
    ~[ast::attribute] {
-    let filter = (
-        fn@(a: &ast::attribute) -> Option<ast::attribute> {
-            if get_attr_name(*a) == name {
-                option::Some(*a)
-            } else { option::None }
+    let filter: &fn(a: &ast::attribute) -> Option<ast::attribute> = |a| {
+        if name == get_attr_name(*a) {
+            option::Some(*a)
+        } else {
+            option::None
         }
-    );
+    };
     return vec::filter_map(attrs, filter);
 }
 

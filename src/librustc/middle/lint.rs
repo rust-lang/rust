@@ -105,12 +105,12 @@ impl lint : cmp::Eq {
     pure fn ne(&self, other: &lint) -> bool { !(*self).eq(other) }
 }
 
-fn level_to_str(lv: level) -> ~str {
+fn level_to_str(lv: level) -> &static/str {
     match lv {
-      allow => ~"allow",
-      warn => ~"warn",
-      deny => ~"deny",
-      forbid => ~"forbid"
+      allow => "allow",
+      warn => "warn",
+      deny => "deny",
+      forbid => "forbid"
     }
 }
 
@@ -126,7 +126,7 @@ impl level : cmp::Eq {
 }
 
 type lint_spec = @{lint: lint,
-                   desc: ~str,
+                   desc: &static/str,
                    default: level};
 
 type lint_dict = HashMap<~str,lint_spec>;
@@ -139,109 +139,109 @@ fn get_lint_dict() -> lint_dict {
     let v = ~[
         (~"ctypes",
          @{lint: ctypes,
-           desc: ~"proper use of core::libc types in foreign modules",
+           desc: "proper use of core::libc types in foreign modules",
            default: warn}),
 
         (~"unused_imports",
          @{lint: unused_imports,
-           desc: ~"imports that are never used",
+           desc: "imports that are never used",
            default: allow}),
 
         (~"while_true",
          @{lint: while_true,
-           desc: ~"suggest using loop { } instead of while(true) { }",
+           desc: "suggest using loop { } instead of while(true) { }",
            default: warn}),
 
         (~"path_statement",
          @{lint: path_statement,
-           desc: ~"path statements with no effect",
+           desc: "path statements with no effect",
            default: warn}),
 
         (~"unrecognized_lint",
          @{lint: unrecognized_lint,
-           desc: ~"unrecognized lint attribute",
+           desc: "unrecognized lint attribute",
            default: warn}),
 
         (~"non_implicitly_copyable_typarams",
          @{lint: non_implicitly_copyable_typarams,
-           desc: ~"passing non implicitly copyable types as copy type params",
+           desc: "passing non implicitly copyable types as copy type params",
            default: warn}),
 
         (~"vecs_implicitly_copyable",
          @{lint: vecs_implicitly_copyable,
-           desc: ~"make vecs and strs not implicitly copyable \
+           desc: "make vecs and strs not implicitly copyable \
                   (only checked at top level)",
            default: warn}),
 
         (~"implicit_copies",
          @{lint: implicit_copies,
-           desc: ~"implicit copies of non implicitly copyable data",
+           desc: "implicit copies of non implicitly copyable data",
            default: warn}),
 
         (~"deprecated_mode",
          @{lint: deprecated_mode,
-           desc: ~"warn about deprecated uses of modes",
+           desc: "warn about deprecated uses of modes",
            default: warn}),
 
         (~"deprecated_pattern",
          @{lint: deprecated_pattern,
-           desc: ~"warn about deprecated uses of pattern bindings",
+           desc: "warn about deprecated uses of pattern bindings",
            default: allow}),
 
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
-           desc: ~"types, variants and traits should have camel case names",
+           desc: "types, variants and traits should have camel case names",
            default: allow}),
 
         (~"managed_heap_memory",
          @{lint: managed_heap_memory,
-           desc: ~"use of managed (@ type) heap memory",
+           desc: "use of managed (@ type) heap memory",
            default: allow}),
 
         (~"owned_heap_memory",
          @{lint: owned_heap_memory,
-           desc: ~"use of owned (~ type) heap memory",
+           desc: "use of owned (~ type) heap memory",
            default: allow}),
 
         (~"heap_memory",
          @{lint: heap_memory,
-           desc: ~"use of any (~ type or @ type) heap memory",
+           desc: "use of any (~ type or @ type) heap memory",
            default: allow}),
 
         (~"structural_records",
          @{lint: structural_records,
-           desc: ~"use of any structural records",
+           desc: "use of any structural records",
            default: allow}),
 
         (~"legacy modes",
          @{lint: legacy_modes,
-           desc: ~"allow legacy modes",
+           desc: "allow legacy modes",
            default: forbid}),
 
         (~"type_limits",
          @{lint: type_limits,
-           desc: ~"comparisons made useless by limits of the types involved",
+           desc: "comparisons made useless by limits of the types involved",
            default: warn}),
 
         (~"default_methods",
          @{lint: default_methods,
-           desc: ~"allow default methods",
+           desc: "allow default methods",
            default: deny}),
 
         (~"deprecated_self",
          @{lint: deprecated_self,
-           desc: ~"warn about deprecated uses of `self`",
+           desc: "warn about deprecated uses of `self`",
            default: allow}),
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",
          @{lint: unused_variable,
-           desc: ~"detect variables which are not used in any way",
+           desc: "detect variables which are not used in any way",
            default: warn}),
 
         (~"dead_assignment",
          @{lint: dead_assignment,
-           desc: ~"detect assignments that will never be read",
+           desc: "detect assignments that will never be read",
            default: warn}),
         */
     ];
