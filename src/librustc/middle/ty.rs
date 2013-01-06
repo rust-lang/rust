@@ -1606,11 +1606,18 @@ fn subst(cx: ctxt,
             fold_regions_and_ty(
                 cx, typ,
                 |r| match r {
-                    re_bound(br_self) => substs.self_r.expect(
-                        fmt!("ty::subst: \
-                      Reference to self region when given substs with no \
-                      self region, ty = %s",
-                      ::util::ppaux::ty_to_str(cx, typ))),
+                    re_bound(br_self) => {
+                        match substs.self_r {
+                            None => {
+                                cx.sess.bug(
+                                    fmt!("ty::subst: \
+                                  Reference to self region when given substs \
+                                  with no self region, ty = %s",
+                                  ::util::ppaux::ty_to_str(cx, typ)))
+                            }
+                            Some(self_r) => self_r
+                        }
+                    }
                     _ => r
                 },
                 |t| do_subst(cx, substs, t),
