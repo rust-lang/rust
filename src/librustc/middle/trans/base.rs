@@ -1086,8 +1086,13 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
 }
 
 fn simple_block_scope() -> block_kind {
-    block_scope({loop_break: None, loop_label: None, mut cleanups: ~[],
-                 mut cleanup_paths: ~[], mut landing_pad: None})
+    block_scope(scope_info {
+        loop_break: None,
+        loop_label: None,
+        mut cleanups: ~[],
+        mut cleanup_paths: ~[],
+        mut landing_pad: None
+    })
 }
 
 // Use this when you're at the top block of a function or the like.
@@ -1105,7 +1110,7 @@ fn scope_block(bcx: block,
 
 fn loop_scope_block(bcx: block, loop_break: block, loop_label: Option<ident>,
                     n: ~str, opt_node_info: Option<node_info>) -> block {
-    return new_block(bcx.fcx, Some(bcx), block_scope({
+    return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
         loop_break: Some(loop_break),
         loop_label: loop_label,
         mut cleanups: ~[],
@@ -1436,7 +1441,8 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
                     param_substs: Option<param_substs>,
                     sp: Option<span>) -> fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
-    return @{llfn: llfndecl,
+    return @fn_ctxt_ {
+          llfn: llfndecl,
           llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
           llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
           mut llstaticallocas: llbbs.sa,
@@ -1453,7 +1459,8 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
           param_substs: param_substs,
           span: sp,
           path: path,
-          ccx: ccx};
+          ccx: ccx
+    };
 }
 
 fn new_fn_ctxt(ccx: @crate_ctxt, path: path, llfndecl: ValueRef,
@@ -2814,8 +2821,8 @@ fn trans_crate(sess: session::Session,
         option::None
     };
 
-    let ccx =
-        @{sess: sess,
+    let ccx = @crate_ctxt {
+          sess: sess,
           llmod: llmod,
           td: td,
           tn: tn,
@@ -2875,8 +2882,8 @@ fn trans_crate(sess: session::Session,
           crate_map: crate_map,
           mut uses_gc: false,
           dbg_cx: dbg_cx,
-          mut do_not_commit_warning_issued: false};
-
+          mut do_not_commit_warning_issued: false
+    };
 
     gather_rtcalls(ccx, crate);
 

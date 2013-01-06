@@ -156,7 +156,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
         lldecl
     };
 
-    let psubsts = Some({
+    let psubsts = Some(param_substs {
         tys: substs,
         vtables: vtables,
         bounds: tpt.bounds,
@@ -381,5 +381,5 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
           })
       }
     };
-    @{def: item, params: param_ids, impl_did_opt: impl_did_opt}
+    @mono_id_ {def: item, params: param_ids, impl_did_opt: impl_did_opt}
 }
