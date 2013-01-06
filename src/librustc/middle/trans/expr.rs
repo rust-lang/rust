@@ -111,6 +111,7 @@ lvalues are *never* stored by value.
 
 */
 
+
 use lib::llvm::ValueRef;
 use middle::resolve;
 use middle::trans::base::*;
@@ -514,7 +515,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
 
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
-    match expr.node {
+    // XXX: This copy is really bad.
+    match /*bad*/copy expr.node {
         ast::expr_paren(e) => {
             return trans_rvalue_dps_unadjusted(bcx, e, dest);
         }
@@ -526,7 +528,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return controlflow::trans_if(bcx, cond, (*thn), els, dest);
         }
         ast::expr_match(discr, ref arms) => {
-            return alt::trans_alt(bcx, expr, discr, (*arms), dest);
+            return alt::trans_alt(bcx, expr, discr, /*bad*/copy *arms, dest);
         }
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, (*blk).info(),
@@ -554,13 +556,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::expr_fn(proto, decl, ref body, cap_clause) => {
+        // XXX: Bad copy.
+        ast::expr_fn(proto, copy decl, ref body, cap_clause) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
-            return closure::trans_expr_fn(bcx, proto, decl, *body, expr.id,
-                                          cap_clause, None, dest);
+            return closure::trans_expr_fn(bcx, proto, decl, /*bad*/copy *body,
+                                          expr.id, cap_clause, None, dest);
         }
-        ast::expr_fn_block(decl, ref body, cap_clause) => {
+        ast::expr_fn_block(ref decl, ref body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
             match ty::get(expr_ty).sty {
                 ty::ty_fn(ref fn_ty) => {
@@ -568,7 +571,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                            expr_to_str(expr, tcx.sess.intr()),
                            ty_to_str(tcx, expr_ty));
                     return closure::trans_expr_fn(
-                        bcx, fn_ty.meta.proto, decl, *body, expr.id,
+                        bcx, fn_ty.meta.proto, /*bad*/copy *decl,
+                        /*bad*/copy *body, expr.id,
                         cap_clause, None, dest);
                 }
                 _ => {
@@ -581,10 +585,16 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             match ty::get(expr_ty(bcx, expr)).sty {
                 ty::ty_fn(ref fn_ty) => {
                     match blk.node {
-                        ast::expr_fn_block(decl, ref body, cap) => {
+                        ast::expr_fn_block(copy decl, ref body, cap) => {
                             return closure::trans_expr_fn(
-                                bcx, fn_ty.meta.proto, decl, *body, blk.id,
-                                cap, Some(None), dest);
+                                bcx,
+                                fn_ty.meta.proto,
+                                decl,
+                                /*bad*/copy *body,
+                                blk.id,
+                                cap,
+                                Some(None),
+                                dest);
                         }
                         _ => {
                             bcx.sess().impossible_case(

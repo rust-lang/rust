@@ -79,6 +79,7 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
+
 use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty::*;
@@ -358,7 +359,7 @@ impl LookupContext {
 
 
             let bound_substs = match ty::get(bound_trait_ty).sty {
-                ty::ty_trait(_, ref substs, _) => (*substs),
+                ty::ty_trait(_, ref substs, _) => (/*bad*/copy *substs),
                 _ => {
                     self.bug(fmt!("add_candidates_from_param: \
                                    non-trait bound %s",
@@ -386,7 +387,7 @@ impl LookupContext {
 
             let mut i = 0;
             while i < worklist.len() {
-                let (init_trait_ty, init_substs) = worklist[i];
+                let (init_trait_ty, init_substs) = /*bad*/copy worklist[i];
                 i += 1;
 
                 let init_trait_id = ty::ty_to_def_id(init_trait_ty).get();
@@ -491,7 +492,7 @@ impl LookupContext {
         // `trait_ty` for `self` here, because it allows the compiler
         // to soldier on.  An error will be reported should this
         // candidate be selected if the method refers to `self`.
-        let rcvr_substs = {self_ty: Some(self_ty), ..*substs};
+        let rcvr_substs = {self_ty: Some(self_ty), ../*bad*/copy *substs};
 
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(method.self_ty,
@@ -522,7 +523,7 @@ impl LookupContext {
         }
         let method = &methods[index];
 
-        let rcvr_substs = { self_ty: Some(self_ty), ..*substs };
+        let rcvr_substs = { self_ty: Some(self_ty), ../*bad*/copy *substs };
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(
                 method.self_ty,
@@ -893,13 +894,13 @@ impl LookupContext {
         let mut merged = ~[];
         let mut i = 0;
         while i < candidates.len() {
-            let candidate_a = candidates[i];
+            let candidate_a = /*bad*/copy candidates[i];
 
             let mut skip = false;
 
             let mut j = i + 1;
             while j < candidates.len() {
-                let candidate_b = candidates[j];
+                let candidate_b = /*bad*/copy candidates[j];
                 debug!("attempting to merge %? and %?",
                        candidate_a, candidate_b);
                 let candidates_same = match (&candidate_a.origin,
@@ -985,9 +986,11 @@ impl LookupContext {
 
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
-        let all_substs = {tps: vec::append(candidate.rcvr_substs.tps,
-                                           m_substs),
-                          ..candidate.rcvr_substs};
+        let all_substs = {
+            tps: vec::append(/*bad*/copy candidate.rcvr_substs.tps,
+                             m_substs),
+            ../*bad*/copy candidate.rcvr_substs
+        };
 
         self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
         return {self_arg: {mode: ast::expl(candidate.self_mode),
@@ -1072,7 +1075,7 @@ impl LookupContext {
                                 trait_did: def_id,
                                 method_num: uint) -> ty::t {
             let trait_methods = ty::trait_methods(tcx, trait_did);
-            ty::mk_fn(tcx, trait_methods[method_num].fty)
+            ty::mk_fn(tcx, /*bad*/copy trait_methods[method_num].fty)
         }
     }
 
@@ -1147,7 +1150,7 @@ impl LookupContext {
         ty::item_path_str(self.tcx(), did)
     }
 
-    fn bug(&self, s: ~str) -> ! {
+    fn bug(&self, +s: ~str) -> ! {
         self.tcx().sess.bug(s)
     }
 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 /*!
  * A classic liveness analysis based on dataflow over the AST.  Computes,
  * for each local variable in a function, whether that variable is live
@@ -1032,7 +1033,7 @@ impl Liveness {
     }
 
     fn propagate_through_decl(decl: @decl, succ: LiveNode) -> LiveNode {
-        match decl.node {
+        match /*bad*/copy decl.node {
           decl_local(locals) => {
             do locals.foldr(succ) |local, succ| {
                 self.propagate_through_local(*local, succ)
@@ -1081,7 +1082,7 @@ impl Liveness {
         debug!("propagate_through_expr: %s",
              expr_to_str(expr, self.tcx.sess.intr()));
 
-        match expr.node {
+        match /*bad*/copy expr.node {
           // Interesting cases with control flow or which gen/kill
 
           expr_path(_) => {
@@ -1562,7 +1563,7 @@ fn check_call(args: &[@expr],
 }
 
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
-    match expr.node {
+    match /*bad*/copy expr.node {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = self.live_node(expr.id, expr.span);

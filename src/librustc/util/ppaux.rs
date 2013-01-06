@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::ty;
 use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
@@ -354,14 +355,14 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 
     // if there is an id, print that instead of the structural type:
-    for ty::type_def_id(typ).each |def_id| {
+    /*for ty::type_def_id(typ).each |def_id| {
         // note that this typedef cannot have type parameters
         return ast_map::path_to_str(ty::item_path(cx, *def_id),
                                     cx.sess.intr());
-    }
+    }*/
 
     // pretty print the structural type representation:
-    return match ty::get(typ).sty {
+    return match /*bad*/copy ty::get(typ).sty {
       ty_nil => ~"()",
       ty_bot => ~"_|_",
       ty_bool => ~"bool",
@@ -395,7 +396,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                   f.meta.purity,
                   f.meta.onceness,
                   None,
-                  f.sig.inputs,
+                  /*bad*/copy f.sig.inputs,
                   f.sig.output,
                   f.meta.ret_style)
       }
@@ -408,12 +409,15 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        parameterized(cx, base, (*substs).self_r, (*substs).tps)
+        parameterized(cx, base, (*substs).self_r, /*bad*/copy (*substs).tps)
       }
       ty_trait(did, ref substs, vs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        let result = parameterized(cx, base, (*substs).self_r, (*substs).tps);
+        let result = parameterized(cx,
+                                   base,
+                                   substs.self_r,
+                                   /*bad*/copy substs.tps);
         vstore_ty_to_str(cx, result, vs)
       }
       ty_evec(mt, vs) => {

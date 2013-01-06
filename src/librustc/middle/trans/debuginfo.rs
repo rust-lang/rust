@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
@@ -107,7 +108,7 @@ type debug_ctxt = {
     crate_file: ~str
 };
 
-fn mk_ctxt(crate: ~str, intr: @ident_interner) -> debug_ctxt {
+fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
     {llmetadata: map::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
@@ -181,7 +182,7 @@ fn cached_metadata<T: Copy>(cache: metadata_cache, mdtag: int,
 fn create_compile_unit(cx: @crate_ctxt)
     -> @metadata<compile_unit_md> unsafe {
     let cache = get_cache(cx);
-    let crate_name = cx.dbg_cx.get().crate_file;
+    let crate_name = /*bad*/copy (/*bad*/copy cx.dbg_cx).get().crate_file;
     let tg = CompileUnitTag;
     match cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         |md| md.data.name == crate_name) {
@@ -194,7 +195,7 @@ fn create_compile_unit(cx: @crate_ctxt)
     let unit_metadata = ~[lltag(tg),
                          llunused(),
                          lli32(DW_LANG_RUST),
-                         llstr(crate_name),
+                         llstr(copy crate_name),
                          llstr(work_dir),
                          llstr(env!("CFG_VERSION")),
                          lli1(true), // deprecated: main compile unit
@@ -211,7 +212,7 @@ fn create_compile_unit(cx: @crate_ctxt)
 }
 
 fn get_cache(cx: @crate_ctxt) -> metadata_cache {
-    cx.dbg_cx.get().llmetadata
+    (/*bad*/copy cx.dbg_cx).get().llmetadata
 }
 
 fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
@@ -223,7 +224,7 @@ fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
     }, str::from_slice(work_dir))
 }
 
-fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
+fn create_file(cx: @crate_ctxt, +full_path: ~str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     match cached_metadata::<@metadata<file_md>>(
@@ -262,7 +263,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let sp = cx.node_info.get().span;
 
     let start = cx.sess().codemap.lookup_char_pos(sp.lo);
-    let fname = start.file.name;
+    let fname = /*bad*/copy start.file.name;
     let end = cx.sess().codemap.lookup_char_pos(sp.hi);
     let tg = LexicalBlockTag;
     /*alt cached_metadata::<@metadata<block_md>>(
@@ -365,12 +366,18 @@ type struct_ctxt = {
 };
 
 fn finish_structure(cx: @struct_ctxt) -> ValueRef {
-    return create_composite_type(StructureTypeTag, cx.name, cx.file, cx.line,
-                              cx.total_size, cx.align, 0, option::None,
-                              option::Some(cx.members));
+    return create_composite_type(StructureTypeTag,
+                                 /*bad*/copy cx.name,
+                                 cx.file,
+                                 cx.line,
+                                 cx.total_size,
+                                 cx.align,
+                                 0,
+                                 option::None,
+                                 option::Some(/*bad*/copy cx.members));
 }
 
-fn create_structure(file: @metadata<file_md>, name: ~str, line: int)
+fn create_structure(file: @metadata<file_md>, +name: ~str, line: int)
     -> @struct_ctxt {
     let cx = @{file: file.node,
                name: name,
@@ -382,7 +389,7 @@ fn create_structure(file: @metadata<file_md>, name: ~str, line: int)
     return cx;
 }
 
-fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
+fn create_derived_type(type_tag: int, file: ValueRef, +name: ~str, line: int,
                        size: int, align: int, offset: int, ty: ValueRef)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
@@ -398,7 +405,7 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
     return llmdnode(lldata);
 }
 
-fn add_member(cx: @struct_ctxt, name: ~str, line: int, size: int, align: int,
+fn add_member(cx: @struct_ctxt, +name: ~str, line: int, size: int, align: int,
               ty: ValueRef) {
     cx.members.push(create_derived_type(MemberTag, cx.file, name, line,
                                        size * 8, align * 8, cx.total_size,
@@ -412,7 +419,8 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
     let file_node = create_file(cx, fname);
     let scx = create_structure(file_node,
                                cx.sess.str_of(
-                                   (cx.dbg_cx.get().names)(~"rec")),
+                                   ((/*bad*/copy cx.dbg_cx).get().names)
+                                   (~"rec")),
                                line_from_span(cx.sess.codemap,
                                               span) as int);
     for fields.each |field| {
@@ -455,10 +463,10 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     return mdval;
 }
 
-fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
-                         size: int, align: int, offset: int,
+fn create_composite_type(type_tag: int, +name: ~str, file: ValueRef,
+                         line: int, size: int, align: int, offset: int,
                          derived: Option<ValueRef>,
-                         members: Option<~[ValueRef]>)
+                         +members: Option<~[ValueRef]>)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   file,
@@ -614,10 +622,10 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::Ty)
 }
 
 fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> ~str {
-    cx.sess.codemap.lookup_char_pos(sp.lo).file.name
+    /*bad*/copy cx.sess.codemap.lookup_char_pos(sp.lo).file.name
 }
 
-fn create_var(type_tag: int, context: ValueRef, name: ~str, file: ValueRef,
+fn create_var(type_tag: int, context: ValueRef, +name: ~str, file: ValueRef,
               line: int, ret_ty: ValueRef) -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   context,
@@ -649,7 +657,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
-    let filemd = create_file(cx, loc.file.name);
+    let filemd = create_file(cx, /*bad*/copy loc.file.name);
     let context = match bcx.parent {
         None => create_function(bcx.fcx).node,
         Some(_) => create_block(bcx).node
@@ -693,7 +701,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
     let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty);
-    let filemd = create_file(cx, loc.file.name);
+    let filemd = create_file(cx, /*bad*/copy loc.file.name);
     let context = create_function(bcx.fcx);
 
     match arg.pat.node {
@@ -740,7 +748,7 @@ fn update_source_pos(cx: block, s: span) {
 
 fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx.ccx;
-    let dbg_cx = cx.dbg_cx.get();
+    let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
 
     debug!("~~");
     log(debug, fcx.id);
@@ -750,7 +758,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
 
     let (ident, ret_ty, id) = match cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) => {
-        match item.node {
+        match /*bad*/copy item.node {
           ast::item_fn(decl, _, _, _) => {
             (item.ident, decl.output, item.id)
           }
@@ -762,7 +770,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
           (method.ident, method.decl.output, method.id)
       }
       ast_map::node_expr(expr) => {
-        match expr.node {
+        match /*bad*/copy expr.node {
           ast::expr_fn(_, decl, _, _) => {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }

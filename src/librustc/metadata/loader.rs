@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 //! Finds crate binaries and loads their metadata
 
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
@@ -62,7 +63,7 @@ type ctxt = {
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     match find_library_crate(cx) {
-      Some(ref t) => return (*t),
+      Some(ref t) => return (/*bad*/copy *t),
       None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
@@ -72,7 +73,7 @@ fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
 }
 
 fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
-    attr::require_unique_names(cx.diag, cx.metas);
+    attr::require_unique_names(cx.diag, /*bad*/copy cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
@@ -90,9 +91,9 @@ fn find_library_crate_aux(cx: ctxt,
                           nn: {prefix: ~str, suffix: ~str},
                           filesearch: filesearch::FileSearch) ->
    Option<{ident: ~str, data: @~[u8]}> {
-    let crate_name = crate_name_from_metas(cx.metas);
+    let crate_name = crate_name_from_metas(/*bad*/copy cx.metas);
     let prefix: ~str = nn.prefix + crate_name + ~"-";
-    let suffix: ~str = nn.suffix;
+    let suffix: ~str = /*bad*/copy nn.suffix;
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
@@ -127,7 +128,7 @@ fn find_library_crate_aux(cx: ctxt,
     if matches.is_empty() {
         None
     } else if matches.len() == 1u {
-        Some(matches[0])
+        Some(/*bad*/copy matches[0])
     } else {
         cx.diag.span_err(
             cx.span, fmt!("multiple matching crates for `%s`", crate_name));
@@ -142,12 +143,12 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
+fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
       Some(i) => {
         match attr::get_meta_item_value_str(i) {
-          Some(ref n) => (*n),
+          Some(ref n) => (/*bad*/copy *n),
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
           _ => fail
@@ -165,7 +166,7 @@ fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
     }
 }
 
-fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
+fn crate_matches(crate_data: @~[u8], +metas: ~[@ast::meta_item],
                  hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);

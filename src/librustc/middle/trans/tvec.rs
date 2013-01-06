@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use back::abi;
 use lib::llvm::{ValueRef, TypeRef};
 use middle::trans::build::*;
@@ -257,7 +258,7 @@ fn trans_lit_str(bcx: block,
         SaveIn(lldest) => {
             let bytes = lit_str.len() + 1; // count null-terminator too
             let llbytes = C_uint(bcx.ccx(), bytes);
-            let llcstr = C_cstr(bcx.ccx(), *lit_str);
+            let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *lit_str);
             let llcstr = llvm::LLVMConstPointerCast(llcstr, T_ptr(T_i8()));
             Store(bcx, llcstr, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
             Store(bcx, llbytes, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
@@ -314,7 +315,7 @@ fn write_content(bcx: block,
            bcx.expr_to_str(vstore_expr));
     let _indenter = indenter();
 
-    match content_expr.node {
+    match /*bad*/copy content_expr.node {
         ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
             match dest {
                 Ignore => {
@@ -323,7 +324,7 @@ fn write_content(bcx: block,
                 SaveIn(lldest) => {
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), *s);
+                    let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *s);
                     base::call_memcpy(bcx, lldest, llcstr, llbytes);
                     return bcx;
                 }
@@ -420,7 +421,7 @@ fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
 fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
-    match content_expr.node {
+    match /*bad*/copy content_expr.node {
         ast::expr_lit(@{node: ast::lit_str(s), span: _}) => s.len() + 1,
         ast::expr_vec(es, _) => es.len(),
         ast::expr_repeat(_, count_expr, _) => {

@@ -519,11 +519,11 @@ impl borrowck_ctxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(s: span, m: ~str) {
+    fn span_err(s: span, +m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(s: span, m: ~str) {
+    fn span_note(s: span, +m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 

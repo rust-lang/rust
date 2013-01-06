@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use codemap::span;
 use lib::llvm::llvm;
 use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
@@ -53,8 +54,8 @@ fn count_insn(cx: block, category: &str) {
         let mut s = ~".";
         i = 0u;
         while i < len {
-            let e = v[i];
-            i = mm.get(e);
+            let e = /*bad*/copy v[i];
+            i = mm.get(/*bad*/ copy e);
             s += ~"/";
             s += e;
             i += 1u;
@@ -662,7 +663,7 @@ fn add_span_comment(bcx: block, sp: span, text: ~str) {
     if !ccx.sess.no_asm_comments() {
         let s = text + ~" (" + ccx.sess.codemap.span_to_str(sp)
             + ~")";
-        log(debug, s);
+        log(debug, copy s);
         add_comment(bcx, s);
     }
 }

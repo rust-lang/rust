@@ -54,8 +54,6 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-#[warn(vecs_implicitly_copyable)];
-
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use middle::typeck::infer::sub::Sub;
@@ -226,7 +224,7 @@ fn super_substs<C:combine>(
             do relate_region_param(self, did,
                                    a.self_r, b.self_r).chain |self_r|
             {
-                Ok({self_r: self_r, self_ty: self_ty, tps: tps})
+                Ok({self_r: self_r, self_ty: self_ty, tps: /*bad*/copy tps})
             }
         }
     }
@@ -345,10 +343,10 @@ fn super_fn_metas<C:combine>(
 }
 
 fn super_fn_sigs<C:combine>(
-    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
-{
-    fn argvecs<C:combine>(self: &C, a_args: ~[ty::arg],
-                          b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig> {
+    fn argvecs<C:combine>(self: &C,
+                          +a_args: ~[ty::arg],
+                          +b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(*a, *b))
@@ -357,9 +355,10 @@ fn super_fn_sigs<C:combine>(
         }
     }
 
-    do argvecs(self, a_f.inputs, b_f.inputs).chain |inputs| {
+    do argvecs(self, /*bad*/copy a_f.inputs, /*bad*/copy b_f.inputs)
+            .chain |inputs| {
         do self.tys(a_f.output, b_f.output).chain |output| {
-            Ok(FnSig {inputs: inputs, output: output})
+            Ok(FnSig {inputs: /*bad*/copy inputs, output: output})
         }
     }
 }
@@ -378,7 +377,7 @@ fn super_tys<C:combine>(
     self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = self.infcx().tcx;
-    match (ty::get(a).sty, ty::get(b).sty) {
+    match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
@@ -418,8 +417,8 @@ fn super_tys<C:combine>(
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
-        let as_ = ty::get(a).sty;
-        let bs = ty::get(b).sty;
+        let as_ = /*bad*/copy ty::get(a).sty;
+        let bs = /*bad*/copy ty::get(b).sty;
         if as_ == bs {
             Ok(a)
         } else {
@@ -454,7 +453,7 @@ fn super_tys<C:combine>(
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
             do self.vstores(ty::terr_trait, a_vstore, b_vstore).chain |vs| {
-                Ok(ty::mk_trait(tcx, a_id, substs, vs))
+                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, vs))
             }
         }
       }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session::Session;
 
 use core::vec;
@@ -61,10 +62,14 @@ fn inject_libcore_ref(sess: Session,
                         span: dummy_sp()};
 
             let vis = vec::append(~[vi1], crate.module.view_items);
-            let mut new_module = { view_items: vis, ..crate.module };
+            let mut new_module = {
+                view_items: vis,
+                ../*bad*/copy crate.module
+            };
             new_module = fld.fold_mod(new_module);
 
-            let new_crate = { module: new_module, ..crate };
+            // XXX: Bad copy.
+            let new_crate = { module: new_module, ..copy crate };
             (new_crate, span)
         },
         fold_mod: |module, fld| {
@@ -80,7 +85,9 @@ fn inject_libcore_ref(sess: Session,
                         span: dummy_sp()};
 
             let vis = vec::append(~[vi2], module.view_items);
-            let new_module = { view_items: vis, ..module };
+
+            // XXX: Bad copy.
+            let new_module = { view_items: vis, ..copy module };
             fold::noop_fold_mod(new_module, fld)
         },
         ..*fold::default_ast_fold()

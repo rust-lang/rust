@@ -9,6 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use back::link;
 use back::{x86, x86_64};
 use front;
@@ -66,7 +67,7 @@ fn source_name(input: input) -> ~str {
     }
 }
 
-fn default_configuration(sess: Session, argv0: ~str, input: input) ->
+fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -96,20 +97,21 @@ fn default_configuration(sess: Session, argv0: ~str, input: input) ->
          mk(~"build_input", source_name(input))];
 }
 
-fn append_configuration(cfg: ast::crate_cfg, name: ~str) -> ast::crate_cfg {
-    if attr::contains_name(cfg, name) {
+fn append_configuration(+cfg: ast::crate_cfg, +name: ~str) -> ast::crate_cfg {
+    // XXX: Bad copy.
+    if attr::contains_name(copy cfg, copy name) {
         return cfg;
     } else {
         return vec::append_one(cfg, attr::mk_word_item(name));
     }
 }
 
-fn build_configuration(sess: Session, argv0: ~str, input: input) ->
+fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
-    let user_cfg = sess.opts.cfg;
+    let user_cfg = /*bad*/copy sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
     let user_cfg = append_configuration(
         user_cfg,
@@ -128,7 +130,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| {
-        words.push(attr::mk_word_item(*s));
+        words.push(attr::mk_word_item(/*bad*/copy *s));
     }
     return words;
 }
@@ -140,7 +142,7 @@ enum input {
     str_input(~str)
 }
 
-fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
+fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(ref file) => {
@@ -149,7 +151,7 @@ fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
       str_input(ref src) => {
         // FIXME (#2319): Don't really want to box the source string
         parse::parse_crate_from_source_str(
-            anon_src(), @(*src), cfg, sess.parse_sess)
+            anon_src(), @(/*bad*/copy *src), cfg, sess.parse_sess)
       }
     }
 }
@@ -326,7 +328,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: None};
 }
 
-fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
+fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
                  outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
@@ -336,7 +338,7 @@ fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
+fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -482,7 +484,7 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(binary: ~str,
+fn build_session_options(+binary: ~str,
                          matches: &getopts::Matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
@@ -527,7 +529,7 @@ fn build_session_options(binary: ~str,
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
         for debug_map.each |pair| {
-            let (name, _, bit) = *pair;
+            let (name, _, bit) = /*bad*/copy *pair;
             if name == *debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
@@ -588,7 +590,7 @@ fn build_session_options(binary: ~str,
     let target =
         match target_opt {
             None => host_triple(),
-            Some(ref s) => (*s)
+            Some(ref s) => (/*bad*/copy *s)
         };
 
     let addl_lib_search_paths =
@@ -641,7 +643,7 @@ fn build_session_(sopts: @session::options,
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
-        sopts.addl_lib_search_paths);
+        /*bad*/copy sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
     Session_(@{targ_cfg: target_cfg,
                opts: sopts,
@@ -768,7 +770,7 @@ fn build_output_filenames(input: input,
         // have to make up a name
         // We want to toss everything after the final '.'
         let dirpath = match *odir {
-          Some(ref d) => (*d),
+          Some(ref d) => (/*bad*/copy *d),
           None => match input {
             str_input(_) => os::getcwd(),
             file_input(ref ifile) => (*ifile).dir_path()
@@ -790,9 +792,9 @@ fn build_output_filenames(input: input,
       }
 
       Some(ref out_file) => {
-        out_path = (*out_file);
+        out_path = (/*bad*/copy *out_file);
         obj_path = if stop_after_codegen {
-            (*out_file)
+            (/*bad*/copy *out_file)
         } else {
             (*out_file).with_filetype(obj_suffix)
         };

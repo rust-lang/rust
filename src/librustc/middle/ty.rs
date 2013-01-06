@@ -1172,9 +1172,9 @@ fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec({ty: ty, mutbl: ast::m_imm}))
 }
 
-fn mk_rec(cx: ctxt, fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
+fn mk_rec(cx: ctxt, +fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
-fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
+fn mk_tup(cx: ctxt, +ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 // take a copy because we want to own the various vectors inside
 fn mk_fn(cx: ctxt, +fty: FnTy) -> t { mk_t(cx, ty_fn(fty)) }
@@ -1213,7 +1213,7 @@ fn mk_opaque_closure_ptr(cx: ctxt, proto: ast::Proto) -> t {
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
 fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, get(base).sty, Some(def_id))
+    mk_t_with_id(cx, /*bad*/copy get(base).sty, Some(def_id))
 }
 
 // Converts s to its machine type equivalent
@@ -1222,7 +1222,7 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
       ty_int(ast::ty_i) => ty_int(cfg.int_type),
       ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
       ty_float(ast::ty_f) => ty_float(cfg.float_type),
-      ref s => (*s)
+      ref s => (/*bad*/copy *s)
     }
 }
 
@@ -1286,7 +1286,7 @@ fn walk_ty(ty: t, f: fn(t)) {
 
 fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { return; }
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
@@ -1322,7 +1322,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
          tps: substs.tps.map(|t| fldop(*t))}
     }
 
-    match *sty {
+    match /*bad*/copy *sty {
         ty_box(tm) => {
             ty_box({ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
@@ -1376,7 +1376,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
         ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self => {
-            *sty
+            /*bad*/copy *sty
         }
     }
 }
@@ -1476,7 +1476,7 @@ fn apply_op_on_t_to_ty_fn(
     f: &FnTy,
     t_op: fn(t) -> t) -> FnTy
 {
-    let t0 = ty::mk_fn(cx, *f);
+    let t0 = ty::mk_fn(cx, /*bad*/copy *f);
     let t1 = t_op(t0);
     match ty::get(t1).sty {
         ty::ty_fn(copy f) => {
@@ -1701,7 +1701,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 }
 
 fn get_element_type(ty: t, i: uint) -> t {
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
       _ => fail ~"get_element_type called on invalid type"
@@ -1794,7 +1794,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     }
 
     let mut accum = false;
-    let result = match get(ty).sty {
+    let result = match /*bad*/copy get(ty).sty {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) |
@@ -2154,7 +2154,7 @@ fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
     // Insert a default in case we loop back on self recursively.
     cx.kind_cache.insert(ty, kind_top());
 
-    let mut result = match get(ty).sty {
+    let mut result = match /*bad*/copy get(ty).sty {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) => {
@@ -2326,7 +2326,7 @@ fn type_implicitly_moves(cx: ctxt, ty: t) -> bool {
 /// gives a rough estimate of how much space it takes to represent
 /// an instance of `ty`.  Used for the mode transition.
 fn type_size(cx: ctxt, ty: t) -> uint {
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
       ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
@@ -2411,7 +2411,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty));
 
-        let r = match get(ty).sty {
+        let r = match /*bad*/copy get(ty).sty {
           ty_nil |
           ty_bot |
           ty_bool |
@@ -2503,7 +2503,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
     debug!("type_structurally_contains: %s",
            ::util::ppaux::ty_to_str(cx, ty));
     if test(sty) { return true; }
-    match *sty {
+    match /*bad*/copy *sty {
       ty_enum(did, ref substs) => {
         for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
@@ -2589,7 +2589,7 @@ fn type_is_signed(ty: t) -> bool {
 // that the cycle collector might care about.
 fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let mut result = true;
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) => result = true,
@@ -2602,7 +2602,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
         for vec::each(*variants) |variant| {
-            let tup_ty = mk_tup(cx, variant.args);
+            let tup_ty = mk_tup(cx, /*bad*/copy variant.args);
 
             // Perform any type parameter substitutions.
             let tup_ty = subst(cx, substs, tup_ty);
@@ -2943,7 +2943,7 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 // Type accessors for substructures of types
 fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {
-      ty_fn(ref f) => f.sig.inputs,
+      ty_fn(ref f) => /*bad*/copy f.sig.inputs,
       _ => fail ~"ty_fn_args() called on non-fn type"
     }
 }
@@ -3054,8 +3054,8 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // trait itself.  This ought to be harmonized.
             let trt_bounds =
                 ty::lookup_item_type(tcx, trt_id).bounds;
-            let mth = ty::trait_methods(tcx, trt_id)[n_mth];
-            @(vec::append(*trt_bounds, *mth.tps))
+            let mth = /*bad*/copy ty::trait_methods(tcx, trt_id)[n_mth];
+            @(vec::append(/*bad*/copy *trt_bounds, *mth.tps))
           }
         }
     }
@@ -3252,7 +3252,7 @@ fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
 }
 
 fn get_fields(rec_ty:t) -> ~[field] {
-    match get(rec_ty).sty {
+    match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
       _ => fail ~"get_fields: not a record type"
@@ -3597,7 +3597,7 @@ fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
-                match ast_util::split_trait_methods((*ms)) {
+                match ast_util::split_trait_methods((/*bad*/copy *ms)) {
                    (_, p) => p.map(|method| method.ident)
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
@@ -3627,7 +3627,7 @@ fn trait_supertraits(cx: ctxt, id: ast::def_id) -> @~[InstantiatedTraitRef] {
             ty_trait(def_id, ref substs, _) => {
                 result.push(InstantiatedTraitRef {
                     def_id: def_id,
-                    tpt: { substs: (*substs), ty: *trait_type }
+                    tpt: { substs: (/*bad*/copy *substs), ty: *trait_type }
                 });
             }
             _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
@@ -3665,7 +3665,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
         match ty::get(ty).sty {
             ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
             ty::ty_trait(did, ref substs, _) => {
-                mk_trait(cx, did, (*substs), vstore)
+                mk_trait(cx, did, (/*bad*/copy *substs), vstore)
             }
             _ => cx.sess.bug(~"impl_traits: not a trait")
         }
@@ -3745,7 +3745,7 @@ fn substd_enum_variants(cx: ctxt,
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
         @VariantInfo_{args: substd_args, ctor_ty: substd_ctor_ty,
-                      ..**variant_info}
+                      ../*bad*/copy **variant_info}
     }
 }
 
@@ -3817,19 +3817,22 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                 ast_map::path_name(item.ident)
               }
             };
-            vec::append_one(*path, item_elt)
+            vec::append_one(/*bad*/copy *path, item_elt)
           }
 
           ast_map::node_foreign_item(nitem, _, path) => {
-            vec::append_one(*path, ast_map::path_name(nitem.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(nitem.ident))
           }
 
           ast_map::node_method(method, _, path) => {
-            vec::append_one(*path, ast_map::path_name(method.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(method.ident))
           }
           ast_map::node_trait_method(trait_method, _, path) => {
             let method = ast_util::trait_method_to_ty_method(*trait_method);
-            vec::append_one(*path, ast_map::path_name(method.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(method.ident))
           }
 
           ast_map::node_variant(ref variant, _, path) => {
@@ -3838,12 +3841,12 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_dtor(_, _, _, path) => {
-            vec::append_one(*path, ast_map::path_name(
+            vec::append_one(/*bad*/copy *path, ast_map::path_name(
                 syntax::parse::token::special_idents::literally_dtor))
           }
 
           ast_map::node_struct_ctor(_, item, path) => {
-            vec::append_one(*path, ast_map::path_name(item.ident))
+            vec::append_one(/*bad*/copy *path, ast_map::path_name(item.ident))
           }
 
           ast_map::node_stmt(*) | ast_map::node_expr(*) |
@@ -3885,7 +3888,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let variants = (*enum_definition).variants;
+            let variants = /*bad*/copy (*enum_definition).variants;
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 match variant.node.kind {
@@ -3994,7 +3997,7 @@ fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
-               struct_field_tys(struct_def.fields)
+               struct_field_tys(/*bad*/copy struct_def.fields)
             }
             _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
@@ -4002,7 +4005,7 @@ fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
-              struct_field_tys(struct_def.fields)
+              struct_field_tys(/*bad*/copy struct_def.fields)
             }
             _ => {
               cx.sess.bug(~"struct ID bound to enum variant that isn't \
@@ -4211,7 +4214,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                     region: ty::re_static,
                     ..fn_ty.meta
                 },
-                sig: fn_ty.sig
+                sig: /*bad*/copy fn_ty.sig
             })
         }
 
@@ -4222,7 +4225,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                     mk_enum(cx, did,
                      {self_r: Some(ty::re_static),
                       self_ty: None,
-                      tps: (*r).tps}),
+                      tps: /*bad*/copy (*r).tps}),
                 None =>
                     t
             },
@@ -4233,7 +4236,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                 // Ditto.
                 mk_struct(cx, did, {self_r: Some(ty::re_static),
                                     self_ty: None,
-                                    tps: (*r).tps}),
+                                    tps: /*bad*/copy (*r).tps}),
               None =>
                 t
             },
@@ -4537,7 +4540,7 @@ impl InferTy : cmp::Eq {
 
 impl sty : cmp::Eq {
     pure fn eq(&self, other: &sty) -> bool {
-        match (*self) {
+        match (/*bad*/copy *self) {
             ty_nil => {
                 match (*other) {
                     ty_nil => true,
@@ -4617,7 +4620,7 @@ impl sty : cmp::Eq {
                 }
             }
             ty_rec(e0a) => {
-                match (*other) {
+                match (/*bad*/copy *other) {
                     ty_rec(e0b) => e0a == e0b,
                     _ => false
                 }
@@ -4642,7 +4645,7 @@ impl sty : cmp::Eq {
                 }
             }
             ty_tup(e0a) => {
-                match (*other) {
+                match (/*bad*/copy *other) {
                     ty_tup(e0b) => e0a == e0b,
                     _ => false
                 }
