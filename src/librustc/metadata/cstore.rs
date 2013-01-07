@@ -43,7 +43,6 @@ export get_used_link_args;
 export add_use_stmt_cnum;
 export find_use_stmt_cnum;
 export get_dep_hashes;
-export get_path;
 
 
 // A map from external crate numbers (as decoded from some crate file) to
@@ -51,11 +50,6 @@ export get_path;
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
 type cnum_map = map::HashMap<ast::crate_num, ast::crate_num>;
-
-// Multiple items may have the same def_id in crate metadata. They may be
-// renamed imports or reexports. This map keeps the "real" module path
-// and def_id.
-type mod_path_map = map::HashMap<ast::def_id, @~str>;
 
 type crate_metadata = @{name: ~str,
                         data: @~[u8],
@@ -72,7 +66,6 @@ enum CStore { private(cstore_private), }
 type cstore_private =
     @{metas: map::HashMap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
-      mod_path_map: mod_path_map,
       mut used_crate_files: ~[Path],
       mut used_libraries: ~[~str],
       mut used_link_args: ~[~str],
@@ -89,10 +82,8 @@ pure fn p(cstore: CStore) -> cstore_private {
 fn mk_cstore(intr: @ident_interner) -> CStore {
     let meta_cache = map::HashMap();
     let crate_map = map::HashMap();
-    let mod_path_map = HashMap();
     return private(@{metas: meta_cache,
                      use_crate_map: crate_map,
-                     mod_path_map: mod_path_map,
                      mut used_crate_files: ~[],
                      mut used_libraries: ~[],
                      mut used_link_args: ~[],
@@ -113,18 +104,10 @@ fn get_crate_vers(cstore: CStore, cnum: ast::crate_num) -> ~str {
     return decoder::get_crate_vers(cdata.data);
 }
 
-fn set_crate_data(cstore: CStore, cnum: ast::crate_num,
+fn set_crate_data(cstore: CStore,
+                  cnum: ast::crate_num,
                   data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
-    let get_crate_data: decoder::GetCrateDataCb = |cnum| {
-        cstore::get_crate_data(cstore, cnum)
-    };
-    for vec::each(decoder::get_crate_module_paths(cstore.intr, data,
-                                                  get_crate_data)) |dp| {
-        let (did, path) = *dp;
-        let d = {crate: cnum, node: did.node};
-        p(cstore).mod_path_map.insert(d, @path);
-    }
 }
 
 fn have_crate_data(cstore: CStore, cnum: ast::crate_num) -> bool {
@@ -197,10 +180,6 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
     return vec::map(sorted, mapper);
 }
 
-fn get_path(cstore: CStore, d: ast::def_id) -> ~[~str] {
-    option::map_default(&p(cstore).mod_path_map.find(d), ~[],
-                        |ds| str::split_str(**ds, ~"::"))
-}
 // Local Variables:
 // mode: rust
 // fill-column: 78;

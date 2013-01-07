@@ -68,7 +68,6 @@ export get_supertraits;
 export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_item_attrs;
-export get_crate_module_paths;
 export def_like;
 export dl_def;
 export dl_impl;
@@ -1118,34 +1117,6 @@ fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                 proc(path_entry.path_string, ast_util::def_id_of_def(def))
             }
         }
-    }
-}
-
-fn get_crate_module_paths(intr: @ident_interner, cdata: cmd,
-                          get_crate_data: GetCrateDataCb)
-                                    -> ~[(ast::def_id, ~str)] {
-    fn mod_of_path(p: ~str) -> ~str {
-        str::connect(vec::init(str::split_str(p, ~"::")), ~"::")
-    }
-
-    // find all module (path, def_ids), which are not
-    // fowarded path due to renamed import or reexport
-    let mut res = ~[];
-    let mods = map::HashMap();
-    do iter_crate_items(intr, cdata, get_crate_data) |path, did| {
-        let m = mod_of_path(path);
-        if str::is_not_empty(m) {
-            // if m has a sub-item, it must be a module
-            mods.insert(m, true);
-        }
-        // Collect everything by now. There might be multiple
-        // paths pointing to the same did. Those will be
-        // unified later by using the mods map
-        res.push((did, path));
-    }
-    return do vec::filter(res) |x| {
-        let (_, xp) = *x;
-        mods.contains_key(xp)
     }
 }
 
