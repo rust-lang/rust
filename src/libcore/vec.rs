@@ -1599,13 +1599,6 @@ pub trait ImmutableVector<T> {
     pure fn filter_map<U: Copy>(f: fn(t: &T) -> Option<U>) -> ~[U];
 }
 
-pub trait ImmutableEqVector<T: Eq> {
-    pure fn position(f: fn(t: &T) -> bool) -> Option<uint>;
-    pure fn position_elem(t: &T) -> Option<uint>;
-    pure fn rposition(f: fn(t: &T) -> bool) -> Option<uint>;
-    pure fn rposition_elem(t: &T) -> Option<uint>;
-}
-
 /// Extension methods for vectors
 impl<T> &[T]: ImmutableVector<T> {
     /// Return a slice that points into another slice.
@@ -1669,6 +1662,13 @@ impl<T> &[T]: ImmutableVector<T> {
     pure fn filter_map<U: Copy>(f: fn(t: &T) -> Option<U>) -> ~[U] {
         filter_map(self, f)
     }
+}
+
+pub trait ImmutableEqVector<T: Eq> {
+    pure fn position(f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn position_elem(t: &T) -> Option<uint>;
+    pure fn rposition(f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn rposition_elem(t: &T) -> Option<uint>;
 }
 
 impl<T: Eq> &[T]: ImmutableEqVector<T> {
@@ -1740,7 +1740,7 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
     pure fn rfind(f: fn(t: &T) -> bool) -> Option<T> { rfind(self, f) }
 }
 
-pub trait MutableVector<T> {
+pub trait OwnedVector<T> {
     fn push(&mut self, t: T);
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
@@ -1753,18 +1753,7 @@ pub trait MutableVector<T> {
     fn retain(&mut self, f: pure fn(t: &T) -> bool);
 }
 
-pub trait MutableCopyableVector<T: Copy> {
-    fn push_all(&mut self, rhs: &[const T]);
-    fn grow(&mut self, n: uint, initval: &T);
-    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
-    fn grow_set(&mut self, index: uint, initval: &T, val: T);
-}
-
-trait MutableEqVector<T: Eq> {
-    fn dedup(&mut self);
-}
-
-impl<T> ~[T]: MutableVector<T> {
+impl<T> ~[T]: OwnedVector<T> {
     #[inline]
     fn push(&mut self, t: T) {
         push(self, t);
@@ -1817,7 +1806,14 @@ impl<T> ~[T]: MutableVector<T> {
 
 }
 
-impl<T: Copy> ~[T]: MutableCopyableVector<T> {
+pub trait OwnedCopyableVector<T: Copy> {
+    fn push_all(&mut self, rhs: &[const T]);
+    fn grow(&mut self, n: uint, initval: &T);
+    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
+    fn grow_set(&mut self, index: uint, initval: &T, val: T);
+}
+
+impl<T: Copy> ~[T]: OwnedCopyableVector<T> {
     #[inline]
     fn push_all(&mut self, rhs: &[const T]) {
         push_all(self, rhs);
@@ -1839,13 +1835,16 @@ impl<T: Copy> ~[T]: MutableCopyableVector<T> {
     }
 }
 
-impl<T: Eq> ~[T]: MutableEqVector<T> {
+trait OwnedEqVector<T: Eq> {
+    fn dedup(&mut self);
+}
+
+impl<T: Eq> ~[T]: OwnedEqVector<T> {
     #[inline]
     fn dedup(&mut self) {
         dedup(self)
     }
 }
-
 
 /**
 * Constructs a vector from an unsafe pointer to a buffer
