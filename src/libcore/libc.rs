@@ -198,12 +198,14 @@ mod types {
     // Standard types that are scalar but vary by OS and arch.
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     pub mod os {
         pub mod common {
             pub mod posix01 {}
         }
 
         #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "arm")]
         pub mod arch {
             pub mod c95 {
                 pub type c_char = i8;
@@ -726,6 +728,7 @@ pub mod consts {
 
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     pub mod os {
         pub mod c95 {
             pub const EXIT_FAILURE : int = 1;
@@ -1171,6 +1174,7 @@ pub mod funcs {
 
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix88 {
@@ -1182,6 +1186,7 @@ pub mod funcs {
 
             #[cfg(target_os = "linux")]
             #[cfg(target_os = "freebsd")]
+            #[cfg(target_os = "android")]
             fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
             #[cfg(target_os = "macos")]
@@ -1193,6 +1198,7 @@ pub mod funcs {
 
             #[cfg(target_os = "linux")]
             #[cfg(target_os = "freebsd")]
+            #[cfg(target_os = "android")]
             fn stat(path: *c_char, buf: *mut stat) -> c_int;
 
             #[cfg(target_os = "macos")]
@@ -1279,6 +1285,7 @@ pub mod funcs {
     }
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix01 {
@@ -1287,6 +1294,7 @@ pub mod funcs {
         pub extern mod stat_ {
             #[cfg(target_os = "linux")]
             #[cfg(target_os = "freebsd")]
+            #[cfg(target_os = "android")]
             fn lstat(path: *c_char, buf: *mut stat) -> c_int;
 
             #[cfg(target_os = "macos")]
@@ -1303,6 +1311,7 @@ pub mod funcs {
             fn fsync(fd: c_int) -> c_int;
 
             #[cfg(target_os = "linux")]
+            #[cfg(target_os = "android")]
             fn fdatasync(fd: c_int) -> c_int;
 
             fn setenv(name: *c_char, val: *c_char,
@@ -1335,6 +1344,7 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix08 {
@@ -1363,6 +1373,7 @@ pub mod funcs {
 
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     #[cfg(target_os = "win32")]
     pub mod bsd44 {
     }
@@ -1380,6 +1391,7 @@ pub mod funcs {
     }
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     pub mod extra {
     }
 

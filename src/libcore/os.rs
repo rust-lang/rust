@@ -299,6 +299,7 @@ pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     use libc::funcs::posix01::unistd::*;
     match level {
@@ -411,6 +412,7 @@ pub fn self_exe_path() -> Option<Path> {
     }
 
     #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
     fn load_self() -> Option<~str> {
         use libc::funcs::posix01::unistd::readlink;
         do fill_charp_buf() |buf, sz| {
@@ -794,6 +796,7 @@ fn real_args() -> ~[~str] {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 fn real_args() -> ~[~str] {
     unsafe {
@@ -905,6 +908,14 @@ mod consts {
     pub fn dll_suffix() -> ~str { ~".so" }
 }
 
+#[cfg(target_os = "android")]
+mod consts {
+    pub fn sysname() -> ~str { ~"android" }
+    pub fn exe_suffix() -> ~str { ~"" }
+    pub fn dll_suffix() -> ~str { ~".so" }
+}
+
+
 #[cfg(target_os = "win32")]
 mod consts {
     pub fn sysname() -> ~str { ~"win32" }
@@ -919,7 +930,7 @@ pub fn arch() -> ~str { ~"x86" }
 pub fn arch() -> ~str { ~"x86_64" }
 
 #[cfg(target_arch = "arm")]
-pub fn arch() -> str { ~"arm" }
+pub fn arch() -> ~str { ~"arm" }
 
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]

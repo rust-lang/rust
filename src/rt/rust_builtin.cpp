@@ -32,6 +32,27 @@
 extern char **environ;
 #endif
 
+#ifdef __ANDROID__
+time_t
+timegm(struct tm *tm)
+{
+    time_t ret;
+    char *tz;
+
+    tz = getenv("TZ");
+    setenv("TZ", "", 1);
+    tzset();
+    ret = mktime(tm);
+    if (tz)
+        setenv("TZ", tz, 1);
+    else
+        unsetenv("TZ");
+    tzset();
+    return ret;
+}
+#endif
+
+
 extern "C" CDECL rust_str*
 last_os_error() {
     rust_task *task = rust_get_current_task();
@@ -51,7 +72,7 @@ last_os_error() {
         task->fail();
         return NULL;
     }
-#elif defined(_GNU_SOURCE)
+#elif defined(_GNU_SOURCE) && !defined(__ANDROID__)
     char cbuf[BUF_BYTES];
     char *buf = strerror_r(errno, cbuf, sizeof(cbuf));
     if (!buf) {

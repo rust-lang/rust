@@ -679,9 +679,12 @@ fn link_binary(sess: Session,
     }
 
     let output = if sess.building_library {
-        let long_libname =
-            os::dll_filename(fmt!("%s-%s-%s",
-                                  lm.name, lm.extras_hash, lm.vers));
+        let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
+        let long_libname = match sess.targ_cfg.os {
+            session::os_win32 => libname + ~".dll",
+            session::os_macos => ~"lib" + libname + ~".dylib",
+            _                 => ~"lib" + libname + ".so"
+        };
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
         debug!("out_filename: %s", out_filename.to_str());
@@ -704,7 +707,10 @@ fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str =
-        if sess.targ_cfg.os == session::os_win32 { ~"gcc" } else { ~"cc" };
+        if sess.targ_cfg.os == session::os_android {
+            ~"arm-linux-androideabi-g++"
+        } else if sess.targ_cfg.os == session::os_win32 { ~"gcc" }
+        else { ~"cc" };
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
@@ -777,6 +783,11 @@ fn link_binary(sess: Session,
         // have to be explicit about linking to it. See #2510
         cc_args.push(~"-lm");
     }
+    else if sess.targ_cfg.os == session::os_android {
+        cc_args.push_all(~[~"-ldl", ~"-llog",  ~"-lsupc++",
+                           ~"-lgnustl_shared"]);
+        cc_args.push(~"-lm");
+    }
 
     if sess.targ_cfg.os == session::os_freebsd {
         cc_args.push_all(~[~"-pthread", ~"-lrt",
@@ -797,7 +808,9 @@ fn link_binary(sess: Session,
     }
 
     // Stack growth requires statically linking a __morestack function
+    if sess.targ_cfg.os != session::os_android {
     cc_args.push(~"-lmorestack");
+    }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths
