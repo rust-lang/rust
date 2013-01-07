@@ -154,39 +154,41 @@ pub mod ct {
     pub type ErrorFn = fn@(&str) -> ! ;
 
     pub fn parse_fmt_string(s: &str, err: ErrorFn) -> ~[Piece] {
-        let mut pieces: ~[Piece] = ~[];
-        let lim = str::len(s);
-        let mut buf = ~"";
-        fn flush_buf(buf: ~str, pieces: &mut ~[Piece]) -> ~str {
-            if buf.len() > 0 {
-                let piece = PieceString(move buf);
-                pieces.push(move piece);
+        fn push_slice(ps: &mut ~[Piece], s: &str, from: uint, to: uint) {
+            if to > from {
+                ps.push(PieceString(s.slice(from, to)));
             }
-            return ~"";
         }
+
+        let lim = s.len();
+        let mut h = 0;
         let mut i = 0;
+        let mut pieces = ~[];
+
         while i < lim {
-            let size = str::utf8_char_width(s[i]);
-            let curr = str::slice(s, i, i+size);
-            if curr == ~"%" {
+            if s[i] == '%' as u8 {
                 i += 1;
+
                 if i >= lim {
                     err(~"unterminated conversion at end of string");
-                }
-                let curr2 = str::slice(s, i, i+1);
-                if curr2 == ~"%" {
-                    buf += curr2;
+                } else if s[i] == '%' as u8 {
+                    push_slice(&mut pieces, s, h, i);
                     i += 1;
                 } else {
-                    buf = flush_buf(move buf, &mut pieces);
-                    let rs = parse_conversion(s, i, lim, err);
-                    pieces.push(copy rs.val);
-                    i = rs.next;
+                    push_slice(&mut pieces, s, h, i - 1);
+                    let Parsed {val, next} = parse_conversion(s, i, lim, err);
+                    pieces.push(val);
+                    i = next;
                 }
-            } else { buf += curr; i += size; }
+
+                h = i;
+            } else {
+                i += str::utf8_char_width(s[i]);
+            }
         }
-        flush_buf(move buf, &mut pieces);
-        move pieces
+
+        push_slice(&mut pieces, s, h, i);
+        pieces
     }
     pub fn peek_num(s: &str, i: uint, lim: uint) ->
        Option<Parsed<uint>> {
