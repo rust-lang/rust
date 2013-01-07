@@ -43,6 +43,7 @@ export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_static_methods_if_impl;
 export get_item_attrs;
+export each_lang_item;
 export each_path;
 export get_type;
 export get_impl_traits;
@@ -72,6 +73,14 @@ fn get_symbol(cstore: cstore::CStore, def: ast::def_id) -> ~str {
 fn get_type_param_count(cstore: cstore::CStore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     return decoder::get_type_param_count(cdata, def.node);
+}
+
+/// Iterates over all the language items in the given crate.
+fn each_lang_item(cstore: cstore::CStore,
+                  cnum: ast::crate_num,
+                  f: &fn(ast::node_id, uint) -> bool) {
+    let crate_data = cstore::get_crate_data(cstore, cnum);
+    decoder::each_lang_item(crate_data, f)
 }
 
 /// Iterates over all the paths in the given crate.
