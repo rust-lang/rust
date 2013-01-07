@@ -21,7 +21,7 @@ pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use str::{StrSlice, Trimmable};
 pub use vec::{ConstVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{MutableVector, MutableCopyableVector};
+pub use vec::{OwnedVector, OwnedCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
 
