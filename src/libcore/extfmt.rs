@@ -214,17 +214,19 @@ pub mod ct {
                             err: ErrorFn) ->
        Parsed<Piece> {
         let parm = parse_parameter(s, i, lim);
-        let flags = parse_flags(s, parm.next, lim);
-        let width = parse_count(s, flags.next, lim);
+        // avoid copying ~[Flag] by destructuring
+        let Parsed {val: flags_val, next: flags_next} = parse_flags(s,
+            parm.next, lim);
+        let width = parse_count(s, flags_next, lim);
         let prec = parse_precision(s, width.next, lim);
         let ty = parse_type(s, prec.next, lim, err);
-        return Parsed::new(
+        Parsed::new(
                  PieceConv(Conv {param: parm.val,
-                             flags: copy flags.val,
+                             flags: flags_val,
                              width: width.val,
                              precision: prec.val,
                              ty: ty.val}),
-             ty.next);
+             ty.next)
     }
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
        Parsed<Option<uint>> {
