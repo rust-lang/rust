@@ -285,9 +285,7 @@ pub mod ct {
     }
     pub fn parse_precision(s: &str, i: uint, lim: uint) ->
        Parsed<Count> {
-        return if i >= lim {
-                Parsed::new(CountImplied, i)
-            } else if s[i] == '.' as u8 {
+            if i < lim && s[i] == '.' as u8 {
                 let count = parse_count(s, i + 1u, lim);
 
 
@@ -297,7 +295,7 @@ pub mod ct {
                   CountImplied => Parsed::new(CountIs(0), count.next),
                   _ => count
                 }
-            } else { Parsed::new(CountImplied, i) };
+            } else { Parsed::new(CountImplied, i) }
     }
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
        Parsed<Ty> {
