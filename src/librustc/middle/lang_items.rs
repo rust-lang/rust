@@ -20,7 +20,7 @@
 // * Functions called by the compiler itself.
 
 use driver::session::Session;
-use metadata::csearch::{each_path, get_item_attrs};
+use metadata::csearch::{each_lang_item, get_item_attrs};
 use metadata::cstore::{iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use syntax::ast::{crate, def_fn, def_id, def_ty, lit_str, meta_item};
@@ -71,6 +71,47 @@ impl LanguageItems {
     static pub fn new() -> LanguageItems {
         LanguageItems {
             items: [ None, ..23 ]
+        }
+    }
+
+    fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) {
+        for self.items.eachi |i, &item| {
+            if !f(item.get(), i) {
+                break;
+            }
+        }
+    }
+
+    static pub fn item_name(index: uint) -> &static/str {
+        match index {
+            0  => "const",
+            1  => "copy",
+            2  => "owned",
+            3  => "durable",
+
+            4  => "drop",
+
+            5  => "add",
+            6  => "sub",
+            7  => "mul",
+            8  => "div",
+            9  => "modulo",
+            10 => "neg",
+            11 => "bitxor",
+            12 => "bitand",
+            13 => "bitor",
+            14 => "shl",
+            15 => "shr",
+            16 => "index",
+            17 => "eq",
+            18 => "ord",
+
+            19 => "str_eq",
+            20 => "uniq_str_eq",
+            21 => "annihilate",
+            22 => "log_type",
+
+            _ => "???"
         }
     }
 
@@ -220,6 +261,22 @@ impl LanguageItemCollector {
         }
     }
 
+    fn collect_item(item_index: uint, item_def_id: def_id) {
+        // Check for duplicates.
+        match self.items.items[item_index] {
+            Some(original_def_id) if original_def_id != item_def_id => {
+                self.session.err(fmt!("duplicate entry for `%s`",
+                                      LanguageItems::item_name(item_index)));
+            }
+            Some(_) | None => {
+                // OK.
+            }
+        }
+
+        // Matched.
+        self.items.items[item_index] = Some(item_def_id);
+    }
+
     fn match_and_collect_item(item_def_id: def_id, key: ~str, value: ~str) {
         if key != ~"lang" {
             return;    // Didn't match.
@@ -230,20 +287,7 @@ impl LanguageItemCollector {
                 // Didn't match.
             }
             Some(item_index) => {
-                // Check for duplicates.
-                match self.items.items[item_index] {
-                    Some(original_def_id)
-                            if original_def_id != item_def_id => {
-                        self.session.err(fmt!("duplicate entry for `%s`",
-                                              value));
-                    }
-                    Some(_) | None => {
-                        // OK.
-                    }
-                }
-
-                // Matched.
-                self.items.items[item_index] = Some(item_def_id);
+                self.collect_item(item_index, item_def_id)
             }
         }
     }
@@ -268,23 +312,10 @@ impl LanguageItemCollector {
     fn collect_external_language_items() {
         let crate_store = self.session.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            for each_path(crate_store, crate_number) |path_entry| {
-                let def_id;
-                match path_entry.def_like {
-                    dl_def(def_ty(did)) | dl_def(def_fn(did, _)) => {
-                        def_id = did;
-                    }
-                    dl_def(_) | dl_impl(_) | dl_field => {
-                        // Skip this.
-                        loop;
-                    }
-                }
-
-                do get_item_attrs(crate_store, def_id) |meta_items| {
-                    for meta_items.each |meta_item| {
-                        self.match_and_collect_meta_item(def_id, **meta_item);
-                    }
-                }
+            for each_lang_item(crate_store, crate_number)
+                    |node_id, item_index| {
+                let def_id = { crate: crate_number, node: node_id };
+                self.collect_item(item_index, def_id);
             }
         }
     }

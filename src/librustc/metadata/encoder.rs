@@ -84,6 +84,7 @@ type stats = {
     mut inline_bytes: uint,
     mut attr_bytes: uint,
     mut dep_bytes: uint,
+    mut lang_item_bytes: uint,
     mut item_bytes: uint,
     mut index_bytes: uint,
     mut zero_bytes: uint,
@@ -1088,6 +1089,30 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     ebml_w.end_tag();
 }
 
+fn encode_lang_items(ecx: @encode_ctxt, ebml_w: writer::Encoder) {
+    ebml_w.start_tag(tag_lang_items);
+
+    for ecx.tcx.lang_items.each_item |def_id, i| {
+        if def_id.crate != local_crate {
+            loop;
+        }
+
+        ebml_w.start_tag(tag_lang_items_item);
+
+        ebml_w.start_tag(tag_lang_items_item_id);
+        ebml_w.writer.write_be_u32(i as u32);
+        ebml_w.end_tag();   // tag_lang_items_item_id
+
+        ebml_w.start_tag(tag_lang_items_item_node_id);
+        ebml_w.writer.write_be_u32(def_id.node as u32);
+        ebml_w.end_tag();   // tag_lang_items_item_node_id
+
+        ebml_w.end_tag();   // tag_lang_items_item
+    }
+
+    ebml_w.end_tag();   // tag_lang_items
+}
+
 fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
@@ -1122,6 +1147,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         {mut inline_bytes: 0,
          mut attr_bytes: 0,
          mut dep_bytes: 0,
+         mut lang_item_bytes: 0,
          mut item_bytes: 0,
          mut index_bytes: 0,
          mut zero_bytes: 0,
@@ -1154,6 +1180,11 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     encode_crate_deps(ecx, ebml_w, ecx.cstore);
     ecx.stats.dep_bytes = wr.pos - i;
 
+    // Encode the language items.
+    i = wr.pos;
+    encode_lang_items(ecx, ebml_w);
+    ecx.stats.lang_item_bytes = wr.pos - i;
+
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = wr.pos;
@@ -1183,6 +1214,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         io::println(fmt!("    inline bytes: %u", ecx.stats.inline_bytes));
         io::println(fmt!(" attribute bytes: %u", ecx.stats.attr_bytes));
         io::println(fmt!("       dep bytes: %u", ecx.stats.dep_bytes));
+        io::println(fmt!(" lang item bytes: %u", ecx.stats.lang_item_bytes));
         io::println(fmt!("      item bytes: %u", ecx.stats.item_bytes));
         io::println(fmt!("     index bytes: %u", ecx.stats.index_bytes));
         io::println(fmt!("      zero bytes: %u", ecx.stats.zero_bytes));

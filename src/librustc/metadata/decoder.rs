@@ -74,6 +74,7 @@ export dl_def;
 export dl_impl;
 export dl_field;
 export path_entry;
+export each_lang_item;
 export each_path;
 export get_item_path;
 export maybe_find_item; // sketchy
@@ -476,6 +477,23 @@ fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
     path_entry {
         path_string: path_string,
         def_like: def_like
+    }
+}
+
+/// Iterates over the language items in the given crate.
+fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
+    let root = reader::Doc(cdata.data);
+    let lang_items = reader::get_doc(root, tag_lang_items);
+    for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
+        let id_doc = reader::get_doc(item_doc, tag_lang_items_item_id);
+        let id = reader::doc_as_u32(id_doc) as uint;
+        let node_id_doc = reader::get_doc(item_doc,
+                                          tag_lang_items_item_node_id);
+        let node_id = reader::doc_as_u32(node_id_doc) as ast::node_id;
+
+        if !f(node_id, id) {
+            break;
+        }
     }
 }
 
