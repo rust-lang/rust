@@ -129,6 +129,17 @@ pub mod ct {
         CountImplied,
     }
 
+    struct Parsed<T> {
+        val: T,
+        next: uint
+    }
+
+    impl<T> Parsed<T> {
+        static pure fn new(val: T, next: uint) -> Parsed<T> {
+            Parsed { val: val, next: next }
+        }
+    }
+
     // A formatted conversion from an expression to a string
     pub struct Conv
         {param: Option<uint>,
@@ -169,7 +180,7 @@ pub mod ct {
                 } else {
                     buf = flush_buf(move buf, &mut pieces);
                     let rs = parse_conversion(s, i, lim, err);
-                    pieces.push(copy rs.piece);
+                    pieces.push(copy rs.val);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
@@ -178,7 +189,7 @@ pub mod ct {
         move pieces
     }
     pub fn peek_num(s: &str, i: uint, lim: uint) ->
-       Option<{num: uint, next: uint}> {
+       Option<Parsed<uint>> {
         let mut j = i;
         let mut accum = 0u;
         let mut found = false;
@@ -194,54 +205,54 @@ pub mod ct {
             }
         }
         if found {
-            Some({num: accum, next: j})
+            Some(Parsed::new(accum, j))
         } else {
             None
         }
     }
     pub fn parse_conversion(s: &str, i: uint, lim: uint,
                             err: ErrorFn) ->
-       {piece: Piece, next: uint} {
+       Parsed<Piece> {
         let parm = parse_parameter(s, i, lim);
         let flags = parse_flags(s, parm.next, lim);
         let width = parse_count(s, flags.next, lim);
         let prec = parse_precision(s, width.next, lim);
         let ty = parse_type(s, prec.next, lim, err);
-        return {piece:
-                 PieceConv(Conv {param: parm.param,
-                             flags: copy flags.flags,
-                             width: width.count,
-                             precision: prec.count,
-                             ty: ty.ty}),
-             next: ty.next};
+        return Parsed::new(
+                 PieceConv(Conv {param: parm.val,
+                             flags: copy flags.val,
+                             width: width.val,
+                             precision: prec.val,
+                             ty: ty.val}),
+             ty.next);
     }
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
-       {param: Option<uint>, next: uint} {
-        if i >= lim { return {param: None, next: i}; }
+       Parsed<Option<uint>> {
+        if i >= lim { return Parsed::new(None, i); }
         let num = peek_num(s, i, lim);
         return match num {
-              None => {param: None, next: i},
+              None => Parsed::new(None, i),
               Some(t) => {
-                let n = t.num;
+                let n = t.val;
                 let j = t.next;
                 if j < lim && s[j] == '$' as u8 {
-                    {param: Some(n), next: j + 1}
-                } else { {param: None, next: i} }
+                    Parsed::new(Some(n), j + 1)
+                } else { Parsed::new(None, i) }
               }
             };
     }
     pub fn parse_flags(s: &str, i: uint, lim: uint) ->
-       {flags: ~[Flag], next: uint} {
+       Parsed<~[Flag]> {
         let noflags: ~[Flag] = ~[];
-        if i >= lim { return {flags: move noflags, next: i}; }
+        if i >= lim { return Parsed::new(move noflags, i); }
 
         fn more(f: Flag, s: &str, i: uint, lim: uint) ->
-           {flags: ~[Flag], next: uint} {
+           Parsed<~[Flag]> {
             let next = parse_flags(s, i + 1u, lim);
-            let rest = copy next.flags;
+            let rest = copy next.val;
             let j = next.next;
             let curr: ~[Flag] = ~[f];
-            return {flags: vec::append(move curr, rest), next: j};
+            return Parsed::new(vec::append(move curr, rest), j);
         }
         // Unfortunate, but because s is borrowed, can't use a closure
      //   fn more(f: Flag, s: &str) { more_(f, s, i, lim); }
@@ -256,48 +267,48 @@ pub mod ct {
                 more(FlagSignAlways, s, i, lim)
             } else if f == '#' as u8 {
                 more(FlagAlternate, s, i, lim)
-            } else { {flags: move noflags, next: i} };
+            } else { Parsed::new(move noflags, i) };
     }
         pub fn parse_count(s: &str, i: uint, lim: uint)
-        -> {count: Count, next: uint} {
+        -> Parsed<Count> {
         return if i >= lim {
-                {count: CountImplied, next: i}
+                Parsed::new(CountImplied, i)
             } else if s[i] == '*' as u8 {
                 let param = parse_parameter(s, i + 1, lim);
                 let j = param.next;
-                match param.param {
-                  None => {count: CountIsNextParam, next: j},
-                  Some(n) => {count: CountIsParam(n), next: j}
+                match param.val {
+                  None => Parsed::new(CountIsNextParam, j),
+                  Some(n) => Parsed::new(CountIsParam(n), j)
                 }
             } else {
                 let num = peek_num(s, i, lim);
                 match num {
-                  None => {count: CountImplied, next: i},
-                  Some(num) => {
-                    count: CountIs(num.num),
-                    next: num.next
-                  }
+                  None => Parsed::new(CountImplied, i),
+                  Some(num) => Parsed::new(
+                    CountIs(num.val),
+                    num.next
+                  )
                 }
             };
     }
     pub fn parse_precision(s: &str, i: uint, lim: uint) ->
-       {count: Count, next: uint} {
+       Parsed<Count> {
         return if i >= lim {
-                {count: CountImplied, next: i}
+                Parsed::new(CountImplied, i)
             } else if s[i] == '.' as u8 {
                 let count = parse_count(s, i + 1u, lim);
 
 
                 // If there were no digits specified, i.e. the precision
                 // was ".", then the precision is 0
-                match count.count {
-                  CountImplied => {count: CountIs(0), next: count.next},
+                match count.val {
+                  CountImplied => Parsed::new(CountIs(0), count.next),
                   _ => count
                 }
-            } else { {count: CountImplied, next: i} };
+            } else { Parsed::new(CountImplied, i) };
     }
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
-       {ty: Ty, next: uint} {
+       Parsed<Ty> {
         if i >= lim { err(~"missing type in conversion"); }
         let tstr = str::slice(s, i, i+1u);
         // FIXME (#2249): Do we really want two signed types here?
@@ -326,7 +337,7 @@ pub mod ct {
             } else if tstr == ~"?" {
                 TyPoly
             } else { err(~"unknown type in conversion: " + tstr) };
-        return {ty: t, next: i + 1u};
+        return Parsed::new(t, i + 1u);
     }
 }
 
