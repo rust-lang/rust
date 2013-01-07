@@ -335,6 +335,128 @@ pub mod ct {
 
         Parsed::new(t, i + 1)
     }
+
+    #[cfg(test)]
+    fn die(s: &str) -> ! { fail s.to_owned() }
+
+    #[test]
+    fn test_parse_count() {
+        fn test(s: &str, count: Count, next: uint) -> bool {
+            parse_count(s, 0, s.len()) == Parsed::new(count, next)
+        }
+
+        assert test("", CountImplied, 0);
+        assert test("*", CountIsNextParam, 1);
+        assert test("*1", CountIsNextParam, 1);
+        assert test("*1$", CountIsParam(1), 3);
+        assert test("123", CountIs(123), 3);
+    }
+
+    #[test]
+    fn test_parse_flags() {
+        fn pack(fs: &[Flag]) -> uint {
+            fs.foldl(0, |&p, &f| p | (1 << f as uint))
+        }
+
+        fn test(s: &str, flags: &[Flag], next: uint) {
+            let f = parse_flags(s, 0, s.len());
+            assert pack(f.val) == pack(flags);
+            assert f.next == next;
+        }
+
+        test("", [], 0);
+        test("!#-+ 0", [], 0);
+        test("#-+", [FlagAlternate, FlagLeftJustify, FlagSignAlways], 3);
+        test(" 0", [FlagSpaceForSign, FlagLeftZeroPad], 2);
+    }
+
+    #[test]
+    fn test_parse_fmt_string() {
+        assert parse_fmt_string("foo %s bar", die) == ~[
+            PieceString(~"foo "),
+            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
+                            precision: CountImplied, ty: TyStr}),
+            PieceString(~" bar")];
+
+        assert parse_fmt_string("%s", die) == ~[
+            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
+                            precision: CountImplied, ty: TyStr })];
+
+        assert parse_fmt_string("%%%%", die) == ~[
+            PieceString(~"%"), PieceString(~"%")];
+    }
+
+    #[test]
+    fn test_parse_parameter() {
+        fn test(s: &str, param: Option<uint>, next: uint) -> bool {
+            parse_parameter(s, 0, s.len()) == Parsed::new(param, next)
+        }
+
+        assert test("", None, 0);
+        assert test("foo", None, 0);
+        assert test("123", None, 0);
+        assert test("123$", Some(123), 4);
+    }
+
+    #[test]
+    fn test_parse_precision() {
+        fn test(s: &str, count: Count, next: uint) -> bool {
+            parse_precision(s, 0, s.len()) == Parsed::new(count, next)
+        }
+
+        assert test("", CountImplied, 0);
+        assert test(".", CountIs(0), 1);
+        assert test(".*", CountIsNextParam, 2);
+        assert test(".*1", CountIsNextParam, 2);
+        assert test(".*1$", CountIsParam(1), 4);
+        assert test(".123", CountIs(123), 4);
+    }
+
+    #[test]
+    fn test_parse_type() {
+        fn test(s: &str, ty: Ty) -> bool {
+            parse_type(s, 0, s.len(), die) == Parsed::new(ty, 1)
+        }
+
+        assert test("b", TyBool);
+        assert test("c", TyChar);
+        assert test("d", TyInt(Signed));
+        assert test("f", TyFloat);
+        assert test("i", TyInt(Signed));
+        assert test("o", TyOctal);
+        assert test("s", TyStr);
+        assert test("t", TyBits);
+        assert test("x", TyHex(CaseLower));
+        assert test("X", TyHex(CaseUpper));
+        assert test("?", TyPoly);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_parse_type_missing() {
+        parse_type("", 0, 0, die);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_parse_type_unknown() {
+        parse_type("!", 0, 1, die);
+    }
+
+    #[test]
+    fn test_peek_num() {
+        let s1 = "";
+        assert peek_num(s1, 0, s1.len()).is_none();
+
+        let s2 = "foo";
+        assert peek_num(s2, 0, s2.len()).is_none();
+
+        let s3 = "123";
+        assert peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3));
+
+        let s4 = "123foo";
+        assert peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3));
+    }
 }
 
 // Functions used by the fmt extension at runtime. For now there are a lot of
