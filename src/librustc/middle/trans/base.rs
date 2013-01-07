@@ -262,14 +262,20 @@ fn opaque_box_body(bcx: block,
 
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
-fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
+fn malloc_raw_dyn(bcx: block,
+                  t: ty::t,
+                  heap: heap,
                   size: ValueRef) -> Result {
     let _icx = bcx.insn_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    let (mk_fn, rtcall) = match heap {
-      heap_shared => (ty::mk_imm_box, ~"malloc"),
-      heap_exchange => (ty::mk_imm_uniq, ~"exchange_malloc")
+    let (mk_fn, langcall) = match heap {
+        heap_shared => {
+            (ty::mk_imm_box, bcx.tcx().lang_items.malloc_fn())
+        }
+        heap_exchange => {
+            (ty::mk_imm_uniq, bcx.tcx().lang_items.exchange_malloc_fn())
+        }
     };
 
     // Grab the TypeRef type of box_ptr_ty.
@@ -283,8 +289,11 @@ fn malloc_raw_dyn(bcx: block, t: ty::t, heap: heap,
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
     let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
-    let bcx = callee::trans_rtcall(bcx, rtcall, ~[tydesc, size],
-                                   expr::SaveIn(rval));
+    let bcx = callee::trans_rtcall_or_lang_call(
+        bcx,
+        langcall,
+        ~[tydesc, size],
+        expr::SaveIn(rval));
     return rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
 }
 
@@ -2539,92 +2548,6 @@ fn trap(bcx: block) {
     }
 }
 
-fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
-    match ccx.rtcalls.find(name) {
-        Some(existing_did) if did != existing_did => {
-            ccx.sess.fatal(fmt!("multiple definitions for runtime call %s",
-                                name));
-        }
-        Some(_) | None => {
-            ccx.rtcalls.insert(name, did);
-        }
-    }
-}
-
-fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
-    visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: |item| match item.node {
-            ast::item_fn(*) => {
-                let attr_metas = attr::attr_metas(
-                    attr::find_attrs_by_name(item.attrs, ~"rt"));
-                for vec::each(attr_metas) |attr_meta| {
-                    match attr::get_meta_item_list(*attr_meta) {
-                        Some(list) => {
-                            let head = vec::head(list);
-                            let name = attr::get_meta_item_name(head);
-                            push_rtcall(ccx, name, {crate: ast::local_crate,
-                                                    node: item.id});
-                        }
-                        None => ()
-                    }
-                }
-            }
-            _ => ()
-        },
-        ..*visit::default_simple_visitor()
-    }));
-}
-
-fn gather_external_rtcalls(ccx: @crate_ctxt) {
-    do cstore::iter_crate_data(ccx.sess.cstore) |_cnum, cmeta| {
-        let get_crate_data: decoder::GetCrateDataCb = |cnum| {
-            cstore::get_crate_data(ccx.sess.cstore, cnum)
-        };
-        do decoder::each_path(ccx.sess.intr(), cmeta, get_crate_data) |path| {
-            let pathname = path.path_string;
-            match path.def_like {
-              decoder::dl_def(d) => {
-                match d {
-                  ast::def_fn(did, _) => {
-                    // FIXME (#2861): This should really iterate attributes
-                    // like gather_local_rtcalls, but we'll need to
-                    // export attributes in metadata/encoder before we can do
-                    // that.
-                    let sentinel = ~"rt::rt_";
-                    let slen = str::len(sentinel);
-                    if str::starts_with(pathname, sentinel) {
-                        let name = str::substr(pathname,
-                                               slen, str::len(pathname)-slen);
-                        push_rtcall(ccx, name, did);
-                    }
-                  }
-                  _ => ()
-                }
-              }
-              _ => ()
-            }
-            true
-        }
-    }
-}
-
-fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
-    gather_local_rtcalls(ccx, crate);
-    gather_external_rtcalls(ccx);
-
-    // FIXME (#2861): Check for other rtcalls too, once they are
-    // supported. Also probably want to check type signature so we don't crash
-    // in some obscure place in LLVM if the user provides the wrong signature
-    // for an rtcall.
-    let expected_rtcalls =
-        ~[~"exchange_free", ~"exchange_malloc", ~"fail_", ~"free", ~"malloc"];
-    for vec::each(expected_rtcalls) |name| {
-        if !ccx.rtcalls.contains_key(*name) {
-            fail fmt!("no definition for runtime call %s", *name);
-        }
-    }
-}
-
 fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
     if !ccx.sess.opts.gc || !ccx.uses_gc {
         return;
@@ -2869,9 +2792,7 @@ fn trans_crate(sess: session::Session,
                llvm_insn_ctxt: @mut ~[],
                llvm_insns: HashMap(),
                fn_times: @mut ~[]},
-          upcalls:
-              upcall::declare_upcalls(targ_cfg, llmod),
-          rtcalls: HashMap(),
+          upcalls: upcall::declare_upcalls(targ_cfg, llmod),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
@@ -2884,8 +2805,6 @@ fn trans_crate(sess: session::Session,
           dbg_cx: dbg_cx,
           mut do_not_commit_warning_issued: false
     };
-
-    gather_rtcalls(ccx, crate);
 
     {
         let _icx = ccx.insn_ctxt("data");

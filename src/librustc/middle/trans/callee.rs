@@ -333,13 +333,6 @@ fn trans_method_call(in_cx: block,
         DontAutorefArg)
 }
 
-fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: expr::Dest)
-    -> block
-{
-    let did = bcx.ccx().rtcalls[name];
-    return trans_rtcall_or_lang_call(bcx, did, args, dest);
-}
-
 fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
                              dest: expr::Dest) -> block {
     let fty = if did.crate == ast::local_crate {
