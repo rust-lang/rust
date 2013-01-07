@@ -1570,15 +1570,19 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
     /// Returns the first element of a vector
     #[inline]
     pure fn head() -> T { head(self) }
+
     /// Returns all but the last elemnt of a vector
     #[inline]
     pure fn init() -> ~[T] { init(self) }
+
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     pure fn last() -> T { last(self) }
+
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(start: uint, end: uint) -> ~[T] { slice(self, start, end) }
+
     /// Returns all but the first element of a vector
     #[inline]
     pure fn tail() -> ~[T] { tail(self) }
@@ -1605,17 +1609,21 @@ pub trait ImmutableEqVector<T: Eq> {
 /// Extension methods for vectors
 impl<T> &[T]: ImmutableVector<T> {
     /// Return a slice that points into another slice.
+    #[inline]
     pure fn view(start: uint, end: uint) -> &self/[T] {
         view(self, start, end)
     }
+
     /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: Copy>(z: U, p: fn(t: &T, u: U) -> U) -> U {
         foldr(self, z, p)
     }
+
     /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(t: &T) -> U) -> ~[U] { map(self, f) }
+
     /**
      * Apply a function to the index and value of each element in the vector
      * and return the results
@@ -1757,66 +1765,82 @@ trait MutableEqVector<T: Eq> {
 }
 
 impl<T> ~[T]: MutableVector<T> {
+    #[inline]
     fn push(&mut self, t: T) {
         push(self, t);
     }
 
+    #[inline]
     fn push_all_move(&mut self, rhs: ~[T]) {
         push_all_move(self, rhs);
     }
 
+    #[inline]
     fn pop(&mut self) -> T {
         pop(self)
     }
 
+    #[inline]
     fn shift(&mut self) -> T {
         shift(self)
     }
 
+    #[inline]
     fn unshift(&mut self, x: T) {
         unshift(self, x)
     }
 
+    #[inline]
     fn insert(&mut self, i: uint, x:T) {
         insert(self, i, x)
     }
 
+    #[inline]
     fn remove(&mut self, i: uint) -> T {
         remove(self, i)
     }
 
+    #[inline]
     fn swap_remove(&mut self, index: uint) -> T {
         swap_remove(self, index)
     }
 
+    #[inline]
     fn truncate(&mut self, newlen: uint) {
         truncate(self, newlen);
     }
 
+    #[inline]
     fn retain(&mut self, f: pure fn(t: &T) -> bool) {
         retain(self, f);
     }
+
 }
 
 impl<T: Copy> ~[T]: MutableCopyableVector<T> {
+    #[inline]
     fn push_all(&mut self, rhs: &[const T]) {
         push_all(self, rhs);
     }
 
+    #[inline]
     fn grow(&mut self, n: uint, initval: &T) {
         grow(self, n, initval);
     }
 
+    #[inline]
     fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>) {
         grow_fn(self, n, op);
     }
 
+    #[inline]
     fn grow_set(&mut self, index: uint, initval: &T, val: T) {
         grow_set(self, index, initval, val);
     }
 }
 
 impl<T: Eq> ~[T]: MutableEqVector<T> {
+    #[inline]
     fn dedup(&mut self) {
         dedup(self)
     }
