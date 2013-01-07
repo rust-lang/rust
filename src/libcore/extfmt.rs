@@ -102,10 +102,13 @@ pub mod ct {
     use str;
     use vec;
 
+    #[deriving_eq]
     pub enum Signedness { Signed, Unsigned, }
 
+    #[deriving_eq]
     pub enum Caseness { CaseUpper, CaseLower, }
 
+    #[deriving_eq]
     pub enum Ty {
         TyBool,
         TyStr,
@@ -118,6 +121,7 @@ pub mod ct {
         TyPoly,
     }
 
+    #[deriving_eq]
     pub enum Flag {
         FlagLeftJustify,
         FlagLeftZeroPad,
@@ -126,6 +130,7 @@ pub mod ct {
         FlagAlternate,
     }
 
+    #[deriving_eq]
     pub enum Count {
         CountIs(uint),
         CountIsParam(uint),
@@ -133,6 +138,7 @@ pub mod ct {
         CountImplied,
     }
 
+    #[deriving_eq]
     struct Parsed<T> {
         val: T,
         next: uint
@@ -145,6 +151,7 @@ pub mod ct {
     }
 
     // A formatted conversion from an expression to a string
+    #[deriving_eq]
     pub struct Conv {
         param: Option<uint>,
         flags: ~[Flag],
@@ -154,6 +161,7 @@ pub mod ct {
     }
 
     // A fragment of the output sequence
+    #[deriving_eq]
     pub enum Piece { PieceString(~str), PieceConv(Conv), }
 
     pub type ErrorFn = @fn(&str) -> !;
