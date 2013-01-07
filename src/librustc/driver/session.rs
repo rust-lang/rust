@@ -336,7 +336,7 @@ mod test {
     use syntax::ast;
     use syntax::ast_util;
 
-    fn make_crate_type_attr(t: ~str) -> ast::attribute {
+    fn make_crate_type_attr(+t: ~str) -> ast::attribute {
         ast_util::respan(ast_util::dummy_sp(), {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
