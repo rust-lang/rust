@@ -381,10 +381,30 @@ fn trans_expr_fn(bcx: block,
                  proto: ast::Proto,
                  +decl: ast::fn_decl,
                  +body: ast::blk,
-                 id: ast::node_id,
+                 outer_id: ast::node_id,
+                 user_id: ast::node_id,
                  cap_clause: ast::capture_clause,
                  is_loop_body: Option<Option<ValueRef>>,
-                 dest: expr::Dest) -> block {
+                 dest: expr::Dest) -> block
+{
+    /*!
+     *
+     * Translates the body of a closure expression.
+     *
+     * - `proto`
+     * - `decl`
+     * - `body`
+     * - `outer_id`: The id of the closure expression with the correct type.
+     *   This is usually the same as as `user_id`, but in the case of a `for` loop,
+     *   the `outer_id` will have the return type of boolean, and the `user_id` will
+     *   have the return type of `nil`.
+     * - `user_id`: The id of the closure as the user expressed it.  Generally
+         the same as `outer_id`
+     * - `cap_clause`: information about captured variables, if any.
+     * - `is_loop_body`: `Some()` if this is part of a `for` loop.
+     * - `dest`: where to write the closure value, which must be a (fn ptr, env) pair
+     */
+
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
 
     let dest_addr = match dest {
@@ -395,7 +415,7 @@ fn trans_expr_fn(bcx: block,
     };
 
     let ccx = bcx.ccx();
-    let fty = node_id_type(bcx, id);
+    let fty = node_id_type(bcx, outer_id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
     let sub_path = vec::append_one(/*bad*/copy bcx.fcx.path,
                                    path_name(special_idents::anon));
@@ -407,14 +427,15 @@ fn trans_expr_fn(bcx: block,
 
     // XXX: Bad copies.
     let trans_closure_env = |proto, copy body, copy sub_path, copy decl| {
-        let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
+        let cap_vars = capture::compute_capture_vars(ccx.tcx, user_id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
         // XXX: Bad copy.
         let {llbox, cdata_ty, bcx} = build_closure(bcx, copy cap_vars, proto,
                                                    ret_handle);
         trans_closure(ccx, /*bad*/copy sub_path, decl, body, llfn, no_self,
-                      /*bad*/copy bcx.fcx.param_substs, id, None, |fcx| {
+                      /*bad*/copy bcx.fcx.param_substs, user_id, None,
+                      |fcx| {
             load_environment(fcx, cdata_ty, copy cap_vars,
                              ret_handle.is_some(), proto);
                       }, |bcx| {
@@ -431,7 +452,7 @@ fn trans_expr_fn(bcx: block,
         }
         ast::ProtoBare => {
             trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
-                          id, None, |_fcx| { }, |_bcx| { });
+                          user_id, None, |_fcx| { }, |_bcx| { });
             rslt(bcx, C_null(T_opaque_box_ptr(ccx)))
         }
     };
