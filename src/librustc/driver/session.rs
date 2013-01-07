@@ -208,8 +208,7 @@ impl Session {
     fn unimpl(msg: ~str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(level: lint::level,
-                       sp: span, msg: ~str) {
+    fn span_lint_level(level: lint::level, sp: span, +msg: ~str) {
         match level {
           lint::allow => { },
           lint::warn => self.span_warn(sp, msg),
@@ -219,8 +218,10 @@ impl Session {
         }
     }
     fn span_lint(lint_mode: lint::lint,
-                 expr_id: ast::node_id, item_id: ast::node_id,
-                 span: span, msg: ~str) {
+                 expr_id: ast::node_id,
+                 item_id: ast::node_id,
+                 span: span,
+                 +msg: ~str) {
         let level = lint::get_lint_settings_level(
             self.lint_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
@@ -258,9 +259,9 @@ impl Session {
     }
 
     fn str_of(id: ast::ident) -> ~str {
-        *self.parse_sess.interner.get(id)
+        /*bad*/copy *self.parse_sess.interner.get(id)
     }
-    fn ident_of(st: ~str) -> ast::ident {
+    fn ident_of(+st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)
     }
     fn intr() -> @syntax::parse::token::ident_interner {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
@@ -45,7 +46,7 @@ fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
     // where rustrt is and we know every rust program needs it
     let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
-    let target_triple = sess.opts.target_triple;
+    let target_triple = /*bad*/copy sess.opts.target_triple;
     let rpaths = get_rpaths(os, &sysroot, output, libs, target_triple);
     rpaths_to_flags(rpaths)
 }
@@ -139,8 +140,8 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let abs2 = abs2.normalize();
     debug!("finding relative path from %s to %s",
            abs1.to_str(), abs2.to_str());
-    let split1 = abs1.components;
-    let split2 = abs2.components;
+    let split1 = /*bad*/copy abs1.components;
+    let split2 = /*bad*/copy abs2.components;
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
     assert len1 > 0;
@@ -190,7 +191,7 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     for rpaths.each |rpath| {
         let s = rpath.to_str();
         if !set.contains_key(s) {
-            minimized.push(*rpath);
+            minimized.push(/*bad*/copy *rpath);
             set.insert(s, ());
         }
     }

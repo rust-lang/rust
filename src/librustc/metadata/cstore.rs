@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
@@ -125,10 +126,10 @@ fn add_used_crate_file(cstore: CStore, lib: &Path) {
 }
 
 fn get_used_crate_files(cstore: CStore) -> ~[Path] {
-    return p(cstore).used_crate_files;
+    return /*bad*/copy p(cstore).used_crate_files;
 }
 
-fn add_used_library(cstore: CStore, lib: ~str) -> bool {
+fn add_used_library(cstore: CStore, +lib: ~str) -> bool {
     assert lib != ~"";
 
     if vec::contains(p(cstore).used_libraries, &lib) { return false; }
@@ -137,7 +138,7 @@ fn add_used_library(cstore: CStore, lib: ~str) -> bool {
 }
 
 fn get_used_libraries(cstore: CStore) -> ~[~str] {
-    return p(cstore).used_libraries;
+    return /*bad*/copy p(cstore).used_libraries;
 }
 
 fn add_used_link_args(cstore: CStore, args: ~str) {
@@ -145,7 +146,7 @@ fn add_used_link_args(cstore: CStore, args: ~str) {
 }
 
 fn get_used_link_args(cstore: CStore) -> ~[~str] {
-    return p(cstore).used_link_args;
+    return /*bad*/copy p(cstore).used_link_args;
 }
 
 fn add_use_stmt_cnum(cstore: CStore, use_id: ast::node_id,
@@ -168,7 +169,7 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);
-        result.push({name: cdata.name, hash: hash});
+        result.push({name: /*bad*/copy cdata.name, hash: hash});
     };
     pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
     let sorted = std::sort::merge_sort(result, lteq);
@@ -176,7 +177,7 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
     for sorted.each |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
-    fn mapper(ch: &crate_hash) -> ~str { return ch.hash; }
+    fn mapper(ch: &crate_hash) -> ~str { return /*bad*/copy ch.hash; }
     return vec::map(sorted, mapper);
 }
 

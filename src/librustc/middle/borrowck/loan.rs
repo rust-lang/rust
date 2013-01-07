@@ -12,6 +12,7 @@
 // Loan(Ex, M, S) = Ls holds if ToAddr(Ex) will remain valid for the entirety
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
+
 use middle::ty;
 
 use core::result::{Result, Ok, Err};

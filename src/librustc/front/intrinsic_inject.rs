@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
@@ -21,7 +22,7 @@ fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
 
     let item = parse::parse_item_from_source_str(~"<intrinsic>",
                                                  intrinsic_module,
-                                                 sess.opts.cfg,
+                                                 /*bad*/copy sess.opts.cfg,
                                                  ~[],
                                                  sess.parse_sess);
     let item =
@@ -34,6 +35,6 @@ fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
 
     let items = vec::append(~[item], crate.node.module.items);
 
-    return @{node: {module: { items: items ,.. crate.node.module }
-                 ,.. crate.node} ,.. *crate }
+    return @{node: {module: { items: items ,.. /*bad*/copy crate.node.module }
+                 ,.. /*bad*/copy crate.node} ,.. /*bad*/copy *crate }
 }

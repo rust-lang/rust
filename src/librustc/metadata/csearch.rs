@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Searching for information from the cstore
 
 use metadata::common::*;
@@ -100,7 +101,8 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(cdata.name))], path)
+    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(
+        /*bad*/copy cdata.name))], path)
 }
 
 enum found_ast {

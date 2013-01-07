@@ -11,6 +11,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
+
 use back::{link, abi};
 use driver::session::arch_x86_64;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
@@ -441,7 +442,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
 fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
-        option::Some(ref ln) => (*ln)
+        option::Some(ref ln) => (/*bad*/copy *ln)
     }
 }
 
@@ -458,7 +459,9 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
     match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
         ty::ty_fn(ref fn_ty) => {
-            let llargtys = type_of_explicit_args(ccx, fn_ty.sig.inputs);
+            let llargtys = type_of_explicit_args(
+                ccx,
+                /*bad*/copy fn_ty.sig.inputs);
             let llretty = type_of::type_of(ccx, fn_ty.sig.output);
             (llargtys, llretty, fn_ty.sig.output)
         }
@@ -469,7 +472,8 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
 fn c_stack_tys(ccx: @crate_ctxt,
                id: ast::node_id) -> @c_stack_tys {
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, id);
-    let bundle_ty = T_struct(vec::append_one(llargtys, T_ptr(llretty)));
+    // XXX: Bad copy.
+    let bundle_ty = T_struct(vec::append_one(copy llargtys, T_ptr(llretty)));
     let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
     let x86_64 = if ccx.sess.targ_cfg.arch == arch_x86_64 {
         option::Some(x86_64_tys(llargtys, llretty, ret_def))
@@ -493,7 +497,7 @@ type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef, llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @crate_ctxt,
-                  shim_name: ~str,
+                  +shim_name: ~str,
                   llbasefn: ValueRef,
                   tys: @c_stack_tys,
                   cc: lib::llvm::CallConv,
@@ -615,8 +619,8 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
             match tys.x86_64_tys {
                 Some(ref x86_64) => {
-                    let mut atys = (*x86_64).arg_tys;
-                    let mut attrs = (*x86_64).attrs;
+                    let mut atys = /*bad*/copy (*x86_64).arg_tys;
+                    let mut attrs = /*bad*/copy (*x86_64).attrs;
                     if (*x86_64).sret {
                         let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         let llretloc = Load(bcx, llretptr);
@@ -696,24 +700,24 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         }
 
         let lname = link_name(ccx, foreign_item);
-        let llbasefn = base_fn(ccx, lname, tys, cc);
+        let llbasefn = base_fn(ccx, copy lname, tys, cc);
         // Name the shim function
         let shim_name = lname + ~"__c_stack_shim";
         return build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @crate_ctxt, lname: ~str, tys: @c_stack_tys,
+    fn base_fn(ccx: @crate_ctxt, +lname: ~str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         match tys.x86_64_tys {
           Some(ref x86_64) => {
             do decl_x86_64_fn((*x86_64)) |fnty| {
-                decl_fn(ccx.llmod, lname, cc, fnty)
+                decl_fn(ccx.llmod, /*bad*/copy lname, cc, fnty)
             }
           }
           _ => {
-            let llbasefnty = T_fn(tys.arg_tys, tys.ret_ty);
+            let llbasefnty = T_fn(/*bad*/copy tys.arg_tys, tys.ret_ty);
             decl_fn(ccx.llmod, lname, cc, llbasefnty)
           }
         }
@@ -786,7 +790,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
           if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
               let tys = c_stack_tys(ccx, id);
-              if attr::attrs_contains_name(foreign_item.attrs,
+              if attr::attrs_contains_name(/*bad*/copy foreign_item.attrs,
                                            ~"rust_stack") {
                   build_direct_fn(ccx, llwrapfn, *foreign_item, tys, cc);
               } else {
@@ -806,13 +810,14 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 }
 
 fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
-                   path: ast_map::path, substs: param_substs,
+                   +path: ast_map::path, +substs: param_substs,
                    ref_id: Option<ast::node_id>)
 {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
+    // XXX: Bad copy.
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, None,
-                               Some(substs), Some(item.span));
+                               Some(copy substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
@@ -1292,18 +1297,19 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
     finish_fn(fcx, lltop);
 }
 
-fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
-                  body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
-
+fn trans_foreign_fn(ccx: @crate_ctxt, +path: ast_map::path,
+                    decl: ast::fn_decl, body: ast::blk, llwrapfn: ValueRef,
+                    id: ast::node_id) {
     let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
-    fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
+    fn build_rust_fn(ccx: @crate_ctxt, +path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
         let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
+        // XXX: Bad copy.
         let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one(path, ast_map::path_name(
+            ccx, vec::append_one(copy path, ast_map::path_name(
                 special_idents::clownshoe_abi
             )));
         let llty = type_of_fn_from_ty(ccx, t);
@@ -1312,9 +1318,8 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         return llfndecl;
     }
 
-    fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
+    fn build_shim_fn(ccx: @crate_ctxt, +path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
-
         let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
@@ -1360,8 +1365,8 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
             match tys.x86_64_tys {
                 option::Some(ref x86_64) => {
-                    let mut atys = (*x86_64).arg_tys;
-                    let mut attrs = (*x86_64).attrs;
+                    let mut atys = /*bad*/copy (*x86_64).arg_tys;
+                    let mut attrs = /*bad*/copy (*x86_64).attrs;
                     let mut j = 0u;
                     let llretptr = if (*x86_64).sret {
                         atys = vec::tail(atys);
@@ -1445,16 +1450,19 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
     let tys = c_stack_tys(ccx, id);
     // The internal Rust ABI function - runs on the Rust stack
-    let llrustfn = build_rust_fn(ccx, path, decl, body, id);
+    // XXX: Bad copy.
+    let llrustfn = build_rust_fn(ccx, copy path, decl, body, id);
     // The internal shim function - runs on the Rust stack
     let llshimfn = build_shim_fn(ccx, path, llrustfn, tys);
     // The foreign C function - runs on the C stack
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
-                     path: ast_map::path, node_id: ast::node_id)
-    -> ValueRef {
+fn register_foreign_fn(ccx: @crate_ctxt,
+                       sp: span,
+                       +path: ast_map::path,
+                       node_id: ast::node_id)
+                    -> ValueRef {
     let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
@@ -1462,7 +1470,7 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
         do decl_x86_64_fn(x86_64) |fnty| {
-            register_fn_fuller(ccx, sp, path, node_id,
+            register_fn_fuller(ccx, sp, /*bad*/copy path, node_id,
                                t, lib::llvm::CCallConv, fnty)
         }
     } else {
@@ -1482,7 +1490,9 @@ fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
       },
       Some(_) => match attr::foreign_abi(i.attrs) {
         either::Right(abi) => abi,
-        either::Left(ref msg) => ccx.sess.span_fatal(i.span, (*msg))
+        either::Left(ref msg) => {
+            ccx.sess.span_fatal(i.span, (/*bad*/copy *msg))
+        }
       }
     }
 }

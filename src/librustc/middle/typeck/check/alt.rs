@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::pat_util::{pat_is_binding, pat_is_const};
 use middle::pat_util::{pat_is_variant_or_struct};
 use middle::ty;
@@ -69,7 +70,7 @@ struct pat_ctxt {
 }
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                     subpats: Option<~[@ast::pat]>, expected: ty::t) {
+                     +subpats: Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -150,7 +151,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     let subpats_len;
     match subpats {
         None => subpats_len = arg_len,
-        Some(subpats) => subpats_len = subpats.len()
+        Some(ref subpats) => subpats_len = subpats.len()
     }
 
     if arg_len > 0u {
@@ -244,7 +245,7 @@ fn check_struct_pat_fields(pcx: pat_ctxt,
 
 fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
                     expected: ty::t, path: @ast::path,
-                    fields: ~[ast::field_pat], etc: bool,
+                    +fields: ~[ast::field_pat], etc: bool,
                     class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -285,7 +286,7 @@ fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
                                       span: span,
                                       expected: ty::t,
                                       path: @ast::path,
-                                      fields: ~[ast::field_pat],
+                                      +fields: ~[ast::field_pat],
                                       etc: bool,
                                       enum_id: ast::def_id,
                                       substitutions: &ty::substs) {
@@ -322,7 +323,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    match pat.node {
+    match /*bad*/copy pat.node {
       ast::pat_wild => {
         fcx.write_ty(pat.id, expected);
       }

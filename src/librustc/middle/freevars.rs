@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
@@ -92,7 +93,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
     let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr,
                            .. *visit::default_visitor()});
     (v.visit_block)(blk, 1, v);
-    return @*refs;
+    return @/*bad*/copy *refs;
 }
 
 // Build a map from every function and for-each body to a set of the

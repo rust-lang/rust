@@ -347,7 +347,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
             match tcx.items.find(main_id) {
                 Some(ast_map::node_item(it,_)) => {
                     match it.node {
-                        ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
+                        ast::item_fn(_, _, ref ps, _)
+                        if vec::is_not_empty(*ps) => {
                             tcx.sess.span_err(
                                 main_span,
                                 ~"main function is not allowed \

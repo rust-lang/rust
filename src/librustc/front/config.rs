@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use syntax::{ast, fold, attr};
 
 use core::option;
@@ -17,7 +18,7 @@ export strip_unconfigured_items;
 export metas_in_cfg;
 export strip_items;
 
-type in_cfg_pred = fn@(~[ast::attribute]) -> bool;
+type in_cfg_pred = fn@(+attrs: ~[ast::attribute]) -> bool;
 
 type ctxt = @{
     in_cfg: in_cfg_pred
@@ -27,7 +28,7 @@ type ctxt = @{
 // any items that do not belong in the current configuration
 fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     do strip_items(crate) |attrs| {
-        in_cfg(crate.node.config, attrs)
+        in_cfg(/*bad*/copy crate.node.config, attrs)
     }
 }
 
@@ -40,7 +41,10 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
         @{fold_mod: |a,b| fold_mod(ctxt, a, b),
           fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
-          fold_item_underscore: |a,b| fold_item_underscore(ctxt, a, b),
+          fold_item_underscore: |a,b| {
+            // Bad copy.
+            fold_item_underscore(ctxt, copy a, b)
+          },
           .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
@@ -94,18 +98,18 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
     };
 }
 
-fn fold_item_underscore(cx: ctxt, item: ast::item_,
+fn fold_item_underscore(cx: ctxt, +item: ast::item_,
                         fld: fold::ast_fold) -> ast::item_ {
     let item = match item {
         ast::item_impl(a, b, c, methods) => {
             let methods = methods.filter(|m| method_in_cfg(cx, *m) );
             ast::item_impl(a, b, c, methods)
         }
-        ast::item_trait(a, b, ref methods) => {
+        ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.filter(|m| trait_method_in_cfg(cx, m) );
-            ast::item_trait(a, b, methods)
+            ast::item_trait(/*bad*/copy *a, /*bad*/copy *b, methods)
         }
-        _ => item
+        item => item
     };
 
     fold::noop_fold_item_underscore(item, fld)
@@ -131,7 +135,7 @@ fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
 fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filtered_stmts = vec::filter_map(b.stmts, |a| filter_stmt(cx, *a));
-    return {view_items: b.view_items,
+    return {view_items: /*bad*/copy b.view_items,
          stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
          expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
          id: b.id,
@@ -139,36 +143,35 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
 }
 
 fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(/*bad*/copy item.attrs);
 }
 
 fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(/*bad*/copy item.attrs);
 }
 
 fn view_item_in_cfg(cx: ctxt, item: @ast::view_item) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(/*bad*/copy item.attrs);
 }
 
 fn method_in_cfg(cx: ctxt, meth: @ast::method) -> bool {
-    return (cx.in_cfg)(meth.attrs);
+    return (cx.in_cfg)(/*bad*/copy meth.attrs);
 }
 
 fn trait_method_in_cfg(cx: ctxt, meth: &ast::trait_method) -> bool {
     match *meth {
-        ast::required(ref meth) => (cx.in_cfg)(meth.attrs),
-        ast::provided(@ref meth) => (cx.in_cfg)(meth.attrs)
+        ast::required(ref meth) => (cx.in_cfg)(/*bad*/copy meth.attrs),
+        ast::provided(@ref meth) => (cx.in_cfg)(/*bad*/copy meth.attrs)
     }
 }
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
+fn in_cfg(+cfg: ast::crate_cfg, +attrs: ~[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
-
+fn metas_in_cfg(cfg: ast::crate_cfg, +metas: ~[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
 
@@ -182,7 +185,7 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
     if !has_cfg_metas { return true; }
 
     for cfg_metas.each |cfg_mi| {
-        if attr::contains(cfg, *cfg_mi) { return true; }
+        if attr::contains(/*bad*/copy cfg, *cfg_mi) { return true; }
     }
 
     return false;

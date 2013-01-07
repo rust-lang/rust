@@ -16,6 +16,7 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_item_val, trans_external_path};
 use middle::trans::build::*;
@@ -159,7 +160,7 @@ fn trans_fn_ref(bcx: block,
 fn trans_fn_ref_with_vtables_to_callee(bcx: block,
                                        def_id: ast::def_id,
                                        ref_id: ast::node_id,
-                                       type_params: ~[ty::t],
+                                       +type_params: ~[ty::t],
                                        vtables: Option<typeck::vtable_res>)
     -> Callee
 {
@@ -172,7 +173,7 @@ fn trans_fn_ref_with_vtables(
     bcx: block,            //
     def_id: ast::def_id,   // def id of fn
     ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
-    type_params: ~[ty::t], // values for fn's ty params
+    +type_params: ~[ty::t], // values for fn's ty params
     vtables: Option<typeck::vtable_res>)
     -> FnData
 {
@@ -415,7 +416,7 @@ fn trans_call_inner(
     autoref_arg: AutorefArg) -> block
 {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
-        let ret_in_loop = match args {
+        let ret_in_loop = match /*bad*/copy args {
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {
               ast::expr_loop_body(@{
@@ -459,10 +460,10 @@ fn trans_call_inner(
             }
         };
 
-        let args_res = trans_args(bcx, llenv, args, fn_expr_ty,
+        let args_res = trans_args(bcx, llenv, /*bad*/copy args, fn_expr_ty,
                                   dest, ret_flag, autoref_arg);
         bcx = args_res.bcx;
-        let mut llargs = args_res.args;
+        let mut llargs = /*bad*/copy args_res.args;
 
         let llretslot = args_res.retslot;
 
@@ -519,8 +520,12 @@ enum CallArgs {
     ArgVals(~[ValueRef])
 }
 
-fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
-              dest: expr::Dest, ret_flag: Option<ValueRef>,
+fn trans_args(cx: block,
+              llenv: ValueRef,
+              +args: CallArgs,
+              fn_ty: ty::t,
+              dest: expr::Dest,
+              ret_flag: Option<ValueRef>,
               +autoref_arg: AutorefArg)
     -> {bcx: block, args: ~[ValueRef], retslot: ValueRef}
 {
@@ -614,14 +619,18 @@ fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    blk@@{node:ast::expr_fn_block(decl, ref body, cap), _}) =>
+                    // XXX: Bad copy.
+                    blk@@{
+                        node: ast::expr_fn_block(copy decl, ref body, cap),
+                        _
+                    }) =>
                 {
                     let scratch_ty = expr_ty(bcx, blk);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let proto = ty::ty_fn_proto(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, (*body), blk.id, cap,
+                        bcx, proto, decl, /*bad*/copy *body, blk.id, cap,
                         Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
