@@ -34,43 +34,49 @@ use std::map::HashMap;
 use str_eq = str::eq;
 
 pub enum LangItem {
-    ConstTraitLangItem,     // 0
-    CopyTraitLangItem,      // 1
-    OwnedTraitLangItem,     // 2
-    DurableTraitLangItem,   // 3
+    ConstTraitLangItem,         // 0
+    CopyTraitLangItem,          // 1
+    OwnedTraitLangItem,         // 2
+    DurableTraitLangItem,       // 3
 
-    DropTraitLangItem,      // 4
+    DropTraitLangItem,          // 4
 
-    AddTraitLangItem,       // 5
-    SubTraitLangItem,       // 6
-    MulTraitLangItem,       // 7
-    DivTraitLangItem,       // 8
-    ModuloTraitLangItem,    // 9
-    NegTraitLangItem,       // 10
-    BitXorTraitLangItem,    // 11
-    BitAndTraitLangItem,    // 12
-    BitOrTraitLangItem,     // 13
-    ShlTraitLangItem,       // 14
-    ShrTraitLangItem,       // 15
-    IndexTraitLangItem,     // 16
+    AddTraitLangItem,           // 5
+    SubTraitLangItem,           // 6
+    MulTraitLangItem,           // 7
+    DivTraitLangItem,           // 8
+    ModuloTraitLangItem,        // 9
+    NegTraitLangItem,           // 10
+    BitXorTraitLangItem,        // 11
+    BitAndTraitLangItem,        // 12
+    BitOrTraitLangItem,         // 13
+    ShlTraitLangItem,           // 14
+    ShrTraitLangItem,           // 15
+    IndexTraitLangItem,         // 16
 
-    EqTraitLangItem,        // 17
-    OrdTraitLangItem,       // 18
+    EqTraitLangItem,            // 17
+    OrdTraitLangItem,           // 18
 
-    StrEqFnLangItem,        // 19
-    UniqStrEqFnLangItem,    // 20
-    AnnihilateFnLangItem,   // 21
-    LogTypeFnLangItem,      // 22
+    StrEqFnLangItem,            // 19
+    UniqStrEqFnLangItem,        // 20
+    AnnihilateFnLangItem,       // 21
+    LogTypeFnLangItem,          // 22
+    FailFnLangItem,             // 23
+    FailBoundsCheckFnLangItem,  // 24
+    ExchangeMallocFnLangItem,   // 25
+    ExchangeFreeFnLangItem,     // 26
+    MallocFnLangItem,           // 27
+    FreeFnLangItem,             // 28
 }
 
 struct LanguageItems {
-    items: [ Option<def_id> * 23 ]
+    items: [ Option<def_id> * 29 ]
 }
 
 impl LanguageItems {
     static pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..23 ]
+            items: [ None, ..29 ]
         }
     }
 
@@ -110,6 +116,12 @@ impl LanguageItems {
             20 => "uniq_str_eq",
             21 => "annihilate",
             22 => "log_type",
+            23 => "fail_",
+            24 => "fail_bounds_check",
+            25 => "exchange_malloc",
+            26 => "exchange_free",
+            27 => "malloc",
+            28 => "free",
 
             _ => "???"
         }
@@ -190,6 +202,24 @@ impl LanguageItems {
     pub fn log_type_fn(&const self) -> def_id {
         self.items[LogTypeFnLangItem as uint].get()
     }
+    pub fn fail_fn(&const self) -> def_id {
+        self.items[FailFnLangItem as uint].get()
+    }
+    pub fn fail_bounds_check_fn(&const self) -> def_id {
+        self.items[FailBoundsCheckFnLangItem as uint].get()
+    }
+    pub fn exchange_malloc_fn(&const self) -> def_id {
+        self.items[ExchangeMallocFnLangItem as uint].get()
+    }
+    pub fn exchange_free_fn(&const self) -> def_id {
+        self.items[ExchangeFreeFnLangItem as uint].get()
+    }
+    pub fn malloc_fn(&const self) -> def_id {
+        self.items[MallocFnLangItem as uint].get()
+    }
+    pub fn free_fn(&const self) -> def_id {
+        self.items[FreeFnLangItem as uint].get()
+    }
 }
 
 fn LanguageItemCollector(crate: @crate,
@@ -225,6 +255,12 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(~"uniq_str_eq", UniqStrEqFnLangItem as uint);
     item_refs.insert(~"annihilate", AnnihilateFnLangItem as uint);
     item_refs.insert(~"log_type", LogTypeFnLangItem as uint);
+    item_refs.insert(~"fail_", FailFnLangItem as uint);
+    item_refs.insert(~"fail_bounds_check", FailBoundsCheckFnLangItem as uint);
+    item_refs.insert(~"exchange_malloc", ExchangeMallocFnLangItem as uint);
+    item_refs.insert(~"exchange_free", ExchangeFreeFnLangItem as uint);
+    item_refs.insert(~"malloc", MallocFnLangItem as uint);
+    item_refs.insert(~"free", FreeFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,

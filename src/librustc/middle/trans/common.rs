@@ -197,7 +197,6 @@ struct crate_ctxt {
      maps: astencode::maps,
      stats: stats,
      upcalls: @upcall::upcalls,
-     rtcalls: HashMap<~str, ast::def_id>,
      tydesc_type: TypeRef,
      int_type: TypeRef,
      float_type: TypeRef,

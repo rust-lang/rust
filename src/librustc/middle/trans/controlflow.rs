@@ -368,7 +368,8 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_rtcall(bcx, ~"fail_", args, expr::Ignore);
+    let bcx = callee::trans_rtcall_or_lang_call(
+        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }
@@ -384,8 +385,8 @@ fn trans_fail_bounds_check(bcx: block, sp: span,
     let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
 
     let args = ~[filename, line, index, len];
-    let bcx = callee::trans_rtcall(bcx, ~"fail_bounds_check", args,
-                                   expr::Ignore);
+    let bcx = callee::trans_rtcall_or_lang_call(
+        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }

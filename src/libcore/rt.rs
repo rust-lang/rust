@@ -38,15 +38,14 @@ extern mod rustrt {
     fn rust_upcall_free(ptr: *c_char);
 }
 
-// FIXME (#2861): This needs both the attribute, and the name prefixed with
-// 'rt_', otherwise the compiler won't find it. To fix this, see
-// gather_rust_rtcalls.
 #[rt(fail_)]
+#[lang="fail_"]
 pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
     sys::begin_unwind_(expr, file, line);
 }
 
 #[rt(fail_bounds_check)]
+#[lang="fail_bounds_check"]
 pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
                         index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
@@ -57,6 +56,7 @@ pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
 }
 
 #[rt(exchange_malloc)]
+#[lang="exchange_malloc"]
 pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_exchange_malloc(td, size);
 }
@@ -65,11 +65,13 @@ pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[rt(exchange_free)]
+#[lang="exchange_free"]
 pub fn rt_exchange_free(ptr: *c_char) {
     rustrt::rust_upcall_exchange_free(ptr);
 }
 
 #[rt(malloc)]
+#[lang="malloc"]
 pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_malloc(td, size);
 }
@@ -78,6 +80,7 @@ pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[rt(free)]
+#[lang="free"]
 pub fn rt_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
 }

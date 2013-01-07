@@ -492,11 +492,13 @@ fn make_opaque_cbox_take_glue(
         let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
-        let malloc = ~"exchange_malloc";
         let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
         let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
-        let bcx = callee::trans_rtcall(bcx, malloc, ~[opaque_tydesc, sz],
-                                       expr::SaveIn(rval));
+        let bcx = callee::trans_rtcall_or_lang_call(
+            bcx,
+            bcx.tcx().lang_items.exchange_malloc_fn(),
+            ~[opaque_tydesc, sz],
+            expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
         call_memcpy(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
