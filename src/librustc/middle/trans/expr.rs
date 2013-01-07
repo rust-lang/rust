@@ -564,8 +564,10 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_fn(proto, copy decl, ref body, cap_clause) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
-            return closure::trans_expr_fn(bcx, proto, decl, /*bad*/copy *body,
-                                          expr.id, cap_clause, None, dest);
+            return closure::trans_expr_fn(bcx, proto, decl,
+                                          /*bad*/copy *body,
+                                          expr.id, expr.id,
+                                          cap_clause, None, dest);
         }
         ast::expr_fn_block(ref decl, ref body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
@@ -576,7 +578,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                            ty_to_str(tcx, expr_ty));
                     return closure::trans_expr_fn(
                         bcx, fn_ty.meta.proto, /*bad*/copy *decl,
-                        /*bad*/copy *body, expr.id,
+                        /*bad*/copy *body, expr.id, expr.id,
                         cap_clause, None, dest);
                 }
                 _ => {
@@ -595,6 +597,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                 fn_ty.meta.proto,
                                 decl,
                                 /*bad*/copy *body,
+                                expr.id,
                                 blk.id,
                                 cap,
                                 Some(None),
