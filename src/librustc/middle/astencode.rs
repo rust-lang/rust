@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use c = metadata::common;
 use cstore = metadata::cstore;
 use driver::session::Session;
@@ -113,7 +114,7 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
 fn decode_inlined_item(cdata: cstore::crate_metadata,
                        tcx: ty::ctxt,
                        maps: maps,
-                       path: ast_map::path,
+                       +path: ast_map::path,
                        par_doc: ebml::Doc) -> Option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
     match par_doc.opt_child(c::tag_ast) {
@@ -129,8 +130,9 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                                           to_id_range: to_id_range});
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
+        // XXX: Bad copy of `path`.
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, path, ii);
+                                  dcx.tcx.items, copy path, ii);
         debug!("Fn named: %s", tcx.sess.str_of(ii.ident()));
         decode_side_tables(xcx, ast_doc);
         debug!("< Decoded inlined fn: %s::%s",
@@ -261,7 +263,8 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
               ast::stmt_mac(*) => fail ~"unexpanded macro in astencode"
             }
         };
-        let blk_sans_items = { stmts: stmts_sans_items,.. blk };
+        // XXX: Bad copy.
+        let blk_sans_items = { stmts: stmts_sans_items,.. copy blk };
         fold::noop_fold_block(blk_sans_items, fld)
     }
 
@@ -280,11 +283,11 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(ref dtor, nm, tps, parent_id) => {
+      ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
         ast::ii_dtor({node: {body: dtor_body,
-                              .. (*dtor).node},
-            .. (*dtor)}, nm, tps, parent_id)
+                              .. /*bad*/copy (*dtor).node},
+            .. (/*bad*/copy *dtor)}, nm, /*bad*/copy *tps, parent_id)
       }
     }
 }
@@ -313,16 +316,16 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(ref dtor, nm, tps, parent_id) => {
+      ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
-        let dtor_attrs = fld.fold_attributes((*dtor).node.attrs);
-        let new_params = fold::fold_ty_params(tps, fld);
+        let dtor_attrs = fld.fold_attributes(/*bad*/copy (*dtor).node.attrs);
+        let new_params = fold::fold_ty_params(/*bad*/copy *tps, fld);
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
         ast::ii_dtor({node: {id: dtor_id, attrs: dtor_attrs,
                 self_id: new_self, body: dtor_body},
-                        .. (*dtor)},
+                        .. (/*bad*/copy *dtor)},
           nm, new_params, new_parent)
       }
      }
@@ -520,7 +523,7 @@ fn encode_vtable_res(ecx: @e::encode_ctxt,
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    do ebml_w.emit_from_vec(*dr) |vtable_origin| {
+    do ebml_w.emit_from_vec(/*bad*/copy *dr) |vtable_origin| {
         encode_vtable_origin(ecx, ebml_w, *vtable_origin)
     }
 }
@@ -529,14 +532,14 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       ebml_w: writer::Encoder,
                       vtable_origin: typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
-        match vtable_origin {
+        match /*bad*/copy vtable_origin {
           typeck::vtable_static(def_id, tys, vtable_res) => {
             do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
                 }
                 do ebml_w.emit_enum_variant_arg(1u) {
-                    ebml_w.emit_tys(ecx, tys);
+                    ebml_w.emit_tys(ecx, /*bad*/copy tys);
                 }
                 do ebml_w.emit_enum_variant_arg(2u) {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
@@ -559,7 +562,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                     ebml_w.emit_def_id(def_id)
                 }
                 do ebml_w.emit_enum_variant_arg(1u) {
-                    ebml_w.emit_tys(ecx, tys);
+                    ebml_w.emit_tys(ecx, /*bad*/copy tys);
                 }
             }
           }
@@ -670,7 +673,8 @@ impl writer::Encoder: ebml_writer_helpers {
     }
 
     fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]) {
-        do self.emit_from_vec(tys) |ty| {
+        // XXX: Bad copy.
+        do self.emit_from_vec(copy tys) |ty| {
             self.emit_ty(ecx, *ty)
         }
     }
@@ -684,7 +688,7 @@ impl writer::Encoder: ebml_writer_helpers {
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_rec {
             do self.emit_field(~"bounds", 0u) {
-                do self.emit_from_vec(*tpbt.bounds) |bs| {
+                do self.emit_from_vec(/*bad*/copy *tpbt.bounds) |bs| {
                     self.emit_bounds(ecx, *bs);
                 }
             }
@@ -758,7 +762,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                ebml_w.emit_tys(ecx, *tys)
+                ebml_w.emit_tys(ecx, /*bad*/copy *tys)
             }
         }
     }
@@ -767,7 +771,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(**fv) |fv_entry| {
+                do ebml_w.emit_from_vec(/*bad*/copy **fv) |fv_entry| {
                     encode_freevar_entry(ebml_w, *fv_entry)
                 }
             }

@@ -10,6 +10,7 @@
 
 // Information concerning the machine representation of various types.
 
+
 use middle::trans::common::*;
 use middle::trans::type_of;
 use middle::ty;
@@ -152,8 +153,9 @@ pub fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
         let mut max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
         for vec::each(*variants) |variant| {
-            let tup_ty = simplify_type(cx.tcx,
-                                       ty::mk_tup(cx.tcx, variant.args));
+            let tup_ty = simplify_type(
+                cx.tcx,
+                ty::mk_tup(cx.tcx, /*bad*/copy variant.args));
             // Perform any type parameter substitutions.
             let tup_ty = ty::subst(cx.tcx, substs, tup_ty);
             // Here we possibly do a recursive call.

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Detecting language items.
 //
 // Language items are items that represent concepts intrinsic to the language
@@ -287,8 +288,8 @@ impl LanguageItemCollector {
                 match literal.node {
                     lit_str(value) => {
                         self.match_and_collect_item(item_def_id,
-                                                    (*key),
-                                                    *value);
+                                                    (/*bad*/copy *key),
+                                                    /*bad*/copy *value);
                     }
                     _ => {} // Skip.
                 }

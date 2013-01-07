@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::pat_util;
 use middle::ty;
 use middle::ty::{CopyValue, MoveValue, ReadValue, ValueMode, ctxt};
@@ -89,7 +90,7 @@ fn compute_modes_for_expr(expr: @expr,
         }
     };
 
-    match expr.node {
+    match /*bad*/copy expr.node {
         expr_call(callee, args, is_block) => {
             let callee_cx = VisitContext { mode: ReadValue, ..cx };
             compute_modes_for_expr(callee, callee_cx, v);

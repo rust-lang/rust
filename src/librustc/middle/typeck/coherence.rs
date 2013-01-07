@@ -14,6 +14,7 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+
 use driver;
 use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
 use metadata::csearch::{get_impls_for_mod};
@@ -510,10 +511,13 @@ impl CoherenceChecker {
             self_ty: None,
             tps: type_parameters
         };
-
         let monotype = subst(self.crate_context.tcx,
                              &substitutions,
                              polytype.ty);
+
+        // Get our type parameters back.
+        let { self_r: _, self_ty: _, tps: type_parameters } = substitutions;
+
         UniversalQuantificationResult {
             monotype: monotype,
             type_variables: move type_parameters,
@@ -583,7 +587,7 @@ impl CoherenceChecker {
     fn check_privileged_scopes(crate: @crate) {
         visit_crate(*crate, (), mk_vt(@{
             visit_item: |item, _context, visitor| {
-                match item.node {
+                match /*bad*/copy item.node {
                     item_mod(module_) => {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
@@ -717,7 +721,7 @@ impl CoherenceChecker {
             }
         }
 
-        match item.node {
+        match /*bad*/copy item.node {
             item_impl(_, trait_refs, _, ast_methods) => {
                 let mut methods = ~[];
                 for ast_methods.each |ast_method| {

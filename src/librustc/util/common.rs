@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
@@ -101,7 +102,7 @@ fn is_main_name(path: syntax::ast_map::path) -> bool {
     )
 }
 
-fn pluralize(n: uint, s: ~str) -> ~str {
+fn pluralize(n: uint, +s: ~str) -> ~str {
     if n == 1 { s }
     else { str::concat([s, ~"s"]) }
 }

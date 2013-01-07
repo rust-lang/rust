@@ -16,6 +16,7 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
+
 use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
 use middle::mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
 use middle::pat_util;
@@ -122,7 +123,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     }
 
     // Special checks for various kinds of expressions:
-    match ex.node {
+    match /*bad*/copy ex.node {
       ast::expr_addr_of(mutbl, base) => {
         let base_cmt = self.bccx.cat_expr(base);
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::resolve;
 use middle::ty;
 use middle;
@@ -79,7 +80,7 @@ fn classify(e: @expr,
       Some(x) => x,
       None => {
         let cn =
-            match e.node {
+            match /*bad*/copy e.node {
               ast::expr_lit(lit) => {
                 match lit.node {
                   ast::lit_str(*) |
@@ -241,8 +242,8 @@ impl const_val : cmp::Eq {
 
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
-        Ok(ref r) => (*r),
-        Err(ref s) => fail (*s)
+        Ok(ref r) => (/*bad*/copy *r),
+        Err(ref s) => fail (/*bad*/copy *s)
     }
 }
 
@@ -258,7 +259,7 @@ fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           Ok(const_uint(i)) => Ok(const_uint(-i)),
           Ok(const_str(_)) => Err(~"Negate on string"),
           Ok(const_bool(_)) => Err(~"Negate on boolean"),
-          ref err => (*err)
+          ref err => (/*bad*/copy *err)
         }
       }
       expr_unary(not, inner) => {
@@ -405,7 +406,7 @@ fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
 
 fn lit_to_const(lit: @lit) -> const_val {
     match lit.node {
-      lit_str(s) => const_str(*s),
+      lit_str(s) => const_str(/*bad*/copy *s),
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
       lit_int_unsuffixed(n) => const_int(n),

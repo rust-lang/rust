@@ -27,6 +27,7 @@ this point a bit better.
 
 */
 
+
 use middle::freevars::get_freevars;
 use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
@@ -168,7 +169,7 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)",
            pprust::expr_to_str(expr, rcx.fcx.tcx().sess.intr()));
 
-    match expr.node {
+    match /*bad*/copy expr.node {
         ast::expr_path(*) => {
             // Avoid checking the use of local variables, as we
             // already check their definitions.  The def'n always

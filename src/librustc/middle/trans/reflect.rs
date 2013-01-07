@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use back::abi;
 use lib::llvm::{TypeRef, ValueRef};
 use middle::trans::base::*;
@@ -45,16 +46,16 @@ impl reflector {
         C_int(self.bcx.ccx(), i)
     }
 
-    fn c_slice(s: ~str) -> ValueRef {
+    fn c_slice(+s: ~str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
         let str_vstore = ty::vstore_slice(ty::re_static);
         let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, false);
+        let len = C_uint(bcx.ccx(), s.len() + 1);
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), T_ptr(T_i8()));
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
-        let len = C_uint(bcx.ccx(), s.len() + 1);
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));
         scratch.val
     }
@@ -85,7 +86,9 @@ impl reflector {
             tcx.sess.ident_of(~"visit_" + ty_name),
             *self.visitor_methods).expect(fmt!("Couldn't find visit method \
                                                 for %s", ty_name));
-        let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
+        let mth_ty = ty::mk_fn(
+            tcx,
+            /*bad*/copy self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         debug!("passing %u args:", vec::len(args));
         let bcx = self.bcx;
@@ -110,16 +113,17 @@ impl reflector {
         self.bcx = next_bcx
     }
 
-    fn bracketed(bracket_name: ~str, extra: ~[ValueRef],
+    fn bracketed(bracket_name: ~str, +extra: ~[ValueRef],
                  inner: fn()) {
-        self.visit(~"enter_" + bracket_name, extra);
+        // XXX: Bad copy.
+        self.visit(~"enter_" + bracket_name, copy extra);
         inner();
         self.visit(~"leave_" + bracket_name, extra);
     }
 
     fn vstore_name_and_extra(t: ty::t,
                              vstore: ty::vstore,
-                             f: fn(~str,~[ValueRef])) {
+                             f: fn(+s: ~str,+v: ~[ValueRef])) {
         match vstore {
           ty::vstore_fixed(n) => {
             let extra = vec::append(~[self.c_uint(n)],
@@ -132,7 +136,7 @@ impl reflector {
         }
     }
 
-    fn leaf(name: ~str) {
+    fn leaf(+name: ~str) {
         self.visit(name, ~[]);
     }
 
@@ -143,7 +147,7 @@ impl reflector {
         debug!("reflect::visit_ty %s",
                ty_to_str(bcx.ccx().tcx, t));
 
-        match ty::get(t).sty {
+        match /*bad*/copy ty::get(t).sty {
           ty::ty_bot => self.leaf(~"bot"),
           ty::ty_nil => self.leaf(~"nil"),
           ty::ty_bool => self.leaf(~"bool"),
@@ -219,11 +223,12 @@ impl reflector {
               ast::noreturn => 0u,
               ast::return_val => 1u
             };
+            // XXX: Must we allocate here?
             let extra = ~[self.c_uint(pureval),
                           self.c_uint(protoval),
                           self.c_uint(vec::len(fty.sig.inputs)),
                           self.c_uint(retval)];
-            self.visit(~"enter_fn", extra);
+            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
             for fty.sig.inputs.eachi |i, arg| {
                 let modeval = match arg.mode {
                   ast::infer(_) => 0u,

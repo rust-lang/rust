@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use driver::session::Session;
 use driver::session;
 use middle::pat_util::{pat_bindings};
@@ -310,7 +311,7 @@ impl ctxt {
         }
     }
 
-    fn span_lint(level: level, span: span, msg: ~str) {
+    fn span_lint(level: level, span: span, +msg: ~str) {
         self.sess.span_lint_level(level, span, msg);
     }
 
@@ -327,15 +328,17 @@ impl ctxt {
         for [allow, warn, deny, forbid].each |level| {
             let level_name = level_to_str(*level);
             let metas =
-                attr::attr_metas(attr::find_attrs_by_name(attrs,
+                attr::attr_metas(attr::find_attrs_by_name(/*bad*/copy attrs,
                                                           level_name));
             for metas.each |meta| {
-                match meta.node {
+                match /*bad*/copy meta.node {
                   ast::meta_list(_, metas) => {
                     for metas.each |meta| {
                         match meta.node {
                           ast::meta_word(ref lintname) => {
-                            triples.push((*meta, *level, *lintname));
+                            triples.push((*meta,
+                                          *level,
+                                          /*bad*/copy *lintname));
                           }
                           _ => {
                             self.sess.span_err(
@@ -354,7 +357,7 @@ impl ctxt {
         }
 
         for triples.each |pair| {
-            let (meta, level, lintname) = *pair;
+            let (meta, level, lintname) = /*bad*/copy *pair;
             match self.dict.find(lintname) {
               None => {
                 self.span_lint(
@@ -394,7 +397,7 @@ impl ctxt {
 
 
 fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
-    do cx.with_lint_attrs(i.attrs) |cx| {
+    do cx.with_lint_attrs(/*bad*/copy i.attrs) |cx| {
         if !cx.is_default {
             cx.sess.lint_settings.settings_map.insert(i.id, cx.curr);
         }
@@ -418,7 +421,7 @@ fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
         cx.set_level(lint, level);
     }
 
-    do cx.with_lint_attrs(crate.node.attrs) |cx| {
+    do cx.with_lint_attrs(/*bad*/copy crate.node.attrs) |cx| {
         // Copy out the default settings
         for cx.curr.each |k, v| {
             sess.lint_settings.default_settings.insert(k, v);
@@ -538,7 +541,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         } else {
             binop
         };
-        match ty::get(ty::expr_ty(cx, @*expr)).sty {
+        match ty::get(ty::expr_ty(cx, @/*bad*/copy *expr)).sty {
             ty::ty_int(int_ty) => {
                 let (min, max) = int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
@@ -597,7 +600,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
-    match item.node {
+    match /*bad*/copy item.node {
         ast::item_trait(_, _, methods) => {
             for methods.each |method| {
                 match *method {
@@ -630,10 +633,10 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
               parameter or mark the method as static");
     }
 
-    match item.node {
+    match /*bad*/copy item.node {
         ast::item_trait(_, _, methods) => {
             for methods.each |method| {
-                match *method {
+                match /*bad*/copy *method {
                     ast::required(ty_method) => {
                         maybe_warn(cx, item, ty_method.self_ty);
                     }
@@ -701,10 +704,11 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
     }
 
     match it.node {
-      ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
-      either::Right(ast::foreign_abi_rust_intrinsic) => {
+      ast::item_foreign_mod(ref nmod)
+      if attr::foreign_abi(it.attrs) !=
+            either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            match ni.node {
+            match /*bad*/copy ni.node {
               ast::foreign_item_fn(decl, _, _) => {
                 check_foreign_fn(cx, it.id, decl);
               }
@@ -812,14 +816,14 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
             !ident.contains_char('_')
     }
 
-    fn ident_without_trailing_underscores(ident: ~str) -> ~str {
+    fn ident_without_trailing_underscores(+ident: ~str) -> ~str {
         match str::rfind(ident, |c| c != '_') {
             Some(idx) => (ident).slice(0, idx + 1),
             None => { ident } // all underscores
         }
     }
 
-    fn ident_without_leading_underscores(ident: ~str) -> ~str {
+    fn ident_without_leading_underscores(+ident: ~str) -> ~str {
         match str::find(ident, |c| c != '_') {
           Some(idx) => ident.slice(idx, ident.len()),
           None => {

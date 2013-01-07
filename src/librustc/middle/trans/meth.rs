@@ -44,7 +44,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
+fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param],
               self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
@@ -53,7 +53,8 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     for vec::each(methods) |method| {
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
-            let path = vec::append_one(sub_path, path_name(method.ident));
+            let path = vec::append_one(/*bad*/copy sub_path,
+                                       path_name(method.ident));
 
             let param_substs_opt;
             match self_ty {
@@ -90,13 +91,12 @@ Translates a (possibly monomorphized) method body.
 - `impl_id`: the node ID of the impl this method is inside
 */
 fn trans_method(ccx: @crate_ctxt,
-                path: path,
+                +path: path,
                 method: &ast::method,
-                param_substs: Option<param_substs>,
+                +param_substs: Option<param_substs>,
                 base_self_ty: Option<ty::t>,
                 llfn: ValueRef,
                 impl_id: ast::def_id) {
-
     // figure out how self is being passed
     let self_arg = match method.self_ty.node {
       ast::sty_static => {
@@ -289,7 +289,7 @@ fn trans_static_method_callee(bcx: block,
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(callee_id));
 
-    match vtbls[bound_index] {
+    match /*bad*/copy vtbls[bound_index] {
         typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
@@ -325,8 +325,11 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
-            method_from_methods(ms, name).get()
+          ast_map::node_item(@{
+                node: ast::item_impl(_, _, _, ref ms),
+                _
+            }, _) => {
+            method_from_methods(/*bad*/copy *ms, name).get()
           }
           _ => fail ~"method_with_name"
         }
@@ -339,8 +342,10 @@ fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
                                name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
-              let did = method_from_methods(ms, name);
+          ast_map::node_item(@{
+                node: ast::item_impl(_, _, _, ref ms), _
+          }, _) => {
+              let did = method_from_methods(/*bad*/copy *ms, name);
               if did.is_some() {
                   return did.get();
               } else {
@@ -400,7 +405,7 @@ fn trans_monomorphized_callee(bcx: block,
                               mentry: typeck::method_map_entry,
                               trait_id: ast::def_id,
                               n_method: uint,
-                              vtbl: typeck::vtable_origin)
+                              +vtbl: typeck::vtable_origin)
     -> Callee
 {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
@@ -462,7 +467,7 @@ fn combine_impl_and_methods_tps(bcx: block,
                                 mth_did: ast::def_id,
                                 impl_did: ast::def_id,
                                 callee_id: ast::node_id,
-                                rcvr_substs: ~[ty::t])
+                                +rcvr_substs: ~[ty::t])
     -> ~[ty::t]
 {
     /*!
@@ -485,12 +490,12 @@ fn combine_impl_and_methods_tps(bcx: block,
     let ccx = bcx.ccx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
     let node_substs = node_id_type_params(bcx, callee_id);
+    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
     let ty_substs
         = vec::append(rcvr_substs,
                       vec::tailn(node_substs,
                                  node_substs.len() - n_m_tps));
     debug!("n_m_tps=%?", n_m_tps);
-    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(*t)));
     debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(*t)));
     debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(*t)));
 
@@ -535,7 +540,7 @@ fn combine_impl_and_methods_origins(bcx: block,
     let m_origins = vec::tailn(*r_m_origins, r_m_origins.len() - m_vtables);
 
     // Combine rcvr + method to find the final result:
-    @vec::append(*rcvr_origins, m_origins)
+    @vec::append(/*bad*/copy *rcvr_origins, m_origins)
 }
 
 
@@ -706,7 +711,7 @@ fn trans_trait_callee_from_llval(bcx: block,
     };
 }
 
-fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
+fn vtable_id(ccx: @crate_ctxt, +origin: typeck::vtable_origin) -> mono_id {
     match origin {
         typeck::vtable_static(impl_id, substs, sub_vtables) => {
             monomorphize::make_mono_id(
@@ -733,9 +738,9 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
     }
 }
 
-fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
-    -> ValueRef {
-    let hash_id = vtable_id(ccx, origin);
+fn get_vtable(ccx: @crate_ctxt, +origin: typeck::vtable_origin) -> ValueRef {
+    // XXX: Bad copy.
+    let hash_id = vtable_id(ccx, copy origin);
     match ccx.vtables.find(hash_id) {
       Some(val) => val,
       None => match origin {
@@ -868,7 +873,7 @@ fn trans_trait_cast(bcx: block,
     }
 
     // Store the vtable into the pair or triple.
-    let orig = ccx.maps.vtable_map.get(id)[0];
+    let orig = /*bad*/copy ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
     Store(bcx, vtable, PointerCast(bcx,

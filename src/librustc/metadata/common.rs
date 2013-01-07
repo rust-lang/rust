@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // EBML enum definitions and utils shared by the encoder and decoder
 
 const tag_items: uint = 0x02u;

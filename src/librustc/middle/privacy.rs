@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
@@ -311,7 +312,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
             visit::visit_expr(expr, method_map, visitor);
         },
         visit_pat: |pattern, method_map, visitor| {
-            match pattern.node {
+            match /*bad*/copy pattern.node {
                 pat_struct(_, fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_struct(id, _) => {

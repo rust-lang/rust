@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use core::cast;
 use core::cmp;
 use core::int;
@@ -1070,8 +1071,9 @@ fn SetLinkage(Global: ValueRef, Link: Linkage) {
 type type_names = @{type_names: HashMap<TypeRef, ~str>,
                     named_types: HashMap<~str, TypeRef>};
 
-fn associate_type(tn: type_names, s: ~str, t: TypeRef) {
-    assert tn.type_names.insert(t, s);
+fn associate_type(tn: type_names, +s: ~str, t: TypeRef) {
+    // XXX: Bad copy, use @str instead?
+    assert tn.type_names.insert(t, copy s);
     assert tn.named_types.insert(s, t);
 }
 
@@ -1079,7 +1081,7 @@ fn type_has_name(tn: type_names, t: TypeRef) -> Option<~str> {
     return tn.type_names.find(t);
 }
 
-fn name_has_type(tn: type_names, s: ~str) -> Option<TypeRef> {
+fn name_has_type(tn: type_names, +s: ~str) -> Option<TypeRef> {
     return tn.named_types.find(s);
 }
 
@@ -1092,14 +1094,15 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
     return type_to_str_inner(names, ~[], ty);
 }
 
-fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
+fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     match type_has_name(names, ty) {
-      option::Some(ref n) => return (*n),
+      option::Some(ref n) => return (/*bad*/copy *n),
       _ => {}
     }
 
-    let outer = vec::append_one(outer0, ty);
+    // XXX: Bad copy.
+    let outer = vec::append_one(copy outer0, ty);
 
     let kind = llvm::LLVMGetTypeKind(ty);
 
