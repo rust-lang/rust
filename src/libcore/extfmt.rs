@@ -229,17 +229,11 @@ pub mod ct {
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
        Parsed<Option<uint>> {
         if i >= lim { return Parsed::new(None, i); }
-        let num = peek_num(s, i, lim);
-        return match num {
-              None => Parsed::new(None, i),
-              Some(t) => {
-                let n = t.val;
-                let j = t.next;
-                if j < lim && s[j] == '$' as u8 {
-                    Parsed::new(Some(n), j + 1)
-                } else { Parsed::new(None, i) }
-              }
-            };
+        match peek_num(s, i, lim) {
+            Some(num) if num.next < lim && s[num.next] == '$' as u8 =>
+                Parsed::new(Some(num.val), num.next + 1),
+            _ => Parsed::new(None, i)
+        }
     }
     pub fn parse_flags(s: &str, i: uint, lim: uint) ->
        Parsed<~[Flag]> {
