@@ -264,7 +264,7 @@ pub mod ct {
     }
         pub fn parse_count(s: &str, i: uint, lim: uint)
         -> Parsed<Count> {
-        return if i >= lim {
+            if i >= lim {
                 Parsed::new(CountImplied, i)
             } else if s[i] == '*' as u8 {
                 let param = parse_parameter(s, i + 1, lim);
@@ -274,15 +274,14 @@ pub mod ct {
                   Some(n) => Parsed::new(CountIsParam(n), j)
                 }
             } else {
-                let num = peek_num(s, i, lim);
-                match num {
+                match peek_num(s, i, lim) {
                   None => Parsed::new(CountImplied, i),
                   Some(num) => Parsed::new(
                     CountIs(num.val),
                     num.next
                   )
                 }
-            };
+            }
     }
     pub fn parse_precision(s: &str, i: uint, lim: uint) ->
        Parsed<Count> {
