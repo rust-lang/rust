@@ -130,12 +130,12 @@ pub mod ct {
     }
 
     // A formatted conversion from an expression to a string
-    pub type Conv =
+    pub struct Conv
         {param: Option<uint>,
          flags: ~[Flag],
          width: Count,
          precision: Count,
-         ty: Ty};
+         ty: Ty}
 
 
     // A fragment of the output sequence
@@ -208,7 +208,7 @@ pub mod ct {
         let prec = parse_precision(s, width.next, lim);
         let ty = parse_type(s, prec.next, lim, err);
         return {piece:
-                 PieceConv({param: parm.param,
+                 PieceConv(Conv {param: parm.param,
                              flags: copy flags.flags,
                              width: width.count,
                              precision: prec.count,
