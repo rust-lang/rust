@@ -405,6 +405,46 @@ pub fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
     result
 }
 
+/**
+ * Partitions a vector into two new vectors: those that satisfies the
+ * predicate, and those that do not.
+ */
+pub fn partition<T>(v: ~[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
+    let mut lefts  = ~[];
+    let mut rights = ~[];
+
+    do v.consume |_, elt| {
+        if f(&elt) {
+            lefts.push(elt);
+        } else {
+            rights.push(elt);
+        }
+    }
+
+    (lefts, rights)
+}
+
+/**
+ * Partitions a vector into two new vectors: those that satisfies the
+ * predicate, and those that do not.
+ */
+pub pure fn partitioned<T: Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
+    let mut lefts  = ~[];
+    let mut rights = ~[];
+
+    for each(v) |elt| {
+        unsafe {
+            if f(elt) {
+                lefts.push(*elt);
+            } else {
+                rights.push(*elt);
+            }
+        }
+    }
+
+    (lefts, rights)
+}
+
 // Mutators
 
 /// Removes the first element from a vector and return it
@@ -1664,7 +1704,6 @@ impl<T> &[T]: ImmutableVector<T> {
     pure fn filter_map<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
         filter_map(*self, f)
     }
-
 }
 
 pub trait ImmutableEqVector<T: Eq> {
@@ -1714,8 +1753,8 @@ impl<T: Eq> &[T]: ImmutableEqVector<T> {
 
 pub trait ImmutableCopyableVector<T> {
     pure fn filter(&self, f: fn(t: &T) -> bool) -> ~[T];
-
     pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T>;
+    pure fn partitioned(&self, f: fn(&T) -> bool) -> (~[T], ~[T]);
 }
 
 /// Extension methods for vectors
@@ -1743,6 +1782,15 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
     pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T> {
         rfind(*self, f)
     }
+
+    /**
+     * Partitions the vector into those that satisfies the predicate, and
+     * those that do not.
+     */
+    #[inline]
+    pure fn partitioned(&self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
+        partitioned(*self, f)
+    }
 }
 
 pub trait OwnedVector<T> {
@@ -1757,6 +1805,7 @@ pub trait OwnedVector<T> {
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: pure fn(t: &T) -> bool);
     fn consume(self, f: fn(uint, v: T));
+    fn partition(self, f: pure fn(&T) -> bool) -> (~[T], ~[T]);
 }
 
 impl<T> ~[T]: OwnedVector<T> {
@@ -1813,6 +1862,15 @@ impl<T> ~[T]: OwnedVector<T> {
     #[inline]
     fn consume(self, f: fn(uint, v: T)) {
         consume(self, f)
+    }
+
+    /**
+     * Partitions the vector into those that satisfies the predicate, and
+     * those that do not.
+     */
+    #[inline]
+    fn partition(self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
+        partition(self, f)
     }
 }
 
@@ -3103,6 +3161,25 @@ mod tests {
         assert rsplitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]];
         assert rsplitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
                        ~[~[1, 2, 3, 4], ~[5]];
+    }
+
+    #[test]
+    fn test_partition() {
+        assert (~[]).partition(|x: &int| *x < 3) == (~[], ~[]);
+        assert (~[1, 2, 3]).partition(|x: &int| *x < 4) == (~[1, 2, 3], ~[]);
+        assert (~[1, 2, 3]).partition(|x: &int| *x < 2) == (~[1], ~[2, 3]);
+        assert (~[1, 2, 3]).partition(|x: &int| *x < 0) == (~[], ~[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_partitioned() {
+        assert (~[]).partitioned(|x: &int| *x < 3) == (~[], ~[]);
+        assert (~[1, 2, 3]).partitioned(|x: &int| *x < 4) ==
+               (~[1, 2, 3], ~[]);
+        assert (~[1, 2, 3]).partitioned(|x: &int| *x < 2) ==
+               (~[1], ~[2, 3]);
+        assert (~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
+               (~[], ~[1, 2, 3]);
     }
 
     #[test]
