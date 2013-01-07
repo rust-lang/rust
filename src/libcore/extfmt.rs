@@ -310,34 +310,23 @@ pub mod ct {
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
        Parsed<Ty> {
         if i >= lim { err(~"missing type in conversion"); }
-        let tstr = str::slice(s, i, i+1u);
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
-        let t =
-            if tstr == ~"b" {
-                TyBool
-            } else if tstr == ~"s" {
-                TyStr
-            } else if tstr == ~"c" {
-                TyChar
-            } else if tstr == ~"d" || tstr == ~"i" {
-                TyInt(Signed)
-            } else if tstr == ~"u" {
-                TyInt(Unsigned)
-            } else if tstr == ~"x" {
-                TyHex(CaseLower)
-            } else if tstr == ~"X" {
-                TyHex(CaseUpper)
-            } else if tstr == ~"t" {
-                TyBits
-            } else if tstr == ~"o" {
-                TyOctal
-            } else if tstr == ~"f" {
-                TyFloat
-            } else if tstr == ~"?" {
-                TyPoly
-            } else { err(~"unknown type in conversion: " + tstr) };
-        return Parsed::new(t, i + 1u);
+        let t = match s[i] {
+            'b' as u8 => TyBool,
+            's' as u8 => TyStr,
+            'c' as u8 => TyChar,
+            'd' as u8 | 'i' as u8 => TyInt(Signed),
+            'u' as u8 => TyInt(Unsigned),
+            'x' as u8 => TyHex(CaseLower),
+            'X' as u8 => TyHex(CaseUpper),
+            't' as u8 => TyBits,
+            'o' as u8 => TyOctal,
+            'f' as u8 => TyFloat,
+            '?' as u8 => TyPoly,
+            _ => err(~"unknown type in conversion: " + s.substr(i, 1))
+        };
+        Parsed::new(t, i + 1)
     }
 }
 
