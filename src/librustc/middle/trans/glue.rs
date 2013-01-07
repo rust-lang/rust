@@ -28,14 +28,19 @@ use core::str;
 
 fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
-    callee::trans_rtcall(cx, ~"free", ~[PointerCast(cx, v, T_ptr(T_i8()))],
-                         expr::Ignore)
+    callee::trans_rtcall_or_lang_call(
+        cx,
+        cx.tcx().lang_items.free_fn(),
+        ~[PointerCast(cx, v, T_ptr(T_i8()))],
+        expr::Ignore)
 }
 
 fn trans_unique_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_unique_free");
-    callee::trans_rtcall(
-        cx, ~"exchange_free", ~[PointerCast(cx, v, T_ptr(T_i8()))],
+    callee::trans_rtcall_or_lang_call(
+        cx,
+        cx.tcx().lang_items.exchange_free_fn(),
+        ~[PointerCast(cx, v, T_ptr(T_i8()))],
         expr::Ignore)
 }
 
