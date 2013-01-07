@@ -638,8 +638,8 @@ fn trans_arg_expr(bcx: block,
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let proto = ty::ty_fn_proto(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, /*bad*/copy *body, blk.id, cap,
-                        Some(ret_flag), expr::SaveIn(scratch));
+                        bcx, proto, decl, /*bad*/copy *body, arg_expr.id,
+                        blk.id, cap, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
