@@ -243,31 +243,24 @@ pub mod ct {
     }
     pub fn parse_flags(s: &str, i: uint, lim: uint) ->
        Parsed<~[Flag]> {
-        let noflags: ~[Flag] = ~[];
-        if i >= lim { return Parsed::new(move noflags, i); }
+        let mut i = i;
+        let mut flags = ~[];
 
-        fn more(f: Flag, s: &str, i: uint, lim: uint) ->
-           Parsed<~[Flag]> {
-            let next = parse_flags(s, i + 1u, lim);
-            let rest = copy next.val;
-            let j = next.next;
-            let curr: ~[Flag] = ~[f];
-            return Parsed::new(vec::append(move curr, rest), j);
+        while i < lim {
+            let f = match s[i] {
+                '-' as u8 => FlagLeftJustify,
+                '0' as u8 => FlagLeftZeroPad,
+                ' ' as u8 => FlagSpaceForSign,
+                '+' as u8 => FlagSignAlways,
+                '#' as u8 => FlagAlternate,
+                _ => break
+            };
+
+            flags.push(f);
+            i += 1;
         }
-        // Unfortunate, but because s is borrowed, can't use a closure
-     //   fn more(f: Flag, s: &str) { more_(f, s, i, lim); }
-        let f = s[i];
-        return if f == '-' as u8 {
-                more(FlagLeftJustify, s, i, lim)
-            } else if f == '0' as u8 {
-                more(FlagLeftZeroPad, s, i, lim)
-            } else if f == ' ' as u8 {
-                more(FlagSpaceForSign, s, i, lim)
-            } else if f == '+' as u8 {
-                more(FlagSignAlways, s, i, lim)
-            } else if f == '#' as u8 {
-                more(FlagAlternate, s, i, lim)
-            } else { Parsed::new(move noflags, i) };
+
+        Parsed::new(flags, i)
     }
         pub fn parse_count(s: &str, i: uint, lim: uint)
         -> Parsed<Count> {
