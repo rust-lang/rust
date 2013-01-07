@@ -102,8 +102,13 @@ pub mod ct {
     use str;
     use vec;
 
+    #[deriving_eq]
     pub enum Signedness { Signed, Unsigned, }
+
+    #[deriving_eq]
     pub enum Caseness { CaseUpper, CaseLower, }
+
+    #[deriving_eq]
     pub enum Ty {
         TyBool,
         TyStr,
@@ -115,6 +120,8 @@ pub mod ct {
         TyFloat,
         TyPoly,
     }
+
+    #[deriving_eq]
     pub enum Flag {
         FlagLeftJustify,
         FlagLeftZeroPad,
@@ -122,6 +129,8 @@ pub mod ct {
         FlagSignAlways,
         FlagAlternate,
     }
+
+    #[deriving_eq]
     pub enum Count {
         CountIs(uint),
         CountIsParam(uint),
@@ -129,204 +138,324 @@ pub mod ct {
         CountImplied,
     }
 
-    // A formatted conversion from an expression to a string
-    pub type Conv =
-        {param: Option<uint>,
-         flags: ~[Flag],
-         width: Count,
-         precision: Count,
-         ty: Ty};
+    #[deriving_eq]
+    struct Parsed<T> {
+        val: T,
+        next: uint
+    }
 
+    impl<T> Parsed<T> {
+        static pure fn new(val: T, next: uint) -> Parsed<T> {
+            Parsed {val: val, next: next}
+        }
+    }
+
+    // A formatted conversion from an expression to a string
+    #[deriving_eq]
+    pub struct Conv {
+        param: Option<uint>,
+        flags: ~[Flag],
+        width: Count,
+        precision: Count,
+        ty: Ty
+    }
 
     // A fragment of the output sequence
+    #[deriving_eq]
     pub enum Piece { PieceString(~str), PieceConv(Conv), }
-    pub type ErrorFn = fn@(&str) -> ! ;
+
+    pub type ErrorFn = @fn(&str) -> !;
 
     pub fn parse_fmt_string(s: &str, err: ErrorFn) -> ~[Piece] {
-        let mut pieces: ~[Piece] = ~[];
-        let lim = str::len(s);
-        let mut buf = ~"";
-        fn flush_buf(buf: ~str, pieces: &mut ~[Piece]) -> ~str {
-            if buf.len() > 0 {
-                let piece = PieceString(move buf);
-                pieces.push(move piece);
+        fn push_slice(ps: &mut ~[Piece], s: &str, from: uint, to: uint) {
+            if to > from {
+                ps.push(PieceString(s.slice(from, to)));
             }
-            return ~"";
         }
+
+        let lim = s.len();
+        let mut h = 0;
         let mut i = 0;
+        let mut pieces = ~[];
+
         while i < lim {
-            let size = str::utf8_char_width(s[i]);
-            let curr = str::slice(s, i, i+size);
-            if curr == ~"%" {
+            if s[i] == '%' as u8 {
                 i += 1;
+
                 if i >= lim {
                     err(~"unterminated conversion at end of string");
-                }
-                let curr2 = str::slice(s, i, i+1);
-                if curr2 == ~"%" {
-                    buf += curr2;
+                } else if s[i] == '%' as u8 {
+                    push_slice(&mut pieces, s, h, i);
                     i += 1;
                 } else {
-                    buf = flush_buf(move buf, &mut pieces);
-                    let rs = parse_conversion(s, i, lim, err);
-                    pieces.push(copy rs.piece);
-                    i = rs.next;
+                    push_slice(&mut pieces, s, h, i - 1);
+                    let Parsed {val, next} = parse_conversion(s, i, lim, err);
+                    pieces.push(val);
+                    i = next;
                 }
-            } else { buf += curr; i += size; }
+
+                h = i;
+            } else {
+                i += str::utf8_char_width(s[i]);
+            }
         }
-        flush_buf(move buf, &mut pieces);
-        move pieces
+
+        push_slice(&mut pieces, s, h, i);
+        pieces
     }
-    pub fn peek_num(s: &str, i: uint, lim: uint) ->
-       Option<{num: uint, next: uint}> {
-        let mut j = i;
-        let mut accum = 0u;
+
+    pub fn peek_num(s: &str, i: uint, lim: uint) -> Option<Parsed<uint>> {
+        let mut i = i;
+        let mut accum = 0;
         let mut found = false;
-        while j < lim {
-            match char::to_digit(s[j] as char, 10) {
+
+        while i < lim {
+            match char::to_digit(s[i] as char, 10) {
                 Some(x) => {
                     found = true;
                     accum *= 10;
                     accum += x;
-                    j += 1;
-                },
+                    i += 1;
+                }
                 None => break
             }
         }
+
         if found {
-            Some({num: accum, next: j})
+            Some(Parsed::new(accum, i))
         } else {
             None
         }
     }
-    pub fn parse_conversion(s: &str, i: uint, lim: uint,
-                            err: ErrorFn) ->
-       {piece: Piece, next: uint} {
-        let parm = parse_parameter(s, i, lim);
-        let flags = parse_flags(s, parm.next, lim);
-        let width = parse_count(s, flags.next, lim);
+
+    pub fn parse_conversion(s: &str, i: uint, lim: uint, err: ErrorFn) ->
+        Parsed<Piece> {
+        let param = parse_parameter(s, i, lim);
+        // avoid copying ~[Flag] by destructuring
+        let Parsed {val: flags_val, next: flags_next} = parse_flags(s,
+            param.next, lim);
+        let width = parse_count(s, flags_next, lim);
         let prec = parse_precision(s, width.next, lim);
         let ty = parse_type(s, prec.next, lim, err);
-        return {piece:
-                 PieceConv({param: parm.param,
-                             flags: copy flags.flags,
-                             width: width.count,
-                             precision: prec.count,
-                             ty: ty.ty}),
-             next: ty.next};
+
+        Parsed::new(PieceConv(Conv {
+            param: param.val,
+            flags: flags_val,
+            width: width.val,
+            precision: prec.val,
+            ty: ty.val}), ty.next)
     }
+
     pub fn parse_parameter(s: &str, i: uint, lim: uint) ->
-       {param: Option<uint>, next: uint} {
-        if i >= lim { return {param: None, next: i}; }
-        let num = peek_num(s, i, lim);
-        return match num {
-              None => {param: None, next: i},
-              Some(t) => {
-                let n = t.num;
-                let j = t.next;
-                if j < lim && s[j] == '$' as u8 {
-                    {param: Some(n), next: j + 1}
-                } else { {param: None, next: i} }
-              }
-            };
-    }
-    pub fn parse_flags(s: &str, i: uint, lim: uint) ->
-       {flags: ~[Flag], next: uint} {
-        let noflags: ~[Flag] = ~[];
-        if i >= lim { return {flags: move noflags, next: i}; }
+        Parsed<Option<uint>> {
+        if i >= lim { return Parsed::new(None, i); }
 
-        fn more(f: Flag, s: &str, i: uint, lim: uint) ->
-           {flags: ~[Flag], next: uint} {
-            let next = parse_flags(s, i + 1u, lim);
-            let rest = copy next.flags;
-            let j = next.next;
-            let curr: ~[Flag] = ~[f];
-            return {flags: vec::append(move curr, rest), next: j};
+        match peek_num(s, i, lim) {
+            Some(num) if num.next < lim && s[num.next] == '$' as u8 =>
+                Parsed::new(Some(num.val), num.next + 1),
+            _ => Parsed::new(None, i)
         }
-        // Unfortunate, but because s is borrowed, can't use a closure
-     //   fn more(f: Flag, s: &str) { more_(f, s, i, lim); }
-        let f = s[i];
-        return if f == '-' as u8 {
-                more(FlagLeftJustify, s, i, lim)
-            } else if f == '0' as u8 {
-                more(FlagLeftZeroPad, s, i, lim)
-            } else if f == ' ' as u8 {
-                more(FlagSpaceForSign, s, i, lim)
-            } else if f == '+' as u8 {
-                more(FlagSignAlways, s, i, lim)
-            } else if f == '#' as u8 {
-                more(FlagAlternate, s, i, lim)
-            } else { {flags: move noflags, next: i} };
     }
-        pub fn parse_count(s: &str, i: uint, lim: uint)
-        -> {count: Count, next: uint} {
-        return if i >= lim {
-                {count: CountImplied, next: i}
-            } else if s[i] == '*' as u8 {
-                let param = parse_parameter(s, i + 1, lim);
-                let j = param.next;
-                match param.param {
-                  None => {count: CountIsNextParam, next: j},
-                  Some(n) => {count: CountIsParam(n), next: j}
-                }
-            } else {
-                let num = peek_num(s, i, lim);
-                match num {
-                  None => {count: CountImplied, next: i},
-                  Some(num) => {
-                    count: CountIs(num.num),
-                    next: num.next
-                  }
-                }
+
+    pub fn parse_flags(s: &str, i: uint, lim: uint) -> Parsed<~[Flag]> {
+        let mut i = i;
+        let mut flags = ~[];
+
+        while i < lim {
+            let f = match s[i] {
+                '-' as u8 => FlagLeftJustify,
+                '0' as u8 => FlagLeftZeroPad,
+                ' ' as u8 => FlagSpaceForSign,
+                '+' as u8 => FlagSignAlways,
+                '#' as u8 => FlagAlternate,
+                _ => break
             };
-    }
-    pub fn parse_precision(s: &str, i: uint, lim: uint) ->
-       {count: Count, next: uint} {
-        return if i >= lim {
-                {count: CountImplied, next: i}
-            } else if s[i] == '.' as u8 {
-                let count = parse_count(s, i + 1u, lim);
 
+            flags.push(f);
+            i += 1;
+        }
 
-                // If there were no digits specified, i.e. the precision
-                // was ".", then the precision is 0
-                match count.count {
-                  CountImplied => {count: CountIs(0), next: count.next},
-                  _ => count
-                }
-            } else { {count: CountImplied, next: i} };
+        Parsed::new(flags, i)
     }
+
+    pub fn parse_count(s: &str, i: uint, lim: uint) -> Parsed<Count> {
+        if i >= lim {
+            Parsed::new(CountImplied, i)
+        } else if s[i] == '*' as u8 {
+            let param = parse_parameter(s, i + 1, lim);
+            let j = param.next;
+
+            match param.val {
+                None => Parsed::new(CountIsNextParam, j),
+                Some(n) => Parsed::new(CountIsParam(n), j)
+            }
+        } else {
+            match peek_num(s, i, lim) {
+                None => Parsed::new(CountImplied, i),
+                Some(num) => Parsed::new(CountIs(num.val), num.next)
+            }
+        }
+    }
+
+    pub fn parse_precision(s: &str, i: uint, lim: uint) -> Parsed<Count> {
+        if i < lim && s[i] == '.' as u8 {
+            let count = parse_count(s, i + 1, lim);
+
+            // If there were no digits specified, i.e. the precision
+            // was ".", then the precision is 0
+            match count.val {
+                CountImplied => Parsed::new(CountIs(0), count.next),
+                _ => count
+            }
+        } else {
+            Parsed::new(CountImplied, i)
+        }
+    }
+
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
-       {ty: Ty, next: uint} {
+        Parsed<Ty> {
         if i >= lim { err(~"missing type in conversion"); }
-        let tstr = str::slice(s, i, i+1u);
+
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
-        let t =
-            if tstr == ~"b" {
-                TyBool
-            } else if tstr == ~"s" {
-                TyStr
-            } else if tstr == ~"c" {
-                TyChar
-            } else if tstr == ~"d" || tstr == ~"i" {
-                TyInt(Signed)
-            } else if tstr == ~"u" {
-                TyInt(Unsigned)
-            } else if tstr == ~"x" {
-                TyHex(CaseLower)
-            } else if tstr == ~"X" {
-                TyHex(CaseUpper)
-            } else if tstr == ~"t" {
-                TyBits
-            } else if tstr == ~"o" {
-                TyOctal
-            } else if tstr == ~"f" {
-                TyFloat
-            } else if tstr == ~"?" {
-                TyPoly
-            } else { err(~"unknown type in conversion: " + tstr) };
-        return {ty: t, next: i + 1u};
+        let t = match s[i] {
+            'b' as u8 => TyBool,
+            's' as u8 => TyStr,
+            'c' as u8 => TyChar,
+            'd' as u8 | 'i' as u8 => TyInt(Signed),
+            'u' as u8 => TyInt(Unsigned),
+            'x' as u8 => TyHex(CaseLower),
+            'X' as u8 => TyHex(CaseUpper),
+            't' as u8 => TyBits,
+            'o' as u8 => TyOctal,
+            'f' as u8 => TyFloat,
+            '?' as u8 => TyPoly,
+            _ => err(~"unknown type in conversion: " + s.substr(i, 1))
+        };
+
+        Parsed::new(t, i + 1)
+    }
+
+    #[cfg(test)]
+    fn die(s: &str) -> ! { fail s.to_owned() }
+
+    #[test]
+    fn test_parse_count() {
+        fn test(s: &str, count: Count, next: uint) -> bool {
+            parse_count(s, 0, s.len()) == Parsed::new(count, next)
+        }
+
+        assert test("", CountImplied, 0);
+        assert test("*", CountIsNextParam, 1);
+        assert test("*1", CountIsNextParam, 1);
+        assert test("*1$", CountIsParam(1), 3);
+        assert test("123", CountIs(123), 3);
+    }
+
+    #[test]
+    fn test_parse_flags() {
+        fn pack(fs: &[Flag]) -> uint {
+            fs.foldl(0, |&p, &f| p | (1 << f as uint))
+        }
+
+        fn test(s: &str, flags: &[Flag], next: uint) {
+            let f = parse_flags(s, 0, s.len());
+            assert pack(f.val) == pack(flags);
+            assert f.next == next;
+        }
+
+        test("", [], 0);
+        test("!#-+ 0", [], 0);
+        test("#-+", [FlagAlternate, FlagLeftJustify, FlagSignAlways], 3);
+        test(" 0", [FlagSpaceForSign, FlagLeftZeroPad], 2);
+    }
+
+    #[test]
+    fn test_parse_fmt_string() {
+        assert parse_fmt_string("foo %s bar", die) == ~[
+            PieceString(~"foo "),
+            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
+                            precision: CountImplied, ty: TyStr}),
+            PieceString(~" bar")];
+
+        assert parse_fmt_string("%s", die) == ~[
+            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
+                            precision: CountImplied, ty: TyStr })];
+
+        assert parse_fmt_string("%%%%", die) == ~[
+            PieceString(~"%"), PieceString(~"%")];
+    }
+
+    #[test]
+    fn test_parse_parameter() {
+        fn test(s: &str, param: Option<uint>, next: uint) -> bool {
+            parse_parameter(s, 0, s.len()) == Parsed::new(param, next)
+        }
+
+        assert test("", None, 0);
+        assert test("foo", None, 0);
+        assert test("123", None, 0);
+        assert test("123$", Some(123), 4);
+    }
+
+    #[test]
+    fn test_parse_precision() {
+        fn test(s: &str, count: Count, next: uint) -> bool {
+            parse_precision(s, 0, s.len()) == Parsed::new(count, next)
+        }
+
+        assert test("", CountImplied, 0);
+        assert test(".", CountIs(0), 1);
+        assert test(".*", CountIsNextParam, 2);
+        assert test(".*1", CountIsNextParam, 2);
+        assert test(".*1$", CountIsParam(1), 4);
+        assert test(".123", CountIs(123), 4);
+    }
+
+    #[test]
+    fn test_parse_type() {
+        fn test(s: &str, ty: Ty) -> bool {
+            parse_type(s, 0, s.len(), die) == Parsed::new(ty, 1)
+        }
+
+        assert test("b", TyBool);
+        assert test("c", TyChar);
+        assert test("d", TyInt(Signed));
+        assert test("f", TyFloat);
+        assert test("i", TyInt(Signed));
+        assert test("o", TyOctal);
+        assert test("s", TyStr);
+        assert test("t", TyBits);
+        assert test("x", TyHex(CaseLower));
+        assert test("X", TyHex(CaseUpper));
+        assert test("?", TyPoly);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_parse_type_missing() {
+        parse_type("", 0, 0, die);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_parse_type_unknown() {
+        parse_type("!", 0, 1, die);
+    }
+
+    #[test]
+    fn test_peek_num() {
+        let s1 = "";
+        assert peek_num(s1, 0, s1.len()).is_none();
+
+        let s2 = "foo";
+        assert peek_num(s2, 0, s2.len()).is_none();
+
+        let s3 = "123";
+        assert peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3));
+
+        let s4 = "123foo";
+        assert peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3));
     }
 }
 
