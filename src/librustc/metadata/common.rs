@@ -139,5 +139,17 @@ const tag_item_trait_method_sort: uint = 0x70;
 
 const tag_item_impl_type_basename: uint = 0x71;
 
+// Language items are a top-level directory (for speed). Hierarchy:
+//
+// tag_lang_items
+// - tag_lang_items_item
+//   - tag_lang_items_item_id: u32
+//   - tag_lang_items_item_node_id: u32
+
+const tag_lang_items: uint = 0x72;
+const tag_lang_items_item: uint = 0x73;
+const tag_lang_items_item_id: uint = 0x74;
+const tag_lang_items_item_node_id: uint = 0x75;
+
 type link_meta = {name: ~str, vers: ~str, extras_hash: ~str};
 
