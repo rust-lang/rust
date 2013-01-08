@@ -15,10 +15,10 @@ use extract;
 use core::vec;
 
 /// A single operation on the document model
-pub type Pass = {
+pub struct Pass {
     name: ~str,
     f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc
-};
+}
 
 pub fn run_passes(
     srv: astsrv::Srv,
@@ -79,11 +79,11 @@ fn test_run_passes() {
     let source = ~"";
     do astsrv::from_str(source) |srv| {
         let passes = ~[
-            {
+            Pass {
                 name: ~"",
                 f: pass1
             },
-            {
+            Pass {
                 name: ~"",
                 f: pass2
             }

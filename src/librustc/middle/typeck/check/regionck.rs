@@ -118,12 +118,12 @@ fn regionck_fn(fcx: @fn_ctxt,
 }
 
 fn regionck_visitor() -> rvt {
-    visit::mk_vt(@{visit_item: visit_item,
-                   visit_stmt: visit_stmt,
-                   visit_expr: visit_expr,
-                   visit_block: visit_block,
-                   visit_local: visit_local,
-                   .. *visit::default_visitor()})
+    visit::mk_vt(@visit::Visitor {visit_item: visit_item,
+                                  visit_stmt: visit_stmt,
+                                  visit_expr: visit_expr,
+                                  visit_block: visit_block,
+                                  visit_local: visit_local,
+                                  .. *visit::default_visitor()})
 }
 
 fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {

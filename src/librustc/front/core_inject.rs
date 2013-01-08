@@ -41,7 +41,7 @@ fn inject_libcore_ref(sess: Session,
         return {node: x, span: dummy_sp()};
     }
 
-    let precursor = @{
+    let precursor = @fold::AstFoldFns {
         fold_crate: |crate, span, fld| {
             let n1 = sess.next_node_id();
             let vi1 = @{node: ast::view_item_use(sess.ident_of(~"core"),

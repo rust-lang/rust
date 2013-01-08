@@ -81,11 +81,11 @@ fn check_loans(bccx: borrowck_ctxt,
                                  reported: HashMap(),
                                  mut declared_purity: ast::impure_fn,
                                  mut fn_args: @~[]});
-    let vt = visit::mk_vt(@{visit_expr: check_loans_in_expr,
-                            visit_local: check_loans_in_local,
-                            visit_block: check_loans_in_block,
-                            visit_fn: check_loans_in_fn,
-                            .. *visit::default_visitor()});
+    let vt = visit::mk_vt(@visit::Visitor {visit_expr: check_loans_in_expr,
+                                           visit_local: check_loans_in_local,
+                                           visit_block: check_loans_in_block,
+                                           visit_fn: check_loans_in_fn,
+                                           .. *visit::default_visitor()});
     visit::visit_crate(*crate, clcx, vt);
 }
 

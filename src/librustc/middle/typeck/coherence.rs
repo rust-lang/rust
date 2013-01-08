@@ -48,6 +48,7 @@ use syntax::codemap::span;
 use syntax::parse;
 use syntax::visit::{default_simple_visitor, default_visitor};
 use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
+use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
@@ -196,7 +197,7 @@ impl CoherenceChecker {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        visit_crate(*crate, (), mk_simple_visitor(@{
+        visit_crate(*crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 debug!("(checking coherence) item '%s'",
                        self.crate_context.tcx.sess.str_of(item.ident));
@@ -585,7 +586,7 @@ impl CoherenceChecker {
 
     // Privileged scope checking
     fn check_privileged_scopes(crate: @crate) {
-        visit_crate(*crate, (), mk_vt(@{
+        visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
                 match /*bad*/copy item.node {
                     item_mod(module_) => {

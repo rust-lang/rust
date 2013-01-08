@@ -24,7 +24,7 @@ use syntax::ast;
 export mk_pass;
 
 fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"prune_private",
         f: run
     }

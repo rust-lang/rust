@@ -26,7 +26,7 @@ use syntax::print::pprust;
 use syntax::ast_map;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"tystr",
         f: run
     }

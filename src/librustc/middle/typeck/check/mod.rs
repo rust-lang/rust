@@ -243,7 +243,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 }
 
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
-    let visit = visit::mk_simple_visitor(@{
+    let visit = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
     });
@@ -481,12 +481,13 @@ fn check_fn(ccx: @crate_ctxt,
         }
         fn visit_item(_i: @ast::item, &&_e: (), _v: visit::vt<()>) { }
 
-        let visit = visit::mk_vt(@{visit_local: visit_local,
-                                   visit_pat: visit_pat,
-                                   visit_fn: visit_fn,
-                                   visit_item: visit_item,
-                                   visit_block: visit_block,
-                                   .. *visit::default_visitor()});
+        let visit = visit::mk_vt(
+            @visit::Visitor {visit_local: visit_local,
+                             visit_pat: visit_pat,
+                             visit_fn: visit_fn,
+                             visit_item: visit_item,
+                             visit_block: visit_block,
+                             ..*visit::default_visitor()});
 
         (visit.visit_block)(body, (), visit);
     }

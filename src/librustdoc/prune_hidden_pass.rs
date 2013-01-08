@@ -21,7 +21,7 @@ use core::vec;
 use std::map::HashMap;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"prune_hidden",
         f: run
     }

@@ -90,8 +90,9 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
             }
         };
 
-    let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr,
-                           .. *visit::default_visitor()});
+    let v = visit::mk_vt(@visit::Visitor {visit_item: ignore_item,
+                                          visit_expr: walk_expr,
+                                          .. *visit::default_visitor()});
     (v.visit_block)(blk, 1, v);
     return @/*bad*/copy *refs;
 }
@@ -112,8 +113,9 @@ fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
     };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn: walk_fn,
-                                   .. *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_fn: walk_fn,
+            .. *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 
     return freevars;

@@ -340,7 +340,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
 }
 
 fn handle_body(cx: ctx, body: blk) {
-    let v = visit::mk_vt(@{
+    let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, cx, v| {
             visit::visit_expr(e, cx, v);
             mark_for_expr(cx, e);
