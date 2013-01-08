@@ -23,7 +23,7 @@ extern mod zed {
 extern mod libc {
     #[legacy_exports];
     fn write(fd: int, buf: *u8,
-             count: core::libc::size_t) -> core::libc::ssize_t;
+             count: ::core::libc::size_t) -> ::core::libc::ssize_t;
 }
 
 #[abi = "cdecl"]

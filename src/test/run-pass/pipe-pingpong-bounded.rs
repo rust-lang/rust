@@ -18,8 +18,8 @@
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
 mod pingpong {
-    use core::pipes::*;
-    use core::ptr;
+    use ::core::pipes::*;
+    use ::core::ptr;
 
     pub type packets = {
         ping: Packet<ping>,
@@ -43,7 +43,7 @@ mod pingpong {
     pub enum ping = server::pong;
     pub enum pong = client::ping;
     pub mod client {
-        use core::ptr;
+        use ::core::ptr;
 
         pub fn ping(+pipe: ping) -> pong {
             {
@@ -61,7 +61,7 @@ mod pingpong {
                                                   ::pingpong::packets>;
     }
     pub mod server {
-        use core::ptr;
+        use ::core::ptr;
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,
         ::pingpong::packets>;
