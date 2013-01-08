@@ -904,7 +904,7 @@ impl &mem_categorization_ctxt {
         //     local(x)->@->@
         //
         // where the id of `local(x)` is the id of the `x` that appears
-        // in the alt, the id of `local(x)->@` is the `@y` pattern,
+        // in the match, the id of `local(x)->@` is the `@y` pattern,
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
 

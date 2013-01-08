@@ -158,7 +158,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
                  cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_match(*) => {
-            fmt!("<alt at %s>",
+            fmt!("<match at %s>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_assign_op(*) |

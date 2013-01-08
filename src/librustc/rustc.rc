@@ -77,7 +77,7 @@ mod middle {
         #[legacy_exports]
         mod base;
         #[legacy_exports]
-        mod alt;
+        mod _match;
         #[legacy_exports]
         mod uniq;
         #[legacy_exports]
@@ -109,7 +109,7 @@ mod middle {
     #[legacy_exports]
     mod check_loop;
     #[legacy_exports]
-    mod check_alt;
+    mod check_match;
     #[legacy_exports]
     mod check_const;
     #[legacy_exports]

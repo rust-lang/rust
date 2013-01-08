@@ -85,7 +85,7 @@ use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
-use middle::typeck::check::alt::pat_ctxt;
+use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
@@ -117,7 +117,7 @@ use syntax::print::pprust;
 use syntax::visit;
 use syntax;
 
-export alt;
+export _match;
 export vtable;
 export writeback;
 export regionmanip;
@@ -133,7 +133,7 @@ export DoDerefArgs;
 export check_item_types;
 
 #[legacy_exports]
-pub mod alt;
+pub mod _match;
 #[legacy_exports]
 pub mod vtable;
 #[legacy_exports]
@@ -427,10 +427,10 @@ fn check_fn(ccx: @crate_ctxt,
             let pcx = pat_ctxt {
                 fcx: fcx,
                 map: pat_id_map(tcx.def_map, input.pat),
-                alt_region: region,
+                match_region: region,
                 block_region: region,
             };
-            alt::check_pat(pcx, input.pat, *arg_ty);
+            _match::check_pat(pcx, input.pat, *arg_ty);
         }
 
         // Add explicitly-declared locals.
@@ -2124,7 +2124,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = !may_break(tcx, expr.id, (*body));
       }
       ast::expr_match(discrim, ref arms) => {
-        bot = alt::check_alt(fcx, expr, discrim, (/*bad*/copy *arms));
+        bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
       ast::expr_fn(proto, ref decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, Some(proto),
@@ -2517,10 +2517,10 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),
-        alt_region: region,
+        match_region: region,
         block_region: region,
     };
-    alt::check_pat(pcx, local.node.pat, t);
+    _match::check_pat(pcx, local.node.pat, t);
     return bot;
 }
 

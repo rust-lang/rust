@@ -266,7 +266,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let fname = /*bad*/copy start.file.name;
     let end = cx.sess().codemap.lookup_char_pos(sp.hi);
     let tg = LexicalBlockTag;
-    /*alt cached_metadata::<@metadata<block_md>>(
+    /*match cached_metadata::<@metadata<block_md>>(
         cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
       option::Some(md) { return md; }
