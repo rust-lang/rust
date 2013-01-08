@@ -853,6 +853,21 @@ pub pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
  * Apply function `f` to each element of `v` and return a vector containing
  * only those elements for which `f` returned true.
  */
+pub fn filter<T>(v: ~[T], f: fn(t: &T) -> bool) -> ~[T] {
+    let mut result = ~[];
+    do v.consume |_, elem| {
+        if f(&elem) { result.push(elem); }
+    }
+    result
+}
+
+/**
+ * Construct a new vector from the elements of a vector for which some
+ * predicate holds.
+ *
+ * Apply function `f` to each element of `v` and return a vector containing
+ * only those elements for which `f` returned true.
+ */
 pub pure fn filtered<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
@@ -1805,6 +1820,7 @@ pub trait OwnedVector<T> {
     fn truncate(&mut self, newlen: uint);
     fn retain(&mut self, f: pure fn(t: &T) -> bool);
     fn consume(self, f: fn(uint, v: T));
+    fn filter(self, f: fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: pure fn(&T) -> bool) -> (~[T], ~[T]);
 }
 
@@ -1862,6 +1878,11 @@ impl<T> ~[T]: OwnedVector<T> {
     #[inline]
     fn consume(self, f: fn(uint, v: T)) {
         consume(self, f)
+    }
+
+    #[inline]
+    fn filter(self, f: fn(&T) -> bool) -> ~[T] {
+        filter(self, f)
     }
 
     /**
