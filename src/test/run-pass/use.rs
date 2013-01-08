@@ -21,7 +21,7 @@ use x = zed::str;
 mod baz {
     #[legacy_exports];
     use bar::str;
-    use x = ::core::str;
+    use x = core::str;
 }
 
 fn main() { }
