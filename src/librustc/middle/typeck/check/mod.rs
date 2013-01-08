@@ -1091,6 +1091,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
                   let supplied_arg_count = args.len();
 
+                  bot |= ty::type_is_bot(fn_ty.sig.output);
+
                   // Grab the argument types, supplying fresh type variables
                   // if the wrong number of arguments were supplied
                   let expected_arg_count = fn_ty.sig.inputs.len();
@@ -1218,7 +1220,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Pull the return type out of the type of the function.
         match structure_of(fcx, sp, fty) {
           ty::ty_fn(ref f) => {
-              bot |= (f.meta.ret_style == ast::noreturn);
               fcx.write_ty(call_expr_id, f.sig.output);
               return bot;
           }
@@ -3078,8 +3079,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                           proto: ast::ProtoBorrowed,
                           onceness: ast::Once,
                           region: ty::re_bound(ty::br_anon(0)),
-                          bounds: @~[],
-                          ret_style: ast::return_val},
+                          bounds: @~[]},
             sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
                                    ty: ty::mk_imm_ptr(
                                        ccx.tcx,
@@ -3291,8 +3291,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                       proto: ast::ProtoBare,
                       onceness: ast::Many,
                       region: ty::re_static,
-                      bounds: @~[],
-                      ret_style: ast::return_val},
+                      bounds: @~[]},
         sig: FnSig {inputs: inputs,
                     output: output}
     });

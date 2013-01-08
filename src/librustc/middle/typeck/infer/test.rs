@@ -181,8 +181,7 @@ impl Env {
                           proto: ast::ProtoBare,
                           onceness: ast::Many,
                           region: ty::re_static,
-                          bounds: @~[],
-                          ret_style: ast::return_val},
+                          bounds: @~[]},
             sig: FnSig {inputs: move inputs,
                         output: output_ty}
         })

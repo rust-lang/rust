@@ -493,11 +493,10 @@ fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
 fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
                          nt: scalar_type, op: ast::binop) -> ValueRef {
     let _icx = cx.insn_ctxt("compare_scalar_values");
-    fn die_(cx: block) -> ! {
+    fn die(cx: block) -> ! {
         cx.tcx().sess.bug(~"compare_scalar_values: must be a\
           comparison operator");
     }
-    let die = fn@() -> ! { die_(cx) };
     match nt {
       nil_type => {
         // We don't need to do actual comparisons for nil.
@@ -506,7 +505,7 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
           ast::eq | ast::le | ast::ge => return C_bool(true),
           ast::ne | ast::lt | ast::gt => return C_bool(false),
           // refinements would be nice
-          _ => die()
+          _ => die(cx)
         }
       }
       floating_point => {
@@ -517,7 +516,7 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
           ast::le => lib::llvm::RealOLE,
           ast::gt => lib::llvm::RealOGT,
           ast::ge => lib::llvm::RealOGE,
-          _ => die()
+          _ => die(cx)
         };
         return FCmp(cx, cmp, lhs, rhs);
       }
@@ -529,7 +528,7 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
           ast::le => lib::llvm::IntSLE,
           ast::gt => lib::llvm::IntSGT,
           ast::ge => lib::llvm::IntSGE,
-          _ => die()
+          _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
       }
@@ -541,7 +540,7 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
           ast::le => lib::llvm::IntULE,
           ast::gt => lib::llvm::IntUGT,
           ast::ge => lib::llvm::IntUGE,
-          _ => die()
+          _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
       }

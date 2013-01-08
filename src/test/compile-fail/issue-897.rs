@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() -> ! {
-    return 42i; //~ ERROR expected `_|_` but found `int`
+    return 42i; //~ ERROR expected `!` but found `int`
     fail; //~ WARNING unreachable statement
 }
 fn main() { }

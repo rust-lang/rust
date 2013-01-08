@@ -507,8 +507,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
                           proto: ast_proto,
                           onceness: onceness,
                           region: bound_region,
-                          bounds: bounds,
-                          ret_style: decl.cf},
+                          bounds: bounds},
             sig: FnSig {inputs: input_tys,
                         output: output_ty}
         }

@@ -580,20 +580,22 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_expr: fn@(e: @ast::expr) {
-            match e.node {
-                ast::expr_binary(ref binop, @ref l, @ref r) => {
-                    if is_comparison(*binop)
-                       && !check_limits(cx, *binop, l, r) {
-                        cx.sess.span_lint(
-                            type_limits, e.id, it.id, e.span,
-                            ~"comparison is useless due to type limits");
-                    }
+    let visit_expr: @fn(@ast::expr) = |e| {
+        match e.node {
+            ast::expr_binary(ref binop, @ref l, @ref r) => {
+                if is_comparison(*binop)
+                    && !check_limits(cx, *binop, l, r) {
+                    cx.sess.span_lint(
+                        type_limits, e.id, it.id, e.span,
+                        ~"comparison is useless due to type limits");
                 }
-                _ => ()
             }
-        },
+            _ => ()
+        }
+    };
+
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
+        visit_expr: visit_expr,
         .. *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);

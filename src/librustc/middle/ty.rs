@@ -116,7 +116,7 @@ export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, FnTy, FnTyBase, FnMeta, FnSig, mk_fn;
-export ty_fn_proto, ty_fn_purity, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
+export ty_fn_proto, ty_fn_purity, ty_fn_ret, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export mk_f32, mk_f64;
@@ -219,7 +219,6 @@ export terr_regions_not_same, terr_regions_no_overlap;
 export terr_regions_insufficiently_polymorphic;
 export terr_regions_overly_polymorphic;
 export terr_proto_mismatch;
-export terr_ret_style_mismatch;
 export terr_fn, terr_trait;
 export purity_to_str;
 export onceness_to_str;
@@ -517,15 +516,13 @@ pure fn type_id(t: t) -> uint { get(t).id }
  * - `onceness` indicates whether the function can be called one time or many
  *   times.
  * - `region` is the region bound on the function's upvars (often &static).
- * - `bounds` is the parameter bounds on the function's upvars.
- * - `ret_style` indicates whether the function returns a value or fails. */
+ * - `bounds` is the parameter bounds on the function's upvars. */
 struct FnMeta {
     purity: ast::purity,
     proto: ast::Proto,
     onceness: ast::Onceness,
     region: Region,
-    bounds: @~[param_bound],
-    ret_style: ret_style
+    bounds: @~[param_bound]
 }
 
 /**
@@ -695,7 +692,6 @@ struct expected_found<T> {
 // Data structures used in type unification
 enum type_err {
     terr_mismatch,
-    terr_ret_style_mismatch(expected_found<ast::ret_style>),
     terr_purity_mismatch(expected_found<purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_mutability,
@@ -2819,11 +2815,10 @@ impl arg : to_bytes::IterBytes {
 
 impl FnMeta : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_5(&self.purity,
+        to_bytes::iter_bytes_4(&self.purity,
                                &self.proto,
                                &self.region,
                                &self.bounds,
-                               &self.ret_style,
                                lsb0, f);
     }
 }
@@ -2966,13 +2961,6 @@ pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
       ty_fn(ref f) => f.sig.output,
       _ => fail ~"ty_fn_ret() called on non-fn type"
-    }
-}
-
-fn ty_fn_ret_style(fty: t) -> ast::ret_style {
-    match get(fty).sty {
-      ty_fn(ref f) => f.meta.ret_style,
-      _ => fail ~"ty_fn_ret_style() called on non-fn type"
     }
 }
 
@@ -3435,17 +3423,6 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
 
     match *err {
         terr_mismatch => ~"types differ",
-        terr_ret_style_mismatch(values) => {
-            fn to_str(s: ast::ret_style) -> ~str {
-                match s {
-                    ast::noreturn => ~"non-returning",
-                    ast::return_val => ~"return-by-value"
-                }
-            }
-            fmt!("expected %s function, found %s function",
-                 to_str(values.expected),
-                 to_str(values.expected))
-        }
         terr_purity_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
                  purity_to_str(values.expected),
@@ -4406,8 +4383,7 @@ impl FnMeta : cmp::Eq {
     pure fn eq(&self, other: &FnMeta) -> bool {
         (*self).purity == (*other).purity &&
         (*self).proto == (*other).proto &&
-        (*self).bounds == (*other).bounds &&
-        (*self).ret_style == (*other).ret_style
+        (*self).bounds == (*other).bounds
     }
     pure fn ne(&self, other: &FnMeta) -> bool { !(*self).eq(other) }
 }
