@@ -190,7 +190,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         }
     };
 
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_mod: |the_module, span, node_id, method_map, visitor| {
             let n_added = add_privileged_items(the_module.items);
 

@@ -17,7 +17,7 @@ use codemap::span;
 use core::option;
 use core::vec;
 
-export ast_fold_precursor;
+export ast_fold_fns;
 export ast_fold;
 export default_ast_fold;
 export make_fold;
@@ -34,6 +34,7 @@ export fold_ty_param;
 export fold_ty_params;
 export fold_fn_decl;
 export extensions;
+export AstFoldFns;
 
 trait ast_fold {
     fn fold_crate(crate) -> crate;
@@ -63,7 +64,7 @@ trait ast_fold {
 
 // We may eventually want to be able to fold over type parameters, too
 
-type ast_fold_precursor = @{
+struct AstFoldFns {
     //unlike the others, item_ is non-trivial
     fold_crate: fn@(crate_, span, ast_fold) -> (crate_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
@@ -87,7 +88,10 @@ type ast_fold_precursor = @{
     fold_local: fn@(local_, span, ast_fold) -> (local_, span),
     map_exprs: fn@(fn@(&&v: @expr) -> @expr, ~[@expr]) -> ~[@expr],
     new_id: fn@(node_id) -> node_id,
-    new_span: fn@(span) -> span};
+    new_span: fn@(span) -> span
+}
+
+type ast_fold_fns = @AstFoldFns;
 
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
@@ -631,8 +635,8 @@ fn noop_id(i: node_id) -> node_id { return i; }
 
 fn noop_span(sp: span) -> span { return sp; }
 
-fn default_ast_fold() -> ast_fold_precursor {
-    return @{fold_crate: wrap(noop_fold_crate),
+fn default_ast_fold() -> ast_fold_fns {
+    return @AstFoldFns {fold_crate: wrap(noop_fold_crate),
           fold_view_item: noop_fold_view_item,
           fold_foreign_item: noop_fold_foreign_item,
           fold_item: noop_fold_item,
@@ -657,7 +661,7 @@ fn default_ast_fold() -> ast_fold_precursor {
           new_span: noop_span};
 }
 
-impl ast_fold_precursor: ast_fold {
+impl ast_fold_fns: ast_fold {
     /* naturally, a macro to write these would be nice */
     fn fold_crate(c: crate) -> crate {
         let (n, s) = (self.fold_crate)(c.node, c.span, self as ast_fold);
@@ -763,7 +767,7 @@ impl ast_fold {
     }
 }
 
-fn make_fold(afp: ast_fold_precursor) -> ast_fold {
+fn make_fold(afp: ast_fold_fns) -> ast_fold {
     afp as ast_fold
 }
 

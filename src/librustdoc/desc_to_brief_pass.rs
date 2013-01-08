@@ -29,7 +29,7 @@ use core::vec;
 use std::par;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"desc_to_brief",
         f: run
     }

@@ -16,7 +16,7 @@ use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::isr_alist;
 use util::ppaux::mt_to_str;
 
@@ -26,15 +26,15 @@ use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
-enum Lub = combine_fields;  // "subtype", "subregion" etc
+enum Lub = CombineFields;  // least-upper-bound: common supertype
 
 impl Lub {
     fn bot_ty(b: ty::t) -> cres<ty::t> { Ok(b) }
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 }
 
-impl Lub: combine {
-    fn infcx() -> infer_ctxt { self.infcx }
+impl Lub: Combine {
+    fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }
     fn span() -> span { self.span }
@@ -80,15 +80,6 @@ impl Lub: combine {
         Glb(*self).tys(a, b)
     }
 
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
-        match (p1, p2) {
-            (ast::ProtoBare, _) => Ok(p2),
-            (_, ast::ProtoBare) => Ok(p1),
-            _ if p1 == p2 => Ok(p1),
-            _ => Err(ty::terr_proto_mismatch(expected_found(&self, p1, p2)))
-        }
-    }
-
     fn purities(a: purity, b: purity) -> cres<purity> {
         match (a, b) {
           (unsafe_fn, _) | (_, unsafe_fn) => Ok(unsafe_fn),
@@ -112,15 +103,15 @@ impl Lub: combine {
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
-               a.to_str(self.infcx),
-               b.to_str(self.infcx));
+               a.inf_str(self.infcx),
+               b.inf_str(self.infcx));
 
         do indent {
             self.infcx.region_vars.lub_regions(self.span, a, b)
         }
     }
 
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
@@ -139,18 +130,18 @@ impl Lub: combine {
                 self.span, b);
 
         // Collect constraints.
-        let fn_ty0 = if_ok!(super_fns(&self, &a_with_fresh, &b_with_fresh));
-        debug!("fn_ty0 = %s", fn_ty0.to_str(self.infcx));
+        let sig0 = if_ok!(super_fn_sigs(&self, &a_with_fresh, &b_with_fresh));
+        debug!("sig0 = %s", sig0.inf_str(self.infcx));
 
-        // Generalize the regions appearing in fn_ty0 if possible
+        // Generalize the regions appearing in sig0 if possible
         let new_vars =
             self.infcx.region_vars.vars_created_since_snapshot(snapshot);
-        let fn_ty1 =
+        let sig1 =
             self.infcx.fold_regions_in_sig(
-                &fn_ty0,
+                &sig0,
                 |r, _in_fn| generalize_region(&self, snapshot, new_vars,
                                               a_isr, r));
-        return Ok(move fn_ty1);
+        return Ok(move sig1);
 
         fn generalize_region(self: &Lub,
                              snapshot: uint,
@@ -197,18 +188,22 @@ impl Lub: combine {
         }
     }
 
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+        super_fns(&self, a, b)
+    }
+
     fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
         super_fn_metas(&self, a, b)
     }
 
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        super_fn_sigs(&self, a, b)
-    }
-
     // Traits please (FIXME: #2794):
 
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        super_protos(&self, p1, p2)
+    }
+
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        lattice_tys(&self, a, b)
+        super_lattice_tys(&self, a, b)
     }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {

@@ -28,7 +28,7 @@ export mk_pass;
 export run;
 
 fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"prune_private",
         f: run
     }

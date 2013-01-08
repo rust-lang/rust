@@ -197,29 +197,16 @@ is valid.  This basically corresponds to the block nesting structure:
 the regions for outer block scopes are superregions of those for inner
 block scopes.
 
-## Integral type variables
+## Integral and floating-point type variables
 
 There is a third variety of type variable that we use only for
 inferring the types of unsuffixed integer literals.  Integral type
 variables differ from general-purpose type variables in that there's
 no subtyping relationship among the various integral types, so instead
-of associating each variable with an upper and lower bound, we
-represent the set of possible integral types it can take on with an
-`int_ty_set`, which is a bitvector with one bit for each integral
-type.  Because intersecting these sets with each other is simpler than
-merging bounds, we don't need to do so transactionally as we do for
-general-purpose type variables.
-
-We could conceivably define a subtyping relationship among integral
-types based on their ranges, but we choose not to open that particular
-can of worms.  Our strategy is to treat integral type variables as
-unknown until the typing context constrains them to a unique integral
-type, at which point they take on that type.  If the typing context
-overconstrains the type, it's a type error; if we reach the point at
-which type variables must be resolved and an integral type variable is
-still underconstrained, it defaults to `int` as a last resort.
-
-Floating point types are handled similarly to integral types.
+of associating each variable with an upper and lower bound, we just
+use simple unification.  Each integer variable is associated with at
+most one integer type.  Floating point types are handled similarly to
+integral types.
 
 ## GLB/LUB
 
@@ -261,16 +248,14 @@ section on "Type Combining" below for details.
 
 use core::prelude::*;
 
-use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, vid};
+use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
 use middle::ty;
-use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_ty};
+use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
 use middle::typeck::infer::assignment::Assign;
-use middle::typeck::infer::combine::{combine_fields, eq_tys};
-use middle::typeck::infer::floating::{float_ty_set, float_ty_set_all};
+use middle::typeck::infer::combine::{CombineFields, eq_tys};
 use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::integral::{int_ty_set, int_ty_set_all};
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::region_inference::{RegionVarBindings};
 use middle::typeck::infer::resolve::{force_all, not_regions};
@@ -280,8 +265,8 @@ use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 use middle::typeck::infer::resolve::{resolve_nested_tvar, resolve_rvar};
 use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::ToStr;
-use middle::typeck::infer::unify::{vals_and_bindings, root};
+use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::isr_alist;
 use util::common::{indent, indenter};
 use util::ppaux::{bound_region_to_str, ty_to_str, mt_to_str};
@@ -302,7 +287,7 @@ use syntax::ast_util::dummy_sp;
 use syntax::ast_util;
 use syntax::codemap::span;
 
-export infer_ctxt;
+export InferCtxt;
 export new_infer_ctxt;
 export mk_subty, can_mk_subty;
 export mk_subr;
@@ -313,15 +298,12 @@ export force_tvar, force_rvar, force_ivar, force_all;
 export resolve_and_force_all_but_regions, not_regions;
 export resolve_type, resolve_region;
 export resolve_borrowings;
-export methods; // for infer_ctxt
-export unify_methods; // for infer_ctxt
 export cres, fres, fixup_err, fixup_err_to_str;
 export assignment;
 export root, to_str;
 export int_ty_set_all;
 export assignment;
 export combine;
-export floating;
 export glb;
 export integral;
 export lattice;
@@ -333,11 +315,12 @@ export to_str;
 export unify;
 export uok;
 export cyclic_ty, unresolved_ty, region_var_bound_by_region_var;
-export bound, bounds;
+export Bound, Bounds;
 export ures;
 export ares;
 export infer_ctxt;
 export fixup_err;
+export IntVarValue, IntType, UintType;
 
 #[legacy_exports]
 mod assignment;
@@ -345,9 +328,6 @@ mod assignment;
 mod combine;
 #[legacy_exports]
 mod glb;
-#[legacy_exports]
-mod integral;
-mod floating;
 #[legacy_exports]
 mod lattice;
 #[legacy_exports]
@@ -363,39 +343,48 @@ mod to_str;
 #[legacy_exports]
 mod unify;
 
-type bound<T:Copy> = Option<T>;
-type bounds<T:Copy> = {lb: bound<T>, ub: bound<T>};
+type Bound<T> = Option<T>;
+type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
 
 type cres<T> = Result<T,ty::type_err>; // "combine result"
 type ures = cres<()>; // "unify result"
 type fres<T> = Result<T, fixup_err>; // "fixup result"
 type ares = cres<Option<@ty::AutoAdjustment>>; // "assignment result"
 
-enum infer_ctxt = @{
+#[deriving_eq]
+enum IntVarValue {
+    IntType(ast::int_ty),
+    UintType(ast::uint_ty),
+}
+
+struct InferCtxt {
     tcx: ty::ctxt,
 
-    // We instantiate vals_and_bindings with bounds<ty::t> because the
+    // We instantiate ValsAndBindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    ty_var_bindings: vals_and_bindings<ty::TyVid, bounds<ty::t>>,
+    ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
+
+    // Number of type variables created thus far.
+    mut ty_var_counter: uint,
 
     // The types that might instantiate an integral type variable are
     // represented by an int_ty_set.
-    int_var_bindings: vals_and_bindings<ty::IntVid, int_ty_set>,
+    int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
+
+    // Number of integral variables created thus far.
+    mut int_var_counter: uint,
 
     // The types that might instantiate a floating-point type variable are
     // represented by an float_ty_set.
-    float_var_bindings: vals_and_bindings<ty::FloatVid, float_ty_set>,
+    float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
+
+    // Number of floating-point variables created thus far.
+    mut float_var_counter: uint,
 
     // For region variables.
     region_vars: RegionVarBindings,
-
-    // For keeping track of existing type and region variables.
-    ty_var_counter: @mut uint,
-    int_var_counter: @mut uint,
-    float_var_counter: @mut uint,
-    region_var_counter: @mut uint
-};
+}
 
 enum fixup_err {
     unresolved_int_ty(IntVid),
@@ -418,27 +407,33 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-fn new_vals_and_bindings<V:Copy, T:Copy>() -> vals_and_bindings<V, T> {
-    vals_and_bindings {
+fn new_ValsAndBindings<V:Copy, T:Copy>() -> ValsAndBindings<V, T> {
+    ValsAndBindings {
         vals: smallintmap::mk(),
         mut bindings: ~[]
     }
 }
 
-fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
-    infer_ctxt(@{tcx: tcx,
-                 ty_var_bindings: new_vals_and_bindings(),
-                 int_var_bindings: new_vals_and_bindings(),
-                 float_var_bindings: new_vals_and_bindings(),
-                 region_vars: RegionVarBindings(tcx),
-                 ty_var_counter: @mut 0u,
-                 int_var_counter: @mut 0u,
-                 float_var_counter: @mut 0u,
-                 region_var_counter: @mut 0u})}
+fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
+    @InferCtxt {
+        tcx: tcx,
 
-fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
+        ty_var_bindings: new_ValsAndBindings(),
+        ty_var_counter: 0,
+
+        int_var_bindings: new_ValsAndBindings(),
+        int_var_counter: 0,
+
+        float_var_bindings: new_ValsAndBindings(),
+        float_var_counter: 0,
+
+        region_vars: RegionVarBindings(tcx),
+    }
+}
+
+fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
             a: ty::t, b: ty::t) -> ures {
-    debug!("mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
+    debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             cx.sub(a_is_expected, span).tys(a, b)
@@ -446,8 +441,8 @@ fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
+fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             cx.sub(true, ast_util::dummy_sp()).tys(a, b)
@@ -455,9 +450,9 @@ fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     }.to_ures()
 }
 
-fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
+fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
            a: ty::Region, b: ty::Region) -> ures {
-    debug!("mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx));
+    debug!("mk_subr(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             cx.sub(a_is_expected, span).regions(a, b)
@@ -465,9 +460,9 @@ fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_eqty(cx: infer_ctxt, a_is_expected: bool, span: span,
+fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
            a: ty::t, b: ty::t) -> ures {
-    debug!("mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx));
+    debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             let suber = cx.sub(a_is_expected, span);
@@ -476,9 +471,9 @@ fn mk_eqty(cx: infer_ctxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_assignty(cx: infer_ctxt, a_is_expected: bool, span: span,
+fn mk_assignty(cx: @InferCtxt, a_is_expected: bool, span: span,
                a: ty::t, b: ty::t) -> ares {
-    debug!("mk_assignty(%s -> %s)", a.to_str(cx), b.to_str(cx));
+    debug!("mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             Assign(cx.combine_fields(a_is_expected, span)).tys(a, b)
@@ -486,8 +481,8 @@ fn mk_assignty(cx: infer_ctxt, a_is_expected: bool, span: span,
     }
 }
 
-fn can_mk_assignty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_assignty(%s -> %s)", a.to_str(cx), b.to_str(cx));
+fn can_mk_assignty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             let span = ast_util::dummy_sp();
@@ -497,18 +492,18 @@ fn can_mk_assignty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
 }
 
 // See comment on the type `resolve_state` below
-fn resolve_type(cx: infer_ctxt, a: ty::t, modes: uint)
+fn resolve_type(cx: @InferCtxt, a: ty::t, modes: uint)
     -> fres<ty::t> {
     resolver(cx, modes).resolve_type_chk(a)
 }
 
-fn resolve_region(cx: infer_ctxt, r: ty::Region, modes: uint)
+fn resolve_region(cx: @InferCtxt, r: ty::Region, modes: uint)
     -> fres<ty::Region> {
     resolver(cx, modes).resolve_region_chk(r)
 }
 
 /*
-fn resolve_borrowings(cx: infer_ctxt) {
+fn resolve_borrowings(cx: @InferCtxt) {
     for cx.borrowings.each |item| {
         match resolve_region(cx, item.scope, resolve_all|force_all) {
           Ok(region) => {
@@ -574,9 +569,10 @@ pub fn uok() -> ures {
     Ok(())
 }
 
-fn rollback_to<V:Copy vid, T:Copy>(
-    vb: &vals_and_bindings<V, T>, len: uint) {
-
+fn rollback_to<V:Copy Vid, T:Copy>(
+    vb: &ValsAndBindings<V, T>,
+    len: uint)
+{
     while vb.bindings.len() != len {
         let (vid, old_v) = vb.bindings.pop();
         vb.vals.insert(vid.to_uint(), old_v);
@@ -589,12 +585,12 @@ struct Snapshot {
     region_vars_snapshot: uint,
 }
 
-impl infer_ctxt {
+impl @InferCtxt {
     fn combine_fields(a_is_expected: bool,
-                      span: span) -> combine_fields {
-        combine_fields {infcx: self,
-                        a_is_expected: a_is_expected,
-                        span: span}
+                      span: span) -> CombineFields {
+        CombineFields {infcx: self,
+                       a_is_expected: a_is_expected,
+                       span: span}
     }
 
     fn sub(a_is_expected: bool, span: span) -> Sub {
@@ -624,8 +620,7 @@ impl infer_ctxt {
         //rollback_to(&self.int_var_bindings,
         //            snapshot.int_var_bindings_len);
 
-        self.region_vars.rollback_to(
-            snapshot.region_vars_snapshot);
+        self.region_vars.rollback_to(snapshot.region_vars_snapshot);
     }
 
     /// Execute `f` and commit the bindings if successful
@@ -669,12 +664,12 @@ impl infer_ctxt {
     }
 }
 
-impl infer_ctxt {
+impl @InferCtxt {
     fn next_ty_var_id() -> TyVid {
-        let id = *self.ty_var_counter;
-        *self.ty_var_counter += 1u;
+        let id = self.ty_var_counter;
+        self.ty_var_counter += 1;
         self.ty_var_bindings.vals.insert(id,
-                                         root({lb: None, ub: None}, 0u));
+                                         Root({lb: None, ub: None}, 0u));
         return TyVid(id);
     }
 
@@ -687,11 +682,10 @@ impl infer_ctxt {
     }
 
     fn next_int_var_id() -> IntVid {
-        let id = *self.int_var_counter;
-        *self.int_var_counter += 1u;
+        let id = self.int_var_counter;
+        self.int_var_counter += 1;
 
-        self.int_var_bindings.vals.insert(id,
-                              root(int_ty_set_all(), 0u));
+        self.int_var_bindings.vals.insert(id, Root(None, 0));
         return IntVid(id);
     }
 
@@ -700,10 +694,10 @@ impl infer_ctxt {
     }
 
     fn next_float_var_id() -> FloatVid {
-        let id = *self.float_var_counter;
-        *self.float_var_counter += 1;
+        let id = self.float_var_counter;
+        self.float_var_counter += 1;
 
-        self.float_var_bindings.vals.insert(id, root(float_ty_set_all(), 0));
+        self.float_var_bindings.vals.insert(id, Root(None, 0));
         return FloatVid(id);
     }
 
@@ -795,10 +789,10 @@ impl infer_ctxt {
 
     fn replace_bound_regions_with_fresh_regions(
         &self, span: span,
-        fty: &ty::FnTy) -> (ty::FnTy, isr_alist)
+        fsig: &ty::FnSig) -> (ty::FnSig, isr_alist)
     {
-        let {fn_ty: fn_ty, isr: isr, _} =
-            replace_bound_regions_in_fn_ty(self.tcx, @Nil, None, fty, |br| {
+        let {fn_sig: fn_sig, isr: isr, _} =
+            replace_bound_regions_in_fn_sig(self.tcx, @Nil, None, fsig, |br| {
                 // N.B.: The name of the bound region doesn't have anything to
                 // do with the region variable that's created for it.  The
                 // only thing we're doing with `br` here is using it in the
@@ -809,18 +803,17 @@ impl infer_ctxt {
                        rvar);
                 rvar
             });
-        (fn_ty, isr)
+        (fn_sig, isr)
     }
 
     fn fold_regions_in_sig(
         &self,
-        fn_ty: &ty::FnTy,
-        fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnTy
+        fn_sig: &ty::FnSig,
+        fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
     {
-        let sig = do ty::fold_sig(&fn_ty.sig) |t| {
+        do ty::fold_sig(fn_sig) |t| {
             ty::fold_regions(self.tcx, t, fldr)
-        };
-        ty::FnTyBase {meta: fn_ty.meta, sig: sig}
+        }
     }
 
 }

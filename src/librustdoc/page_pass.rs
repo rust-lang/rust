@@ -34,7 +34,7 @@ use core::vec;
 use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
-    {
+    Pass {
         name: ~"page",
         f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, output_style)

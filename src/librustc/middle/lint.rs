@@ -430,7 +430,7 @@ fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
         let cx = ctxt_({is_default: true,.. *cx});
 
-        let visit = visit::mk_vt(@{
+        let visit = visit::mk_vt(@visit::Visitor {
             visit_item: build_settings_item,
             .. *visit::default_visitor()
         });
@@ -458,30 +458,33 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
 fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@{visit_item: |_i, _e, _v| { },.. **v})
+    visit::mk_vt(@visit::Visitor {visit_item: |_i, _e, _v| { },.. **v})
 }
 
 fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_expr: fn@(e: @ast::expr) {
-           match e.node {
-             ast::expr_while(cond, _) => {
-                match cond.node {
-                    ast::expr_lit(@ast::spanned { node: ast::lit_bool(true),
-                                                  _}) => {
-                            cx.sess.span_lint(
-                                while_true, e.id, it.id,
-                                e.span,
-                                ~"denote infinite loops with loop { ... }");
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: |e: @ast::expr| {
+                match e.node {
+                    ast::expr_while(cond, _) => {
+                        match cond.node {
+                            ast::expr_lit(@ast::spanned {
+                                node: ast::lit_bool(true), _}) =>
+                            {
+                                cx.sess.span_lint(
+                                    while_true, e.id, it.id,
+                                    e.span,
+                                    ~"denote infinite loops \
+                                      with loop { ... }");
+                            }
+                            _ => ()
+                        }
                     }
                     _ => ()
                 }
-             }
-             _ => ()
-          }
-        },
-        .. *visit::default_simple_visitor()
-    }));
+            },
+            .. *visit::default_simple_visitor()
+        }));
     visit::visit_item(it, (), visit);
 }
 
@@ -596,10 +599,11 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
         }
     };
 
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_expr: visit_expr,
-        .. *visit::default_simple_visitor()
-    }));
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: visit_expr,
+            .. *visit::default_simple_visitor()
+        }));
     visit::visit_item(it, (), visit);
 }
 
@@ -660,19 +664,20 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
 }
 
 fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_expr: fn@(e: @ast::expr) {
-           match e.node {
-             ast::expr_rec(*) =>
-                 cx.sess.span_lint(
-                                structural_records, e.id, it.id,
-                                e.span,
-                                ~"structural records are deprecated"),
-               _ => ()
-           }
-        },
-        .. *visit::default_simple_visitor()
-    }));
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: |e: @ast::expr| {
+                match e.node {
+                    ast::expr_rec(*) =>
+                    cx.sess.span_lint(
+                        structural_records, e.id, it.id,
+                        e.span,
+                        ~"structural records are deprecated"),
+                    _ => ()
+                }
+            },
+            .. *visit::default_simple_visitor()
+        }));
     visit::visit_item(it, (), visit);
 }
 
@@ -779,34 +784,36 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
       _ => ()
     }
 
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_expr: fn@(e: @ast::expr) {
-            let ty = ty::expr_ty(cx, e);
-            check_type(cx, e.id, it.id, e.span, ty);
-        },
-        .. *visit::default_simple_visitor()
-    }));
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: |e: @ast::expr| {
+                let ty = ty::expr_ty(cx, e);
+                check_type(cx, e.id, it.id, e.span, ty);
+            },
+            .. *visit::default_simple_visitor()
+        }));
     visit::visit_item(it, (), visit);
 }
 
 fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
-    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
-        visit_stmt: fn@(s: @ast::stmt) {
-            match s.node {
-              ast::stmt_semi(@{id: id,
-                               callee_id: _,
-                               node: ast::expr_path(_),
-                               span: _}, _) => {
-                cx.sess.span_lint(
-                    path_statement, id, it.id,
-                    s.span,
-                    ~"path statement with no effect");
-              }
-              _ => ()
-            }
-        },
-        .. *visit::default_simple_visitor()
-    }));
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_stmt: |s: @ast::stmt| {
+                match s.node {
+                    ast::stmt_semi(@{id: id,
+                                     callee_id: _,
+                                     node: ast::expr_path(_),
+                                     span: _}, _) => {
+                        cx.sess.span_lint(
+                            path_statement, id, it.id,
+                            s.span,
+                            ~"path statement with no effect");
+                    }
+                    _ => ()
+                }
+            },
+            .. *visit::default_simple_visitor()
+        }));
     visit::visit_item(it, (), visit);
 }
 
@@ -975,7 +982,7 @@ fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
 
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
-    let v = visit::mk_simple_visitor(@{
+    let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |it|
             check_item(it, tcx),
         visit_fn: |fk, decl, body, span, id|

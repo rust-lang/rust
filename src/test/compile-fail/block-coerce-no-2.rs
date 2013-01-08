@@ -19,5 +19,5 @@ fn main() {
     }
 
     f(g);
-    //~^ ERROR mismatched types: expected `fn(fn(fn()))`
+    //~^ ERROR mismatched types: expected `extern fn(extern fn(extern fn()))`
 }

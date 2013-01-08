@@ -11,13 +11,13 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::cres;
 use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::infer_ctxt;
+use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::*;
 use util::ppaux::bound_region_to_str;
 
@@ -27,10 +27,10 @@ use syntax::ast::{m_const, purity, ret_style};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
-enum Sub = combine_fields;  // "subtype", "subregion" etc
+enum Sub = CombineFields;  // "subtype", "subregion" etc
 
-impl Sub: combine {
-    fn infcx() -> infer_ctxt { self.infcx }
+impl Sub: Combine {
+    fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"sub" }
     fn a_is_expected() -> bool { self.a_is_expected }
     fn span() -> span { self.span }
@@ -40,14 +40,14 @@ impl Sub: combine {
     fn glb() -> Glb { Glb(*self) }
 
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        let opp = combine_fields {
+        let opp = CombineFields {
             a_is_expected: !self.a_is_expected,.. *self
         };
         Sub(opp).tys(b, a)
     }
 
     fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        let opp = combine_fields {
+        let opp = CombineFields {
             a_is_expected: !self.a_is_expected,.. *self
         };
         Sub(opp).regions(b, a)
@@ -56,8 +56,8 @@ impl Sub: combine {
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%s, %s)",
                self.tag(),
-               a.to_str(self.infcx),
-               b.to_str(self.infcx));
+               a.inf_str(self.infcx),
+               b.inf_str(self.infcx));
         do indent {
             match self.infcx.region_vars.make_subregion(self.span, a, b) {
               Ok(()) => Ok(a),
@@ -67,7 +67,7 @@ impl Sub: combine {
     }
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
-        debug!("mts(%s <: %s)", a.to_str(self.infcx), b.to_str(self.infcx));
+        debug!("mts(%s <: %s)", a.inf_str(self.infcx), b.inf_str(self.infcx));
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
             return Err(ty::terr_mutability);
@@ -86,14 +86,6 @@ impl Sub: combine {
         }
     }
 
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
-        match (p1, p2) {
-            (ast::ProtoBare, _) => Ok(p1),
-            _ if p1 == p2 => Ok(p1),
-            _ => Err(ty::terr_proto_mismatch(expected_found(&self, p1, p2)))
-        }
-    }
-
     fn purities(a: purity, b: purity) -> cres<purity> {
         self.lub().purities(a, b).compare(b, || {
             ty::terr_purity_mismatch(expected_found(&self, a, b))
@@ -108,34 +100,47 @@ impl Sub: combine {
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         debug!("%s.tys(%s, %s)", self.tag(),
-               a.to_str(self.infcx), b.to_str(self.infcx));
+               a.inf_str(self.infcx), b.inf_str(self.infcx));
         if a == b { return Ok(a); }
         do indent {
             match (ty::get(a).sty, ty::get(b).sty) {
-              (ty::ty_bot, _) => {
-                Ok(a)
-              }
-              (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
-                var_sub_var(&self, a_id, b_id).then(|| Ok(a) )
-              }
-              (ty::ty_infer(TyVar(a_id)), _) => {
-                var_sub_t(&self, a_id, b).then(|| Ok(a) )
-              }
-              (_, ty::ty_infer(TyVar(b_id))) => {
-                t_sub_var(&self, a, b_id).then(|| Ok(a) )
-              }
-              (_, ty::ty_bot) => {
-                Err(ty::terr_sorts(expected_found(&self, a, b)))
-              }
-              _ => {
-                super_tys(&self, a, b)
-              }
+                (ty::ty_bot, _) => {
+                    Ok(a)
+                }
+
+                (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
+                    do self.var_sub_var(&self.infcx.ty_var_bindings,
+                                        a_id, b_id).then {
+                        Ok(a)
+                    }
+                }
+                (ty::ty_infer(TyVar(a_id)), _) => {
+                    do self.var_sub_t(&self.infcx.ty_var_bindings,
+                                      a_id, b).then {
+                        Ok(a)
+                    }
+                }
+                (_, ty::ty_infer(TyVar(b_id))) => {
+                    do self.t_sub_var(&self.infcx.ty_var_bindings,
+                                      a, b_id).then {
+                        Ok(a)
+                    }
+                }
+
+                (_, ty::ty_bot) => {
+                    Err(ty::terr_sorts(expected_found(&self, a, b)))
+                }
+
+                _ => {
+                    super_tys(&self, a, b)
+                }
             }
         }
     }
 
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
-        debug!("fns(a=%s, b=%s)", a.to_str(self.infcx), b.to_str(self.infcx));
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        debug!("fn_sigs(a=%s, b=%s)",
+               a.inf_str(self.infcx), b.inf_str(self.infcx));
         let _indenter = indenter();
 
         // Rather than checking the subtype relationship between `a` and `b`
@@ -153,14 +158,14 @@ impl Sub: combine {
 
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
-        let (a_fn_ty, _) =
+        let (a_sig, _) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.span, a);
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
-        let {fn_ty: b_fn_ty, isr: skol_isr, _} = {
-            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @Nil,
+        let {fn_sig: b_sig, isr: skol_isr, _} = {
+            do replace_bound_regions_in_fn_sig(self.infcx.tcx, @Nil,
                                               None, b) |br| {
                 let skol = self.infcx.region_vars.new_skolemized(br);
                 debug!("Bound region %s skolemized to %?",
@@ -170,11 +175,11 @@ impl Sub: combine {
             }
         };
 
-        debug!("a_fn_ty=%s", a_fn_ty.to_str(self.infcx));
-        debug!("b_fn_ty=%s", b_fn_ty.to_str(self.infcx));
+        debug!("a_sig=%s", a_sig.inf_str(self.infcx));
+        debug!("b_sig=%s", b_sig.inf_str(self.infcx));
 
         // Compare types now that bound regions have been replaced.
-        let fn_ty = if_ok!(super_fns(&self, &a_fn_ty, &b_fn_ty));
+        let sig = if_ok!(super_fn_sigs(&self, &a_sig, &b_sig));
 
         // Presuming type comparison succeeds, we need to check
         // that the skolemized regions do not "leak".
@@ -206,21 +211,25 @@ impl Sub: combine {
             }
         }
 
-        return Ok(fn_ty)
+        return Ok(sig);
     }
 
     // Traits please (FIXME: #2794):
+
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        super_protos(&self, p1, p2)
+    }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(&self, a, b)
     }
 
-    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
-        super_fn_metas(&self, a, b)
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+        super_fns(&self, a, b)
     }
 
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        super_fn_sigs(&self, a, b)
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
+        super_fn_metas(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,

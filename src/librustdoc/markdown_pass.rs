@@ -47,7 +47,7 @@ pub fn mk_pass(+writer_factory: WriterFactory) -> Pass {
         run(srv, doc, copy writer_factory)
     };
 
-    {
+    Pass {
         name: ~"markdown",
         f: move f
     }

@@ -59,51 +59,56 @@ fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     }
 }
 
-type visitor<E> =
-    @{visit_mod: fn@(_mod, span, node_id, E, vt<E>),
-      visit_view_item: fn@(@view_item, E, vt<E>),
-      visit_foreign_item: fn@(@foreign_item, E, vt<E>),
-      visit_item: fn@(@item, E, vt<E>),
-      visit_local: fn@(@local, E, vt<E>),
-      visit_block: fn@(ast::blk, E, vt<E>),
-      visit_stmt: fn@(@stmt, E, vt<E>),
-      visit_arm: fn@(arm, E, vt<E>),
-      visit_pat: fn@(@pat, E, vt<E>),
-      visit_decl: fn@(@decl, E, vt<E>),
-      visit_expr: fn@(@expr, E, vt<E>),
-      visit_expr_post: fn@(@expr, E, vt<E>),
-      visit_ty: fn@(@Ty, E, vt<E>),
-      visit_ty_params: fn@(~[ty_param], E, vt<E>),
-      visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
-      visit_ty_method: fn@(ty_method, E, vt<E>),
-      visit_trait_method: fn@(trait_method, E, vt<E>),
-      visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
-                            vt<E>),
-      visit_struct_field: fn@(@struct_field, E, vt<E>),
-      visit_struct_method: fn@(@method, E, vt<E>)};
+struct Visitor<E> {
+    visit_mod: fn@(_mod, span, node_id, E, vt<E>),
+    visit_view_item: fn@(@view_item, E, vt<E>),
+    visit_foreign_item: fn@(@foreign_item, E, vt<E>),
+    visit_item: fn@(@item, E, vt<E>),
+    visit_local: fn@(@local, E, vt<E>),
+    visit_block: fn@(ast::blk, E, vt<E>),
+    visit_stmt: fn@(@stmt, E, vt<E>),
+    visit_arm: fn@(arm, E, vt<E>),
+    visit_pat: fn@(@pat, E, vt<E>),
+    visit_decl: fn@(@decl, E, vt<E>),
+    visit_expr: fn@(@expr, E, vt<E>),
+    visit_expr_post: fn@(@expr, E, vt<E>),
+    visit_ty: fn@(@Ty, E, vt<E>),
+    visit_ty_params: fn@(~[ty_param], E, vt<E>),
+    visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
+    visit_ty_method: fn@(ty_method, E, vt<E>),
+    visit_trait_method: fn@(trait_method, E, vt<E>),
+    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
+                          vt<E>),
+    visit_struct_field: fn@(@struct_field, E, vt<E>),
+    visit_struct_method: fn@(@method, E, vt<E>)
+}
+
+type visitor<E> = @Visitor<E>;
 
 fn default_visitor<E>() -> visitor<E> {
-    return @{visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
-          visit_view_item: |a,b,c|visit_view_item::<E>(a, b, c),
-          visit_foreign_item: |a,b,c|visit_foreign_item::<E>(a, b, c),
-          visit_item: |a,b,c|visit_item::<E>(a, b, c),
-          visit_local: |a,b,c|visit_local::<E>(a, b, c),
-          visit_block: |a,b,c|visit_block::<E>(a, b, c),
-          visit_stmt: |a,b,c|visit_stmt::<E>(a, b, c),
-          visit_arm: |a,b,c|visit_arm::<E>(a, b, c),
-          visit_pat: |a,b,c|visit_pat::<E>(a, b, c),
-          visit_decl: |a,b,c|visit_decl::<E>(a, b, c),
-          visit_expr: |a,b,c|visit_expr::<E>(a, b, c),
-          visit_expr_post: |_a,_b,_c| (),
-          visit_ty: |a,b,c|skip_ty::<E>(a, b, c),
-          visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
-          visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
-          visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
-          visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
-          visit_struct_def: |a,b,c,d,e,f|visit_struct_def::<E>(a, b, c,
-                                                               d, e, f),
-          visit_struct_field: |a,b,c|visit_struct_field::<E>(a, b, c),
-          visit_struct_method: |a,b,c|visit_struct_method::<E>(a, b, c)};
+    return @Visitor {
+        visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
+        visit_view_item: |a,b,c|visit_view_item::<E>(a, b, c),
+        visit_foreign_item: |a,b,c|visit_foreign_item::<E>(a, b, c),
+        visit_item: |a,b,c|visit_item::<E>(a, b, c),
+        visit_local: |a,b,c|visit_local::<E>(a, b, c),
+        visit_block: |a,b,c|visit_block::<E>(a, b, c),
+        visit_stmt: |a,b,c|visit_stmt::<E>(a, b, c),
+        visit_arm: |a,b,c|visit_arm::<E>(a, b, c),
+        visit_pat: |a,b,c|visit_pat::<E>(a, b, c),
+        visit_decl: |a,b,c|visit_decl::<E>(a, b, c),
+        visit_expr: |a,b,c|visit_expr::<E>(a, b, c),
+        visit_expr_post: |_a,_b,_c| (),
+        visit_ty: |a,b,c|skip_ty::<E>(a, b, c),
+        visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
+        visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
+        visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
+        visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
+        visit_struct_def: |a,b,c,d,e,f|visit_struct_def::<E>(a, b, c,
+                                                             d, e, f),
+        visit_struct_field: |a,b,c|visit_struct_field::<E>(a, b, c),
+        visit_struct_method: |a,b,c|visit_struct_method::<E>(a, b, c)
+    };
 }
 
 fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
@@ -499,43 +504,46 @@ fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
 // Simpler, non-context passing interface. Always walks the whole tree, simply
 // calls the given functions on the nodes.
 
-type simple_visitor =
-    @{visit_mod: fn@(_mod, span, node_id),
-      visit_view_item: fn@(@view_item),
-      visit_foreign_item: fn@(@foreign_item),
-      visit_item: fn@(@item),
-      visit_local: fn@(@local),
-      visit_block: fn@(ast::blk),
-      visit_stmt: fn@(@stmt),
-      visit_arm: fn@(arm),
-      visit_pat: fn@(@pat),
-      visit_decl: fn@(@decl),
-      visit_expr: fn@(@expr),
-      visit_expr_post: fn@(@expr),
-      visit_ty: fn@(@Ty),
-      visit_ty_params: fn@(~[ty_param]),
-      visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
-      visit_ty_method: fn@(ty_method),
-      visit_trait_method: fn@(trait_method),
-      visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
-      visit_struct_field: fn@(@struct_field),
-      visit_struct_method: fn@(@method)};
+struct SimpleVisitor {
+    visit_mod: fn@(_mod, span, node_id),
+    visit_view_item: fn@(@view_item),
+    visit_foreign_item: fn@(@foreign_item),
+    visit_item: fn@(@item),
+    visit_local: fn@(@local),
+    visit_block: fn@(ast::blk),
+    visit_stmt: fn@(@stmt),
+    visit_arm: fn@(arm),
+    visit_pat: fn@(@pat),
+    visit_decl: fn@(@decl),
+    visit_expr: fn@(@expr),
+    visit_expr_post: fn@(@expr),
+    visit_ty: fn@(@Ty),
+    visit_ty_params: fn@(~[ty_param]),
+    visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
+    visit_ty_method: fn@(ty_method),
+    visit_trait_method: fn@(trait_method),
+    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
+    visit_struct_field: fn@(@struct_field),
+    visit_struct_method: fn@(@method)
+}
+
+type simple_visitor = @SimpleVisitor;
 
 fn simple_ignore_ty(_t: @Ty) {}
 
-fn default_simple_visitor() -> simple_visitor {
-    return @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
-          visit_view_item: fn@(_vi: @view_item) { },
-          visit_foreign_item: fn@(_ni: @foreign_item) { },
-          visit_item: fn@(_i: @item) { },
-          visit_local: fn@(_l: @local) { },
-          visit_block: fn@(_b: ast::blk) { },
-          visit_stmt: fn@(_s: @stmt) { },
-          visit_arm: fn@(_a: arm) { },
-          visit_pat: fn@(_p: @pat) { },
-          visit_decl: fn@(_d: @decl) { },
-          visit_expr: fn@(_e: @expr) { },
-          visit_expr_post: fn@(_e: @expr) { },
+fn default_simple_visitor() -> @SimpleVisitor {
+    return @SimpleVisitor {visit_mod: |_m: _mod, _sp: span, _id: node_id| { },
+          visit_view_item: |_vi: @view_item| { },
+          visit_foreign_item: |_ni: @foreign_item| { },
+          visit_item: |_i: @item| { },
+          visit_local: |_l: @local| { },
+          visit_block: |_b: ast::blk| { },
+          visit_stmt: |_s: @stmt| { },
+          visit_arm: |_a: arm| { },
+          visit_pat: |_p: @pat| { },
+          visit_decl: |_d: @decl| { },
+          visit_expr: |_e: @expr| { },
+          visit_expr_post: |_e: @expr| { },
           visit_ty: simple_ignore_ty,
           visit_ty_params: fn@(_ps: ~[ty_param]) {},
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
@@ -640,37 +648,37 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(m);
         visit_struct_method(m, e, v);
     }
-    return mk_vt(@{visit_mod: |a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e),
-                visit_view_item: |a,b,c|
-                    v_view_item(v.visit_view_item, a, b, c),
-                visit_foreign_item:
-                    |a,b,c|v_foreign_item(v.visit_foreign_item, a, b, c),
-                visit_item: |a,b,c|v_item(v.visit_item, a, b, c),
-                visit_local: |a,b,c|v_local(v.visit_local, a, b, c),
-                visit_block: |a,b,c|v_block(v.visit_block, a, b, c),
-                visit_stmt: |a,b,c|v_stmt(v.visit_stmt, a, b, c),
-                visit_arm: |a,b,c|v_arm(v.visit_arm, a, b, c),
-                visit_pat: |a,b,c|v_pat(v.visit_pat, a, b, c),
-                visit_decl: |a,b,c|v_decl(v.visit_decl, a, b, c),
-                visit_expr: |a,b,c|v_expr(v.visit_expr, a, b, c),
-                visit_expr_post: |a,b,c| v_expr_post(v.visit_expr_post,
-                                                     a, b, c),
-                visit_ty: visit_ty,
-                visit_ty_params: |a,b,c|
-                    v_ty_params(v.visit_ty_params, a, b, c),
-                visit_fn: |a,b,c,d,e,f,g|
-                    v_fn(v.visit_fn, a, b, c, d, e, f, g),
-                visit_ty_method: |a,b,c|
-                    v_ty_method(v.visit_ty_method, a, b, c),
-                visit_trait_method: |a,b,c|
-                    v_trait_method(v.visit_trait_method, a, b, c),
-                visit_struct_def: |a,b,c,d,e,f|
-                    v_struct_def(v.visit_struct_def, a, b, c, d, e, f),
-                visit_struct_field: |a,b,c|
-                    v_struct_field(v.visit_struct_field, a, b, c),
-                visit_struct_method: |a,b,c|
-                    v_struct_method(v.visit_struct_method, a, b, c)
-               });
+    return mk_vt(@Visitor {
+        visit_mod: |a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e),
+        visit_view_item: |a,b,c| v_view_item(v.visit_view_item, a, b, c),
+        visit_foreign_item:
+            |a,b,c|v_foreign_item(v.visit_foreign_item, a, b, c),
+        visit_item: |a,b,c|v_item(v.visit_item, a, b, c),
+        visit_local: |a,b,c|v_local(v.visit_local, a, b, c),
+        visit_block: |a,b,c|v_block(v.visit_block, a, b, c),
+        visit_stmt: |a,b,c|v_stmt(v.visit_stmt, a, b, c),
+        visit_arm: |a,b,c|v_arm(v.visit_arm, a, b, c),
+        visit_pat: |a,b,c|v_pat(v.visit_pat, a, b, c),
+        visit_decl: |a,b,c|v_decl(v.visit_decl, a, b, c),
+        visit_expr: |a,b,c|v_expr(v.visit_expr, a, b, c),
+        visit_expr_post: |a,b,c| v_expr_post(v.visit_expr_post,
+                                             a, b, c),
+        visit_ty: visit_ty,
+        visit_ty_params: |a,b,c|
+            v_ty_params(v.visit_ty_params, a, b, c),
+        visit_fn: |a,b,c,d,e,f,g|
+            v_fn(v.visit_fn, a, b, c, d, e, f, g),
+        visit_ty_method: |a,b,c|
+            v_ty_method(v.visit_ty_method, a, b, c),
+        visit_trait_method: |a,b,c|
+            v_trait_method(v.visit_trait_method, a, b, c),
+        visit_struct_def: |a,b,c,d,e,f|
+            v_struct_def(v.visit_struct_def, a, b, c, d, e, f),
+        visit_struct_field: |a,b,c|
+            v_struct_field(v.visit_struct_field, a, b, c),
+        visit_struct_method: |a,b,c|
+            v_struct_method(v.visit_struct_method, a, b, c)
+    });
 }
 
 // Local Variables:

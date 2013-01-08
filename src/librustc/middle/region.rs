@@ -352,7 +352,7 @@ fn resolve_crate(sess: Session, def_map: resolve::DefMap,
                          region_map: HashMap(),
                          root_exprs: HashMap(),
                          parent: None};
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_block: resolve_block,
         visit_item: resolve_item,
         visit_fn: resolve_fn,
@@ -782,7 +782,7 @@ fn determine_rp_in_crate(sess: Session,
                                   mut ambient_variance: rv_covariant});
 
     // Gather up the base set, worklist and dep_map
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: determine_rp_in_fn,
         visit_item: determine_rp_in_item,
         visit_ty: determine_rp_in_ty,

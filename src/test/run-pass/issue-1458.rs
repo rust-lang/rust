@@ -12,7 +12,7 @@ fn plus_one(f: fn() -> int) -> int {
   return f() + 1;
 }
 
-fn ret_plus_one() -> fn(fn() -> int) -> int {
+fn ret_plus_one() -> extern fn(fn() -> int) -> int {
   return plus_one;
 }
 

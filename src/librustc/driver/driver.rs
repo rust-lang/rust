@@ -395,13 +395,16 @@ fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
 
     let ann = match ppm {
       ppm_typed => {
-        {pre: ann_paren_for_expr,
-         post: |a| ann_typed_post(tcx.get(), a) }
+          pprust::pp_ann {pre: ann_paren_for_expr,
+                          post: |a| ann_typed_post(tcx.get(), a) }
       }
       ppm_identified | ppm_expanded_identified => {
-        {pre: ann_paren_for_expr, post: ann_identified_post}
+          pprust::pp_ann {pre: ann_paren_for_expr,
+                          post: ann_identified_post}
       }
-      ppm_expanded | ppm_normal => pprust::no_ann()
+      ppm_expanded | ppm_normal => {
+          pprust::no_ann()
+      }
     };
     let is_expanded = upto != cu_parse;
     let src = sess.codemap.get_filemap(source_name(input)).src;

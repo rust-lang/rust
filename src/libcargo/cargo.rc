@@ -403,7 +403,7 @@ fn load_crate(filename: &Path) -> Option<Crate> {
     let e = @{
         mut deps: ~[]
     };
-    let v = visit::mk_simple_visitor(@{
+    let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_view_item: |a| goto_view_item(sess, e, a),
         visit_item: |a| goto_item(e, a),
         .. *visit::default_simple_visitor()

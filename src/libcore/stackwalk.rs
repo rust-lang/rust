@@ -99,5 +99,5 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn frame_address(f: fn(++x: *u8));
+    fn frame_address(f: &once fn(++x: *u8));
 }

@@ -17,7 +17,7 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::isr_alist;
 use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
 use syntax::ast::{noreturn, pure_fn, ret_style, return_val, unsafe_fn};
@@ -25,10 +25,10 @@ use util::ppaux::mt_to_str;
 
 use std::list;
 
-enum Glb = combine_fields;  // "greatest lower bound" (common subtype)
+enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
-impl Glb: combine {
-    fn infcx() -> infer_ctxt { self.infcx }
+impl Glb: Combine {
+    fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"glb" }
     fn a_is_expected() -> bool { self.a_is_expected }
     fn span() -> span { self.span }
@@ -94,10 +94,6 @@ impl Glb: combine {
         Lub(*self).tys(a, b)
     }
 
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
-        if p1 == p2 {Ok(p1)} else {Ok(ast::ProtoBare)}
-    }
-
     fn purities(a: purity, b: purity) -> cres<purity> {
         match (a, b) {
           (pure_fn, _) | (_, pure_fn) => Ok(pure_fn),
@@ -117,8 +113,8 @@ impl Glb: combine {
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
-               a.to_str(self.infcx),
-               b.to_str(self.infcx));
+               a.inf_str(self.infcx),
+               b.inf_str(self.infcx));
 
         do indent {
             self.infcx.region_vars.glb_regions(self.span, a, b)
@@ -130,7 +126,7 @@ impl Glb: combine {
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        lattice_tys(&self, a, b)
+        super_lattice_tys(&self, a, b)
     }
 
     // Traits please (FIXME: #2794):
@@ -152,12 +148,12 @@ impl Glb: combine {
         super_args(&self, a, b)
     }
 
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
-        debug!("%s.fns(%?, %?)",
-               self.tag(), a.to_str(self.infcx), b.to_str(self.infcx));
+        debug!("%s.fn_sigs(%?, %?)",
+               self.tag(), a.inf_str(self.infcx), b.inf_str(self.infcx));
         let _indenter = indenter();
 
         // Take a snapshot.  We'll never roll this back, but in later
@@ -177,20 +173,20 @@ impl Glb: combine {
         let b_vars = var_ids(&self, b_isr);
 
         // Collect constraints.
-        let fn_ty0 = if_ok!(super_fns(&self, &a_with_fresh, &b_with_fresh));
-        debug!("fn_ty0 = %s", fn_ty0.to_str(self.infcx));
+        let sig0 = if_ok!(super_fn_sigs(&self, &a_with_fresh, &b_with_fresh));
+        debug!("sig0 = %s", sig0.inf_str(self.infcx));
 
         // Generalize the regions appearing in fn_ty0 if possible
         let new_vars =
             self.infcx.region_vars.vars_created_since_snapshot(snapshot);
-        let fn_ty1 =
+        let sig1 =
             self.infcx.fold_regions_in_sig(
-                &fn_ty0,
+                &sig0,
                 |r, _in_fn| generalize_region(&self, snapshot,
                                               new_vars, a_isr, a_vars, b_vars,
                                               r));
-        debug!("fn_ty1 = %s", fn_ty1.to_str(self.infcx));
-        return Ok(move fn_ty1);
+        debug!("sig1 = %s", sig1.inf_str(self.infcx));
+        return Ok(move sig1);
 
         fn generalize_region(self: &Glb,
                              snapshot: uint,
@@ -271,12 +267,16 @@ impl Glb: combine {
         }
     }
 
-    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
-        super_fn_metas(&self, a, b)
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        super_protos(&self, p1, p2)
     }
 
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        super_fn_sigs(&self, a, b)
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
+        super_fns(&self, a, b)
+    }
+
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
+        super_fn_metas(&self, a, b)
     }
 
     fn substs(did: ast::def_id,

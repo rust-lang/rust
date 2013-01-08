@@ -38,8 +38,8 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
 
     let ctxt = @{in_cfg: in_cfg};
 
-    let precursor =
-        @{fold_mod: |a,b| fold_mod(ctxt, a, b),
+    let precursor = @fold::AstFoldFns {
+          fold_mod: |a,b| fold_mod(ctxt, a, b),
           fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
           fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
           fold_item_underscore: |a,b| {

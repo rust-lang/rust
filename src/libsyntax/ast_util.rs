@@ -440,10 +440,8 @@ fn empty(range: id_range) -> bool {
 }
 
 fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
-    visit::mk_simple_visitor(@{
-        visit_mod: fn@(_m: _mod, _sp: span, id: node_id) {
-            vfn(id)
-        },
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_mod: |_m, _sp, id| vfn(id),
 
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {

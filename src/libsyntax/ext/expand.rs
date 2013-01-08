@@ -322,13 +322,13 @@ fn expand_crate(parse_sess: parse::parse_sess,
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);
-    let f_pre =
-        @{fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
-          fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
-          fold_item: |a,b| expand_item(exts, cx, a, b, afp.fold_item),
-          fold_stmt: |a,b,c| expand_stmt(exts, cx, a, b, c, afp.fold_stmt),
-          new_span: |a| new_span(cx, a),
-          .. *afp};
+    let f_pre = @AstFoldFns {
+        fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
+        fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
+        fold_item: |a,b| expand_item(exts, cx, a, b, afp.fold_item),
+        fold_stmt: |a,b,c| expand_stmt(exts, cx, a, b, c, afp.fold_stmt),
+        new_span: |a| new_span(cx, a),
+        .. *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str(~"<core-macros>",
                                         @core_macros(),
