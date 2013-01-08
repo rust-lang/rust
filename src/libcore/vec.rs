@@ -2041,9 +2041,7 @@ pub mod bytes {
       * may not overlap.
       */
     pub fn memcpy(dst: &[mut u8], src: &[const u8], count: uint) {
-        assert dst.len() >= count;
-        assert src.len() >= count;
-
+        // Bound checks are done at vec::raw::memcpy.
         unsafe { vec::raw::memcpy(dst, src, count) }
     }
 
@@ -2054,9 +2052,7 @@ pub mod bytes {
       * may overlap.
       */
     pub fn memmove(dst: &[mut u8], src: &[const u8], count: uint) {
-        assert dst.len() >= count;
-        assert src.len() >= count;
-
+        // Bound checks are done at vec::raw::memmove.
         unsafe { vec::raw::memmove(dst, src, count) }
     }
 }
