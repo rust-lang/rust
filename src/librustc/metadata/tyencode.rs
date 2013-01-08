@@ -388,10 +388,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
         enc_arg(w, cx, *arg);
     }
     w.write_char(']');
-    match ft.meta.ret_style {
-      noreturn => w.write_char('!'),
-      _ => enc_ty(w, cx, ft.sig.output)
-    }
+    enc_ty(w, cx, ft.sig.output);
 }
 
 fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {

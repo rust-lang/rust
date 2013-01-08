@@ -105,18 +105,6 @@ impl Glb: combine {
         }
     }
 
-    fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        match (r1, r2) {
-          (ast::return_val, ast::return_val) => {
-            Ok(ast::return_val)
-          }
-          (ast::noreturn, _) |
-          (_, ast::noreturn) => {
-            Ok(ast::noreturn)
-          }
-        }
-    }
-
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
