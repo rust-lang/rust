@@ -12,7 +12,7 @@
 
 // tjc: I don't know why
 pub mod pipes {
-    use ::core::cast::{forget, transmute};
+    use core::cast::{forget, transmute};
 
     pub enum state {
         empty,
@@ -212,8 +212,8 @@ pub mod pipes {
 }
 
 pub mod pingpong {
-    use ::core::cast;
-    use ::core::ptr;
+    use core::cast;
+    use core::ptr;
 
     pub enum ping = ::pipes::send_packet<pong>;
     pub enum pong = ::pipes::send_packet<ping>;
@@ -241,7 +241,7 @@ pub mod pingpong {
     }
 
     pub mod client {
-        use ::core::option;
+        use core::option;
         use pingpong;
 
         pub type ping = ::pipes::send_packet<pingpong::ping>;

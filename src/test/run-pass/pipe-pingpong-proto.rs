@@ -12,7 +12,7 @@
 
 // An example to make sure the protocol parsing syntax extension works.
 
-use ::core::option;
+use core::option;
 
 proto! pingpong (
     ping:send {
@@ -25,7 +25,7 @@ proto! pingpong (
 )
 
 mod test {
-    use ::core::pipes::recv;
+    use core::pipes::recv;
     use pingpong::{ping, pong};
 
     pub fn client(-chan: ::pingpong::client::ping) {

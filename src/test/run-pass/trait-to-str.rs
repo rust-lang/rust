@@ -14,7 +14,7 @@
 
 extern mod core;
 
-use ::core::{str, int, vec};
+use core::{str, int, vec};
 
 trait to_str {
     fn to_str() -> ~str;
