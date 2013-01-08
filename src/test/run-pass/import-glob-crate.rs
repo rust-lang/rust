@@ -12,7 +12,7 @@
 
 
 extern mod std;
-use ::core::vec::*;
+use core::vec::*;
 
 fn main() {
     let mut v = from_elem(0u, 0);

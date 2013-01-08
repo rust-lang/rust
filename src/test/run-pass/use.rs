@@ -16,7 +16,7 @@ extern mod zed(name = "core");
 extern mod bar(name = "core", vers = "0.6");
 
 
-use ::core::str;
+use core::str;
 use x = zed::str;
 mod baz {
     #[legacy_exports];
