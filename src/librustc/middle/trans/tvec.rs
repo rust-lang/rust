@@ -17,7 +17,7 @@ use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
 use middle::trans::expr;
 use middle::trans::glue;
-use middle::trans::shape::llsize_of;
+use middle::trans::shape::{llsize_of, nonzero_llsize_of};
 use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
@@ -96,7 +96,7 @@ fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> Result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
-    let unit_sz = llsize_of(ccx, llunitty);
+    let unit_sz = nonzero_llsize_of(ccx, llunitty);
 
     let fill = Mul(bcx, C_uint(ccx, elts), unit_sz);
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
@@ -418,7 +418,8 @@ fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunit_ty = type_of::type_of(ccx, unit_ty);
-    let llunit_size = llsize_of(ccx, llunit_ty);
+    let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
+
     VecTypes {vec_ty: vec_ty,
               unit_ty: unit_ty,
               llunit_ty: llunit_ty,
