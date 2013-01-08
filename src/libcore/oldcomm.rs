@@ -91,7 +91,8 @@ pub enum Chan<T: Owned> {
 /// Constructs a port
 pub fn Port<T: Owned>() -> Port<T> {
     unsafe {
-        Port_(@PortPtr(rustrt::new_port(sys::size_of::<T>() as size_t)))
+        Port_(@PortPtr(rustrt::new_port(sys::nonzero_size_of::<T>()
+                                        as size_t)))
     }
 }
 

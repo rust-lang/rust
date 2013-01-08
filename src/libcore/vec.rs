@@ -103,7 +103,7 @@ pub fn reserve_at_least<T>(v: &mut ~[T], n: uint) {
 pub pure fn capacity<T>(v: &const ~[T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr = ::cast::transmute(v);
-        (**repr).unboxed.alloc / sys::size_of::<T>()
+        (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
     }
 }
 
@@ -276,7 +276,7 @@ pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
         unsafe {
             ::cast::reinterpret_cast(
                 &(ptr::offset(p, start),
-                  (end - start) * sys::size_of::<T>()))
+                  (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -289,7 +289,7 @@ pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
         unsafe {
             ::cast::reinterpret_cast(
                 &(ptr::mut_offset(p, start),
-                  (end - start) * sys::size_of::<T>()))
+                  (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -303,7 +303,7 @@ pub pure fn const_view<T>(v: &r/[const T], start: uint,
         unsafe {
             ::cast::reinterpret_cast(
                 &(ptr::const_offset(p, start),
-                  (end - start) * sys::size_of::<T>()))
+                  (end - start) * sys::nonzero_size_of::<T>()))
         }
     }
 }
@@ -608,7 +608,7 @@ pub fn push<T>(v: &mut ~[T], initval: T) {
 unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     let repr: **raw::VecRepr = ::cast::transmute(v);
     let fill = (**repr).unboxed.fill;
-    (**repr).unboxed.fill += sys::size_of::<T>();
+    (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
     let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
     rusti::move_val_init(&mut(*p), move initval);
@@ -1449,7 +1449,7 @@ pub pure fn as_imm_buf<T,U>(s: &[T],
         let v : *(*T,uint) =
             ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
-        f(buf, len / sys::size_of::<T>())
+        f(buf, len / sys::nonzero_size_of::<T>())
     }
 }
 
@@ -1462,7 +1462,7 @@ pub pure fn as_const_buf<T,U>(s: &[const T],
         let v : *(*const T,uint) =
             ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
-        f(buf, len / sys::size_of::<T>())
+        f(buf, len / sys::nonzero_size_of::<T>())
     }
 }
 
@@ -1475,7 +1475,7 @@ pub pure fn as_mut_buf<T,U>(s: &[mut T],
         let v : *(*mut T,uint) =
             ::cast::reinterpret_cast(&addr_of(&s));
         let (buf,len) = *v;
-        f(buf, len / sys::size_of::<T>())
+        f(buf, len / sys::nonzero_size_of::<T>())
     }
 }
 
@@ -1992,7 +1992,7 @@ pub mod raw {
     #[inline(always)]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         let repr: **VecRepr = ::cast::transmute(v);
-        (**repr).unboxed.fill = new_len * sys::size_of::<T>();
+        (**repr).unboxed.fill = new_len * sys::nonzero_size_of::<T>();
     }
 
     /**
@@ -2032,7 +2032,7 @@ pub mod raw {
     pub unsafe fn buf_as_slice<T,U>(p: *T,
                                     len: uint,
                                     f: fn(v: &[T]) -> U) -> U {
-        let pair = (p, len * sys::size_of::<T>());
+        let pair = (p, len * sys::nonzero_size_of::<T>());
         let v : *(&blk/[T]) =
             ::cast::reinterpret_cast(&addr_of(&pair));
         f(*v)
@@ -2499,6 +2499,18 @@ mod tests {
     fn test_is_not_empty() {
         assert (is_not_empty(~[0]));
         assert (!is_not_empty::<int>(~[]));
+    }
+
+    #[test]
+    fn test_len_divzero() {
+        type Z = [i8 * 0];
+        let v0 : &[Z] = &[];
+        let v1 : &[Z] = &[[]];
+        let v2 : &[Z] = &[[], []];
+        assert(sys::size_of::<Z>() == 0);
+        assert(len(v0) == 0);
+        assert(len(v1) == 1);
+        assert(len(v2) == 2);
     }
 
     #[test]

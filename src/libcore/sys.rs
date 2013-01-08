@@ -88,6 +88,17 @@ pub pure fn size_of<T>() -> uint {
 }
 
 /**
+ * Returns the size of a type, or 1 if the actual size is zero.
+ *
+ * Useful for building structures containing variable-length arrays.
+ */
+#[inline(always)]
+pub pure fn nonzero_size_of<T>() -> uint {
+    let s = size_of::<T>();
+    if s == 0 { 1 } else { s }
+}
+
+/**
  * Returns the ABI-required minimum alignment of a type
  *
  * This is the alignment used for struct fields. It may be smaller
@@ -146,7 +157,7 @@ pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 #[cfg(test)]
 pub mod tests {
     use cast;
-    use sys::{Closure, pref_align_of, size_of};
+    use sys::{Closure, pref_align_of, size_of, nonzero_size_of};
 
     #[test]
     pub fn size_of_basic() {
@@ -169,6 +180,14 @@ pub mod tests {
     pub fn size_of_64() {
         assert size_of::<uint>() == 8u;
         assert size_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    pub fn nonzero_size_of_basic() {
+        type Z = [i8 * 0];
+        assert size_of::<Z>() == 0u;
+        assert nonzero_size_of::<Z>() == 1u;
+        assert nonzero_size_of::<uint>() == size_of::<uint>();
     }
 
     #[test]

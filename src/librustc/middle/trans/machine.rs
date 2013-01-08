@@ -132,6 +132,17 @@ pub fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
     }
 }
 
+// Returns the "default" size of t (see above), or 1 if the size would
+// be zero.  This is important for things like vectors that expect
+// space to be consumed.
+pub fn nonzero_llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+    if llbitsize_of_real(cx, t) == 0 {
+        unsafe { llvm::LLVMConstInt(cx.int_type, 1, False) }
+    } else {
+        llsize_of(cx, t)
+    }
+}
+
 // Returns the preferred alignment of the given type for the current target.
 // The preffered alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
