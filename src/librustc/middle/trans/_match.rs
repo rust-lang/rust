@@ -245,7 +245,7 @@ enum opt_result {
     range_result(Result, Result),
 }
 fn trans_opt(bcx: block, o: &Opt) -> opt_result {
-    let _icx = bcx.insn_ctxt("alt::trans_opt");
+    let _icx = bcx.insn_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     match *o {
@@ -463,8 +463,8 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
 }
 
 // <pcwalton> nmatsakis: what does enter_opt do?
-// <pcwalton> in trans/alt
-// <pcwalton> trans/alt.rs is like stumbling around in a dark cave
+// <pcwalton> in trans/match
+// <pcwalton> trans/match.rs is like stumbling around in a dark cave
 // <nmatsakis> pcwalton: the enter family of functions adjust the set of
 //             patterns as needed
 // <nmatsakis> yeah, at some point I kind of achieved some level of
@@ -810,7 +810,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
                         val: ValueRef)
     -> {vals: ~[ValueRef], bcx: block}
 {
-    let _icx = bcx.insn_ctxt("alt::extract_variant_args");
+    let _icx = bcx.insn_ctxt("match::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
       ty::ty_enum(id, ref substs) => {
@@ -841,7 +841,7 @@ fn extract_vec_elems(bcx: block, pat_id: ast::node_id,
                      elem_count: uint, tail: bool, val: ValueRef)
     -> {vals: ~[ValueRef], bcx: block}
 {
-    let _icx = bcx.insn_ctxt("alt::extract_vec_elems");
+    let _icx = bcx.insn_ctxt("match::extract_vec_elems");
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
     let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
     let (base, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
@@ -909,7 +909,7 @@ fn root_pats_as_necessary(bcx: block, m: &[@Match],
         match bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
             None => (),
             Some(scope_id) => {
-                // Note: the scope_id will always be the id of the alt.  See
+                // Note: the scope_id will always be the id of the match.  See
                 // the extended comment in rustc::middle::borrowck::preserve()
                 // for details (look for the case covering cat_discr).
 
@@ -1201,7 +1201,7 @@ fn compile_submatch(bcx: block,
       For an empty match, a fall-through case must exist
      */
     assert(m.len() > 0u || chk.is_some());
-    let _icx = bcx.insn_ctxt("alt::compile_submatch");
+    let _icx = bcx.insn_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
     if m.len() == 0u {
@@ -1520,22 +1520,22 @@ fn compile_submatch(bcx: block,
     }
 }
 
-fn trans_alt(bcx: block,
-             alt_expr: @ast::expr,
+fn trans_match(bcx: block,
+             match_expr: @ast::expr,
              discr_expr: @ast::expr,
              arms: ~[ast::arm],
              dest: Dest) -> block {
-    let _icx = bcx.insn_ctxt("alt::trans_alt");
-    do with_scope(bcx, alt_expr.info(), ~"alt") |bcx| {
-        trans_alt_inner(bcx, discr_expr, arms, dest)
+    let _icx = bcx.insn_ctxt("match::trans_match");
+    do with_scope(bcx, match_expr.info(), ~"match") |bcx| {
+        trans_match_inner(bcx, discr_expr, arms, dest)
     }
 }
 
-fn trans_alt_inner(scope_cx: block,
+fn trans_match_inner(scope_cx: block,
                    discr_expr: @ast::expr,
                    arms: &[ast::arm],
                    dest: Dest) -> block {
-    let _icx = scope_cx.insn_ctxt("alt::trans_alt_inner");
+    let _icx = scope_cx.insn_ctxt("match::trans_match_inner");
     let mut bcx = scope_cx;
     let tcx = bcx.tcx();
 
@@ -1655,18 +1655,18 @@ enum IrrefutablePatternBindingMode {
     BindArgument
 }
 
-// Not alt-related, but similar to the pattern-munging code above
+// Not match-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: block,
                         pat: @ast::pat,
                         val: ValueRef,
                         make_copy: bool,
                         binding_mode: IrrefutablePatternBindingMode)
                      -> block {
-    let _icx = bcx.insn_ctxt("alt::bind_irrefutable_pat");
+    let _icx = bcx.insn_ctxt("match::bind_irrefutable_pat");
     let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
 
-    // Necessary since bind_irrefutable_pat is called outside trans_alt
+    // Necessary since bind_irrefutable_pat is called outside trans_match
     match /*bad*/copy pat.node {
         ast::pat_ident(_, _,inner) => {
             if pat_is_variant_or_struct(bcx.tcx().def_map, pat) {

@@ -21,10 +21,10 @@ use syntax::ast_util::walk_pat;
 use syntax::ast_util;
 use syntax::print::pprust;
 
-fn check_alt(fcx: @fn_ctxt,
-             expr: @ast::expr,
-             discrim: @ast::expr,
-             arms: ~[ast::arm]) -> bool {
+fn check_match(fcx: @fn_ctxt,
+               expr: @ast::expr,
+               discrim: @ast::expr,
+               arms: ~[ast::arm]) -> bool {
     let tcx = fcx.ccx.tcx;
     let mut bot;
 
@@ -37,7 +37,7 @@ fn check_alt(fcx: @fn_ctxt,
         let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
-            alt_region: ty::re_scope(expr.id),
+            match_region: ty::re_scope(expr.id),
             block_region: ty::re_scope(arm.body.node.id)
         };
 
@@ -65,7 +65,7 @@ fn check_alt(fcx: @fn_ctxt,
 struct pat_ctxt {
     fcx: @fn_ctxt,
     map: PatIdMap,
-    alt_region: ty::Region,   // Region for the alt as a whole
+    match_region: ty::Region, // Region for the match as a whole
     block_region: ty::Region, // Region for the block of the arm
 }
 
@@ -389,7 +389,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, typ);
 
-        debug!("(checking alt) writing type for pat id %d", pat.id);
+        debug!("(checking match) writing type for pat id %d", pat.id);
 
         match sub {
           Some(p) => check_pat(pcx, p, expected),

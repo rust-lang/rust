@@ -71,7 +71,7 @@ struct ctxt {
     // that when we visit it we can view it as a parent.
     root_exprs: HashMap<ast::node_id, ()>,
 
-    // The parent scope is the innermost block, statement, call, or alt
+    // The parent scope is the innermost block, statement, call, or match
     // expression during the execution of which the current expression
     // will be evaluated.  Generally speaking, the innermost parent
     // scope is also the closest suitable ancestor in the AST tree.
