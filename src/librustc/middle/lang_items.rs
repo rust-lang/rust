@@ -29,7 +29,7 @@ use metadata::decoder::{dl_def, dl_field, dl_impl};
 use syntax::ast::{crate, def_fn, def_id, def_ty, lit_str, meta_item};
 use syntax::ast::{meta_list, meta_name_value, meta_word};
 use syntax::ast_util::{local_def};
-use syntax::visit::{default_simple_visitor, mk_simple_visitor};
+use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::{visit_crate, visit_item};
 
 use core::ptr;
@@ -333,7 +333,7 @@ impl LanguageItemCollector {
 
     fn collect_local_language_items() {
         let this = unsafe { ptr::addr_of(&self) };
-        visit_crate(*self.crate, (), mk_simple_visitor(@{
+        visit_crate(*self.crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 for item.attrs.each |attribute| {
                     unsafe {

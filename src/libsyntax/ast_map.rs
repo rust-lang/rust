@@ -110,7 +110,7 @@ fn extend(cx: ctx, +elt: ident) -> @path {
 }
 
 fn mk_ast_map_visitor() -> vt {
-    return visit::mk_vt(@{
+    return visit::mk_vt(@visit::Visitor {
         visit_item: map_item,
         visit_expr: map_expr,
         visit_stmt: map_stmt,

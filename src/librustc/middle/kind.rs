@@ -97,7 +97,7 @@ fn check_crate(tcx: ty::ctxt,
                method_map: method_map,
                last_use_map: last_use_map,
                current_item: -1};
-    let visit = visit::mk_vt(@{
+    let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,
         visit_expr: check_expr,
         visit_stmt: check_stmt,

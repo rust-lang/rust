@@ -180,11 +180,12 @@ fn def_to_str(did: def_id) -> ~str { fmt!("%d:%d", did.crate, did.node) }
 
 fn encode_ty_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
                                params: @~[ty::param_bounds]) {
-    let ty_str_ctxt = @{diag: ecx.diag,
-                        ds: def_to_str,
-                        tcx: ecx.tcx,
-                        reachable: |a| reachable(ecx, a),
-                        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
+    let ty_str_ctxt = @tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_str,
+        tcx: ecx.tcx,
+        reachable: |a| reachable(ecx, a),
+        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each |param| {
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
         tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, *param);
@@ -207,23 +208,23 @@ fn encode_variant_id(ebml_w: writer::Encoder, vid: def_id) {
 }
 
 fn write_type(ecx: @encode_ctxt, ebml_w: writer::Encoder, typ: ty::t) {
-    let ty_str_ctxt =
-        @{diag: ecx.diag,
-          ds: def_to_str,
-          tcx: ecx.tcx,
-          reachable: |a| reachable(ecx, a),
-          abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
+    let ty_str_ctxt = @tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_str,
+        tcx: ecx.tcx,
+        reachable: |a| reachable(ecx, a),
+        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
 fn write_vstore(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 vstore: ty::vstore) {
-    let ty_str_ctxt =
-        @{diag: ecx.diag,
-          ds: def_to_str,
-          tcx: ecx.tcx,
-          reachable: |a| reachable(ecx, a),
-          abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
+    let ty_str_ctxt = @tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_str,
+        tcx: ecx.tcx,
+        reachable: |a| reachable(ecx, a),
+        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_vstore(ebml_w.writer, ty_str_ctxt, vstore);
 }
 
@@ -887,7 +888,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     encode_info_for_mod(ecx, ebml_w, crate.node.module,
                         crate_node_id, ~[],
                         syntax::parse::token::special_idents::invalid);
-    visit::visit_crate(*crate, (), visit::mk_vt(@{
+    visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v, copy ebml_w| {
             visit::visit_item(i, cx, v);
@@ -1267,11 +1268,12 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
 // Get the encoded string for a type
 fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
-    let cx = @{diag: tcx.diag,
-               ds: def_to_str,
-               tcx: tcx,
-               reachable: |_id| false,
-               abbrevs: tyencode::ac_no_abbrevs};
+    let cx = @tyencode::ctxt {
+        diag: tcx.diag,
+        ds: def_to_str,
+        tcx: tcx,
+        reachable: |_id| false,
+        abbrevs: tyencode::ac_no_abbrevs};
     do io::with_str_writer |wr| {
         tyencode::enc_ty(wr, cx, t);
     }

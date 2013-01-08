@@ -44,11 +44,14 @@ enum ann_node {
     node_expr(ps, @ast::expr),
     node_pat(ps, @ast::pat),
 }
-type pp_ann = {pre: fn@(ann_node), post: fn@(ann_node)};
+struct pp_ann {
+    pre: fn@(ann_node),
+    post: fn@(ann_node)
+}
 
 fn no_ann() -> pp_ann {
     fn ignore(_node: ann_node) { }
-    return {pre: ignore, post: ignore};
+    return pp_ann {pre: ignore, post: ignore};
 }
 
 type ps =

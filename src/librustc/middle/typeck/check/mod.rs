@@ -82,8 +82,9 @@ use middle::capture;
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
-use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_, field};
+use middle::ty::{TyVid, Vid, FnTyBase, FnMeta, FnSig, VariantInfo_, field};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
+use middle::ty::{re_bound, br_cap_avoid};
 use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -91,6 +92,7 @@ use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::crate_ctxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
@@ -187,7 +189,7 @@ type self_info = {
 /// `bar()` will each have their own `fn_ctxt`, but they will
 /// share the inherited fields.
 struct inherited {
-    infcx: infer::infer_ctxt,
+    infcx: @infer::InferCtxt,
     locals: HashMap<ast::node_id, TyVid>,
     node_types: HashMap<ast::node_id, ty::t>,
     node_type_substs: HashMap<ast::node_id, ty::substs>,
@@ -265,7 +267,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 }
 
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
-    let visit = visit::mk_simple_visitor(@{
+    let visit = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
     });
@@ -273,7 +275,7 @@ fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 }
 
 fn check_bare_fn(ccx: @crate_ctxt,
-                 decl: ast::fn_decl,
+                 decl: &ast::fn_decl,
                  body: ast::blk,
                  id: ast::node_id,
                  self_info: Option<self_info>) {
@@ -290,7 +292,7 @@ fn check_bare_fn(ccx: @crate_ctxt,
 fn check_fn(ccx: @crate_ctxt,
             self_info: Option<self_info>,
             fn_ty: &ty::FnTy,
-            decl: ast::fn_decl,
+            decl: &ast::fn_decl,
             body: ast::blk,
             fn_kind: FnKind,
             old_fcx: Option<@fn_ctxt>) {
@@ -305,15 +307,15 @@ fn check_fn(ccx: @crate_ctxt,
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
 
-    let {isr: isr, self_info: self_info, fn_ty: fn_ty} = {
+    let {isr, self_info, fn_sig} = {
         let old_isr = option::map_default(&old_fcx, @Nil,
-                                         |fcx| fcx.in_scope_regions);
-        replace_bound_regions_in_fn_ty(tcx, old_isr, self_info, fn_ty,
-                                       |br| ty::re_free(body.node.id, br))
+                                          |fcx| fcx.in_scope_regions);
+        replace_bound_regions_in_fn_sig(tcx, old_isr, self_info, &fn_ty.sig,
+                                        |br| ty::re_free(body.node.id, br))
     };
 
-    let arg_tys = fn_ty.sig.inputs.map(|a| a.ty);
-    let ret_ty = fn_ty.sig.output;
+    let arg_tys = fn_sig.inputs.map(|a| a.ty);
+    let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
            arg_tys.map(|a| ppaux::ty_to_str(tcx, *a)),
@@ -406,12 +408,12 @@ fn check_fn(ccx: @crate_ctxt,
     // resolved when the enclosing scope finishes up.
     if old_fcx.is_none() {
         vtable::resolve_in_block(fcx, body);
-        regionck::regionck_fn(fcx, decl, body);
+        regionck::regionck_fn(fcx, body);
         writeback::resolve_type_vars_in_fn(fcx, decl, body, self_info);
     }
 
     fn gather_locals(fcx: @fn_ctxt,
-                     decl: ast::fn_decl,
+                     decl: &ast::fn_decl,
                      body: ast::blk,
                      arg_tys: ~[ty::t],
                      self_info: Option<self_info>) {
@@ -503,12 +505,13 @@ fn check_fn(ccx: @crate_ctxt,
         }
         fn visit_item(_i: @ast::item, &&_e: (), _v: visit::vt<()>) { }
 
-        let visit = visit::mk_vt(@{visit_local: visit_local,
-                                   visit_pat: visit_pat,
-                                   visit_fn: visit_fn,
-                                   visit_item: visit_item,
-                                   visit_block: visit_block,
-                                   .. *visit::default_visitor()});
+        let visit = visit::mk_vt(
+            @visit::Visitor {visit_local: visit_local,
+                             visit_pat: visit_pat,
+                             visit_fn: visit_fn,
+                             visit_item: visit_item,
+                             visit_block: visit_block,
+                             ..*visit::default_visitor()});
 
         (visit.visit_block)(body, (), visit);
     }
@@ -520,7 +523,7 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method,
                      self_id: method.self_id,
                      def_id: self_impl_def_id,
                      explicit_self: method.self_ty };
-    check_bare_fn(ccx, method.decl, method.body, method.id, Some(self_info));
+    check_bare_fn(ccx, &method.decl, method.body, method.id, Some(self_info));
 }
 
 fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
@@ -559,7 +562,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                             spanned { node: ast::sty_by_ref,
                                       span: ast_util::dummy_sp() } };
         // typecheck the dtor
-        check_bare_fn(ccx, ast_util::dtor_dec(),
+        let dtor_dec = ast_util::dtor_dec();
+        check_bare_fn(ccx, &dtor_dec,
                       dtor.node.body, dtor.node.id,
                       Some(class_t));
     };
@@ -583,7 +587,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                             it.id);
       }
       ast::item_fn(ref decl, _, _, ref body) => {
-        check_bare_fn(ccx, *decl, (*body), it.id, None);
+        check_bare_fn(ccx, decl, (*body), it.id, None);
       }
       ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(it.id);
@@ -657,7 +661,7 @@ impl @fn_ctxt: ast_conv {
 }
 
 impl @fn_ctxt {
-    fn infcx() -> infer::infer_ctxt { self.inh.infcx }
+    fn infcx() -> @infer::InferCtxt { self.inh.infcx }
     fn search_in_scope_regions(br: ty::bound_region)
         -> Result<ty::Region, ~str>
     {
@@ -1519,7 +1523,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn check_expr_fn(fcx: @fn_ctxt,
                      expr: @ast::expr,
                      ast_proto_opt: Option<ast::Proto>,
-                     decl: ast::fn_decl,
+                     decl: &ast::fn_decl,
                      body: ast::blk,
                      fn_kind: FnKind,
                      expected: Option<ty::t>) {
@@ -1569,7 +1573,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx, fcx,
             proto, purity, expected_onceness,
             /*bounds:*/ @~[], /*opt_region:*/ None,
-            decl, expected_tys, expr.span);
+            *decl, expected_tys, expr.span);
 
         // XXX: Bad copy.
         let fty = ty::mk_fn(tcx, copy fn_ty);
@@ -2157,12 +2161,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_fn(proto, ref decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, Some(proto),
-                      *decl, (*body), Vanilla, expected);
+                      decl, (*body), Vanilla, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(ref decl, ref body, cap_clause) => {
         check_expr_fn(fcx, expr, None,
-                      *decl, (*body), Vanilla, expected);
+                      decl, (*body), Vanilla, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_loop_body(b) => {
@@ -2218,7 +2222,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match b.node {
           ast::expr_fn_block(ref decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          *decl, (*body), ForLoop, Some(inner_ty));
+                          decl, *body, ForLoop, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
@@ -2227,20 +2231,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
-        match ty::get(block_ty).sty {
-          ty::ty_fn(ref fty) => {
-              if !err_happened {
-                  fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
-                      meta: (*fty).meta,
-                      sig: FnSig {output: ty::mk_bool(tcx),
-                                  ../*bad*/copy (*fty).sig}
-                  }));
-              }
-              else {
-                  fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
-              }
-          }
-          _ => fail ~"expected fn type"
+        if err_happened {
+            fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
+        } else {
+            let loop_body_ty = ty::replace_fn_return_type(tcx, block_ty,
+                                                          ty::mk_bool(tcx));
+            fcx.write_ty(expr.id, loop_body_ty);
         }
       }
       ast::expr_do_body(b) => {
@@ -2267,21 +2263,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match b.node {
           ast::expr_fn_block(ref decl, ref body, cap_clause) => {
             check_expr_fn(fcx, b, None,
-                          *decl, (*body), DoBlock, Some(inner_ty));
+                          decl, *body, DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
           // argh
           _ => fail ~"expected fn ty"
         }
-        let block_ty = structurally_resolved_type(
-            fcx, expr.span, fcx.node_ty(b.id));
-        match ty::get(block_ty).sty {
-          ty::ty_fn(ref fty) => {
-            fcx.write_ty(expr.id, ty::mk_fn(tcx, (/*bad*/copy *fty)));
-          }
-          _ => fail ~"expected fn ty"
-        }
+        fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
       ast::expr_block(ref b) => {
         // If this is an unchecked block, turn off purity-checking

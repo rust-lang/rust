@@ -38,7 +38,7 @@ struct MatchCheckCtxt {
 
 fn check_crate(tcx: ty::ctxt, method_map: method_map, crate: @crate) {
     let cx = @MatchCheckCtxt { tcx: tcx, method_map: method_map };
-    visit::visit_crate(*crate, (), visit::mk_vt(@{
+    visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |a,b,c| check_expr(cx, a, b, c),
         visit_local: |a,b,c| check_local(cx, a, b, c),
         visit_fn: |kind, decl, body, sp, id, e, v|
@@ -797,7 +797,7 @@ fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
 
         // Now check to ensure that any move binding is not behind an @ or &.
         // This is always illegal.
-        let vt = visit::mk_vt(@{
+        let vt = visit::mk_vt(@visit::Visitor {
             visit_pat: |pat, behind_bad_pointer, v| {
                 let error_out = || {
                     cx.tcx.sess.span_err(pat.span, ~"by-move pattern \

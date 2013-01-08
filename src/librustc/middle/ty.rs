@@ -47,7 +47,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::print::pprust::*;
+use syntax::print::pprust;
 use syntax::{ast, ast_map};
 use syntax;
 
@@ -55,7 +55,7 @@ export ProvidedMethodSource;
 export ProvidedMethodInfo;
 export ProvidedMethodsMap;
 export InstantiatedTraitRef;
-export TyVid, IntVid, FloatVid, FnVid, RegionVid, vid;
+export TyVid, IntVid, FloatVid, FnVid, RegionVid, Vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -118,7 +118,8 @@ export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, FnTy, FnTyBase, FnMeta, FnSig, mk_fn;
-export ty_fn_proto, ty_fn_purity, ty_fn_ret, tys_in_fn_ty;
+export ty_fn_proto, ty_fn_purity, ty_fn_ret, tys_in_fn_sig;
+export replace_fn_return_type;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export mk_f32, mk_f64;
@@ -139,7 +140,8 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var, mk_float_var;
+export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var;
+export mk_float_var;
 export InferTy, TyVar, IntVar, FloatVar;
 export ValueMode, ReadValue, CopyValue, MoveValue;
 export ty_self, mk_self, type_has_self;
@@ -222,7 +224,6 @@ export terr_regions_insufficiently_polymorphic;
 export terr_regions_overly_polymorphic;
 export terr_proto_mismatch;
 export terr_fn, terr_trait;
-export purity_to_str;
 export onceness_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
@@ -519,6 +520,7 @@ pure fn type_id(t: t) -> uint { get(t).id }
  *   times.
  * - `region` is the region bound on the function's upvars (often &static).
  * - `bounds` is the parameter bounds on the function's upvars. */
+#[deriving_eq]
 struct FnMeta {
     purity: ast::purity,
     proto: ast::Proto,
@@ -533,6 +535,7 @@ struct FnMeta {
  *
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
+#[deriving_eq]
 struct FnSig {
     inputs: ~[arg],
     output: t
@@ -543,9 +546,16 @@ struct FnSig {
  * type signature.  This particular type is parameterized
  * by the meta information because, in some cases, the
  * meta information is inferred. */
+#[deriving_eq]
 struct FnTyBase<M: cmp::Eq> {
-    meta: M,
-    sig: FnSig
+    meta: M,        // Either FnMeta or FnVid
+    sig: FnSig      // Types of arguments/return type
+}
+
+impl<M: to_bytes::IterBytes> FnTyBase<M> : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.meta, &self.sig, lsb0, f)
+    }
 }
 
 type FnTy = FnTyBase<FnMeta>;
@@ -673,7 +683,7 @@ enum sty {
     ty_param(param_ty), // type parameter
     ty_self, // special, implicit `self` type parameter
 
-    ty_infer(InferTy), // soething used only during inference/typeck
+    ty_infer(InferTy), // something used only during inference/typeck
     ty_err, // Also only used during inference/typeck, to represent
             // the type of an erroneous expression (helps cut down
             // on non-useful type error messages)
@@ -742,6 +752,7 @@ enum FnVid = uint;
 #[auto_decode]
 enum RegionVid = uint;
 
+#[deriving_eq]
 enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -753,7 +764,7 @@ impl InferTy : to_bytes::IterBytes {
         match *self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
-          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f)
+          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f),
         }
     }
 }
@@ -804,61 +815,64 @@ impl param_bound : to_bytes::IterBytes {
     }
 }
 
-trait vid {
+trait Vid {
     pure fn to_uint() -> uint;
-    pure fn to_str() -> ~str;
 }
 
-impl TyVid: vid {
+impl TyVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl TyVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-impl IntVid: vid {
+impl IntVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl IntVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-impl FloatVid: vid {
+impl FloatVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl FloatVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-impl FnVid: vid {
+impl FnVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl FnVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<F%u>", self.to_uint()) }
 }
 
-impl RegionVid: vid {
+impl RegionVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl RegionVid: ToStr {
     pure fn to_str() -> ~str { fmt!("%?", self) }
 }
 
-impl InferTy {
-    pure fn to_hash() -> uint {
-        match self {
-            TyVar(v) => v.to_uint() << 1,
-            IntVar(v) => (v.to_uint() << 1) + 1,
-            FloatVar(v) => (v.to_uint() << 1) + 2
-        }
-    }
-
+impl FnSig : ToStr {
     pure fn to_str() -> ~str {
-        match self {
-            TyVar(v) => v.to_str(),
-            IntVar(v) => v.to_str(),
-            FloatVar(v) => v.to_str()
-        }
+        // grr, without tcx not much we can do.
+        return ~"(...)";
     }
 }
 
-trait purity_to_str {
-    pure fn to_str() -> ~str;
-}
-
-impl purity: purity_to_str {
+impl InferTy: ToStr {
     pure fn to_str() -> ~str {
-        purity_to_str(self)
+        match self {
+            TyVar(ref v) => v.to_str(),
+            IntVar(ref v) => v.to_str(),
+            FloatVar(ref v) => v.to_str()
+        }
     }
 }
 
@@ -1197,7 +1211,7 @@ fn mk_int_var(cx: ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
 
 fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
 
-fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
+fn mk_infer(cx: ctxt, +it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
@@ -1369,15 +1383,8 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             ty_tup(new_ts)
         }
         ty_fn(ref f) => {
-            let new_args = f.sig.inputs.map(|a| {
-                let new_ty = fldop(a.ty);
-                {mode: a.mode, ty: new_ty}
-            });
-            let new_output = fldop(f.sig.output);
-            ty_fn(FnTyBase {
-                meta: f.meta,
-                sig: FnSig {inputs: new_args, output: new_output}
-            })
+            let sig = fold_sig(&f.sig, fldop);
+            ty_fn(FnTyBase {meta: f.meta, sig: sig})
         }
         ty_rptr(r, tm) => {
             ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1424,8 +1431,8 @@ fn fold_regions_and_ty(
     fn fold_substs(
         substs: &substs,
         fldr: fn(r: Region) -> Region,
-        fldt: fn(t: t) -> t) -> substs {
-
+        fldt: fn(t: t) -> t) -> substs
+    {
         {self_r: substs.self_r.map(|r| fldr(*r)),
          self_ty: substs.self_ty.map(|t| fldt(*t)),
          tps: substs.tps.map(|t| fldt(*t))}
@@ -1457,18 +1464,9 @@ fn fold_regions_and_ty(
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
       ty_fn(ref f) => {
-          let new_region = fldr(f.meta.region);
-          let new_args = vec::map(f.sig.inputs, |a| {
-              let new_ty = fldfnt(a.ty);
-              {mode: a.mode, ty: new_ty}
-          });
-          let new_output = fldfnt(f.sig.output);
-          ty::mk_fn(cx, FnTyBase {
-              meta: FnMeta {region: new_region,
-                            ..f.meta},
-              sig: FnSig {inputs: new_args,
-                          output: new_output}
-          })
+          ty::mk_fn(cx, FnTyBase {meta: FnMeta {region: fldr(f.meta.region),
+                                                ..f.meta},
+                                  sig: fold_sig(&f.sig, fldfnt)})
       }
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
@@ -1509,6 +1507,7 @@ fn fold_regions(
 {
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
                fldr: fn(Region, bool) -> Region) -> t {
+        debug!("do_fold(ty=%s, in_fn=%b)", ty_to_str(cx, ty), in_fn);
         if !type_has_regions(ty) { return ty; }
         fold_regions_and_ty(
             cx, ty,
@@ -2834,8 +2833,9 @@ impl arg : to_bytes::IterBytes {
 
 impl FnMeta : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_4(&self.purity,
+        to_bytes::iter_bytes_5(&self.purity,
                                &self.proto,
+                               &self.onceness,
                                &self.region,
                                &self.bounds,
                                lsb0, f);
@@ -2887,10 +2887,7 @@ impl sty : to_bytes::IterBytes {
           to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
 
           ty_fn(ref ft) =>
-          to_bytes::iter_bytes_3(&12u8,
-                                 &ft.meta,
-                                 &ft.sig,
-                                 lsb0, f),
+          to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
 
           ty_self => 13u8.iter_bytes(lsb0, f),
 
@@ -2978,8 +2975,8 @@ fn ty_fn_purity(fty: t) -> ast::purity {
 
 pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
-      ty_fn(ref f) => f.sig.output,
-      _ => fail ~"ty_fn_ret() called on non-fn type"
+        ty_fn(ref f) => f.sig.output,
+        _ => fail ~"ty_fn_ret() called on non-fn type"
     }
 }
 
@@ -2997,9 +2994,30 @@ fn ty_region(ty: t) -> Region {
     }
 }
 
+fn replace_fn_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
+    /*!
+     *
+     * Returns a new function type based on `fn_type` but returning a value of
+     * type `ret_type` instead. */
+
+    match ty::get(fn_type).sty {
+        ty::ty_fn(ref fty) => {
+            ty::mk_fn(tcx, FnTyBase {
+                meta: fty.meta,
+                sig: FnSig {output: ret_type, ..copy fty.sig}
+            })
+        }
+        _ => {
+            tcx.sess.bug(fmt!(
+                "replace_fn_ret() invoked with non-fn-type: %s",
+                ty_to_str(tcx, fn_type)));
+        }
+    }
+}
+
 // Returns a vec of all the input and output types of fty.
-fn tys_in_fn_ty(fty: &FnTy) -> ~[t] {
-    vec::append_one(fty.sig.inputs.map(|a| a.ty), fty.sig.output)
+fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
+    vec::append_one(sig.inputs.map(|a| a.ty), sig.output)
 }
 
 // Just checks whether it's a fn that returns bool,
@@ -3444,18 +3462,16 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_mismatch => ~"types differ",
         terr_purity_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
-                 purity_to_str(values.expected),
-                 purity_to_str(values.found))
+                 values.expected.to_str(), values.found.to_str())
         }
         terr_onceness_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
-                 onceness_to_str(values.expected),
-                 onceness_to_str(values.found))
+                 values.expected.to_str(), values.found.to_str())
         }
         terr_proto_mismatch(values) => {
             fmt!("expected %s closure, found %s closure",
-                 proto_ty_to_str(cx, values.expected),
-                 proto_ty_to_str(cx, values.found))
+                 proto_ty_to_str(cx, values.expected, false),
+                 proto_ty_to_str(cx, values.found, false))
         }
         terr_mutability => ~"values differ in mutability",
         terr_box_mutability => ~"boxed values differ in mutability",
@@ -3489,7 +3505,8 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_arg_count => ~"incorrect number of function parameters",
         terr_mode_mismatch(values) => {
             fmt!("expected argument mode %s, but found %s",
-                 mode_to_str(values.expected), mode_to_str(values.found))
+                 pprust::mode_to_str(values.expected),
+                 pprust::mode_to_str(values.found))
         }
         terr_regions_does_not_outlive(*) => {
             fmt!("lifetime mismatch")
@@ -4398,30 +4415,6 @@ impl vstore : cmp::Eq {
     pure fn ne(&self, other: &vstore) -> bool { !(*self).eq(other) }
 }
 
-impl FnMeta : cmp::Eq {
-    pure fn eq(&self, other: &FnMeta) -> bool {
-        (*self).purity == (*other).purity &&
-        (*self).proto == (*other).proto &&
-        (*self).bounds == (*other).bounds
-    }
-    pure fn ne(&self, other: &FnMeta) -> bool { !(*self).eq(other) }
-}
-
-impl FnSig : cmp::Eq {
-    pure fn eq(&self, other: &FnSig) -> bool {
-        (*self).inputs == (*other).inputs &&
-        (*self).output == (*other).output
-    }
-    pure fn ne(&self, other: &FnSig) -> bool { !(*self).eq(other) }
-}
-
-impl<M: cmp::Eq> FnTyBase<M> : cmp::Eq {
-    pure fn eq(&self, other: &FnTyBase<M>) -> bool {
-        (*self).meta == (*other).meta && (*self).sig == (*other).sig
-    }
-    pure fn ne(&self, other: &FnTyBase<M>) -> bool { !(*self).eq(other) }
-}
-
 impl TyVid : cmp::Eq {
     pure fn eq(&self, other: &TyVid) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &TyVid) -> bool { *(*self) != *(*other) }
@@ -4530,13 +4523,6 @@ impl substs : cmp::Eq {
         (*self).tps == (*other).tps
     }
     pure fn ne(&self, other: &substs) -> bool { !(*self).eq(other) }
-}
-
-impl InferTy : cmp::Eq {
-    pure fn eq(&self, other: &InferTy) -> bool {
-        (*self).to_hash() == (*other).to_hash()
-    }
-    pure fn ne(&self, other: &InferTy) -> bool { !(*self).eq(other) }
 }
 
 impl sty : cmp::Eq {
@@ -4651,9 +4637,9 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
-            ty_infer(e0a) => {
+            ty_infer(ref e0a) => {
                 match (*other) {
-                    ty_infer(e0b) => e0a == e0b,
+                    ty_infer(ref e0b) => *e0a == *e0b,
                     _ => false
                 }
             }

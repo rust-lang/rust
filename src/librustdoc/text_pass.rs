@@ -23,7 +23,7 @@ use util::NominalOp;
 use std::par;
 
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
-    {
+    Pass {
         name: name,
         f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, copy op)

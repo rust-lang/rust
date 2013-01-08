@@ -65,10 +65,10 @@ fn generate_test_harness(sess: session::Session,
           mut path: ~[],
           testfns: DVec()};
 
-    let precursor =
-        @{fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
-          fold_item: |a,b| fold_item(cx, a, b),
-          fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
+    let precursor = @fold::AstFoldFns {
+        fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
+        fold_item: |a,b| fold_item(cx, a, b),
+        fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
@@ -424,8 +424,14 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
                 ident: cx.sess.ident_of(~"should_fail"),
                 expr: @fail_expr});
 
+    let test_desc_path =
+        mk_path(cx, ~[cx.sess.ident_of(~"test"),
+                      cx.sess.ident_of(~"TestDesc")]);
+
     let desc_rec_: ast::expr_ =
-        ast::expr_rec(~[name_field, fn_field, ignore_field, fail_field],
+        ast::expr_struct(
+            test_desc_path,
+            ~[name_field, fn_field, ignore_field, fail_field],
             option::None);
     let desc_rec: ast::expr =
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),

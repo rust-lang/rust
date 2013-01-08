@@ -35,7 +35,7 @@ use std::map::HashMap;
 use std::par;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"attr",
         f: run
     }

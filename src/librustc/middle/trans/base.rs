@@ -2372,10 +2372,12 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
 }
 
 fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
-    visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: |a| trans_constant(ccx, a),
-        ..*visit::default_simple_visitor()
-    }));
+    visit::visit_crate(
+        *crate, (),
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_item: |a| trans_constant(ccx, a),
+            ..*visit::default_simple_visitor()
+        }));
 }
 
 fn vp2i(cx: block, v: ValueRef) -> ValueRef {

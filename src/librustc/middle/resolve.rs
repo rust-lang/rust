@@ -64,7 +64,7 @@ use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{pat_to_str, path_to_str};
 use syntax::codemap::span;
-use syntax::visit::{default_visitor, fk_method, mk_vt, visit_block};
+use syntax::visit::{default_visitor, fk_method, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
 use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 use syntax::visit::{visit_mod, visit_ty, vt};
@@ -947,7 +947,7 @@ impl Resolver {
     fn build_reduced_graph(this: @Resolver) {
         let initial_parent =
             ModuleReducedGraphParent((*self.graph_root).get_module());
-        visit_crate(*self.crate, initial_parent, mk_vt(@{
+        visit_crate(*self.crate, initial_parent, mk_vt(@Visitor {
             visit_item: |item, context, visitor|
                 (*this).build_reduced_graph_for_item(item, context, visitor),
 
@@ -3719,7 +3719,7 @@ impl Resolver {
     fn resolve_crate(@self) {
         debug!("(resolving crate) starting");
 
-        visit_crate(*self.crate, (), mk_vt(@{
+        visit_crate(*self.crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor|
                 self.resolve_item(item, visitor),
             visit_arm: |arm, _context, visitor|

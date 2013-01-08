@@ -51,60 +51,61 @@ use core::prelude::*;
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot};
 use middle::ty;
-use middle::typeck::infer::{cyclic_ty, fixup_err, fres, infer_ctxt};
+use middle::typeck::infer::{cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
-use middle::typeck::infer::floating::*;
-use middle::typeck::infer::floating;
-use middle::typeck::infer::integral::*;
-use middle::typeck::infer::integral;
-use middle::typeck::infer::to_str::ToStr;
-use middle::typeck::infer::unify::root;
-use util::common::indent;
+use middle::typeck::infer::{IntType, UintType};
+use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::infer::unify::Root;
+use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
+
+use syntax::ast;
 
 use core::uint;
 use core::vec;
 
-const resolve_nested_tvar: uint = 0b00000001;
-const resolve_rvar: uint        = 0b00000010;
-const resolve_ivar: uint        = 0b00000100;
-const resolve_fvar: uint        = 0b00001000;
-const resolve_all: uint         = 0b00001111;
-const force_tvar: uint          = 0b00010000;
-const force_rvar: uint          = 0b00100000;
-const force_ivar: uint          = 0b01000000;
-const force_fvar: uint          = 0b11000000;
-const force_all: uint           = 0b11110000;
+const resolve_nested_tvar: uint = 0b0000000001;
+const resolve_rvar: uint        = 0b0000000010;
+const resolve_ivar: uint        = 0b0000000100;
+const resolve_fvar: uint        = 0b0000001000;
+const resolve_fnvar: uint       = 0b0000010000;
+const resolve_all: uint         = 0b0000011111;
+const force_tvar: uint          = 0b0000100000;
+const force_rvar: uint          = 0b0001000000;
+const force_ivar: uint          = 0b0010000000;
+const force_fvar: uint          = 0b0100000000;
+const force_fnvar: uint         = 0b1000000000;
+const force_all: uint           = 0b1111100000;
 
 const not_regions: uint         = !(force_rvar | resolve_rvar);
 
 const resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
-type resolve_state_ = {
-    infcx: infer_ctxt,
+struct ResolveState {
+    infcx: @InferCtxt,
     modes: uint,
     mut err: Option<fixup_err>,
-    mut v_seen: ~[TyVid]
-};
-
-enum resolve_state {
-    resolve_state_(@resolve_state_)
+    mut v_seen: ~[TyVid],
+    mut type_depth: uint
 }
 
-fn resolver(infcx: infer_ctxt, modes: uint) -> resolve_state {
-    resolve_state_(@{infcx: infcx,
-                     modes: modes,
-                     mut err: None,
-                     mut v_seen: ~[]})
+fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
+    ResolveState {
+        infcx: infcx,
+        modes: modes,
+        err: None,
+        v_seen: ~[],
+        type_depth: 0
+    }
 }
 
-impl resolve_state {
-    fn should(mode: uint) -> bool {
+impl ResolveState {
+    fn should(&self, mode: uint) -> bool {
         (self.modes & mode) == mode
     }
 
-    fn resolve_type_chk(typ: ty::t) -> fres<ty::t> {
+    fn resolve_type_chk(&self, typ: ty::t) -> fres<ty::t> {
         self.err = None;
 
         debug!("Resolving %s (modes=%x)",
@@ -129,7 +130,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_region_chk(orig: ty::Region) -> fres<ty::Region> {
+    fn resolve_region_chk(&self, orig: ty::Region) -> fres<ty::Region> {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
         match self.err {
@@ -138,63 +139,64 @@ impl resolve_state {
         }
     }
 
-    fn resolve_type(typ: ty::t) -> ty::t {
-        debug!("resolve_type(%s)", typ.to_str(self.infcx));
-        indent(fn&() -> ty::t {
-            if !ty::type_needs_infer(typ) { return typ; }
+    fn resolve_type(&self, typ: ty::t) -> ty::t {
+        debug!("resolve_type(%s)", typ.inf_str(self.infcx));
+        let _i = indenter();
 
-            match copy ty::get(typ).sty {
-              ty::ty_infer(TyVar(vid)) => {
+        if !ty::type_needs_infer(typ) {
+            return typ;
+        }
+
+        if self.type_depth > 0 && !self.should(resolve_nested_tvar) {
+            return typ;
+        }
+
+        match /*bad*/ copy ty::get(typ).sty {
+            ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
-              }
-              ty::ty_infer(IntVar(vid)) => {
+            }
+            ty::ty_infer(IntVar(vid)) => {
                 self.resolve_int_var(vid)
-              }
-              ty::ty_infer(FloatVar(vid)) => {
+            }
+            ty::ty_infer(FloatVar(vid)) => {
                 self.resolve_float_var(vid)
-              }
-              _ => {
-                if !self.should(resolve_rvar) &&
-                    !self.should(resolve_nested_tvar) {
-                    // shortcircuit for efficiency
+            }
+            _ => {
+                if self.modes & resolve_all == 0 {
+                    // if we are only resolving top-level type
+                    // variables, and this is not a top-level type
+                    // variable, then shortcircuit for efficiency
                     typ
                 } else {
-                    ty::fold_regions_and_ty(
+                    self.type_depth += 1;
+                    let result = ty::fold_regions_and_ty(
                         self.infcx.tcx, typ,
                         |r| self.resolve_region(r),
-                        |t| self.resolve_nested_tvar(t),
-                        |t| self.resolve_nested_tvar(t))
+                        |t| self.resolve_type(t),
+                        |t| self.resolve_type(t));
+                    self.type_depth -= 1;
+                    result
                 }
-              }
             }
-        })
-    }
-
-    fn resolve_nested_tvar(typ: ty::t) -> ty::t {
-        debug!("Resolve_if_deep(%s)", typ.to_str(self.infcx));
-        if !self.should(resolve_nested_tvar) {
-            typ
-        } else {
-            self.resolve_type(typ)
         }
     }
 
-    fn resolve_region(orig: ty::Region) -> ty::Region {
-        debug!("Resolve_region(%s)", orig.to_str(self.infcx));
+    fn resolve_region(&self, orig: ty::Region) -> ty::Region {
+        debug!("Resolve_region(%s)", orig.inf_str(self.infcx));
         match orig {
           ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig
         }
     }
 
-    fn resolve_region_var(rid: RegionVid) -> ty::Region {
+    fn resolve_region_var(&self, rid: RegionVid) -> ty::Region {
         if !self.should(resolve_rvar) {
             return ty::re_infer(ty::ReVar(rid));
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    fn assert_not_rvar(rid: RegionVid, r: ty::Region) {
+    fn assert_not_rvar(&self, rid: RegionVid, r: ty::Region) {
         match r {
           ty::re_infer(ty::ReVar(rid2)) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));
@@ -203,7 +205,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_ty_var(vid: TyVid) -> ty::t {
+    fn resolve_ty_var(&self, vid: TyVid) -> ty::t {
         if vec::contains(self.v_seen, &vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
@@ -236,27 +238,22 @@ impl resolve_state {
         }
     }
 
-    fn resolve_int_var(vid: IntVid) -> ty::t {
+    fn resolve_int_var(&self, vid: IntVid) -> ty::t {
         if !self.should(resolve_ivar) {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
 
-        let nde = self.infcx.get(&self.infcx.int_var_bindings, vid);
-        let pt = nde.possible_types;
-
-        // If there's only one type in the set of possible types, then
-        // that's the answer.
-        match integral::single_type_contained_in(self.infcx.tcx, pt) {
-          Some(t) => t,
+        let node = self.infcx.get(&self.infcx.int_var_bindings, vid);
+        match node.possible_types {
+          Some(IntType(t)) => ty::mk_mach_int(self.infcx.tcx, t),
+          Some(UintType(t)) => ty::mk_mach_uint(self.infcx.tcx, t),
           None => {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
                     &self.infcx.int_var_bindings, vid,
-                    root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
-                                                           ty),
-                        nde.rank));
+                    Root(Some(IntType(ast::ty_i)), node.rank));
                 ty
             } else {
                 ty::mk_int_var(self.infcx.tcx, vid)
@@ -265,18 +262,14 @@ impl resolve_state {
         }
     }
 
-    fn resolve_float_var(vid: FloatVid) -> ty::t {
+    fn resolve_float_var(&self, vid: FloatVid) -> ty::t {
         if !self.should(resolve_fvar) {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }
 
-        let nde = self.infcx.get(&self.infcx.float_var_bindings, vid);
-        let pt = nde.possible_types;
-
-        // If there's only one type in the set of possible types, then
-        // that's the answer.
-        match floating::single_type_contained_in(self.infcx.tcx, pt) {
-          Some(t) => t,
+        let node = self.infcx.get(&self.infcx.float_var_bindings, vid);
+        match node.possible_types {
+          Some(t) => ty::mk_mach_float(self.infcx.tcx, t),
           None => {
             if self.should(force_fvar) {
                 // As a last resort, default to float.
@@ -284,10 +277,7 @@ impl resolve_state {
                 self.infcx.set(
                     &self.infcx.float_var_bindings,
                     vid,
-                    root(
-                        convert_floating_point_ty_to_float_ty_set(
-                            self.infcx.tcx, ty),
-                        nde.rank));
+                    Root(Some(ast::ty_f), node.rank));
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)

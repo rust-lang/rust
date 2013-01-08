@@ -271,7 +271,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         fold::noop_fold_block(blk_sans_items, fld)
     }
 
-    let fld = fold::make_fold(@{
+    let fld = fold::make_fold(@fold::AstFoldFns {
         fold_block: fold::wrap(drop_nested_items),
         .. *fold::default_ast_fold()
     });
@@ -304,7 +304,7 @@ fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
 
 fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     -> ast::inlined_item {
-    let fld = fold::make_fold(@{
+    let fld = fold::make_fold(@fold::AstFoldFns{
         new_id: |a| xcx.tr_id(a),
         new_span: |a| xcx.tr_span(a),
         .. *fold::default_ast_fold()
@@ -643,11 +643,11 @@ trait get_ty_str_ctxt {
 
 impl @e::encode_ctxt: get_ty_str_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt {
-        @{diag: self.tcx.sess.diagnostic(),
-          ds: e::def_to_str,
-          tcx: self.tcx,
-          reachable: |a| encoder::reachable(self, a),
-          abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
+        @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
+                        ds: e::def_to_str,
+                        tcx: self.tcx,
+                        reachable: |a| encoder::reachable(self, a),
+                        abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
     }
 }
 

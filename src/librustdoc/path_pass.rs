@@ -23,7 +23,7 @@ use pass::Pass;
 use syntax::ast;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"path",
         f: run
     }

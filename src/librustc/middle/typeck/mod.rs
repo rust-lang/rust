@@ -271,7 +271,7 @@ fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 
 fn require_same_types(
     tcx: ty::ctxt,
-    maybe_infcx: Option<infer::infer_ctxt>,
+    maybe_infcx: Option<@infer::InferCtxt>,
     t1_is_expected: bool,
     span: span,
     t1: ty::t,

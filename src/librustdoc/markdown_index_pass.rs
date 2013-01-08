@@ -26,7 +26,7 @@ use core::str;
 use std::par;
 
 pub fn mk_pass(+config: config::Config) -> Pass {
-    {
+    Pass {
         name: ~"markdown_index",
         f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, config)

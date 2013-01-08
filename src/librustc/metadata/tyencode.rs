@@ -14,7 +14,7 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::ty::vid;
+use middle::ty::Vid;
 
 use core::io::WriterUtil;
 use core::io;
@@ -24,6 +24,7 @@ use std::map::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
+use middle::ty::Vid;
 
 export ctxt;
 export ty_abbrev;
@@ -35,7 +36,7 @@ export enc_mode;
 export enc_arg;
 export enc_vstore;
 
-type ctxt = {
+struct ctxt {
     diag: span_handler,
     // Def -> str Callback:
     ds: fn@(def_id) -> ~str,
@@ -43,7 +44,7 @@ type ctxt = {
     tcx: ty::ctxt,
     reachable: fn@(node_id) -> bool,
     abbrevs: abbrev_ctxt
-};
+}
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.

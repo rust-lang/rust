@@ -390,7 +390,7 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
 
 fn body_contains_ret(body: ast::blk) -> bool {
     let cx = {mut found: false};
-    visit::visit_block(body, cx, visit::mk_vt(@{
+    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_item: |_i, _cx, _v| { },
         visit_expr: |e: @ast::expr, cx: {mut found: bool}, v| {
             if !cx.found {

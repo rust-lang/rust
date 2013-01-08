@@ -25,7 +25,7 @@ use syntax::{visit, ast_util, ast_map};
 fn check_crate(sess: Session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::DefMap,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
-    visit::visit_crate(*crate, false, visit::mk_vt(@{
+    visit::visit_crate(*crate, false, visit::mk_vt(@visit::Visitor {
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
         visit_pat: check_pat,
         visit_expr: |a,b,c|
@@ -211,7 +211,7 @@ fn check_item_recursion(sess: Session, ast_map: ast_map::map,
         idstack: @DVec()
     };
 
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_item: visit_item,
         visit_expr: visit_expr,
         .. *visit::default_visitor()

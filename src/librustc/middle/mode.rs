@@ -234,7 +234,7 @@ fn compute_modes_for_pat(pat: @pat,
 }
 
 pub fn compute_modes(tcx: ctxt, method_map: method_map, crate: @crate) {
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_expr: compute_modes_for_expr,
         visit_pat: compute_modes_for_pat,
         .. *visit::default_visitor()
