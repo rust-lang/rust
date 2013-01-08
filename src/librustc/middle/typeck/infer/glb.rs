@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 
 use syntax::ast::{Many, Once};
@@ -99,18 +102,6 @@ impl Glb: combine {
         match (a, b) {
             (Many, _) | (_, Many) => Ok(Many),
             (Once, Once) => Ok(Once)
-        }
-    }
-
-    fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        match (r1, r2) {
-          (ast::return_val, ast::return_val) => {
-            Ok(ast::return_val)
-          }
-          (ast::noreturn, _) |
-          (_, ast::noreturn) => {
-            Ok(ast::noreturn)
-          }
         }
     }
 

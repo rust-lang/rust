@@ -19,6 +19,9 @@ Cross-platform file path handling
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
+use libc;
+use ptr;
+use str;
 
 #[deriving_eq]
 pub struct WindowsPath {
@@ -87,6 +90,8 @@ pub pure fn Path(s: &str) -> Path {
 mod stat {
     #[cfg(target_arch = "x86")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -115,6 +120,8 @@ mod stat {
 
     #[cfg(target_arch = "x86_64")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -144,6 +151,8 @@ mod stat {
 mod stat {
     #[cfg(target_arch = "x86_64")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -176,6 +185,8 @@ mod stat {
 #[cfg(target_os = "macos")]
 mod stat {
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -208,6 +219,7 @@ mod stat {
 #[cfg(target_os = "win32")]
 mod stat {
     pub mod arch {
+        use libc;
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -737,7 +749,9 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
 }
 
 // Various windows helpers, and tests for the impl.
-mod windows {
+pub mod windows {
+    use libc;
+
     #[inline(always)]
     pub pure fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
@@ -779,6 +793,9 @@ mod windows {
 
 #[cfg(test)]
 mod tests {
+    use path::windows;
+    use str;
+
     #[test]
     fn test_double_slash_collapsing() {
         let path = PosixPath("tmp/");

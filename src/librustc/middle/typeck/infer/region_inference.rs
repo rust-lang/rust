@@ -454,13 +454,19 @@ write it)
 #[warn(deprecated_pattern)];
 
 use middle::region::is_subregion_of;
+use middle::region;
+use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized};
 use middle::typeck::infer::to_str::ToStr;
 use syntax::codemap;
 use util::ppaux::note_and_explain_region;
 
+use core::cmp;
 use core::dvec::DVec;
+use core::to_bytes;
+use core::uint;
+use core::vec;
 use result::Result;
 use result::{Ok, Err};
 use std::map::HashMap;

@@ -16,6 +16,7 @@
 
 use cmp::{Eq, Ord};
 use intrinsic::TyDesc;
+use ptr;
 
 pub mod raw {
     pub struct BoxHeaderRepr {

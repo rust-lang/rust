@@ -10,7 +10,10 @@
 
 #[forbid(deprecated_mode)];
 
-use vec::{to_mut, from_elem};
+use core::ops;
+use core::uint;
+use core::vec::{to_mut, from_elem};
+use core::vec;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -574,6 +577,12 @@ impl Bitv: ops::Index<uint,bool> {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use bitv;
+
+    use core::uint;
+    use core::vec;
+
     #[test]
     fn test_to_str() {
         let zerolen = Bitv(0u, false);

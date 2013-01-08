@@ -27,17 +27,22 @@ this point a bit better.
 
 */
 
+
 use middle::freevars::get_freevars;
 use middle::pat_util::pat_bindings;
 use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
+use middle::ty;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, fres};
 use util::ppaux::{note_and_explain_region, ty_to_str};
 
+use core::result;
 use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+use syntax::ast;
 use syntax::print::pprust;
+use syntax::visit;
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
@@ -164,7 +169,7 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)",
            pprust::expr_to_str(expr, rcx.fcx.tcx().sess.intr()));
 
-    match expr.node {
+    match /*bad*/copy expr.node {
         ast::expr_path(*) => {
             // Avoid checking the use of local variables, as we
             // already check their definitions.  The def'n always

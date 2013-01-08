@@ -10,10 +10,15 @@
 
 //! A general sorting pass
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use extract;
 use fold::Fold;
-use std::sort;
+use fold;
 use util::NominalOp;
+
+use std::sort;
 
 pub type ItemLtEqOp = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 

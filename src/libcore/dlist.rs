@@ -22,6 +22,10 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use managed;
+use option;
+use vec;
+
 type DListLink<T> = Option<DListNode<T>>;
 
 enum DListNode<T> = @{
@@ -469,6 +473,10 @@ impl<T: Copy> DList<T> {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use iter;
+    use vec;
+
     #[test]
     fn test_dlist_concat() {
         let a = from_vec(~[1,2]);

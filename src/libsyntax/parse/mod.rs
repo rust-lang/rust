@@ -12,6 +12,20 @@
 
 #[legacy_exports];
 
+use ast::node_id;
+use ast;
+use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
+use codemap;
+use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
+use parse::attr::parser_attr;
+use parse::lexer::{reader, string_reader};
+use parse::parser::Parser;
+use parse::token::{ident_interner, mk_ident_interner};
+use util::interner;
+
+use core::io;
+use core::result;
+
 export parser;
 export common;
 export lexer;
@@ -35,15 +49,6 @@ export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_stmt_from_source_str;
 export parse_tts_from_source_str;
 export parse_from_source_str;
-
-use ast::node_id;
-use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
-use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
-use parse::attr::parser_attr;
-use parse::lexer::{reader, string_reader};
-use parse::parser::Parser;
-use parse::token::{ident_interner, mk_ident_interner};
-use util::interner;
 
 
 #[legacy_exports]

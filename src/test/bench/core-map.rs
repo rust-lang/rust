@@ -16,9 +16,9 @@
 
 extern mod std;
 use std::map;
-use mutable::Mut;
-use send_map::linear::*;
-use io::WriterUtil;
+use core::mutable::Mut;
+use core::send_map::linear::*;
+use core::io::WriterUtil;
 
 struct Results {
     sequential_ints: float,

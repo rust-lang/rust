@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use astsrv;
+use doc;
+use extract;
+
+use core::vec;
+
 /// A single operation on the document model
 pub type Pass = {
     name: ~str,

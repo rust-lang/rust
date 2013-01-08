@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ext::base::*;
+use ext::base;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::mac_result {

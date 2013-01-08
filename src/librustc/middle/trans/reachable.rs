@@ -15,28 +15,40 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+
+use driver::session::*;
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+
+use core::vec;
+use std::map::HashMap;
 use syntax::ast::*;
-use syntax::{visit, ast_util, ast_map};
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::print::pprust::expr_to_str;
-use std::map::HashMap;
-use driver::session::*;
+use syntax::{visit, ast_util, ast_map};
 
 export map, find_reachable;
 
-type map = std::map::HashMap<node_id, ()>;
+type map = HashMap<node_id, ()>;
 
-type ctx = {exp_map2: resolve::ExportMap2,
-            tcx: ty::ctxt,
-            method_map: typeck::method_map,
-            rmap: map};
+struct ctx {
+    exp_map2: resolve::ExportMap2,
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    rmap: map
+}
 
 fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = std::map::HashMap();
-    let cx = {exp_map2: exp_map2, tcx: tcx,
-              method_map: method_map, rmap: rmap};
+    let rmap = HashMap();
+    let cx = ctx {
+        exp_map2: exp_map2,
+        tcx: tcx,
+        method_map: method_map,
+        rmap: rmap
+    };
     traverse_public_mod(cx, ast::crate_node_id, crate_mod);
     traverse_all_resources_and_impls(cx, crate_mod);
     rmap
@@ -60,7 +72,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
     let n = match cx.tcx.items.find(did.node) {
         None => return, // This can happen for self, for example
-        Some(ref n) => (*n)
+        Some(ref n) => (/*bad*/copy *n)
     };
     match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
@@ -87,7 +99,7 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
 fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(item.id) { return; }
     cx.rmap.insert(item.id, ());
-    match item.node {
+    match /*bad*/copy item.node {
       item_mod(m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(nm) => {
           if !traverse_exports(cx, item.id) {
@@ -96,7 +108,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
               }
           }
       }
-      item_fn(_, _, tps, ref blk) => {
+      item_fn(_, _, ref tps, ref blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, (*blk));

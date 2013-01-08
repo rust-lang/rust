@@ -107,6 +107,8 @@ pub fn equals<K: Copy Eq Ord, V: Copy Eq>(t1: &const TreeEdge<K, V>,
 mod tests {
     #[legacy_exports];
 
+    use core::str;
+
     #[test]
     fn init_treemap() { let _m = TreeMap::<int, int>(); }
 

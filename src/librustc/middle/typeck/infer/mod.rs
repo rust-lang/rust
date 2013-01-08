@@ -286,6 +286,8 @@ use util::ppaux::{ty_to_str, mt_to_str};
 use core::cmp::Eq;
 use core::dvec::DVec;
 use core::result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
+use core::result;
+use core::vec;
 use std::map::HashMap;
 use std::smallintmap;
 use syntax::ast::{ret_style, purity};

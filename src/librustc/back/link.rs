@@ -8,24 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_int, c_uint, c_char};
+
+use back::rpath;
 use driver::session;
-use session::Session;
 use lib::llvm::llvm;
-use syntax::attr;
-use middle::ty;
+use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
+use lib::llvm::{PassManagerRef, FileType};
+use lib;
+use metadata::common::link_meta;
+use metadata::filesearch;
 use metadata::{encoder, cstore};
 use middle::trans::common::crate_ctxt;
-use metadata::common::link_meta;
+use middle::ty;
+use session::Session;
+use session;
+use util::ppaux;
+
+use core::char;
+use core::cmp;
+use core::hash;
+use core::io::{Writer, WriterUtil};
+use core::libc::{c_int, c_uint, c_char};
+use core::os;
+use core::ptr;
+use core::run;
+use core::str;
+use core::vec;
 use std::map::HashMap;
 use std::sha1::sha1;
 use syntax::ast;
-use syntax::print::pprust;
-use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
-        PassManagerRef, FileType};
-use metadata::filesearch;
 use syntax::ast_map::{path, path_mod, path_name};
-use io::{Writer, WriterUtil};
+use syntax::attr;
+use syntax::print::pprust;
 
 enum output_type {
     output_type_none,
@@ -43,11 +57,13 @@ impl output_type : cmp::Eq {
     pure fn ne(&self, other: &output_type) -> bool { !(*self).eq(other) }
 }
 
-fn llvm_err(sess: Session, msg: ~str) -> ! unsafe {
+fn llvm_err(sess: Session, +msg: ~str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {
         sess.fatal(msg);
-    } else { sess.fatal(msg + ~": " + str::raw::from_c_str(cstr)); }
+    } else {
+        sess.fatal(msg + ~": " + str::raw::from_c_str(cstr));
+    }
 }
 
 fn WriteOutputFile(sess: Session,
@@ -65,8 +81,16 @@ fn WriteOutputFile(sess: Session,
     }
 }
 
-mod jit {
+pub mod jit {
     #[legacy_exports];
+
+    use lib::llvm::llvm;
+    use metadata::cstore;
+
+    use core::cast;
+    use core::ptr;
+    use core::str;
+
     #[nolink]
     #[abi = "rust-intrinsic"]
     extern mod rusti {
@@ -126,13 +150,23 @@ mod jit {
             };
             let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
 
-            func(~[sess.opts.binary]);
+            func(~[/*bad*/copy sess.opts.binary]);
         }
     }
 }
 
 mod write {
     #[legacy_exports];
+
+    use back::link::jit;
+    use driver::session;
+    use lib::llvm::llvm;
+    use lib;
+
+    use core::char;
+    use core::str;
+    use core::vec;
+
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
                ot == output_type_exe {
@@ -146,7 +180,7 @@ mod write {
         if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
         let td = mk_target_data(
-            sess.targ_cfg.target_strs.data_layout);
+            /*bad*/copy sess.targ_cfg.target_strs.data_layout);
         llvm::LLVMAddTargetData(td.lltd, pm.llpm);
         // FIXME (#2812): run the linter here also, once there are llvm-c
         // bindings for it.
@@ -407,17 +441,19 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
         let mut name: Option<~str> = None;
         let mut vers: Option<~str> = None;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
-        let linkage_metas = attr::find_linkage_metas(c.node.attrs);
-        attr::require_unique_names(sess.diagnostic(), linkage_metas);
+        let linkage_metas =
+            attr::find_linkage_metas(/*bad*/copy c.node.attrs);
+        // XXX: Bad copy.
+        attr::require_unique_names(sess.diagnostic(), copy linkage_metas);
         for linkage_metas.each |meta| {
             if attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(ref v) => { name = Some((*v)); }
+                  Some(ref v) => { name = Some((/*bad*/copy *v)); }
                   None => cmh_items.push(*meta)
                 }
             } else if attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(ref v) => { vers = Some((*v)); }
+                  Some(ref v) => { vers = Some((/*bad*/copy *v)); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
@@ -438,7 +474,7 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
             return len_and_str(pprust::lit_to_str(@l));
         }
 
-        let cmh_items = attr::sort_meta_items(metas.cmh_items);
+        let cmh_items = attr::sort_meta_items(/*bad*/copy metas.cmh_items);
 
         symbol_hasher.reset();
         for cmh_items.each |m| {
@@ -473,15 +509,16 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
     fn crate_meta_name(sess: Session, _crate: ast::crate,
                        output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
-              Some(ref v) => (*v),
+              Some(ref v) => (/*bad*/copy *v),
               None => {
                 let name = match output.filestem() {
                   None => sess.fatal(fmt!("output file name `%s` doesn't\
                                            appear to have a stem",
                                           output.to_str())),
-                  Some(ref s) => (*s)
+                  Some(ref s) => (/*bad*/copy *s)
                 };
-                warn_missing(sess, ~"name", name);
+                // XXX: Bad copy.
+                warn_missing(sess, ~"name", copy name);
                 name
               }
             };
@@ -490,10 +527,11 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
     fn crate_meta_vers(sess: Session, _crate: ast::crate,
                        metas: provided_metas) -> ~str {
         return match metas.vers {
-              Some(ref v) => (*v),
+              Some(ref v) => (/*bad*/copy *v),
               None => {
                 let vers = ~"0.0";
-                warn_missing(sess, ~"vers", vers);
+                // Bad copy.
+                warn_missing(sess, ~"vers", copy vers);
                 vers
               }
             };
@@ -534,10 +572,11 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     match ccx.type_hashcodes.find(t) {
-      Some(ref h) => return (*h),
+      Some(ref h) => return (/*bad*/copy *h),
       None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
-        ccx.type_hashcodes.insert(t, hash);
+        // XXX: Bad copy. Prefer `@str`?
+        ccx.type_hashcodes.insert(t, copy hash);
         return hash;
       }
     }
@@ -594,22 +633,27 @@ fn mangle(sess: Session, ss: path) -> ~str {
     n
 }
 
-fn exported_name(sess: Session, path: path, hash: ~str, vers: ~str) -> ~str {
+fn exported_name(sess: Session,
+                 +path: path,
+                 +hash: ~str,
+                 +vers: ~str) -> ~str {
     return mangle(sess,
                   vec::append_one(
                       vec::append_one(path, path_name(sess.ident_of(hash))),
                       path_name(sess.ident_of(vers))));
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
+fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
-    return exported_name(ccx.sess, path, hash, ccx.link_meta.vers);
+    return exported_name(ccx.sess, path,
+                         hash,
+                         /*bad*/copy ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t, name: ~str) ->
-   ~str {
-    let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
+                                     t: ty::t,
+                                     +name: ~str) -> ~str {
+    let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
                   ~[path_name(ccx.sess.ident_of(name)),
@@ -617,17 +661,18 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
                     path_name(ccx.sess.ident_of(hash))]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: ~str) -> ~str {
+fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
+                                        +path: path,
+                                        +flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
+fn mangle_internal_name_by_path(ccx: @crate_ctxt, +path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
@@ -638,7 +683,7 @@ fn link_binary(sess: Session,
                out_filename: &Path,
                lm: link_meta) {
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, stem: ~str) -> ~str {
+    fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != session::os_win32 {
             stem.slice(3, stem.len())
@@ -658,7 +703,7 @@ fn link_binary(sess: Session,
 
         out_filename.dir_path().push(long_libname)
     } else {
-        *out_filename
+        /*bad*/copy *out_filename
     };
 
     log(debug, ~"output: " + output.to_str());
@@ -705,7 +750,7 @@ fn link_binary(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { cc_args.push(*arg); }
+    for ula.each |arg| { cc_args.push(/*bad*/copy *arg); }
 
     // # Extern library linking
 
@@ -715,7 +760,7 @@ fn link_binary(sess: Session,
     // to be found at compile time so it is still entirely up to outside
     // forces to make sure that library can be found at runtime.
 
-    let addl_paths = sess.opts.addl_lib_search_paths;
+    let addl_paths = /*bad*/copy sess.opts.addl_lib_search_paths;
     for addl_paths.each |path| { cc_args.push(~"-L" + path.to_str()); }
 
     // The names of the extern libraries

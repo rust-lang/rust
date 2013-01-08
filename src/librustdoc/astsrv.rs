@@ -17,6 +17,11 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
+use parse;
+use util;
+
+use core::oldcomm;
+use core::vec;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
@@ -30,6 +35,7 @@ use syntax::ast_map;
 use syntax::codemap;
 use syntax::diagnostic::handler;
 use syntax::diagnostic;
+use syntax;
 
 pub type Ctxt = {
     ast: @ast::crate,

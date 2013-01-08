@@ -17,6 +17,9 @@ Core encoding and decoding interfaces.
 #[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
+use core::at_vec;
+use core::vec;
+
 pub trait Encoder {
     // Primitive types:
     fn emit_nil(&self);

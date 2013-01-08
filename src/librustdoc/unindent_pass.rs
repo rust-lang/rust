@@ -19,6 +19,13 @@ instances where the string containing the doc comment is opened in the
 middle of a line, and each of the following lines is indented.
 */
 
+use text_pass;
+
+use core::str;
+use core::uint;
+use core::vec;
+use std::par;
+
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"unindent", unindent)
 }

@@ -8,16 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use parse::{comments, lexer, token};
-use codemap::{CodeMap, BytePos};
-use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
-use print::pp::{breaks, consistent, inconsistent, eof};
 use ast::{required, provided};
+use ast;
+use ast_util;
 use ast_util::{operator_prec};
-use dvec::DVec;
+use attr;
+use codemap::{CodeMap, BytePos};
+use codemap;
+use diagnostic;
 use parse::classify::*;
 use parse::token::ident_interner;
-use str::{push_str, push_char};
+use parse::token;
+use parse::{comments, lexer, token};
+use parse;
+use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
+use print::pp::{breaks, consistent, inconsistent, eof};
+use print::pp;
+use print::pprust;
+
+use core::char;
+use core::dvec::DVec;
+use core::io;
+use core::option;
+use core::str::{push_str, push_char};
+use core::str;
+use core::u64;
+use core::vec;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {

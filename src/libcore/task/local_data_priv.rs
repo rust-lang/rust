@@ -10,6 +10,11 @@
 
 #[doc(hidden)]; // FIXME #3538
 
+use cast;
+use dvec;
+use libc;
+use option;
+use task::rt;
 use task::local_data::LocalDataKey;
 
 #[cfg(notest)]

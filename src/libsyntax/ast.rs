@@ -10,9 +10,16 @@
 
 // The Rust abstract syntax tree.
 
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use ast;
 use codemap::{span, FileName};
 use parse::token;
+
+use core::cast;
+use core::cmp;
+use core::ptr;
+use core::task;
+use core::to_bytes;
+use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[auto_encode]
 #[auto_decode]

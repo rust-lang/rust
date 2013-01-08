@@ -142,20 +142,28 @@
  *
  */
 
+
 use back::abi;
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, BasicBlockRef};
+use middle::const_eval;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::consts;
+use middle::trans::controlflow;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use util::common::indenter;
 
 use core::dvec::DVec;
+use core::dvec;
 use std::map::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
@@ -279,7 +287,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
                     return var(v.disr_val, {enm: enum_id, var: var_id});
                 }
             }
-            core::util::unreachable();
+            ::core::util::unreachable();
         }
         ast::def_struct(_) => {
             return lit(UnitLikeStructLit(pat_id));
@@ -492,10 +500,10 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     let tcx = bcx.tcx();
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
-        match p.node {
+        match /*bad*/copy p.node {
             ast::pat_enum(_, subpats) => {
                 if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
-                    Some(option::get_default(subpats,
+                    Some(option::get_or_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
                 } else {
@@ -593,7 +601,7 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
 
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match p.node {
+        match /*bad*/copy p.node {
             ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
                 let mut pats = ~[];
                 for vec::each(fields) |fname| {
@@ -625,7 +633,7 @@ fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
 
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match p.node {
+        match /*bad*/copy p.node {
             ast::pat_tup(elts) => {
                 Some(elts)
             }
@@ -650,7 +658,7 @@ fn enter_tuple_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
 
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
-        match p.node {
+        match /*bad*/copy p.node {
             ast::pat_enum(_, Some(elts)) => Some(elts),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -747,7 +755,7 @@ fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     let found = DVec();
     for vec::each(m) |br| {
         let cur = br.pats[col];
-        match cur.node {
+        match /*bad*/copy cur.node {
             ast::pat_lit(l) => {
                 add_to_set(ccx.tcx, &found, lit(ExprLit(l)));
             }
@@ -805,7 +813,10 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
-      ty::ty_enum(id, ref substs) => { assert id == vdefs.enm; (*substs).tps }
+      ty::ty_enum(id, ref substs) => {
+        assert id == vdefs.enm;
+        /*bad*/copy (*substs).tps
+      }
       _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
     };
     let mut blobptr = val;
@@ -821,7 +832,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     let vdefs_var = vdefs.var;
     let args = do vec::from_fn(size) |i| {
         GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
-                 enum_ty_substs, i)
+                 /*bad*/copy enum_ty_substs, i)
     };
     return {vals: args, bcx: bcx};
 }
@@ -866,7 +877,7 @@ fn collect_record_or_struct_fields(bcx: block, m: &[@Match], col: uint) ->
                                    ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
     for vec::each(m) |br| {
-        match br.pats[col].node {
+        match /*bad*/copy br.pats[col].node {
           ast::pat_rec(fs, _) => extend(&mut fields, fs),
           ast::pat_struct(_, fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
@@ -1015,7 +1026,7 @@ fn compare_values(cx: block, lhs: ValueRef, rhs: ValueRef, rhs_t: ty::t) ->
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
-            let did = cx.tcx().lang_items.uniq_str_eq_fn.get();
+            let did = cx.tcx().lang_items.uniq_str_eq_fn();
             let bcx = callee::trans_rtcall_or_lang_call(cx, did,
                                                         ~[scratch_lhs,
                                                           scratch_rhs],
@@ -1026,7 +1037,7 @@ fn compare_values(cx: block, lhs: ValueRef, rhs: ValueRef, rhs_t: ty::t) ->
         ty::ty_estr(_) => {
             let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
                                                false);
-            let did = cx.tcx().lang_items.str_eq_fn.get();
+            let did = cx.tcx().lang_items.str_eq_fn();
             let bcx = callee::trans_rtcall_or_lang_call(cx, did,
                                                         ~[lhs, rhs],
                                                         expr::SaveIn(
@@ -1252,7 +1263,7 @@ fn compile_submatch(bcx: block,
 
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
-        let n_tup_elts = match ty::get(tup_ty).sty {
+        let n_tup_elts = match /*bad*/copy ty::get(tup_ty).sty {
           ty::ty_tup(elts) => elts.len(),
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };
@@ -1478,7 +1489,7 @@ fn compile_submatch(bcx: block,
             var(_, vdef) => {
                 let args = extract_variant_args(opt_cx, pat_id, vdef, val);
                 size = args.vals.len();
-                unpacked = args.vals;
+                unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;
             }
             vec_len_eq(n) | vec_len_ge(n) => {
@@ -1488,7 +1499,7 @@ fn compile_submatch(bcx: block,
                 };
                 let args = extract_vec_elems(opt_cx, pat_id, n, tail, val);
                 size = args.vals.len();
-                unpacked = args.vals;
+                unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;
             }
             lit(_) | range(_, _) => ()
@@ -1543,7 +1554,7 @@ fn trans_alt_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let bindings_map = std::map::HashMap();
+        let bindings_map = HashMap();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);
@@ -1627,7 +1638,7 @@ fn trans_alt_inner(scope_cx: block,
 
     return controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
 
-    fn mk_fail(bcx: block, sp: span, msg: ~str,
+    fn mk_fail(bcx: block, sp: span, +msg: ~str,
                finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {
         match *finished { Some(bb) => return bb, _ => () }
         let fail_cx = sub_block(bcx, ~"case_fallthrough");
@@ -1656,7 +1667,7 @@ fn bind_irrefutable_pat(bcx: block,
     let mut bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_alt
-    match pat.node {
+    match /*bad*/copy pat.node {
         ast::pat_ident(_, _,inner) => {
             if pat_is_variant_or_struct(bcx.tcx().def_map, pat) {
                 return bcx;

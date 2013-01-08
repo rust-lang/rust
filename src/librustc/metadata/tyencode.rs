@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Type encoding
 
-use io::WriterUtil;
+use middle::ty;
+use middle::ty::vid;
+
+use core::io::WriterUtil;
+use core::io;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
-use middle::ty;
-use middle::ty::vid;
 use syntax::print::pprust::*;
 
 export ctxt;
@@ -56,12 +61,12 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
-            Some(s) => *s,
+            Some(s) => /*bad*/copy *s,
             None => {
                 let s = do io::with_str_writer |wr| {
-                    enc_sty(wr, cx, ty::get(t).sty);
+                    enc_sty(wr, cx, /*bad*/copy ty::get(t).sty);
                 };
-                cx.tcx.short_names_cache.insert(t, @s);
+                cx.tcx.short_names_cache.insert(t, @copy s);
                 s
           }
         };
@@ -85,7 +90,7 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
               }
               _ => {}
             }
-            enc_sty(w, cx, ty::get(t).sty);
+            enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
             let end = w.tell();
             let len = end - pos;
             fn estimate_sz(u: uint) -> uint {
@@ -206,7 +211,7 @@ fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
-fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
+fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
@@ -383,10 +388,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
         enc_arg(w, cx, *arg);
     }
     w.write_char(']');
-    match ft.meta.ret_style {
-      noreturn => w.write_char('!'),
-      _ => enc_ty(w, cx, ft.sig.output)
-    }
+    enc_ty(w, cx, ft.sig.output);
 }
 
 fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {

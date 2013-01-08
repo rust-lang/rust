@@ -16,12 +16,20 @@ corresponding AST nodes. The information gathered here is the basis
 of the natural-language documentation for a crate.
 */
 
+use astsrv;
+use attr_parser;
 use doc::ItemUtils;
+use doc;
 use extract::to_str;
 use fold::Fold;
+use fold;
+
+use core::option;
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use std::map::HashMap;
+use std::par;
 
 pub fn mk_pass() -> Pass {
     {
@@ -61,7 +69,7 @@ fn fold_crate(
     {
         topmod: doc::ModDoc_({
             item: {
-                name: option::get_default(attrs.name, doc.topmod.name()),
+                name: option::get_or_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
             .. *doc.topmod
@@ -302,6 +310,11 @@ fn should_extract_impl_method_docs() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

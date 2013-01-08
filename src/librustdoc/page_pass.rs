@@ -15,10 +15,20 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
+use astsrv;
+use config;
 use doc::{ItemUtils, PageUtils};
+use doc;
 use fold::Fold;
-use syntax::ast;
+use fold;
+use sort_pass;
 use util::NominalOp;
+use util;
+
+use core::oldcomm;
+use core::option;
+use core::vec;
+use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {
@@ -173,6 +183,12 @@ fn should_remove_foreign_mods_from_containing_mods() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use config;
+    use doc;
+    use extract;
+
     fn mk_doc_(
         output_style: config::OutputStyle,
         source: ~str

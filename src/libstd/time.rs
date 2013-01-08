@@ -11,9 +11,13 @@
 #[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
-use libc::{c_char, c_int, c_long, size_t, time_t};
-use io::{Reader, ReaderUtil};
-use result::{Result, Ok, Err};
+use core::int;
+use core::libc::{c_char, c_int, c_long, size_t, time_t};
+use core::i32;
+use core::io::{Reader, ReaderUtil};
+use core::io;
+use core::result::{Result, Ok, Err};
+use core::str;
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -853,6 +857,14 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 mod tests {
     #[legacy_exports];
 
+    use core::float;
+    use core::os;
+    use core::result;
+    use core::str;
+    use core::u64;
+    use core::uint;
+    use core::vec;
+
     #[test]
     fn test_get_time() {
         const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -900,7 +912,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.tm_sec == 30_i32;
@@ -922,7 +934,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let local = at(time);
 
         error!("time_at: %?", local);
@@ -951,7 +963,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.to_timespec() == time;
@@ -963,7 +975,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
@@ -1136,7 +1148,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc   = at_utc(time);
         let local = at(time);
 
@@ -1152,7 +1164,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 

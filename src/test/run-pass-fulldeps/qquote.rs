@@ -15,7 +15,7 @@
 extern mod std;
 extern mod syntax;
 
-use io::*;
+use core::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;

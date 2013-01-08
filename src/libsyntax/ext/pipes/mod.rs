@@ -43,14 +43,15 @@ FIXME (#3072) - This is still incomplete.
 
 */
 
-use codemap::span;
-use ext::base::ext_ctxt;
+use ast;
 use ast::tt_delim;
-use parse::lexer::{new_tt_reader, reader};
-use parse::parser::Parser;
-
+use codemap::span;
+use ext::base;
+use ext::base::ext_ctxt;
 use ext::pipes::parse_proto::proto_parser;
 use ext::pipes::proto::{visit, protocol};
+use parse::lexer::{new_tt_reader, reader};
+use parse::parser::Parser;
 
 #[legacy_exports]
 mod ast_builder;

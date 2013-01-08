@@ -14,7 +14,11 @@ Code related to integral type inference.
 
 */
 
+use middle::ty;
 use middle::typeck::infer::to_str::ToStr;
+
+use core::uint;
+use syntax::ast;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;

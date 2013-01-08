@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use middle::ty;
 use middle::typeck::infer::combine::combine;
 use middle::typeck::infer::floating::*;
+use middle::typeck::infer::floating;
 use middle::typeck::infer::integral::*;
+use middle::typeck::infer::integral;
 use middle::typeck::infer::to_str::ToStr;
 
+use core::result;
 use std::smallintmap::SmallIntMap;
 
 enum var_value<V:Copy, T:Copy> {
@@ -362,6 +367,10 @@ impl infer_ctxt {
     }
 
     fn int_var_sub_t(a_id: ty::IntVid, b: ty::t) -> ures {
+        if ty::type_is_char(b) {
+            return Err(ty::terr_integer_as_char);
+        }
+
         assert ty::type_is_integral(b);
 
         let vb = &self.int_var_bindings;

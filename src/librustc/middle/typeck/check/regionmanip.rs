@@ -9,10 +9,11 @@
 // except according to those terms.
 
 // #[warn(deprecated_mode)];
-// #[warn(deprecated_pattern)];
 
+use middle::ty;
 use util::ppaux;
 
+use syntax::ast;
 use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
@@ -58,7 +59,7 @@ fn replace_bound_regions_in_fn_ty(
         debug!("br=%?", br);
         mapf(br)
     };
-    let ty_fn = ty::ty_fn(*fn_ty);
+    let ty_fn = ty::ty_fn(/*bad*/copy *fn_ty);
     let t_fn = ty::fold_sty_to_ty(tcx, &ty_fn, |t| {
         replace_bound_regions(tcx, isr, t)
     });
@@ -78,7 +79,7 @@ fn replace_bound_regions_in_fn_ty(
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: match ty::get(t_fn).sty { ty::ty_fn(ref o) => (*o),
+         fn_ty: match ty::get(t_fn).sty { ty::ty_fn(ref o) => /*bad*/copy *o,
           _ => tcx.sess.bug(~"replace_bound_regions_in_fn_ty: impossible")}};
 
 

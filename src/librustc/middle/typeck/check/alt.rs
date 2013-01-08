@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::pat_util::{pat_is_binding, pat_is_const};
 use middle::pat_util::{pat_is_variant_or_struct};
+use middle::ty;
+use middle::typeck::check::demand;
 
+use core::vec;
+use std::map::HashMap;
+use syntax::ast;
 use syntax::ast_util::walk_pat;
+use syntax::ast_util;
 use syntax::print::pprust;
 
 fn check_alt(fcx: @fn_ctxt,
@@ -27,7 +34,7 @@ fn check_alt(fcx: @fn_ctxt,
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
     for arms.each |arm| {
-        let pcx = {
+        let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
             alt_region: ty::re_scope(expr.id),
@@ -55,15 +62,15 @@ fn check_alt(fcx: @fn_ctxt,
     return bot;
 }
 
-type pat_ctxt = {
+struct pat_ctxt {
     fcx: @fn_ctxt,
     map: PatIdMap,
     alt_region: ty::Region,   // Region for the alt as a whole
     block_region: ty::Region, // Region for the block of the arm
-};
+}
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                     subpats: Option<~[@ast::pat]>, expected: ty::t) {
+                     +subpats: Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -144,7 +151,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     let subpats_len;
     match subpats {
         None => subpats_len = arg_len,
-        Some(subpats) => subpats_len = subpats.len()
+        Some(ref subpats) => subpats_len = subpats.len()
     }
 
     if arg_len > 0u {
@@ -195,13 +202,13 @@ fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let field_map = std::map::HashMap();
+    let field_map = HashMap();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let found_fields = std::map::HashMap();
+    let found_fields = HashMap();
     for fields.each |field| {
         match field_map.find(field.ident) {
             Some(index) => {
@@ -238,7 +245,7 @@ fn check_struct_pat_fields(pcx: pat_ctxt,
 
 fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
                     expected: ty::t, path: @ast::path,
-                    fields: ~[ast::field_pat], etc: bool,
+                    +fields: ~[ast::field_pat], etc: bool,
                     class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -279,7 +286,7 @@ fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
                                       span: span,
                                       expected: ty::t,
                                       path: @ast::path,
-                                      fields: ~[ast::field_pat],
+                                      +fields: ~[ast::field_pat],
                                       etc: bool,
                                       enum_id: ast::def_id,
                                       substitutions: &ty::substs) {
@@ -316,7 +323,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    match pat.node {
+    match /*bad*/copy pat.node {
       ast::pat_wild => {
         fcx.write_ty(pat.id, expected);
       }

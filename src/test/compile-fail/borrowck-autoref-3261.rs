@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use either::*;
+use core::either::*;
 enum X = Either<(uint,uint),fn()>;
 impl &X {
     fn with(blk: fn(x: &Either<(uint,uint),fn()>)) {

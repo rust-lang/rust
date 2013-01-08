@@ -235,7 +235,7 @@ mod stackwalk;
 // 'core' so that macro-expanded references to core::error and such
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
-mod core {
+pub mod core {
     pub const error : u32 = 1_u32;
     pub const warn : u32 = 2_u32;
     pub const info : u32 = 3_u32;

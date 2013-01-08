@@ -54,10 +54,14 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
+use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 
+use core::vec;
 use syntax::ast::Onceness;
+use syntax::ast;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
@@ -84,7 +88,6 @@ trait combine {
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
     fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto>;
-    fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn purities(a: purity, b: purity) -> cres<purity>;
     fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness>;
     fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
@@ -220,7 +223,7 @@ fn super_substs<C:combine>(
             do relate_region_param(self, did,
                                    a.self_r, b.self_r).chain |self_r|
             {
-                Ok({self_r: self_r, self_ty: self_ty, tps: tps})
+                Ok({self_r: self_r, self_ty: self_ty, tps: /*bad*/copy tps})
             }
         }
     }
@@ -327,22 +330,20 @@ fn super_fn_metas<C:combine>(
 {
     let p = if_ok!(self.protos(a_f.proto, b_f.proto));
     let r = if_ok!(self.contraregions(a_f.region, b_f.region));
-    let rs = if_ok!(self.ret_styles(a_f.ret_style, b_f.ret_style));
     let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
     let onceness = if_ok!(self.oncenesses(a_f.onceness, b_f.onceness));
     Ok(FnMeta {purity: purity,
                proto: p,
                region: r,
                onceness: onceness,
-               bounds: a_f.bounds, // XXX: This is wrong!
-               ret_style: rs})
+               bounds: a_f.bounds}) // XXX: This is wrong!
 }
 
 fn super_fn_sigs<C:combine>(
-    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
-{
-    fn argvecs<C:combine>(self: &C, a_args: ~[ty::arg],
-                          b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig> {
+    fn argvecs<C:combine>(self: &C,
+                          +a_args: ~[ty::arg],
+                          +b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(*a, *b))
@@ -351,9 +352,10 @@ fn super_fn_sigs<C:combine>(
         }
     }
 
-    do argvecs(self, a_f.inputs, b_f.inputs).chain |inputs| {
+    do argvecs(self, /*bad*/copy a_f.inputs, /*bad*/copy b_f.inputs)
+            .chain |inputs| {
         do self.tys(a_f.output, b_f.output).chain |output| {
-            Ok(FnSig {inputs: inputs, output: output})
+            Ok(FnSig {inputs: /*bad*/copy inputs, output: output})
         }
     }
 }
@@ -372,7 +374,7 @@ fn super_tys<C:combine>(
     self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = self.infcx().tcx;
-    match (ty::get(a).sty, ty::get(b).sty) {
+    match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
@@ -412,8 +414,8 @@ fn super_tys<C:combine>(
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
-        let as_ = ty::get(a).sty;
-        let bs = ty::get(b).sty;
+        let as_ = /*bad*/copy ty::get(a).sty;
+        let bs = /*bad*/copy ty::get(b).sty;
         if as_ == bs {
             Ok(a)
         } else {
@@ -448,7 +450,7 @@ fn super_tys<C:combine>(
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
             do self.vstores(ty::terr_trait, a_vstore, b_vstore).chain |vs| {
-                Ok(ty::mk_trait(tcx, a_id, substs, vs))
+                Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, vs))
             }
         }
       }

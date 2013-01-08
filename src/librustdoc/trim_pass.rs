@@ -16,6 +16,10 @@ is interpreted as the brief description.
 */
 
 use doc::ItemUtils;
+use doc;
+use text_pass;
+
+use core::str;
 
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"trim", |s| str::trim(s) )
@@ -32,6 +36,12 @@ fn should_trim_text() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

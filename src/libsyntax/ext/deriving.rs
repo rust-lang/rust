@@ -19,8 +19,12 @@ use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_rptr, unnamed_field};
 use ast::{variant};
 use ext::base::ext_ctxt;
+use ext::build;
 use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
+
+use core::dvec;
+use core::uint;
 
 enum Junction {
     Conjunction,
@@ -202,7 +206,9 @@ fn create_derived_impl(cx: ext_ctxt,
     // Create the type parameters.
     let impl_ty_params = dvec::DVec();
     for ty_params.each |ty_param| {
-        let bound = build::mk_ty_path(cx, span, trait_path.map(|x| *x));
+        let bound = build::mk_ty_path_global(cx,
+                                             span,
+                                             trait_path.map(|x| *x));
         let bounds = @~[ ty_param_bound(bound) ];
         let impl_ty_param = build::mk_ty_param(cx, ty_param.ident, bounds);
         impl_ty_params.push(move impl_ty_param);
@@ -212,7 +218,7 @@ fn create_derived_impl(cx: ext_ctxt,
     // Create the reference to the trait.
     let trait_path = {
         span: span,
-        global: false,
+        global: true,
         idents: trait_path.map(|x| *x),
         rp: None,
         types: ~[]

@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
 use middle::trans::common::*;
+use middle::trans::common;
+use middle::trans::expr;
+use util::ppaux;
 
 use std::map::HashMap;
 use syntax::ast;
@@ -104,7 +108,8 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         return llty;
     }
 
-    let llty = match ty::get(t).sty {
+    // XXX: This is a terrible terrible copy.
+    let llty = match /*bad*/copy ty::get(t).sty {
       ty::ty_nil | ty::ty_bot => T_nil(),
       ty::ty_bool => T_bool(),
       ty::ty_int(t) => T_int_ty(cx, t),
@@ -119,7 +124,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
 
-        common::T_named_struct(llvm_type_name(cx, an_enum, did, substs.tps))
+        common::T_named_struct(llvm_type_name(cx,
+                                              an_enum,
+                                              did,
+                                              /*bad*/copy substs.tps))
       }
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
@@ -184,7 +192,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         // in *after* placing it into the type cache. This prevents
         // infinite recursion with recursive struct types.
 
-        common::T_named_struct(llvm_type_name(cx, a_struct, did, substs.tps))
+        common::T_named_struct(llvm_type_name(cx,
+                                              a_struct,
+                                              did,
+                                              /*bad*/ copy substs.tps))
       }
       ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
@@ -227,7 +238,7 @@ fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
     debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
-        let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
+        let degen = ty::enum_is_univariant(cx.tcx, did);
         let size = shape::static_size_of_enum(cx, t);
         if !degen {
             ~[T_enum_discrim(cx), T_array(T_i8(), size)]
@@ -258,7 +269,7 @@ fn llvm_type_name(cx: @crate_ctxt,
     return fmt!(
         "%s %s[#%d]",
           name,
-        util::ppaux::parameterized(
+        ppaux::parameterized(
             cx.tcx,
             ty::item_path_str(cx.tcx, did),
             None,

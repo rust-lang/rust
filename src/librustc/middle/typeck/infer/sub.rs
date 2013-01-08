@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::to_str::ToStr;
 use middle::typeck::infer::unify::*;
@@ -91,12 +93,6 @@ impl Sub: combine {
     fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness> {
         self.lub().oncenesses(a, b).compare(b, || {
             ty::terr_onceness_mismatch(expected_found(&self, a, b))
-        })
-    }
-
-    fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
-        self.lub().ret_styles(a, b).compare(b, || {
-            ty::terr_ret_style_mismatch(expected_found(&self, a, b))
         })
     }
 

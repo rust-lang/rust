@@ -24,6 +24,10 @@
 
 #[forbid(deprecated_mode)];
 
+use core::str;
+use core::uint;
+use core::vec;
+
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
  * implementation, which is written for clarity, not speed. At some
@@ -33,9 +37,9 @@
 /// The SHA-1 interface
 trait Sha1 {
     /// Provide message input as bytes
-    fn input((&[u8]));
+    fn input(&[const u8]);
     /// Provide message input as string
-    fn input_str((&str));
+    fn input_str(&str);
     /**
      * Read the digest as a vector of 20 bytes. After calling this no further
      * input may be provided until reset is called.
@@ -71,9 +75,9 @@ pub fn sha1() -> Sha1 {
          mut computed: bool,
          work_buf: @~[mut u32]};
 
-    fn add_input(st: &Sha1State, msg: &[u8]) {
+    fn add_input(st: &Sha1State, msg: &[const u8]) {
         assert (!st.computed);
-        for vec::each(msg) |element| {
+        for vec::each_const(msg) |element| {
             st.msg_block[st.msg_block_idx] = *element;
             st.msg_block_idx += 1u;
             st.len_low += 8u32;
@@ -239,7 +243,7 @@ pub fn sha1() -> Sha1 {
             self.h[4] = 0xC3D2E1F0u32;
             self.computed = false;
         }
-        fn input(msg: &[u8]) { add_input(&self, msg); }
+        fn input(msg: &[const u8]) { add_input(&self, msg); }
         fn input_str(msg: &str) {
             let bs = str::to_bytes(msg);
             add_input(&self, bs);
@@ -271,6 +275,11 @@ pub fn sha1() -> Sha1 {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use sha1;
+
+    use core::str;
+    use core::vec;
 
     #[test]
     fn test() unsafe {

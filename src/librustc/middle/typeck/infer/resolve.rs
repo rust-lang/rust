@@ -46,9 +46,16 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
+
+use middle::ty;
 use middle::typeck::infer::floating::*;
+use middle::typeck::infer::floating;
 use middle::typeck::infer::integral::*;
+use middle::typeck::infer::integral;
 use middle::typeck::infer::to_str::ToStr;
+
+use core::uint;
+use core::vec;
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;
@@ -104,7 +111,8 @@ impl resolve_state {
         assert vec::is_empty(self.v_seen);
         match self.err {
           None => {
-            debug!("Resolved to %s (modes=%x)",
+            debug!("Resolved to %s + %s (modes=%x)",
+                   ty_to_str(self.infcx.tcx, rty),
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes);
             return Ok(rty);
@@ -127,7 +135,7 @@ impl resolve_state {
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { return typ; }
 
-            match ty::get(typ).sty {
+            match copy ty::get(typ).sty {
               ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
               }

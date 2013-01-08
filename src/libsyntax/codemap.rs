@@ -21,7 +21,14 @@ source code snippets, etc.
 
 */
 
-use dvec::DVec;
+use ast_util;
+
+use core::cmp;
+use core::dvec::DVec;
+use core::str;
+use core::to_bytes;
+use core::uint;
+use core::vec;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 trait Pos {

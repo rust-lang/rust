@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
 
+use std::list;
 use syntax::ast::{Many, Once};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
@@ -91,14 +95,6 @@ impl Lub: combine {
         match (a, b) {
             (Once, _) | (_, Once) => Ok(Once),
             (Many, Many) => Ok(Many)
-        }
-    }
-
-    fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        match (r1, r2) {
-          (ast::return_val, _) |
-          (_, ast::return_val) => Ok(ast::return_val),
-          (ast::noreturn, ast::noreturn) => Ok(ast::noreturn)
         }
     }
 
