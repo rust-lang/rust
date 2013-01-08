@@ -1330,9 +1330,10 @@ fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef) ->
             let mut s: ~str = ~"{";
             let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
             let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            llvm::LLVMGetStructElementTypes(ty,
-                                            ptr::to_mut_unsafe_ptr(
-                                                &mut elts[0]));
+            if elts.len() > 0 {
+                llvm::LLVMGetStructElementTypes(
+                    ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
+            }
             s += tys_str(names, outer, elts);
             s += ~"}";
             return s;
@@ -1398,8 +1399,10 @@ fn struct_element_types(struct_ty: TypeRef) -> ~[TypeRef] {
         let mut buf: ~[TypeRef] =
             vec::from_elem(count as uint,
                            cast::transmute::<uint,TypeRef>(0));
-        llvm::LLVMGetStructElementTypes(struct_ty,
-                                        ptr::to_mut_unsafe_ptr(&mut buf[0]));
+        if buf.len() > 0 {
+            llvm::LLVMGetStructElementTypes(
+                struct_ty, ptr::to_mut_unsafe_ptr(&mut buf[0]));
+        }
         return move buf;
     }
 }
