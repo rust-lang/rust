@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cast;
-use core::libc::{c_double, c_int};
-use core::f64::*;
+use ::core::cast;
+use ::core::libc::{c_double, c_int};
+use ::core::f64::*;
 
 fn to_c_int(v: &mut int) -> &mut c_int unsafe {
     cast::reinterpret_cast(&v)

@@ -3,7 +3,7 @@
 
 extern mod mycore(name ="static_fn_trait_xc_aux");
 
-use mycore::num;
+use my::core::num;
 
 fn main() {
     let _1:float = num::Num2::from_int2(1i);
