@@ -10,6 +10,7 @@
 
 // Test that we use fully-qualified type names in error messages.
 
+// xfail-test
 type T1 = uint;
 type T2 = int;
 
