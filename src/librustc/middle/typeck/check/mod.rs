@@ -178,7 +178,10 @@ pub struct fn_ctxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
-    self_impl_def_id: Option<ast::def_id>,
+
+    // Refers to whichever `self` is in scope, even this fn_ctxt is
+    // for a nested closure that captures `self`
+    self_info: Option<self_info>,
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
     indirect_ret_ty: Option<ty::t>,
@@ -227,7 +230,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @fn_ctxt {
-        self_impl_def_id: None,
+        self_info: None,
         ret_ty: rty,
         indirect_ret_ty: None,
         purity: ast::pure_fn,
@@ -320,7 +323,7 @@ fn check_fn(ccx: @crate_ctxt,
         } else { None };
 
         @fn_ctxt {
-            self_impl_def_id: self_info.map(|self_info| self_info.def_id),
+            self_info: self_info,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             purity: purity,
@@ -1553,7 +1556,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         fcx.write_ty(expr.id, fty);
 
-        check_fn(fcx.ccx, None, &fn_ty, decl, body,
+        // We inherit the same self info as the enclosing scope,
+        // since the function we're checking might capture `self`
+        check_fn(fcx.ccx, fcx.self_info, &fn_ty, decl, body,
                  fn_kind, Some(fcx));
     }
 
