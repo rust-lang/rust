@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn closure2(+x: util::NonCopyable) -> (util::NonCopyable,
-                                       fn@() -> util::NonCopyable) {
-    let f = fn@(copy x) -> util::NonCopyable {
+fn closure2(+x: core::util::NonCopyable)
+        -> (core::util::NonCopyable, fn@() -> core::util::NonCopyable) {
+    let f = fn@(copy x) -> core::util::NonCopyable {
         //~^ ERROR copying a noncopyable value
         //~^^ NOTE non-copyable value cannot be copied into a @fn closure
         copy x
@@ -18,7 +18,7 @@ fn closure2(+x: util::NonCopyable) -> (util::NonCopyable,
     };
     (move x,f)
 }
-fn closure3(+x: util::NonCopyable) {
+fn closure3(+x: core::util::NonCopyable) {
     do task::spawn |copy x| {
         //~^ ERROR copying a noncopyable value
         //~^^ NOTE non-copyable value cannot be copied into a ~fn closure

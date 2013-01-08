@@ -14,6 +14,7 @@
 use core::cmp::Eq;
 use core::option;
 use core::option::*;
+use core::prelude::*;
 use core::vec;
 
 #[deriving_eq]
@@ -162,6 +163,7 @@ pub pure fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
 mod tests {
     #[legacy_exports];
 
+    use list::*;
     use list;
 
     use core::option;

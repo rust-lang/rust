@@ -10,6 +10,8 @@
 
 //! Converts the Rust AST to the rustdoc document model
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -346,6 +348,7 @@ mod test {
 
     use astsrv;
     use doc;
+    use extract::{extract, from_srv};
     use parse;
 
     use core::vec;

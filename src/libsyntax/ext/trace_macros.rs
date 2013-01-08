@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast::tt_delim;
 use ast;
 use codemap::span;
-use ext::base;
 use ext::base::ext_ctxt;
-use ast::tt_delim;
+use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
+use core::option::None;
+
 fn expand_trace_macros(cx: ext_ctxt, sp: span,
-                       tt: ~[ast::token_tree]) -> base::mac_result
-{
+                       tt: ~[ast::token_tree]) -> base::mac_result {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,

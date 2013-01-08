@@ -16,6 +16,7 @@ use core::either::{Either, Left, Right};
 use core::io;
 use core::option;
 use core::pipes::{recv, oneshot, PortOne, send_one};
+use core::prelude::*;
 use core::result;
 use core::run;
 use core::send_map::linear::LinearMap;

@@ -17,14 +17,14 @@
 
 use pipes::try_recv;
 
-type username = ~str;
-type password = ~str;
-type money = float;
-type amount = float;
+pub type username = ~str;
+pub type password = ~str;
+pub type money = float;
+pub type amount = float;
 
 proto! bank (
     login:send {
-        login(username, password) -> login_response
+        login(::username, ::password) -> login_response
     }
 
     login_response:recv {
@@ -33,12 +33,12 @@ proto! bank (
     }
 
     connected:send {
-        deposit(money) -> connected,
-        withdrawal(amount) -> withdrawal_response
+        deposit(::money) -> connected,
+        withdrawal(::amount) -> withdrawal_response
     }
 
     withdrawal_response:recv {
-        money(money) -> connected,
+        money(::money) -> connected,
         insufficient_funds -> connected
     }
 )

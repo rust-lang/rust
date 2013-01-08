@@ -11,6 +11,8 @@
 /// The compiler code necessary to implement the #[deriving_eq] and
 /// #[deriving_iter_bytes] extensions.
 
+use core::prelude::*;
+
 use ast::{Ty, and, bind_by_ref, binop, deref, enum_def, enum_variant_kind};
 use ast::{expr, expr_match, ident, item, item_, item_struct, item_enum};
 use ast::{item_impl, m_imm, meta_item, method, named_field, or, pat};

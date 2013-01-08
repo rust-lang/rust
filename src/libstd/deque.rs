@@ -15,6 +15,7 @@
 use core::cmp::Eq;
 use core::dvec::DVec;
 use core::dvec;
+use core::prelude::*;
 use core::uint;
 use core::vec;
 
@@ -131,6 +132,9 @@ pub fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
+    use deque::*;
     use deque;
 
     #[test]

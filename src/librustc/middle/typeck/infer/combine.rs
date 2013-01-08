@@ -54,14 +54,22 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
+use core::prelude::*;
+
+use middle::ty::{FloatVar, FnTyBase, FnMeta, FnSig, IntVar, TyVar};
 use middle::ty;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::typeck::infer::glb::Glb;
+use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::{cres, infer_ctxt, ures};
+use util::common::indent;
 
+use core::result::{iter_vec2, map_vec2};
 use core::vec;
-use syntax::ast::Onceness;
+use syntax::ast::{Onceness, purity, ret_style};
 use syntax::ast;
+use syntax::codemap::span;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

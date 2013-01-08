@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
+use middle::ty::TyVar;
 use middle::ty;
+use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
+use middle::typeck::infer::glb::Glb;
+use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::unify::*;
 use middle::typeck::infer::to_str::ToStr;
 

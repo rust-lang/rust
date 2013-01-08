@@ -14,6 +14,7 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+use core::prelude::*;
 
 use driver;
 use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
@@ -25,12 +26,14 @@ use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
 use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
 use middle::ty::{t, ty_bool, ty_bot, ty_box, ty_enum, ty_err, ty_estr};
-use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil, ty_ptr};
-use middle::ty::{ty_rec, ty_rptr, ty_struct, ty_trait, ty_tup, ty_uint};
-use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box, ty_uniq};
+use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil};
+use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
+use middle::ty::{ty_rec, ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
+use middle::ty::{ty_type, ty_uint, ty_uniq};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
 use middle::ty;
+use middle::typeck::crate_ctxt;
 use middle::typeck::infer::{infer_ctxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
@@ -42,7 +45,7 @@ use syntax::ast::{trait_ref};
 use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, dummy_sp};
+use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::parse;

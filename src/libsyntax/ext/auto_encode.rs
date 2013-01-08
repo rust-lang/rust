@@ -88,10 +88,14 @@ node twice.
 
 */
 
+use core::prelude::*;
+
+use ast;
 use ast_util;
 use attr;
 use codemap::span;
 use ext::base::*;
+use parse;
 
 use core::vec;
 use std::map;
@@ -421,7 +425,7 @@ fn mk_impl(
     @{
         // This is a new-style impl declaration.
         // XXX: clownshoes
-        ident: ast::token::special_idents::clownshoes_extensions,
+        ident: parse::token::special_idents::clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
         node: ast::item_impl(trait_tps, opt_trait, ty, ~[f(ty)]),

@@ -108,6 +108,8 @@ pub unsafe fn copy_lifetime_vec<S,T>(_ptr: &a/[S], ptr: &T) -> &a/T {
 
 #[cfg(test)]
 pub mod tests {
+    use cast::{bump_box_refcount, reinterpret_cast, transmute};
+
     #[test]
     pub fn test_reinterpret_cast() {
         assert 1u == unsafe { reinterpret_cast(&1) };

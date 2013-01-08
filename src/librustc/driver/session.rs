@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use back::link;
 use back::target_strs;
@@ -333,6 +334,12 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use driver::session::{bin_crate, building_library, lib_crate};
+    use driver::session::{unknown_crate};
+
     use syntax::ast;
     use syntax::ast_util;
 

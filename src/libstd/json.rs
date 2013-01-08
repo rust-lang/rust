@@ -23,6 +23,7 @@ use core::cmp::{Eq, Ord};
 use core::float;
 use core::io::{WriterUtil, ReaderUtil};
 use core::io;
+use core::prelude::*;
 use core::send_map::linear;
 use core::str;
 use core::to_str;
@@ -1193,6 +1194,10 @@ impl Error: to_str::ToStr {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
+    use json::*;
+
     use core::result;
     use core::send_map::linear;
 

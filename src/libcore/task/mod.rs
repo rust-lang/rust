@@ -48,6 +48,7 @@ use option;
 use result::Result;
 use pipes::{stream, Chan, Port};
 use pipes;
+use prelude::*;
 use ptr;
 use result;
 use task::local_data_priv::{local_get, local_set};

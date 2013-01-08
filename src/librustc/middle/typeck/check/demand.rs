@@ -13,8 +13,10 @@ use middle::ty;
 use middle::typeck::check::fn_ctxt;
 use middle::typeck::infer;
 
+use core::result::{Err, Ok};
 use core::result;
 use syntax::ast;
+use syntax::codemap::span;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.

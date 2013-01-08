@@ -27,6 +27,7 @@ this point a bit better.
 
 */
 
+use core::prelude::*;
 
 use middle::freevars::get_freevars;
 use middle::pat_util::pat_bindings;
@@ -34,13 +35,17 @@ use middle::ty::{encl_region, re_scope};
 use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
 use middle::ty;
-use middle::typeck::infer::{resolve_and_force_all_but_regions, fres};
+use middle::typeck::check::fn_ctxt;
+use middle::typeck::check::lookup_def;
+use middle::typeck::infer::{fres, resolve_and_force_all_but_regions};
+use middle::typeck::infer::{resolve_type};
 use util::ppaux::{note_and_explain_region, ty_to_str};
 
 use core::result;
 use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
+use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 

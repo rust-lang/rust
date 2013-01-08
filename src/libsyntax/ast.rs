@@ -12,10 +12,10 @@
 
 use ast;
 use codemap::{span, FileName};
-use parse::token;
 
 use core::cast;
 use core::cmp;
+use core::option::{None, Option, Some};
 use core::ptr;
 use core::task;
 use core::to_bytes;
@@ -29,7 +29,8 @@ type spanned<T> = {node: T, span: span};
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
+    () => (cast::transmute::<(uint, uint),
+            &fn(+v: @@::parse::token::ident_interner)>(
         (-3 as uint, 0u)))
 )
 
@@ -768,10 +769,10 @@ type capture_clause = @~[capture_item];
 #[auto_decode]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 enum token_tree {
-    tt_tok(span, token::Token),
+    tt_tok(span, ::parse::token::Token),
     tt_delim(~[token_tree]),
     // These only make sense for right-hand-sides of MBE macros
-    tt_seq(span, ~[token_tree], Option<token::Token>, bool),
+    tt_seq(span, ~[token_tree], Option<::parse::token::Token>, bool),
     tt_nonterminal(span, ident)
 }
 
@@ -833,10 +834,10 @@ type matcher = spanned<matcher_>;
 #[auto_decode]
 enum matcher_ {
     // match one token
-    match_tok(token::Token),
+    match_tok(::parse::token::Token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], Option<token::Token>, bool, uint, uint),
+    match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     match_nonterminal(ident, ident, uint)
 }
@@ -1149,7 +1150,7 @@ type fn_decl =
 
 #[auto_encode]
 #[auto_decode]
-enum purity {
+pub enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"

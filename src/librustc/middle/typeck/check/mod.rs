@@ -76,11 +76,14 @@ type parameter).
 
 */
 
+use core::prelude::*;
 
 use middle::capture;
 use middle::const_eval;
+use middle::pat_util::pat_id_map;
 use middle::pat_util;
-use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_};
+use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig, VariantInfo_, field};
+use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -89,12 +92,18 @@ use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::TransformTypeNormally;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
+use middle::typeck::crate_ctxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::{anon_rscope, binding_rscope, bound_self_region};
 use middle::typeck::rscope::{empty_rscope, in_anon_rscope};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
+use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
+use middle::typeck::{method_origin, method_self, method_trait, no_params};
+use middle::typeck::{require_same_types};
+use util::common::{block_query, indenter, loop_query};
+use util::ppaux::{bound_region_to_str, expr_repr};
 use util::ppaux;
 
 use core::either;
@@ -104,15 +113,19 @@ use core::result::{Result, Ok, Err};
 use core::result;
 use core::str;
 use core::vec;
+use std::list::Nil;
 use std::map::HashMap;
 use std::map;
-use syntax::ast::ty_i;
+use syntax::ast::{provided, required, spanned, ty_i};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{is_local, visibility_to_privacy, Private, Public};
+use syntax::ast_util::{Private, Public, is_local, local_def, respan};
+use syntax::ast_util::{visibility_to_privacy};
 use syntax::ast_util;
+use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token::special_idents;
+use syntax::print::pprust::{expr_to_str, pat_to_str};
 use syntax::print::pprust;
 use syntax::visit;
 use syntax;
@@ -131,6 +144,15 @@ export DerefArgs;
 export DontDerefArgs;
 export DoDerefArgs;
 export check_item_types;
+export check_block;
+export check_expr_with;
+export fn_ctxt;
+export lookup_def;
+export structure_of;
+export self_info;
+export structurally_resolved_type;
+export instantiate_path;
+export valid_range_bounds;
 
 #[legacy_exports]
 pub mod _match;

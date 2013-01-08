@@ -16,6 +16,8 @@
  * compiler syntax extension plugin interface.
  */
 
+use core::prelude::*;
+
 use ast;
 use codemap::span;
 use ext::base::*;
