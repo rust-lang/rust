@@ -282,8 +282,9 @@ impl LookupContext {
                 ty_self => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
-                    let self_did = self.fcx.self_impl_def_id.expect(
-                        ~"unexpected `none` for self_impl_def_id");
+                    let self_did = self.fcx.self_info.expect(
+                        ~"self_impl_def_id is undefined (`self` may not \
+                          be in scope here").def_id;
                     let substs = {self_r: None, self_ty: None, tps: ~[]};
                     self.push_inherent_candidates_from_self(
                         self_ty, self_did, &substs);
