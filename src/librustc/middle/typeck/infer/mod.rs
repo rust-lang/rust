@@ -737,15 +737,16 @@ impl infer_ctxt {
     fn type_error_message(sp: span, mk_msg: fn(~str) -> ~str,
                           actual_ty: ty::t, err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
+        let mut actual_sty = ty::get(copy actual_ty);
 
         // Don't report an error if actual type is ty_err.
-        match ty::get(actual_ty).sty {
+        match actual_sty.sty {
             ty::ty_err => return,
             // Should really not report an error if the type
             // has ty_err anywhere as a component, but that's
             // annoying since we haven't written a visitor for
             // ty::t yet
-            ty::ty_fn(fty) => match ty::get(fty.sig.output).sty {
+            ty::ty_fn(ref fty) => match ty::get(fty.sig.output).sty {
                 ty::ty_err => return,
                 _ => ()
             },
