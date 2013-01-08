@@ -741,6 +741,14 @@ impl infer_ctxt {
         // Don't report an error if actual type is ty_err.
         match ty::get(actual_ty).sty {
             ty::ty_err => return,
+            // Should really not report an error if the type
+            // has ty_err anywhere as a component, but that's
+            // annoying since we haven't written a visitor for
+            // ty::t yet
+            ty::ty_fn(fty) => match ty::get(fty.sig.output).sty {
+                ty::ty_err => return,
+                _ => ()
+            },
             _           => ()
         }
         let error_str = err.map_default(~"", |t_err|
