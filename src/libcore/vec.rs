@@ -1539,94 +1539,96 @@ pub mod traits {
 }
 
 pub trait ConstVector {
-    pure fn is_empty() -> bool;
-    pure fn is_not_empty() -> bool;
-    pure fn len() -> uint;
+    pure fn is_empty(&self) -> bool;
+    pure fn is_not_empty(&self) -> bool;
+    pure fn len(&self) -> uint;
 }
 
 /// Extension methods for vectors
 impl<T> &[const T]: ConstVector {
     /// Returns true if a vector contains no elements
     #[inline]
-    pure fn is_empty() -> bool { is_empty(self) }
+    pure fn is_empty(&self) -> bool { is_empty(*self) }
     /// Returns true if a vector contains some elements
     #[inline]
-    pure fn is_not_empty() -> bool { is_not_empty(self) }
+    pure fn is_not_empty(&self) -> bool { is_not_empty(*self) }
     /// Returns the length of a vector
     #[inline]
-    pure fn len() -> uint { len(self) }
+    pure fn len(&self) -> uint { len(*self) }
 }
 
 pub trait CopyableVector<T> {
-    pure fn head() -> T;
-    pure fn init() -> ~[T];
-    pure fn last() -> T;
-    pure fn slice(start: uint, end: uint) -> ~[T];
-    pure fn tail() -> ~[T];
+    pure fn head(&self) -> T;
+    pure fn init(&self) -> ~[T];
+    pure fn last(&self) -> T;
+    pure fn slice(&self, start: uint, end: uint) -> ~[T];
+    pure fn tail(&self) -> ~[T];
 }
 
 /// Extension methods for vectors
 impl<T: Copy> &[const T]: CopyableVector<T> {
     /// Returns the first element of a vector
     #[inline]
-    pure fn head() -> T { head(self) }
+    pure fn head(&self) -> T { head(*self) }
 
     /// Returns all but the last elemnt of a vector
     #[inline]
-    pure fn init() -> ~[T] { init(self) }
+    pure fn init(&self) -> ~[T] { init(*self) }
 
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
-    pure fn last() -> T { last(self) }
+    pure fn last(&self) -> T { last(*self) }
 
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
-    pure fn slice(start: uint, end: uint) -> ~[T] { slice(self, start, end) }
+    pure fn slice(&self, start: uint, end: uint) -> ~[T] {
+        slice(*self, start, end)
+    }
 
     /// Returns all but the first element of a vector
     #[inline]
-    pure fn tail() -> ~[T] { tail(self) }
+    pure fn tail(&self) -> ~[T] { tail(*self) }
 }
 
 pub trait ImmutableVector<T> {
-    pure fn view(start: uint, end: uint) -> &self/[T];
-    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, u: U) -> U) -> U;
-    pure fn map<U>(f: fn(t: &T) -> U) -> ~[U];
-    pure fn mapi<U>(f: fn(uint, t: &T) -> U) -> ~[U];
-    fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
-    pure fn alli(f: fn(uint, t: &T) -> bool) -> bool;
-    pure fn flat_map<U>(f: fn(t: &T) -> ~[U]) -> ~[U];
-    pure fn filter_map<U: Copy>(f: fn(t: &T) -> Option<U>) -> ~[U];
+    pure fn view(&self, start: uint, end: uint) -> &self/[T];
+    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
+    pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
+    pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
+    fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U];
+    pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool;
+    pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U];
+    pure fn filter_map<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
 }
 
 /// Extension methods for vectors
 impl<T> &[T]: ImmutableVector<T> {
     /// Return a slice that points into another slice.
     #[inline]
-    pure fn view(start: uint, end: uint) -> &self/[T] {
-        view(self, start, end)
+    pure fn view(&self, start: uint, end: uint) -> &self/[T] {
+        view(*self, start, end)
     }
 
     /// Reduce a vector from right to left
     #[inline]
-    pure fn foldr<U: Copy>(z: U, p: fn(t: &T, u: U) -> U) -> U {
-        foldr(self, z, p)
+    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U {
+        foldr(*self, z, p)
     }
 
     /// Apply a function to each element of a vector and return the results
     #[inline]
-    pure fn map<U>(f: fn(t: &T) -> U) -> ~[U] { map(self, f) }
+    pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U] { map(*self, f) }
 
     /**
      * Apply a function to the index and value of each element in the vector
      * and return the results
      */
-    pure fn mapi<U>(f: fn(uint, t: &T) -> U) -> ~[U] {
-        mapi(self, f)
+    pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U] {
+        mapi(*self, f)
     }
 
     #[inline]
-    fn map_r<U>(f: fn(x: &T) -> U) -> ~[U] {
+    fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U] {
         let mut r = ~[];
         let mut i = 0;
         while i < self.len() {
@@ -1641,16 +1643,16 @@ impl<T> &[T]: ImmutableVector<T> {
      *
      *     If the vector is empty, true is returned.
      */
-    pure fn alli(f: fn(uint, t: &T) -> bool) -> bool {
-        alli(self, f)
+    pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool {
+        alli(*self, f)
     }
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
      */
     #[inline]
-    pure fn flat_map<U>(f: fn(t: &T) -> ~[U]) -> ~[U] {
-        flat_map(self, f)
+    pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U] {
+        flat_map(*self, f)
     }
     /**
      * Apply a function to each element of a vector and return the results
@@ -1659,16 +1661,17 @@ impl<T> &[T]: ImmutableVector<T> {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_map<U: Copy>(f: fn(t: &T) -> Option<U>) -> ~[U] {
-        filter_map(self, f)
+    pure fn filter_map<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
+        filter_map(*self, f)
     }
+
 }
 
 pub trait ImmutableEqVector<T: Eq> {
-    pure fn position(f: fn(t: &T) -> bool) -> Option<uint>;
-    pure fn position_elem(t: &T) -> Option<uint>;
-    pure fn rposition(f: fn(t: &T) -> bool) -> Option<uint>;
-    pure fn rposition_elem(t: &T) -> Option<uint>;
+    pure fn position(&self, f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn position_elem(&self, t: &T) -> Option<uint>;
+    pure fn rposition(&self, f: fn(t: &T) -> bool) -> Option<uint>;
+    pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
 impl<T: Eq> &[T]: ImmutableEqVector<T> {
@@ -1680,14 +1683,14 @@ impl<T: Eq> &[T]: ImmutableEqVector<T> {
      * elements then none is returned.
      */
     #[inline]
-    pure fn position(f: fn(t: &T) -> bool) -> Option<uint> {
-        position(self, f)
+    pure fn position(&self, f: fn(t: &T) -> bool) -> Option<uint> {
+        position(*self, f)
     }
 
     /// Find the first index containing a matching value
     #[inline]
-    pure fn position_elem(x: &T) -> Option<uint> {
-        position_elem(self, x)
+    pure fn position_elem(&self, x: &T) -> Option<uint> {
+        position_elem(*self, x)
     }
 
     /**
@@ -1698,21 +1701,21 @@ impl<T: Eq> &[T]: ImmutableEqVector<T> {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rposition(f: fn(t: &T) -> bool) -> Option<uint> {
-        rposition(self, f)
+    pure fn rposition(&self, f: fn(t: &T) -> bool) -> Option<uint> {
+        rposition(*self, f)
     }
 
     /// Find the last index containing a matching value
     #[inline]
-    pure fn rposition_elem(t: &T) -> Option<uint> {
-        rposition_elem(self, t)
+    pure fn rposition_elem(&self, t: &T) -> Option<uint> {
+        rposition_elem(*self, t)
     }
 }
 
 pub trait ImmutableCopyableVector<T> {
-    pure fn filter(f: fn(t: &T) -> bool) -> ~[T];
+    pure fn filter(&self, f: fn(t: &T) -> bool) -> ~[T];
 
-    pure fn rfind(f: fn(t: &T) -> bool) -> Option<T>;
+    pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T>;
 }
 
 /// Extension methods for vectors
@@ -1725,8 +1728,8 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
      * containing only those elements for which `f` returned true.
      */
     #[inline]
-    pure fn filter(f: fn(t: &T) -> bool) -> ~[T] {
-        filter(self, f)
+    pure fn filter(&self, f: fn(t: &T) -> bool) -> ~[T] {
+        filter(*self, f)
     }
 
     /**
@@ -1737,7 +1740,9 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rfind(f: fn(t: &T) -> bool) -> Option<T> { rfind(self, f) }
+    pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T> {
+        rfind(*self, f)
+    }
 }
 
 pub trait OwnedVector<T> {
