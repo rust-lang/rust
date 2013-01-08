@@ -94,6 +94,9 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         unsafe {
             let n = llvm::LLVMCountStructElementTypes(ty);
+        if (n == 0) {
+            return ~[];
+        }
             let mut elts = vec::from_elem(n as uint, ptr::null());
             llvm::LLVMGetStructElementTypes(ty,
                 ptr::to_mut_unsafe_ptr(&mut elts[0]));
@@ -111,7 +114,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 Float => 4,
                 Double => 8,
                 Struct => {
-                  do vec::foldl(0, struct_tys(ty)) |a, t| {
+                  do vec::foldl(1, struct_tys(ty)) |a, t| {
                       uint::max(a, ty_align(*t))
                   }
                 }
@@ -184,15 +187,11 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn classify_struct(tys: &[TypeRef],
                        cls: &[mut x86_64_reg_class], i: uint,
                        off: uint) {
-        if vec::is_empty(tys) {
-            classify(T_i64(), cls, i, off);
-        } else {
-            let mut field_off = off;
-            for vec::each(tys) |ty| {
-                field_off = align(field_off, *ty);
-                classify(*ty, cls, i, field_off);
-                field_off += ty_size(*ty);
-            }
+        let mut field_off = off;
+        for vec::each(tys) |ty| {
+            field_off = align(field_off, *ty);
+            classify(*ty, cls, i, field_off);
+            field_off += ty_size(*ty);
         }
     }
 
@@ -378,13 +377,14 @@ fn x86_64_tys(atys: &[TypeRef],
     }
 
     fn is_pass_byval(cls: &[x86_64_reg_class]) -> bool {
-        return cls[0] == memory_class ||
-            cls[0] == x87_class ||
-            cls[0] == complex_x87_class;
+        return cls.len() > 0 &&
+            (cls[0] == memory_class ||
+             cls[0] == x87_class ||
+             cls[0] == complex_x87_class);
     }
 
     fn is_ret_bysret(cls: &[x86_64_reg_class]) -> bool {
-        return cls[0] == memory_class;
+        return cls.len() > 0 && cls[0] == memory_class;
     }
 
     fn x86_64_ty(ty: TypeRef,
