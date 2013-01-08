@@ -722,28 +722,13 @@ impl block {
 
 // LLVM type constructors.
 fn T_void() -> TypeRef {
-    // Note: For the time being llvm is kinda busted here, it has the notion
-    // of a 'void' type that can only occur as part of the signature of a
-    // function, but no general unit type of 0-sized value. This is, afaict,
-    // vestigial from its C heritage, and we'll be attempting to submit a
-    // patch upstream to fix it. In the mean time we only model function
-    // outputs (Rust functions and C functions) using T_void, and model the
-    // Rust general purpose nil type you can construct as 1-bit (always
-    // zero). This makes the result incorrect for now -- things like a tuple
-    // of 10 nil values will have 10-bit size -- but it doesn't seem like we
-    // have any other options until it's fixed upstream.
-
     unsafe {
         return llvm::LLVMVoidType();
     }
 }
 
 fn T_nil() -> TypeRef {
-    // NB: See above in T_void().
-
-    unsafe {
-        return llvm::LLVMInt1Type();
-    }
+    return T_struct(~[])
 }
 
 fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
@@ -1098,9 +1083,7 @@ fn C_floating(s: ~str, t: TypeRef) -> ValueRef {
 }
 
 fn C_nil() -> ValueRef {
-    // NB: See comment above in T_void().
-
-    return C_integral(T_i1(), 0u64, False);
+    return C_struct(~[]);
 }
 
 fn C_bool(b: bool) -> ValueRef {
