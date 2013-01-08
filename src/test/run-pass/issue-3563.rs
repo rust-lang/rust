@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
 trait A {
   fn a(&self) {
-      || self.b() //~ ERROR type `&self/self` does not implement any method in scope named `b`
+    || self.b()
   }
 }
-fn main() {}
