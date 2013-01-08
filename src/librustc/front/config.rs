@@ -103,11 +103,11 @@ fn fold_item_underscore(cx: ctxt, +item: ast::item_,
                         fld: fold::ast_fold) -> ast::item_ {
     let item = match item {
         ast::item_impl(a, b, c, methods) => {
-            let methods = methods.filter(|m| method_in_cfg(cx, *m) );
+            let methods = methods.filtered(|m| method_in_cfg(cx, *m) );
             ast::item_impl(a, b, c, methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
-            let methods = methods.filter(|m| trait_method_in_cfg(cx, m) );
+            let methods = methods.filtered(|m| trait_method_in_cfg(cx, m) );
             ast::item_trait(/*bad*/copy *a, /*bad*/copy *b, methods)
         }
         item => item

@@ -316,11 +316,12 @@ pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
 }
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
-    vec::filter(ms,
-                |m| match m.vis {
-                    public => true,
-                    _   => false
-                })
+    do ms.filtered |m| {
+        match m.vis {
+            public => true,
+            _   => false
+        }
+    }
 }
 
 // extract a ty_method from a trait_method. if the trait_method is

@@ -526,7 +526,7 @@ fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
 
 fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
     fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        vec::filter(v, |s| !str::is_whitespace(*s))
+        v.filtered(|s| !str::is_whitespace(*s))
     }
 
     match argstr {

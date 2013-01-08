@@ -121,7 +121,7 @@ fn expand_auto_encode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_encode(a)),
+        @{attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
           .. *item}
     }
 
@@ -185,7 +185,7 @@ fn expand_auto_decode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_decode(a)),
+        @{attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
           .. *item}
     }
 

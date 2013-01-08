@@ -853,7 +853,7 @@ pub pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
  * Apply function `f` to each element of `v` and return a vector containing
  * only those elements for which `f` returned true.
  */
-pub pure fn filter<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
+pub pure fn filtered<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
         if f(elem) { unsafe { result.push(*elem); } }
@@ -1752,7 +1752,7 @@ impl<T: Eq> &[T]: ImmutableEqVector<T> {
 }
 
 pub trait ImmutableCopyableVector<T> {
-    pure fn filter(&self, f: fn(t: &T) -> bool) -> ~[T];
+    pure fn filtered(&self, f: fn(&T) -> bool) -> ~[T];
     pure fn rfind(&self, f: fn(t: &T) -> bool) -> Option<T>;
     pure fn partitioned(&self, f: fn(&T) -> bool) -> (~[T], ~[T]);
 }
@@ -1767,8 +1767,8 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
      * containing only those elements for which `f` returned true.
      */
     #[inline]
-    pure fn filter(&self, f: fn(t: &T) -> bool) -> ~[T] {
-        filter(*self, f)
+    pure fn filtered(&self, f: fn(t: &T) -> bool) -> ~[T] {
+        filtered(*self, f)
     }
 
     /**
@@ -3618,7 +3618,7 @@ mod tests {
     fn test_filter_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do filter(v) |_elt| {
+        do v.filtered |_elt| {
             if i == 2 {
                 fail
             }

@@ -174,7 +174,7 @@ fn trans_log(log_ex: @ast::expr,
 
     let modpath = vec::append(
         ~[path_mod(ccx.sess.ident_of(/*bad*/copy ccx.link_meta.name))],
-        vec::filter(bcx.fcx.path, |e|
+        bcx.fcx.path.filtered(|e|
             match *e { path_mod(_) => true, _ => false }
         ));
     // XXX: Bad copy.

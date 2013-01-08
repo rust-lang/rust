@@ -619,7 +619,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
     #[cfg(windows)]
     fn star(p: &Path) -> Path { p.push("*") }
 
-    do rustrt::rust_list_files2(star(p).to_str()).filter |filename| {
+    do rustrt::rust_list_files2(star(p).to_str()).filtered |filename| {
         *filename != ~"." && *filename != ~".."
     }
 }
