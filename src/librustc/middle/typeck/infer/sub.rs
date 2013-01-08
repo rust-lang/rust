@@ -96,12 +96,6 @@ impl Sub: combine {
         })
     }
 
-    fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
-        self.lub().ret_styles(a, b).compare(b, || {
-            ty::terr_ret_style_mismatch(expected_found(&self, a, b))
-        })
-    }
-
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         debug!("%s.tys(%s, %s)", self.tag(),
                a.to_str(self.infcx), b.to_str(self.infcx));

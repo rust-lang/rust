@@ -219,11 +219,7 @@ impl reflector {
               ast::extern_fn => 3u
             };
             let protoval = ast_proto_constant(fty.meta.proto);
-            let retval = match fty.meta.ret_style {
-              ast::noreturn => 0u,
-              ast::return_val => 1u
-            };
-            // XXX: Must we allocate here?
+            let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = ~[self.c_uint(pureval),
                           self.c_uint(protoval),
                           self.c_uint(vec::len(fty.sig.inputs)),

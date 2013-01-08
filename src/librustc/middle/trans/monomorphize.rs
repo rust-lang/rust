@@ -280,8 +280,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
                                         proto: fty.meta.proto,
                                         onceness: ast::Many,
                                         region: ty::re_static,
-                                        bounds: @~[],
-                                        ret_style: ast::return_val},
+                                        bounds: @~[]},
                           sig: FnSig {inputs: ~[],
                                       output: ty::mk_nil(tcx)}}))
         }
@@ -292,8 +291,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
                                         proto: ast::ProtoBox,
                                         onceness: ast::Many,
                                         region: ty::re_static,
-                                        bounds: @~[],
-                                        ret_style: ast::return_val},
+                                        bounds: @~[]},
                           sig: FnSig {inputs: ~[],
                                       output: ty::mk_nil(tcx)}}))
         }
