@@ -633,7 +633,7 @@ fn trans_arg_expr(bcx: block,
                         _
                     }) =>
                 {
-                    let scratch_ty = expr_ty(bcx, blk);
+                    let scratch_ty = expr_ty(bcx, arg_expr);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let proto = ty::ty_fn_proto(arg_ty);
