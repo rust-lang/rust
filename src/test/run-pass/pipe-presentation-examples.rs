@@ -75,12 +75,12 @@ macro_rules! select (
 )
 
 // Types and protocols
-struct Buffer {
+pub struct Buffer {
     foo: (),
 
 }
 
-impl Buffer : Drop {
+pub impl Buffer : Drop {
     fn finalize(&self) {}
 }
 
@@ -90,11 +90,11 @@ proto! double_buffer (
     }
 
     wait_buffer:recv {
-        give_buffer(Buffer) -> release
+        give_buffer(::Buffer) -> release
     }
 
     release:send {
-        release(Buffer) -> acquire
+        release(::Buffer) -> acquire
     }
 )
 

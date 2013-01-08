@@ -38,6 +38,7 @@
 use core::cast;
 use core::char;
 use core::option;
+use core::prelude::*;
 use core::str;
 use core::uint;
 use core::vec;
@@ -448,7 +449,9 @@ pub fn loop_leaves(rope: Rope, it: fn(node::Leaf) -> bool) -> bool{
 
 pub mod iterator {
     pub mod leaf {
-        use rope::node;
+        use rope::{Rope, node};
+
+        use core::prelude::*;
 
         pub fn start(rope: Rope) -> node::leaf_iterator::T {
             match (rope) {
@@ -461,7 +464,9 @@ pub mod iterator {
         }
     }
     pub mod char {
-        use rope::node;
+        use rope::{Rope, node};
+
+        use core::prelude::*;
 
         pub fn start(rope: Rope) -> node::char_iterator::T {
             match (rope) {
@@ -560,6 +565,7 @@ pub mod node {
     use core::cast;
     use core::char;
     use core::option;
+    use core::prelude::*;
     use core::str;
     use core::uint;
     use core::vec;
@@ -1135,7 +1141,10 @@ pub mod node {
     }
 
     pub mod leaf_iterator {
+        use rope::node::{Concat, Leaf, Node, height};
+
         use core::option;
+        use core::prelude::*;
         use core::vec;
 
         pub type T = {
@@ -1175,9 +1184,11 @@ pub mod node {
     }
 
     pub mod char_iterator {
+        use rope::node::{Leaf, Node};
         use rope::node::leaf_iterator;
 
         use core::option;
+        use core::prelude::*;
         use core::str;
 
         pub type T = {
@@ -1259,8 +1270,7 @@ pub mod node {
 
 #[cfg(test)]
 mod tests {
-    use rope::iterator;
-    use rope::node;
+    use rope::*;
 
     use core::option;
     use core::str;

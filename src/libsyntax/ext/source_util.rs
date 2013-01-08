@@ -16,6 +16,7 @@ use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
 use print::pprust;
 
 use core::io;
+use core::prelude::*;
 use core::result;
 use core::str;
 use core::vec;

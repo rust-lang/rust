@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use driver::session::Session;
 
@@ -75,10 +76,18 @@ fn inject_libcore_ref(sess: Session,
         fold_mod: |module, fld| {
             let n2 = sess.next_node_id();
 
-            let vp = @spanned(
-                ast::view_path_glob(ident_to_path(dummy_sp(),
-                                                  sess.ident_of(~"core")),
-                                    n2));
+            let prelude_path = @{
+                span: dummy_sp(),
+                global: false,
+                idents: ~[
+                    sess.ident_of(~"core"),
+                    sess.ident_of(~"prelude")
+                ],
+                rp: None,
+                types: ~[]
+            };
+
+            let vp = @spanned(ast::view_path_glob(prelude_path, n2));
             let vi2 = @{node: ast::view_item_import(~[vp]),
                         attrs: ~[],
                         vis: ast::private,

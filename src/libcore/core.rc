@@ -53,6 +53,9 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
+/* The Prelude. */
+
+pub mod prelude;
 
 /* Primitive types */
 
@@ -243,6 +246,8 @@ pub mod core {
 
     pub use cmp;
     pub use condition;
+    pub use option;
+    pub use kinds;
 }
 
 

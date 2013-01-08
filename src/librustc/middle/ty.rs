@@ -10,6 +10,8 @@
 
 #[warn(deprecated_pattern)];
 
+use core::prelude::*;
+
 use driver::session;
 use metadata::csearch;
 use metadata;

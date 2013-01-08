@@ -29,6 +29,7 @@ use core::io;
 use core::libc::size_t;
 use core::oldcomm;
 use core::option;
+use core::prelude::*;
 use core::result;
 use core::str;
 use core::task::TaskBuilder;
@@ -79,7 +80,7 @@ pub type TestOpts = {filter: Option<~str>, run_ignored: bool,
 type OptRes = Either<TestOpts, ~str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[~str]) -> OptRes {
+pub fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = vec::tail(args);
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
@@ -283,9 +284,9 @@ enum TestEvent {
 
 type MonitorMsg = (TestDesc, TestResult);
 
-fn run_tests(opts: &TestOpts, tests: &[TestDesc],
+fn run_tests(opts: &TestOpts,
+             tests: &[TestDesc],
              callback: fn@(e: TestEvent)) {
-
     let mut filtered_tests = filter_tests(opts, tests);
     callback(TeFiltered(copy filtered_tests));
 
@@ -340,8 +341,9 @@ fn get_concurrency() -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn filter_tests(opts: &TestOpts,
-                tests: &[TestDesc]) -> ~[TestDesc] {
+pub fn filter_tests(opts: &TestOpts,
+                    tests: &[TestDesc])
+                 -> ~[TestDesc] {
     let mut filtered = vec::slice(tests, 0, tests.len());
 
     // Remove tests that don't match the test filter
@@ -393,7 +395,7 @@ fn filter_tests(opts: &TestOpts,
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
 
-fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
+pub fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
     if test.ignore {
         oldcomm::send(monitor_ch, (copy test, TrIgnored));
         return;
@@ -424,6 +426,8 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, run_test};
 
     use core::either;
     use core::oldcomm;

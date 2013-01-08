@@ -21,6 +21,7 @@ use libc;
 use oldcomm;
 use option;
 use pipes;
+use prelude::*;
 use ptr;
 use result;
 use task;
@@ -580,8 +581,11 @@ pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
 
 #[cfg(test)]
 pub mod tests {
+    use core::option::{None, Some};
+
     use option;
     use pipes;
+    use private::{exclusive, unwrap_exclusive};
     use result;
     use task;
     use uint;

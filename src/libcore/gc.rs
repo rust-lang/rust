@@ -42,6 +42,7 @@ with destructors.
 use cast;
 use io;
 use libc::{size_t, uintptr_t};
+use option::{None, Option, Some};
 use ptr;
 use send_map::linear::LinearMap;
 use stackwalk;

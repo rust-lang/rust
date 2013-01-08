@@ -23,6 +23,7 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
+use core::prelude::*;
 
 use back::link::{mangle_exported_name};
 use back::link::{mangle_internal_name_by_path_and_seq};

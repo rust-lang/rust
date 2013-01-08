@@ -76,13 +76,19 @@
 use cast;
 use oldcomm;
 use option;
+use pipes::{Chan, Port};
 use pipes;
+use prelude::*;
 use private;
 use ptr;
 use send_map;
-use task::rt;
+use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt::rust_closure;
+use task::rt;
+use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
+use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
+use task::{default_task_opts, unkillable};
 use uint;
 use util;
 

@@ -22,7 +22,9 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use kinds::Copy;
 use managed;
+use option::{None, Option, Some};
 use option;
 use vec;
 
@@ -94,13 +96,13 @@ impl<T> DListNode<T> {
 }
 
 /// Creates a new dlist node with the given data.
-pure fn new_dlist_node<T>(data: T) -> DListNode<T> {
+pub pure fn new_dlist_node<T>(data: T) -> DListNode<T> {
     DListNode(@{data: move data, mut linked: false,
                  mut prev: None, mut next: None})
 }
 
 /// Creates a new, empty dlist.
-pure fn DList<T>() -> DList<T> {
+pub pure fn DList<T>() -> DList<T> {
     DList_(@{mut size: 0, mut hd: None, mut tl: None})
 }
 
@@ -120,7 +122,7 @@ pub fn from_vec<T: Copy>(vec: &[T]) -> DList<T> {
 
 /// Produce a list from a list of lists, leaving no elements behind in the
 /// input. O(number of sub-lists).
-fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
+pub fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
     let result = DList();
     while !lists.is_empty() {
         result.append(lists.pop().get());
@@ -474,7 +476,9 @@ impl<T: Copy> DList<T> {
 mod tests {
     #[legacy_exports];
 
+    use dlist::{DList, concat, from_vec, new_dlist_node};
     use iter;
+    use option::{None, Some};
     use vec;
 
     #[test]

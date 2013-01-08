@@ -10,6 +10,8 @@
 
 //! Build indexes as appropriate for the markdown pass
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::ItemUtils;
@@ -18,6 +20,7 @@ use fold::Fold;
 use fold;
 use markdown_pass;
 use markdown_writer;
+use pass::Pass;
 
 use core::str;
 use std::par;
@@ -31,7 +34,7 @@ pub fn mk_pass(+config: config::Config) -> Pass {
     }
 }
 
-fn run(
+pub fn run(
     _srv: astsrv::Srv,
     +doc: doc::Doc,
     +config: config::Config
@@ -251,17 +254,19 @@ fn should_index_foreign_mod_contents() {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
-
     use astsrv;
     use attr_pass;
     use config;
     use desc_to_brief_pass;
     use doc;
     use extract;
+    use markdown_index_pass::run;
     use path_pass;
 
-    fn mk_doc(output_style: config::OutputStyle, +source: ~str) -> doc::Doc {
+    use core::path::Path;
+
+    pub fn mk_doc(output_style: config::OutputStyle, +source: ~str)
+               -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let config = {
                 output_style: output_style,

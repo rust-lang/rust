@@ -47,6 +47,8 @@
  * then an index to jump forward to the relevant item.
  */
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str};
@@ -136,7 +138,7 @@ impl categorization : cmp::Eq {
 }
 
 // different kinds of pointers:
-enum ptr_kind {
+pub enum ptr_kind {
     uniq_ptr,
     gc_ptr,
     region_ptr(ty::Region),
@@ -177,7 +179,7 @@ impl ptr_kind : cmp::Eq {
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
-enum comp_kind {
+pub enum comp_kind {
     comp_tuple,                  // elt in a tuple
     comp_anon_field,             // anonymous field (in e.g.
                                  // struct Foo(int, int);
@@ -269,7 +271,7 @@ impl cmt_ : cmp::Eq {
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
 // map indicating what is borrowed at any point in time.
-enum loan_path {
+pub enum loan_path {
     lp_local(ast::node_id),
     lp_arg(ast::node_id),
     lp_deref(@loan_path, ptr_kind),

@@ -46,13 +46,21 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
+use core::prelude::*;
 
+use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
+use middle::ty::{type_is_bot};
 use middle::ty;
+use middle::typeck::infer::{cyclic_ty, fixup_err, fres, infer_ctxt};
+use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::floating::*;
 use middle::typeck::infer::floating;
 use middle::typeck::infer::integral::*;
 use middle::typeck::infer::integral;
 use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::unify::root;
+use util::common::indent;
+use util::ppaux::ty_to_str;
 
 use core::uint;
 use core::vec;

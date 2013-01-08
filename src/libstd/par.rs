@@ -11,6 +11,7 @@
 #[forbid(deprecated_mode)];
 
 use core::cast;
+use core::prelude::*;
 use core::ptr;
 use core::sys;
 use core::uint;

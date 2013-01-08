@@ -90,11 +90,13 @@ bounded and unbounded protocols allows for less code duplication.
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use either::{Either, Left, Right};
+use kinds::Owned;
 use libc;
 use option;
 use option::unwrap;
 use pipes;
 use ptr;
+use prelude::*;
 use private;
 use task;
 use vec;
@@ -1238,6 +1240,8 @@ pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
 }
 
 pub mod rt {
+    use option::{None, Option, Some};
+
     // These are used to hide the option constructors from the
     // compiler because their names are changing
     pub fn make_some<T>(val: T) -> Option<T> { Some(move val) }
@@ -1246,7 +1250,8 @@ pub mod rt {
 
 #[cfg(test)]
 pub mod test {
-    use pipes::oneshot;
+    use either::{Either, Left, Right};
+    use pipes::{Chan, Port, oneshot, recv_one, stream};
     use pipes;
 
     #[test]
