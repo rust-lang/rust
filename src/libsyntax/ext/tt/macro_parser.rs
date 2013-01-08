@@ -245,7 +245,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
             /* at end of sequence */
             if idx >= len {
-                // can't move out of `alt`s, so:
+                // can't move out of `match`es, so:
                 if is_some(ei.up) {
                     // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)
