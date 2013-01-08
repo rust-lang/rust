@@ -1679,9 +1679,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     let expected_field_type =
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
-                    bot |= check_expr(fcx,
-                                      field.node.expr,
-                                      Some(expected_field_type));
+                    bot |=
+                        check_expr_with_assignability(
+                            fcx,
+                            field.node.expr,
+                            expected_field_type);
                     class_field_map.insert(
                         field.node.ident, (field_id, true));
                     fields_found += 1;
