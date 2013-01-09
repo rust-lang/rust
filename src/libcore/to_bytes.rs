@@ -172,6 +172,8 @@ impl char: IterBytes {
 
 #[cfg(target_word_size = "32")]
 pub mod x32 {
+    use to_bytes::{Cb, IterBytes};
+
     pub impl uint: IterBytes {
         #[inline(always)]
         pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
