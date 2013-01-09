@@ -60,6 +60,7 @@ Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
 Huon Wilson <dbau.pp+github@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
+Ilyong Cho <ilyoan@gmail.com>
 Isaac Aggrey <isaac.aggrey@gmail.com>
 Ivano Coppola <rgbfirefox@gmail.com>
 Jacob Harris Cryer Kragh <jhckragh@gmail.com>
