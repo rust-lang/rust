@@ -851,6 +851,7 @@ mod biguint_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_shl() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
             assert BigUint::new(v) << shift == BigUint::new(ans);
@@ -868,6 +869,7 @@ mod biguint_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_shr() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
             assert BigUint::new(v) >> shift == BigUint::new(ans);
@@ -1087,6 +1089,7 @@ mod biguint_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_to_str_radix() {
         for to_str_pairs().each |num_pair| {
             let &(n, rs) = num_pair;
@@ -1098,6 +1101,7 @@ mod biguint_tests {
     }
 
     #[test]
+    #[ignore]
     fn test_from_str_radix() {
         for to_str_pairs().each |num_pair| {
             let &(n, rs) = num_pair;
