@@ -120,6 +120,7 @@ Roland Tanglao <roland@rolandtanglao.com>
 Roy Frostig <rfrostig@mozilla.com>
 Ryan Scheel <ryan.havvy@gmail.com>
 Sean Stangl <sstangl@mozilla.com>
+Sebastian N. Fernandez <cachobot@gmail.com>
 Simon Barber-Dueck <sbarberdueck@gmail.com>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
