@@ -29,10 +29,7 @@ that.
 
 */
 
-use core::prelude::*;
-
 use ast;
-use codemap::span;
 use ext::base::ext_ctxt;
 use ext::pipes::proto::{state, protocol, next_state};
 use ext::pipes::proto;

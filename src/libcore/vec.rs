@@ -16,12 +16,10 @@
 
 use cast;
 use cmp::{Eq, Ord};
-use iter::BaseIter;
 use iter;
-use kinds::Copy;
 use libc;
 use libc::size_t;
-use option::{None, Option, Some};
+use option::{Some, None};
 use ptr;
 use ptr::addr_of;
 use sys;
@@ -675,7 +673,7 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 }
 
 #[inline(always)]
-pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
+pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
     to_mut(append(from_mut(lhs), rhs))
 }
 
@@ -1519,10 +1517,6 @@ impl<T: Ord> @[T] : Ord {
 
 #[cfg(notest)]
 pub mod traits {
-    use kinds::Copy;
-    use ops::Add;
-    use vec::{append, append_mut};
-
     impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
@@ -1845,14 +1839,10 @@ pub struct UnboxedVecRepr {
 
 /// Unsafe operations
 pub mod raw {
-    use kinds::Copy;
     use managed;
-    use option::{None, Some};
     use option;
-    use ptr::addr_of;
     use ptr;
     use sys;
-    use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
     use vec::rusti;
 
     /// The internal representation of a (boxed) vector
@@ -2002,9 +1992,8 @@ pub mod raw {
 pub mod bytes {
     use libc;
     use uint;
-    use vec::len;
-    use vec::raw;
     use vec;
+    use vec::raw;
 
     /// Bytewise string comparison
     pub pure fn cmp(a: &~[u8], b: &~[u8]) -> int {
@@ -2291,9 +2280,8 @@ impl<A:Copy> @[A] : iter::CopyableNonstrictIter<A> {
 
 #[cfg(test)]
 mod tests {
-    use option::{None, Option, Some};
     use option;
-    use vec::*;
+    use vec::raw;
 
     fn square(n: uint) -> uint { return n * n; }
 

@@ -14,8 +14,6 @@
 
 */
 
-use core::prelude::*;
-
 use back::{link, abi, upcall};
 use driver::session;
 use driver::session::Session;

@@ -16,10 +16,7 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
-use iter::BaseIter;
 use iter;
-use kinds::Copy;
-use option::Option;
 
 use self::inst::{IMPL_T, EACH, SIZE_HINT};
 

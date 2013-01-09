@@ -20,20 +20,16 @@ extern mod std;
 
 use std::map;
 use std::map::HashMap;
-use core::oldcomm::Chan;
-use core::oldcomm::Port;
-use core::oldcomm::send;
-use core::oldcomm::recv;
+use oldcomm::Chan;
+use oldcomm::Port;
+use oldcomm::send;
+use oldcomm::recv;
 
-pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
+fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
     use std::map;
     use std::map::HashMap;
-    use core::oldcomm::Chan;
-    use core::oldcomm::Port;
-    use core::oldcomm::send;
-    use core::oldcomm::recv;
 
     pub type putter = fn@(~str, ~str);
 
@@ -68,7 +64,7 @@ mod map_reduce {
             }
         }
 
-        ::map(input, |a,b| emit(intermediates, ctrl, a, b) );
+        map(input, |a,b| emit(intermediates, ctrl, a, b) );
         send(ctrl, mapper_done);
     }
 

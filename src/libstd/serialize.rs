@@ -18,7 +18,6 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 use core::at_vec;
-use core::prelude::*;
 use core::vec;
 
 pub trait Encoder {

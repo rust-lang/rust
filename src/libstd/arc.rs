@@ -20,7 +20,6 @@ use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
 use core::pipes;
-use core::prelude::*;
 use core::private::{SharedMutableState, shared_mutable_state};
 use core::private::{clone_shared_mutable_state, unwrap_shared_mutable_state};
 use core::private::{get_shared_mutable_state, get_shared_immutable_state};
@@ -471,9 +470,6 @@ impl<T: Const Owned> &RWReadMode<T> {
 mod tests {
     #[legacy_exports];
 
-    use core::prelude::*;
-
-    use arc::*;
     use arc;
 
     use core::oldcomm::*;

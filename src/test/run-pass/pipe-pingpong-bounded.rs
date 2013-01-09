@@ -43,7 +43,6 @@ mod pingpong {
     pub enum ping = server::pong;
     pub enum pong = client::ping;
     pub mod client {
-        use core::pipes::*;
         use core::ptr;
 
         pub fn ping(+pipe: ping) -> pong {
@@ -62,7 +61,6 @@ mod pingpong {
                                                   ::pingpong::packets>;
     }
     pub mod server {
-        use core::pipes::*;
         use core::ptr;
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,

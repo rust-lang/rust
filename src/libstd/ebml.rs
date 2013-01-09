@@ -14,7 +14,6 @@ use serialize;
 
 use core::io;
 use core::ops;
-use core::prelude::*;
 use core::str;
 use core::vec;
 
@@ -34,18 +33,18 @@ struct EbmlState {
     data_pos: uint,
 }
 
-pub struct Doc {
+struct Doc {
     data: @~[u8],
     start: uint,
     end: uint,
 }
 
-pub struct TaggedDoc {
+struct TaggedDoc {
     tag: uint,
     doc: Doc,
 }
 
-pub enum EbmlEncoderTag {
+enum EbmlEncoderTag {
     EsUint, EsU64, EsU32, EsU16, EsU8,
     EsInt, EsI64, EsI32, EsI16, EsI8,
     EsBool,
@@ -61,16 +60,11 @@ pub enum EbmlEncoderTag {
 // --------------------------------------
 
 pub mod reader {
-    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
-    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
-    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
     use serialize;
 
     use core::int;
     use core::io;
     use core::ops;
-    use core::prelude::*;
     use core::str;
     use core::vec;
 
@@ -404,11 +398,6 @@ pub mod reader {
 }
 
 pub mod writer {
-    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
-    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
-    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
-
     use core::io;
     use core::str;
     use core::vec;
@@ -679,7 +668,6 @@ mod tests {
     use serialize;
 
     use core::io;
-    use core::option::{None, Option, Some};
 
     #[test]
     fn test_option_int() {

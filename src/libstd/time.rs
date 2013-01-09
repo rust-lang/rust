@@ -16,7 +16,6 @@ use core::libc::{c_char, c_int, c_long, size_t, time_t};
 use core::i32;
 use core::io::{Reader, ReaderUtil};
 use core::io;
-use core::prelude::*;
 use core::result::{Result, Ok, Err};
 use core::str;
 
@@ -857,8 +856,6 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
-
-    use time::*;
 
     use core::float;
     use core::os;

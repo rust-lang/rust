@@ -50,8 +50,6 @@ independently:
 
 #[legacy_exports];
 
-use core::prelude::*;
-
 use metadata::csearch;
 use middle::pat_util::{pat_id_map, PatIdMap};
 use middle::resolve;
@@ -101,12 +99,6 @@ export infer;
 export collect;
 export coherence;
 export deriving;
-export crate_ctxt;
-export write_ty_to_tcx, write_substs_to_tcx;
-export no_params;
-export isr_alist;
-export require_same_types;
-export lookup_def_ccx, lookup_def_tcx;
 
 #[legacy_exports]
 #[path = "check/mod.rs"]
@@ -233,7 +225,7 @@ struct crate_ctxt__ {
     tcx: ty::ctxt
 }
 
-pub enum crate_ctxt {
+enum crate_ctxt {
     crate_ctxt_(crate_ctxt__)
 }
 

@@ -21,7 +21,6 @@ use core::dvec::DVec;
 use core::ops;
 use core::option::{Some, None};
 use core::option;
-use core::prelude::*;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
@@ -169,8 +168,6 @@ pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::Map<uint, V> {
 
 #[cfg(test)]
 mod tests {
-    use smallintmap::{mk, SmallIntMap};
-
     use core::option::None;
     use core::option;
 

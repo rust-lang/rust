@@ -31,7 +31,6 @@ use cmp;
 use f64;
 use num;
 use num::Num::from_int;
-use option::{None, Option, Some};
 use str;
 use uint;
 

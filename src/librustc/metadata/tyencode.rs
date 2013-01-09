@@ -11,8 +11,6 @@
 
 // Type encoding
 
-use core::prelude::*;
-
 use middle::ty;
 use middle::ty::vid;
 

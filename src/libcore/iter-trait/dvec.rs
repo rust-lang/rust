@@ -10,7 +10,6 @@
 
 mod inst {
     use dvec;
-    use option::{Option, Some};
 
     #[allow(non_camel_case_types)]
     pub type IMPL_T<A> = dvec::DVec<A>;

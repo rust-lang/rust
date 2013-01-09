@@ -11,11 +11,9 @@
 #[doc(hidden)]; // FIXME #3538
 
 use cast;
-use cmp::Eq;
 use dvec;
 use libc;
 use option;
-use prelude::*;
 use task::rt;
 use task::local_data::LocalDataKey;
 

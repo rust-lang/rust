@@ -14,10 +14,9 @@ Code related to floating-point type inference.
 
 */
 
-use core::prelude::*;
 
-use middle::ty::{get, ty_float};
 use middle::ty;
+use middle::ty::ty_float;
 use middle::typeck::infer::to_str::ToStr;
 
 use core::uint;

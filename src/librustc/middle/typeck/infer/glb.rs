@@ -8,20 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::ty;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
-use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
-use syntax::ast::{noreturn, pure_fn, ret_style, return_val, unsafe_fn};
-use util::ppaux::mt_to_str;
 
 use std::list;
+
+use syntax::ast::{Many, Once};
 
 enum Glb = combine_fields;  // "greatest lower bound" (common subtype)
 

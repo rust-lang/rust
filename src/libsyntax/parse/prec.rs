@@ -12,11 +12,9 @@ export as_prec;
 export unop_prec;
 export token_to_binop;
 
-use ast::*;
 use parse::token::*;
 use parse::token::Token;
-
-use core::prelude::*;
+use ast::*;
 
 /// Unary operators have higher precedence than binary
 const unop_prec: uint = 100u;

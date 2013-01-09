@@ -19,7 +19,6 @@ use uv::iotask::IoTask;
 use core::either;
 use core::libc;
 use core::oldcomm;
-use core::prelude::*;
 use core::ptr;
 use core;
 
@@ -165,9 +164,6 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
 mod test {
     #[legacy_exports];
 
-    use core::prelude::*;
-
-    use timer::*;
     use uv;
 
     use core::iter;

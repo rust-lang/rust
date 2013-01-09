@@ -14,11 +14,10 @@
 
 //! A type that represents one of two alternatives
 
-use cmp::Eq;
 use cmp;
-use kinds::Copy;
-use result::Result;
+use cmp::Eq;
 use result;
+use result::Result;
 use vec;
 
 /// The either type

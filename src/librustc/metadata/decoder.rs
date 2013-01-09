@@ -11,8 +11,6 @@
 
 // Decoding metadata from a single crate's metadata
 
-use core::prelude::*;
-
 use cmd = metadata::cstore::crate_metadata;
 use dvec::DVec;
 use hash::{Hash, HashUtil};

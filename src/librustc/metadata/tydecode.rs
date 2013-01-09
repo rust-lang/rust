@@ -14,8 +14,6 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
-use core::prelude::*;
-
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 

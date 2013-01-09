@@ -10,8 +10,6 @@
 
 //! Breaks rustdocs into sections according to their headers
 
-use core::prelude::*;
-
 use astsrv;
 use attr_pass;
 use doc::ItemUtils;
@@ -19,7 +17,6 @@ use doc;
 use extract;
 use fold::Fold;
 use fold;
-use pass::Pass;
 
 use core::str;
 use core::vec;
@@ -32,7 +29,7 @@ pub fn mk_pass() -> Pass {
     }
 }
 
-pub fn run(_srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+fn run(_srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
     let fold = Fold {
         fold_item: fold_item,
         fold_trait: fold_trait,
@@ -252,14 +249,15 @@ fn should_sectionalize_impl_methods() {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
+    #[legacy_exports];
+
     use astsrv;
     use attr_pass;
     use doc;
     use extract;
-    use sectionalize_pass::run;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
