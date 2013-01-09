@@ -340,6 +340,7 @@ mod special_idents {
     const clownshoes_foreign_mod: ident = ident { repr: 33 };
     const unnamed_field: ident = ident { repr: 34 };
     const c_abi: ident = ident { repr: 35 };
+    const type_self: ident = ident { repr: 36 };    // `Self`
 }
 
 struct ident_interner {
@@ -379,15 +380,43 @@ fn mk_ident_interner() -> @ident_interner {
                 // the indices here must correspond to the numbers in
                 // special_idents.
                 let init_vec = ~[
-                    @~"_", @~"anon", @~"drop", @~"", @~"unary", @~"!",
-                    @~"[]", @~"unary-", @~"__extensions__", @~"self",
-                    @~"item", @~"block", @~"stmt", @~"pat", @~"expr",
-                    @~"ty", @~"ident", @~"path", @~"tt", @~"matchers",
-                    @~"str", @~"TyVisitor", @~"arg", @~"descrim",
-                    @~"__rust_abi", @~"__rust_stack_shim", @~"TyDesc",
-                    @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
-                    @~"intrinsic", @~"__foreign_mod__", @~"__field__",
-                    @~"C"
+                    @~"_",                  // 0
+                    @~"anon",               // 1
+                    @~"drop",               // 2
+                    @~"",                   // 3
+                    @~"unary",              // 4
+                    @~"!",                  // 5
+                    @~"[]",                 // 6
+                    @~"unary-",             // 7
+                    @~"__extensions__",     // 8
+                    @~"self",               // 9
+                    @~"item",               // 10
+                    @~"block",              // 11
+                    @~"stmt",               // 12
+                    @~"pat",                // 13
+                    @~"expr",               // 14
+                    @~"ty",                 // 15
+                    @~"ident",              // 16
+                    @~"path",               // 17
+                    @~"tt",                 // 18
+                    @~"matchers",           // 19
+                    @~"str",                // 20
+                    @~"TyVisitor",          // 21
+                    @~"arg",                // 22
+                    @~"descrim",            // 23
+                    @~"__rust_abi",         // 24
+                    @~"__rust_stack_shim",  // 25
+                    @~"TyDesc",             // 26
+                    @~"dtor",               // 27
+                    @~"main",               // 28
+                    @~"<opaque>",           // 29
+                    @~"blk",                // 30
+                    @~"static",             // 31
+                    @~"intrinsic",          // 32
+                    @~"__foreign_mod__",    // 33
+                    @~"__field__",          // 34
+                    @~"C",                  // 35
+                    @~"Self",               // 36
                 ];
 
                 let rv = @ident_interner {
