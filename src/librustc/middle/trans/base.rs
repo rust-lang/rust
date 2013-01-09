@@ -2152,6 +2152,7 @@ fn register_fn_fuller(ccx: @crate_ctxt,
     let llfn: ValueRef = decl_fn(ccx.llmod, copy ps, cc, llfty);
     ccx.item_symbols.insert(node_id, ps);
 
+    // FIXME #4404 android JNI hacks
     let is_main = is_main_name(path) && (!ccx.sess.building_library ||
                       (ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
@@ -2205,6 +2206,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
         fn main_name() -> ~str { return ~"main"; }
         let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);
 
+        // FIXME #4404 android JNI hacks
         let llfn = if ccx.sess.building_library {
             decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
         } else {
