@@ -313,9 +313,9 @@ pub mod types {
             }
             pub mod posix01 {
                 use libc::types::os::arch::c95::{c_int, c_long, time_t};
-                use libc::consts::os::arch::posix88::{dev_t, gid_t, ino_t};
-                use libc::consts::os::arch::posix98::{mode_t, off_t};
-                use libc::consts::os::arch::posix98::{uid_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
 
                 pub type nlink_t = u64;
                 pub type blksize_t = i64;
