@@ -544,7 +544,7 @@ use middle::region;
 use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::to_str::InferStr;
 use syntax::codemap;
 use util::ppaux::note_and_explain_region;
 

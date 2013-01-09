@@ -229,7 +229,6 @@ Borrowck results in two maps.
 use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
-use middle::ty::to_str;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, note_and_explain_region};

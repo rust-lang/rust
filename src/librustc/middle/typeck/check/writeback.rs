@@ -155,9 +155,8 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
-    match /*bad*/copy e.node {
-      ast::expr_fn(_, decl, _, _) |
-      ast::expr_fn_block(decl, _, _) => {
+    match e.node {
+      ast::expr_fn_block(ref decl, _, _) => {
           for vec::each(decl.inputs) |input| {
               let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
@@ -248,7 +247,7 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
 }
 
 fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
-                           decl: ast::fn_decl,
+                           decl: &ast::fn_decl,
                            blk: ast::blk,
                            self_info: Option<self_info>) -> bool {
     let wbcx = {fcx: fcx, mut success: true};

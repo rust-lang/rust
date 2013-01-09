@@ -12,7 +12,7 @@
 // Type encoding
 
 use middle::ty;
-use middle::ty::vid;
+use middle::ty::Vid;
 
 use core::io::WriterUtil;
 use core::io;
@@ -22,6 +22,7 @@ use std::map::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
+use middle::ty::Vid;
 
 export ctxt;
 export ty_abbrev;

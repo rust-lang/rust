@@ -57,7 +57,7 @@
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::to_str::InferStr;
 
 use core::vec;
 use syntax::ast::Onceness;
@@ -65,8 +65,8 @@ use syntax::ast;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
-trait combine {
-    fn infcx() -> infer_ctxt;
+trait Combine {
+    fn infcx() -> @InferCtxt;
     fn tag() -> ~str;
     fn a_is_expected() -> bool;
     fn span() -> span;
@@ -97,13 +97,13 @@ trait combine {
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
 }
 
-pub struct combine_fields {
-    infcx: infer_ctxt,
+pub struct CombineFields {
+    infcx: @InferCtxt,
     a_is_expected: bool,
     span: span,
 }
 
-fn expected_found<C: combine,T>(
+fn expected_found<C:Combine,T>(
     self: &C, +a: T, +b: T) -> ty::expected_found<T> {
 
     if self.a_is_expected() {
@@ -113,7 +113,7 @@ fn expected_found<C: combine,T>(
     }
 }
 
-pub fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
+pub fn eq_tys<C:Combine>(self: &C, a: ty::t, b: ty::t) -> ures {
     let suber = self.sub();
     do self.infcx().try {
         do suber.tys(a, b).chain |_ok| {
@@ -122,10 +122,10 @@ pub fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
     }
 }
 
-fn eq_regions<C: combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
+fn eq_regions<C:Combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
     debug!("eq_regions(%s, %s)",
-           a.to_str(self.infcx()),
-           b.to_str(self.infcx()));
+           a.inf_str(self.infcx()),
+           b.inf_str(self.infcx()));
     let sub = self.sub();
     do indent {
         self.infcx().try(|| {
@@ -144,7 +144,7 @@ fn eq_regions<C: combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
     }
 }
 
-fn eq_opt_regions<C:combine>(
+fn eq_opt_regions<C:Combine>(
     self: &C,
     a: Option<ty::Region>,
     b: Option<ty::Region>) -> cres<Option<ty::Region>> {
@@ -166,17 +166,17 @@ fn eq_opt_regions<C:combine>(
         self.infcx().tcx.sess.bug(
             fmt!("substitution a had opt_region %s and \
                   b had opt_region %s",
-                 a.to_str(self.infcx()),
-                 b.to_str(self.infcx())));
+                 a.inf_str(self.infcx()),
+                 b.inf_str(self.infcx())));
       }
     }
 }
 
-fn super_substs<C:combine>(
+fn super_substs<C:Combine>(
     self: &C, did: ast::def_id,
     a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
-    fn relate_region_param<C:combine>(
+    fn relate_region_param<C:Combine>(
         self: &C,
         did: ast::def_id,
         a: Option<ty::Region>,
@@ -212,8 +212,8 @@ fn super_substs<C:combine>(
             self.infcx().tcx.sess.bug(
                 fmt!("substitution a had opt_region %s and \
                       b had opt_region %s with variance %?",
-                      a.to_str(self.infcx()),
-                      b.to_str(self.infcx()),
+                      a.inf_str(self.infcx()),
+                      b.inf_str(self.infcx()),
                       polyty.region_param));
           }
         }
@@ -230,7 +230,7 @@ fn super_substs<C:combine>(
     }
 }
 
-fn super_tps<C:combine>(
+fn super_tps<C:Combine>(
     self: &C, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
 
     // Note: type parameters are always treated as *invariant*
@@ -248,7 +248,7 @@ fn super_tps<C:combine>(
     }
 }
 
-fn super_self_tys<C:combine>(
+fn super_self_tys<C:Combine>(
     self: &C, a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
 
     // Note: the self type parameter is (currently) always treated as
@@ -271,7 +271,17 @@ fn super_self_tys<C:combine>(
     }
 }
 
-fn super_flds<C:combine>(
+fn super_protos<C: Combine>(
+    self: &C, p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto>
+{
+    if p1 == p2 {
+        Ok(p1)
+    } else {
+        Err(ty::terr_proto_mismatch(expected_found(self, p1, p2)))
+    }
+}
+
+fn super_flds<C:Combine>(
     self: &C, a: ty::field, b: ty::field) -> cres<ty::field> {
 
     if a.ident == b.ident {
@@ -284,7 +294,7 @@ fn super_flds<C:combine>(
     }
 }
 
-fn super_modes<C:combine>(
+fn super_modes<C:Combine>(
     self: &C, a: ast::mode, b: ast::mode)
     -> cres<ast::mode> {
 
@@ -292,7 +302,7 @@ fn super_modes<C:combine>(
     ty::unify_mode(tcx, expected_found(self, a, b))
 }
 
-fn super_args<C:combine>(
+fn super_args<C:Combine>(
     self: &C, a: ty::arg, b: ty::arg)
     -> cres<ty::arg> {
 
@@ -303,7 +313,7 @@ fn super_args<C:combine>(
     }
 }
 
-fn super_vstores<C:combine>(
+fn super_vstores<C:Combine>(
     self: &C, vk: ty::terr_vstore_kind,
     a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>
 {
@@ -326,7 +336,7 @@ fn super_vstores<C:combine>(
     }
 }
 
-fn super_fn_metas<C:combine>(
+fn super_fn_metas<C:Combine>(
     self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta>
 {
     let p = if_ok!(self.protos(a_f.proto, b_f.proto));
@@ -335,17 +345,18 @@ fn super_fn_metas<C:combine>(
     let onceness = if_ok!(self.oncenesses(a_f.onceness, b_f.onceness));
     Ok(FnMeta {purity: purity,
                proto: p,
-               region: r,
                onceness: onceness,
+               region: r,
                bounds: a_f.bounds}) // XXX: This is wrong!
 }
 
-fn super_fn_sigs<C:combine>(
-    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig> {
-    fn argvecs<C:combine>(self: &C,
+fn super_fn_sigs<C:Combine>(
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
+{
+    fn argvecs<C:Combine>(self: &C,
                           +a_args: ~[ty::arg],
-                          +b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
-
+                          +b_args: ~[ty::arg]) -> cres<~[ty::arg]>
+    {
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(*a, *b))
         } else {
@@ -361,19 +372,17 @@ fn super_fn_sigs<C:combine>(
     }
 }
 
-fn super_fns<C:combine>(
+fn super_fns<C:Combine>(
     self: &C, a_f: &ty::FnTy, b_f: &ty::FnTy) -> cres<ty::FnTy>
 {
-    do self.fn_metas(&a_f.meta, &b_f.meta).chain |m| {
-        do self.fn_sigs(&a_f.sig, &b_f.sig).chain |s| {
-            Ok(FnTyBase {meta: m, sig: s})
-        }
-    }
+    let m = if_ok!(self.fn_metas(&a_f.meta, &b_f.meta));
+    let s = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
+    Ok(FnTyBase {meta: m, sig: s})
 }
 
-fn super_tys<C:combine>(
-    self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
-
+fn super_tys<C:Combine>(
+    self: &C, a: ty::t, b: ty::t) -> cres<ty::t>
+{
     let tcx = self.infcx().tcx;
     match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
@@ -384,32 +393,49 @@ fn super_tys<C:combine>(
         tcx.sess.bug(
             fmt!("%s: bot and var types should have been handled (%s,%s)",
                  self.tag(),
-                 a.to_str(self.infcx()),
-                 b.to_str(self.infcx())));
+                 a.inf_str(self.infcx()),
+                 b.inf_str(self.infcx())));
       }
 
       // Relate integral variables to other types
       (ty::ty_infer(IntVar(a_id)), ty::ty_infer(IntVar(b_id))) => {
-        self.infcx().int_vars(a_id, b_id).then(|| Ok(a) )
+        if_ok!(self.infcx().simple_vars(&self.infcx().int_var_bindings,
+                                        ty::terr_no_integral_type,
+                                        a_id, b_id));
+        Ok(a)
       }
-      (ty::ty_infer(IntVar(a_id)), ty::ty_int(_)) |
-      (ty::ty_infer(IntVar(a_id)), ty::ty_uint(_)) => {
-        self.infcx().int_var_sub_t(a_id, b).then(|| Ok(a) )
+      (ty::ty_infer(IntVar(v_id)), ty::ty_int(v)) |
+      (ty::ty_int(v), ty::ty_infer(IntVar(v_id))) => {
+        if v == ast::ty_char {
+            Err(ty::terr_integer_as_char)
+        } else {
+            if_ok!(self.infcx().simple_var_t(&self.infcx().int_var_bindings,
+                                             ty::terr_no_integral_type,
+                                             v_id, IntType(v)));
+            Ok(ty::mk_mach_int(tcx, v))
+        }
       }
-      (ty::ty_int(_), ty::ty_infer(IntVar(b_id))) |
-      (ty::ty_uint(_), ty::ty_infer(IntVar(b_id))) => {
-        self.infcx().t_sub_int_var(a, b_id).then(|| Ok(a) )
+      (ty::ty_infer(IntVar(v_id)), ty::ty_uint(v)) |
+      (ty::ty_uint(v), ty::ty_infer(IntVar(v_id))) => {
+        if_ok!(self.infcx().simple_var_t(&self.infcx().int_var_bindings,
+                                         ty::terr_no_integral_type,
+                                         v_id, UintType(v)));
+        Ok(ty::mk_mach_uint(tcx, v))
       }
 
       // Relate floating-point variables to other types
       (ty::ty_infer(FloatVar(a_id)), ty::ty_infer(FloatVar(b_id))) => {
-        self.infcx().float_vars(a_id, b_id).then(|| Ok(a) )
+        if_ok!(self.infcx().simple_vars(&self.infcx().float_var_bindings,
+                                        ty::terr_no_floating_point_type,
+                                        a_id, b_id));
+        Ok(a)
       }
-      (ty::ty_infer(FloatVar(a_id)), ty::ty_float(_)) => {
-        self.infcx().float_var_sub_t(a_id, b).then(|| Ok(a) )
-      }
-      (ty::ty_float(_), ty::ty_infer(FloatVar(b_id))) => {
-        self.infcx().t_sub_float_var(a, b_id).then(|| Ok(a) )
+      (ty::ty_infer(FloatVar(v_id)), ty::ty_float(v)) |
+      (ty::ty_float(v), ty::ty_infer(FloatVar(v_id))) => {
+        if_ok!(self.infcx().simple_var_t(&self.infcx().float_var_bindings,
+                                         ty::terr_no_floating_point_type,
+                                         v_id, v));
+        Ok(ty::mk_mach_float(tcx, v))
       }
 
       (ty::ty_int(_), _) |

@@ -12,7 +12,7 @@
 use middle::resolve;
 use middle::ty;
 use middle::typeck::check::{fn_ctxt, impl_self_ty};
-use middle::typeck::infer::{fixup_err_to_str, infer_ctxt};
+use middle::typeck::infer::{fixup_err_to_str, InferCtxt};
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use util::common::indenter;
@@ -56,7 +56,7 @@ struct LocationInfo {
 /// callback function to call in case of type error.
 struct VtableContext {
     ccx: @crate_ctxt,
-    infcx: infer::infer_ctxt
+    infcx: @infer::InferCtxt
 }
 
 impl VtableContext {
@@ -678,8 +678,8 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                             ex.span,
                             fmt!("failed to find an implementation of trait \
                                   %s for %s",
-                                 ppaux::ty_to_str(fcx.tcx(), target_ty),
-                                 ppaux::ty_to_str(fcx.tcx(), ty)));
+                                 fcx.infcx().ty_to_str(target_ty),
+                                 fcx.infcx().ty_to_str(ty)));
                     }
                 }
                 Some(vtable) => {

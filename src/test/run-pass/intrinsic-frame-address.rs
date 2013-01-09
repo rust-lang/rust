@@ -13,7 +13,7 @@
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn frame_address(f: fn(*u8));
+    fn frame_address(f: &once fn(*u8));
 }
 
 fn main() {

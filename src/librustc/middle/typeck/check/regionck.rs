@@ -109,7 +109,6 @@ fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
-               _decl: ast::fn_decl,
                blk: ast::blk) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
