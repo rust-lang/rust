@@ -20,6 +20,7 @@ use run::spawn_process;
 use pipes;
 use str;
 use task;
+use vec;
 
 export run;
 
