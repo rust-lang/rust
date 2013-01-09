@@ -400,8 +400,8 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                use libc::types::common::c99::{uint8_t, uint32_t, int32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
-                use libc::types::os::arch::c99::{uint8_t, uint32_t, int32_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -513,6 +513,10 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                pub use libc::types::os::arch::c95::{c_void, c_char, c_int,
+                                                     c_ulong, wchar_t};
+                pub use libc::types::os::arch::c99::{c_ulonglong};
+
                 pub type BOOL = c_int;
                 pub type BYTE = u8;
                 pub type CCHAR = c_char;
@@ -1131,6 +1135,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stat_ {
+            use libc::funcs::posix88::stat_::stat;
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -1147,6 +1154,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stdio {
+            use libc::types::common::c95::FILE;
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_popen"]
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
@@ -1163,6 +1173,8 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod fcntl {
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_open"]
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
@@ -1179,6 +1191,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod unistd {
+            use libc::types::os::arch::c95::{c_int, c_uint, c_char,
+                                             c_long, size_t, c_void};
+
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
 
