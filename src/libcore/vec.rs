@@ -3867,7 +3867,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore(windows)]
+    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_mut_buf_fail() {
         let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3878,6 +3878,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_memcpy_oob() unsafe {
         let a = [mut 1, 2, 3, 4];
         let b = [1, 2, 3, 4, 5];
