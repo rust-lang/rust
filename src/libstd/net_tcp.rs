@@ -1273,7 +1273,7 @@ type TcpBufferedSocketData = {
 mod test {
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
-    use net::tcp::{TcpSocket, accept, connect, listen, read, socket_buf};
+    use net::tcp::{connect, accept, read, listen, TcpSocket, socket_buf};
     use net;
     use uv::iotask::IoTask;
     use uv;
@@ -1293,6 +1293,8 @@ mod test {
     mod tcp_ipv4_server_and_client_test {
         #[cfg(target_arch="x86_64")]
         mod impl64 {
+            use net::tcp::test::tcp_ipv4_server_and_client_test::*;
+
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
                 impl_gl_tcp_ipv4_server_and_client();
@@ -1324,6 +1326,8 @@ mod test {
         }
         #[cfg(target_arch="x86")]
         mod impl32 {
+            use net::tcp::test::tcp_ipv4_server_and_client_test::*;
+
             #[test]
             #[ignore(cfg(target_os = "linux"))]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
