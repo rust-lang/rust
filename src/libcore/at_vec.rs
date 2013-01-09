@@ -15,10 +15,8 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
-use kinds::Copy;
 use iter;
 use libc;
-use option::Option;
 use ptr::addr_of;
 use sys;
 use uint;
@@ -152,10 +150,6 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
 
 #[cfg(notest)]
 pub mod traits {
-    use at_vec::append;
-    use kinds::Copy;
-    use ops::Add;
-
     pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
@@ -168,10 +162,8 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
-    use at_vec::{capacity, rusti, rustrt};
-    use cast::transmute;
+    use at_vec::{rusti, rustrt};
     use libc;
-    use ptr::addr_of;
     use ptr;
     use sys;
     use uint;

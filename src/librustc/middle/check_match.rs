@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_int, const_bool};

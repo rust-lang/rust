@@ -82,7 +82,6 @@ debug!("hello, %s!", "world");
 
 use cmp::Eq;
 use option::{Some, None};
-use prelude::*;
 use str;
 
 /*
@@ -100,7 +99,6 @@ use str;
 #[doc(hidden)]
 pub mod ct {
     use char;
-    use prelude::*;
     use str;
     use vec;
 

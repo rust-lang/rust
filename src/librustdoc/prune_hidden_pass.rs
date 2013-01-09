@@ -16,7 +16,6 @@ use doc::ItemUtils;
 use doc;
 use fold::Fold;
 use fold;
-use pass::Pass;
 
 use core::vec;
 use std::map::HashMap;
@@ -28,7 +27,7 @@ pub fn mk_pass() -> Pass {
     }
 }
 
-pub fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
     let fold = Fold {
         fold_mod: fold_mod,
         .. fold::default_any_fold(srv)
@@ -70,13 +69,14 @@ fn should_prune_hidden_items() {
 }
 
 #[cfg(test)]
-pub mod test {
+mod test {
+    #[legacy_exports];
+
     use astsrv;
     use doc;
     use extract;
-    use prune_hidden_pass::run;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

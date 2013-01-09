@@ -123,11 +123,8 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
-
     use uv::iotask;
     use uv::ll;
-    use uv_global_loop::*;
 
     use core::iter;
     use core::libc;

@@ -11,7 +11,6 @@
 mod inst {
     use dlist;
     use managed;
-    use option::{Option, Some};
     use option;
 
     #[allow(non_camel_case_types)]

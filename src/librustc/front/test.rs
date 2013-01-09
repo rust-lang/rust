@@ -10,7 +10,6 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-use core::prelude::*;
 
 use driver::session;
 use front::config;

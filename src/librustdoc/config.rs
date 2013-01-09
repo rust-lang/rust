@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use core::cmp;
 use core::os;
 use core::result;
@@ -58,7 +56,7 @@ pub type Config = {
     pandoc_cmd: Option<~str>
 };
 
-pub impl Config: Clone {
+impl Config: Clone {
     fn clone(&self) -> Config { copy *self }
 }
 
@@ -107,7 +105,7 @@ pub fn default_config(input_crate: &Path) -> Config {
 type ProgramOutput = fn~((&str), (&[~str])) ->
     {status: int, out: ~str, err: ~str};
 
-pub fn mock_program_output(_prog: &str, _args: &[~str]) -> {
+fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     status: int, out: ~str, err: ~str
 } {
     {
@@ -121,7 +119,7 @@ pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
     parse_config_(args, run::program_output)
 }
 
-pub fn parse_config_(
+fn parse_config_(
     args: &[~str],
     +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
@@ -290,11 +288,8 @@ fn should_error_with_no_pandoc() {
 
 #[cfg(test)]
 mod test {
-    use config::{Config, mock_program_output, parse_config_};
-
-    use core::result::Result;
-
-    pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
+    #[legacy_exports];
+    fn parse_config(args: &[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_program_output)
     }
 }

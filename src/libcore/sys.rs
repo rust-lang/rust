@@ -146,7 +146,6 @@ pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 #[cfg(test)]
 pub mod tests {
     use cast;
-    use sys::{Closure, pref_align_of, size_of};
 
     #[test]
     pub fn size_of_basic() {

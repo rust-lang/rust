@@ -11,7 +11,6 @@
 #[forbid(deprecated_mode)];
 
 use core::ops;
-use core::prelude::*;
 use core::uint;
 use core::vec::{to_mut, from_elem};
 use core::vec;
@@ -579,9 +578,6 @@ impl Bitv: ops::Index<uint,bool> {
 mod tests {
     #[legacy_exports];
 
-    use core::prelude::*;
-
-    use bitv::*;
     use bitv;
 
     use core::uint;

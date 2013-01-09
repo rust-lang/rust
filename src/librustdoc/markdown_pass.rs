@@ -10,8 +10,6 @@
 
 //! Generate markdown from a document tree
 
-use core::prelude::*;
-
 use astsrv;
 use attr_pass;
 use config;
@@ -27,7 +25,6 @@ use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
 use markdown_writer;
 use page_pass;
-use pass::Pass;
 use path_pass;
 use sectionalize_pass;
 use sort_pass;
@@ -114,7 +111,7 @@ type Ctxt = {
     w: Writer
 };
 
-pub fn write_markdown(
+fn write_markdown(
     +doc: doc::Doc,
     +writer_factory: WriterFactory
 ) {
@@ -841,7 +838,6 @@ mod test {
     use doc;
     use extract;
     use markdown_index_pass;
-    use markdown_pass::{mk_pass, write_markdown};
     use markdown_writer;
     use path_pass;
     use sectionalize_pass;
@@ -850,7 +846,6 @@ mod test {
     use unindent_pass;
 
     use core::oldcomm;
-    use core::path::Path;
     use core::str;
 
     fn render(+source: ~str) -> ~str {

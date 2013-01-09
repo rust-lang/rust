@@ -12,8 +12,6 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
-use core::prelude::*;
-
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
 use middle::typeck::{method_map, method_origin, method_param, method_self};

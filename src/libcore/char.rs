@@ -16,7 +16,6 @@
 
 use char;
 use cmp::Eq;
-use option::{None, Option, Some};
 use str;
 use u32;
 use uint;

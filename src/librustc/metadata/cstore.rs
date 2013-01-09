@@ -12,8 +12,6 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use core::prelude::*;
-
 use metadata::creader;
 use metadata::cstore;
 use metadata::decoder;

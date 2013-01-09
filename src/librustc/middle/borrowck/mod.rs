@@ -226,8 +226,6 @@ Borrowck results in two maps.
 
 #[legacy_exports];
 
-use core::prelude::*;
-
 use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
@@ -260,6 +258,9 @@ pub mod gather_loans;
 pub mod loan;
 #[legacy_exports]
 pub mod preserve;
+
+export check_crate, root_map, mutbl_map;
+export check_loans, gather_loans, loan, preserve;
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
@@ -409,7 +410,7 @@ impl bckerr : cmp::Eq {
 type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
-pub struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
+struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -417,7 +418,7 @@ pub struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 ///   for the duration of that block/expr
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
-pub type req_maps = {
+type req_maps = {
     req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
 };

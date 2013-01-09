@@ -14,9 +14,6 @@ Code related to integral type inference.
 
 */
 
-use core::prelude::*;
-
-use middle::ty::{get, ty_int, ty_uint};
 use middle::ty;
 use middle::typeck::infer::to_str::ToStr;
 

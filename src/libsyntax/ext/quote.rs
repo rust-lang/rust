@@ -18,7 +18,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use core::prelude::*;
 use core::str;
 
 /**
@@ -34,7 +33,6 @@ use core::str;
 
 pub mod rt {
     use ast;
-    use ext::base::ext_ctxt;
     use parse;
     use print::pprust;
 

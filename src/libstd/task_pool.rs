@@ -14,7 +14,6 @@
 use core::io;
 use core::pipes::{Chan, Port};
 use core::pipes;
-use core::prelude::*;
 use core::task::{SchedMode, SingleThreaded};
 use core::task;
 use core::vec;

@@ -19,8 +19,6 @@ use cmp;
 use cmp::Eq;
 use either;
 use either::Either;
-use kinds::Copy;
-use option::{None, Option, Some};
 use vec;
 
 /// The result type
@@ -384,7 +382,6 @@ pub pure fn unwrap_err<T, U>(res: Result<T, U>) -> U {
 mod tests {
     #[legacy_exports];
 
-    use result::{Err, Ok, Result, chain, get, get_err};
     use result;
 
     fn op1() -> result::Result<int, ~str> { result::Ok(666) }

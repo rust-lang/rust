@@ -18,7 +18,6 @@ The `ToStr` trait for converting to strings
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-use kinds::Copy;
 use str;
 use vec;
 

@@ -13,7 +13,6 @@
 
 use core::libc;
 use core::oldcomm;
-use core::prelude::*;
 use core::ptr;
 use core::result;
 use core::str;
@@ -48,7 +47,7 @@ pub enum IpAddr {
 }
 
 /// Human-friendly feedback on why a parse_addr attempt failed
-pub type ParseAddrErr = {
+type ParseAddrErr = {
     err_msg: ~str
 };
 
@@ -148,12 +147,8 @@ pub fn get_addr(node: &str, iotask: iotask)
 }
 
 pub mod v4 {
-    use net::ip::{IpAddr, Ipv4, Ipv6, ParseAddrErr};
     use uv::ll;
-    use uv_ip4_addr = uv::ll::ip4_addr;
-    use uv_ip4_name = uv::ll::ip4_name;
 
-    use core::prelude::*;
     use core::ptr;
     use core::result;
     use core::str;
@@ -246,11 +241,6 @@ pub mod v4 {
     }
 }
 pub mod v6 {
-    use net::ip::{IpAddr, Ipv6, ParseAddrErr};
-    use uv_ip6_addr = uv::ll::ip6_addr;
-    use uv_ip6_name = uv::ll::ip6_name;
-
-    use core::prelude::*;
     use core::result;
     use core::str;
 
@@ -360,9 +350,6 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
-
-    use net_ip::*;
     use net_ip::v4;
     use net_ip::v6;
     use uv;

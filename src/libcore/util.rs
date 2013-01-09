@@ -19,7 +19,6 @@ Miscellaneous helpers for common patterns.
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
-use prelude::*;
 
 /// The identity function.
 #[inline(always)]
@@ -105,10 +104,6 @@ pub fn unreachable() -> ! {
 
 mod tests {
     #[legacy_exports];
-
-    use option::{None, Some};
-    use util::{NonCopyable, id, replace, swap};
-
     #[test]
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?

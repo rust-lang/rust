@@ -15,8 +15,6 @@ The attribute parser provides methods for pulling documentation out of
 an AST's attributes.
 */
 
-use core::prelude::*;
-
 use core::str;
 use core::tuple;
 use core::vec;
@@ -31,12 +29,12 @@ pub type CrateAttrs = {
 
 #[cfg(test)]
 mod test {
+    #[legacy_exports];
+
     use syntax::ast;
     use syntax;
 
-    use core::option::None;
-
-    pub fn parse_attributes(+source: ~str) -> ~[ast::attribute] {
+    fn parse_attributes(+source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
         use syntax::parse::parser;
         use syntax::parse::attr::parser_attr;

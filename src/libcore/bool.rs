@@ -19,7 +19,6 @@
 use bool;
 use cmp;
 use cmp::Eq;
-use option::{None, Option, Some};
 
 /// Negation / inverse
 pub pure fn not(v: bool) -> bool { !v }

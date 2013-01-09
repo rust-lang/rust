@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use ast_util;

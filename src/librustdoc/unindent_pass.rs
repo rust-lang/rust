@@ -19,9 +19,6 @@ instances where the string containing the doc comment is opened in the
 middle of a line, and each of the following lines is indented.
 */
 
-use core::prelude::*;
-
-use pass::Pass;
 use text_pass;
 
 use core::str;

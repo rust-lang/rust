@@ -142,7 +142,6 @@
  *
  */
 
-use core::prelude::*;
 
 use back::abi;
 use lib::llvm::llvm;

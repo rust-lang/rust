@@ -11,8 +11,6 @@
 
 // Searching for information from the cstore
 
-use core::prelude::*;
-
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
