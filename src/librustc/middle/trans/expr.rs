@@ -133,6 +133,8 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use syntax::print::pprust::{expr_to_str};
+use syntax::ast;
+use syntax::ast::spanned;
 
 // The primary two functions for translating expressions:
 export trans_to_datum, trans_into;
