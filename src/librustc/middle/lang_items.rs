@@ -20,6 +20,8 @@
 //
 // * Functions called by the compiler itself.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch::{each_lang_item, get_item_attrs};
 use metadata::cstore::{iter_crate_data};

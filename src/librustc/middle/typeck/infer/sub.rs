@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use middle::ty;
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::infer::combine::*;
+use middle::typeck::infer::cres;
+use middle::typeck::infer::glb::Glb;
+use middle::typeck::infer::infer_ctxt;
+use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::ToStr;
 use middle::typeck::infer::unify::*;
+use util::ppaux::bound_region_to_str;
 
+use std::list::Nil;
 use std::list;
+use syntax::ast::{m_const, purity, ret_style};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

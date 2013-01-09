@@ -11,20 +11,18 @@
 // xfail-fast
 #[legacy_modes];
 
-use a::*;
-
-trait plus {
+pub trait plus {
     fn plus() -> int;
 }
 
 mod a {
-    #[legacy_exports];
-    impl uint: plus { fn plus() -> int { self as int + 20 } }
+    use plus;
+    pub impl uint: plus { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
-    #[legacy_exports];
-    impl ~str: plus { fn plus() -> int { 200 } }
+    use plus;
+    pub impl ~str: plus { fn plus() -> int { 200 } }
 }
 
 trait uint_utils {

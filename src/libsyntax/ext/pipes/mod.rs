@@ -53,6 +53,8 @@ use ext::pipes::proto::{visit, protocol};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
+use core::option::None;
+
 #[legacy_exports]
 mod ast_builder;
 #[legacy_exports]

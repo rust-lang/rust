@@ -539,13 +539,16 @@ more convincing in the future.
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
+use core::prelude::*;
+
 use middle::region::is_subregion_of;
 use middle::region;
 use middle::ty;
-use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
-use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
+use middle::ty::{Region, RegionVid, br_fresh, re_bound, re_free, re_infer};
+use middle::ty::{re_scope, re_static, ReVar, ReSkolemized};
+use middle::typeck::infer::cres;
 use middle::typeck::infer::to_str::ToStr;
-use syntax::codemap;
+use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
 use core::cmp;
@@ -558,6 +561,8 @@ use result::{Ok, Err};
 use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
+use syntax::codemap::span;
+use syntax::codemap;
 
 export RegionVarBindings;
 export make_subregion;

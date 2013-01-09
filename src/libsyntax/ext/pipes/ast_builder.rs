@@ -13,13 +13,15 @@
 // To start with, it will be use dummy spans, but it might someday do
 // something smarter.
 
+use core::prelude::*;
+
 use ast::{ident, node_id};
 use ast;
 use ast_util::{ident_to_path, respan, dummy_sp};
 use ast_util;
 use attr;
 use codemap::span;
-use ext::base::mk_ctxt;
+use ext::base::{ext_ctxt, mk_ctxt};
 use ext::quote::rt::*;
 
 use core::vec;
@@ -112,9 +114,11 @@ trait ext_ctxt_ast_builder {
 
 impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::Ty) -> @ast::Ty {
-        self.ty_path_ast_builder(path(~[self.ident_of(~"Option")],
-                                      dummy_sp())
-                                 .add_ty(ty))
+        self.ty_path_ast_builder(path_global(~[
+            self.ident_of(~"core"),
+            self.ident_of(~"option"),
+            self.ident_of(~"Option")
+        ], dummy_sp()).add_ty(ty))
     }
 
     fn block_expr(b: ast::blk) -> @ast::expr {
@@ -283,10 +287,37 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn item_mod(name: ident,
                 span: span,
                 +items: ~[@ast::item]) -> @ast::item {
+        // XXX: Total hack: import `core::kinds::Owned` to work around a
+        // parser bug whereby `fn f<T: ::kinds::Owned>` doesn't parse.
+        let vi = ast::view_item_import(~[
+            @{
+                node: ast::view_path_simple(
+                    self.ident_of(~"Owned"),
+                    path(
+                        ~[
+                            self.ident_of(~"core"),
+                            self.ident_of(~"kinds"),
+                            self.ident_of(~"Owned")
+                        ],
+                        ast_util::dummy_sp()
+                    ),
+                    ast::type_value_ns,
+                    self.next_id()
+                ),
+                span: ast_util::dummy_sp()
+            }
+        ]);
+        let vi = @{
+            node: vi,
+            attrs: ~[],
+            vis: ast::private,
+            span: ast_util::dummy_sp()
+        };
+
         self.item(name,
                   span,
                   ast::item_mod({
-                      view_items: ~[],
+                      view_items: ~[vi],
                       items: items}))
     }
 

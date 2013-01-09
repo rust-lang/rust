@@ -12,6 +12,7 @@
 // state without mutexes.
 
 use core::libc::{c_char, c_int};
+use core::prelude::*;
 use core::str;
 use core::task;
 

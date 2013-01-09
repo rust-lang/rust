@@ -2284,6 +2284,10 @@ struct level. Note that fields and methods are _public_ by default.
 ~~~
 mod farm {
 # use farm;
+# pub type Chicken = int;
+# type Cow = int;
+# enum Human = int;
+# impl Human { fn rest(&self) { } }
 # pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv mut chickens: ~[Chicken],
@@ -2310,12 +2314,8 @@ fn main() {
      farm::feed_animals(&f);
      f.farmer.rest();
 }
-# type Chicken = int;
-# type Cow = int;
-# enum Human = int;
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
-# fn make_me_a_chicken() -> Chicken { 0 }
-# impl Human { fn rest(&self) { } }
+# fn make_me_a_chicken() -> farm::Chicken { 0 }
 ~~~
 
 ## Crates

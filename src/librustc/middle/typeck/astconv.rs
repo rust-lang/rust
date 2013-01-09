@@ -52,18 +52,24 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
+use core::prelude::*;
 
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::pat_util::pat_id_map;
+use middle::ty::{FnTyBase, FnMeta, FnSig, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::check::fn_ctxt;
 use middle::typeck::collect;
 use middle::typeck::rscope::{anon_rscope, binding_rscope, empty_rscope};
 use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope};
+use middle::typeck::{crate_ctxt, write_substs_to_tcx, write_ty_to_tcx};
 
 use core::result;
 use core::vec;
 use syntax::ast;
+use syntax::codemap::span;
+use syntax::print::pprust::path_to_str;
+use util::common::indent;
 
 pub trait ast_conv {
     fn tcx() -> ty::ctxt;

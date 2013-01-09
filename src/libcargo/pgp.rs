@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::os;
+use core::path::Path;
 use core::run;
 
 fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {

@@ -13,9 +13,19 @@
 // the scope S.
 //
 
+use core::prelude::*;
 
+use middle::borrowck::{bckerr, bckerr_code, bckres, borrowck_ctxt, cmt};
+use middle::borrowck::{err_mut_uniq, err_mut_variant, err_out_of_root_scope};
+use middle::borrowck::{err_out_of_scope, err_root_not_permitted};
+use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
+use middle::mem_categorization::{cat_discr, cat_local, cat_special};
+use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
+use middle::mem_categorization::{comp_variant, region_ptr};
 use middle::ty;
+use util::common::indenter;
 
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
 export public_methods, preserve_condition, pc_ok, pc_if_pure;

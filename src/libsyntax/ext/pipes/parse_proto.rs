@@ -10,10 +10,11 @@
 
 // Parsing pipes protocols from token trees.
 
+use ext::pipes::pipec::*;
 use parse::parser;
 use parse::token;
 
-use ext::pipes::pipec::*;
+use core::prelude::*;
 
 trait proto_parser {
     fn parse_proto(id: ~str) -> protocol;

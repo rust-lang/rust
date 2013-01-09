@@ -8,15 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
+use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::combine::*;
+use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::isr_alist;
+use util::ppaux::mt_to_str;
 
 use std::list;
-use syntax::ast::{Many, Once};
+use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn, noreturn};
+use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

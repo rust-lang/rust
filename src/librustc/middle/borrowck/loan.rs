@@ -12,10 +12,19 @@
 // Loan(Ex, M, S) = Ls holds if ToAddr(Ex) will remain valid for the entirety
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
+use core::prelude::*;
 
+use middle::borrowck::{Loan, bckres, borrowck_ctxt, cmt, err_mutbl};
+use middle::borrowck::{err_out_of_scope};
+use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
+use middle::mem_categorization::{cat_deref, cat_discr, cat_local};
+use middle::mem_categorization::{cat_special, cat_stack_upvar, comp_field};
+use middle::mem_categorization::{comp_index, comp_variant, region_ptr};
 use middle::ty;
+use util::common::indenter;
 
-use core::result::{Result, Ok, Err};
+use core::result::{Err, Ok, Result};
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
 export public_methods;

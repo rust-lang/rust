@@ -11,6 +11,7 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
+use core::prelude::*;
 
 use back::{link, abi};
 use driver::session::arch_x86_64;

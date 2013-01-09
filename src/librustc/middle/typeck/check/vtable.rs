@@ -8,23 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use middle::resolve;
 use middle::ty;
 use middle::typeck::check::{fn_ctxt, impl_self_ty};
+use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::infer::{fixup_err_to_str, infer_ctxt};
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
+use middle::typeck::{crate_ctxt, vtable_origin, vtable_param, vtable_res};
+use middle::typeck::{vtable_static, vtable_trait};
 use util::common::indenter;
+use util::ppaux::tys_to_str;
 use util::ppaux;
 
 use core::result;
 use core::uint;
 use core::vec;
 use result::{Result, Ok, Err};
+use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
+use syntax::print::pprust::expr_to_str;
 use syntax::print::pprust;
 use syntax::visit;
 

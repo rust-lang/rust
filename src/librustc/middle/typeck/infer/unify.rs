@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
+use middle::ty::vid;
 use middle::ty;
+use middle::typeck::infer::{bound, bounds, cres, uok, ures};
 use middle::typeck::infer::combine::combine;
 use middle::typeck::infer::floating::*;
 use middle::typeck::infer::floating;
+use middle::typeck::infer::infer_ctxt;
 use middle::typeck::infer::integral::*;
 use middle::typeck::infer::integral;
 use middle::typeck::infer::to_str::ToStr;
+use util::common::{indent, indenter};
 
 use core::result;
 use std::smallintmap::SmallIntMap;

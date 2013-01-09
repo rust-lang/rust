@@ -52,11 +52,13 @@ use either::Either;
 use iter;
 use libc;
 use libc::size_t;
+use prelude::*;
 use ptr;
 use result;
 use sys;
 use task;
 use vec;
+
 // After snapshot, change p2::addr_of => addr_of
 
 /**

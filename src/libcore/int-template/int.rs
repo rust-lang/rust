@@ -50,8 +50,8 @@ mod inst {
 
     #[test]
     fn test_overflows() {
-        assert (max_value > 0);
-        assert (min_value <= 0);
-        assert (min_value + max_value + 1 == 0);
+        assert (::int::max_value > 0);
+        assert (::int::min_value <= 0);
+        assert (::int::min_value + ::int::max_value + 1 == 0);
     }
 }

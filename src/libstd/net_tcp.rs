@@ -24,6 +24,7 @@ use core::io;
 use core::libc::size_t;
 use core::libc;
 use core::oldcomm;
+use core::prelude::*;
 use core::ptr;
 use core::result::{Result};
 use core::result;
@@ -86,7 +87,7 @@ pub type TcpErrData = {
     err_msg: ~str
 };
 /// Details returned as part of a `result::err` result from `tcp::listen`
-enum TcpListenErrData {
+pub enum TcpListenErrData {
     /**
      * Some unplanned-for error. The first and second fields correspond
      * to libuv's `err_name` and `err_msg` fields, respectively.
@@ -374,7 +375,7 @@ pub fn read_stop(sock: &TcpSocket,
  * * `timeout_msecs` - a `uint` value, in msecs, to wait before dropping the
  * read attempt. Pass `0u` to wait indefinitely
  */
-fn read(sock: &TcpSocket, timeout_msecs: uint)
+pub fn read(sock: &TcpSocket, timeout_msecs: uint)
     -> result::Result<~[u8],TcpErrData> {
     let socket_data = ptr::addr_of(&(*(sock.socket_data)));
     read_common_impl(socket_data, timeout_msecs)
@@ -1270,12 +1271,16 @@ type TcpBufferedSocketData = {
 
 //#[cfg(test)]
 mod test {
-    use net;
     use net::ip;
+    use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
+    use net::tcp::{TcpSocket, accept, connect, listen, read, socket_buf};
+    use net;
+    use uv::iotask::IoTask;
     use uv;
 
     use core::io;
     use core::oldcomm;
+    use core::prelude::*;
     use core::result;
     use core::str;
     use core::task;

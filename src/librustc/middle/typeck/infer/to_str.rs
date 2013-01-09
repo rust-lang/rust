@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
+use middle::ty::vid;
 use middle::ty;
-use middle::typeck::infer::integral::int_ty_set;
+use middle::typeck::infer::{bound, bounds};
 use middle::typeck::infer::floating::float_ty_set;
+use middle::typeck::infer::infer_ctxt;
+use middle::typeck::infer::integral::int_ty_set;
 use middle::typeck::infer::unify::{redirect, root, var_value};
+use util::ppaux::{mt_to_str, ty_to_str};
 use util::ppaux;
 
 use core::uint;
