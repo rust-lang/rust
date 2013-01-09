@@ -12,12 +12,19 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
+
+use middle::pat_util;
+use middle::ty;
 use middle::typeck::check::{fn_ctxt, lookup_local};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
+use middle::typeck::infer;
 use util::ppaux;
 
-use result::{Result, Ok, Err};
+use core::result::{Result, Ok, Err};
+use core::vec;
+use syntax::ast;
+use syntax::visit;
 
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
@@ -149,8 +156,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
     match e.node {
-      ast::expr_fn(_, decl, _, _) |
-      ast::expr_fn_block(decl, _, _) => {
+      ast::expr_fn_block(ref decl, _, _) => {
           for vec::each(decl.inputs) |input| {
               let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
@@ -224,13 +230,13 @@ fn visit_item(_item: @ast::item, _wbcx: wb_ctxt, _v: wb_vt) {
 }
 
 fn mk_visitor() -> visit::vt<wb_ctxt> {
-    visit::mk_vt(@{visit_item: visit_item,
-                   visit_stmt: visit_stmt,
-                   visit_expr: visit_expr,
-                   visit_block: visit_block,
-                   visit_pat: visit_pat,
-                   visit_local: visit_local,
-                   .. *visit::default_visitor()})
+    visit::mk_vt(@visit::Visitor {visit_item: visit_item,
+                                  visit_stmt: visit_stmt,
+                                  visit_expr: visit_expr,
+                                  visit_block: visit_block,
+                                  visit_pat: visit_pat,
+                                  visit_local: visit_local,
+                                  .. *visit::default_visitor()})
 }
 
 fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
@@ -241,7 +247,7 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
 }
 
 fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
-                           decl: ast::fn_decl,
+                           decl: &ast::fn_decl,
                            blk: ast::blk,
                            self_info: Option<self_info>) -> bool {
     let wbcx = {fcx: fcx, mut success: true};

@@ -15,8 +15,17 @@
 
 #[doc(hidden)];
 
-use task::TaskBuilder;
-use task::atomically;
+use cast;
+use iter;
+use libc;
+use oldcomm;
+use option;
+use pipes;
+use ptr;
+use result;
+use task;
+use task::{TaskBuilder, atomically};
+use uint;
 
 extern mod rustrt {
     #[legacy_exports];
@@ -571,6 +580,12 @@ pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
 
 #[cfg(test)]
 pub mod tests {
+    use option;
+    use pipes;
+    use result;
+    use task;
+    use uint;
+
     #[test]
     pub fn exclusive_arc() {
         let mut futures = ~[];

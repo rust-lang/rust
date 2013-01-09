@@ -14,10 +14,15 @@
 // something smarter.
 
 use ast::{ident, node_id};
+use ast;
 use ast_util::{ident_to_path, respan, dummy_sp};
+use ast_util;
+use attr;
 use codemap::span;
 use ext::base::mk_ctxt;
 use ext::quote::rt::*;
+
+use core::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -29,6 +34,14 @@ mod syntax {
 fn path(ids: ~[ident], span: span) -> @ast::path {
     @{span: span,
       global: false,
+      idents: ids,
+      rp: None,
+      types: ~[]}
+}
+
+fn path_global(ids: ~[ident], span: span) -> @ast::path {
+    @{span: span,
+      global: true,
       idents: ids,
       rp: None,
       types: ~[]}
@@ -82,6 +95,7 @@ trait ext_ctxt_ast_builder {
                     +params: ~[ast::ty_param]) -> @ast::item;
     fn item_ty(name: ident, span: span, ty: @ast::Ty) -> @ast::item;
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
+    fn ty_vars_global(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field;
     fn ty_rec(+v: ~[ast::ty_field]) -> @ast::Ty;
     fn field_imm(name: ident, e: @ast::expr) -> ast::field;
@@ -300,6 +314,11 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
+        ty_params.map(|p| self.ty_path_ast_builder(
+            path(~[p.ident], dummy_sp())))
+    }
+
+    fn ty_vars_global(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
             path(~[p.ident], dummy_sp())))
     }

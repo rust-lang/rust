@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_int, const_bool};
 use middle::pat_util::*;
@@ -16,22 +17,27 @@ use middle::ty;
 use middle::typeck::method_map;
 use util::ppaux::ty_to_str;
 
+use core::cmp;
+use core::option;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
+use std::sort;
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
+use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
-use std::sort;
 
-struct AltCheckCtxt {
+struct MatchCheckCtxt {
     tcx: ty::ctxt,
     method_map: method_map,
 }
 
 fn check_crate(tcx: ty::ctxt, method_map: method_map, crate: @crate) {
-    let cx = @AltCheckCtxt { tcx: tcx, method_map: method_map };
-    visit::visit_crate(*crate, (), visit::mk_vt(@{
+    let cx = @MatchCheckCtxt { tcx: tcx, method_map: method_map };
+    visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |a,b,c| check_expr(cx, a, b, c),
         visit_local: |a,b,c| check_local(cx, a, b, c),
         visit_fn: |kind, decl, body, sp, id, e, v|
@@ -41,7 +47,7 @@ fn check_crate(tcx: ty::ctxt, method_map: method_map, crate: @crate) {
     tcx.sess.abort_if_errors();
 }
 
-fn expr_is_non_moving_lvalue(cx: @AltCheckCtxt, expr: @expr) -> bool {
+fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
     if !ty::expr_is_lval(cx.tcx, cx.method_map, expr) {
         return false;
     }
@@ -55,7 +61,7 @@ fn expr_is_non_moving_lvalue(cx: @AltCheckCtxt, expr: @expr) -> bool {
     }
 }
 
-fn check_expr(cx: @AltCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
+fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
       expr_match(scrut, ref arms) => {
@@ -68,7 +74,7 @@ fn check_expr(cx: @AltCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
                                             arm.pats);
         }
 
-        check_arms(cx, (*arms));
+        check_arms(cx, (/*bad*/copy *arms));
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
          // types.
@@ -101,7 +107,7 @@ fn check_expr(cx: @AltCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
 }
 
 // Check for unreachable patterns
-fn check_arms(cx: @AltCheckCtxt, arms: ~[arm]) {
+fn check_arms(cx: @MatchCheckCtxt, arms: ~[arm]) {
     let mut seen = ~[];
     for arms.each |arm| {
         for arm.pats.each |pat| {
@@ -124,7 +130,7 @@ fn raw_pat(p: @pat) -> @pat {
     }
 }
 
-fn check_exhaustive(cx: @AltCheckCtxt, sp: span, pats: ~[@pat]) {
+fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert(pats.is_not_empty());
     let ext = match is_useful(cx, vec::map(pats, |p| ~[*p]), ~[wild()]) {
       not_useful => return, // This is good, wildcard pattern isn't reachable
@@ -210,7 +216,7 @@ impl ctor : cmp::Eq {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
+fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: ~[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
     let real_pat = match vec::find(m, |r| r[0].id != 0) {
@@ -233,7 +239,7 @@ fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
                                           val(const_bool(false)),
                                           0u, left_ty)
                   }
-                  ref u => (*u)
+                  ref u => (/*bad*/copy *u)
                 }
               }
               ty::ty_enum(eid, _) => {
@@ -241,14 +247,14 @@ fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
                     match is_useful_specialized(cx, m, v, variant(va.id),
                                                 va.args.len(), left_ty) {
                       not_useful => (),
-                      ref u => return (*u)
+                      ref u => return (/*bad*/copy *u)
                     }
                 }
                 not_useful
               }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                 let max_len = do m.foldr(0) |r, max_len| {
-                  match r[0].node {
+                  match /*bad*/copy r[0].node {
                     pat_vec(elems, _) => uint::max(elems.len(), max_len),
                     _ => max_len
                   }
@@ -256,7 +262,7 @@ fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
                 for uint::range(0, max_len + 1) |n| {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
-                    ref u => return (*u)
+                    ref u => return (/*bad*/copy *u)
                   }
                 }
                 not_useful
@@ -270,33 +276,33 @@ fn is_useful(cx: @AltCheckCtxt, m: matrix, v: ~[@pat]) -> useful {
           Some(ref ctor) => {
             match is_useful(cx, vec::filter_map(m, |r| default(cx, *r)),
                             vec::tail(v)) {
-              useful_ => useful(left_ty, (*ctor)),
-              ref u => (*u)
+              useful_ => useful(left_ty, (/*bad*/copy *ctor)),
+              ref u => (/*bad*/copy *u)
             }
           }
         }
       }
       Some(ref v0_ctor) => {
         let arity = ctor_arity(cx, (*v0_ctor), left_ty);
-        is_useful_specialized(cx, m, v, (*v0_ctor), arity, left_ty)
+        is_useful_specialized(cx, m, v, /*bad*/copy *v0_ctor, arity, left_ty)
       }
     }
 }
 
-fn is_useful_specialized(cx: @AltCheckCtxt, m: matrix, v: ~[@pat], ctor: ctor,
-                          arity: uint, lty: ty::t) -> useful {
+fn is_useful_specialized(cx: @MatchCheckCtxt, m: matrix, +v: ~[@pat],
+                         +ctor: ctor, arity: uint, lty: ty::t) -> useful {
     let ms = vec::filter_map(m, |r| specialize(cx, *r, ctor, arity, lty));
     let could_be_useful = is_useful(
         cx, ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
-      ref u => (*u)
+      ref u => (/*bad*/copy *u)
     }
 }
 
-fn pat_ctor_id(cx: @AltCheckCtxt, p: @pat) -> Option<ctor> {
+fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
     let pat = raw_pat(p);
-    match pat.node {
+    match /*bad*/copy pat.node {
       pat_wild => { None }
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match cx.tcx.def_map.find(pat.id) {
@@ -331,7 +337,7 @@ fn pat_ctor_id(cx: @AltCheckCtxt, p: @pat) -> Option<ctor> {
     }
 }
 
-fn is_wild(cx: @AltCheckCtxt, p: @pat) -> bool {
+fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
     let pat = raw_pat(p);
     match pat.node {
       pat_wild => { true }
@@ -345,7 +351,7 @@ fn is_wild(cx: @AltCheckCtxt, p: @pat) -> bool {
     }
 }
 
-fn missing_ctor(cx: @AltCheckCtxt,
+fn missing_ctor(cx: @MatchCheckCtxt,
                 m: matrix,
                 left_ty: ty::t)
              -> Option<ctor> {
@@ -362,7 +368,7 @@ fn missing_ctor(cx: @AltCheckCtxt,
         for m.each |r| {
             do option::iter(&pat_ctor_id(cx, r[0])) |id| {
                 if !vec::contains(found, id) {
-                    found.push(*id);
+                    found.push(/*bad*/copy *id);
                 }
             }
         }
@@ -395,7 +401,7 @@ fn missing_ctor(cx: @AltCheckCtxt,
 
         // Find the lengths and tails of all vector patterns.
         let vec_pat_lens = do m.filter_map |r| {
-            match r[0].node {
+            match /*bad*/copy r[0].node {
                 pat_vec(elems, tail) => {
                     Some((elems.len(), tail.is_some()))
                 }
@@ -445,8 +451,8 @@ fn missing_ctor(cx: @AltCheckCtxt,
     }
 }
 
-fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
-    match ty::get(ty).sty {
+fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
+    match /*bad*/copy ty::get(ty).sty {
       ty::ty_tup(fs) => fs.len(),
       ty::ty_rec(fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
@@ -470,13 +476,13 @@ fn ctor_arity(cx: @AltCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
 }
 
 fn wild() -> @pat {
-    @{id: 0, node: pat_wild, span: syntax::ast_util::dummy_sp()}
+    @{id: 0, node: pat_wild, span: ast_util::dummy_sp()}
 }
 
-fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
+fn specialize(cx: @MatchCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
               left_ty: ty::t) -> Option<~[@pat]> {
     let r0 = raw_pat(r[0]);
-    match r0.node {
+    match /*bad*/copy r0.node {
       pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
                                    vec::tail(r))),
       pat_ident(_, _, _) => {
@@ -525,7 +531,7 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         }
       }
       pat_rec(flds, _) => {
-        let ty_flds = match ty::get(left_ty).sty {
+        let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
             ty::ty_rec(flds) => flds,
             _ => fail ~"bad type for pat_rec"
         };
@@ -597,8 +603,8 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       }
       pat_range(lo, hi) => {
         let (c_lo, c_hi) = match ctor_id {
-          val(ref v) => ((*v), (*v)),
-          range(ref lo, ref hi) => ((*lo), (*hi)),
+          val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
+          range(ref lo, ref hi) => ((/*bad*/copy *lo), (/*bad*/copy *hi)),
           single => return Some(vec::tail(r)),
           _ => fail ~"type error"
         };
@@ -612,8 +618,9 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         match ctor_id {
           vec(_) => {
             if elems.len() < arity && tail.is_some() {
+              // XXX: Bad copy.
               Some(vec::append(
-                vec::append(elems, vec::from_elem(
+                vec::append(copy elems, vec::from_elem(
                     arity - elems.len(), wild()
                 )),
                 vec::tail(r)
@@ -630,12 +637,12 @@ fn specialize(cx: @AltCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
     }
 }
 
-fn default(cx: @AltCheckCtxt, r: ~[@pat]) -> Option<~[@pat]> {
+fn default(cx: @MatchCheckCtxt, r: ~[@pat]) -> Option<~[@pat]> {
     if is_wild(cx, r[0]) { Some(vec::tail(r)) }
     else { None }
 }
 
-fn check_local(cx: @AltCheckCtxt, loc: @local, &&s: (), v: visit::vt<()>) {
+fn check_local(cx: @MatchCheckCtxt, loc: @local, &&s: (), v: visit::vt<()>) {
     visit::visit_local(loc, s, v);
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
@@ -650,7 +657,7 @@ fn check_local(cx: @AltCheckCtxt, loc: @local, &&s: (), v: visit::vt<()>) {
     check_legality_of_move_bindings(cx, is_lvalue, false, [ loc.node.pat ]);
 }
 
-fn check_fn(cx: @AltCheckCtxt,
+fn check_fn(cx: @MatchCheckCtxt,
             kind: visit::fn_kind,
             decl: fn_decl,
             body: blk,
@@ -667,7 +674,7 @@ fn check_fn(cx: @AltCheckCtxt,
     }
 }
 
-fn is_refutable(cx: @AltCheckCtxt, pat: &pat) -> bool {
+fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
     match cx.tcx.def_map.find(pat.id) {
       Some(def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(cx.tcx, enum_id)) != 1u {
@@ -678,7 +685,7 @@ fn is_refutable(cx: @AltCheckCtxt, pat: &pat) -> bool {
       _ => ()
     }
 
-    match pat.node {
+    match /*bad*/copy pat.node {
       pat_box(sub) | pat_uniq(sub) | pat_region(sub) |
       pat_ident(_, _, Some(sub)) => {
         is_refutable(cx, sub)
@@ -705,7 +712,7 @@ fn is_refutable(cx: @AltCheckCtxt, pat: &pat) -> bool {
 
 // Legality of move bindings checking
 
-fn check_legality_of_move_bindings(cx: @AltCheckCtxt,
+fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                                    is_lvalue: bool,
                                    has_guard: bool,
                                    pats: &[@pat]) {
@@ -786,7 +793,7 @@ fn check_legality_of_move_bindings(cx: @AltCheckCtxt,
 
         // Now check to ensure that any move binding is not behind an @ or &.
         // This is always illegal.
-        let vt = visit::mk_vt(@{
+        let vt = visit::mk_vt(@visit::Visitor {
             visit_pat: |pat, behind_bad_pointer, v| {
                 let error_out = || {
                     cx.tcx.sess.span_err(pat.span, ~"by-move pattern \

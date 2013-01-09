@@ -12,10 +12,8 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
-#[legacy_exports];
-export read, readMaybe;
 
-trait read {
+pub trait read {
     static fn readMaybe(s: ~str) -> Option<self>;
 }
 
@@ -35,7 +33,7 @@ impl bool: read {
     }
 }
 
-fn read<T: read Copy>(s: ~str) -> T {
+pub fn read<T: read Copy>(s: ~str) -> T {
     match read::readMaybe(s) {
       Some(x) => x,
       _ => fail ~"read failed!"

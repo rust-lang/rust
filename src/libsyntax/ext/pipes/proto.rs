@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use to_str::ToStr;
-use dvec::DVec;
-
+use ast;
 use ext::pipes::ast_builder::{path, append_types};
+
+use core::cmp;
+use core::dvec::DVec;
+use core::to_str::ToStr;
 
 enum direction { send, recv }
 

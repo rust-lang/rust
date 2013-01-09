@@ -8,8 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::{span, BytePos};
 use ast::*;
+use ast;
+use ast_util;
+use codemap::{span, BytePos};
+use visit;
+
+use core::cmp;
+use core::int;
+use core::option;
+use core::str;
+use core::to_bytes;
+use core::vec;
 
 pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), move t)
@@ -262,10 +272,10 @@ pure fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-impl def_id : core::to_bytes::IterBytes {
+impl def_id : to_bytes::IterBytes {
     #[inline(always)]
-    pure fn iter_bytes(&self, +lsb0: bool, f: core::to_bytes::Cb) {
-        core::to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
 
@@ -426,10 +436,8 @@ fn empty(range: id_range) -> bool {
 }
 
 fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
-    visit::mk_simple_visitor(@{
-        visit_mod: fn@(_m: _mod, _sp: span, id: node_id) {
-            vfn(id)
-        },
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_mod: |_m, _sp, id| vfn(id),
 
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {

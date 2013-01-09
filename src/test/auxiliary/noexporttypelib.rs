@@ -8,7 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
-export foo;
 type oint = Option<int>;
-fn foo() -> oint { Some(3) }
+pub fn foo() -> oint { Some(3) }

@@ -8,25 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
 use middle::ty::{ty_struct, ty_enum};
+use middle::ty;
 use middle::typeck::{method_map, method_origin, method_param, method_self};
 use middle::typeck::{method_static, method_trait};
-use /*mod*/ syntax::ast;
-use /*mod*/ syntax::visit;
-use syntax::ast_map;
+
+use core::dvec::DVec;
+use core::util::ignore;
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
 use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
 use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
 use syntax::ast::{provided, required};
+use syntax::ast;
 use syntax::ast_map::{node_item, node_method};
+use syntax::ast_map;
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
-
-use core::util::ignore;
-use dvec::DVec;
+use syntax::visit;
 
 fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     let privileged_items = @DVec();
@@ -186,7 +188,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         }
     };
 
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_mod: |the_module, span, node_id, method_map, visitor| {
             let n_added = add_privileged_items(the_module.items);
 
@@ -310,7 +312,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
             visit::visit_expr(expr, method_map, visitor);
         },
         visit_pat: |pattern, method_map, visitor| {
-            match pattern.node {
+            match /*bad*/copy pattern.node {
                 pat_struct(_, fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_struct(id, _) => {

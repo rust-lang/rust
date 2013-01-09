@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
-use result::Result;
+use core::option;
+use core::os;
+use core::result::Result;
+use core::result;
+use core::str;
+
 export FileSearch;
 export mk_filesearch;
 export pick;
@@ -40,24 +46,24 @@ trait FileSearch {
 
 fn mk_filesearch(maybe_sysroot: Option<Path>,
                  target_triple: &str,
-                 addl_lib_search_paths: ~[Path]) -> FileSearch {
+                 +addl_lib_search_paths: ~[Path]) -> FileSearch {
     type filesearch_impl = {sysroot: Path,
                             addl_lib_search_paths: ~[Path],
                             target_triple: ~str};
     impl filesearch_impl: FileSearch {
-        fn sysroot() -> Path { self.sysroot }
+        fn sysroot() -> Path { /*bad*/copy self.sysroot }
         fn lib_search_paths() -> ~[Path] {
-            let mut paths = self.addl_lib_search_paths;
+            let mut paths = /*bad*/copy self.addl_lib_search_paths;
 
             paths.push(
                 make_target_lib_path(&self.sysroot,
                                      self.target_triple));
             match get_cargo_lib_path_nearest() {
-              result::Ok(ref p) => paths.push((*p)),
+              result::Ok(ref p) => paths.push((/*bad*/copy *p)),
               result::Err(_) => ()
             }
             match get_cargo_lib_path() {
-              result::Ok(ref p) => paths.push((*p)),
+              result::Ok(ref p) => paths.push((/*bad*/copy *p)),
               result::Err(_) => ()
             }
             paths
@@ -108,7 +114,7 @@ fn make_target_lib_path(sysroot: &Path,
     sysroot.push_rel(&relative_target_lib_path(target_triple))
 }
 
-fn get_default_sysroot() -> Path {
+fn get_or_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::Some(ref p) => (*p).pop(),
       option::None => fail ~"can't determine value for sysroot"
@@ -117,13 +123,13 @@ fn get_default_sysroot() -> Path {
 
 fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     match maybe_sysroot {
-      option::Some(ref sr) => (*sr),
-      option::None => get_default_sysroot()
+      option::Some(ref sr) => (/*bad*/copy *sr),
+      option::None => get_or_default_sysroot()
     }
 }
 
 fn get_cargo_sysroot() -> Result<Path, ~str> {
-    result::Ok(get_default_sysroot().push_many([libdir(), ~"cargo"]))
+    result::Ok(get_or_default_sysroot().push_many([libdir(), ~"cargo"]))
 }
 
 fn get_cargo_root() -> Result<Path, ~str> {
@@ -141,7 +147,7 @@ fn get_cargo_root_nearest() -> Result<Path, ~str> {
         let cwd = os::getcwd();
         let cwd_cargo = cwd.push(".cargo");
         let mut par_cargo = cwd.pop().push(".cargo");
-        let mut rslt = result::Ok(cwd_cargo);
+        let mut rslt = result::Ok(copy cwd_cargo);  // XXX: Bad copy.
 
         if !os::path_is_dir(&cwd_cargo) && cwd_cargo != p {
             while par_cargo != p {

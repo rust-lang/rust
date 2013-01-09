@@ -1,3 +1,5 @@
+// xfail-fast
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -17,7 +19,7 @@ mod base {
         dummy: (),
     }
 
-    pub impl Foo : base::HasNew<Foo> {
+    pub impl Foo : ::base::HasNew<Foo> {
         static pure fn new() -> Foo {
 			unsafe { io::println("Foo"); }
             Foo { dummy: () }
@@ -28,7 +30,7 @@ mod base {
         dummy: (),
     }
 
-    pub impl Bar : base::HasNew<Bar> {
+    pub impl Bar : ::base::HasNew<Bar> {
         static pure fn new() -> Bar {
 			unsafe { io::println("Bar"); }
             Bar { dummy: () }

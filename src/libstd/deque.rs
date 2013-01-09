@@ -12,9 +12,11 @@
 #[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
-use option::{Some, None};
-use dvec::DVec;
-use core::cmp::{Eq};
+use core::cmp::Eq;
+use core::dvec::DVec;
+use core::dvec;
+use core::uint;
+use core::vec;
 
 pub trait Deque<T> {
     fn size() -> uint;
@@ -129,6 +131,8 @@ pub fn create<T: Copy>() -> Deque<T> {
 
 #[cfg(test)]
 mod tests {
+    use deque;
+
     #[test]
     fn test_simple() {
         let d: deque::Deque<int> = deque::create::<int>();

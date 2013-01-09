@@ -10,7 +10,11 @@
 
 //! Sorts items by name
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use extract;
+use sort_pass;
 
 pub fn mk_pass() -> Pass {
     pure fn by_item_name(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {

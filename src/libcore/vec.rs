@@ -14,20 +14,27 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
+use cast;
 use cmp::{Eq, Ord};
-use option::{Some, None};
-use ptr::addr_of;
+use iter;
+use libc;
 use libc::size_t;
+use option::{Some, None};
+use ptr;
+use ptr::addr_of;
+use sys;
+use uint;
+use vec;
 
 #[abi = "cdecl"]
-extern mod rustrt {
+pub extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **raw::VecRepr,
                           ++n: libc::size_t);
 }
 
 #[abi = "rust-intrinsic"]
-extern mod rusti {
+pub extern mod rusti {
     fn move_val_init<T>(dst: &mut T, -src: T);
     fn init<T>() -> T;
 }
@@ -196,7 +203,7 @@ pub pure fn build<A>(builder: fn(push: pure fn(v: A))) -> ~[A] {
 #[inline(always)]
 pub pure fn build_sized_opt<A>(size: Option<uint>,
                            builder: fn(push: pure fn(v: A))) -> ~[A] {
-    build_sized(size.get_default(4), builder)
+    build_sized(size.get_or_default(4), builder)
 }
 
 /// Produces a mut vector from an immutable vector.
@@ -1170,9 +1177,42 @@ pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
 }
 
 /**
- * Iterates over a vector, with option to break
+ * Iterates over a vector, yielding each element to a closure.
  *
- * Return true to continue, false to break.
+ * # Arguments
+ *
+ * * `v` - A vector, to be iterated over
+ * * `f` - A closure to do the iterating. Within this closure, return true to
+ * * continue iterating, false to break.
+ *
+ * # Examples
+ * ~~~
+ * [1,2,3].each(|&i| {
+ *     io::println(int::str(i));
+ *     true
+ * });
+ * ~~~
+ *
+ * ~~~
+ * [1,2,3,4,5].each(|&i| {
+ *     if i < 4 {
+ *         io::println(int::str(i));
+ *         true
+ *     }
+ *     else {
+ *         false
+ *     }
+ * });
+ * ~~~
+ *
+ * You probably will want to use each with a `for`/`do` expression, depending
+ * on your iteration needs:
+ *
+ * ~~~
+ * for [1,2,3].each |&i| {
+ *     io::println(int::str(i));
+ * }
+ * ~~~
  */
 #[inline(always)]
 pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
@@ -1799,6 +1839,11 @@ pub struct UnboxedVecRepr {
 
 /// Unsafe operations
 pub mod raw {
+    use managed;
+    use option;
+    use ptr;
+    use sys;
+    use vec::rusti;
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
@@ -1915,6 +1960,9 @@ pub mod raw {
       * may overlap.
       */
     pub unsafe fn memcpy<T>(dst: &[mut T], src: &[const T], count: uint) {
+        assert dst.len() >= count;
+        assert src.len() >= count;
+
         do as_mut_buf(dst) |p_dst, _len_dst| {
             do as_const_buf(src) |p_src, _len_src| {
                 ptr::memcpy(p_dst, p_src, count)
@@ -1929,6 +1977,9 @@ pub mod raw {
       * may overlap.
       */
     pub unsafe fn memmove<T>(dst: &[mut T], src: &[const T], count: uint) {
+        assert dst.len() >= count;
+        assert src.len() >= count;
+
         do as_mut_buf(dst) |p_dst, _len_dst| {
             do as_const_buf(src) |p_src, _len_src| {
                 ptr::memmove(p_dst, p_src, count)
@@ -1939,6 +1990,10 @@ pub mod raw {
 
 /// Operations on `[u8]`
 pub mod bytes {
+    use libc;
+    use uint;
+    use vec;
+    use vec::raw;
 
     /// Bytewise string comparison
     pub pure fn cmp(a: &~[u8], b: &~[u8]) -> int {
@@ -1986,9 +2041,7 @@ pub mod bytes {
       * may not overlap.
       */
     pub fn memcpy(dst: &[mut u8], src: &[const u8], count: uint) {
-        assert dst.len() >= count;
-        assert src.len() >= count;
-
+        // Bound checks are done at vec::raw::memcpy.
         unsafe { vec::raw::memcpy(dst, src, count) }
     }
 
@@ -1999,9 +2052,7 @@ pub mod bytes {
       * may overlap.
       */
     pub fn memmove(dst: &[mut u8], src: &[const u8], count: uint) {
-        assert dst.len() >= count;
-        assert src.len() >= count;
-
+        // Bound checks are done at vec::raw::memmove.
         unsafe { vec::raw::memmove(dst, src, count) }
     }
 }
@@ -2229,6 +2280,8 @@ impl<A:Copy> @[A] : iter::CopyableNonstrictIter<A> {
 
 #[cfg(test)]
 mod tests {
+    use option;
+    use vec::raw;
 
     fn square(n: uint) -> uint { return n * n; }
 
@@ -2581,7 +2634,9 @@ mod tests {
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
                 return option::Some::<int>(*i / 2);
-            } else { return option::None::<int>; }
+            } else {
+                return option::None::<int>;
+            }
         }
         fn halve_for_sure(i: &int) -> int { return *i / 2; }
         let all_even: ~[int] = ~[0, 2, 8, 6];
@@ -3677,6 +3732,15 @@ mod tests {
             fail
         }
     }
+
+    #[test]
+    #[should_fail]
+    fn test_memcpy_oob() unsafe {
+        let a = [mut 1, 2, 3, 4];
+        let b = [1, 2, 3, 4, 5];
+        raw::memcpy(a, b, 5);
+    }
+
 }
 
 // Local Variables:

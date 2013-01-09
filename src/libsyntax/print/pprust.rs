@@ -8,16 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use parse::{comments, lexer, token};
-use codemap::{CodeMap, BytePos};
-use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
-use print::pp::{breaks, consistent, inconsistent, eof};
 use ast::{required, provided};
+use ast;
+use ast_util;
 use ast_util::{operator_prec};
-use dvec::DVec;
+use attr;
+use codemap::{CodeMap, BytePos};
+use codemap;
+use diagnostic;
 use parse::classify::*;
 use parse::token::ident_interner;
-use str::{push_str, push_char};
+use parse::token;
+use parse::{comments, lexer, token};
+use parse;
+use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
+use print::pp::{breaks, consistent, inconsistent, eof};
+use print::pp;
+use print::pprust;
+
+use core::char;
+use core::dvec::DVec;
+use core::io;
+use core::option;
+use core::str::{push_str, push_char};
+use core::str;
+use core::u64;
+use core::vec;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {
@@ -26,11 +42,14 @@ enum ann_node {
     node_expr(ps, @ast::expr),
     node_pat(ps, @ast::pat),
 }
-type pp_ann = {pre: fn@(ann_node), post: fn@(ann_node)};
+struct pp_ann {
+    pre: fn@(ann_node),
+    post: fn@(ann_node)
+}
 
 fn no_ann() -> pp_ann {
     fn ignore(_node: ann_node) { }
-    return {pre: ignore, post: ignore};
+    return pp_ann {pre: ignore, post: ignore};
 }
 
 type ps =
@@ -67,7 +86,7 @@ fn rust_printer(writer: io::Writer, intr: @ident_interner) -> ps {
 }
 
 const indent_unit: uint = 4u;
-const alt_indent_unit: uint = 2u;
+const match_indent_unit: uint = 2u;
 
 const default_columns: uint = 78u;
 
@@ -1235,7 +1254,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, (*blk));
       }
       ast::expr_match(expr, ref arms) => {
-        cbox(s, alt_indent_unit);
+        cbox(s, match_indent_unit);
         ibox(s, 4);
         word_nbsp(s, ~"match");
         print_expr(s, expr);
@@ -1244,7 +1263,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         let len = (*arms).len();
         for (*arms).eachi |i, arm| {
             space(s.s);
-            cbox(s, alt_indent_unit);
+            cbox(s, match_indent_unit);
             ibox(s, 0u);
             let mut first = true;
             for arm.pats.each |p| {
@@ -1277,7 +1296,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
                             ast::expr_block(ref blk) => {
                                 // the block will close the pattern's ibox
                                 print_block_unclosed_indent(
-                                    s, (*blk), alt_indent_unit);
+                                    s, (*blk), match_indent_unit);
                             }
                             _ => {
                                 end(s); // close the ibox for the pattern
@@ -1294,10 +1313,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
                 }
             } else {
                 // the block will close the pattern's ibox
-                print_block_unclosed_indent(s, arm.body, alt_indent_unit);
+                print_block_unclosed_indent(s, arm.body, match_indent_unit);
             }
         }
-        bclose_(s, expr.span, alt_indent_unit);
+        bclose_(s, expr.span, match_indent_unit);
       }
       ast::expr_fn(proto, decl, ref body, cap_clause) => {
         // containing cbox, will be closed by print-block at }

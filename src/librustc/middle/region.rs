@@ -17,13 +17,17 @@ region parameterized.
 
 */
 
+
 use driver::session::Session;
 use metadata::csearch;
+use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
 
+use core::cmp;
 use core::dvec::DVec;
+use core::vec;
 use std::list;
 use std::list::list;
 use std::map::HashMap;
@@ -67,7 +71,7 @@ struct ctxt {
     // that when we visit it we can view it as a parent.
     root_exprs: HashMap<ast::node_id, ()>,
 
-    // The parent scope is the innermost block, statement, call, or alt
+    // The parent scope is the innermost block, statement, call, or match
     // expression during the execution of which the current expression
     // will be evaluated.  Generally speaking, the innermost parent
     // scope is also the closest suitable ancestor in the AST tree.
@@ -347,7 +351,7 @@ fn resolve_crate(sess: Session, def_map: resolve::DefMap,
                          region_map: HashMap(),
                          root_exprs: HashMap(),
                          parent: None};
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_block: resolve_block,
         visit_item: resolve_item,
         visit_fn: resolve_fn,
@@ -564,7 +568,7 @@ impl determine_rp_ctxt {
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
         debug!("with_item_id(%d, %b)", item_id, anon_implies_rp);
-        let _i = util::common::indenter();
+        let _i = ::util::common::indenter();
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;
@@ -777,7 +781,7 @@ fn determine_rp_in_crate(sess: Session,
                                   mut ambient_variance: rv_covariant});
 
     // Gather up the base set, worklist and dep_map
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: determine_rp_in_fn,
         visit_item: determine_rp_in_item,
         visit_ty: determine_rp_in_ty,

@@ -14,7 +14,8 @@
 // that things will look really good once we get that lock out of the
 // message path.
 
-use oldcomm::*;
+use core::oldcomm::*;
+use core::oldcomm;
 
 extern mod std;
 use std::time;

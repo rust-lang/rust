@@ -88,8 +88,12 @@ node twice.
 
 */
 
-use ext::base::*;
+use ast_util;
+use attr;
 use codemap::span;
+use ext::base::*;
+
+use core::vec;
 use std::map;
 use std::map::HashMap;
 
@@ -259,9 +263,18 @@ priv impl ext_ctxt {
         @{span: span, global: false, idents: strs, rp: None, types: ~[]}
     }
 
+    fn path_global(span: span, strs: ~[ast::ident]) -> @ast::path {
+        @{span: span, global: true, idents: strs, rp: None, types: ~[]}
+    }
+
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::Ty]) -> @ast::path {
         @{span: span, global: false, idents: strs, rp: None, types: tps}
+    }
+
+    fn path_tps_global(span: span, strs: ~[ast::ident],
+                       tps: ~[@ast::Ty]) -> @ast::path {
+        @{span: span, global: true, idents: strs, rp: None, types: tps}
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -332,6 +345,10 @@ priv impl ext_ctxt {
 
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
+    }
+
+    fn expr_path_global(span: span, strs: ~[ast::ident]) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
     fn expr_var(span: span, var: ~str) -> @ast::expr {
@@ -424,7 +441,7 @@ fn mk_ser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__S"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -436,7 +453,7 @@ fn mk_ser_impl(
     );
 
     // Make a path to the std::serialize::Encodable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -468,7 +485,7 @@ fn mk_deser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__D"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -480,7 +497,7 @@ fn mk_deser_impl(
     );
 
     // Make a path to the std::serialize::Decodable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -815,7 +832,7 @@ fn mk_deser_fields(
             cx.expr_blk(
                 cx.expr_call(
                     span,
-                    cx.expr_path(span, ~[
+                    cx.expr_path_global(span, ~[
                         cx.ident_of(~"std"),
                         cx.ident_of(~"serialize"),
                         cx.ident_of(~"Decodable"),
@@ -1019,7 +1036,7 @@ fn mk_enum_deser_variant_nary(
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
-                cx.expr_path(span, ~[
+                cx.expr_path_global(span, ~[
                     cx.ident_of(~"std"),
                     cx.ident_of(~"serialize"),
                     cx.ident_of(~"Decodable"),

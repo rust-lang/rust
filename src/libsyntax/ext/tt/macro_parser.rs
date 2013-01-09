@@ -9,19 +9,25 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
-use parse::token;
-use parse::token::{Token, EOF, to_str, nonterminal};
-use parse::lexer::*; //resolve bug?
-//import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
-use parse::parser::Parser;
-//import parse::common::parser_common;
-use parse::common::*; //resolve bug?
-use parse::parse_sess;
-use dvec::DVec;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use ast_util::mk_sp;
-use std::map::HashMap;
 use codemap::BytePos;
+use codemap;
+use parse::common::*; //resolve bug?
+use parse::lexer::*; //resolve bug?
+use parse::parse_sess;
+use parse::parser::Parser;
+use parse::token::{Token, EOF, to_str, nonterminal};
+use parse::token;
+
+use core::dvec::DVec;
+use core::dvec;
+use core::io;
+use core::option;
+use core::str;
+use core::uint;
+use core::vec;
+use std::map::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -239,7 +245,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
             /* at end of sequence */
             if idx >= len {
-                // can't move out of `alt`s, so:
+                // can't move out of `match`es, so:
                 if is_some(ei.up) {
                     // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)

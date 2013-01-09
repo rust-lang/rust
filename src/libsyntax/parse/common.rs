@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::{HashMap};
+use ast;
 use ast_util::spanned;
-use parse::parser::Parser;
 use parse::lexer::reader;
+use parse::parser::Parser;
+use parse::token;
+
+use core::option;
+use std::map::HashMap;
 
 type seq_sep = {
     sep: Option<token::Token>,

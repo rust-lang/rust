@@ -226,13 +226,17 @@ Borrowck results in two maps.
 
 #[legacy_exports];
 
+use middle::liveness;
 use middle::mem_categorization::*;
-use middle::ty::to_str;
+use middle::region;
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, note_and_explain_region};
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
 
+use core::cmp;
 use core::dvec::DVec;
+use core::io;
 use core::result::{Result, Ok, Err};
 use std::list::{List, Cons, Nil};
 use std::list;
@@ -333,7 +337,7 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-type mutbl_map = std::map::HashMap<ast::node_id, ()>;
+type mutbl_map = HashMap<ast::node_id, ()>;
 
 // Errors that can occur"]
 enum bckerr_code {
@@ -489,8 +493,8 @@ impl borrowck_ctxt {
         cat_variant(self.tcx, self.method_map, arg, enum_did, cmt)
     }
 
-    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, alt_id),.. *cmt};
+    fn cat_discr(cmt: cmt, match_id: ast::node_id) -> cmt {
+        return @{cat:cat_discr(cmt, match_id),.. *cmt};
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
@@ -514,11 +518,11 @@ impl borrowck_ctxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(s: span, m: ~str) {
+    fn span_err(s: span, +m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(s: span, m: ~str) {
+    fn span_note(s: span, +m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 

@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Eq;
-use send_map::linear::LinearMap;
-use pipes::{recv, oneshot, PortOne, send_one};
-use either::{Right,Left,Either};
-
 use json;
 use sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
+
+use core::either::{Either, Left, Right};
+use core::io;
+use core::option;
+use core::pipes::{recv, oneshot, PortOne, send_one};
+use core::result;
+use core::run;
+use core::send_map::linear::LinearMap;
+use core::task;
+use core::to_bytes;
 
 /**
 *
@@ -327,6 +332,7 @@ fn unwrap<T:Owned
 #[test]
 fn test() {
     use io::WriterUtil;
+
     let db = @Database { a: () };
     let lg = @Logger { a: () };
     let cfg = @LinearMap();

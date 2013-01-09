@@ -10,9 +10,15 @@
 
 //! Converts the Rust AST to the rustdoc document model
 
-use syntax::ast;
+use astsrv;
 use doc::ItemUtils;
-use task::local_data::local_data_get;
+use doc;
+
+use core::cast;
+use core::task::local_data::local_data_get;
+use core::vec;
+use syntax::ast;
+use syntax;
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
@@ -337,6 +343,12 @@ fn should_extract_struct_fields() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use doc;
+    use parse;
+
+    use core::vec;
 
     fn mk_doc(+source: ~str) -> doc::Doc {
         let ast = parse::from_str(source);

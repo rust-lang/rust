@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 /*!
  * A classic liveness analysis based on dataflow over the AST.  Computes,
  * for each local variable in a function, whether that variable is live
@@ -103,10 +104,20 @@
  */
 
 use middle::capture::{cap_move, cap_drop, cap_copy, cap_ref};
+use middle::capture;
+use middle::pat_util;
 use middle::ty::MoveValue;
+use middle::ty;
+use middle::typeck;
 
+use core::cmp;
 use core::dvec::DVec;
 use core::io::WriterUtil;
+use core::io;
+use core::ptr;
+use core::to_str;
+use core::uint;
+use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
@@ -194,7 +205,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
                crate: @crate) -> last_use_map {
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
         visit_local: visit_local,
         visit_expr: visit_expr,
@@ -414,7 +425,7 @@ impl IrMaps {
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
             sp: span, id: node_id, &&self: @IrMaps, v: vt<@IrMaps>) {
     debug!("visit_fn: id=%d", id);
-    let _i = util::common::indenter();
+    let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
     let fn_maps = @IrMaps(self.tcx, self.method_map,
@@ -476,7 +487,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let entry_ln = (*lsets).compute(decl, body);
 
     // check for various error conditions
-    let check_vt = visit::mk_vt(@{
+    let check_vt = visit::mk_vt(@visit::Visitor {
         visit_fn: check_fn,
         visit_local: check_local,
         visit_expr: check_expr,
@@ -1022,7 +1033,7 @@ impl Liveness {
     }
 
     fn propagate_through_decl(decl: @decl, succ: LiveNode) -> LiveNode {
-        match decl.node {
+        match /*bad*/copy decl.node {
           decl_local(locals) => {
             do locals.foldr(succ) |local, succ| {
                 self.propagate_through_local(*local, succ)
@@ -1071,7 +1082,7 @@ impl Liveness {
         debug!("propagate_through_expr: %s",
              expr_to_str(expr, self.tcx.sess.intr()));
 
-        match expr.node {
+        match /*bad*/copy expr.node {
           // Interesting cases with control flow or which gen/kill
 
           expr_path(_) => {
@@ -1552,7 +1563,7 @@ fn check_call(args: &[@expr],
 }
 
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
-    match expr.node {
+    match /*bad*/copy expr.node {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = self.live_node(expr.id, expr.span);

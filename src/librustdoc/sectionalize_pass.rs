@@ -10,11 +10,20 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use astsrv;
+use attr_pass;
 use doc::ItemUtils;
+use doc;
+use extract;
 use fold::Fold;
+use fold;
+
+use core::str;
+use core::vec;
+use std::par;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"sectionalize",
         f: run
     }
@@ -242,6 +251,12 @@ fn should_sectionalize_impl_methods() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

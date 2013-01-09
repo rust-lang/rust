@@ -28,14 +28,12 @@ use oldcomm::recv;
 fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    #[legacy_exports];
-    export putter;
-    export mapper;
-    export map_reduce;
+    use std::map;
+    use std::map::HashMap;
 
-    type putter = fn@(~str, ~str);
+    pub type putter = fn@(~str, ~str);
 
-    type mapper = extern fn(~str, putter);
+    pub type mapper = extern fn(~str, putter);
 
     enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
 
@@ -70,7 +68,7 @@ mod map_reduce {
         send(ctrl, mapper_done);
     }
 
-    fn map_reduce(inputs: ~[~str]) {
+    pub fn map_reduce(inputs: ~[~str]) {
         let ctrl = Port();
 
         // This task becomes the master control task. It spawns others

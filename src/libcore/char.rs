@@ -14,7 +14,12 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use char;
 use cmp::Eq;
+use str;
+use u32;
+use uint;
+use unicode;
 
 /*
     Lu  Uppercase_Letter    an uppercase letter

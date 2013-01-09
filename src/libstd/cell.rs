@@ -9,6 +9,9 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+
+use core::option;
+
 /// A dynamic, mutable location.
 ///
 /// Similar to a mutable option type, but friendlier.

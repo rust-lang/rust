@@ -36,8 +36,10 @@ fn declare_upcalls(targ_cfg: @session::config,
     fn nothrow(f: ValueRef) -> ValueRef {
         base::set_no_unwind(f); f
     }
-    let d = |a,b,c| decl(llmod, ~"upcall_", a, b, c);
-    let dv = |a,b| decl(llmod, ~"upcall_", a, b, T_void());
+    let d: &fn(+a: ~str, +b: ~[TypeRef], +c: TypeRef) -> ValueRef =
+        |a,b,c| decl(llmod, ~"upcall_", a, b, c);
+    let dv: &fn(+a: ~str, +b: ~[TypeRef]) -> ValueRef =
+        |a,b| decl(llmod, ~"upcall_", a, b, T_void());
 
     let int_t = T_int(targ_cfg);
 

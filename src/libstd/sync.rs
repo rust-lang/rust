@@ -17,7 +17,13 @@
  * in std.
  */
 
-use private::{Exclusive, exclusive};
+use core::option;
+use core::pipes;
+use core::private::{Exclusive, exclusive};
+use core::ptr;
+use core::task;
+use core::util;
+use core::vec;
 
 /****************************************************************************
  * Internals
@@ -702,6 +708,15 @@ impl &RWlockReadMode {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::cast;
+    use core::option;
+    use core::pipes;
+    use core::ptr;
+    use core::result;
+    use core::task;
+    use core::vec;
+
     /************************************************************************
      * Semaphore tests
      ************************************************************************/

@@ -8,78 +8,97 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::typeck::infer::integral::int_ty_set;
-use middle::typeck::infer::floating::float_ty_set;
-use middle::typeck::infer::unify::{redirect, root, var_value};
+use middle::ty::{FnMeta, FnTyBase, FnSig, FnVid};
+use middle::ty;
+use middle::typeck::infer::unify::{Redirect, Root, VarValue};
+use util::ppaux;
 
-trait ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str;
+use syntax::{ast, ast_util};
+
+use core::uint;
+use core::str;
+
+pub trait InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str;
 }
 
-impl ty::t: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
+impl ty::t : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
         ty_to_str(cx.tcx, self)
     }
 }
 
-impl ty::mt: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
+impl FnMeta : InferStr {
+    fn inf_str(_cx: @InferCtxt) -> ~str {
+        fmt!("%?", self)
+    }
+}
+
+impl FnSig : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
+        fmt!("(%s) -> %s",
+             str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
+             self.output.inf_str(cx))
+    }
+}
+
+impl<M:InferStr> FnTyBase<M> : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
+        fmt!("%s%s", self.meta.inf_str(cx), self.sig.inf_str(cx))
+    }
+}
+
+impl ty::mt : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
         mt_to_str(cx.tcx, self)
     }
 }
 
-impl ty::Region: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
-        util::ppaux::region_to_str(cx.tcx, self)
+impl ty::Region : InferStr {
+    fn inf_str(_cx: @InferCtxt) -> ~str {
+        fmt!("%?", self)
     }
 }
 
-impl ty::FnTy: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
-        ty::mk_fn(cx.tcx, self).to_str(cx)
-    }
-}
-
-impl<V:Copy ToStr> bound<V>: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
+impl<V:InferStr> Bound<V> : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
         match self {
-          Some(ref v) => (*v).to_str(cx),
+          Some(ref v) => v.inf_str(cx),
           None => ~"none"
         }
     }
 }
 
-impl<T:Copy ToStr> bounds<T>: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
+impl<T:InferStr> Bounds<T> : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
         fmt!("{%s <: %s}",
-             self.lb.to_str(cx),
-             self.ub.to_str(cx))
+             self.lb.inf_str(cx),
+             self.ub.inf_str(cx))
     }
 }
 
-impl int_ty_set: ToStr {
-    fn to_str(_cx: infer_ctxt) -> ~str {
+impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
+    fn inf_str(cx: @InferCtxt) -> ~str {
         match self {
-          int_ty_set(v) => uint::to_str(v, 10u)
-        }
-    }
-}
-
-impl float_ty_set: ToStr {
-    fn to_str(_cx: infer_ctxt) -> ~str {
-        match self {
-          float_ty_set(v) => uint::to_str(v, 10u)
-        }
-    }
-}
-
-impl<V:Copy vid, T:Copy ToStr> var_value<V, T>: ToStr {
-    fn to_str(cx: infer_ctxt) -> ~str {
-        match self {
-          redirect(ref vid) => fmt!("redirect(%s)", (*vid).to_str()),
-          root(ref pt, rk) => fmt!("root(%s, %s)", (*pt).to_str(cx),
+          Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
+          Root(ref pt, rk) => fmt!("Root(%s, %s)", pt.inf_str(cx),
                                uint::to_str(rk, 10u))
         }
+    }
+}
+
+impl IntVarValue : InferStr {
+    fn inf_str(_cx: @InferCtxt) -> ~str {
+        match self {
+            IntType(t) => ast_util::int_ty_to_str(t),
+            UintType(t) => ast_util::uint_ty_to_str(t)
+        }
+    }
+}
+
+impl ast::float_ty : InferStr {
+    fn inf_str(_cx: @InferCtxt) -> ~str {
+        ast_util::float_ty_to_str(self)
     }
 }
 

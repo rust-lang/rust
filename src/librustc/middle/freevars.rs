@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-use syntax::print::pprust::path_to_str;
+use middle::resolve;
+use middle::ty;
+
+use core::int;
+use core::option::*;
+use core::vec;
 use std::map::*;
-use option::*;
-use syntax::{ast, ast_util, visit};
 use syntax::codemap::span;
+use syntax::print::pprust::path_to_str;
+use syntax::{ast, ast_util, visit};
 
 export annotate_freevars;
 export freevar_map;
@@ -84,10 +90,11 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
             }
         };
 
-    let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr,
-                           .. *visit::default_visitor()});
+    let v = visit::mk_vt(@visit::Visitor {visit_item: ignore_item,
+                                          visit_expr: walk_expr,
+                                          .. *visit::default_visitor()});
     (v.visit_block)(blk, 1, v);
-    return @*refs;
+    return @/*bad*/copy *refs;
 }
 
 // Build a map from every function and for-each body to a set of the
@@ -106,8 +113,9 @@ fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
     };
 
     let visitor =
-        visit::mk_simple_visitor(@{visit_fn: walk_fn,
-                                   .. *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_fn: walk_fn,
+            .. *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 
     return freevars;

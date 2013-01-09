@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 /*!
  * # Categorization
  *
@@ -46,12 +47,18 @@
  * then an index to jump forward to the relevant item.
  */
 
-use syntax::ast;
-use syntax::ast::{m_imm, m_const, m_mutbl};
-use syntax::codemap::span;
-use syntax::print::pprust;
+use middle::ty;
+use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str};
 use util::common::indenter;
+
+use core::cmp;
+use core::to_bytes;
+use core::uint;
+use syntax::ast::{m_imm, m_const, m_mutbl};
+use syntax::ast;
+use syntax::codemap::span;
+use syntax::print::pprust;
 
 enum categorization {
     cat_rvalue,                     // result of eval'ing some misc expr
@@ -897,7 +904,7 @@ impl &mem_categorization_ctxt {
         //     local(x)->@->@
         //
         // where the id of `local(x)` is the id of the `x` that appears
-        // in the alt, the id of `local(x)->@` is the `@y` pattern,
+        // in the match, the id of `local(x)->@` is the `@y` pattern,
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
 
@@ -907,7 +914,7 @@ impl &mem_categorization_ctxt {
                pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
                self.cmt_to_repr(cmt));
 
-        match pat.node {
+        match /*bad*/copy pat.node {
           ast::pat_wild => {
             // _
           }
@@ -1111,7 +1118,7 @@ fn field_mutbl(tcx: ty::ctxt,
                f_name: ast::ident,
                node_id: ast::node_id) -> Option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
-    match ty::get(base_ty).sty {
+    match /*bad*/copy ty::get(base_ty).sty {
       ty::ty_rec(fields) => {
         for fields.each |f| {
             if f.ident == f_name {

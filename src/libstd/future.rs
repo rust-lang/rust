@@ -21,9 +21,12 @@
  * ~~~
  */
 
-use either::Either;
-use pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
-use cast::copy_lifetime;
+use core::cast::copy_lifetime;
+use core::cast;
+use core::either::Either;
+use core::option;
+use core::pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::task;
 
 #[doc = "The future type"]
 pub struct Future<A> {
@@ -142,6 +145,9 @@ pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
 
 #[allow(non_implicitly_copyable_typarams)]
 pub mod test {
+    use core::pipes::oneshot;
+    use core::task;
+
     #[test]
     pub fn test_from_value() {
         let f = from_value(~"snail");

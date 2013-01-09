@@ -16,11 +16,14 @@
  */
 #[forbid(deprecated_mode)];
 
-use libc::c_void;
-use ptr::addr_of;
-use core::oldcomm::{Port, Chan, listen};
-use task::TaskBuilder;
 use ll = uv_ll;
+
+use core::libc::c_void;
+use core::libc;
+use core::oldcomm::{Port, Chan, listen};
+use core::ptr::addr_of;
+use core::task::TaskBuilder;
+use core::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 pub enum IoTask {
@@ -173,6 +176,14 @@ extern fn tear_down_close_cb(handle: *ll::uv_async_t) unsafe {
 
 #[cfg(test)]
 mod test {
+    use uv::ll;
+
+    use core::iter;
+    use core::libc;
+    use core::oldcomm;
+    use core::ptr;
+    use core::task;
+
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, fmt!("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)

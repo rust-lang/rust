@@ -19,6 +19,8 @@ Runtime type reflection
 
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;
+use sys;
+use vec;
 
 /**
  * Trait for visitor that wishes to reflect on data. To use this, create a

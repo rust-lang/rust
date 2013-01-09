@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Decoding metadata from a single crate's metadata
 
 use cmd = metadata::cstore::crate_metadata;
@@ -16,12 +17,22 @@ use hash::{Hash, HashUtil};
 use io::WriterUtil;
 use metadata::common::*;
 use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
+use metadata::csearch;
+use metadata::cstore;
+use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 use metadata::tydecode::{parse_ident};
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use reader = std::ebml::reader;
+use core::cmp;
+use core::dvec;
+use core::int;
+use core::io;
+use core::option;
+use core::str;
+use core::vec;
+use std::ebml::reader;
 use std::ebml;
 use std::map::HashMap;
 use std::map;
@@ -58,12 +69,12 @@ export get_supertraits;
 export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_item_attrs;
-export get_crate_module_paths;
 export def_like;
 export dl_def;
 export dl_impl;
 export dl_field;
 export path_entry;
+export each_lang_item;
 export each_path;
 export get_item_path;
 export maybe_find_item; // sketchy
@@ -462,10 +473,27 @@ struct path_entry {
     def_like: def_like,
 }
 
-fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
+fn path_entry(+path_string: ~str, def_like: def_like) -> path_entry {
     path_entry {
         path_string: path_string,
         def_like: def_like
+    }
+}
+
+/// Iterates over the language items in the given crate.
+fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
+    let root = reader::Doc(cdata.data);
+    let lang_items = reader::get_doc(root, tag_lang_items);
+    for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
+        let id_doc = reader::get_doc(item_doc, tag_lang_items_item_id);
+        let id = reader::doc_as_u32(id_doc) as uint;
+        let node_id_doc = reader::get_doc(item_doc,
+                                          tag_lang_items_item_node_id);
+        let node_id = reader::doc_as_u32(node_id_doc) as ast::node_id;
+
+        if !f(node_id, id) {
+            break;
+        }
     }
 }
 
@@ -493,7 +521,8 @@ fn each_path(intr: @ident_interner, cdata: cmd,
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
                 // Hand the information off to the iteratee.
-                let this_path_entry = path_entry(path, def_like);
+                // XXX: Bad copy.
+                let this_path_entry = path_entry(copy path, def_like);
                 if !f(this_path_entry) {
                     broken = true;      // XXX: This is awful.
                 }
@@ -581,7 +610,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(intr, item_doc));
     match decode_inlined_item(cdata, tcx, path, item_doc) {
-      Some(ref ii) => csearch::found((*ii)),
+      Some(ref ii) => csearch::found((/*bad*/copy *ii)),
       None => {
         match item_parent_item(item_doc) {
           Some(did) => {
@@ -589,7 +618,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
             let parent_item = lookup_item(did.node, cdata.data);
             match decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
-              Some(ref ii) => csearch::found_parent(did, (*ii)),
+              Some(ref ii) => csearch::found_parent(did, (/*bad*/copy *ii)),
               None => csearch::not_found
             }
           }
@@ -728,7 +757,7 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ty = doc_type(mth, tcx, cdata);
         let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
-          ty::ty_fn(ref f) => (*f),
+          ty::ty_fn(ref f) => (/*bad*/copy *f),
           _ => {
             tcx.diag.handler().bug(
                 ~"get_trait_methods: id has non-function type");
@@ -759,7 +788,7 @@ fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 
         let fty;
         match ty::get(ty).sty {
-            ty::ty_fn(ref f) => fty = (*f),
+            ty::ty_fn(ref f) => fty = (/*bad*/copy *f),
             _ => {
                 tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
                                          has non-function type");
@@ -1000,7 +1029,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             attrs.push(
-                {node: {style: ast::attr_outer, value: *meta_item,
+                {node: {style: ast::attr_outer, value: /*bad*/copy *meta_item,
                         is_sugared_doc: false},
                  span: ast_util::dummy_sp()});
         };
@@ -1075,49 +1104,22 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (*ver),
+      Some(ref ver) => (/*bad*/copy *ver),
       None => ~"0.0"
     };
 }
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
-                    proc: fn(~str, ast::def_id)) {
+                    proc: fn(+path: ~str, ast::def_id)) {
     for each_path(intr, cdata, get_crate_data) |path_entry| {
         match path_entry.def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {
-                proc(path_entry.path_string, ast_util::def_id_of_def(def))
+                proc(/*bad*/copy path_entry.path_string,
+                     ast_util::def_id_of_def(def))
             }
         }
-    }
-}
-
-fn get_crate_module_paths(intr: @ident_interner, cdata: cmd,
-                          get_crate_data: GetCrateDataCb)
-                                    -> ~[(ast::def_id, ~str)] {
-    fn mod_of_path(p: ~str) -> ~str {
-        str::connect(vec::init(str::split_str(p, ~"::")), ~"::")
-    }
-
-    // find all module (path, def_ids), which are not
-    // fowarded path due to renamed import or reexport
-    let mut res = ~[];
-    let mods = map::HashMap();
-    do iter_crate_items(intr, cdata, get_crate_data) |path, did| {
-        let m = mod_of_path(path);
-        if str::is_not_empty(m) {
-            // if m has a sub-item, it must be a module
-            mods.insert(m, true);
-        }
-        // Collect everything by now. There might be multiple
-        // paths pointing to the same did. Those will be
-        // unified later by using the mods map
-        res.push((did, path));
-    }
-    return do vec::filter(res) |x| {
-        let (_, xp) = *x;
-        mods.contains_key(xp)
     }
 }
 

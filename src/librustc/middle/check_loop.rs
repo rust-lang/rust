@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use middle::ty;
+
 use syntax::ast::*;
 use syntax::visit;
 
@@ -16,7 +19,7 @@ type ctx = {in_loop: bool, can_ret: bool};
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate,
                        {in_loop: false, can_ret: true},
-                       visit::mk_vt(@{
+                       visit::mk_vt(@visit::Visitor {
         visit_item: |i, _cx, v| {
             visit::visit_item(i, {in_loop: false, can_ret: true}, v);
         },

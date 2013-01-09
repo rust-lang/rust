@@ -8,13 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map;
-use std::map::HashMap;
 use ast::*;
-use print::pprust;
+use ast;
 use ast_util::{path_to_ident, stmt_id};
+use ast_util;
+use attr;
+use codemap;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
+use print::pprust;
+use visit;
+
+use core::cmp;
+use core::either;
+use core::str;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+use std;
 
 enum path_elt {
     path_mod(ident),
@@ -97,7 +108,7 @@ fn extend(cx: ctx, +elt: ident) -> @path {
 }
 
 fn mk_ast_map_visitor() -> vt {
-    return visit::mk_vt(@{
+    return visit::mk_vt(@visit::Visitor {
         visit_item: map_item,
         visit_expr: map_expr,
         visit_stmt: map_stmt,

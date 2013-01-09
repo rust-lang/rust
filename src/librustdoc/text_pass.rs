@@ -10,12 +10,17 @@
 
 //! Generic pass for performing an operation on all descriptions
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
 use util::NominalOp;
 
+use std::par;
+
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
-    {
+    Pass {
         name: name,
         f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, copy op)
@@ -284,6 +289,16 @@ fn should_execute_on_impl_method_section_bodies() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use desc_to_brief_pass;
+    use doc;
+    use extract;
+    use sectionalize_pass;
+
+    use core::str;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

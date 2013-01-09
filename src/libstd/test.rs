@@ -17,17 +17,28 @@
 
 #[forbid(deprecated_mode)];
 
+use getopts;
+use sort;
+use term;
+
 use core::cmp::Eq;
-use either::Either;
-use result::{Ok, Err};
-use io::WriterUtil;
-use libc::size_t;
-use task::TaskBuilder;
+use core::either::Either;
+use core::either;
+use core::io::WriterUtil;
+use core::io;
+use core::libc::size_t;
+use core::oldcomm;
+use core::option;
+use core::result;
+use core::str;
+use core::task::TaskBuilder;
+use core::task;
+use core::vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_sched_threads() -> libc::size_t;
+    fn rust_sched_threads() -> size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -44,12 +55,12 @@ pub type TestFn = fn~();
 
 // The definition of a single test. A test runner will run a list of
 // these.
-pub type TestDesc = {
+pub struct TestDesc {
     name: TestName,
     testfn: TestFn,
     ignore: bool,
     should_fail: bool
-};
+}
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
@@ -230,14 +241,14 @@ fn print_failures(st: ConsoleTestState) {
 #[test]
 fn should_sort_failures_before_printing_them() {
     let s = do io::with_str_writer |wr| {
-        let test_a = {
+        let test_a = TestDesc {
             name: ~"a",
             testfn: fn~() { },
             ignore: false,
             should_fail: false
         };
 
-        let test_b = {
+        let test_b = TestDesc {
             name: ~"b",
             testfn: fn~() { },
             ignore: false,
@@ -359,10 +370,11 @@ fn filter_tests(opts: &TestOpts,
     } else {
         fn filter(test: &TestDesc) -> Option<TestDesc> {
             if test.ignore {
-                return option::Some({name: test.name,
-                                  testfn: copy test.testfn,
-                                  ignore: false,
-                                  should_fail: test.should_fail});
+                return option::Some(TestDesc {
+                    name: test.name,
+                    testfn: copy test.testfn,
+                    ignore: false,
+                    should_fail: test.should_fail});
             } else { return option::None; }
         };
 
@@ -414,10 +426,15 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 mod tests {
     #[legacy_exports];
 
+    use core::either;
+    use core::oldcomm;
+    use core::option;
+    use core::vec;
+
     #[test]
     fn do_not_run_ignored_tests() {
         fn f() { fail; }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: true,
@@ -433,7 +450,7 @@ mod tests {
     #[test]
     fn ignored_tests_result_in_ignored() {
         fn f() { }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: true,
@@ -450,7 +467,7 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_should_fail() {
         fn f() { fail; }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: false,
@@ -466,7 +483,7 @@ mod tests {
     #[test]
     fn test_should_fail_but_succeeds() {
         fn f() { }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: false,
@@ -507,10 +524,10 @@ mod tests {
         let opts = {filter: option::None, run_ignored: true,
             logfile: option::None};
         let tests =
-            ~[{name: ~"1", testfn: fn~() { },
-               ignore: true, should_fail: false},
-             {name: ~"2", testfn: fn~() { },
-              ignore: false, should_fail: false}];
+            ~[TestDesc {name: ~"1", testfn: fn~() { },
+                        ignore: true, should_fail: false},
+              TestDesc {name: ~"2", testfn: fn~() { },
+                        ignore: false, should_fail: false}];
         let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1u);
@@ -535,8 +552,9 @@ mod tests {
             let testfn = fn~() { };
             let mut tests = ~[];
             for vec::each(names) |name| {
-                let test = {name: *name, testfn: copy testfn, ignore: false,
-                            should_fail: false};
+                let test = TestDesc {
+                    name: *name, testfn: copy testfn, ignore: false,
+                    should_fail: false};
                 tests.push(move test);
             }
             move tests

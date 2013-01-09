@@ -15,11 +15,18 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
+use astsrv;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+
+use core::str;
+use core::vec;
+use std::par;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"desc_to_brief",
         f: run
     }
@@ -93,6 +100,12 @@ fn should_promote_impl_method_desc() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use doc;
+    use extract;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");

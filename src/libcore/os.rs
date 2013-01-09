@@ -30,14 +30,24 @@
  * to write OS-ignorant code by default.
  */
 
-use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
-           mode_t, pid_t, FILE};
-pub use libc::{close, fclose};
-
+use cast;
+use either;
+use io;
+use libc;
+use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
+use libc::{mode_t, pid_t, FILE};
+use option;
 use option::{Some, None};
-
-pub use os::consts::*;
+use private;
+use ptr;
+use str;
+use task;
 use task::TaskBuilder;
+use uint;
+use vec;
+
+pub use libc::{close, fclose};
+pub use os::consts::*;
 
 // FIXME: move these to str perhaps? #2620
 
@@ -78,6 +88,10 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 pub mod win32 {
+    use libc;
+    use vec;
+    use str;
+    use option;
     use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
@@ -127,6 +141,12 @@ pub fn env() -> ~[(~str,~str)] {
 
 mod global_env {
     //! Internal module for serializing access to getenv/setenv
+    use either;
+    use libc;
+    use oldcomm;
+    use private;
+    use str;
+    use task;
 
     extern mod rustrt {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
@@ -142,7 +162,7 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     oldcomm::Chan(&po)));
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -150,8 +170,8 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgSetEnv(str::from_slice(n),
-                                     str::from_slice(v),
-                                     oldcomm::Chan(&po)));
+                                        str::from_slice(v),
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -195,6 +215,13 @@ mod global_env {
     }
 
     mod impl_ {
+        use cast;
+        use libc;
+        use option;
+        use ptr;
+        use str;
+        use vec;
+
         extern mod rustrt {
             fn rust_env_pairs() -> ~[~str];
         }
@@ -355,13 +382,8 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return pre() + str::from_slice(base) + dll_suffix();
-
-    #[cfg(unix)]
-    fn pre() -> ~str { ~"lib" }
-
-    #[cfg(windows)]
-    fn pre() -> ~str { ~"" }
+    return str::from_slice(DLL_PREFIX) + str::from_slice(base) +
+           str::from_slice(DLL_SUFFIX)
 }
 
 
@@ -483,14 +505,14 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(getenv_nonempty("TMPDIR"),
+        option::get_or_default(getenv_nonempty("TMPDIR"),
                             Path("/tmp"))
     }
 
     #[cfg(windows)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(
+        option::get_or_default(
                     option::or(getenv_nonempty("TMP"),
                     option::or(getenv_nonempty("TEMP"),
                     option::or(getenv_nonempty("USERPROFILE"),
@@ -851,52 +873,94 @@ extern {
     pub fn _NSGetArgv() -> ***c_char;
 }
 
-#[cfg(unix)]
-pub fn family() -> ~str { ~"unix" }
-
-#[cfg(windows)]
-pub fn family() -> ~str { ~"windows" }
-
-#[cfg(target_os = "macos")]
 mod consts {
-    pub fn sysname() -> ~str { ~"macos" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".dylib" }
+
+    #[cfg(unix)]
+    use os::consts::unix::*;
+
+    #[cfg(windows)]
+    use os::consts::windows::*;
+
+    pub mod unix {
+        pub const FAMILY: &str = "unix";
+    }
+
+    pub mod windows {
+        pub const FAMILY: &str = "windows";
+    }
+
+
+    #[cfg(target_os = "macos")]
+    use os::consts::macos::*;
+
+    #[cfg(target_os = "freebsd")]
+    use os::consts::freebsd::*;
+
+    #[cfg(target_os = "linux")]
+    use os::consts::linux::*;
+
+    #[cfg(target_os = "win32")]
+    use os::consts::win32::*;
+
+    pub mod macos {
+        pub const SYSNAME: &str = "macos";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".dylib";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod freebsd {
+        pub const SYSNAME: &str = "freebsd";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod linux {
+        pub const SYSNAME: &str = "linux";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod win32 {
+        pub const SYSNAME: &str = "win32";
+        pub const DLL_PREFIX: &str = "";
+        pub const DLL_SUFFIX: &str = ".dll";
+        pub const EXE_SUFFIX: &str = ".exe";
+    }
+
+
+    #[cfg(target_arch = "x86")]
+    use os::consts::x86::*;
+
+    #[cfg(target_arch = "x86_64")]
+    use os::consts::x86_64::*;
+
+    #[cfg(target_arch = "arm")]
+    use os::consts::arm::*;
+
+    pub mod x86 {
+        pub const ARCH: &str = "x86";
+    }
+    pub mod x86_64 {
+        pub const ARCH: &str = "x86_64";
+    }
+    pub mod arm {
+        pub const ARCH: &str = "arm";
+    }
 }
-
-#[cfg(target_os = "freebsd")]
-mod consts {
-    pub fn sysname() -> ~str { ~"freebsd" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "linux")]
-mod consts {
-    pub fn sysname() -> ~str { ~"linux" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "win32")]
-mod consts {
-    pub fn sysname() -> ~str { ~"win32" }
-    pub fn exe_suffix() -> ~str { ~".exe" }
-    pub fn dll_suffix() -> ~str { ~".dll" }
-}
-
-#[cfg(target_arch = "x86")]
-pub fn arch() -> ~str { ~"x86" }
-
-#[cfg(target_arch = "x86_64")]
-pub fn arch() -> ~str { ~"x86_64" }
-
-#[cfg(target_arch = "arm")]
-pub fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use libc;
+    use option;
+    use os;
+    use rand;
+    use run;
+    use str;
+    use vec;
 
     #[test]
     pub fn last_os_error() {

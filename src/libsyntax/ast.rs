@@ -10,9 +10,16 @@
 
 // The Rust abstract syntax tree.
 
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use ast;
 use codemap::{span, FileName};
 use parse::token;
+
+use core::cast;
+use core::cmp;
+use core::ptr;
+use core::task;
+use core::to_bytes;
+use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[auto_encode]
 #[auto_decode]
@@ -408,18 +415,12 @@ impl mutability : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum Proto {
     ProtoBare,     // bare functions (deprecated)
     ProtoUniq,     // ~fn
     ProtoBox,      // @fn
     ProtoBorrowed, // &fn
-}
-
-impl Proto : cmp::Eq {
-    pure fn eq(&self, other: &Proto) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Proto) -> bool { !(*self).eq(other) }
 }
 
 impl Proto : to_bytes::IterBytes {
@@ -1061,20 +1062,24 @@ enum region_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 enum Onceness {
     Once,
     Many
 }
 
-impl Onceness : cmp::Eq {
-    pure fn eq(&self, other: &Onceness) -> bool {
-        match ((*self), *other) {
-            (Once, Once) | (Many, Many) => true,
-            _ => false
+impl Onceness : ToStr {
+    pure fn to_str() -> ~str {
+        match self {
+            ast::Once => ~"once",
+            ast::Many => ~"many"
         }
     }
-    pure fn ne(&self, other: &Onceness) -> bool {
-        !(*self).eq(other)
+}
+
+impl Onceness : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f);
     }
 }
 
@@ -1147,6 +1152,17 @@ enum purity {
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
     extern_fn, // declared with "extern fn"
+}
+
+impl purity : ToStr {
+    pure fn to_str() -> ~str {
+        match self {
+            impure_fn => ~"impure",
+            unsafe_fn => ~"unsafe",
+            pure_fn => ~"pure",
+            extern_fn => ~"extern"
+        }
+    }
 }
 
 impl purity : to_bytes::IterBytes {
