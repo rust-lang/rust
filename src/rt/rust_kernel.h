@@ -82,7 +82,8 @@ class rust_kernel {
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects max_sched_id and sched_table, join_list, killed
+    // Protects max_sched_id and sched_table, join_list, killed,
+    // already_exiting
     lock_and_signal sched_lock;
     // The next scheduler id
     rust_sched_id max_sched_id;
@@ -95,8 +96,13 @@ class rust_kernel {
     // task group fails). This propagates to all new schedulers and tasks
     // created after it is set.
     bool killed;
+    bool already_exiting;
+
 
     rust_sched_reaper sched_reaper;
+
+    // The primary scheduler
+    rust_sched_id main_scheduler;
     // The single-threaded scheduler that uses the main thread
     rust_sched_id osmain_scheduler;
     // Runs the single-threaded scheduler that executes tasks
@@ -111,7 +117,9 @@ class rust_kernel {
     std::vector<rust_port_id> weak_task_chans;
 
     rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
+    void allow_scheduler_exit();
     void end_weak_tasks();
+    void begin_shutdown();
 
     // Used to communicate with the process-side, global libuv loop
     uintptr_t global_loop_chan;
@@ -155,6 +163,7 @@ public:
 
     void set_exit_status(int code);
 
+    rust_sched_id main_sched_id() { return main_scheduler; }
     rust_sched_id osmain_sched_id() { return osmain_scheduler; }
 
     void register_task();

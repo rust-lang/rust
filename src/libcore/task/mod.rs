@@ -52,7 +52,7 @@ use prelude::*;
 use ptr;
 use result;
 use task::local_data_priv::{local_get, local_set};
-use task::rt::{task_id, rust_task};
+use task::rt::{task_id, sched_id, rust_task};
 use task;
 use util;
 use util::replace;
@@ -61,6 +61,12 @@ mod local_data_priv;
 pub mod local_data;
 pub mod rt;
 pub mod spawn;
+
+/// A handle to a scheduler
+#[deriving_eq]
+pub enum Scheduler {
+    SchedulerHandle(sched_id)
+}
 
 /// A handle to a task
 #[deriving_eq]
@@ -95,7 +101,21 @@ impl TaskResult : Eq {
 }
 
 /// Scheduler modes
+#[deriving_eq]
 pub enum SchedMode {
+    /// Run task on the default scheduler
+    DefaultScheduler,
+    /// Run task on the current scheduler
+    CurrentScheduler,
+    /// Run task on a specific scheduler
+    ExistingScheduler(Scheduler),
+    /**
+     * Tasks are scheduled on the main OS thread
+     *
+     * The main OS thread is the thread used to launch the runtime which,
+     * in most cases, is the process's initial thread as created by the OS.
+     */
+    PlatformThread,
     /// All tasks run in the same OS thread
     SingleThreaded,
     /// Tasks are distributed among available CPUs
@@ -104,53 +124,6 @@ pub enum SchedMode {
     ThreadPerTask,
     /// Tasks are distributed among a fixed number of OS threads
     ManualThreads(uint),
-    /**
-     * Tasks are scheduled on the main OS thread
-     *
-     * The main OS thread is the thread used to launch the runtime which,
-     * in most cases, is the process's initial thread as created by the OS.
-     */
-    PlatformThread
-}
-
-impl SchedMode : cmp::Eq {
-    pure fn eq(&self, other: &SchedMode) -> bool {
-        match (*self) {
-            SingleThreaded => {
-                match (*other) {
-                    SingleThreaded => true,
-                    _ => false
-                }
-            }
-            ThreadPerCore => {
-                match (*other) {
-                    ThreadPerCore => true,
-                    _ => false
-                }
-            }
-            ThreadPerTask => {
-                match (*other) {
-                    ThreadPerTask => true,
-                    _ => false
-                }
-            }
-            ManualThreads(e0a) => {
-                match (*other) {
-                    ManualThreads(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            PlatformThread => {
-                match (*other) {
-                    PlatformThread => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &SchedMode) -> bool {
-        !(*self).eq(other)
-    }
 }
 
 /**
@@ -204,7 +177,7 @@ pub type TaskOpts = {
     linked: bool,
     supervised: bool,
     mut notify_chan: Option<Chan<TaskResult>>,
-    sched: Option<SchedOpts>,
+    sched: SchedOpts,
 };
 
 /**
@@ -370,7 +343,7 @@ impl TaskBuilder {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
                 mut notify_chan: move notify_chan,
-                sched: Some({ mode: mode, foreign_stack_size: None})
+                sched: { mode: mode, foreign_stack_size: None}
             },
             can_not_copy: None,
             .. self.consume()
@@ -486,7 +459,10 @@ pub fn default_task_opts() -> TaskOpts {
         linked: true,
         supervised: false,
         mut notify_chan: None,
-        sched: None
+        sched: {
+            mode: DefaultScheduler,
+            foreign_stack_size: None
+        }
     }
 }
 
@@ -539,10 +515,9 @@ pub fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
 
 pub fn spawn_sched(mode: SchedMode, f: fn~()) {
     /*!
-     * Creates a new scheduler and executes a task on it
-     *
-     * Tasks subsequently spawned by that task will also execute on
-     * the new scheduler. When there are no more tasks to execute the
+     * Creates a new task on a new or existing scheduler
+
+     * When there are no more tasks to execute the
      * scheduler terminates.
      *
      * # Failure
@@ -588,6 +563,10 @@ pub fn get_task() -> Task {
     //! Get a handle to the running task
 
     TaskHandle(rt::get_task_id())
+}
+
+pub fn get_scheduler() -> Scheduler {
+    SchedulerHandle(rt::rust_get_sched_id())
 }
 
 /**
@@ -927,16 +906,19 @@ fn test_spawn_sched() {
 }
 
 #[test]
-fn test_spawn_sched_childs_on_same_sched() {
+fn test_spawn_sched_childs_on_default_sched() {
     let po = oldcomm::Port();
     let ch = oldcomm::Chan(&po);
+
+    // Assuming tests run on the default scheduler
+    let default_id = rt::rust_get_sched_id();
 
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = rt::rust_get_sched_id();
         do spawn {
             let child_sched_id = rt::rust_get_sched_id();
-            // This should be on the same scheduler
-            assert parent_sched_id == child_sched_id;
+            assert parent_sched_id != child_sched_id;
+            assert child_sched_id == default_id;
             oldcomm::send(ch, ());
         };
     };
@@ -1206,7 +1188,7 @@ fn test_spawn_thread_on_demand() {
 
         let (port2, chan2) = pipes::stream();
 
-        do spawn() |move chan2| {
+        do spawn_sched(CurrentScheduler) |move chan2| {
             chan2.send(());
         }
 

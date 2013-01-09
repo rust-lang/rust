@@ -652,7 +652,10 @@ new_task_common(rust_scheduler *sched, rust_task *parent) {
 extern "C" CDECL rust_task*
 new_task() {
     rust_task *task = rust_get_current_task();
-    return new_task_common(task->sched, task);
+    rust_sched_id sched_id = task->kernel->main_sched_id();
+    rust_scheduler *sched = task->kernel->get_scheduler_by_id(sched_id);
+    assert(sched != NULL && "should always have a main scheduler");
+    return new_task_common(sched, task);
 }
 
 extern "C" CDECL rust_task*
