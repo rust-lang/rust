@@ -30,6 +30,7 @@ rust_kernel::rust_kernel(rust_env *env) :
     rval(0),
     max_sched_id(1),
     killed(false),
+    already_exiting(false),
     sched_reaper(this),
     osmain_driver(NULL),
     non_weak_tasks(0),
@@ -38,13 +39,20 @@ rust_kernel::rust_kernel(rust_env *env) :
     env(env)
 
 {
-
     // Create the single threaded scheduler that will run on the platform's
     // main thread
-    rust_manual_sched_launcher_factory *launchfac =
+    rust_manual_sched_launcher_factory *osmain_launchfac =
         new rust_manual_sched_launcher_factory();
-    osmain_scheduler = create_scheduler(launchfac, 1, false);
-    osmain_driver = launchfac->get_driver();
+    osmain_scheduler = create_scheduler(osmain_launchfac, 1, false);
+    osmain_driver = osmain_launchfac->get_driver();
+
+    // Create the primary scheduler
+    rust_thread_sched_launcher_factory *main_launchfac =
+        new rust_thread_sched_launcher_factory();
+    main_scheduler = create_scheduler(main_launchfac,
+                                      env->num_sched_threads,
+                                      false);
+
     sched_reaper.start();
 }
 
@@ -103,15 +111,22 @@ rust_kernel::create_scheduler(rust_sched_launcher_factory *launchfac,
     {
         scoped_lock with(sched_lock);
 
-        if (sched_table.size() == 1) {
-            // The OS main scheduler may not exit while there are other
-            // schedulers
-            KLOG_("Disallowing osmain scheduler to exit");
-            rust_scheduler *sched =
-                get_scheduler_by_id_nolock(osmain_scheduler);
-            assert(sched != NULL);
-            sched->disallow_exit();
+        /*if (sched_table.size() == 2) {
+            // The main and OS main schedulers may not exit while there are
+            // other schedulers
+            KLOG_("Disallowing main scheduler to exit");
+            rust_scheduler *main_sched =
+                get_scheduler_by_id_nolock(main_scheduler);
+            assert(main_sched != NULL);
+            main_sched->disallow_exit();
         }
+        if (sched_table.size() == 1) {
+            KLOG_("Disallowing osmain scheduler to exit");
+            rust_scheduler *osmain_sched =
+                get_scheduler_by_id_nolock(osmain_scheduler);
+            assert(osmain_sched != NULL);
+            osmain_sched->disallow_exit();
+            }*/
 
         id = max_sched_id++;
         assert(id != INTPTR_MAX && "Hit the maximum scheduler id");
@@ -175,14 +190,21 @@ rust_kernel::wait_for_schedulers()
             sched_table.erase(iter);
             sched->join_task_threads();
             sched->deref();
+            /*if (sched_table.size() == 2) {
+                KLOG_("Allowing main scheduler to exit");
+                // It's only the main schedulers left. Tell them to exit
+                rust_scheduler *main_sched =
+                    get_scheduler_by_id_nolock(main_scheduler);
+                assert(main_sched != NULL);
+                main_sched->allow_exit();
+            }
             if (sched_table.size() == 1) {
                 KLOG_("Allowing osmain scheduler to exit");
-                // It's only the osmain scheduler left. Tell it to exit
-                rust_scheduler *sched =
+                rust_scheduler *osmain_sched =
                     get_scheduler_by_id_nolock(osmain_scheduler);
-                assert(sched != NULL);
-                sched->allow_exit();
-            }
+                assert(osmain_sched != NULL);
+                osmain_sched->allow_exit();
+            }*/
         }
         if (!sched_table.empty()) {
             sched_lock.wait();
@@ -319,12 +341,30 @@ rust_kernel::register_task() {
 }
 
 void
+rust_kernel::allow_scheduler_exit() {
+    scoped_lock with(sched_lock);
+
+    KLOG_("Allowing main scheduler to exit");
+    // It's only the main schedulers left. Tell them to exit
+    rust_scheduler *main_sched =
+        get_scheduler_by_id_nolock(main_scheduler);
+    assert(main_sched != NULL);
+    main_sched->allow_exit();
+
+    KLOG_("Allowing osmain scheduler to exit");
+    rust_scheduler *osmain_sched =
+        get_scheduler_by_id_nolock(osmain_scheduler);
+    assert(osmain_sched != NULL);
+    osmain_sched->allow_exit();
+}
+
+void
 rust_kernel::unregister_task() {
     KLOG_("Unregistering task");
     uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
     KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
     if (new_non_weak_tasks == 0) {
-        end_weak_tasks();
+        begin_shutdown();
     }
 }
 
@@ -338,7 +378,7 @@ rust_kernel::weaken_task(rust_port_id chan) {
     uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
     KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
     if (new_non_weak_tasks == 0) {
-        end_weak_tasks();
+        begin_shutdown();
     }
 }
 
@@ -372,6 +412,23 @@ rust_kernel::end_weak_tasks() {
         uintptr_t token = 0;
         send_to_port(chan, &token);
     }
+}
+
+void
+rust_kernel::begin_shutdown() {
+    {
+        scoped_lock with(sched_lock);
+        // FIXME #4410: This shouldn't be necessary, but because of
+        // unweaken_task this may end up getting called multiple times.
+        if (already_exiting) {
+            return;
+        } else {
+            already_exiting = true;
+        }
+    }
+
+    allow_scheduler_exit();
+    end_weak_tasks();
 }
 
 bool
