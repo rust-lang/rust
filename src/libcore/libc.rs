@@ -243,6 +243,12 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
+                use libc::types::os::arch::c95::{c_int, c_short, c_long,
+                                                 time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
@@ -443,9 +449,8 @@ pub mod types {
         pub mod common {
             pub mod posix01 {
                 use libc::types::os::arch::c95::{c_int, c_short};
-                use libc::types::os::arch::c99::int64_t;
-                use libc::types::os::arch::extra::time64_t;
-                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::extra::{int64, time64_t};
+                use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
 
                 // Note: this is the struct called stat64 in win32. Not stat,
@@ -458,7 +463,7 @@ pub mod types {
                     st_uid: c_short,
                     st_gid: c_short,
                     st_rdev: dev_t,
-                    st_size: int64_t,
+                    st_size: int64,
                     st_atime: time64_t,
                     st_mtime: time64_t,
                     st_ctime: time64_t,
@@ -539,6 +544,7 @@ pub mod types {
                 pub type WORD = u16;
 
                 pub type time64_t = i64;
+                pub type int64 = i64;
             }
         }
     }
