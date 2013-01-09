@@ -850,6 +850,8 @@ fn Resolver(session: Session, lang_items: LanguageItems,
         current_trait_refs: None,
 
         self_ident: special_idents::self_,
+        type_self_ident: special_idents::type_self,
+
         primitive_type_table: @PrimitiveTypeTable(session.
                                                   parse_sess.interner),
 
@@ -905,6 +907,8 @@ struct Resolver {
 
     // The ident for the keyword "self".
     self_ident: ident,
+    // The ident for the non-keyword "Self".
+    type_self_ident: ident,
 
     // The idents for the primitive types.
     primitive_type_table: @PrimitiveTypeTable,
@@ -3802,6 +3806,8 @@ impl Resolver {
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
                 self_type_rib.bindings.insert(self.self_ident,
+                                              dl_def(def_self_ty(item.id)));
+                self_type_rib.bindings.insert(self.type_self_ident,
                                               dl_def(def_self_ty(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
