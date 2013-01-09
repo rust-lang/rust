@@ -17,7 +17,13 @@
 use cmp;
 use num;
 
-pub use cmath::c_float_utils::*;
+pub use cmath::c_float_utils::{acos, asin, atan, atan2, cbrt, ceil};
+pub use cmath::c_float_utils::{copysign, cos, cosh, erf, erfc, exp, expm1};
+pub use cmath::c_float_utils::{exp2, abs, abs_sub, mul_add, fmax, fmin};
+pub use cmath::c_float_utils::{nextafter, frexp, hypot, ldexp, lgamma};
+pub use cmath::c_float_utils::{ln, log_radix, ln1p, log10, log2, ilog_radix};
+pub use cmath::c_float_utils::{modf, pow, round, sin, sinh, sqrt, tan};
+pub use cmath::c_float_utils::{tanh, tgamma, trunc};
 pub use cmath::c_float_targ_consts::*;
 
 // These are not defined inside consts:: for consistency with
@@ -52,6 +58,10 @@ pub pure fn ne(x: f32, y: f32) -> bool { return x != y; }
 pub pure fn ge(x: f32, y: f32) -> bool { return x >= y; }
 
 pub pure fn gt(x: f32, y: f32) -> bool { return x > y; }
+
+/// Returns `x` rounded down
+#[inline(always)]
+pub pure fn floor(x: f32) -> f32 { unsafe { floorf32(x) } }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
@@ -183,6 +193,11 @@ impl f32: num::Zero {
 
 impl f32: num::One {
     static pure fn one() -> f32 { 1.0 }
+}
+
+#[abi="rust-intrinsic"]
+pub extern {
+    fn floorf32(val: f32) -> f32;
 }
 
 //
