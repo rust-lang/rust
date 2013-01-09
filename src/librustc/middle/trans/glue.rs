@@ -12,6 +12,7 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
+use core::prelude::*;
 
 use lib::llvm::{ValueRef, TypeRef};
 use middle::trans::base::*;

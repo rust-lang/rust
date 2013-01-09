@@ -15,6 +15,7 @@
 #[forbid(deprecated_pattern)];
 
 use int;
+use prelude::*;
 use str;
 use task;
 use u32;
@@ -362,7 +363,8 @@ pub fn random() -> uint {
 
 #[cfg(test)]
 pub mod tests {
-    use option::Option;
+    use debug;
+    use option::{None, Option, Some};
     use rand;
 
     #[test]

@@ -20,6 +20,7 @@ Sendable hash maps.  Very much a work in progress.
 
 use cmp::Eq;
 use hash::Hash;
+use prelude::*;
 use to_bytes::IterBytes;
 
 pub trait SendMap<K:Eq Hash, V: Copy> {
@@ -45,9 +46,14 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 pub mod linear {
+    use cmp::Eq;
     use cmp;
+    use hash::Hash;
+    use kinds::Copy;
+    use option::{None, Option, Some};
     use option;
     use rand;
+    use to_bytes::IterBytes;
     use uint;
     use vec;
 
@@ -458,6 +464,7 @@ pub mod linear {
 
 #[test]
 pub mod test {
+    use option::{None, Some};
     use send_map::linear::LinearMap;
     use send_map::linear;
     use uint;

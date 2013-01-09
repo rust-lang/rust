@@ -58,12 +58,18 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
+use core::prelude::*;
 
+use middle::ty::TyVar;
 use middle::ty;
+use middle::typeck::infer::{ares, cres};
 use middle::typeck::infer::combine::combine_fields;
+use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::ToStr;
+use util::common::{indent, indenter};
 
 use core::option;
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
 fn to_ares(+c: cres<ty::t>) -> ares {

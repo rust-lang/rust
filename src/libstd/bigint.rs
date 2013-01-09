@@ -28,6 +28,8 @@ A BigDigit is half the size of machine word size.
 pub type BigDigit = u32;
 
 pub mod BigDigit {
+    use bigint::BigDigit;
+
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     pub const bits: uint = 16;
@@ -1147,10 +1149,10 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
+    use super::{BigInt, BigUint, BigDigit, Sign, Minus, Zero, Plus};
 
     use core::*;
     use core::num::{Num, Zero, One};
-    use super::{BigInt, BigUint, BigDigit};
 
     #[test]
     fn test_from_biguint() {

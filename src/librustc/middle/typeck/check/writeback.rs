@@ -12,18 +12,24 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
+use core::prelude::*;
 
 use middle::pat_util;
 use middle::ty;
-use middle::typeck::check::{fn_ctxt, lookup_local};
+use middle::typeck::check::{fn_ctxt, lookup_local, self_info};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
+use middle::typeck::{vtable_param, vtable_trait, write_substs_to_tcx};
+use middle::typeck::{write_ty_to_tcx};
 use util::ppaux;
 
 use core::result::{Result, Ok, Err};
 use core::vec;
+use std::map::HashMap;
 use syntax::ast;
+use syntax::codemap::span;
+use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
 export resolve_type_vars_in_fn;

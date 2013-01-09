@@ -11,6 +11,7 @@
 #[forbid(deprecated_mode)];
 
 use core::option;
+use core::prelude::*;
 
 /// A dynamic, mutable location.
 ///

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::{required, provided};
 use ast;
 use ast_util;
@@ -16,9 +18,9 @@ use attr;
 use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
-use parse::classify::*;
+use parse::classify::{expr_is_simple_block, expr_requires_semi_to_be_stmt};
+use parse::classify::{stmt_ends_with_semi};
 use parse::token::ident_interner;
-use parse::token;
 use parse::{comments, lexer, token};
 use parse;
 use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};

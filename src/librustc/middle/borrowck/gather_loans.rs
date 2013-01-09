@@ -16,17 +16,26 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
+use core::prelude::*;
 
 use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
-use middle::mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
+use middle::borrowck::{Loan, bckres, borrowck_ctxt, err_mutbl, req_maps};
+use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
+use middle::mem_categorization::{mem_categorization_ctxt};
+use middle::mem_categorization::{opt_deref_kind};
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
+use util::common::indenter;
+use util::ppaux::{expr_repr, region_to_str};
 
 use core::dvec;
 use core::send_map::linear::LinearMap;
 use core::vec;
+use std::map::HashMap;
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
+use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 

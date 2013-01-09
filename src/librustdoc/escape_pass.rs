@@ -10,6 +10,7 @@
 
 //! Escapes text sequences
 
+use pass::Pass;
 use text_pass;
 
 use core::str;

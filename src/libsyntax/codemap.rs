@@ -21,6 +21,8 @@ source code snippets, etc.
 
 */
 
+use core::prelude::*;
+
 use ast_util;
 
 use core::cmp;

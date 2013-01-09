@@ -15,18 +15,29 @@
 // 1. assignments are always made to mutable locations;
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
-// 4. moves to dnot affect things loaned out in any way
+// 4. moves do not affect things loaned out in any way
 
+use core::prelude::*;
 
+use middle::borrowck::{Loan, bckerr, borrowck_ctxt, cmt, inherent_mutability};
+use middle::borrowck::{req_maps, save_and_restore};
+use middle::mem_categorization::{cat_arg, cat_binding, cat_deref, cat_local};
+use middle::mem_categorization::{cat_rvalue, cat_special};
+use middle::mem_categorization::{loan_path, lp_arg, lp_comp, lp_deref};
+use middle::mem_categorization::{lp_local};
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
+use util::ppaux::ty_to_str;
 
 use core::cmp;
 use core::dvec::DVec;
 use core::uint;
 use core::vec;
+use std::map::HashMap;
+use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
+use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 

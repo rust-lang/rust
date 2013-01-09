@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use cmp;
 
 enum mode { mode_compile_fail, mode_run_fail, mode_run_pass, mode_pretty, }

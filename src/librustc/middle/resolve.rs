@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
@@ -3075,77 +3076,6 @@ impl Resolver {
                self.module_to_str(containing_module));
 
         return Success(PrefixFound(containing_module, i));
-
-        /*
-        // If we reached the end, return the containing module.
-        if i == module_path.len() {
-            return ModulePrefixResult {
-                result: Success(containing_module),
-                prefix_len: i
-            };
-        }
-
-        // Is the containing module the current module? If so, we allow
-        // globs to be unresolved.
-        let allow_globs = core::managed::ptr_eq(containing_module, module_);
-
-        let name = module_path.get_elt(i);
-        i += 1;
-
-        let resolve_result = self.resolve_name_in_module(containing_module,
-                                                         name,
-                                                         TypeNS,
-                                                         Xray,
-                                                         allow_globs);
-        match resolve_result {
-            Success(target) => {
-                match target.bindings.type_def {
-                    Some(ref type_def) => {
-                        match (*type_def).module_def {
-                            None => {
-                                error!("!!! (resolving crate-relative \
-                                        module) module wasn't actually a \
-                                        module!");
-                                return ModulePrefixResult {
-                                    result: Failed,
-                                    prefix_len: i
-                                };
-                            }
-                            Some(module_def) => {
-                                return ModulePrefixResult {
-                                    result: Success(module_def),
-                                    prefix_len: i
-                                };
-                            }
-                        }
-                    }
-                    None => {
-                        error!("!!! (resolving crate-relative module) module
-                                wasn't actually a module!");
-                        return ModulePrefixResult {
-                            result: Failed,
-                            prefix_len: i
-                        };
-                    }
-                }
-            }
-            Indeterminate => {
-                debug!("(resolving crate-relative module) indeterminate; \
-                        bailing");
-                return ModulePrefixResult {
-                    result: Indeterminate,
-                    prefix_len: i
-                };
-            }
-            Failed => {
-                debug!("(resolving crate-relative module) failed to resolve");
-                return ModulePrefixResult {
-                    result: Failed,
-                    prefix_len: i
-                };
-            }
-        }
-        */
     }
 
     fn name_is_exported(module_: @Module, name: ident) -> bool {
@@ -3165,7 +3095,6 @@ impl Resolver {
                               xray: XrayFlag,
                               allow_globs: bool)
                            -> ResolveResult<Target> {
-
         debug!("(resolving name in module) resolving `%s` in `%s`",
                self.session.str_of(name),
                self.module_to_str(module_));
@@ -4818,7 +4747,7 @@ impl Resolver {
         }
 
         return self.resolve_item_by_identifier_in_lexical_scope(identifier,
-                                                             namespace);
+                                                                namespace);
     }
 
     // XXX: Merge me with resolve_name_in_module?
@@ -5035,7 +4964,7 @@ impl Resolver {
         match self.resolve_item_in_lexical_scope(self.current_module,
                                                  ident,
                                                  namespace,
-                                                 SearchThroughModules) {
+                                                 DontSearchThroughModules) {
             Success(target) => {
                 match (*target.bindings).def_for_namespace(namespace) {
                     None => {

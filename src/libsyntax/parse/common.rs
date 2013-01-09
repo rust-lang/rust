@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use ast_util::spanned;
+use codemap::BytePos;
 use parse::lexer::reader;
 use parse::parser::Parser;
 use parse::token;
 
+use core::option::{None, Option, Some};
 use core::option;
 use std::map::HashMap;
 

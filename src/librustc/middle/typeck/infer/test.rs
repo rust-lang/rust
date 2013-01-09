@@ -16,22 +16,24 @@ Note: This module is only compiled when doing unit testing.
 
 */
 
-use dvec::DVec;
+use core::prelude::*;
+
+use driver::diagnostic;
+use driver::driver::{optgroups, build_session_options, build_session};
+use driver::driver::{str_input, build_configuration};
+use middle::lang_items::{LanguageItems, language_items};
+use middle::ty::{FnTyBase, FnMeta, FnSig};
+use util::ppaux::ty_to_str;
+
+use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use std::getopts::groups;
+use std::getopts::{opt_present};
+use std::getopts;
 use std::getopts;
 use std::map::HashMap;
-use std::getopts;
-use std::getopts::{opt_present};
-use std::getopts::groups;
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use driver::driver::{optgroups, build_session_options, build_session,
-                     str_input, build_configuration};
-use driver::diagnostic;
-use syntax::{ast, attr, parse};
-use syntax::parse::parse_crate_from_source_str;
-use middle::lang_items::LanguageItems;
-use util::ppaux::ty_to_str;
 use syntax::ast_util::dummy_sp;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use syntax::parse::parse_crate_from_source_str;
+use syntax::{ast, attr, parse};
 
 struct Env {
     crate: @ast::crate,

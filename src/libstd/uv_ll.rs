@@ -34,6 +34,7 @@
 
 use core::libc::size_t;
 use core::libc;
+use core::prelude::*;
 use core::ptr::to_unsafe_ptr;
 use core::ptr;
 use core::str;
@@ -319,6 +320,9 @@ pub type uv_getaddrinfo_t = {
 };
 
 pub mod uv_ll_struct_stubgen {
+    use uv_ll::{uv_async_t, uv_connect_t, uv_getaddrinfo_t, uv_tcp_t};
+    use uv_ll::{uv_timer_t, uv_write_t};
+
     use core::ptr;
 
     pub fn gen_stub_uv_tcp_t() -> uv_tcp_t {
@@ -1040,6 +1044,10 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 pub mod test {
+    use core::prelude::*;
+
+    use uv_ll::*;
+
     use core::libc;
     use core::oldcomm;
     use core::ptr;

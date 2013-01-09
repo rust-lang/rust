@@ -37,6 +37,11 @@ updating the states using rule (2) until there are no changes.
 
 */
 
+use core::prelude::*;
+
+use ext::base::ext_ctxt;
+use ext::pipes::protocol;
+
 use core::str;
 use std::bitv::{Bitv};
 

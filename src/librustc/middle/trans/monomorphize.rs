@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use back::link::mangle_exported_name;
 use middle::trans::base::{get_insn_ctxt};

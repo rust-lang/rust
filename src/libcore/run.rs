@@ -20,6 +20,7 @@ use libc::{pid_t, c_void, c_int};
 use oldcomm;
 use option::{Some, None};
 use os;
+use prelude::*;
 use ptr;
 use run;
 use str;
@@ -349,7 +350,7 @@ pub fn program_output(prog: &str, args: &[~str]) ->
     return {status: status, out: move outs, err: move errs};
 }
 
-fn writeclose(fd: c_int, s: ~str) {
+pub fn writeclose(fd: c_int, s: ~str) {
     use io::WriterUtil;
 
     error!("writeclose %d, %s", fd as int, s);
@@ -359,7 +360,7 @@ fn writeclose(fd: c_int, s: ~str) {
     os::close(fd);
 }
 
-fn readclose(fd: c_int) -> ~str {
+pub fn readclose(fd: c_int) -> ~str {
     let file = os::fdopen(fd);
     let reader = io::FILE_reader(file, false);
     let buf = io::with_bytes_writer(|writer| {
@@ -417,8 +418,11 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
+    use debug;
     use io::WriterUtil;
+    use option::{None, Some};
     use os;
+    use run::{readclose, writeclose};
     use run;
 
     // Regression test for memory leaks

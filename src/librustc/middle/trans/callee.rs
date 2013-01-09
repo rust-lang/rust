@@ -16,6 +16,7 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+use core::prelude::*;
 
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_item_val, trans_external_path};

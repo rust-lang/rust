@@ -13,6 +13,7 @@
 
 use core::cmp::{Eq, Ord};
 use core::dvec::DVec;
+use core::prelude::*;
 use core::util;
 use core::vec::{len, push};
 use core::vec;
@@ -715,6 +716,10 @@ fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
 mod test_qsort3 {
     #[legacy_exports];
 
+    use core::prelude::*;
+
+    use sort::*;
+
     use core::vec;
 
     fn check_sort(v1: &[mut int], v2: &[mut int]) {
@@ -757,6 +762,10 @@ mod test_qsort3 {
 #[cfg(test)]
 mod test_qsort {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use sort::*;
 
     use core::int;
     use core::vec;
@@ -821,6 +830,10 @@ mod test_qsort {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use sort::*;
 
     use core::vec;
 
@@ -887,6 +900,10 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
+    use core::prelude::*;
+
+    use sort::tim_sort;
+
     use core::rand;
     use core::vec;
 
@@ -980,6 +997,10 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
+    use core::prelude::*;
+
+    use sort::*;
+
     use core::rand;
     use core::task;
     use core::uint;

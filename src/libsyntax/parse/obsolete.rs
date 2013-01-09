@@ -17,10 +17,13 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
+use core::prelude::*;
+
 use ast::{expr, expr_lit, lit_nil};
 use ast;
 use ast_util::{respan};
 use codemap::span;
+use parse::parser::Parser;
 use parse::token::Token;
 use parse::token;
 

@@ -45,6 +45,7 @@ let unwrapped_msg = match move msg {
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
+use kinds::Copy;
 use option;
 use ptr;
 use str;

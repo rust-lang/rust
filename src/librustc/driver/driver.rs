@@ -9,6 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use back::link;
 use back::{x86, x86_64};
@@ -830,7 +831,13 @@ fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
 mod test {
     #[legacy_exports];
 
+    use core::prelude::*;
+
+    use driver::driver::{build_configuration, build_session};
+    use driver::driver::{build_session_options, optgroups, str_input};
+
     use core::vec;
+    use std::getopts::groups::getopts;
     use std::getopts;
     use syntax::attr;
     use syntax::diagnostic;
