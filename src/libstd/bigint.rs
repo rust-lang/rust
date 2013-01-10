@@ -481,6 +481,7 @@ pub impl BigUint {
     }
 }
 
+#[cfg(target_arch = "x86_64")]
 priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
     assert 1 < radix && radix <= 16;
     match radix {
@@ -499,6 +500,30 @@ priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
         14 => (1475789056, 8),
         15 => (2562890625, 8),
         16 => (4294967296, 8),
+        _  => fail
+    }
+}
+
+#[cfg(target_arch = "arm")]
+#[cfg(target_arch = "x86")]
+priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
+    assert 1 < radix && radix <= 16;
+    match radix {
+        2  => (65536, 16),
+        3  => (59049, 10),
+        4  => (65536, 8),
+        5  => (15625, 6),
+        6  => (46656, 6),
+        7  => (16807, 5),
+        8  => (32768, 5),
+        9  => (59049, 5),
+        10 => (10000, 4),
+        11 => (14641, 4),
+        12 => (20736, 4),
+        13 => (28561, 4),
+        14 => (38416, 4),
+        15 => (50625, 4),
+        16 => (65536, 4),
         _  => fail
     }
 }
@@ -853,8 +878,6 @@ mod biguint_tests {
     }
 
     #[test]
-    #[ignore(cfg(target_arch = "x86"))]
-    #[ignore(cfg(target_arch = "arm"))]
     fn test_shl() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
             assert BigUint::new(v) << shift == BigUint::new(ans);
@@ -865,10 +888,34 @@ mod biguint_tests {
         check(~[1 << (BigDigit::bits - 2)], 2, ~[0, 1]);
         check(~[1 << (BigDigit::bits - 2)], 3, ~[0, 2]);
         check(~[1 << (BigDigit::bits - 2)], 3 + BigDigit::bits, ~[0, 0, 2]);
-        check(~[0x7654_3210, 0xfedc_ba98, 0x7654_3210, 0xfedc_ba98], 4,
-              ~[0x6543_2100, 0xedcb_a987, 0x6543_210f, 0xedcb_a987, 0xf]);
-        check(~[0x2222_1111, 0x4444_3333, 0x6666_5555, 0x8888_7777], 16,
-              ~[0x1111_0000, 0x3333_2222, 0x5555_4444, 0x7777_6666, 0x8888]);
+
+        test_shl_bits();
+
+        #[cfg(target_arch = "x86_64")]
+        fn test_shl_bits() {
+            check(~[0x7654_3210, 0xfedc_ba98,
+                    0x7654_3210, 0xfedc_ba98], 4,
+                  ~[0x6543_2100, 0xedcb_a987,
+                    0x6543_210f, 0xedcb_a987, 0xf]);
+            check(~[0x2222_1111, 0x4444_3333,
+                    0x6666_5555, 0x8888_7777], 16,
+                  ~[0x1111_0000, 0x3333_2222,
+                    0x5555_4444, 0x7777_6666, 0x8888]);
+        }
+
+        #[cfg(target_arch = "arm")]
+        #[cfg(target_arch = "x86")]
+        fn test_shl_bits() {
+            check(~[0x3210, 0x7654, 0xba98, 0xfedc,
+                    0x3210, 0x7654, 0xba98, 0xfedc], 4,
+                  ~[0x2100, 0x6543, 0xa987, 0xedcb,
+                    0x210f, 0x6543, 0xa987, 0xedcb, 0xf]);
+            check(~[0x1111, 0x2222, 0x3333, 0x4444,
+                    0x5555, 0x6666, 0x7777, 0x8888], 16,
+                  ~[0x0000, 0x1111, 0x2222, 0x3333,
+                    0x4444, 0x5555, 0x6666, 0x7777, 0x8888]);
+        }
+
     }
 
     #[test]
@@ -885,11 +932,32 @@ mod biguint_tests {
         check(~[1 << 2], 2, ~[1]);
         check(~[1, 2], 3, ~[1 << (BigDigit::bits - 2)]);
         check(~[1, 1, 2], 3 + BigDigit::bits, ~[1 << (BigDigit::bits - 2)]);
-        check(~[0x6543_2100, 0xedcb_a987, 0x6543_210f, 0xedcb_a987, 0xf], 4,
-              ~[0x7654_3210, 0xfedc_ba98, 0x7654_3210, 0xfedc_ba98]);
-        check(~[0x1111_0000, 0x3333_2222, 0x5555_4444, 0x7777_6666, 0x8888],
-              16,
-              ~[0x2222_1111, 0x4444_3333, 0x6666_5555, 0x8888_7777]);
+        test_shr_bits();
+
+        #[cfg(target_arch = "x86_64")]
+        fn test_shr_bits() {
+            check(~[0x6543_2100, 0xedcb_a987,
+                    0x6543_210f, 0xedcb_a987, 0xf], 4,
+                  ~[0x7654_3210, 0xfedc_ba98,
+                    0x7654_3210, 0xfedc_ba98]);
+            check(~[0x1111_0000, 0x3333_2222,
+                    0x5555_4444, 0x7777_6666, 0x8888], 16,
+                  ~[0x2222_1111, 0x4444_3333,
+                    0x6666_5555, 0x8888_7777]);
+        }
+
+        #[cfg(target_arch = "arm")]
+        #[cfg(target_arch = "x86")]
+        fn test_shr_bits() {
+            check(~[0x2100, 0x6543, 0xa987, 0xedcb,
+                    0x210f, 0x6543, 0xa987, 0xedcb, 0xf], 4,
+                  ~[0x3210, 0x7654, 0xba98, 0xfedc,
+                    0x3210, 0x7654, 0xba98, 0xfedc]);
+            check(~[0x0000, 0x1111, 0x2222, 0x3333,
+                    0x4444, 0x5555, 0x6666, 0x7777, 0x8888], 16,
+                  ~[0x1111, 0x2222, 0x3333, 0x4444,
+                    0x5555, 0x6666, 0x7777, 0x8888]);
+        }
     }
 
     #[test]
@@ -1054,6 +1122,7 @@ mod biguint_tests {
     }
 
     fn to_str_pairs() -> ~[ (BigUint, ~[(uint, ~str)]) ] {
+        let bits = BigDigit::bits;
         ~[( Zero::zero(), ~[
             (2, ~"0"), (3, ~"0")
         ]), ( BigUint::from_slice([ 0xff ]), ~[
@@ -1077,24 +1146,39 @@ mod biguint_tests {
             (4,  ~"333333"),
             (16, ~"fff")
         ]), ( BigUint::from_slice([ 1, 2 ]), ~[
-            (2,  ~"10" + str::from_chars(vec::from_elem(31, '0')) + "1"),
-            (4,  ~"2"  + str::from_chars(vec::from_elem(15, '0')) + "1"),
-            (10, ~"8589934593"),
-            (16, ~"2"  + str::from_chars(vec::from_elem(7, '0')) + "1")
-        ]), (BigUint::from_slice([ 1, 2, 3 ]), ~[
-            (2,  ~"11" + str::from_chars(vec::from_elem(30, '0')) + "10" +
-             str::from_chars(vec::from_elem(31, '0')) + "1"),
-            (4,  ~"3"  + str::from_chars(vec::from_elem(15, '0')) + "2"  +
-             str::from_chars(vec::from_elem(15, '0')) + "1"),
-            (10, ~"55340232229718589441"),
-            (16, ~"3"  + str::from_chars(vec::from_elem(7, '0')) + "2"  +
-             str::from_chars(vec::from_elem(7, '0')) + "1")
-        ])]
+            (2,
+             ~"10" +
+             str::from_chars(vec::from_elem(bits - 1, '0')) + "1"),
+            (4,
+             ~"2" +
+             str::from_chars(vec::from_elem(bits / 2 - 1, '0')) + "1"),
+            (10, match bits {
+                32 => ~"8589934593", 16 => ~"131073", _ => fail
+            }),
+            (16,
+             ~"2" +
+             str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "1")
+        ]), ( BigUint::from_slice([ 1, 2, 3 ]), ~[
+            (2,
+             ~"11" +
+             str::from_chars(vec::from_elem(bits - 2, '0')) + "10" +
+             str::from_chars(vec::from_elem(bits - 1, '0')) + "1"),
+            (4,
+             ~"3" +
+             str::from_chars(vec::from_elem(bits / 2 - 1, '0')) + "2" +
+             str::from_chars(vec::from_elem(bits / 2 - 1, '0')) + "1"),
+            (10, match bits {
+                32 => ~"55340232229718589441",
+                16 => ~"12885032961",
+                _ => fail
+            }),
+            (16, ~"3" +
+             str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "2" +
+             str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "1")
+        ]) ]
     }
 
     #[test]
-    #[ignore(cfg(target_arch = "x86"))]
-    #[ignore(cfg(target_arch = "arm"))]
     fn test_to_str_radix() {
         for to_str_pairs().each |num_pair| {
             let &(n, rs) = num_pair;
@@ -1106,8 +1190,6 @@ mod biguint_tests {
     }
 
     #[test]
-    #[ignore(cfg(target_arch = "x86"))]
-    #[ignore(cfg(target_arch = "arm"))]
     fn test_from_str_radix() {
         for to_str_pairs().each |num_pair| {
             let &(n, rs) = num_pair;
