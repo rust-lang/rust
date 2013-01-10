@@ -10,10 +10,10 @@
 
 mod foo {
     mod bar {
-        pub fn y() { ::foo::x(); }
+        pub fn y() { super::super::foo::x(); }
     }
 
     pub fn x() { debug!("x"); }
 }
 
-fn main() { foo::bar::y(); }
+fn main() { self::foo::bar::y(); }
