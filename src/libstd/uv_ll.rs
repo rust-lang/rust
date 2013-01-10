@@ -1559,6 +1559,7 @@ pub mod test {
     pub mod tcp_and_server_client_test {
         #[cfg(target_arch="x86_64")]
         pub mod impl64 {
+            use uv_ll::test::*;
             #[test]
             pub fn test_uv_ll_tcp_server_and_request() unsafe {
                 impl_uv_tcp_server_and_request();
@@ -1566,6 +1567,7 @@ pub mod test {
         }
         #[cfg(target_arch="x86")]
         pub mod impl32 {
+            use uv_ll::test::*;
             #[test]
             #[ignore(cfg(target_os = "linux"))]
             pub fn test_uv_ll_tcp_server_and_request() unsafe {

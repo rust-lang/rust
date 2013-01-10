@@ -1270,7 +1270,7 @@ type TcpBufferedSocketData = {
 };
 
 //#[cfg(test)]
-mod test {
+pub mod test {
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
     use net::tcp::{connect, accept, read, listen, TcpSocket, socket_buf};
@@ -1290,13 +1290,14 @@ mod test {
     #[cfg(target_os="win32")]
     #[cfg(target_os="darwin")]
     #[cfg(target_os="linux")]
-    mod tcp_ipv4_server_and_client_test {
+    pub mod tcp_ipv4_server_and_client_test {
         #[cfg(target_arch="x86_64")]
-        mod impl64 {
-            use net::tcp::test::tcp_ipv4_server_and_client_test::*;
+        pub mod impl64 {
+            use net::tcp::test::*;
 
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() unsafe {
+                use net::tcp::test::tcp_ipv4_server_and_client_test::*;
                 impl_gl_tcp_ipv4_server_and_client();
             }
             #[test]
@@ -1325,8 +1326,8 @@ mod test {
             }
         }
         #[cfg(target_arch="x86")]
-        mod impl32 {
-            use net::tcp::test::tcp_ipv4_server_and_client_test::*;
+        pub mod impl32 {
+            use net::tcp::test::*;
 
             #[test]
             #[ignore(cfg(target_os = "linux"))]
@@ -1361,7 +1362,7 @@ mod test {
             }
         }
     }
-    fn impl_gl_tcp_ipv4_server_and_client() {
+    pub fn impl_gl_tcp_ipv4_server_and_client() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 8888u;
@@ -1407,7 +1408,7 @@ mod test {
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
     }
-    fn impl_gl_tcp_ipv4_get_peer_addr() {
+    pub fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 8887u;
@@ -1454,7 +1455,7 @@ mod test {
             client_ch.send(str::from_bytes(read_result.get()));
         };
     }
-    fn impl_gl_tcp_ipv4_client_error_connection_refused() {
+    pub fn impl_gl_tcp_ipv4_client_error_connection_refused() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 8889u;
@@ -1474,7 +1475,7 @@ mod test {
           _ => fail ~"unknown error.. expected connection_refused"
         }
     }
-    fn impl_gl_tcp_ipv4_server_address_in_use() {
+    pub fn impl_gl_tcp_ipv4_server_address_in_use() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 8890u;
@@ -1525,7 +1526,7 @@ mod test {
           }
         }
     }
-    fn impl_gl_tcp_ipv4_server_access_denied() {
+    pub fn impl_gl_tcp_ipv4_server_access_denied() {
         let hl_loop = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
         let server_port = 80u;
@@ -1544,7 +1545,7 @@ mod test {
           }
         }
     }
-    fn impl_gl_tcp_ipv4_server_client_reader_writer() {
+    pub fn impl_gl_tcp_ipv4_server_client_reader_writer() {
         /*
          XXX: Causes an ICE.
 
@@ -1597,7 +1598,7 @@ mod test {
         */
     }
 
-    fn impl_tcp_socket_impl_reader_handles_eof() {
+    pub fn impl_tcp_socket_impl_reader_handles_eof() {
         use core::io::{Reader,ReaderUtil};
 
         let hl_loop = uv::global_loop::get();
