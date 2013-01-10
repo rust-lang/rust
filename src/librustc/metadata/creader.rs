@@ -147,8 +147,7 @@ fn visit_item(e: env, i: @ast::item) {
 
         let cstore = e.cstore;
         let mut already_added = false;
-        let link_args = attr::find_attrs_by_name(/*bad*/copy i.attrs,
-                                                 ~"link_args");
+        let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
 
         match fm.sort {
           ast::named => {

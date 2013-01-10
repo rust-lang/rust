@@ -329,8 +329,7 @@ impl ctxt {
         for [allow, warn, deny, forbid].each |level| {
             let level_name = level_to_str(*level);
             let metas =
-                attr::attr_metas(attr::find_attrs_by_name(/*bad*/copy attrs,
-                                                          level_name));
+                attr::attr_metas(attr::find_attrs_by_name(attrs, level_name));
             for metas.each |meta| {
                 match /*bad*/copy meta.node {
                   ast::meta_list(_, metas) => {
