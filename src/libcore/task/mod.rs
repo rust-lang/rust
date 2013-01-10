@@ -63,14 +63,9 @@ pub mod rt;
 pub mod spawn;
 
 /// A handle to a task
+#[deriving_eq]
 pub enum Task {
     TaskHandle(task_id)
-}
-
-// XXX: deriving
-impl Task : cmp::Eq {
-    pure fn eq(&self, other: &Task) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &Task) -> bool { !(*self).eq(other) }
 }
 
 /**
