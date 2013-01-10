@@ -12,7 +12,7 @@ fn copy1<T: Copy>(t: T) -> fn@() -> T {
     fn@() -> T { t } //~ ERROR value may contain borrowed pointers
 }
 
-fn copy2<T: Copy Durable>(t: T) -> fn@() -> T {
+fn copy2<T: Copy &static>(t: T) -> fn@() -> T {
     fn@() -> T { t }
 }
 

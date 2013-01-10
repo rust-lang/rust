@@ -141,7 +141,10 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
 }
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
-    ty_param_bound(fld.fold_ty(*tpb))
+    match tpb {
+        TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_ty(ty)),
+        RegionTyParamBound => RegionTyParamBound
+    }
 }
 
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {

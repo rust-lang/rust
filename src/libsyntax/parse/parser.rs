@@ -10,7 +10,8 @@
 
 use core::prelude::*;
 
-use ast::{ProtoBox, ProtoUniq, provided, public, pure_fn, purity, re_static};
+use ast::{ProtoBox, ProtoUniq, RegionTyParamBound, TraitTyParamBound};
+use ast::{provided, public, pure_fn, purity, re_static};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_value, bind_by_move, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box, by_copy, by_move, by_ref, by_val};
@@ -2401,8 +2402,16 @@ impl Parser {
     fn parse_optional_ty_param_bounds() -> @~[ty_param_bound] {
         let mut bounds = ~[];
         if self.eat(token::COLON) {
-            while is_ident(self.token) {
-                if is_ident(self.token) {
+            loop {
+                if self.eat(token::BINOP(token::AND)) {
+                    if self.eat_keyword(~"static") {
+                        bounds.push(RegionTyParamBound);
+                    } else {
+                        self.span_err(copy self.span,
+                                      ~"`&static` is the only permissible \
+                                        region bound here");
+                    }
+                } else if is_ident(self.token) {
                     let maybe_bound = match self.token {
                       token::IDENT(copy sid, _) => {
                         match *self.id_to_str(sid) {
@@ -2415,7 +2424,7 @@ impl Parser {
                                           ObsoleteLowerCaseKindBounds);
                             // Bogus value, but doesn't matter, since
                             // is an error
-                            Some(ty_param_bound(self.mk_ty_path(sid)))
+                            Some(TraitTyParamBound(self.mk_ty_path(sid)))
                           }
 
                           _ => None
@@ -2430,11 +2439,12 @@ impl Parser {
                             bounds.push(bound);
                         }
                         None => {
-                            bounds.push(ty_param_bound(self.parse_ty(false)));
+                            let ty = self.parse_ty(false);
+                            bounds.push(TraitTyParamBound(ty));
                         }
                     }
                 } else {
-                    bounds.push(ty_param_bound(self.parse_ty(false)));
+                    break;
                 }
             }
         }

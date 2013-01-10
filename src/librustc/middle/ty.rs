@@ -1591,7 +1591,7 @@ fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
 fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
     match *pb {
         bound_copy => ~"copy",
-        bound_durable => ~"durable",
+        bound_durable => ~"&static",
         bound_owned => ~"owned",
         bound_const => ~"const",
         bound_trait(t) => ::util::ppaux::ty_to_str(cx, t)

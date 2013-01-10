@@ -13,13 +13,13 @@
 
 use core::prelude::*;
 
-use ast::{Ty, and, bind_by_ref, binop, deref, enum_def, enum_variant_kind};
-use ast::{expr, expr_match, ident, item, item_, item_struct, item_enum};
-use ast::{item_impl, m_imm, meta_item, method, named_field, or, pat};
-use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, spanned, stmt};
-use ast::{struct_def, struct_variant_kind, sty_by_ref, sty_region};
-use ast::{tuple_variant_kind, ty_nil, ty_param, ty_param_bound, ty_path};
-use ast::{ty_rptr, unnamed_field, variant};
+use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
+use ast::{enum_variant_kind, expr, expr_match, ident, item, item_};
+use ast::{item_enum, item_impl, item_struct, m_imm, meta_item, method};
+use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
+use ast::{re_anon, spanned, stmt, struct_def, struct_variant_kind};
+use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, ty_param};
+use ast::{ty_param_bound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
 use codemap::span;
@@ -211,7 +211,7 @@ fn create_derived_impl(cx: ext_ctxt,
         let bound = build::mk_ty_path_global(cx,
                                              span,
                                              trait_path.map(|x| *x));
-        let bounds = @~[ ty_param_bound(bound) ];
+        let bounds = @~[ TraitTyParamBound(bound) ];
         let impl_ty_param = build::mk_ty_param(cx, ty_param.ident, bounds);
         impl_ty_params.push(move impl_ty_param);
     }

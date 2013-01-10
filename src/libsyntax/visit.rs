@@ -288,8 +288,11 @@ fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
 }
 
 fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
-    for vec::each(*bounds) |bound| {
-        (v.visit_ty)(**bound, e, v)
+    for bounds.each |&bound| {
+        match bound {
+            TraitTyParamBound(ty) => (v.visit_ty)(ty, e, v),
+            RegionTyParamBound => ()
+        }
     }
 }
 

@@ -245,7 +245,7 @@ priv impl ext_ctxt {
         path: @ast::path,
         bounds: @~[ast::ty_param_bound]
     ) -> ast::ty_param {
-        let bound = ast::ty_param_bound(@{
+        let bound = ast::TraitTyParamBound(@{
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),
             span: span,
@@ -397,7 +397,7 @@ fn mk_impl(
     let mut trait_tps = vec::append(
         ~[ty_param],
          do tps.map |tp| {
-            let t_bound = ast::ty_param_bound(@{
+            let t_bound = ast::TraitTyParamBound(@{
                 id: cx.next_id(),
                 node: ast::ty_path(path, cx.next_id()),
                 span: span,
