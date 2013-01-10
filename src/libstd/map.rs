@@ -498,7 +498,7 @@ pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     map
 }
 
-// XXX Transitional
+// FIXME #4431: Transitional
 impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     Map<K, V> {
     pure fn size() -> uint {
