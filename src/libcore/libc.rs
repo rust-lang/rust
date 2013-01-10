@@ -513,9 +513,10 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
-                pub use libc::types::os::arch::c95::{c_void, c_char, c_int,
+                use libc::types::common::c95::c_void;
+                use libc::types::os::arch::c95::{c_char, c_int,
                                                      c_ulong, wchar_t};
-                pub use libc::types::os::arch::c99::{c_ulonglong};
+                use libc::types::os::arch::c99::{c_ulonglong};
 
                 pub type BOOL = c_int;
                 pub type BYTE = u8;
@@ -1135,7 +1136,7 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stat_ {
-            use libc::funcs::posix88::stat_::stat;
+            use libc::types::os::common::posix01::stat;
             use libc::types::os::arch::c95::{c_int, c_char};
 
             #[link_name = "_chmod"]
@@ -1191,8 +1192,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod unistd {
+            use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_int, c_uint, c_char,
-                                             c_long, size_t, c_void};
+                                             c_long, size_t};
 
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
