@@ -23,13 +23,27 @@ use syntax::ast::{expr_binary, expr_call, expr_copy, expr_field, expr_index};
 use syntax::ast::{expr_match, expr_method_call, expr_paren, expr_path};
 use syntax::ast::{expr_swap, expr_unary, neg, node_id, not, pat, pat_ident};
 use syntax::ast::{sty_uniq, sty_value, uniq};
+use syntax::ast::{fn_decl, blk};
 use syntax::visit;
-use syntax::visit::vt;
+use syntax::visit::{fn_kind, vt};
+use syntax::print::pprust;
+use syntax::codemap::span;
 
 struct VisitContext {
     tcx: ctxt,
     method_map: HashMap<node_id,method_map_entry>,
     mode: ValueMode,
+}
+
+fn compute_modes_for_fn(fk: fn_kind,
+                        decl: fn_decl,
+                        body: blk,
+                        sp: span,
+                        id: node_id,
+                        &&cx: VisitContext,
+                        v: vt<VisitContext>) {
+    let body_cx = VisitContext { mode: MoveValue, ..cx };
+    visit::visit_fn(fk, decl, body, sp, id, body_cx, v);
 }
 
 fn compute_modes_for_fn_args(callee_id: node_id,
@@ -79,6 +93,10 @@ fn record_mode_for_expr(expr: @expr, &&cx: VisitContext) {
 fn compute_modes_for_expr(expr: @expr,
                           &&cx: VisitContext,
                           v: vt<VisitContext>) {
+    debug!("compute_modes_for_expr(expr=%?/%s, mode=%?)",
+           expr.id, pprust::expr_to_str(expr, cx.tcx.sess.intr()),
+           cx.mode);
+
     // Adjust the mode if there was an implicit reference here.
     let cx = match cx.tcx.adjustments.find(expr.id) {
         None => cx,
@@ -91,7 +109,7 @@ fn compute_modes_for_expr(expr: @expr,
         }
     };
 
-    match /*bad*/copy expr.node {
+    match copy expr.node {
         expr_call(callee, args, is_block) => {
             let callee_cx = VisitContext { mode: ReadValue, ..cx };
             compute_modes_for_expr(callee, callee_cx, v);
@@ -235,6 +253,7 @@ fn compute_modes_for_pat(pat: @pat,
 
 pub fn compute_modes(tcx: ctxt, method_map: method_map, crate: @crate) {
     let visitor = visit::mk_vt(@visit::Visitor {
+        visit_fn: compute_modes_for_fn,
         visit_expr: compute_modes_for_expr,
         visit_pat: compute_modes_for_pat,
         .. *visit::default_visitor()
