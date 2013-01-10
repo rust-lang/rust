@@ -24,7 +24,7 @@ pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     let llty = type_of(ccx, arg.ty);
     match ty::resolved_mode(ccx.tcx, arg.mode) {
         ast::by_val => llty,
-        ast::by_copy | ast::by_move => {
+        ast::by_copy => {
             if ty::type_is_immediate(arg.ty) {
                 llty
             } else {
@@ -35,12 +35,12 @@ pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     }
 }
 
-pub fn type_of_explicit_args(ccx: @crate_ctxt, inputs: ~[ty::arg])
-                          -> ~[TypeRef] {
+pub fn type_of_explicit_args(ccx: @crate_ctxt,
+                             inputs: &[ty::arg]) -> ~[TypeRef] {
     inputs.map(|arg| type_of_explicit_arg(ccx, *arg))
 }
 
-pub fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
+pub fn type_of_fn(cx: @crate_ctxt, inputs: &[ty::arg],
                   output: ty::t) -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];

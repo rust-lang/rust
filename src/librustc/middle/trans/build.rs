@@ -79,7 +79,7 @@ pub fn count_insn(cx: block, category: &str) {
         s += ~"/";
         s += category;
 
-        let n = match h.find(s) {
+        let n = match h.find(/*bad*/ copy s) {
           Some(n) => n,
           _ => 0u
         };

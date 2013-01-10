@@ -24,8 +24,8 @@ use core::cmp;
 use core::str;
 use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
-use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk, capture_clause};
-use syntax::ast::{bind_by_value, bind_infer, bind_by_ref, bind_by_move};
+use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk};
+use syntax::ast::{bind_infer, bind_by_ref, bind_by_copy};
 use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
 use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
@@ -173,11 +173,6 @@ pub enum Mutability {
 pub enum SelfBinding {
     NoSelfBinding,
     HasSelfBinding(node_id, bool /* is implicit */)
-}
-
-pub enum CaptureClause {
-    NoCaptureClause,
-    HasCaptureClause(capture_clause)
 }
 
 pub type ResolveVisitor = vt<()>;
@@ -3727,7 +3722,6 @@ pub impl Resolver {
                                          OpaqueFunctionRibKind),
                                       (*block),
                                       NoSelfBinding,
-                                      NoCaptureClause,
                                       visitor);
             }
 
@@ -3803,33 +3797,7 @@ pub impl Resolver {
                         type_parameters: TypeParameters,
                         block: blk,
                         self_binding: SelfBinding,
-                        capture_clause: CaptureClause,
                         visitor: ResolveVisitor) {
-        // Check each element of the capture clause.
-        match capture_clause {
-            NoCaptureClause => {
-                // Nothing to do.
-            }
-            HasCaptureClause(capture_clause) => {
-                // Resolve each captured item.
-                for (*capture_clause).each |capture_item| {
-                    match self.resolve_identifier(capture_item.name,
-                                                  ValueNS,
-                                                  true,
-                                                  capture_item.span) {
-                        None => {
-                            self.session.span_err(capture_item.span,
-                                                  ~"unresolved name in \
-                                                   capture clause");
-                        }
-                        Some(def) => {
-                            self.record_def(capture_item.id, def);
-                        }
-                    }
-                }
-            }
-        }
-
         // Create a value rib for the function.
         let function_value_rib = @Rib(rib_kind);
         (*self.value_ribs).push(function_value_rib);
@@ -3945,7 +3913,6 @@ pub impl Resolver {
                                           HasSelfBinding
                                             ((*destructor).node.self_id,
                                              true),
-                                          NoCaptureClause,
                                           visitor);
                 }
             }
@@ -3976,7 +3943,6 @@ pub impl Resolver {
                               type_parameters,
                               method.body,
                               self_binding,
-                              NoCaptureClause,
                               visitor);
     }
 
@@ -4047,7 +4013,6 @@ pub impl Resolver {
                                              NormalRibKind),
                                           method.body,
                                           HasSelfBinding(method.self_id),
-                                          NoCaptureClause,
                                           visitor);
 */
             }
@@ -4855,14 +4820,13 @@ pub impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, ref fn_decl, ref block, capture_clause) |
-            expr_fn_block(ref fn_decl, ref block, capture_clause) => {
+            expr_fn(_, ref fn_decl, ref block) |
+            expr_fn_block(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@/*bad*/copy *fn_decl),
                                       NoTypeParameters,
                                       (*block),
                                       NoSelfBinding,
-                                      HasCaptureClause(capture_clause),
                                       visitor);
             }
 
@@ -5139,16 +5103,10 @@ pub impl Resolver {
                                     descr: &str) {
         match pat_binding_mode {
             bind_infer => {}
-            bind_by_value => {
+            bind_by_copy => {
                 self.session.span_err(
                     pat.span,
                     fmt!("cannot use `copy` binding mode with %s",
-                         descr));
-            }
-            bind_by_move => {
-                self.session.span_err(
-                    pat.span,
-                    fmt!("cannot use `move` binding mode with %s",
                          descr));
             }
             bind_by_ref(*) => {

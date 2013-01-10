@@ -43,7 +43,7 @@ XXX --- much more needed, don't have time to write this all up now
 
 use core::prelude::*;
 
-use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, err_mutbl};
+use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
 use middle::borrowck::{err_out_of_scope};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
 use middle::mem_categorization::{cat_deref, cat_discr, cat_local, cat_self};
@@ -57,8 +57,9 @@ use core::result::{Err, Ok, Result};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
-impl borrowck_ctxt {
-    fn loan(cmt: cmt,
+impl BorrowckCtxt {
+    fn loan(&self,
+            cmt: cmt,
             scope_region: ty::Region,
             mutbl: ast::mutability) -> bckres<~[Loan]> {
         let lc = LoanContext {
@@ -77,7 +78,7 @@ impl borrowck_ctxt {
 }
 
 struct LoanContext {
-    bccx: borrowck_ctxt,
+    bccx: &BorrowckCtxt,
 
     // the region scope for which we must preserve the memory
     scope_region: ty::Region,

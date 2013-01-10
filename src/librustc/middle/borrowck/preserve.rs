@@ -15,7 +15,7 @@
 
 use core::prelude::*;
 
-use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, borrowck_ctxt};
+use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, BorrowckCtxt};
 use middle::borrowck::{err_mut_uniq, err_mut_variant};
 use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
 use middle::borrowck::{err_root_not_permitted, root_map_key};
@@ -30,40 +30,42 @@ use util::common::indenter;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
-pub enum preserve_condition {
-    pc_ok,
-    pc_if_pure(bckerr)
+pub enum PreserveCondition {
+    PcOk,
+    PcIfPure(bckerr)
 }
 
-impl preserve_condition {
+impl PreserveCondition {
     // combines two preservation conditions such that if either of
     // them requires purity, the result requires purity
-    fn combine(pc: preserve_condition) -> preserve_condition {
-        match self {
-          pc_ok => {pc}
-          pc_if_pure(_) => {self}
+    fn combine(&self, pc: PreserveCondition) -> PreserveCondition {
+        match *self {
+            PcOk => {pc}
+            PcIfPure(_) => {*self}
         }
     }
 }
 
-impl borrowck_ctxt {
-    fn preserve(cmt: cmt,
+impl BorrowckCtxt {
+    fn preserve(&self,
+                cmt: cmt,
                 scope_region: ty::Region,
                 item_ub: ast::node_id,
-                root_ub: ast::node_id)
-        -> bckres<preserve_condition> {
-
-        let ctxt = preserve_ctxt({bccx: self,
-                                  scope_region: scope_region,
-                                  item_ub: item_ub,
-                                  root_ub: root_ub,
-                                  root_managed_data: true});
-        (&ctxt).preserve(cmt)
+                root_ub: ast::node_id) -> bckres<PreserveCondition>
+    {
+        let ctxt = PreserveCtxt {
+            bccx: self,
+            scope_region: scope_region,
+            item_ub: item_ub,
+            root_ub: root_ub,
+            root_managed_data: true
+        };
+        ctxt.preserve(cmt)
     }
 }
 
-enum preserve_ctxt = {
-    bccx: borrowck_ctxt,
+struct PreserveCtxt {
+    bccx: &BorrowckCtxt,
 
     // the region scope for which we must preserve the memory
     scope_region: ty::Region,
@@ -76,13 +78,12 @@ enum preserve_ctxt = {
 
     // if false, do not attempt to root managed data
     root_managed_data: bool
-};
+}
 
+impl PreserveCtxt {
+    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-priv impl &preserve_ctxt {
-    fn tcx() -> ty::ctxt { self.bccx.tcx }
-
-    fn preserve(cmt: cmt) -> bckres<preserve_condition> {
+    fn preserve(&self, cmt: cmt) -> bckres<PreserveCondition> {
         debug!("preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
                self.bccx.cmt_to_repr(cmt), self.root_ub,
                self.root_managed_data);
@@ -94,7 +95,7 @@ priv impl &preserve_ctxt {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
           }
           cat_special(sk_static_item) | cat_special(sk_method) => {
-            Ok(pc_ok)
+            Ok(PcOk)
           }
           cat_rvalue => {
             // when we borrow an rvalue, we can keep it rooted but only
@@ -181,7 +182,7 @@ priv impl &preserve_ctxt {
           }
           cat_deref(_, _, unsafe_ptr) => {
             // Unsafe pointers are the user's problem
-            Ok(pc_ok)
+            Ok(PcOk)
           }
           cat_deref(base, derefs, gc_ptr(*)) => {
             // GC'd pointers of type @MT: if this pointer lives in
@@ -193,13 +194,15 @@ priv impl &preserve_ctxt {
             if cmt.cat.derefs_through_mutable_box() {
                 self.attempt_root(cmt, base, derefs)
             } else if base.mutbl == m_imm {
-                let non_rooting_ctxt =
-                    preserve_ctxt({root_managed_data: false,.. **self});
-                match (&non_rooting_ctxt).preserve(base) {
-                  Ok(pc_ok) => {
-                    Ok(pc_ok)
+                let non_rooting_ctxt = PreserveCtxt {
+                    root_managed_data: false,
+                    ..*self
+                };
+                match non_rooting_ctxt.preserve(base) {
+                  Ok(PcOk) => {
+                    Ok(PcOk)
                   }
-                  Ok(pc_if_pure(_)) => {
+                  Ok(PcIfPure(_)) => {
                     debug!("must root @T, otherwise purity req'd");
                     self.attempt_root(cmt, base, derefs)
                   }
@@ -267,10 +270,11 @@ priv impl &preserve_ctxt {
             // node appears to draw the line between what will be rooted
             // in the *arm* vs the *match*.
 
-            let match_rooting_ctxt =
-                preserve_ctxt({scope_region: ty::re_scope(match_id),
-                               .. **self});
-            (&match_rooting_ctxt).preserve(base)
+              let match_rooting_ctxt = PreserveCtxt {
+                  scope_region: ty::re_scope(match_id),
+                  ..*self
+              };
+              match_rooting_ctxt.preserve(base)
           }
         }
     }
@@ -279,28 +283,29 @@ priv impl &preserve_ctxt {
     /// `base`) be found in an immutable location (that is, `base`
     /// must be immutable).  Also requires that `base` itself is
     /// preserved.
-    fn require_imm(cmt: cmt,
+    fn require_imm(&self,
+                   cmt: cmt,
                    cmt_base: cmt,
-                   code: bckerr_code) -> bckres<preserve_condition> {
+                   code: bckerr_code) -> bckres<PreserveCondition> {
         // Variant contents and unique pointers: must be immutably
         // rooted to a preserved address.
         match self.preserve(cmt_base) {
           // the base is preserved, but if we are not mutable then
           // purity is required
-          Ok(pc_ok) => {
+          Ok(PcOk) => {
             match cmt_base.mutbl {
               m_mutbl | m_const => {
-                Ok(pc_if_pure(bckerr { cmt: cmt, code: code }))
+                Ok(PcIfPure(bckerr {cmt:cmt, code:code}))
               }
               m_imm => {
-                Ok(pc_ok)
+                Ok(PcOk)
               }
             }
           }
 
           // the base requires purity too, that's fine
-          Ok(pc_if_pure(ref e)) => {
-            Ok(pc_if_pure((*e)))
+          Ok(PcIfPure(ref e)) => {
+            Ok(PcIfPure((*e)))
           }
 
           // base is not stable, doesn't matter
@@ -312,10 +317,11 @@ priv impl &preserve_ctxt {
 
     /// Checks that the scope for which the value must be preserved
     /// is a subscope of `scope_ub`; if so, success.
-    fn compare_scope(cmt: cmt,
-                     scope_ub: ty::Region) -> bckres<preserve_condition> {
+    fn compare_scope(&self,
+                     cmt: cmt,
+                     scope_ub: ty::Region) -> bckres<PreserveCondition> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
-            Ok(pc_ok)
+            Ok(PcOk)
         } else {
             Err(bckerr {
                 cmt:cmt,
@@ -333,10 +339,8 @@ priv impl &preserve_ctxt {
     /// value live for longer than the current fn or else potentially
     /// require that an statically unbounded number of values be
     /// rooted (if a loop exists).
-    fn attempt_root(cmt: cmt,
-                    base: cmt,
-                    derefs: uint)
-                 -> bckres<preserve_condition> {
+    fn attempt_root(&self, cmt: cmt, base: cmt,
+                    derefs: uint) -> bckres<PreserveCondition> {
         if !self.root_managed_data {
             // normally, there is a root_ub; the only time that this
             // is none is when a boxed value is stored in an immutable
@@ -387,7 +391,7 @@ priv impl &preserve_ctxt {
                     scope: scope_to_use,
                     freezes: cmt.cat.derefs_through_mutable_box()
                 });
-                return Ok(pc_ok);
+                return Ok(PcOk);
             } else {
                 debug!("Unable to root");
                 return Err(bckerr {

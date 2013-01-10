@@ -18,6 +18,7 @@ fn main() {
         macerate(copy *tasties);
     } (carrots, |food| {
         let mush = food + cheese;
+        let cheese = copy cheese;
         let f = fn@() {
             let chew = mush + cheese;
             fail ~"so yummy"

@@ -190,7 +190,7 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     if !has_cfg_metas { return true; }
 
     for cfg_metas.each |cfg_mi| {
-        if attr::contains(/*bad*/copy cfg, *cfg_mi) { return true; }
+        if attr::contains(cfg, *cfg_mi) { return true; }
     }
 
     return false;

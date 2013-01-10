@@ -9,19 +9,16 @@
 // except according to those terms.
 
 fn main() {
-
-    let y: int = 42;
-    let mut x: int;
+    let y: ~int = ~42;
+    let mut x: ~int;
     loop {
         log(debug, y);
         loop {
             loop {
                 loop {
 // tjc: Not sure why it prints the same error twice
-                    x = move y; //~ ERROR use of moved value
-                    //~^ NOTE move of value occurred here
-                    //~^^ ERROR use of moved value
-                    //~^^^ NOTE move of value occurred here
+                    x = y; //~ ERROR use of moved value
+                    //~^ ERROR use of moved value
 
                     copy x;
                 }

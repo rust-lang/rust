@@ -362,11 +362,11 @@ pub fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
 
     let tcx = self.infcx().tcx;
 
-    match (ty::get(a).sty, ty::get(b).sty) {
-        (ty::ty_bot, _) => { return self.ty_bot(b); }
-        (_, ty::ty_bot) => { return self.ty_bot(a); }
+    match (&ty::get(a).sty, &ty::get(b).sty) {
+        (&ty::ty_bot, _) => { return self.ty_bot(b); }
+        (_, &ty::ty_bot) => { return self.ty_bot(a); }
 
-        (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
+        (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
             let r = if_ok!(lattice_vars(self, a_id, b_id,
                                         |x, y| self.tys(*x, *y)));
             return match r {
@@ -375,12 +375,12 @@ pub fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
             };
         }
 
-        (ty::ty_infer(TyVar(a_id)), _) => {
+        (&ty::ty_infer(TyVar(a_id)), _) => {
             return lattice_var_and_t(self, a_id, &b,
                                      |x, y| self.tys(*x, *y));
         }
 
-        (_, ty::ty_infer(TyVar(b_id))) => {
+        (_, &ty::ty_infer(TyVar(b_id))) => {
             return lattice_var_and_t(self, b_id, &a,
                                      |x, y| self.tys(*x, *y));
         }

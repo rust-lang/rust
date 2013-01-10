@@ -10,15 +10,13 @@
 
 fn main() {
 
-    let y: int = 42;
-    let mut x: int;
+    let y: ~int = ~42;
+    let mut x: ~int;
     loop {
         log(debug, y);
 // tjc: not sure why it prints the same error twice
-        while true { while true { while true { x = move y; copy x; } } }
+        while true { while true { while true { x = y; copy x; } } }
         //~^ ERROR use of moved value: `y`
-        //~^^ NOTE move of value occurred here
-        //~^^^ ERROR use of moved value: `y`
-        //~^^^^ NOTE move of value occurred here
+        //~^^ ERROR use of moved value: `y`
     }
 }

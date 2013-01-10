@@ -105,7 +105,6 @@ pub trait ext_ctxt_ast_builder {
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
     fn block_expr(b: ast::blk) -> @ast::expr;
-    fn move_expr(e: @ast::expr) -> @ast::expr;
     fn ty_option(ty: @ast::Ty) -> @ast::Ty;
     fn ty_infer() -> @ast::Ty;
     fn ty_nil_ast_builder() -> @ast::Ty;
@@ -127,15 +126,6 @@ pub impl ext_ctxt: ext_ctxt_ast_builder {
             callee_id: self.next_id(),
             node: ast::expr_block(b),
             span: dummy_sp(),
-        }
-    }
-
-    fn move_expr(e: @ast::expr) -> @ast::expr {
-        @expr {
-            id: self.next_id(),
-            callee_id: self.next_id(),
-            node: ast::expr_unary_move(e),
-            span: e.span,
         }
     }
 
@@ -205,7 +195,7 @@ pub impl ext_ctxt: ext_ctxt_ast_builder {
             pat: @ast::pat {
                 id: self.next_id(),
                 node: ast::pat_ident(
-                    ast::bind_by_value,
+                    ast::bind_by_copy,
                     ast_util::ident_to_path(dummy_sp(), name),
                     None),
                 span: dummy_sp(),

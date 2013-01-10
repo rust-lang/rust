@@ -334,7 +334,7 @@ pub fn trans_method_call(in_cx: block,
 
 pub fn trans_rtcall_or_lang_call(bcx: block,
                                  did: ast::def_id,
-                                 args: ~[ValueRef],
+                                 args: &[ValueRef],
                                  dest: expr::Dest)
                               -> block {
     let fty = if did.crate == ast::local_crate {
@@ -351,7 +351,7 @@ pub fn trans_rtcall_or_lang_call(bcx: block,
 
 pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
                                                   did: ast::def_id,
-                                                  args: ~[ValueRef],
+                                                  args: &[ValueRef],
                                                   type_params: ~[ty::t],
                                                   dest: expr::Dest)
                                                -> block {
@@ -418,11 +418,11 @@ pub fn trans_call_inner(
     dest: expr::Dest,
     autoref_arg: AutorefArg) -> block {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
-        let ret_in_loop = match /*bad*/copy args {
+        let ret_in_loop = match args {
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {
               ast::expr_loop_body(@ast::expr {
-                node: ast::expr_fn_block(_, ref body, _),
+                node: ast::expr_fn_block(_, ref body),
                 _
               }) =>  body_contains_ret((*body)),
               _ => false
@@ -464,7 +464,7 @@ pub fn trans_call_inner(
             }
         };
 
-        let args_res = trans_args(bcx, llenv, /*bad*/copy args, fn_expr_ty,
+        let args_res = trans_args(bcx, llenv, args, fn_expr_ty,
                                   dest, ret_flag, autoref_arg);
         bcx = args_res.bcx;
         let mut llargs = /*bad*/copy args_res.args;
@@ -520,9 +520,10 @@ pub fn trans_call_inner(
     }
 }
 
+
 pub enum CallArgs {
-    ArgExprs(~[@ast::expr]),
-    ArgVals(~[ValueRef])
+    ArgExprs(&[@ast::expr]),
+    ArgVals(&[ValueRef])
 }
 
 pub fn trans_args(cx: block,
@@ -625,7 +626,7 @@ pub fn trans_arg_expr(bcx: block,
                 ast::expr_loop_body(
                     // XXX: Bad copy.
                     blk@@ast::expr {
-                        node: ast::expr_fn_block(copy decl, ref body, cap),
+                        node: ast::expr_fn_block(copy decl, ref body),
                         _
                     }) =>
                 {
@@ -635,12 +636,12 @@ pub fn trans_arg_expr(bcx: block,
                     let proto = ty::ty_fn_proto(arg_ty);
                     let bcx = closure::trans_expr_fn(
                         bcx, proto, decl, /*bad*/copy *body, arg_expr.id,
-                        blk.id, cap, Some(ret_flag), expr::SaveIn(scratch));
+                        blk.id, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
                                               mode: ByRef,
-                                              source: FromRvalue}}
+                                              source: RevokeClean}}
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -670,34 +671,35 @@ pub fn trans_arg_expr(bcx: block,
     } else {
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
-            DoAutorefArg => { val = arg_datum.to_ref_llval(bcx); }
+            DoAutorefArg => {
+                assert !bcx.ccx().maps.moves_map.contains_key(arg_expr.id);
+                val = arg_datum.to_ref_llval(bcx);
+            }
             DontAutorefArg => {
                 match arg_mode {
                     ast::by_ref => {
+                        // This assertion should really be valid, but because
+                        // the explicit self code currently passes by-ref, it
+                        // does not hold.
+                        //
+                        //assert !bcx.ccx().maps.moves_map.contains_key(
+                        //    arg_expr.id);
                         val = arg_datum.to_ref_llval(bcx);
                     }
 
                     ast::by_val => {
                         // NB: avoid running the take glue.
+
+                        assert !bcx.ccx().maps.moves_map.contains_key(
+                            arg_expr.id);
                         val = arg_datum.to_value_llval(bcx);
                     }
 
-                    ast::by_copy | ast::by_move => {
+                    ast::by_copy => {
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
-                        if arg_mode == ast::by_move {
-                            // NDM---Doesn't seem like this should be
-                            // necessary
-                            if !arg_datum.store_will_move() {
-                                bcx.sess().span_bug(
-                                    arg_expr.span,
-                                    fmt!("move mode but datum will not \
-                                          store: %s",
-                                          arg_datum.to_str(bcx.ccx())));
-                            }
-                        }
-
-                        arg_datum.store_to_datum(bcx, INIT, scratch);
+                        arg_datum.store_to_datum(bcx, arg_expr.id,
+                                                 INIT, scratch);
 
                         // Technically, ownership of val passes to the callee.
                         // However, we must cleanup should we fail before the

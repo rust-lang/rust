@@ -15,12 +15,12 @@ use back::link::{mangle_internal_name_by_path_and_seq};
 use back::link::{mangle_internal_name_by_path};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
-use middle::capture;
+use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
+use middle::trans::datum::{Datum, INIT, ByRef, ByValue, ZeroMem};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine;
@@ -106,7 +106,7 @@ use syntax::print::pprust::expr_to_str;
 
 pub enum EnvAction {
     /// Copy the value from this llvm ValueRef into the environment.
-    EnvStore,
+    EnvCopy,
 
     /// Move the value from this llvm ValueRef into the environment.
     EnvMove,
@@ -123,7 +123,7 @@ pub struct EnvValue {
 pub impl EnvAction {
     fn to_str() -> ~str {
         match self {
-            EnvStore => ~"EnvStore",
+            EnvCopy => ~"EnvCopy",
             EnvMove => ~"EnvMove",
             EnvRef => ~"EnvRef"
         }
@@ -151,7 +151,7 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     // converted to ptrs.
     let bound_tys = bound_values.map(|bv| {
         match bv.action {
-            EnvStore | EnvMove => bv.datum.ty,
+            EnvCopy | EnvMove => bv.datum.ty,
             EnvRef => ty::mk_mut_ptr(tcx, bv.datum.ty)
         }
     });
@@ -242,8 +242,8 @@ pub fn store_environment(bcx: block,
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
 
         match bv.action {
-            EnvStore => {
-                bcx = bv.datum.store_to(bcx, INIT, bound_data);
+            EnvCopy => {
+                bcx = bv.datum.copy_to(bcx, INIT, bound_data);
             }
             EnvMove => {
                 bcx = bv.datum.move_to(bcx, INIT, bound_data);
@@ -264,7 +264,7 @@ pub fn store_environment(bcx: block,
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
 pub fn build_closure(bcx0: block,
-                     cap_vars: ~[capture::capture_var],
+                     cap_vars: &[moves::CaptureVar],
                      proto: ast::Proto,
                      include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
@@ -274,26 +274,22 @@ pub fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     let mut env_vals = ~[];
-    for vec::each(cap_vars) |cap_var| {
+    for cap_vars.each |cap_var| {
         debug!("Building closure: captured variable %?", *cap_var);
-        let datum = expr::trans_local_var(bcx, cap_var.def, None);
+        let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
-            capture::cap_ref => {
+            moves::CapRef => {
                 assert proto == ast::ProtoBorrowed;
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
-            capture::cap_copy => {
-                env_vals.push(EnvValue {action: EnvStore,
+            moves::CapCopy => {
+                env_vals.push(EnvValue {action: EnvCopy,
                                         datum: datum});
             }
-            capture::cap_move => {
+            moves::CapMove => {
                 env_vals.push(EnvValue {action: EnvMove,
                                         datum: datum});
-            }
-            capture::cap_drop => {
-                bcx = datum.drop_val(bcx);
-                datum.cancel_clean(bcx);
             }
         }
     }
@@ -303,7 +299,7 @@ pub fn build_closure(bcx0: block,
     do option::iter(&include_ret_handle) |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
-                                mode: ByRef, source: FromLvalue};
+                                mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
 
@@ -315,7 +311,7 @@ pub fn build_closure(bcx0: block,
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
-                               mode: ByRef, source: FromLvalue};
+                               mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});
     }
@@ -328,7 +324,7 @@ pub fn build_closure(bcx0: block,
 // with the upvars and type descriptors.
 pub fn load_environment(fcx: fn_ctxt,
                         cdata_ty: ty::t,
-                        cap_vars: ~[capture::capture_var],
+                        cap_vars: &[moves::CaptureVar],
                         load_ret_handle: bool,
                         proto: ast::Proto) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
@@ -354,20 +350,15 @@ pub fn load_environment(fcx: fn_ctxt,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    for vec::each(cap_vars) |cap_var| {
-        match cap_var.mode {
-          capture::cap_drop => { /* ignore */ }
-          _ => {
-            let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-            match proto {
-                ast::ProtoBorrowed => { upvarptr = Load(bcx, upvarptr); }
-                ast::ProtoBox | ast::ProtoUniq | ast::ProtoBare => {}
-            }
-            let def_id = ast_util::def_id_of_def(cap_var.def);
-            fcx.llupvars.insert(def_id.node, upvarptr);
-            i += 1u;
-          }
+    for cap_vars.each |cap_var| {
+        let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
+        match proto {
+            ast::ProtoBorrowed => { upvarptr = Load(bcx, upvarptr); }
+            ast::ProtoBox | ast::ProtoUniq | ast::ProtoBare => {}
         }
+        let def_id = ast_util::def_id_of_def(cap_var.def);
+        fcx.llupvars.insert(def_id.node, upvarptr);
+        i += 1u;
     }
     if load_ret_handle {
         let flagptr = Load(bcx, GEPi(bcx, llcdata, [0u, i]));
@@ -383,9 +374,9 @@ pub fn trans_expr_fn(bcx: block,
                      +body: ast::blk,
                      outer_id: ast::node_id,
                      user_id: ast::node_id,
-                     cap_clause: ast::capture_clause,
                      is_loop_body: Option<Option<ValueRef>>,
-                     dest: expr::Dest) -> block {
+                     dest: expr::Dest) -> block
+{
     /*!
      *
      * Translates the body of a closure expression.
@@ -426,29 +417,24 @@ pub fn trans_expr_fn(bcx: block,
                                                  ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let trans_closure_env: &fn(ast::Proto) -> Result = |proto| {
-        let cap_vars = capture::compute_capture_vars(ccx.tcx, user_id, proto,
-                                                     cap_clause);
-        let ret_handle = match is_loop_body { Some(x) => x, None => None };
-        // XXX: Bad copy.
-        let {llbox, cdata_ty, bcx} = build_closure(bcx, copy cap_vars, proto,
-                                                   ret_handle);
-        trans_closure(ccx, /*bad*/copy sub_path, decl, /*bad*/copy body,
-                      llfn, no_self, /*bad*/copy bcx.fcx.param_substs,
-                      user_id, None, |fcx| {
-                          load_environment(fcx, cdata_ty, copy cap_vars,
-                                           ret_handle.is_some(), proto);
-                      }, |bcx| {
-                          if is_loop_body.is_some() {
-                              Store(bcx, C_bool(true), bcx.fcx.llretptr);
-                          }
-                      });
-        rslt(bcx, llbox)
-    };
-
     let Result {bcx: bcx, val: closure} = match proto {
         ast::ProtoBorrowed | ast::ProtoBox | ast::ProtoUniq => {
-            trans_closure_env(proto)
+            let cap_vars = ccx.maps.capture_map.get(user_id);
+            let ret_handle = match is_loop_body {Some(x) => x,
+                                                 None => None};
+            let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
+                                                       ret_handle);
+            trans_closure(ccx, sub_path, decl,
+                          body, llfn, no_self,
+                          /*bad*/ copy bcx.fcx.param_substs, user_id, None,
+                          |fcx| load_environment(fcx, cdata_ty, cap_vars,
+                                                 ret_handle.is_some(), proto),
+                          |bcx| {
+                              if is_loop_body.is_some() {
+                                  Store(bcx, C_bool(true), bcx.fcx.llretptr);
+                              }
+                          });
+            rslt(bcx, llbox)
         }
         ast::ProtoBare => {
             trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,

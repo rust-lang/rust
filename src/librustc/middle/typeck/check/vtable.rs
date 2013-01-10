@@ -606,10 +606,10 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                         ty::ty_uniq(mt) => {
                             // Ensure that the trait vstore and the pointer
                             // type match.
-                            match (ty::get(ty).sty, vstore) {
-                                (ty::ty_box(_), ty::vstore_box) |
-                                (ty::ty_uniq(_), ty::vstore_uniq) |
-                                (ty::ty_rptr(*), ty::vstore_slice(*)) => {
+                            match (&ty::get(ty).sty, vstore) {
+                                (&ty::ty_box(_), ty::vstore_box) |
+                                (&ty::ty_uniq(_), ty::vstore_uniq) |
+                                (&ty::ty_rptr(*), ty::vstore_slice(*)) => {
                                     let location_info =
                                         &location_info_for_expr(ex);
                                     let vtable_opt =
@@ -634,8 +634,8 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
 
                                     // Now, if this is &trait, we need to link
                                     // the regions.
-                                    match (ty::get(ty).sty, vstore) {
-                                        (ty::ty_rptr(ra, _),
+                                    match (&ty::get(ty).sty, vstore) {
+                                        (&ty::ty_rptr(ra, _),
                                          ty::vstore_slice(rb)) => {
                                             infer::mk_subr(fcx.infcx(),
                                                            false,
@@ -646,7 +646,7 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                         _ => {}
                                     }
                                 }
-                                (ty::ty_box(_), _) => {
+                                (&ty::ty_box(_), _) => {
                                     fcx.ccx.tcx.sess.span_err(ex.span,
                                                               ~"must cast \
                                                                 a boxed \
@@ -655,7 +655,7 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                                                 trait");
                                     err = true;
                                 }
-                                (ty::ty_rptr(*), _) => {
+                                (&ty::ty_rptr(*), _) => {
                                     fcx.ccx.tcx.sess.span_err(ex.span,
                                                               ~"must cast \
                                                                 a borrowed \
@@ -663,7 +663,7 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                                                 a borrowed \
                                                                 trait");
                                 }
-                                (ty::ty_uniq(*), _) => {
+                                (&ty::ty_uniq(*), _) => {
                                     fcx.ccx.tcx.sess.span_err(ex.span,
                                                               ~"must cast \
                                                                 a unique \

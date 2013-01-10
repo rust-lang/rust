@@ -16,22 +16,11 @@ fn main() {
     let x = ~1;
     let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
-    let y = ~2;
-    let y_in_parent = ptr::addr_of(&(*y)) as uint;
-
-    task::spawn(fn~(copy y, move x) {
+    task::spawn(fn~() {
         let x_in_child = ptr::addr_of(&(*x)) as uint;
         ch.send(x_in_child);
-
-        let y_in_child = ptr::addr_of(&(*y)) as uint;
-        ch.send(y_in_child);
     });
-    // Ensure last-use analysis doesn't move y to child.
-    let _q = y;
 
     let x_in_child = p.recv();
     assert x_in_parent == x_in_child;
-
-    let y_in_child = p.recv();
-    assert y_in_parent != y_in_child;
 }

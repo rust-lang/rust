@@ -48,7 +48,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
 
     let walk_expr = fn@(expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             match expr.node {
-              ast::expr_fn(proto, _, _, _) => {
+              ast::expr_fn(proto, _, _) => {
                 if proto != ast::ProtoBare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
@@ -123,6 +123,7 @@ pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
       Some(d) => return d
     }
 }
+
 pub fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
     return vec::len(*get_freevars(tcx, fid)) != 0u;
 }

@@ -41,45 +41,35 @@
  *   convenient for interfacing with the various code floating around
  *   that predates datums.
  *
- * # Datum sources
+ * # Datum cleanup styles
  *
- * Each datum carries with it an idea of its "source".  This indicates
- * the kind of expression from which the datum originated.  The source
- * affects what happens when the datum is stored or moved.
+ * Each datum carries with it an idea of how its value will be cleaned
+ * up.  This is important after a move, because we need to know how to
+ * cancel the cleanup (since the value has been moved and therefore does
+ * not need to be freed).  There are two options:
  *
- * There are three options:
+ * 1. `RevokeClean`: To cancel the cleanup, we invoke `revoke_clean()`.
+ *    This is used for temporary rvalues.
  *
- * 1. `FromRvalue`: This value originates from some temporary rvalue.
- *    This is therefore the owning reference to the datum.  If the
- *    datum is stored, then, it will be *moved* into its new home.
- *    Furthermore, we will not zero out the datum but rather use
- *    `revoke_clean()` to cancel any cleanup.
+ * 2. `ZeroMem`: To cancel the cleanup, we zero out the memory where
+ *    the value resides.  This is used for lvalues.
  *
- * 2. `FromLvalue`: This value originates from an lvalue.  If the datum
- *    is stored, it will be *copied* into its new home.  If the datum
- *    is moved, it will be zeroed out.
+ * # Copying, moving, and storing
  *
- * 3. `FromLastUseLvalue`: The same as FromLvalue, except that it
- *    originates from the *last use* of an lvalue.  If the datum is
- *    stored, then, it will be moved (and zeroed out).
+ * There are three methods for moving the value into a new
+ * location:
  *
- * # Storing, copying, and moving
+ * - `copy_to()` will copy the value into a new location, meaning that
+ *    the value is first mem-copied and then the new location is "taken"
+ *    via the take glue, in effect creating a deep clone.
  *
- * There are three kinds of methods for moving the value into a new
- * location.  *Storing* a datum is probably the one you want to reach
- * for first: it is used when you will no longer use the datum and
- * would like to place it somewhere.  It may translate to a copy or a
- * move, depending on the source of the datum.  After a store, the
- * datum may or may not be usable anymore, so you must assume it is
- * not.
+ * - `move_to()` will copy the value, meaning that the value is mem-copied
+ *   into its new home and then the cleanup on the this datum is revoked.
+ *   This is a "shallow" clone.  After `move_to()`, the current datum
+ *   is invalid and should no longer be used.
  *
- * Sometimes, though, you want to use an explicit copy or move.  A
- * copy copies the data from the datum into a new location and
- * executes the take glue on that location, thus leaving the datum
- * valid for further use.  Moving, in contrast, copies the data into
- * the new location and then cancels any cleanups on the current datum
- * (as appropriate for the source).  No glue code is executed.  After
- * a move, the datum is no longer usable.
+ * - `store_to()` either performs a copy or a move by consulting the
+ *   moves_map computed by `middle::moves`.
  *
  * # Scratch datum
  *
@@ -133,8 +123,8 @@ pub struct Datum {
     /// How did this value originate?  This is particularly important
     /// if the value is MOVED or prematurely DROPPED, because it
     /// describes how to cancel the cleanup that was scheduled before.
-    /// See the def'n of the `DatumSource` type.
-    source: DatumSource
+    /// See the def'n of the `DatumCleanup` type.
+    source: DatumCleanup
 }
 
 pub struct DatumBlock {
@@ -173,32 +163,16 @@ pub impl DatumMode: to_bytes::IterBytes {
     }
 }
 
-/// See `Datum Sources` section at the head of this module.
-pub enum DatumSource {
-    FromRvalue,
-    FromLvalue,
-    FromLastUseLvalue,
-}
-
-pub impl DatumSource {
-    fn is_rvalue() -> bool {
-        match self {
-            FromRvalue => true,
-            FromLvalue | FromLastUseLvalue => false
-        }
-    }
-
-    fn is_any_lvalue() -> bool {
-        match self {
-            FromRvalue => false,
-            FromLvalue | FromLastUseLvalue => true
-        }
-    }
+/// See `Datum cleanup styles` section at the head of this module.
+#[deriving_eq]
+pub enum DatumCleanup {
+    RevokeClean,
+    ZeroMem
 }
 
 pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum {
     return Datum {val: val, ty: ty,
-                  mode: ByValue, source: FromRvalue};
+                  mode: ByValue, source: RevokeClean};
 }
 
 pub fn immediate_rvalue_bcx(bcx: block,
@@ -221,7 +195,7 @@ pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
 
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, zero);
-    Datum { val: scratch, ty: ty, mode: ByRef, source: FromRvalue }
+    Datum { val: scratch, ty: ty, mode: ByRef, source: RevokeClean }
 }
 
 pub fn appropriate_mode(ty: ty::t) -> DatumMode {
@@ -241,42 +215,39 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
 }
 
 pub impl Datum {
-    fn store_will_move() -> bool {
-        match self.source {
-            FromRvalue | FromLastUseLvalue => true,
-            FromLvalue => false
-        }
-    }
-
-    fn store_to(bcx: block, action: CopyAction, dst: ValueRef) -> block {
+    fn store_to(bcx: block, id: ast::node_id,
+                action: CopyAction, dst: ValueRef) -> block {
         /*!
          *
          * Stores this value into its final home.  This moves if
-         * possible, but copies otherwise. */
+         * `id` is located in the move table, but copies otherwise.
+         */
 
-        if self.store_will_move() {
+        if bcx.ccx().maps.moves_map.contains_key(id) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
         }
     }
 
-    fn store_to_dest(bcx: block, dest: expr::Dest) -> block {
+    fn store_to_dest(bcx: block, id: ast::node_id,
+                     dest: expr::Dest) -> block {
         match dest {
             expr::Ignore => {
                 return bcx;
             }
             expr::SaveIn(addr) => {
-                return self.store_to(bcx, INIT, addr);
+                return self.store_to(bcx, id, INIT, addr);
             }
         }
     }
 
-    fn store_to_datum(bcx: block, action: CopyAction, datum: Datum) -> block {
+    fn store_to_datum(bcx: block, id: ast::node_id,
+                      action: CopyAction, datum: Datum) -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert datum.mode.is_by_ref();
-        self.store_to(bcx, action, datum.val)
+        self.store_to(bcx, id, action, datum.val)
     }
 
     fn move_to_datum(bcx: block, action: CopyAction, datum: Datum) -> block {
@@ -396,7 +367,7 @@ pub impl Datum {
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue. */
 
-        assert self.source.is_rvalue();
+        assert self.source == RevokeClean;
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);
@@ -410,10 +381,10 @@ pub impl Datum {
     fn cancel_clean(bcx: block) {
         if ty::type_needs_drop(bcx.tcx(), self.ty) {
             match self.source {
-                FromRvalue => {
+                RevokeClean => {
                     revoke_clean(bcx, self.val);
                 }
-                FromLvalue | FromLastUseLvalue => {
+                ZeroMem => {
                     // Lvalues which potentially need to be dropped
                     // must be passed by ref, so that we can zero them
                     // out.
@@ -444,7 +415,7 @@ pub impl Datum {
             ByValue => self,
             ByRef => {
                 Datum {val: self.to_value_llval(bcx), mode: ByValue,
-                       ty: self.ty, source: FromRvalue}
+                       ty: self.ty, source: RevokeClean}
             }
         }
     }
@@ -476,7 +447,7 @@ pub impl Datum {
             ByRef => self,
             ByValue => {
                 Datum {val: self.to_ref_llval(bcx), mode: ByRef,
-                       ty: self.ty, source: FromRvalue}
+                       ty: self.ty, source: RevokeClean}
             }
         }
     }
@@ -527,7 +498,7 @@ pub impl Datum {
     fn GEPi(bcx: block,
             ixs: &[uint],
             ty: ty::t,
-            source: DatumSource)
+            source: DatumCleanup)
          -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
@@ -618,7 +589,7 @@ pub impl Datum {
 
         let ptr = self.to_value_llval(bcx);
         let body = opaque_box_body(bcx, content_ty, ptr);
-        Datum {val: body, ty: content_ty, mode: ByRef, source: FromLvalue}
+        Datum {val: body, ty: content_ty, mode: ByRef, source: ZeroMem}
     }
 
     fn to_rptr(bcx: block) -> Datum {
@@ -636,7 +607,7 @@ pub impl Datum {
         let rptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::re_static,
                                       self.ty);
         Datum {val: llval, ty: rptr_ty,
-               mode: ByValue, source: FromRvalue}
+               mode: ByValue, source: RevokeClean}
     }
 
     fn try_deref(
@@ -701,7 +672,7 @@ pub impl Datum {
                                 val: PointerCast(bcx, self.val, llty),
                                 ty: ty,
                                 mode: ByRef,
-                                source: FromLvalue
+                                source: ZeroMem
                             }),
                             bcx
                         )
@@ -740,7 +711,7 @@ pub impl Datum {
                                 val: GEPi(bcx, self.val, [0, 0, 0]),
                                 ty: ty,
                                 mode: ByRef,
-                                source: FromLvalue
+                                source: ZeroMem
                             }),
                             bcx
                         )
@@ -768,7 +739,7 @@ pub impl Datum {
                 val: lv.to_value_llval(bcx),
                 ty: ty,
                 mode: ByRef,
-                source: FromLvalue // *p is an lvalue
+                source: ZeroMem // *p is an lvalue
             }
         }
     }
@@ -841,8 +812,9 @@ pub impl DatumBlock {
         self.datum.drop_val(self.bcx)
     }
 
-    fn store_to(action: CopyAction, dst: ValueRef) -> block {
-        self.datum.store_to(self.bcx, action, dst)
+    fn store_to(id: ast::node_id, action: CopyAction,
+                dst: ValueRef) -> block {
+        self.datum.store_to(self.bcx, id, action, dst)
     }
 
     fn copy_to(action: CopyAction, dst: ValueRef) -> block {

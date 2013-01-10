@@ -377,7 +377,8 @@ fn validate(edges: ~[(node_id, node_id)],
 
     log(info, ~"Verifying tree and graph edges...");
 
-    let status = do par::alli(tree) |u, v, copy edges| {
+    let edges = copy edges;
+    let status = do par::alli(tree) |u, v| {
         let u = u as node_id;
         if *v == -1i64 || u == root {
             true

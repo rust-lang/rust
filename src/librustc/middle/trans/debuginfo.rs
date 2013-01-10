@@ -789,10 +789,10 @@ pub fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
       }
       ast_map::node_expr(expr) => {
         match /*bad*/copy expr.node {
-          ast::expr_fn(_, decl, _, _) => {
+          ast::expr_fn(_, decl, _) => {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }
-          ast::expr_fn_block(decl, _, _) => {
+          ast::expr_fn_block(decl, _) => {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
@@ -818,7 +818,7 @@ pub fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     }
 
     let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
-    let file_node = create_file(cx, loc.file.name).node;
+    let file_node = create_file(cx, copy loc.file.name).node;
     let ty_node = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {
           ast::ty_nil => llnull(),

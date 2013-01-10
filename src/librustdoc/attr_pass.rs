@@ -166,20 +166,27 @@ fn fold_enum(
     doc::EnumDoc {
         variants: do par::map(doc.variants) |variant| {
             let variant = copy *variant;
-            let desc = do astsrv::exec(srv) |ctxt, copy variant| {
-                match ctxt.ast_map.get(doc_id) {
-                  ast_map::node_item(@ast::item {
-                    node: ast::item_enum(ref enum_definition, _), _
-                  }, _) => {
-                    let ast_variant = option::get(
-                        vec::find(enum_definition.variants, |v| {
-                            to_str(v.node.name) == variant.name
-                        }));
+            let desc = {
+                let variant = copy variant;
+                do astsrv::exec(srv) |ctxt| {
+                    match ctxt.ast_map.get(doc_id) {
+                        ast_map::node_item(@ast::item {
+                            node: ast::item_enum(ref enum_definition, _), _
+                        }, _) => {
+                            let ast_variant = option::get(
+                                vec::find(enum_definition.variants, |v| {
+                                    to_str(v.node.name) == variant.name
+                                }));
 
-                    attr_parser::parse_desc(copy ast_variant.node.attrs)
-                  }
-                  _ => fail fmt!("Enum variant %s has id that's not bound \
-                         to an enum item", variant.name)
+                            attr_parser::parse_desc(
+                                copy ast_variant.node.attrs)
+                        }
+                        _ => {
+                            fail fmt!("Enum variant %s has id that's \
+                                       not bound to an enum item",
+                                      variant.name)
+                        }
+                    }
                 }
             };
 

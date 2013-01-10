@@ -43,11 +43,12 @@ fn test00() {
     let mut results = ~[];
     while i < number_of_tasks {
         let ch = po.chan();
-        do task::task().future_result(|+r| {
+        task::task().future_result(|+r| {
             results.push(move r);
-        }).spawn |move ch, copy i| {
-            test00_start(ch, i, number_of_messages)
-        }
+        }).spawn({
+            let i = i;
+            |move ch| test00_start(ch, i, number_of_messages)
+        });
         i = i + 1;
     }
 

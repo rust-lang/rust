@@ -163,8 +163,8 @@ fn visit_item(e: env, i: @ast::item) {
                 None => /*bad*/copy *e.intr.get(i.ident)
             };
             if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
-                already_added = !cstore::add_used_library(cstore,
-                                                          foreign_name);
+                already_added =
+                    !cstore::add_used_library(cstore, copy foreign_name);
             }
             if !link_args.is_empty() && already_added {
                 e.diag.span_fatal(i.span, ~"library '" + foreign_name +
@@ -281,7 +281,8 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
         let cmetas = metas_with(/*bad*/copy dep.vers, ~"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
                *e.intr.get(dep.name), dep.vers, dep.hash);
-        match existing_match(e, metas_with_ident(*e.intr.get(cname), cmetas),
+        match existing_match(e, metas_with_ident(copy *e.intr.get(cname),
+                                                 copy cmetas),
                              dep.hash) {
           Some(local_cnum) => {
             debug!("already have it");

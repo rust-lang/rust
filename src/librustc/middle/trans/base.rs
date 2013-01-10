@@ -1676,7 +1676,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
             ast::by_ref => {
                 llarg = raw_llarg;
             }
-            ast::by_move | ast::by_copy => {
+            ast::by_copy => {
                 // only by value if immediate:
                 if datum::appropriate_mode(arg_ty.ty).is_by_value() {
                     let alloc = alloc_ty(bcx, arg_ty.ty);
@@ -2198,16 +2198,8 @@ pub fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
     create_entry_fn(ccx, llfn);
 
     fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
-        let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
-        let vecarg_ty: ty::arg =
-            arg {
-                mode: ast::expl(ast::by_val),
-                ty: ty::mk_evec(ccx.tcx,
-                    ty::mt {ty: unit_ty, mutbl: ast::m_imm},
-                    ty::vstore_uniq)
-            };
         let nt = ty::mk_nil(ccx.tcx);
-        let llfty = type_of_fn(ccx, ~[vecarg_ty], nt);
+        let llfty = type_of_fn(ccx, ~[], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",
                               lib::llvm::CCallConv, llfty);
 
@@ -2953,7 +2945,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::maps) -> (ModuleRef, link_meta) {
+                   maps: astencode::Maps) -> (ModuleRef, link_meta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =

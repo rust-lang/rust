@@ -16,6 +16,7 @@ use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
 use middle::typeck::method_map;
+use middle::moves;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
@@ -34,10 +35,16 @@ use syntax::visit;
 pub struct MatchCheckCtxt {
     tcx: ty::ctxt,
     method_map: method_map,
+    moves_map: moves::MovesMap
 }
 
-pub fn check_crate(tcx: ty::ctxt, method_map: method_map, crate: @crate) {
-    let cx = @MatchCheckCtxt { tcx: tcx, method_map: method_map };
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: method_map,
+                   moves_map: moves::MovesMap,
+                   crate: @crate) {
+    let cx = @MatchCheckCtxt {tcx: tcx,
+                              method_map: method_map,
+                              moves_map: moves_map};
     visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |a,b,c| check_expr(cx, a, b, c),
         visit_local: |a,b,c| check_local(cx, a, b, c),
@@ -53,13 +60,7 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
         return false;
     }
 
-    match cx.tcx.value_modes.find(expr.id) {
-        Some(MoveValue) => return false,
-        Some(CopyValue) | Some(ReadValue) => return true,
-        None => {
-            cx.tcx.sess.span_bug(expr.span, ~"no entry in value mode map");
-        }
-    }
+    !cx.moves_map.contains_key(expr.id)
 }
 
 pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
@@ -113,7 +114,7 @@ pub fn check_arms(cx: @MatchCheckCtxt, arms: ~[arm]) {
     for arms.each |arm| {
         for arm.pats.each |pat| {
             let v = ~[*pat];
-            match is_useful(cx, seen, v) {
+            match is_useful(cx, copy seen, v) {
               not_useful => {
                 cx.tcx.sess.span_err(pat.span, ~"unreachable pattern");
               }
@@ -197,7 +198,7 @@ pub enum ctor {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: ~[@pat]) -> useful {
+pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
     let real_pat = match vec::find(m, |r| r[0].id != 0) {
@@ -272,12 +273,12 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: ~[@pat]) -> useful {
 
 pub fn is_useful_specialized(cx: @MatchCheckCtxt,
                              m: matrix,
-                             +v: ~[@pat],
+                             +v: &[@pat],
                              +ctor: ctor,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = vec::filter_map(m, |r| specialize(cx, copy *r,
+    let ms = vec::filter_map(m, |r| specialize(cx, *r,
                                                ctor, arity, lty));
     let could_be_useful = is_useful(
         cx, ms, specialize(cx, v, ctor, arity, lty).get());
@@ -467,7 +468,7 @@ pub fn wild() -> @pat {
 }
 
 pub fn specialize(cx: @MatchCheckCtxt,
-                  +r: ~[@pat],
+                  +r: &[@pat],
                   ctor_id: ctor,
                   arity: uint,
                   left_ty: ty::t)
@@ -729,21 +730,13 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
     for pats.each |pat| {
         do pat_bindings(def_map, *pat) |bm, id, span, _path| {
             match bm {
+                bind_by_copy => {}
                 bind_by_ref(_) => {
                     by_ref_span = Some(span);
                 }
-                bind_by_move => {
-                    any_by_move = true;
-                }
-                bind_by_value => {}
                 bind_infer => {
-                    match cx.tcx.value_modes.find(id) {
-                        Some(MoveValue) => any_by_move = true,
-                        Some(CopyValue) | Some(ReadValue) => {}
-                        None => {
-                            cx.tcx.sess.span_bug(span, ~"no mode for pat \
-                                                         binding");
-                        }
+                    if cx.moves_map.contains_key(id) {
+                        any_by_move = true;
                     }
                 }
             }
@@ -781,18 +774,18 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
         do walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
-                    pat_ident(bind_by_move, _, sub) => check_move(p, sub),
-                    pat_ident(bind_infer, _, sub) => {
-                        match tcx.value_modes.find(p.id) {
-                            Some(MoveValue) => check_move(p, sub),
-                            Some(CopyValue) | Some(ReadValue) => {}
-                            None => {
-                                cx.tcx.sess.span_bug(
-                                    pat.span, ~"no mode for pat binding");
-                            }
+                    pat_ident(_, _, sub) => {
+                        if cx.moves_map.contains_key(p.id) {
+                            check_move(p, sub);
                         }
                     }
-                    _ => {}
+                    _ => {
+                        cx.tcx.sess.span_bug(
+                            p.span,
+                            fmt!("Binding pattern %d is \
+                                  not an identifier: %?",
+                                 p.id, p.node));
+                    }
                 }
             }
         }
@@ -800,32 +793,23 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
         // Now check to ensure that any move binding is not behind an @ or &.
         // This is always illegal.
         let vt = visit::mk_vt(@visit::Visitor {
-            visit_pat: |pat, behind_bad_pointer, v| {
-                let error_out = || {
-                    cx.tcx.sess.span_err(pat.span, ~"by-move pattern \
-                                                     bindings may not occur \
-                                                     behind @ or & bindings");
-                };
+            visit_pat: |pat, behind_bad_pointer: bool, v| {
                 match pat.node {
-                    pat_ident(binding_mode, _, sub) => {
+                    pat_ident(_, _, sub) => {
                         debug!("(check legality of move) checking pat \
                                 ident with behind_bad_pointer %?",
                                 behind_bad_pointer);
-                        match binding_mode {
-                            bind_by_move if behind_bad_pointer => error_out(),
-                            bind_infer if behind_bad_pointer => {
-                                match cx.tcx.value_modes.find(pat.id) {
-                                    Some(MoveValue) => error_out(),
-                                    Some(CopyValue) |
-                                    Some(ReadValue) => {}
-                                    None => {
-                                        cx.tcx.sess.span_bug(pat.span,
-                                            ~"no mode for pat binding");
-                                    }
-                                }
-                            }
-                            _ => {}
+
+                        if behind_bad_pointer &&
+                            cx.moves_map.contains_key(pat.id)
+                        {
+                            cx.tcx.sess.span_err(
+                                pat.span,
+                                ~"by-move pattern \
+                                  bindings may not occur \
+                                  behind @ or & bindings");
                         }
+
                         match sub {
                             None => {}
                             Some(subpat) => {
@@ -833,9 +817,11 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                             }
                         }
                     }
+
                     pat_box(subpat) | pat_region(subpat) => {
                         (v.visit_pat)(subpat, true, v);
                     }
+
                     _ => visit::visit_pat(pat, behind_bad_pointer, v)
                 }
             },

@@ -20,7 +20,7 @@ fn main() {
         log(debug, i);
         let (p, ch) = pipes::stream();
         po.add(move p);
-        task::spawn(|move ch, copy i| child(i, ch) );
+        task::spawn({let i = i; |move ch| child(i, ch)});
         i = i - 1;
     }
 

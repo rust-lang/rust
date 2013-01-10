@@ -413,8 +413,8 @@ pub fn lit_to_const(lit: @lit) -> const_val {
 }
 
 pub fn compare_const_vals(a: const_val, b: const_val) -> int {
-  match (a, b) {
-    (const_int(a), const_int(b)) => {
+  match (&a, &b) {
+    (&const_int(a), &const_int(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -423,7 +423,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_uint(a), const_uint(b)) => {
+    (&const_uint(a), &const_uint(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -432,7 +432,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_float(a), const_float(b)) => {
+    (&const_float(a), &const_float(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -441,7 +441,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_str(ref a), const_str(ref b)) => {
+    (&const_str(ref a), &const_str(ref b)) => {
         if (*a) == (*b) {
             0
         } else if (*a) < (*b) {
@@ -450,7 +450,7 @@ pub fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_bool(a), const_bool(b)) => {
+    (&const_bool(a), &const_bool(b)) => {
         if a == b {
             0
         } else if a < b {

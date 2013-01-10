@@ -78,7 +78,6 @@ type parameter).
 
 use core::prelude::*;
 
-use middle::capture;
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
@@ -1454,7 +1453,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         match ast_util::binop_to_method_name(op) {
           Some(ref name) => {
             match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
-                                   fcx.tcx().sess.ident_of((*name)),
+                                   fcx.tcx().sess.ident_of(copy *name),
                                    ~[rhs], DoDerefArgs) {
               Some(pair) => return pair,
               _ => ()
@@ -1488,9 +1487,11 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn check_user_unop(fcx: @fn_ctxt, op_str: ~str, mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
-        match lookup_op_method(fcx, ex, rhs_expr, rhs_t,
-                               fcx.tcx().sess.ident_of(mname), ~[],
-                               DontDerefArgs) {
+        match lookup_op_method(
+            fcx, ex, rhs_expr, rhs_t,
+            fcx.tcx().sess.ident_of(/*bad*/ copy mname), ~[],
+            DontDerefArgs)
+        {
           Some((ret_ty, _)) => ret_ty,
           _ => {
               fcx.type_error_message(ex.span, |actual| {
@@ -2132,7 +2133,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr_has_type(fcx, e, ty::mk_bool(tcx));
         fcx.write_nil(id);
       }
-      ast::expr_copy(a) | ast::expr_unary_move(a) => {
+      ast::expr_copy(a) => {
         bot = check_expr_with_opt_hint(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
@@ -2163,15 +2164,13 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
-      ast::expr_fn(proto, ref decl, ref body, cap_clause) => {
+      ast::expr_fn(proto, ref decl, ref body) => {
         check_expr_fn(fcx, expr, Some(proto),
                       decl, (*body), Vanilla, expected);
-        capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
-      ast::expr_fn_block(ref decl, ref body, cap_clause) => {
+      ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, (*body), Vanilla, expected);
-        capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_loop_body(b) => {
         // a loop body is the special argument to a `for` loop.  We know that
@@ -2234,7 +2233,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
         };
         match b.node {
-                ast::expr_fn_block(ref decl, ref body, cap_clause) => {
+                ast::expr_fn_block(ref decl, ref body) => {
                     // If an error occurred, we pretend this isn't a for
                     // loop, so as to assign types to all nodes while also
                     // propagating ty_err throughout so as to suppress
@@ -2246,7 +2245,6 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                     check_expr_fn(fcx, b, None,
                                   decl, *body, fn_kind, Some(inner_ty));
                     demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-                    capture::check_capture_clause(tcx, b.id, cap_clause);
                 }
                 // argh
                 _ => fail ~"expr_fn_block"
@@ -2283,11 +2281,10 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
         };
         match b.node {
-          ast::expr_fn_block(ref decl, ref body, cap_clause) => {
+          ast::expr_fn_block(ref decl, ref body) => {
             check_expr_fn(fcx, b, None,
                           decl, *body, DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-            capture::check_capture_clause(tcx, b.id, cap_clause);
           }
           // argh
           _ => fail ~"expected fn ty"
@@ -3052,7 +3049,7 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"size_of" |
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint(ccx.tcx)),
       ~"init" => (1u, ~[], param(ccx, 0u)),
-      ~"forget" => (1u, ~[arg(ast::by_move, param(ccx, 0u))],
+      ~"forget" => (1u, ~[arg(ast::by_copy, param(ccx, 0u))],
                     ty::mk_nil(tcx)),
       ~"reinterpret_cast" => (2u, ~[arg(ast::by_ref, param(ccx, 0u))],
                               param(ccx, 1u)),
@@ -3062,7 +3059,7 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
           (1u, ~[arg(ast::by_copy,
                      ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
                                      param(ccx, 0u))),
-               arg(ast::by_move, param(ccx, 0u))],
+               arg(ast::by_copy, param(ccx, 0u))],
          ty::mk_nil(tcx))
       }
       ~"needs_drop" => (1u, ~[], ty::mk_bool(tcx)),

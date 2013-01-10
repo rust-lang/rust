@@ -91,14 +91,13 @@ pub mod middle {
     pub mod liveness;
     pub mod kind;
     pub mod freevars;
-    pub mod capture;
     pub mod pat_util;
     pub mod region;
     pub mod const_eval;
     pub mod astencode;
     pub mod lang_items;
     pub mod privacy;
-    pub mod mode;
+    pub mod moves;
 }
 
 pub mod front {
@@ -221,9 +220,9 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
 
     let matches =
         &match getopts::groups::getopts(args, optgroups()) {
-          Ok(ref m) => (*m),
-          Err(ref f) => {
-            early_error(demitter, getopts::fail_str((*f)))
+          Ok(m) => m,
+          Err(f) => {
+            early_error(demitter, getopts::fail_str(f));
           }
         };
 
@@ -375,7 +374,7 @@ pub fn monitor(+f: fn~(diagnostic::emitter)) {
 }
 
 pub fn main() {
-    let mut args = os::args();
+    let args = os::args();
     do monitor |move args, demitter| {
         run_compiler(&args, demitter);
     }

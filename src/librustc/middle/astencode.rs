@@ -22,7 +22,7 @@ use metadata::tyencode;
 use middle::freevars::freevar_entry;
 use middle::typeck::{method_origin, method_map_entry, vtable_res};
 use middle::typeck::{vtable_origin};
-use middle::{ty, typeck};
+use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
@@ -51,19 +51,21 @@ use syntax;
 use writer = std::ebml::writer;
 
 // Auxiliary maps of things to be encoded
-pub type maps = {
+pub struct Maps {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
     last_use_map: middle::liveness::last_use_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
     write_guard_map: middle::borrowck::write_guard_map,
-};
+    moves_map: middle::moves::MovesMap,
+    capture_map: middle::moves::CaptureMap,
+}
 
 type decode_ctxt = @{
     cdata: cstore::crate_metadata,
     tcx: ty::ctxt,
-    maps: maps
+    maps: Maps
 };
 
 type extended_decode_ctxt_ = {
@@ -91,7 +93,7 @@ pub fn encode_inlined_item(ecx: @e::encode_ctxt,
                            ebml_w: writer::Encoder,
                            path: &[ast_map::path_elt],
                            ii: ast::inlined_item,
-                           maps: maps) {
+                           maps: Maps) {
     debug!("> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
            ecx.tcx.sess.str_of(ii.ident()),
@@ -112,7 +114,7 @@ pub fn encode_inlined_item(ecx: @e::encode_ctxt,
 
 pub fn decode_inlined_item(cdata: cstore::crate_metadata,
                            tcx: ty::ctxt,
-                           maps: maps,
+                           maps: Maps,
                            +path: ast_map::path,
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
@@ -514,6 +516,30 @@ impl freevar_entry: tr {
 }
 
 // ______________________________________________________________________
+// Encoding and decoding of CaptureVar information
+
+trait capture_var_helper {
+    fn read_capture_var(xcx: extended_decode_ctxt) -> moves::CaptureVar;
+}
+
+impl reader::Decoder : capture_var_helper {
+    fn read_capture_var(xcx: extended_decode_ctxt) -> moves::CaptureVar {
+        let cvar: moves::CaptureVar = Decodable::decode(&self);
+        cvar.tr(xcx)
+    }
+}
+
+impl moves::CaptureVar : tr {
+    fn tr(xcx: extended_decode_ctxt) -> moves::CaptureVar {
+        moves::CaptureVar {
+            def: self.def.tr(xcx),
+            span: self.span.tr(xcx),
+            mode: self.mode
+        }
+    }
+}
+
+// ______________________________________________________________________
 // Encoding and decoding of method_map_entry
 
 trait read_method_map_entry_helper {
@@ -788,10 +814,11 @@ impl writer::Encoder: write_tag_and_id {
 }
 
 fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
-                             maps: maps,
+                             maps: Maps,
                              ebml_w: writer::Encoder,
                              ii: ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_table as uint) {
+        let ebml_w = copy ebml_w;
         ast_util::visit_ids_for_inlined_item(
             ii,
             fn@(id: ast::node_id, copy ebml_w) {
@@ -804,7 +831,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
 }
 
 fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
-                             maps: maps,
+                             maps: Maps,
                              ebml_w: writer::Encoder,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
@@ -931,11 +958,19 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(&tcx.value_modes.find(id)) |vm| {
-        do ebml_w.tag(c::tag_table_value_mode) {
+    for maps.moves_map.find(id).each |_| {
+        do ebml_w.tag(c::tag_table_moves_map) {
+            ebml_w.id(id);
+        }
+    }
+
+    for maps.capture_map.find(id).each |cap_vars| {
+        do ebml_w.tag(c::tag_table_capture_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                (*vm).encode(&ebml_w)
+                do ebml_w.emit_from_vec(*cap_vars) |cap_var| {
+                    cap_var.encode(&ebml_w);
+                }
             }
         }
     }
@@ -980,10 +1015,24 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
         // context.  However, we do not bother, because region types
         // are not used during trans.
 
-        do self.read_opaque |doc| {
-            tydecode::parse_ty_data(
+        return do self.read_opaque |doc| {
+
+            let ty = tydecode::parse_ty_data(
                 doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
-                |s, a| self.convert_def_id(xcx, s, a))
+                |s, a| self.convert_def_id(xcx, s, a));
+
+            debug!("read_ty(%s) = %s",
+                   type_string(doc), ty_to_str(xcx.dcx.tcx, ty));
+
+            ty
+        };
+
+        fn type_string(doc: ebml::Doc) -> ~str {
+            let mut str = ~"";
+            for uint::range(doc.start, doc.end) |i| {
+                str::push_char(&mut str, doc.data[i] as char);
+            }
+            str
         }
     }
 
@@ -1034,10 +1083,12 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
          * to refer to the new, cloned copy of the type parameter.
          */
 
-        match source {
+        let r = match source {
             NominalType | TypeWithId => xcx.tr_def_id(did),
             TypeParameter => xcx.tr_intern_def_id(did)
-        }
+        };
+        debug!("convert_def_id(source=%?, did=%?)=%?", source, did, r);
+        return r;
     }
 }
 
@@ -1057,6 +1108,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.mutbl_map.insert(id, ());
         } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
             dcx.tcx.legacy_boxed_traits.insert(id, ());
+        } else if tag == (c::tag_table_moves_map as uint) {
+            dcx.maps.moves_map.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = &reader::Decoder(val_doc);
@@ -1065,6 +1118,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.tcx.def_map.insert(id, def);
             } else if tag == (c::tag_table_node_type as uint) {
                 let ty = val_dsr.read_ty(xcx);
+                debug!("inserting ty for node %?: %s",
+                       id, ty_to_str(dcx.tcx, ty));
                 (*dcx.tcx.node_types).insert(id as uint, ty);
             } else if tag == (c::tag_table_node_type_subst as uint) {
                 let tys = val_dsr.read_tys(xcx);
@@ -1098,9 +1153,12 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
                 adj.tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
-            } else if tag == (c::tag_table_value_mode as uint) {
-                let vm: ty::ValueMode = Decodable::decode(val_dsr);
-                dcx.tcx.value_modes.insert(id, vm);
+            } else if tag == (c::tag_table_capture_map as uint) {
+                let cvars =
+                    at_vec::from_owned(
+                        val_dsr.read_to_vec(
+                            || val_dsr.read_capture_var(xcx)));
+                dcx.maps.capture_map.insert(id, cvars);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));

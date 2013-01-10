@@ -1344,10 +1344,10 @@ pub fn mk_type_names() -> type_names {
 }
 
 pub fn type_to_str(names: type_names, ty: TypeRef) -> @str {
-    return type_to_str_inner(names, ~[], ty);
+    return type_to_str_inner(names, [], ty);
 }
 
-pub fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef)
+pub fn type_to_str_inner(names: type_names, +outer0: &[TypeRef], ty: TypeRef)
                       -> @str {
     unsafe {
         match type_has_name(names, ty) {
@@ -1355,12 +1355,11 @@ pub fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef)
           _ => {}
         }
 
-        // FIXME #2543: Bad copy.
-        let outer = vec::append_one(copy outer0, ty);
+        let outer = vec::append_one(outer0.to_vec(), ty);
 
         let kind = llvm::LLVMGetTypeKind(ty);
 
-        fn tys_str(names: type_names, outer: ~[TypeRef],
+        fn tys_str(names: type_names, outer: &[TypeRef],
                    tys: ~[TypeRef]) -> @str {
             let mut s = ~"";
             let mut first: bool = true;

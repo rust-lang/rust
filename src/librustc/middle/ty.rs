@@ -99,15 +99,6 @@ pub struct field_ty {
   mutability: ast::struct_mutability,
 }
 
-/// How an lvalue is to be used.
-#[auto_encode]
-#[auto_decode]
-pub enum ValueMode {
-    ReadValue,  // Non-destructively read the value; do not copy or move.
-    CopyValue,  // Copy the value.
-    MoveValue,  // Move the value.
-}
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[deriving_eq]
@@ -294,9 +285,6 @@ struct ctxt_ {
 
     // A method will be in this list if and only if it is a destructor.
     destructors: HashMap<ast::def_id, ()>,
-
-    // Records the value mode (read, copy, or move) for every value.
-    value_modes: HashMap<ast::node_id, ValueMode>,
 
     // Maps a trait onto a mapping from self-ty to impl
     trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
@@ -875,7 +863,6 @@ pub fn mk_ctxt(s: session::Session,
         supertraits: HashMap(),
         destructor_for_type: HashMap(),
         destructors: HashMap(),
-        value_modes: HashMap(),
         trait_impls: HashMap()
      }
 }
@@ -2170,7 +2157,14 @@ pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
       }
 
       ty_param(p) => {
-        param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
+          // We only ever ask for the kind of types that are defined in the
+          // current crate; therefore, the only type parameters that could be
+          // in scope are those defined in the current crate.  If this
+          // assertion failures, it is likely because of a failure in the
+          // cross-crate inlining code to translate a def-id.
+          assert p.def_id.crate == ast::local_crate;
+
+          param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
       }
 
       // self is a special type parameter that can only appear in traits; it
@@ -2925,12 +2919,123 @@ pub fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
 
 // Returns the type of an expression as a monotype.
 //
-// NB: This type doesn't provide type parameter substitutions; e.g. if you
+// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+// some cases, we insert `AutoAdjustment` annotations such as auto-deref or
+// auto-ref.  The type returned by this function does not consider such
+// adjustments.  See `expr_ty_adjusted()` instead.
+//
+// NB (2): This type doesn't provide type parameter substitutions; e.g. if you
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(t) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 pub fn expr_ty(cx: ctxt, expr: @ast::expr) -> t {
     return node_id_to_type(cx, expr.id);
+}
+
+pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
+    /*!
+     *
+     * Returns the type of `expr`, considering any `AutoAdjustment`
+     * entry recorded for that expression.
+     *
+     * It would almost certainly be better to store the adjusted ty in with
+     * the `AutoAdjustment`, but I opted not to do this because it would
+     * require serializing and deserializing the type and, although that's not
+     * hard to do, I just hate that code so much I didn't want to touch it
+     * unless it was to fix it properly, which seemed a distraction from the
+     * task at hand! -nmatsakis
+     */
+
+    let unadjusted_ty = expr_ty(cx, expr);
+
+    return match cx.adjustments.find(expr.id) {
+        None => unadjusted_ty,
+
+        Some(adj) => {
+            let mut adjusted_ty = unadjusted_ty;
+
+            for uint::range(0, adj.autoderefs) |i| {
+                match ty::deref(cx, adjusted_ty, true) {
+                    Some(mt) => { adjusted_ty = mt.ty; }
+                    None => {
+                        cx.sess.span_bug(
+                            expr.span,
+                            fmt!("The %uth autoderef failed: %s",
+                                 i, ty_to_str(cx,
+                                              adjusted_ty)));
+                    }
+                }
+            }
+
+            match adj.autoref {
+                None => adjusted_ty,
+                Some(ref autoref) => {
+                    match autoref.kind {
+                        AutoPtr => {
+                            mk_rptr(cx, autoref.region,
+                                    mt {ty: adjusted_ty,
+                                        mutbl: autoref.mutbl})
+                        }
+
+                        AutoBorrowVec => {
+                            borrow_vec(cx, expr, autoref, adjusted_ty)
+                        }
+
+                        AutoBorrowVecRef => {
+                            adjusted_ty = borrow_vec(cx, expr, autoref,
+                                                     adjusted_ty);
+                            mk_rptr(cx, autoref.region,
+                                    mt {ty: adjusted_ty, mutbl: ast::m_imm})
+                        }
+
+                        AutoBorrowFn => {
+                            borrow_fn(cx, expr, autoref, adjusted_ty)
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    fn borrow_vec(cx: ctxt, expr: @ast::expr,
+                  autoref: &AutoRef, ty: ty::t) -> ty::t {
+        match get(ty).sty {
+            ty_evec(mt, _) => {
+                ty::mk_evec(cx, mt {ty: mt.ty, mutbl: autoref.mutbl},
+                            vstore_slice(autoref.region))
+            }
+
+            ty_estr(_) => {
+                ty::mk_estr(cx, vstore_slice(autoref.region))
+            }
+
+            ref s => {
+                cx.sess.span_bug(
+                    expr.span,
+                    fmt!("borrow-vec associated with bad sty: %?",
+                         s));
+            }
+        }
+    }
+
+    fn borrow_fn(cx: ctxt, expr: @ast::expr,
+                 autoref: &AutoRef, ty: ty::t) -> ty::t {
+        match get(ty).sty {
+            ty_fn(ref fty) => {
+                ty::mk_fn(cx, FnTyBase {meta: FnMeta {proto: ProtoBorrowed,
+                                                      region: autoref.region,
+                                                      ..copy fty.meta},
+                                        sig: copy fty.sig})
+            }
+
+            ref s => {
+                cx.sess.span_bug(
+                    expr.span,
+                    fmt!("borrow-fn associated with bad sty: %?",
+                         s));
+            }
+        }
+    }
 }
 
 pub fn expr_ty_params_and_ty(cx: ctxt,
@@ -3060,7 +3165,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_do_body(*) |
         ast::expr_block(*) |
         ast::expr_copy(*) |
-        ast::expr_unary_move(*) |
         ast::expr_repeat(*) |
         ast::expr_lit(@ast::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |

@@ -19,13 +19,15 @@
 
 use core::prelude::*;
 
-use middle::borrowck::{Loan, bckerr, borrowck_ctxt, inherent_mutability};
+use middle::moves;
+use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
 use middle::borrowck::{req_maps, root_map_key, save_and_restore};
+use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
+use middle::borrowck::{MoveWhileBorrowed};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
 use middle::mem_categorization::{cat_special, cmt, gc_ptr, loan_path, lp_arg};
 use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
-use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
 use util::ppaux::ty_to_str;
 
@@ -42,7 +44,7 @@ use syntax::print::pprust;
 use syntax::visit;
 
 enum check_loan_ctxt = @{
-    bccx: borrowck_ctxt,
+    bccx: @BorrowckCtxt,
     req_maps: req_maps,
 
     reported: HashMap<ast::node_id, ()>,
@@ -63,9 +65,9 @@ enum purity_cause {
     pc_cmt(bckerr)
 }
 
-pub fn check_loans(bccx: borrowck_ctxt,
-                   req_maps: req_maps,
-                   crate: @ast::crate) {
+pub fn check_loans(bccx: @BorrowckCtxt,
+               req_maps: req_maps,
+               crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_maps: req_maps,
                                  reported: HashMap(),
@@ -471,12 +473,40 @@ impl check_loan_ctxt {
         }
     }
 
-    fn check_move_out(ex: @ast::expr) {
-        let cmt = self.bccx.cat_expr(ex);
-        self.check_move_out_from_cmt(cmt);
+    fn check_move_out_from_expr(ex: @ast::expr) {
+        match ex.node {
+            ast::expr_paren(*) => {
+                /* In the case of an expr_paren(), the expression inside
+                 * the parens will also be marked as being moved.  Ignore
+                 * the parents then so as not to report duplicate errors. */
+            }
+            _ => {
+                let cmt = self.bccx.cat_expr(ex);
+                match self.analyze_move_out_from_cmt(cmt) {
+                    MoveOk => {}
+                    MoveFromIllegalCmt(_) => {
+                        self.bccx.span_err(
+                            cmt.span,
+                            fmt!("moving out of %s",
+                                 self.bccx.cmt_to_str(cmt)));
+                    }
+                    MoveWhileBorrowed(_, loan_cmt) => {
+                        self.bccx.span_err(
+                            cmt.span,
+                            fmt!("moving out of %s prohibited \
+                                  due to outstanding loan",
+                                 self.bccx.cmt_to_str(cmt)));
+                        self.bccx.span_note(
+                            loan_cmt.span,
+                            fmt!("loan of %s granted here",
+                                 self.bccx.cmt_to_str(loan_cmt)));
+                    }
+                }
+            }
+        }
     }
 
-    fn check_move_out_from_cmt(cmt: cmt) {
+    fn analyze_move_out_from_cmt(cmt: cmt) -> MoveError {
         debug!("check_move_out_from_cmt(cmt=%s)",
                self.bccx.cmt_to_repr(cmt));
 
@@ -493,59 +523,27 @@ impl check_loan_ctxt {
 
           // Nothing else.
           _ => {
-            self.bccx.span_err(
-                cmt.span,
-                fmt!("moving out of %s", self.bccx.cmt_to_str(cmt)));
-            return;
+              return MoveFromIllegalCmt(cmt);
           }
         }
 
         self.bccx.add_to_mutbl_map(cmt);
 
         // check for a conflicting loan:
-        let lp = match cmt.lp {
-          None => return,
-          Some(lp) => lp
-        };
-        for self.walk_loans_of(cmt.id, lp) |loan| {
-            self.bccx.span_err(
-                cmt.span,
-                fmt!("moving out of %s prohibited due to outstanding loan",
-                     self.bccx.cmt_to_str(cmt)));
-            self.bccx.span_note(
-                loan.cmt.span,
-                fmt!("loan of %s granted here",
-                     self.bccx.cmt_to_str(loan.cmt)));
-            return;
-        }
-    }
-
-    // Very subtle (#2633): liveness can mark options as last_use even
-    // when there is an outstanding loan.  In that case, it is not
-    // safe to consider the use a last_use.
-    fn check_last_use(expr: @ast::expr) {
-        debug!("Checking last use of expr %?", expr.id);
-        let cmt = self.bccx.cat_expr(expr);
-        let lp = match cmt.lp {
-            None => {
-                debug!("Not a loanable expression");
-                return;
+        for cmt.lp.each |lp| {
+            for self.walk_loans_of(cmt.id, *lp) |loan| {
+                return MoveWhileBorrowed(cmt, loan.cmt);
             }
-            Some(lp) => lp
-        };
-        for self.walk_loans_of(cmt.id, lp) |_loan| {
-            debug!("Removing last use entry %? due to outstanding loan",
-                   expr.id);
-            self.bccx.last_use_map.remove(expr.id);
-            return;
         }
+
+        return MoveOk;
     }
 
     fn check_call(expr: @ast::expr,
                   callee: Option<@ast::expr>,
                   callee_id: ast::node_id,
                   callee_span: span,
-                  args: ~[@ast::expr]) {
+                  args: &[@ast::expr]) {
         match self.purity(expr.id) {
           None => {}
           Some(ref pc) => {
@@ -557,35 +555,26 @@ impl check_loan_ctxt {
             }
           }
         }
-        let arg_tys =
-            ty::ty_fn_args(
-                ty::node_id_to_type(self.tcx(), callee_id));
-        for vec::each2(args, arg_tys) |arg, arg_ty| {
-            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-                ast::by_move => {
-                    self.check_move_out(*arg);
-                }
-                ast::by_ref |
-                ast::by_copy | ast::by_val => {
-                }
-            }
-        }
     }
 }
 
 fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                      sp: span, id: ast::node_id, &&self: check_loan_ctxt,
-                     visitor: visit::vt<check_loan_ctxt>) {
+                     visitor: visit::vt<check_loan_ctxt>)
+{
+    let is_stack_closure = self.is_stack_closure(id);
+    let fty = ty::node_id_to_type(self.tcx(), id);
+    let fty_proto = ty::ty_fn_proto(fty);
+
+    check_moves_from_captured_variables(self, id, fty_proto);
 
     debug!("purity on entry=%?", copy self.declared_purity);
     do save_and_restore(&mut(self.declared_purity)) {
         do save_and_restore(&mut(self.fn_args)) {
-            let is_stack_closure = self.is_stack_closure(id);
-            let fty = ty::node_id_to_type(self.tcx(), id);
             self.declared_purity = ty::determine_inherited_purity(
                 copy self.declared_purity,
                 ty::ty_fn_purity(fty),
-                ty::ty_fn_proto(fty));
+                fty_proto);
 
             match fk {
                 visit::fk_anon(*) |
@@ -616,6 +605,50 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
         }
     }
     debug!("purity on exit=%?", copy self.declared_purity);
+
+    fn check_moves_from_captured_variables(&&self: check_loan_ctxt,
+                                           id: ast::node_id,
+                                           fty_proto: ast::Proto)
+    {
+        match fty_proto {
+            ast::ProtoBox | ast::ProtoUniq => {
+                let cap_vars = self.bccx.capture_map.get(id);
+                for cap_vars.each |cap_var| {
+                    match cap_var.mode {
+                        moves::CapRef | moves::CapCopy => { loop; }
+                        moves::CapMove => { }
+                    }
+                    let def_id = ast_util::def_id_of_def(cap_var.def).node;
+                    let ty = ty::node_id_to_type(self.tcx(), def_id);
+                    let cmt = self.bccx.cat_def(id, cap_var.span,
+                                                ty, cap_var.def);
+                    let move_err = self.analyze_move_out_from_cmt(cmt);
+                    match move_err {
+                        MoveOk => {}
+                        MoveFromIllegalCmt(move_cmt) => {
+                            self.bccx.span_err(
+                                cap_var.span,
+                                fmt!("illegal by-move capture of %s",
+                                     self.bccx.cmt_to_str(move_cmt)));
+                        }
+                        MoveWhileBorrowed(move_cmt, loan_cmt) => {
+                            self.bccx.span_err(
+                                cap_var.span,
+                                fmt!("by-move capture of %s prohibited \
+                                      due to outstanding loan",
+                                     self.bccx.cmt_to_str(move_cmt)));
+                            self.bccx.span_note(
+                                loan_cmt.span,
+                                fmt!("loan of %s granted here",
+                                     self.bccx.cmt_to_str(loan_cmt)));
+                        }
+                    }
+                }
+            }
+
+            ast::ProtoBorrowed | ast::ProtoBare => {}
+        }
+    }
 }
 
 fn check_loans_in_local(local: @ast::local,
@@ -632,48 +665,24 @@ fn check_loans_in_expr(expr: @ast::expr,
 
     self.check_for_conflicting_loans(expr.id);
 
-    // If this is a move, check it.
-    match self.tcx().value_modes.find(expr.id) {
-        Some(MoveValue) => self.check_move_out(expr),
-        Some(ReadValue) | Some(CopyValue) | None => {}
+    if self.bccx.moves_map.contains_key(expr.id) {
+        self.check_move_out_from_expr(expr);
     }
 
-    match /*bad*/copy expr.node {
-      ast::expr_path(*) if self.bccx.last_use_map.contains_key(expr.id) => {
-        self.check_last_use(expr);
-      }
-
+    match expr.node {
       ast::expr_swap(l, r) => {
         self.check_assignment(at_swap, l);
         self.check_assignment(at_swap, r);
-      }
-      ast::expr_unary_move(src) => {
-        self.check_move_out(src);
       }
       ast::expr_assign(dest, _) |
       ast::expr_assign_op(_, dest, _) => {
         self.check_assignment(at_straight_up, dest);
       }
-      ast::expr_fn(_, _, _, cap_clause) |
-      ast::expr_fn_block(_, _, cap_clause) => {
-        for (*cap_clause).each |cap_item| {
-            if cap_item.is_move {
-                let def = self.tcx().def_map.get(cap_item.id);
-
-                // Hack: the type that is used in the cmt doesn't actually
-                // matter here, so just subst nil instead of looking up
-                // the type of the def that is referred to
-                let cmt = self.bccx.cat_def(cap_item.id, cap_item.span,
-                                            ty::mk_nil(self.tcx()), def);
-                self.check_move_out_from_cmt(cmt);
-            }
-        }
+      ast::expr_call(f, ref args, _) => {
+        self.check_call(expr, Some(f), f.id, f.span, *args);
       }
-      ast::expr_call(f, args, _) => {
-        self.check_call(expr, Some(f), f.id, f.span, args);
-      }
-      ast::expr_method_call(_, _, _, args, _) => {
-        self.check_call(expr, None, expr.callee_id, expr.span, args);
+      ast::expr_method_call(_, _, _, ref args, _) => {
+        self.check_call(expr, None, expr.callee_id, expr.span, *args);
       }
       ast::expr_index(_, rval) |
       ast::expr_binary(_, _, rval)
@@ -691,6 +700,18 @@ fn check_loans_in_expr(expr: @ast::expr,
                         expr.callee_id,
                         expr.span,
                         ~[]);
+      }
+      ast::expr_match(*) => {
+          // Note: moves out of pattern bindings are not checked by
+          // the borrow checker, at least not directly.  What happens
+          // is that if there are any moved bindings, the discriminant
+          // will be considered a move, and this will be checked as
+          // normal.  Then, in `middle::check_match`, we will check
+          // that no move occurs in a binding that is underneath an
+          // `@` or `&`.  Together these give the same guarantees as
+          // `check_move_out_from_expr()` without requiring us to
+          // rewalk the patterns and rebuild the pattern
+          // categorizations.
       }
       _ => { }
     }
