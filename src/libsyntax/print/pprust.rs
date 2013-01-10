@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use ast::{required, provided};
+use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
 use ast_util;
 use ast_util::{operator_prec};
@@ -1791,9 +1791,12 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
     if bounds.is_not_empty() {
         word(s.s, ~":");
-        for vec::each(*bounds) |bound| {
+        for vec::each(*bounds) |&bound| {
             nbsp(s);
-            print_type(s, **bound);
+            match bound {
+                TraitTyParamBound(ty) => print_type(s, ty),
+                RegionTyParamBound => word(s.s, ~"&static"),
+            }
         }
     }
 }

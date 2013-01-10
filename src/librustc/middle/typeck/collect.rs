@@ -50,6 +50,7 @@ use util::ppaux::bound_to_str;
 use core::dvec;
 use core::option;
 use core::vec;
+use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
@@ -908,36 +909,42 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     }
 }
 
-// Translate the AST's notion of ty param bounds (which are just newtyped Tys)
-// to ty's notion of ty param bounds, which can either be user-defined traits,
-// or one of the four built-in traits (formerly known as kinds): Const, Copy,
-// Durable, and Send.
+// Translate the AST's notion of ty param bounds (which are an enum consisting
+// of a newtyped Ty or a region) to ty's notion of ty param bounds, which can
+// either be user-defined traits, or one of the four built-in traits (formerly
+// known as kinds): Const, Copy, Durable, and Send.
 fn compute_bounds(ccx: @crate_ctxt,
-                  ast_bounds: @~[ast::ty_param_bound]) -> ty::param_bounds {
+                  ast_bounds: @~[ast::ty_param_bound])
+               -> ty::param_bounds {
     @do vec::flat_map(*ast_bounds) |b| {
-        let li = &ccx.tcx.lang_items;
-        let ity = ast_ty_to_ty(ccx, empty_rscope, **b);
-        match ty::get(ity).sty {
-            ty::ty_trait(did, _, _) => {
-                if did == li.owned_trait() {
-                    ~[ty::bound_owned]
-                } else if did == li.copy_trait() {
-                    ~[ty::bound_copy]
-                } else if did == li.const_trait() {
-                    ~[ty::bound_const]
-                } else if did == li.durable_trait() {
-                    ~[ty::bound_durable]
-                } else {
-                    // Must be a user-defined trait
-                    ~[ty::bound_trait(ity)]
+        match b {
+            &TraitTyParamBound(b) => {
+                let li = &ccx.tcx.lang_items;
+                let ity = ast_ty_to_ty(ccx, empty_rscope, b);
+                match ty::get(ity).sty {
+                    ty::ty_trait(did, _, _) => {
+                        if did == li.owned_trait() {
+                            ~[ty::bound_owned]
+                        } else if did == li.copy_trait() {
+                            ~[ty::bound_copy]
+                        } else if did == li.const_trait() {
+                            ~[ty::bound_const]
+                        } else if did == li.durable_trait() {
+                            ~[ty::bound_durable]
+                        } else {
+                            // Must be a user-defined trait
+                            ~[ty::bound_trait(ity)]
+                        }
+                    }
+                    _ => {
+                        ccx.tcx.sess.span_err(
+                            (*b).span, ~"type parameter bounds must be \
+                                         trait types");
+                        ~[]
+                    }
                 }
             }
-            _ => {
-                ccx.tcx.sess.span_err(
-                    (*b).span, ~"type parameter bounds must be \
-                                 trait types");
-                ~[]
-            }
+            &RegionTyParamBound => ~[ty::bound_durable]
         }
     }
 }

@@ -110,7 +110,10 @@ const crate_node_id: node_id = 0;
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
-enum ty_param_bound = @Ty;
+enum ty_param_bound {
+    TraitTyParamBound(@Ty),
+    RegionTyParamBound
+}
 
 #[auto_encode]
 #[auto_decode]
