@@ -171,8 +171,7 @@ fn is_test_fn(i: @ast::item) -> bool {
 }
 
 fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
-    let ignoreattrs = attr::find_attrs_by_name(/*bad*/copy i.attrs,
-                                               ~"ignore");
+    let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
         |i| attr::get_meta_item_list(*i)));

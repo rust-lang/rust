@@ -180,7 +180,7 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
 /* Searching */
 
 /// Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(attrs: ~[ast::attribute], name: &str) ->
+fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
    ~[ast::attribute] {
     let filter: &fn(a: &ast::attribute) -> Option<ast::attribute> = |a| {
         if name == get_attr_name(*a) {
@@ -242,7 +242,7 @@ fn contains_name(metas: ~[@ast::meta_item], name: ~str) -> bool {
     return vec::len(matches) > 0u;
 }
 
-fn attrs_contains_name(attrs: ~[ast::attribute], name: ~str) -> bool {
+fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
     vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 
