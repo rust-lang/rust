@@ -32,7 +32,7 @@ fn to_foo<T:Copy>(t: T) {
 fn to_foo_2<T:Copy>(t: T) -> foo {
     // Not OK---T may contain borrowed ptrs and it is going to escape
     // as part of the returned foo value
-    {f:t} as foo //~ ERROR value may contain borrowed pointers; use `durable` bound
+    {f:t} as foo //~ ERROR value may contain borrowed pointers; use `&static` bound
 }
 
 fn to_foo_3<T:Copy &static>(t: T) -> foo {

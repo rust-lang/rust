@@ -18,12 +18,12 @@ fn copy2<T: Copy &static>(t: T) -> fn@() -> T {
 
 fn main() {
     let x = &3;
-    copy2(&x); //~ ERROR missing `durable`
+    copy2(&x); //~ ERROR missing `&static`
 
     copy2(@3);
-    copy2(@&x); //~ ERROR missing `durable`
+    copy2(@&x); //~ ERROR missing `&static`
 
     copy2(fn@() {});
     copy2(fn~() {}); //~ WARNING instantiating copy type parameter with a not implicitly copyable type
-    copy2(fn&() {}); //~ ERROR missing `copy durable`
+    copy2(fn&() {}); //~ ERROR missing `copy &static`
 }
