@@ -86,7 +86,8 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
             /*bad*/copy *crate_cache.last().metas);
         let (matches, non_matches) =
             partition(crate_cache.map_to_vec(|&entry| {
-                let othername = loader::crate_name_from_metas(*entry.metas);
+                let othername = loader::crate_name_from_metas(
+                    copy *entry.metas);
                 if name == othername {
                     Left(entry)
                 } else {

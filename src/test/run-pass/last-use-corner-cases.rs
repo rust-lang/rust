@@ -39,6 +39,6 @@ fn main() {
     // Verify that blocks can't interfere with each other.
     fn two_blocks(a: fn(), b: fn()) { a(); b(); a(); b(); }
     let q = ~50;
-    two_blocks(|| { let a = q; assert *a == 50;},
-               || { let a = q; assert *a == 50;});
+    two_blocks(|| { let a = copy q; assert *a == 50;},
+               || { let a = copy q; assert *a == 50;});
 }

@@ -3905,10 +3905,10 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 match variant.node.kind {
-                    ast::tuple_variant_kind(args) => {
+                    ast::tuple_variant_kind(ref args) => {
                         let ctor_ty = node_id_to_type(cx, variant.node.id);
                         let arg_tys = {
-                            if vec::len(args) > 0u {
+                            if args.len() > 0u {
                                 ty_fn_args(ctor_ty).map(|a| a.ty)
                             } else {
                                 ~[]

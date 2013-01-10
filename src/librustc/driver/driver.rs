@@ -188,7 +188,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
-                         ||parse_input(sess, cfg, input) );
+                         || parse_input(sess, copy cfg, input) );
     if upto == cu_parse { return {crate: crate, tcx: None}; }
 
     sess.building_library = session::building_library(
@@ -201,7 +201,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         front::test::modify_for_testing(sess, crate));
 
     crate = time(time_passes, ~"expansion", ||
-        syntax::ext::expand::expand_crate(sess.parse_sess, cfg,
+        syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
                                           crate));
 
     if upto == cu_expand { return {crate: crate, tcx: None}; }

@@ -275,7 +275,7 @@ fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: ~[@pat]) -> useful {
             }
           }
           Some(ref ctor) => {
-            match is_useful(cx, vec::filter_map(m, |r| default(cx, *r)),
+            match is_useful(cx, vec::filter_map(m, |r| default(cx, copy *r)),
                             vec::tail(v)) {
               useful_ => useful(left_ty, (/*bad*/copy *ctor)),
               ref u => (/*bad*/copy *u)
@@ -292,7 +292,8 @@ fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: ~[@pat]) -> useful {
 
 fn is_useful_specialized(cx: @MatchCheckCtxt, m: matrix, +v: ~[@pat],
                          +ctor: ctor, arity: uint, lty: ty::t) -> useful {
-    let ms = vec::filter_map(m, |r| specialize(cx, *r, ctor, arity, lty));
+    let ms = vec::filter_map(m, |r| specialize(cx, copy *r,
+                                               ctor, arity, lty));
     let could_be_useful = is_useful(
         cx, ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {

@@ -413,7 +413,7 @@ fn trans_expr_fn(bcx: block,
                                                    ret_handle);
         trans_closure(ccx, /*bad*/copy sub_path, decl, body, llfn, no_self,
                       /*bad*/copy bcx.fcx.param_substs, id, None, |fcx| {
-            load_environment(fcx, cdata_ty, cap_vars,
+            load_environment(fcx, cdata_ty, copy cap_vars,
                              ret_handle.is_some(), proto);
                       }, |bcx| {
             if is_loop_body.is_some() {
