@@ -809,8 +809,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
           if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
               let tys = c_stack_tys(ccx, id);
-              if attr::attrs_contains_name(/*bad*/copy foreign_item.attrs,
-                                           ~"rust_stack") {
+              if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
                   build_direct_fn(ccx, llwrapfn, *foreign_item, tys, cc);
               } else {
                   let llshimfn = build_shim_fn(ccx, *foreign_item, tys, cc);
@@ -1479,7 +1478,8 @@ fn trans_foreign_fn(ccx: @crate_ctxt, +path: ast_map::path,
 fn register_foreign_fn(ccx: @crate_ctxt,
                        sp: span,
                        +path: ast_map::path,
-                       node_id: ast::node_id)
+                       node_id: ast::node_id,
+                       attrs: &[ast::attribute])
                     -> ValueRef {
     let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
@@ -1488,12 +1488,12 @@ fn register_foreign_fn(ccx: @crate_ctxt,
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
         do decl_x86_64_fn(x86_64) |fnty| {
-            register_fn_fuller(ccx, sp, /*bad*/copy path, node_id,
+            register_fn_fuller(ccx, sp, /*bad*/copy path, node_id, attrs,
                                t, lib::llvm::CCallConv, fnty)
         }
     } else {
         let llfty = T_fn(llargtys, llretty);
-        register_fn_fuller(ccx, sp, path, node_id,
+        register_fn_fuller(ccx, sp, path, node_id, attrs,
                            t, lib::llvm::CCallConv, llfty)
     }
 }

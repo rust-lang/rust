@@ -76,7 +76,7 @@ use core::uint;
 use std::map::HashMap;
 use std::smallintmap;
 use std::{map, time, list};
-use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
@@ -2086,28 +2086,44 @@ fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
 fn register_fn(ccx: @crate_ctxt,
                sp: span,
                +path: path,
-               node_id: ast::node_id)
+               node_id: ast::node_id,
+               attrs: &[ast::attribute])
             -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, path, node_id, t)
+    register_fn_full(ccx, sp, path, node_id, attrs, t)
 }
 
-fn register_fn_full(ccx: @crate_ctxt, sp: span, +path: path,
-                    node_id: ast::node_id, node_type: ty::t) -> ValueRef {
+fn register_fn_full(ccx: @crate_ctxt,
+                    sp: span,
+                    +path: path,
+                    node_id: ast::node_id,
+                    attrs: &[ast::attribute],
+                    node_type: ty::t)
+                 -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, path, node_id, node_type,
+    register_fn_fuller(ccx, sp, path, node_id, attrs, node_type,
                        lib::llvm::CCallConv, llfty)
 }
 
-fn register_fn_fuller(ccx: @crate_ctxt, sp: span, +path: path,
-                      node_id: ast::node_id, node_type: ty::t,
-                      cc: lib::llvm::CallConv, llfty: TypeRef) -> ValueRef {
+fn register_fn_fuller(ccx: @crate_ctxt,
+                      sp: span,
+                      +path: path,
+                      node_id: ast::node_id,
+                      attrs: &[ast::attribute],
+                      node_type: ty::t,
+                      cc: lib::llvm::CallConv,
+                      llfty: TypeRef)
+                   -> ValueRef {
     debug!("register_fn_fuller creating fn for item %d with path %s",
            node_id,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
-    // XXX: Bad copy.
-    let ps: ~str = mangle_exported_name(ccx, copy path, node_type);
+    let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
+        path_elt_to_str(path.last(), ccx.sess.parse_sess.interner)
+    } else {
+        mangle_exported_name(ccx, /*bad*/copy path, node_type)
+    };
+
     // XXX: Bad copy.
     let llfn: ValueRef = decl_fn(ccx.llmod, copy ps, cc, llfty);
     ccx.item_symbols.insert(node_id, ps);
@@ -2281,9 +2297,13 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               }
               ast::item_fn(_, purity, _, _) => {
                 let llfn = if purity != ast::extern_fn {
-                    register_fn(ccx, i.span, my_path, i.id)
+                    register_fn(ccx, i.span, my_path, i.id, i.attrs)
                 } else {
-                    foreign::register_foreign_fn(ccx, i.span, my_path, i.id)
+                    foreign::register_foreign_fn(ccx,
+                                                 i.span,
+                                                 my_path,
+                                                 i.id,
+                                                 i.attrs)
                 };
                 set_inline_hint_if_appr(/*bad*/copy i.attrs, llfn);
                 llfn
@@ -2315,7 +2335,8 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     register_fn(ccx, ni.span,
                                 vec::append(/*bad*/copy *pth,
                                             ~[path_name(ni.ident)]),
-                                ni.id)
+                                ni.id,
+                                ni.attrs)
                 }
                 ast::foreign_item_const(*) => {
                     let typ = ty::node_id_to_type(ccx.tcx, ni.id);
@@ -2366,7 +2387,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                                             path_name((*v).node.name)]);
                     llfn = match enm.node {
                       ast::item_enum(_, _) => {
-                        register_fn(ccx, (*v).span, pth, id)
+                        register_fn(ccx, (*v).span, pth, id, enm.attrs)
                       }
                       _ => fail ~"node_variant, shouldn't happen"
                     };
@@ -2390,8 +2411,11 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                                        a non-tuple-like struct")
                 }
                 Some(ctor_id) => {
-                    let llfn = register_fn(ccx, struct_item.span,
-                                           /*bad*/copy *struct_path, ctor_id);
+                    let llfn = register_fn(ccx,
+                                           struct_item.span,
+                                           /*bad*/copy *struct_path,
+                                           ctor_id,
+                                           struct_item.attrs);
                     set_inline_hint(llfn);
                     llfn
                 }
@@ -2416,7 +2440,7 @@ fn register_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
     let mty = ty::node_id_to_type(ccx.tcx, id);
     let pth = vec::append(/*bad*/copy *pth, ~[path_name((ccx.names)(~"meth")),
                                   path_name(m.ident)]);
-    let llfn = register_fn_full(ccx, m.span, pth, id, mty);
+    let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
     set_inline_hint_if_appr(/*bad*/copy m.attrs, llfn);
     llfn
 }

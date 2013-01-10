@@ -80,6 +80,13 @@ fn path_to_str(p: path, itr: @ident_interner) -> ~str {
     path_to_str_with_sep(p, ~"::", itr)
 }
 
+fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
+    match pe {
+        path_mod(s) => *itr.get(s),
+        path_name(s) => *itr.get(s)
+    }
+}
+
 enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, foreign_abi, @path),
