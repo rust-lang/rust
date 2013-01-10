@@ -153,7 +153,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
                          ~[path_name((ccx.names)(ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
-    let mk_lldecl = |/*bad*/copy s| {
+    let mk_lldecl = || {
         let lldecl = decl_internal_cdecl_fn(ccx.llmod, /*bad*/copy s, llfty);
         ccx.monomorphized.insert(hash_id, lldecl);
         lldecl

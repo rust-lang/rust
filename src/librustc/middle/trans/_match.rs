@@ -1608,8 +1608,9 @@ fn trans_match_inner(scope_cx: block,
         if ty::type_is_empty(tcx, t) {
             // Special case for empty types
             let fail_cx = @mut None;
-            Some(|| mk_fail(scope_cx, discr_expr.span,
-                            ~"scrutinizing value that can't exist", fail_cx))
+            let f: mk_fail = || mk_fail(scope_cx, discr_expr.span,
+                            ~"scrutinizing value that can't exist", fail_cx);
+            Some(f)
         } else {
             None
         }

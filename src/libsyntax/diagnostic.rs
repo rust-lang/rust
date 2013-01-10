@@ -213,7 +213,9 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
 fn collect(messages: @DVec<~str>)
     -> fn@(Option<(@codemap::CodeMap, span)>, &str, level)
 {
-    |_o, msg: &str, _l| { messages.push(msg.to_str()); }
+    let f: @fn(Option<(@codemap::CodeMap, span)>, &str, level) =
+        |_o, msg: &str, _l| { messages.push(msg.to_str()); };
+    f
 }
 
 fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {

@@ -1556,7 +1556,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      fn_ty.meta.onceness)
                 }
                 _ => {
-                    (None, ast::impure_fn, ast::ProtoBox, ast::Many)
+                    (None, ast::impure_fn, ast::ProtoBorrowed, ast::Many)
                 }
             }
         };
