@@ -22,8 +22,8 @@ use middle::pat_util::{pat_bindings};
 use core::cmp;
 use core::str;
 use core::vec;
-use syntax::ast::{_mod, add, arm, binding_mode, bitand, bitor, bitxor, blk};
-use syntax::ast::{capture_clause};
+use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
+use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk, capture_clause};
 use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
 use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
@@ -4117,8 +4117,11 @@ impl Resolver {
     fn resolve_type_parameters(type_parameters: ~[ty_param],
                                visitor: ResolveVisitor) {
         for type_parameters.each |type_parameter| {
-            for type_parameter.bounds.each |bound| {
-                self.resolve_type(**bound, visitor);
+            for type_parameter.bounds.each |&bound| {
+                match bound {
+                    TraitTyParamBound(ty) => self.resolve_type(ty, visitor),
+                    RegionTyParamBound => {}
+                }
             }
         }
     }

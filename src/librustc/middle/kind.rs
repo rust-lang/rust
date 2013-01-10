@@ -76,7 +76,7 @@ fn kind_to_str(k: Kind) -> ~str {
     if ty::kind_can_be_sent(k) {
         kinds.push(~"owned");
     } else if ty::kind_is_durable(k) {
-        kinds.push(~"durable");
+        kinds.push(~"&static");
     }
 
     str::connect(kinds, ~" ")
@@ -571,7 +571,7 @@ fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `durable` bound");
+                                    pointers; use `&static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
