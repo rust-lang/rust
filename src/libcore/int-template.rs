@@ -373,3 +373,45 @@ fn test_times_negative() {
     use iter::Times;
     for (-10).times { log(error, ~"nope!"); }
 }
+
+#[test]
+pub fn test_ranges() {
+    let mut l = ~[];
+
+    for range(0,3) |i| {
+        l.push(i);
+    }
+    for range_rev(13,10) |i| {
+        l.push(i);
+    }
+    for range_step(20,26,2) |i| {
+        l.push(i);
+    }
+    for range_step(36,30,-2) |i| {
+        l.push(i);
+    }
+    assert l == ~[0,1,2,
+                  13,12,11,
+                  20,22,24,
+                  36,34,32];
+
+    // None of the `fail`s should execute.
+    for range(10,0) |_i| {
+        fail ~"unreachable";
+    }
+    for range_rev(0,10) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step(10,0,1) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step(0,10,-1) |_i| {
+        fail ~"unreachable";
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_range_step_zero_step() {
+    for range_step(0,10,0) |_i| {}
+}
