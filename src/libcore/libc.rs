@@ -598,8 +598,8 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
+                use libc::types::common::c99::{int32_t, int64_t, uint32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
-                use libc::types::os::arch::c99::{uint32_t, int32_t, int64_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t,
                                                      mode_t, uid_t};
 
