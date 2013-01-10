@@ -514,8 +514,9 @@ pub mod types {
             }
             pub mod extra {
                 use libc::types::common::c95::c_void;
-                use libc::types::os::arch::c95::{c_char, c_int,
-                                                     c_ulong, wchar_t};
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
+                use libc::types::os::arch::c95::{c_long, c_ulong};
+                use libc::types::os::arch::c95::{wchar_t};
                 use libc::types::os::arch::c99::{c_ulonglong};
 
                 pub type BOOL = c_int;
@@ -1195,6 +1196,7 @@ pub mod funcs {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_int, c_uint, c_char,
                                              c_long, size_t};
+            use libc::types::os::arch::c99::intptr_t;
 
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
@@ -1490,6 +1492,10 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     pub mod extra {
+        use libc::types::os::arch::c95::c_int;
+        use libc::types::os::arch::extra::{DWORD, HMODULE, LPCWSTR, LPWSTR};
+        use libc::types::os::arch::extra::{BOOL, LPSECURITY_ATTRIBUTES};
+
         #[abi = "stdcall"]
         pub extern mod kernel32 {
             fn GetEnvironmentVariableW(n: LPCWSTR,

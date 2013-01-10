@@ -64,8 +64,7 @@ extern mod rustrt {
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-
-const tmpbuf_sz : uint = 1000u;
+pub const tmpbuf_sz : uint = 1000u;
 
 pub fn getcwd() -> Path {
     Path(rustrt::rust_getcwd())
@@ -92,7 +91,9 @@ pub mod win32 {
     use libc;
     use vec;
     use str;
+    use option::{None, Option};
     use option;
+    use os::tmpbuf_sz;
     use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
