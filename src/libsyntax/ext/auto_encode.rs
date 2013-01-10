@@ -569,7 +569,7 @@ fn mk_ser_method(
         pat: @ast::pat {
             id: cx.next_id(),
             node: ast::pat_ident(
-                ast::bind_by_value,
+                ast::bind_by_copy,
                 ast_util::ident_to_path(span, cx.ident_of(~"__s")),
                 None),
             span: span,
@@ -633,7 +633,7 @@ fn mk_deser_method(
         pat: @ast::pat {
             id: cx.next_id(),
             node: ast::pat_ident(
-                ast::bind_by_value,
+                ast::bind_by_copy,
                 ast_util::ident_to_path(span, cx.ident_of(~"__d")),
                 None),
             span: span,
@@ -1095,7 +1095,7 @@ fn mk_enum_deser_body(
                     pat: @ast::pat {
                         id: cx.next_id(),
                         node: ast::pat_ident(
-                            ast::bind_by_value,
+                            ast::bind_by_copy,
                             ast_util::ident_to_path(span, cx.ident_of(~"i")),
                             None),
                         span: span,
@@ -1114,8 +1114,7 @@ fn mk_enum_deser_body(
                     span,
                     ast::expr_match(cx.expr_var(span, ~"i"), arms)
                 )
-            ),
-            @~[]
+            )
         )
     );
 

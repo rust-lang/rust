@@ -205,7 +205,7 @@ pub struct crate_ctxt {
      type_short_names: HashMap<ty::t, ~str>,
      all_llvm_symbols: Set<~str>,
      tcx: ty::ctxt,
-     maps: astencode::maps,
+     maps: astencode::Maps,
      stats: stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,
@@ -1134,7 +1134,7 @@ pub fn C_u8(i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache.find(s) {
+        match cx.const_cstr_cache.find(/*bad*/copy s) {
           Some(llval) => return llval,
           None => ()
         }

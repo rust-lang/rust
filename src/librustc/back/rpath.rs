@@ -191,7 +191,7 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     let mut minimized = ~[];
     for rpaths.each |rpath| {
         let s = rpath.to_str();
-        if !set.contains_key(s) {
+        if !set.contains_key_ref(&s) {
             minimized.push(/*bad*/copy *rpath);
             set.insert(s, ());
         }

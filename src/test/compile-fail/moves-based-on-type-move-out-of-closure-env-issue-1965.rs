@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn test(_x: ~uint) {}
+
 fn main() {
-    let x = 5;
-    let _y = fn~(move x) { }; //~ WARNING captured variable `x` not used in closure
-    let _z = x; //~ ERROR use of moved value: `x`
+    let i = ~3;
+    for uint::range(0, 10) |_x| {
+        test(i); //~ ERROR moving out of captured outer immutable variable in a stack closure
+    }
 }

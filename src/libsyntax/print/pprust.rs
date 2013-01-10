@@ -1305,24 +1305,24 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(proto, decl, ref body, cap_clause) => {
+      ast::expr_fn(proto, decl, ref body) => {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         print_fn_header_info(s, None, None, ast::Many,
                              Some(proto), ast::inherited);
-        print_fn_args_and_ret(s, decl, *cap_clause, None);
+        print_fn_args_and_ret(s, decl, None);
         space(s.s);
         print_block(s, (*body));
       }
-      ast::expr_fn_block(decl, ref body, cap_clause) => {
+      ast::expr_fn_block(decl, ref body) => {
         // in do/for blocks we don't want to show an empty
         // argument list, but at this point we don't know which
         // we are inside.
         //
         // if !decl.inputs.is_empty() {
-        print_fn_block_args(s, decl, *cap_clause);
+        print_fn_block_args(s, decl);
         space(s.s);
         // }
         assert (*body).node.stmts.is_empty();
@@ -1357,10 +1357,6 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, (*blk));
       }
       ast::expr_copy(e) => { word_space(s, ~"copy"); print_expr(s, e); }
-      ast::expr_unary_move(e) => {
-          word_space(s, ~"move");
-          print_expr(s, e);
-      }
       ast::expr_assign(lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
@@ -1554,10 +1550,7 @@ pub fn print_pat(s: ps, &&pat: @ast::pat, refutable: bool) {
                       word_nbsp(s, ~"ref");
                       print_mutability(s, mutbl);
                   }
-                  ast::bind_by_move => {
-                      word_nbsp(s, ~"move");
-                  }
-                  ast::bind_by_value => {
+                  ast::bind_by_copy => {
                       word_nbsp(s, ~"copy");
                   }
                   ast::bind_infer => {}
@@ -1693,16 +1686,14 @@ pub fn print_fn(s: ps,
     nbsp(s);
     print_ident(s, name);
     print_type_params(s, typarams);
-    print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
+    print_fn_args_and_ret(s, decl, opt_self_ty);
 }
 
 pub fn print_fn_args(s: ps, decl: ast::fn_decl,
-                     cap_items: ~[ast::capture_item],
-                     opt_self_ty: Option<ast::self_ty_>) {
-    // It is unfortunate to duplicate the commasep logic, but we
-    // we want the self type, the args, and the capture clauses all
-    // in the same box.
-    box(s, 0, inconsistent);
+                 opt_self_ty: Option<ast::self_ty_>) {
+    // It is unfortunate to duplicate the commasep logic, but we we want the
+    // self type and the args all in the same box.
+    box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
         first = !print_self_ty(s, *self_ty);
@@ -1713,21 +1704,13 @@ pub fn print_fn_args(s: ps, decl: ast::fn_decl,
         print_arg(s, *arg);
     }
 
-    for cap_items.each |cap_item| {
-        if first { first = false; } else { word_space(s, ~","); }
-        if cap_item.is_move { word_nbsp(s, ~"move") }
-        else { word_nbsp(s, ~"copy") }
-        print_ident(s, cap_item.name);
-    }
-
     end(s);
 }
 
 pub fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
-                             cap_items: ~[ast::capture_item],
                              opt_self_ty: Option<ast::self_ty_>) {
     popen(s);
-    print_fn_args(s, decl, cap_items, opt_self_ty);
+    print_fn_args(s, decl, opt_self_ty);
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
@@ -1741,10 +1724,9 @@ pub fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
     }
 }
 
-pub fn print_fn_block_args(s: ps, decl: ast::fn_decl,
-                           cap_items: ~[ast::capture_item]) {
+pub fn print_fn_block_args(s: ps, decl: ast::fn_decl) {
     word(s.s, ~"|");
-    print_fn_args(s, decl, cap_items, None);
+    print_fn_args(s, decl, None);
     word(s.s, ~"|");
 
     match decl.output.node {
@@ -1761,10 +1743,9 @@ pub fn print_fn_block_args(s: ps, decl: ast::fn_decl,
 
 pub fn mode_to_str(m: ast::mode) -> ~str {
     match m {
-      ast::expl(ast::by_move) => ~"-",
       ast::expl(ast::by_ref) => ~"&&",
-      ast::expl(ast::by_val) => ~"++",
       ast::expl(ast::by_copy) => ~"+",
+      ast::expl(ast::by_val) => ~"++",
       ast::infer(_) => ~""
     }
 }

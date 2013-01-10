@@ -102,10 +102,11 @@ fn item_to_entry(
     let link = match doc {
       doc::ModTag(_) | doc::NmodTag(_)
       if config.output_style == config::DocPerMod => {
-        markdown_writer::make_filename(config, doc::ItemPage(doc)).to_str()
+        markdown_writer::make_filename(config,
+                                       doc::ItemPage(copy doc)).to_str()
       }
       _ => {
-        ~"#" + pandoc_header_id(markdown_pass::header_text(doc))
+        ~"#" + pandoc_header_id(markdown_pass::header_text(copy doc))
       }
     };
 

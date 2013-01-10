@@ -105,12 +105,11 @@
 
 use core::prelude::*;
 
-use middle::capture::{cap_move, cap_drop, cap_copy, cap_ref};
-use middle::capture;
 use middle::pat_util;
-use middle::ty::MoveValue;
 use middle::ty;
 use middle::typeck;
+use middle::moves;
+use util::ppaux::ty_to_str;
 
 use core::cmp;
 use core::dvec::DVec;
@@ -203,6 +202,8 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
+                   variable_moves_map: moves::VariableMovesMap,
+                   capture_map: moves::CaptureMap,
                    crate: @crate) -> last_use_map {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
@@ -213,7 +214,8 @@ pub fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = HashMap();
-    let initial_maps = @IrMaps(tcx, method_map, last_use_map);
+    let initial_maps = @IrMaps(tcx, method_map, variable_moves_map,
+                               capture_map, last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
@@ -294,28 +296,35 @@ fn relevant_def(def: def) -> Option<node_id> {
 struct IrMaps {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
+    variable_moves_map: moves::VariableMovesMap,
+    capture_map: moves::CaptureMap,
     last_use_map: last_use_map,
 
     mut num_live_nodes: uint,
     mut num_vars: uint,
     live_node_map: HashMap<node_id, LiveNode>,
     variable_map: HashMap<node_id, Variable>,
-    capture_map: HashMap<node_id, @~[CaptureInfo]>,
+    capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     mut var_kinds: ~[VarKind],
     mut lnks: ~[LiveNodeKind],
 }
 
-fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
+fn IrMaps(tcx: ty::ctxt,
+          method_map: typeck::method_map,
+          variable_moves_map: moves::VariableMovesMap,
+          capture_map: moves::CaptureMap,
           last_use_map: last_use_map) -> IrMaps {
     IrMaps {
         tcx: tcx,
         method_map: method_map,
+        variable_moves_map: variable_moves_map,
+        capture_map: capture_map,
         last_use_map: last_use_map,
         num_live_nodes: 0,
         num_vars: 0,
         live_node_map: HashMap(),
         variable_map: HashMap(),
-        capture_map: HashMap(),
+        capture_info_map: HashMap(),
         var_kinds: ~[],
         lnks: ~[]
     }
@@ -377,11 +386,11 @@ impl IrMaps {
     }
 
     fn set_captures(node_id: node_id, +cs: ~[CaptureInfo]) {
-        self.capture_map.insert(node_id, @cs);
+        self.capture_info_map.insert(node_id, @cs);
     }
 
     fn captures(expr: @expr) -> @~[CaptureInfo] {
-        match self.capture_map.find(expr.id) {
+        match self.capture_info_map.find(expr.id) {
           Some(caps) => caps,
           None => {
             self.tcx.sess.span_bug(expr.span, ~"no registered caps");
@@ -397,7 +406,6 @@ impl IrMaps {
         let vk = self.var_kinds[*var];
         debug!("Node %d is a last use of variable %?", expr_id, vk);
         match vk {
-          Arg(id, _, by_move) |
           Arg(id, _, by_copy) |
           Local(LocalInfo {id: id, kind: FromLetNoInitializer, _}) |
           Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
@@ -427,7 +435,10 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let fn_maps = @IrMaps(self.tcx, self.method_map,
+    let fn_maps = @IrMaps(self.tcx,
+                          self.method_map,
+                          self.variable_moves_map,
+                          self.capture_map,
                           self.last_use_map);
 
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
@@ -548,8 +559,8 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
         }
         visit::visit_expr(expr, self, vt);
       }
-      expr_fn(_, _, _, cap_clause) |
-      expr_fn_block(_, _, cap_clause) => {
+      expr_fn(_, _, _) |
+      expr_fn_block(_, _) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         self.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -558,17 +569,18 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let proto = ty::ty_fn_proto(ty::expr_ty(self.tcx, expr));
-        let cvs = capture::compute_capture_vars(self.tcx, expr.id, proto,
-                                                cap_clause);
+        let cvs = self.capture_map.get(expr.id);
         let mut call_caps = ~[];
         for cvs.each |cv| {
             match relevant_def(cv.def) {
               Some(rv) => {
                 let cv_ln = self.add_live_node(FreeVarNode(cv.span));
                 let is_move = match cv.mode {
-                  cap_move | cap_drop => true, // var must be dead afterwards
-                  cap_copy | cap_ref => false // var can still be used
+                    // var must be dead afterwards
+                    moves::CapMove => true,
+
+                    // var can stil be used
+                    moves::CapCopy | moves::CapRef => false
                 };
                 call_caps.push(CaptureInfo {ln: cv_ln,
                                             is_move: is_move,
@@ -600,7 +612,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
       expr_break(_) | expr_again(_) | expr_lit(_) | expr_ret(*) |
-      expr_block(*) | expr_unary_move(*) | expr_assign(*) |
+      expr_block(*) | expr_assign(*) |
       expr_swap(*) | expr_assign_op(*) | expr_mac(*) | expr_struct(*) |
       expr_repeat(*) | expr_paren(*) => {
           visit::visit_expr(expr, self, vt);
@@ -700,7 +712,7 @@ impl Liveness {
     }
 
     fn variable(node_id: node_id, span: span) -> Variable {
-        (*self.ir).variable(node_id, span)
+        self.ir.variable(node_id, span)
     }
 
     fn variable_from_def_map(node_id: node_id,
@@ -760,7 +772,7 @@ impl Liveness {
 
         assert ln.is_valid();
         let reader = self.users[self.idx(ln, var)].reader;
-        if reader.is_valid() {Some((*self.ir).lnk(reader))} else {None}
+        if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
 
     /*
@@ -782,7 +794,7 @@ impl Liveness {
 
         assert ln.is_valid();
         let writer = self.users[self.idx(ln, var)].writer;
-        if writer.is_valid() {Some((*self.ir).lnk(writer))} else {None}
+        if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
 
     fn assigned_on_exit(ln: LiveNode, var: Variable)
@@ -980,21 +992,22 @@ impl Liveness {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each |arg| {
             match ty::resolved_mode(self.tcx, arg.mode) {
-              by_ref | by_val => {
-                // These are "non-owned" modes, so register a read at
-                // the end.  This will prevent us from moving out of
-                // such variables but also prevent us from registering
-                // last uses and so forth.
-                do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
-                        |_bm, arg_id, _sp, _path| {
-                    let var = self.variable(arg_id, blk.span);
-                    self.acc(self.s.exit_ln, var, ACC_READ);
+                by_val | by_ref => {
+                    // By val and by ref do not own, so register a
+                    // read at the end.  This will prevent us from
+                    // moving out of such variables but also prevent
+                    // us from registering last uses and so forth.
+                    do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
+                        |_bm, arg_id, _sp, _path|
+                    {
+                        let var = self.variable(arg_id, blk.span);
+                        self.acc(self.s.exit_ln, var, ACC_READ);
+                    }
                 }
-              }
-              by_move | by_copy => {
-                // These are owned modes.  If we don't use the
-                // variable, nobody will.
-              }
+                by_copy => {
+                    // By copy is an owned mode.  If we don't use the
+                    // variable, nobody will.
+                }
             }
         }
 
@@ -1092,7 +1105,7 @@ impl Liveness {
               self.propagate_through_expr(e, succ)
           }
 
-          expr_fn(_, _, ref blk, _) | expr_fn_block(_, ref blk, _) => {
+          expr_fn(_, _, ref blk) | expr_fn_block(_, ref blk) => {
               debug!("%s is an expr_fn or expr_fn_block",
                    expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -1105,8 +1118,8 @@ impl Liveness {
 
                  // the construction of a closure itself is not important,
                  // but we have to consider the closed over variables.
-                 let caps = (*self.ir).captures(expr);
-                 do (*caps).foldr(succ) |cap, succ| {
+                 let caps = self.ir.captures(expr);
+                 do caps.foldr(succ) |cap, succ| {
                      self.init_from_succ(cap.ln, succ);
                      let var = self.variable(cap.var_nid, expr.span);
                      self.acc(cap.ln, var, ACC_READ | ACC_USE);
@@ -1315,7 +1328,6 @@ impl Liveness {
           expr_assert(e) |
           expr_addr_of(_, e) |
           expr_copy(e) |
-          expr_unary_move(e) |
           expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
@@ -1541,26 +1553,6 @@ fn check_arm(arm: arm, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_arm(arm, self, vt);
 }
 
-fn check_call(args: &[@expr],
-              targs: &[ty::arg],
-              &&self: @Liveness) {
-    for vec::each2(args, targs) |arg_expr, arg_ty| {
-        match ty::resolved_mode(self.tcx, arg_ty.mode) {
-            by_val | by_copy | by_ref => {}
-            by_move => {
-                if ty::expr_is_lval(self.tcx, self.ir.method_map, *arg_expr) {
-                    // Probably a bad error message (what's an rvalue?)
-                    // but I can't think of anything better
-                    self.tcx.sess.span_err(arg_expr.span,
-                      fmt!("move mode argument must be an rvalue: try (move \
-                            %s) instead",
-                           expr_to_str(*arg_expr, self.tcx.sess.intr())));
-                }
-            }
-        }
-    }
-}
-
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     match /*bad*/copy expr.node {
       expr_path(_) => {
@@ -1568,19 +1560,12 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
             let ln = self.live_node(expr.id, expr.span);
             self.consider_last_use(expr, ln, *var);
 
-            match self.tcx.value_modes.find(expr.id) {
-                Some(MoveValue) => {
+            match self.ir.variable_moves_map.find(expr.id) {
+                None => {}
+                Some(entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
                            expr_to_str(expr, self.tcx.sess.intr()));
-                    self.check_move_from_var(expr.span, ln, *var);
-                }
-                Some(v) => {
-                    debug!("(checking expr) not a move (%?): `%s`",
-                           v,
-                           expr_to_str(expr, self.tcx.sess.intr()));
-                }
-                None => {
-                    fail ~"no mode for lval";
+                    self.check_move_from_var(ln, *var, entire_expr);
                 }
             }
         }
@@ -1589,12 +1574,12 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
       }
 
       expr_fn(*) | expr_fn_block(*) => {
-        let caps = (*self.ir).captures(expr);
-        for (*caps).each |cap| {
+        let caps = self.ir.captures(expr);
+        for caps.each |cap| {
             let var = self.variable(cap.var_nid, expr.span);
             self.consider_last_use(expr, cap.ln, var);
             if cap.is_move {
-                self.check_move_from_var(expr.span, cap.ln, var);
+                self.check_move_from_var(cap.ln, var, expr);
             }
         }
 
@@ -1608,32 +1593,14 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, self, vt);
       }
 
-      expr_unary_move(r) => {
-        self.check_move_from_expr(r, vt);
-
-        visit::visit_expr(expr, self, vt);
-      }
-
       expr_assign_op(_, l, _) => {
         self.check_lvalue(l, vt);
 
         visit::visit_expr(expr, self, vt);
       }
 
-      expr_call(f, args, _) => {
-        let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
-        check_call(args, targs, self);
-        visit::visit_expr(expr, self, vt);
-      }
-
-      expr_method_call(_, _, _, args, _) => {
-        let targs = ty::ty_fn_args(ty::node_id_to_type(self.tcx,
-                                                       expr.callee_id));
-        check_call(args, targs, self);
-        visit::visit_expr(expr, self, vt);
-      }
-
       // no correctness conditions related to liveness
+      expr_call(*) | expr_method_call(*) |
       expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) |
       expr_index(*) | expr_field(*) | expr_vstore(*) |
@@ -1659,7 +1626,8 @@ fn check_fn(_fk: visit::fn_kind, _decl: fn_decl,
 enum ReadKind {
     PossiblyUninitializedVariable,
     PossiblyUninitializedField,
-    MovedValue
+    MovedValue,
+    PartiallyMovedValue
 }
 
 impl @Liveness {
@@ -1683,17 +1651,28 @@ impl @Liveness {
         }
     }
 
-    /*
-    Checks whether <var> is live on entry to any of the successors of <ln>.
-    If it is, report an error.
-    */
-    fn check_move_from_var(span: span, ln: LiveNode, var: Variable) {
+    fn check_move_from_var(ln: LiveNode,
+                           var: Variable,
+                           move_expr: @expr)
+    {
+        /*!
+         *
+         * Checks whether `var` is live on entry to any of the
+         * successors of `ln`.  If it is, report an error.
+         * `move_expr` is the expression which caused the variable
+         * to be moved.
+         *
+         * Note that `move_expr` is not necessarily a reference to the
+         * variable.  It might be an expression like `x.f` which could
+         * cause a move of the variable `x`, or a closure creation.
+         */
+
         debug!("check_move_from_var(%s, %s)",
                ln.to_str(), var.to_str());
 
         match self.live_on_exit(ln, var) {
           None => {}
-          Some(lnk) => self.report_illegal_move(span, lnk, var)
+          Some(lnk) => self.report_illegal_move(lnk, var, move_expr)
         }
     }
 
@@ -1703,48 +1682,7 @@ impl @Liveness {
 
         match self.live_on_exit(ln, var) {
           Some(_) => {}
-          None => (*self.ir).add_last_use(expr.id, var)
-       }
-    }
-
-    fn check_move_from_expr(expr: @expr, vt: vt<@Liveness>) {
-        debug!("check_move_from_expr(node %d: %s)",
-               expr.id, expr_to_str(expr, self.tcx.sess.intr()));
-
-        if self.ir.method_map.contains_key(expr.id) {
-            // actually an rvalue, since this calls a method
-            return;
-        }
-
-        match expr.node {
-          expr_path(_) => {
-            match self.variable_from_path(expr) {
-              Some(var) => {
-                let ln = self.live_node(expr.id, expr.span);
-                self.check_move_from_var(expr.span, ln, var);
-              }
-              None => {}
-            }
-          }
-
-          expr_field(base, _, _) => {
-            // Moving from x.y is allowed if x is never used later.
-            // (Note that the borrowck guarantees that anything
-            //  being moved from is uniquely tied to the stack frame)
-            self.check_move_from_expr(base, vt);
-          }
-
-          expr_index(base, _) => {
-            // Moving from x[y] is allowed if x is never used later.
-            // (Note that the borrowck guarantees that anything
-            //  being moved from is uniquely tied to the stack frame)
-            self.check_move_from_expr(base, vt);
-          }
-
-          _ => {
-            // For other kinds of lvalues, no checks are required,
-            // and any embedded expressions are actually rvalues
-          }
+          None => self.ir.add_last_use(expr.id, var)
        }
     }
 
@@ -1808,36 +1746,84 @@ impl @Liveness {
         }
     }
 
-    fn report_illegal_move(move_span: span,
-                           lnk: LiveNodeKind,
-                           var: Variable) {
-
-        // the only time that it is possible to have a moved value
+    fn report_illegal_move(lnk: LiveNodeKind,
+                           var: Variable,
+                           move_expr: @expr)
+    {
+        // the only time that it is possible to have a moved variable
         // used by ExitNode would be arguments or fields in a ctor.
         // we give a slightly different error message in those cases.
         if lnk == ExitNode {
+            // XXX this seems like it should be reported in the borrow checker
             let vk = self.ir.var_kinds[*var];
             match vk {
               Arg(_, name, _) => {
                 self.tcx.sess.span_err(
-                    move_span,
+                    move_expr.span,
                     fmt!("illegal move from argument `%s`, which is not \
                           copy or move mode", self.tcx.sess.str_of(name)));
                 return;
               }
               Local(*) | ImplicitRet => {
                 self.tcx.sess.span_bug(
-                    move_span,
+                    move_expr.span,
                     fmt!("illegal reader (%?) for `%?`",
                          lnk, vk));
               }
             }
         }
 
-        self.report_illegal_read(move_span, lnk, var, MovedValue);
-        self.tcx.sess.span_note(
-            move_span, ~"move of value occurred here");
+        match move_expr.node {
+            expr_fn(*) | expr_fn_block(*) => {
+                self.report_illegal_read(
+                    move_expr.span, lnk, var, MovedValue);
+                let name = self.ir.variable_name(var);
+                self.tcx.sess.span_note(
+                    move_expr.span,
+                    fmt!("`%s` moved into closure environment here \
+                          because its type is moved by default",
+                         name));
+            }
+            expr_path(*) => {
+                self.report_illegal_read(
+                    move_expr.span, lnk, var, MovedValue);
+                self.report_move_location(
+                    move_expr, var, "", "it");
+            }
+            expr_field(*) => {
+                self.report_illegal_read(
+                    move_expr.span, lnk, var, PartiallyMovedValue);
+                self.report_move_location(
+                    move_expr, var, "field of ", "the field");
+            }
+            expr_index(*) => {
+                self.report_illegal_read(
+                    move_expr.span, lnk, var, PartiallyMovedValue);
+                self.report_move_location(
+                    move_expr, var, "element of ", "the element");
+            }
+            _ => {
+                self.report_illegal_read(
+                    move_expr.span, lnk, var, PartiallyMovedValue);
+                self.report_move_location(
+                    move_expr, var, "subcomponent of ", "the subcomponent");
+            }
+        };
+    }
 
+    fn report_move_location(move_expr: @expr,
+                            var: Variable,
+                            expr_descr: &str,
+                            pronoun: &str)
+    {
+        let move_expr_ty = ty::expr_ty(self.tcx, move_expr);
+        let name = self.ir.variable_name(var);
+        self.tcx.sess.span_note(
+            move_expr.span,
+            fmt!("%s`%s` moved here because %s has type %s, \
+                  which is moved by default (use `copy` to override)",
+                 expr_descr, name, pronoun,
+                 ty_to_str(self.tcx, move_expr_ty)));
     }
 
     fn report_illegal_read(chk_span: span,
@@ -1845,13 +1831,13 @@ impl @Liveness {
                            var: Variable,
                            rk: ReadKind) {
         let msg = match rk {
-          PossiblyUninitializedVariable => {
-            ~"possibly uninitialized variable"
-          }
-          PossiblyUninitializedField => ~"possibly uninitialized field",
-          MovedValue => ~"moved value"
+            PossiblyUninitializedVariable => "possibly uninitialized \
+                                              variable",
+            PossiblyUninitializedField => "possibly uninitialized field",
+            MovedValue => "moved value",
+            PartiallyMovedValue => "partially moved value"
         };
-        let name = (*self.ir).variable_name(var);
+        let name = self.ir.variable_name(var);
         match lnk {
           FreeVarNode(span) => {
             self.tcx.sess.span_err(
@@ -1863,8 +1849,7 @@ impl @Liveness {
                 span,
                 fmt!("use of %s: `%s`", msg, name));
           }
-          ExitNode |
-          VarDefNode(_) => {
+          ExitNode | VarDefNode(_) => {
             self.tcx.sess.span_bug(
                 chk_span,
                 fmt!("illegal reader: %?", lnk));
@@ -1873,7 +1858,7 @@ impl @Liveness {
     }
 
     fn should_warn(var: Variable) -> Option<~str> {
-        let name = (*self.ir).variable_name(var);
+        let name = self.ir.variable_name(var);
         if name[0] == ('_' as u8) {None} else {Some(name)}
     }
 

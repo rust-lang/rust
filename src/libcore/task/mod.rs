@@ -837,11 +837,19 @@ fn test_run_basic() {
 }
 
 #[test]
+struct Wrapper {
+    mut f: Option<Chan<()>>
+}
+
+#[test]
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let b0 = task();
+    let ch = Wrapper { f: Some(ch) };
     let b1 = do b0.add_wrapper |body| {
+        let ch = Wrapper { f: Some(ch.f.swap_unwrap()) };
         fn~(move body) {
+            let ch = ch.f.swap_unwrap();
             body();
             ch.send(());
         }
@@ -929,9 +937,12 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = unsafe { rt::rust_get_sched_id() };
 
+    let ch = Wrapper { f: Some(ch) };
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = unsafe { rt::rust_get_sched_id() };
+        let ch = Wrapper { f: Some(ch.f.swap_unwrap()) };
         do spawn {
+            let ch = ch.f.swap_unwrap();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
             assert parent_sched_id != child_sched_id;
             assert child_sched_id == default_id;

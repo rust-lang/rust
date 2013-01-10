@@ -256,7 +256,7 @@ pub fn ident_to_path(s: span, +i: ident) -> @path {
 
 pub fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
     @ast::pat { id: id,
-                node: pat_ident(bind_by_value, ident_to_path(s, i), None),
+                node: pat_ident(bind_by_copy, ident_to_path(s, i), None),
                 span: s }
 }
 
@@ -503,11 +503,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                     vfn(m.self_id);
                     for vec::each(tps) |tp| { vfn(tp.id); }
                 }
-                visit::fk_anon(_, capture_clause) |
-                visit::fk_fn_block(capture_clause) => {
-                    for vec::each(*capture_clause) |clause| {
-                        vfn(clause.id);
-                    }
+                visit::fk_anon(_) |
+                visit::fk_fn_block => {
                 }
             }
 

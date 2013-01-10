@@ -466,30 +466,17 @@ pub fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_match(fld.fold_expr(expr),
                      vec::map((*arms), |x| fld.fold_arm(*x)))
           }
-          expr_fn(proto, decl, ref body, captures) => {
-            let captures = do captures.map |cap_item| {
-                @ast::capture_item_ {
-                    id: fld.new_id(cap_item.id),
-                    ..**cap_item
-                }
-            };
-            expr_fn(proto, fold_fn_decl(decl, fld),
-                    fld.fold_block((*body)),
-                    @captures)
+          expr_fn(proto, decl, ref body) => {
+            expr_fn(proto,
+                    fold_fn_decl(decl, fld),
+                    fld.fold_block(*body))
           }
-          expr_fn_block(decl, ref body, captures) => {
-            let captures = do captures.map |cap_item| {
-                @ast::capture_item_ {
-                    id: fld.new_id(cap_item.id),
-                    ..**cap_item
-                }
-            };
-            expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block((*body)),
-                          @captures)
+          expr_fn_block(decl, ref body) => {
+            expr_fn_block(fold_fn_decl(decl, fld),
+                          fld.fold_block(*body))
           }
           expr_block(ref blk) => expr_block(fld.fold_block((*blk))),
           expr_copy(e) => expr_copy(fld.fold_expr(e)),
-          expr_unary_move(e) => expr_unary_move(fld.fold_expr(e)),
           expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
           }

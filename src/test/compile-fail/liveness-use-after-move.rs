@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let x = @5;
-    let y = move x; //~ NOTE move of value occurred here
+    let x = ~5;
+    let y = x;
     log(debug, *x); //~ ERROR use of moved value: `x`
     copy y;
 }

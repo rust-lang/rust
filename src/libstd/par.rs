@@ -59,7 +59,8 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
             let end = uint::min(len, base + items_per_task);
             do vec::as_imm_buf(xs) |p, _len| {
                 let f = f();
-                let f = do future_spawn() |move f, copy base| {
+                let base = base;
+                let f = do future_spawn() |move f| {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -94,7 +95,8 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
 pub fn map<A: Copy Owned, B: Copy Owned>(
     xs: &[A], f: fn~(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
-        fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
+        let f = copy f;
+        fn~(_base: uint, slice : &[A]) -> ~[B] {
             vec::map(slice, |x| f(x))
         }
     }))
@@ -104,6 +106,7 @@ pub fn map<A: Copy Owned, B: Copy Owned>(
 pub fn mapi<A: Copy Owned, B: Copy Owned>(xs: &[A],
                                     f: fn~(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
+        let f = copy f;
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
             vec::mapi(slice, |i, x| {
                 f(i + base, x)
@@ -141,6 +144,7 @@ pub fn mapi_factory<A: Copy Owned, B: Copy Owned>(
 /// Returns true if the function holds for all elements in the vector.
 pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, &A) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
+        let f = copy f;
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
                 f(i + base, x)
@@ -152,6 +156,7 @@ pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, &A) -> bool) -> bool {
 /// Returns true if the function holds for any elements in the vector.
 pub fn any<A: Copy Owned>(xs: &[A], f: fn~(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
+        let f = copy f;
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, |x| f(x))
         }

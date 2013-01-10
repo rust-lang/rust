@@ -344,7 +344,7 @@ impl ctxt {
 
         for triples.each |pair| {
             let (meta, level, lintname) = /*bad*/copy *pair;
-            match self.dict.find(lintname) {
+            match self.dict.find(/*bad*/ copy lintname) {
               None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
@@ -518,9 +518,9 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
 
     fn check_limits(cx: ty::ctxt, binop: ast::binop, l: &ast::expr,
                     r: &ast::expr) -> bool {
-        let (lit, expr, swap) = match (l.node, r.node) {
-            (ast::expr_lit(_), _) => (l, r, true),
-            (_, ast::expr_lit(_)) => (r, l, false),
+        let (lit, expr, swap) = match (&l.node, &r.node) {
+            (&ast::expr_lit(_), _) => (l, r, true),
+            (_, &ast::expr_lit(_)) => (r, l, false),
             _ => return true
         };
         // Normalize the binop so that the literal is always on the RHS in

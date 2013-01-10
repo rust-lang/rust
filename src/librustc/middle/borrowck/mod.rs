@@ -230,6 +230,7 @@ use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
 use middle::ty;
+use middle::moves;
 use util::common::{indenter, stmt_set};
 use util::ppaux::{expr_repr, note_and_explain_region};
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
@@ -254,15 +255,17 @@ pub mod gather_loans;
 pub mod loan;
 pub mod preserve;
 
-pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
-                   last_use_map: liveness::last_use_map,
-                   crate: @ast::crate)
-                -> (root_map, mutbl_map, write_guard_map) {
-
-    let bccx = borrowck_ctxt_(@{tcx: tcx,
+pub fn check_crate(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    moves_map: moves::MovesMap,
+    capture_map: moves::CaptureMap,
+    crate: @ast::crate) -> (root_map, mutbl_map, write_guard_map)
+{
+    let bccx = @BorrowckCtxt   {tcx: tcx,
                                 method_map: method_map,
-                                last_use_map: last_use_map,
+                                moves_map: moves_map,
+                                capture_map: capture_map,
                                 root_map: root_map(),
                                 mutbl_map: HashMap(),
                                 write_guard_map: HashMap(),
@@ -271,7 +274,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                 mut loaned_paths_imm: 0,
                                 mut stable_paths: 0,
                                 mut req_pure_paths: 0,
-                                mut guaranteed_paths: 0});
+                                mut guaranteed_paths: 0};
 
     let req_maps = gather_loans::gather_loans(bccx, crate);
     check_loans::check_loans(bccx, req_maps, crate);
@@ -292,7 +295,7 @@ pub fn check_crate(tcx: ty::ctxt,
 
     return (bccx.root_map, bccx.mutbl_map, bccx.write_guard_map);
 
-    fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
+    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.guaranteed_paths as float;
         fmt!("%u (%.0f%%)", stat  , stat_f * 100f / total)
@@ -302,23 +305,22 @@ pub fn check_crate(tcx: ty::ctxt,
 // ----------------------------------------------------------------------
 // Type definitions
 
-pub type borrowck_ctxt_ = {tcx: ty::ctxt,
-                           method_map: typeck::method_map,
-                           last_use_map: liveness::last_use_map,
-                           root_map: root_map,
-                           mutbl_map: mutbl_map,
-                           write_guard_map: write_guard_map,
-                           stmt_map: stmt_set,
+pub struct BorrowckCtxt {
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    moves_map: moves::MovesMap,
+    capture_map: moves::CaptureMap,
+    root_map: root_map,
+    mutbl_map: mutbl_map,
+    write_guard_map: write_guard_map,
+    stmt_map: stmt_set,
 
-                           // Statistics:
-                           mut loaned_paths_same: uint,
-                           mut loaned_paths_imm: uint,
-                           mut stable_paths: uint,
-                           mut req_pure_paths: uint,
-                           mut guaranteed_paths: uint};
-
-pub enum borrowck_ctxt {
-    borrowck_ctxt_(@borrowck_ctxt_)
+    // Statistics:
+    mut loaned_paths_same: uint,
+    mut loaned_paths_imm: uint,
+    mut stable_paths: uint,
+    mut req_pure_paths: uint,
+    mut guaranteed_paths: uint
 }
 
 pub struct RootInfo {
@@ -371,6 +373,12 @@ pub struct bckerr {
     code: bckerr_code
 }
 
+pub enum MoveError {
+    MoveOk,
+    MoveFromIllegalCmt(cmt),
+    MoveWhileBorrowed(/*move*/ cmt, /*loan*/ cmt)
+}
+
 // shorthand for something that fails with `bckerr` or succeeds with `T`
 pub type bckres<T> = Result<T, bckerr>;
 
@@ -411,60 +419,62 @@ pub fn root_map() -> root_map {
 // ___________________________________________________________________________
 // Misc
 
-pub impl borrowck_ctxt {
-    fn is_subregion_of(r_sub: ty::Region, r_sup: ty::Region) -> bool {
+pub impl BorrowckCtxt {
+    fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region) -> bool {
         region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
     }
 
-    fn cat_expr(expr: @ast::expr) -> cmt {
+    fn cat_expr(&self, expr: @ast::expr) -> cmt {
         cat_expr(self.tcx, self.method_map, expr)
     }
 
-    fn cat_expr_unadjusted(expr: @ast::expr) -> cmt {
+    fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
         cat_expr_unadjusted(self.tcx, self.method_map, expr)
     }
 
-    fn cat_expr_autoderefd(expr: @ast::expr,
+    fn cat_expr_autoderefd(&self, expr: @ast::expr,
                            adj: @ty::AutoAdjustment)
                         -> cmt {
         cat_expr_autoderefd(self.tcx, self.method_map, expr, adj)
     }
 
-    fn cat_def(id: ast::node_id,
+    fn cat_def(&self,
+               id: ast::node_id,
                span: span,
                ty: ty::t,
                def: ast::def) -> cmt {
         cat_def(self.tcx, self.method_map, id, span, ty, def)
     }
 
-    fn cat_variant<N: ast_node>(arg: N,
+    fn cat_variant<N: ast_node>(&self,
+                                arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {
         cat_variant(self.tcx, self.method_map, arg, enum_did, cmt)
     }
 
-    fn cat_discr(cmt: cmt, match_id: ast::node_id) -> cmt {
-        return @cmt_ { cat: cat_discr(cmt, match_id),.. *cmt };
+    fn cat_discr(&self, cmt: cmt, match_id: ast::node_id) -> cmt {
+        return @cmt_ {cat:cat_discr(cmt, match_id),.. *cmt};
     }
 
-    fn mc_ctxt() -> mem_categorization_ctxt {
+    fn mc_ctxt(&self) -> mem_categorization_ctxt {
         mem_categorization_ctxt {tcx: self.tcx,
                                  method_map: self.method_map}
     }
 
-    fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
+    fn cat_pattern(&self, cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }
 
-    fn report_if_err(bres: bckres<()>) {
+    fn report_if_err(&self, bres: bckres<()>) {
         match bres {
           Ok(()) => (),
           Err(ref e) => self.report((*e))
         }
     }
 
-    fn report(err: bckerr) {
+    fn report(&self, err: bckerr) {
         self.span_err(
             err.cmt.span,
             fmt!("illegal borrow: %s",
@@ -472,15 +482,15 @@ pub impl borrowck_ctxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(s: span, +m: ~str) {
+    fn span_err(&self, s: span, +m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(s: span, +m: ~str) {
+    fn span_note(&self, s: span, +m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 
-    fn add_to_mutbl_map(cmt: cmt) {
+    fn add_to_mutbl_map(&self, cmt: cmt) {
         match cmt.cat {
           cat_local(id) | cat_arg(id) => {
             self.mutbl_map.insert(id, ());
@@ -492,7 +502,7 @@ pub impl borrowck_ctxt {
         }
     }
 
-    fn bckerr_to_str(err: bckerr) -> ~str {
+    fn bckerr_to_str(&self, err: bckerr) -> ~str {
         match err.code {
             err_mutbl(req) => {
                 fmt!("creating %s alias to %s",
@@ -520,7 +530,7 @@ pub impl borrowck_ctxt {
         }
     }
 
-    fn note_and_explain_bckerr(err: bckerr) {
+    fn note_and_explain_bckerr(&self, err: bckerr) {
         let code = err.code;
         match code {
             err_mutbl(*) | err_mut_uniq | err_mut_variant |
@@ -555,25 +565,25 @@ pub impl borrowck_ctxt {
     }
 
 
-    fn cmt_to_str(cmt: cmt) -> ~str {
+    fn cmt_to_str(&self, cmt: cmt) -> ~str {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,
                                            method_map: self.method_map};
         mc.cmt_to_str(cmt)
     }
 
-    fn cmt_to_repr(cmt: cmt) -> ~str {
+    fn cmt_to_repr(&self, cmt: cmt) -> ~str {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,
                                            method_map: self.method_map};
         mc.cmt_to_repr(cmt)
     }
 
-    fn mut_to_str(mutbl: ast::mutability) -> ~str {
+    fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,
                                            method_map: self.method_map};
         mc.mut_to_str(mutbl)
     }
 
-    fn loan_to_repr(loan: &Loan) -> ~str {
+    fn loan_to_repr(&self, loan: &Loan) -> ~str {
         fmt!("Loan(lp=%?, cmt=%s, mutbl=%?)",
              loan.lp, self.cmt_to_repr(loan.cmt), loan.mutbl)
     }

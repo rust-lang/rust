@@ -13,9 +13,9 @@ use core::prelude::*;
 use ast::{ProtoBox, ProtoUniq, RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, pure_fn, purity, re_static};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
-use ast::{bind_by_value, bind_by_move, bitand, bitor, bitxor, blk};
-use ast::{blk_check_mode, box, by_copy, by_move, by_ref, by_val};
-use ast::{capture_clause, capture_item, crate, crate_cfg, decl, decl_item};
+use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
+use ast::{blk_check_mode, box, by_copy, by_ref, by_val};
+use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
@@ -24,7 +24,7 @@ use ast::{expr_fail, expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
-use ast::{expr_unary_move, expr_vec, expr_vstore, expr_vstore_mut_box};
+use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
 use ast::{expr_vstore_uniq, TyFn, Onceness, Once, Many};
@@ -102,7 +102,7 @@ enum restriction {
 enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
                       members(~[@struct_field]) }
 
-type arg_or_capture_item = Either<arg, capture_item>;
+type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[attribute]>);
 
 pub enum item_or_view_item {
@@ -401,7 +401,7 @@ pub impl Parser {
 
             let tps = p.parse_ty_params();
 
-            let (self_ty, d, _) = do self.parse_fn_decl_with_self() |p| {
+            let (self_ty, d) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 either::Left(p.parse_arg_general(false))
@@ -651,7 +651,7 @@ pub impl Parser {
 
     fn parse_arg_mode() -> mode {
         if self.eat(token::BINOP(token::MINUS)) {
-            expl(by_move)
+            expl(by_copy) // NDM outdated syntax
         } else if self.eat(token::ANDAND) {
             expl(by_ref)
         } else if self.eat(token::BINOP(token::PLUS)) {
@@ -689,23 +689,12 @@ pub impl Parser {
     }
 
     fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
-        -> arg_or_capture_item {
-
-        fn parse_capture_item(p:Parser, is_move: bool) -> capture_item {
-            let sp = mk_sp(p.span.lo, p.span.hi);
-            let ident = p.parse_ident();
-            @ast::capture_item_ {
-                id: p.get_id(),
-                is_move: is_move,
-                name: ident,
-                span: sp,
-            }
-        }
-
-        if self.eat_keyword(~"move") {
-            either::Right(parse_capture_item(self, true))
-        } else if self.eat_keyword(~"copy") {
-            either::Right(parse_capture_item(self, false))
+        -> arg_or_capture_item
+    {
+        if self.eat_keyword(~"move") || self.eat_keyword(~"copy") {
+            // XXX outdated syntax now that moves-based-on-type has gone in
+            self.parse_ident();
+            either::Right(())
         } else {
             parse_arg_fn(self)
         }
@@ -1078,9 +1067,8 @@ pub impl Parser {
             ex = expr_copy(e);
             hi = e.span.hi;
         } else if self.eat_keyword(~"move") {
-            let e = self.parse_expr();
-            ex = expr_unary_move(e);
-            hi = e.span.hi;
+            // XXX move keyword is no longer important, remove after snapshot
+            return self.parse_expr();
         } else if self.token == token::MOD_SEP ||
             is_ident(self.token) && !self.is_keyword(~"true") &&
             !self.is_keyword(~"false") {
@@ -1576,12 +1564,10 @@ pub impl Parser {
 
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
-        let (decl, capture_clause) =
-            self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
+        let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
-        return self.mk_expr(lo, body.span.hi,
-                         expr_fn(proto, decl, body, capture_clause));
+        return self.mk_expr(lo, body.span.hi,expr_fn(proto, decl, body));
     }
 
     // `|args| { ... }` like in `do` expressions
@@ -1594,18 +1580,15 @@ pub impl Parser {
                   }
                   _ => {
                     // No argument list - `do foo {`
-                    (
-                        ast::fn_decl {
-                            inputs: ~[],
-                            output: @Ty {
-                                id: self.get_id(),
-                                node: ty_infer,
-                                span: self.span
-                            },
-                            cf: return_val
-                        },
-                        @~[]
-                    )
+                      ast::fn_decl {
+                          inputs: ~[],
+                          output: @Ty {
+                              id: self.get_id(),
+                              node: ty_infer,
+                              span: self.span
+                          },
+                          cf: return_val
+                      }
                   }
                 }
             },
@@ -1621,10 +1604,10 @@ pub impl Parser {
                                 || self.parse_expr())
     }
 
-    fn parse_lambda_expr_(parse_decl: fn&() -> (fn_decl, capture_clause),
+    fn parse_lambda_expr_(parse_decl: fn&() -> fn_decl,
                           parse_body: fn&() -> @expr) -> @expr {
         let lo = self.last_span.lo;
-        let (decl, captures) = parse_decl();
+        let decl = parse_decl();
         let body = parse_body();
         let fakeblock = ast::blk_ {
             view_items: ~[],
@@ -1636,7 +1619,7 @@ pub impl Parser {
         let fakeblock = spanned(body.span.lo, body.span.hi,
                                 fakeblock);
         return self.mk_expr(lo, body.span.hi,
-                         expr_fn_block(decl, fakeblock, captures));
+                            expr_fn_block(decl, fakeblock));
     }
 
     fn parse_else_expr() -> @expr {
@@ -2065,21 +2048,15 @@ pub impl Parser {
                 let mutbl = self.parse_mutability();
                 pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
             } else if self.eat_keyword(~"copy") {
-                pat = self.parse_pat_ident(refutable, bind_by_value);
-            } else if self.eat_keyword(~"move") {
-                pat = self.parse_pat_ident(refutable, bind_by_move);
+                pat = self.parse_pat_ident(refutable, bind_by_copy);
             } else {
-                let binding_mode;
-                // XXX: Aren't these two cases deadcode? -- bblum
-                if self.eat_keyword(~"copy") {
-                    binding_mode = bind_by_value;
-                } else if self.eat_keyword(~"move") {
-                    binding_mode = bind_by_move;
-                } else if refutable {
-                    binding_mode = bind_infer;
-                } else {
-                    binding_mode = bind_by_value;
+                if self.eat_keyword(~"move") {
+                    /* XXX---remove move keyword */
                 }
+
+                // XXX---refutable match bindings should work same as let
+                let binding_mode =
+                    if refutable {bind_infer} else {bind_by_copy};
 
                 let cannot_be_enum_or_struct;
                 match self.look_ahead(1) {
@@ -2560,25 +2537,21 @@ pub impl Parser {
     }
 
     fn parse_fn_decl(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
-        -> (fn_decl, capture_clause) {
-
+        -> fn_decl
+    {
         let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
                 token::LPAREN, token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA), parse_arg_fn);
 
         let inputs = either::lefts(args_or_capture_items);
-        let capture_clause = @either::rights(args_or_capture_items);
 
         let (ret_style, ret_ty) = self.parse_ret_ty();
-        (
-            ast::fn_decl {
-                inputs: inputs,
-                output: ret_ty,
-                cf: ret_style,
-            },
-            capture_clause
-        )
+        ast::fn_decl {
+            inputs: inputs,
+            output: ret_ty,
+            cf: ret_style,
+        }
     }
 
     fn is_self_ident() -> bool {
@@ -2598,8 +2571,8 @@ pub impl Parser {
     }
 
     fn parse_fn_decl_with_self(parse_arg_fn:
-                                    fn(Parser) -> arg_or_capture_item)
-                            -> (self_ty, fn_decl, capture_clause) {
+                               fn(Parser) -> arg_or_capture_item)
+                            -> (self_ty, fn_decl) {
 
         fn maybe_parse_self_ty(cnstr: fn(+v: mutability) -> ast::self_ty_,
                                p: Parser) -> ast::self_ty_ {
@@ -2675,7 +2648,6 @@ pub impl Parser {
         let hi = self.span.hi;
 
         let inputs = either::lefts(args_or_capture_items);
-        let capture_clause = @either::rights(args_or_capture_items);
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
         let fn_decl = ast::fn_decl {
@@ -2684,10 +2656,10 @@ pub impl Parser {
             cf: ret_style
         };
 
-        (spanned(lo, hi, self_ty), fn_decl, capture_clause)
+        (spanned(lo, hi, self_ty), fn_decl)
     }
 
-    fn parse_fn_block_decl() -> (fn_decl, capture_clause) {
+    fn parse_fn_block_decl() -> fn_decl {
         let inputs_captures = {
             if self.eat(token::OROR) {
                 ~[]
@@ -2704,14 +2676,11 @@ pub impl Parser {
             @Ty { id: self.get_id(), node: ty_infer, span: self.span }
         };
 
-        (
-            ast::fn_decl {
-                inputs: either::lefts(inputs_captures),
-                output: output,
-                cf: return_val,
-            },
-            @either::rights(inputs_captures)
-        )
+        ast::fn_decl {
+            inputs: either::lefts(inputs_captures),
+            output: output,
+            cf: return_val,
+        }
     }
 
     fn parse_fn_header() -> {ident: ident, tps: ~[ty_param]} {
@@ -2733,7 +2702,7 @@ pub impl Parser {
 
     fn parse_item_fn(purity: purity) -> item_info {
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
+        let decl = self.parse_fn_decl(|p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         (t.ident, item_fn(decl, purity, t.tps, body), Some(inner_attrs))
     }
@@ -2753,7 +2722,7 @@ pub impl Parser {
         let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
-        let (self_ty, decl, _) = do self.parse_fn_decl_with_self() |p| {
+        let (self_ty, decl) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
         };
         // XXX: interaction between staticness, self_ty is broken now
@@ -3262,7 +3231,7 @@ pub impl Parser {
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
+        let decl = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
         @ast::foreign_item { ident: t.ident,

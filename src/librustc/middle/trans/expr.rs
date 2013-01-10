@@ -12,45 +12,53 @@
 
 # Translation of expressions.
 
-## User's guide
+## Recommended entry point
 
-If you wish to translate an expression, there are two basic modes:
+If you wish to translate an expression, the preferred way to do
+so is to use:
 
-1. `trans_into(block, expr, Dest) -> block`
-2. `trans_to_datum(block, expr) -> DatumBlock`
+    expr::trans_into(block, expr, Dest) -> block
 
-`trans_into()` is the preferred form to use whenever possible.  It
-evaluates the expression and stores its result into `Dest`, which
-must either be the special flag ignore (throw the result away) or
-be a pointer to memory of the same type/size as the expression.
+This will generate code that evaluates `expr`, storing the result into
+`Dest`, which must either be the special flag ignore (throw the result
+away) or be a pointer to memory of the same type/size as the
+expression.  It returns the resulting basic block.  This form will
+handle all automatic adjustments and moves for you.
 
-Sometimes, though, you just want to evaluate the expression into
-some memory location so you can go and inspect it (e.g., a `match`
-expression).  In that case, `trans_to_datum()` is your friend.  It
-will evaluate the expression and return a `Datum` describing where
-the result is to be found.  This function tries to return its
-result in the most efficient way possible, without introducing
-extra copies or sacrificing information.  Therefore, for lvalue
-expressions, you always get a by-ref `Datum` in return that points
-at the memory for this lvalue (almost, see [1]).  For rvalue
-expressions, we will return a by-value `Datum` whenever possible,
-but it is often necessary to allocate a stack slot, store the
-result of the rvalue in there, and then return a pointer to the
-slot (see the discussion later on about the different kinds of
-rvalues).
+## Translation to a datum
 
-## More specific functions
+In some cases, `trans_into()` is too narrow of an interface.
+Generally this occurs either when you know that the result value is
+going to be a scalar, or when you need to evaluate the expression into
+some memory location so you can go and inspect it (e.g., assignments,
+`match` expressions, the `&` operator).
 
-The two functions above are the most general and can handle any
-situation, but there are a few other functions that are useful
-in specific scenarios:
+In such cases, you want the following function:
 
-- `trans_lvalue()` is exactly like `trans_to_datum()` but it only
-  works on lvalues.  This is mostly used as an assertion for those
-  places where only an lvalue is expected.  It also guarantees that
-  you will get a by-ref Datum back (almost, see [1]).
-- `trans_local_var()` can be used to trans a ref to a local variable
-  that is not an expression.
+    trans_to_datum(block, expr) -> DatumBlock
+
+This function generates code to evaluate the expression and return a
+`Datum` describing where the result is to be found.  This function
+tries to return its result in the most efficient way possible, without
+introducing extra copies or sacrificing information.  Therefore, for
+lvalue expressions, you always get a by-ref `Datum` in return that
+points at the memory for this lvalue (almost, see [1]).  For rvalue
+expressions, we will return a by-value `Datum` whenever possible, but
+it is often necessary to allocate a stack slot, store the result of
+the rvalue in there, and then return a pointer to the slot (see the
+discussion later on about the different kinds of rvalues).
+
+NB: The `trans_to_datum()` function does perform adjustments, but
+since it returns a pointer to the value "in place" it does not handle
+any moves that may be relevant.  If you are transing an expression
+whose result should be moved, you should either use the Datum methods
+`move_to()` (for unconditional moves) or `store_to()` (for moves
+conditioned on the type of the expression) at some point.
+
+## Translating local variables
+
+`trans_local_var()` can be used to trans a ref to a local variable
+that is not an expression.  This is needed for captures.
 
 ## Ownership and cleanups
 
@@ -127,7 +135,6 @@ use middle::trans::datum::*;
 use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::tvec;
-use middle::ty::MoveValue;
 use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use util::common::indenter;
@@ -258,21 +265,70 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
-    return match bcx.tcx().adjustments.find(expr.id) {
-        None => trans_into_unadjusted(bcx, expr, dest),
-        Some(_) => {
-            // use trans_to_datum, which is mildly less efficient but
-            // which will perform the adjustments:
-            let datumblock = trans_to_datum(bcx, expr);
+    if bcx.tcx().adjustments.contains_key(expr.id) {
+        // use trans_to_datum, which is mildly less efficient but
+        // which will perform the adjustments:
+        let datumblock = trans_to_datum(bcx, expr);
+        return match dest {
+            Ignore => datumblock.bcx,
+            SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
+        };
+    }
+
+    let ty = expr_ty(bcx, expr);
+
+    debug!("trans_into_unadjusted(expr=%s, dest=%s)",
+           bcx.expr_to_str(expr),
+           dest.to_str(bcx.ccx()));
+    let _indenter = indenter();
+
+    debuginfo::update_source_pos(bcx, expr.span);
+
+    let dest = {
+        if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+            Ignore
+        } else {
+            dest
+        }
+    };
+
+    let kind = bcx.expr_kind(expr);
+    debug!("expr kind = %?", kind);
+    return match kind {
+        ty::LvalueExpr => {
+            let datumblock = trans_lvalue_unadjusted(bcx, expr);
             match dest {
                 Ignore => datumblock.bcx,
-                SaveIn(lldest) => datumblock.store_to(INIT, lldest)
+                SaveIn(lldest) => datumblock.store_to(expr.id, INIT, lldest)
             }
         }
-    }
+        ty::RvalueDatumExpr => {
+            let datumblock = trans_rvalue_datum_unadjusted(bcx, expr);
+            match dest {
+                Ignore => datumblock.drop_val(),
+
+                // NB: We always do `move_to()` regardless of the
+                // moves_map because we're processing an rvalue
+                SaveIn(lldest) => datumblock.move_to(INIT, lldest)
+            }
+        }
+        ty::RvalueDpsExpr => {
+            trans_rvalue_dps_unadjusted(bcx, expr, dest)
+        }
+        ty::RvalueStmtExpr => {
+            trans_rvalue_stmt_unadjusted(bcx, expr)
+        }
+    };
 }
 
 fn trans_lvalue(bcx: block, expr: @ast::expr) -> DatumBlock {
+    /*!
+     *
+     * Translates an lvalue expression, always yielding a by-ref
+     * datum.  Generally speaking you should call trans_to_datum()
+     * instead, but sometimes we call trans_lvalue() directly as a
+     * means of asserting that a particular expression is an lvalue. */
+
     return match bcx.tcx().adjustments.find(expr.id) {
         None => trans_lvalue_unadjusted(bcx, expr),
         Some(_) => {
@@ -347,50 +403,6 @@ fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     fn nil(bcx: block, ty: ty::t) -> DatumBlock {
         let datum = immediate_rvalue(C_nil(), ty);
         DatumBlock {bcx: bcx, datum: datum}
-    }
-}
-
-fn trans_into_unadjusted(bcx: block, expr: @ast::expr, dest: Dest) -> block {
-    let ty = expr_ty(bcx, expr);
-
-    debug!("trans_into_unadjusted(expr=%s, dest=%s)",
-           bcx.expr_to_str(expr),
-           dest.to_str(bcx.ccx()));
-    let _indenter = indenter();
-
-    debuginfo::update_source_pos(bcx, expr.span);
-
-    let dest = {
-        if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
-            Ignore
-        } else {
-            dest
-        }
-    };
-
-    let kind = bcx.expr_kind(expr);
-    debug!("expr kind = %?", kind);
-    match kind {
-        ty::LvalueExpr => {
-            let datumblock = trans_lvalue_unadjusted(bcx, expr);
-            match dest {
-                Ignore => datumblock.bcx,
-                SaveIn(lldest) => datumblock.store_to(INIT, lldest)
-            }
-        }
-        ty::RvalueDatumExpr => {
-            let datumblock = trans_rvalue_datum_unadjusted(bcx, expr);
-            match dest {
-                Ignore => datumblock.drop_val(),
-                SaveIn(lldest) => datumblock.store_to(INIT, lldest)
-            }
-        }
-        ty::RvalueDpsExpr => {
-            return trans_rvalue_dps_unadjusted(bcx, expr, dest);
-        }
-        ty::RvalueStmtExpr => {
-            return trans_rvalue_stmt_unadjusted(bcx, expr);
-        }
     }
 }
 
@@ -472,9 +484,12 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             return controlflow::trans_loop(bcx, (*body), opt_label);
         }
         ast::expr_assign(dst, src) => {
-            let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));
-            let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
-            return src_datum.store_to_datum(bcx, DROP_EXISTING, dst_datum);
+            let src_datum = unpack_datum!(
+                bcx, trans_to_datum(bcx, src));
+            let dst_datum = unpack_datum!(
+                bcx, trans_lvalue(bcx, dst));
+            return src_datum.store_to_datum(
+                bcx, src.id, DROP_EXISTING, dst_datum);
         }
         ast::expr_swap(dst, src) => {
             let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
@@ -509,8 +524,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
 
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
-    // XXX: This copy is really bad.
-    match /*bad*/copy expr.node {
+    match expr.node {
         ast::expr_paren(e) => {
             return trans_rvalue_dps_unadjusted(bcx, e, dest);
         }
@@ -519,14 +533,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                             bcx.def(expr.id), dest);
         }
         ast::expr_if(cond, ref thn, els) => {
-            return controlflow::trans_if(bcx, cond, (*thn), els, dest);
+            return controlflow::trans_if(bcx, cond, *thn, els, dest);
         }
         ast::expr_match(discr, ref arms) => {
             return _match::trans_match(bcx, expr, discr, /*bad*/copy *arms,
                                        dest);
         }
         ast::expr_block(ref blk) => {
-            return do base::with_scope(bcx, (*blk).info(),
+            return do base::with_scope(bcx, blk.info(),
                                        ~"block-expr body") |bcx| {
                 controlflow::trans_block(bcx, (*blk), dest)
             };
@@ -535,8 +549,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_struct(_, ref fields, base) => {
             return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
         }
-        ast::expr_tup(args) => {
-            return trans_tup(bcx, args, dest);
+        ast::expr_tup(ref args) => {
+            return trans_tup(bcx, *args, dest);
         }
         ast::expr_lit(@ast::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
@@ -552,15 +566,15 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
         // XXX: Bad copy.
-        ast::expr_fn(proto, copy decl, ref body, cap_clause) => {
+        ast::expr_fn(proto, copy decl, ref body) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
             return closure::trans_expr_fn(bcx, proto, decl,
                                           /*bad*/copy *body,
                                           expr.id, expr.id,
-                                          cap_clause, None, dest);
+                                          None, dest);
         }
-        ast::expr_fn_block(ref decl, ref body, cap_clause) => {
+        ast::expr_fn_block(ref decl, ref body) => {
             let expr_ty = expr_ty(bcx, expr);
             match ty::get(expr_ty).sty {
                 ty::ty_fn(ref fn_ty) => {
@@ -570,7 +584,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                     return closure::trans_expr_fn(
                         bcx, fn_ty.meta.proto, /*bad*/copy *decl,
                         /*bad*/copy *body, expr.id, expr.id,
-                        cap_clause, None, dest);
+                        None, dest);
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -582,7 +596,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             match ty::get(expr_ty(bcx, expr)).sty {
                 ty::ty_fn(ref fn_ty) => {
                     match blk.node {
-                        ast::expr_fn_block(copy decl, ref body, cap) => {
+                        ast::expr_fn_block(copy decl, ref body) => {
                             return closure::trans_expr_fn(
                                 bcx,
                                 fn_ty.meta.proto,
@@ -590,7 +604,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                 /*bad*/copy *body,
                                 expr.id,
                                 blk.id,
-                                cap,
                                 Some(None),
                                 dest);
                         }
@@ -613,26 +626,15 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_copy(a) => {
             return trans_into(bcx, a, dest);
         }
-        ast::expr_unary_move(a) => {
-            if bcx.expr_is_lval(a) {
-                let datum = unpack_datum!(bcx, trans_to_datum(bcx, a));
-                return match dest {
-                    Ignore => drop_and_cancel_clean(bcx, datum),
-                    SaveIn(addr) => datum.move_to(bcx, INIT, addr)
-                };
-            } else {
-                return trans_into(bcx, a, dest);
-            }
-        }
-        ast::expr_call(f, args, _) => {
+        ast::expr_call(f, ref args, _) => {
             return callee::trans_call(
-                bcx, expr, f, callee::ArgExprs(args), expr.id, dest);
+                bcx, expr, f, callee::ArgExprs(*args), expr.id, dest);
         }
-        ast::expr_method_call(rcvr, _, _, args, _) => {
+        ast::expr_method_call(rcvr, _, _, ref args, _) => {
             return callee::trans_method_call(bcx,
                                              expr,
                                              rcvr,
-                                             callee::ArgExprs(args),
+                                             callee::ArgExprs(*args),
                                              dest);
         }
         ast::expr_binary(_, lhs, rhs) => {
@@ -727,9 +729,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     /*!
      *
      * Translates an lvalue expression, always yielding a by-ref
-     * datum.  Generally speaking you should call trans_to_datum()
-     * instead, but sometimes we call trans_lvalue() directly as a
-     * means of asserting that a particular expression is an lvalue. */
+     * datum.  Does not apply any adjustments. */
 
     let _icx = bcx.insn_ctxt("trans_lval");
     let mut bcx = bcx;
@@ -752,6 +752,17 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     return DatumBlock {bcx: bcx, datum: unrooted_datum};
 
     fn unrooted(bcx: block, expr: @ast::expr) -> DatumBlock {
+        /*!
+         *
+         * Translates `expr`.  Note that this version generally
+         * yields an unrooted, unmoved version.  Rooting and possible
+         * moves are dealt with above in trans_lvalue_unadjusted().
+         *
+         * One exception is if `expr` refers to a local variable,
+         * in which case the source may already be FromMovedLvalue
+         * if appropriate.
+         */
+
         let mut bcx = bcx;
 
         match expr.node {
@@ -762,7 +773,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 return trans_def_lvalue(bcx, expr, bcx.def(expr.id));
             }
             ast::expr_field(base, ident, _) => {
-                return trans_rec_field(bcx, base, ident, expr.id);
+                return trans_rec_field(bcx, base, ident);
             }
             ast::expr_index(base, idx) => {
                 return trans_index(bcx, expr, base, idx);
@@ -779,52 +790,152 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             }
         }
     }
-}
 
-fn trans_def_lvalue(bcx: block,
-                    ref_expr: @ast::expr,
-                    def: ast::def)
-                 -> DatumBlock {
-    let _icx = bcx.insn_ctxt("trans_def_lvalue");
-    let ccx = bcx.ccx();
-    match def {
-        ast::def_const(did) => {
-            let const_ty = expr_ty(bcx, ref_expr);
-            let val = if did.crate == ast::local_crate {
-                // The LLVM global has the type of its initializer,
-                // which may not be equal to the enum's type for
-                // non-C-like enums.
-                PointerCast(bcx, base::get_item_val(ccx, did.node),
-                            T_ptr(type_of(bcx.ccx(), const_ty)))
-            } else {
-                base::trans_external_path(ccx, did, const_ty)
-            };
+    fn trans_rec_field(bcx: block,
+                       base: @ast::expr,
+                       field: ast::ident) -> DatumBlock {
+        /*!
+         *
+         * Translates `base.field`.  Note that this version always
+         * yields an unrooted, unmoved version.  Rooting and possible
+         * moves are dealt with above in trans_lvalue_unadjusted().
+         */
+
+        let mut bcx = bcx;
+        let _icx = bcx.insn_ctxt("trans_rec_field");
+
+        let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
+        do with_field_tys(bcx.tcx(), base_datum.ty, None) |_dtor, field_tys| {
+            let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
             DatumBlock {
-                bcx: bcx,
-                datum: Datum {val: val,
-                              ty: const_ty,
-                              mode: ByRef,
-                              source: FromLvalue}
+                datum: base_datum.GEPi(bcx,
+                                       [0u, 0u, ix],
+                                       field_tys[ix].mt.ty,
+                                       ZeroMem),
+                bcx: bcx
             }
         }
-        _ => {
-            DatumBlock {
-                bcx: bcx,
-                datum: trans_local_var(bcx, def, Some(ref_expr.id))
+    }
+
+    fn trans_index(bcx: block,
+                   index_expr: @ast::expr,
+                   base: @ast::expr,
+                   idx: @ast::expr) -> DatumBlock {
+        /*!
+         *
+         * Translates `base[idx]`.  Note that this version always
+         * yields an unrooted, unmoved version.  Rooting and possible
+         * moves are dealt with above in trans_lvalue_unadjusted().
+         */
+
+        let _icx = bcx.insn_ctxt("trans_index");
+        let ccx = bcx.ccx();
+        let base_ty = expr_ty(bcx, base);
+        let mut bcx = bcx;
+
+        let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
+
+        // Translate index expression and cast to a suitable LLVM integer.
+        // Rust is less strict than LLVM in this regard.
+        let Result {bcx, val: ix_val} = trans_to_datum(bcx, idx).to_result();
+        let ix_size = machine::llbitsize_of_real(bcx.ccx(), val_ty(ix_val));
+        let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type);
+        let ix_val = {
+            if ix_size < int_size {
+                if ty::type_is_signed(expr_ty(bcx, idx)) {
+                    SExt(bcx, ix_val, ccx.int_type)
+                } else { ZExt(bcx, ix_val, ccx.int_type) }
+            } else if ix_size > int_size {
+                Trunc(bcx, ix_val, ccx.int_type)
+            } else {
+                ix_val
+            }
+        };
+
+        let vt = tvec::vec_types(bcx, base_datum.ty);
+        base::maybe_name_value(bcx.ccx(), vt.llunit_size, ~"unit_sz");
+        let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
+        base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
+
+        let mut (base, len) = base_datum.get_base_and_len(bcx);
+
+        if ty::type_is_str(base_ty) {
+            // acccount for null terminator in the case of string
+            len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
+        }
+
+        debug!("trans_index: base %s", val_str(bcx.ccx().tn, base));
+        debug!("trans_index: len %s", val_str(bcx.ccx().tn, len));
+
+        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
+        let bcx = do with_cond(bcx, bounds_check) |bcx| {
+            let unscaled_len = UDiv(bcx, len, vt.llunit_size);
+            controlflow::trans_fail_bounds_check(bcx, index_expr.span,
+                                                 ix_val, unscaled_len)
+        };
+        let elt = InBoundsGEP(bcx, base, ~[ix_val]);
+        let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
+        return DatumBlock {
+            bcx: bcx,
+            datum: Datum {val: elt,
+                          ty: vt.unit_ty,
+                          mode: ByRef,
+                          source: ZeroMem}
+        };
+    }
+
+    fn trans_def_lvalue(bcx: block,
+                        ref_expr: @ast::expr,
+                        def: ast::def)
+        -> DatumBlock
+    {
+        /*!
+         *
+         * Translates a reference to a path.  Note that this version
+         * generally yields an unrooted, unmoved version.  Rooting and
+         * possible moves are dealt with above in
+         * trans_lvalue_unadjusted(), with the caveat that local variables
+         * may already be in move mode.
+         */
+
+        let _icx = bcx.insn_ctxt("trans_def_lvalue");
+        let ccx = bcx.ccx();
+        match def {
+            ast::def_const(did) => {
+                let const_ty = expr_ty(bcx, ref_expr);
+                let val = if did.crate == ast::local_crate {
+                    // The LLVM global has the type of its initializer,
+                    // which may not be equal to the enum's type for
+                    // non-C-like enums.
+                    PointerCast(bcx, base::get_item_val(ccx, did.node),
+                                T_ptr(type_of(bcx.ccx(), const_ty)))
+                } else {
+                    base::trans_external_path(ccx, did, const_ty)
+                };
+                DatumBlock {
+                    bcx: bcx,
+                    datum: Datum {val: val,
+                                  ty: const_ty,
+                                  mode: ByRef,
+                                  source: ZeroMem}
+                }
+            }
+            _ => {
+                DatumBlock {
+                    bcx: bcx,
+                    datum: trans_local_var(bcx, def)
+                }
             }
         }
     }
 }
 
-pub fn trans_local_var(bcx: block,
-                       def: ast::def,
-                       expr_id_opt: Option<ast::node_id>)
-                    -> Datum {
+pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     let _icx = bcx.insn_ctxt("trans_local_var");
 
     return match def {
         ast::def_upvar(nid, _, _, _) => {
-            // Can't move upvars, so this is never a FromLvalueLastUse.
+            // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.find(nid) {
                 Some(val) => {
@@ -832,7 +943,7 @@ pub fn trans_local_var(bcx: block,
                         val: val,
                         ty: local_ty,
                         mode: ByRef,
-                        source: FromLvalue
+                        source: ZeroMem
                     }
                 }
                 None => {
@@ -842,10 +953,10 @@ pub fn trans_local_var(bcx: block,
             }
         }
         ast::def_arg(nid, _, _) => {
-            take_local(bcx, bcx.fcx.llargs, nid, expr_id_opt)
+            take_local(bcx, bcx.fcx.llargs, nid)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
-            take_local(bcx, bcx.fcx.lllocals, nid, expr_id_opt)
+            take_local(bcx, bcx.fcx.lllocals, nid)
         }
         ast::def_self(nid, _) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
@@ -867,7 +978,7 @@ pub fn trans_local_var(bcx: block,
                 val: casted_val,
                 ty: self_info.t,
                 mode: ByRef,
-                source: source_from_opt_lvalue_type(bcx.tcx(), expr_id_opt)
+                source: ZeroMem
             }
         }
         _ => {
@@ -878,8 +989,7 @@ pub fn trans_local_var(bcx: block,
 
     fn take_local(bcx: block,
                   table: HashMap<ast::node_id, local_val>,
-                  nid: ast::node_id,
-                  expr_id_opt: Option<ast::node_id>) -> Datum {
+                  nid: ast::node_id) -> Datum {
         let (v, mode) = match table.find(nid) {
             Some(local_mem(v)) => (v, ByRef),
             Some(local_imm(v)) => (v, ByValue),
@@ -897,7 +1007,7 @@ pub fn trans_local_var(bcx: block,
             val: v,
             ty: ty,
             mode: mode,
-            source: source_from_opt_lvalue_type(bcx.tcx(), expr_id_opt)
+            source: ZeroMem
         }
     }
 }
@@ -981,102 +1091,6 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
     }
 }
 
-fn trans_rec_field(bcx: block,
-                   base: @ast::expr,
-                   field: ast::ident,
-                   expr_id: ast::node_id) -> DatumBlock {
-    let mut bcx = bcx;
-    let _icx = bcx.insn_ctxt("trans_rec_field");
-
-    let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-    do with_field_tys(bcx.tcx(), base_datum.ty, None) |_dtor, field_tys| {
-        let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
-        DatumBlock {
-            datum: base_datum.GEPi(bcx,
-                                   [0u, 0u, ix],
-                                   field_tys[ix].mt.ty,
-                                   source_from_opt_lvalue_type(
-                                        bcx.tcx(), Some(expr_id))),
-            bcx: bcx
-        }
-    }
-}
-
-fn source_from_opt_lvalue_type(tcx: ty::ctxt,
-                               expr_id_opt: Option<ast::node_id>)
-                            -> DatumSource {
-    match expr_id_opt {
-        None => FromLvalue,
-        Some(expr_id) => {
-            match tcx.value_modes.find(expr_id) {
-                Some(MoveValue) => FromLastUseLvalue,
-                Some(_) | None => FromLvalue,
-            }
-        }
-    }
-}
-
-fn trans_index(bcx: block,
-               index_expr: @ast::expr,
-               base: @ast::expr,
-               idx: @ast::expr) -> DatumBlock {
-    let _icx = bcx.insn_ctxt("trans_index");
-    let ccx = bcx.ccx();
-    let base_ty = expr_ty(bcx, base);
-    let mut bcx = bcx;
-
-    let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-
-    // Translate index expression and cast to a suitable LLVM integer.
-    // Rust is less strict than LLVM in this regard.
-    let Result {bcx, val: ix_val} = trans_to_datum(bcx, idx).to_result();
-    let ix_size = machine::llbitsize_of_real(bcx.ccx(), val_ty(ix_val));
-    let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type);
-    let ix_val = {
-        if ix_size < int_size {
-            if ty::type_is_signed(expr_ty(bcx, idx)) {
-                SExt(bcx, ix_val, ccx.int_type)
-            } else { ZExt(bcx, ix_val, ccx.int_type) }
-        } else if ix_size > int_size {
-            Trunc(bcx, ix_val, ccx.int_type)
-        } else {
-            ix_val
-        }
-    };
-
-    let vt = tvec::vec_types(bcx, base_datum.ty);
-    base::maybe_name_value(bcx.ccx(), vt.llunit_size, ~"unit_sz");
-    let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
-    base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
-
-    let mut (base, len) = base_datum.get_base_and_len(bcx);
-
-    if ty::type_is_str(base_ty) {
-        // acccount for null terminator in the case of string
-        len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
-    }
-
-    debug!("trans_index: base %s", val_str(bcx.ccx().tn, base));
-    debug!("trans_index: len %s", val_str(bcx.ccx().tn, len));
-
-    let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
-    let bcx = do with_cond(bcx, bounds_check) |bcx| {
-        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
-        controlflow::trans_fail_bounds_check(bcx, index_expr.span,
-                                             ix_val, unscaled_len)
-    };
-    let elt = InBoundsGEP(bcx, base, ~[ix_val]);
-    let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
-    return DatumBlock {
-        bcx: bcx,
-        datum: Datum {val: elt,
-                      ty: vt.unit_ty,
-                      mode: ByRef,
-                      source: source_from_opt_lvalue_type(
-                            bcx.tcx(), Some(index_expr.id))}
-    };
-}
-
 fn trans_rec_or_struct(bcx: block,
                        fields: &[ast::field],
                        base: Option<@ast::expr>,
@@ -1158,7 +1172,7 @@ fn trans_rec_or_struct(bcx: block,
             let base_datum = unpack_datum!(
                 bcx, trans_to_datum(bcx, *base_expr));
 
-            // Copy over inherited fields
+            // Copy/move over inherited fields
             for field_tys.eachi |i, field_ty| {
                 if !fields.any(|f| f.node.ident == field_ty.ident) {
                     let dest = GEPi(bcx, addr, struct_field(i));
@@ -1166,8 +1180,8 @@ fn trans_rec_or_struct(bcx: block,
                         base_datum.GEPi(bcx,
                                         struct_field(i),
                                         field_ty.mt.ty,
-                                        FromLvalue);
-                    bcx = base_field.store_to(bcx, INIT, dest);
+                                        ZeroMem);
+                    bcx = base_field.store_to(bcx, base_expr.id, INIT, dest);
                 }
             }
         }
@@ -1187,7 +1201,7 @@ fn trans_rec_or_struct(bcx: block,
     }
 }
 
-fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
+fn trans_tup(bcx: block, elts: &[@ast::expr], dest: Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_tup");
     let mut bcx = bcx;
     let addr = match dest {
@@ -1642,7 +1656,7 @@ fn trans_assign_op(bcx: block,
                       trans_eager_binop(
                           bcx, expr, dst_datum.ty, op,
                           &dst_datum, &src_datum));
-    return result_datum.store_to_datum(bcx, DROP_EXISTING, dst_datum);
+    return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
 }
 
 fn shorten(+x: ~str) -> ~str {

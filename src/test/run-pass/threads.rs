@@ -14,7 +14,7 @@ extern mod std;
 
 fn main() {
     let mut i = 10;
-    while i > 0 { task::spawn(|copy i| child(i) ); i = i - 1; }
+    while i > 0 { task::spawn({let i = i; || child(i)}); i = i - 1; }
     debug!("main thread exiting");
 }
 

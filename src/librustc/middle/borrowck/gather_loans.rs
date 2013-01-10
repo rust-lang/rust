@@ -18,8 +18,8 @@
 
 use core::prelude::*;
 
-use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
-use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, err_mutbl};
+use middle::borrowck::preserve::{PreserveCondition, PcOk, PcIfPure};
+use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
 use middle::borrowck::{req_maps};
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
@@ -68,13 +68,13 @@ use syntax::visit;
 /// No good.  Instead what will happen is that `root_ub` will be set to the
 /// body of the while loop and we will refuse to root the pointer `&*x`
 /// because it would have to be rooted for a region greater than `root_ub`.
-enum gather_loan_ctxt = @{bccx: borrowck_ctxt,
+enum gather_loan_ctxt = @{bccx: @BorrowckCtxt,
                           req_maps: req_maps,
                           mut item_ub: ast::node_id,
                           mut root_ub: ast::node_id,
                           mut ignore_adjustments: LinearSet<ast::node_id>};
 
-pub fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
+pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> req_maps {
     let glcx = gather_loan_ctxt(@{bccx: bccx,
                                   req_maps: {req_loan_map: HashMap(),
                                              pure_map: HashMap()},
@@ -148,11 +148,11 @@ fn req_loans_in_expr(ex: @ast::expr,
         let scope_r = ty::re_scope(ex.id);
         for vec::each2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-              ast::by_ref => {
-                let arg_cmt = self.bccx.cat_expr(*arg);
-                self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-              }
-               ast::by_val | ast::by_move | ast::by_copy => {}
+                ast::by_ref => {
+                    let arg_cmt = self.bccx.cat_expr(*arg);
+                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
+                }
+                ast::by_val | ast::by_copy => {}
             }
         }
         visit::visit_expr(ex, self, vt);
@@ -164,11 +164,11 @@ fn req_loans_in_expr(ex: @ast::expr,
         let scope_r = ty::re_scope(ex.id);
         for vec::each2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-              ast::by_ref => {
-                let arg_cmt = self.bccx.cat_expr(*arg);
-                self.guarantee_valid(arg_cmt, m_imm,  scope_r);
-              }
-               ast::by_val | ast::by_move | ast::by_copy => {}
+                ast::by_ref => {
+                    let arg_cmt = self.bccx.cat_expr(*arg);
+                    self.guarantee_valid(arg_cmt, m_imm,  scope_r);
+                }
+                ast::by_val | ast::by_copy => {}
             }
         }
 
@@ -374,7 +374,7 @@ impl gather_loan_ctxt {
           // matches with the actual mutability (but if an immutable
           // pointer is desired, that is ok as long as we are pure)
           None => {
-            let result: bckres<preserve_condition> = {
+            let result: bckres<PreserveCondition> = {
                 do self.check_mutbl(req_mutbl, cmt).chain |pc1| {
                     do self.bccx.preserve(cmt, scope_r,
                                           self.item_ub,
@@ -385,16 +385,16 @@ impl gather_loan_ctxt {
             };
 
             match result {
-                Ok(pc_ok) => {
-                    debug!("result of preserve: pc_ok");
+                Ok(PcOk) => {
+                    debug!("result of preserve: PcOk");
 
                     // we were able guarantee the validity of the ptr,
                     // perhaps by rooting or because it is immutably
                     // rooted.  good.
                     self.bccx.stable_paths += 1;
                 }
-                Ok(pc_if_pure(ref e)) => {
-                    debug!("result of preserve: %?", pc_if_pure((*e)));
+                Ok(PcIfPure(ref e)) => {
+                    debug!("result of preserve: %?", PcIfPure((*e)));
 
                     // we are only able to guarantee the validity if
                     // the scope is pure
@@ -443,25 +443,25 @@ impl gather_loan_ctxt {
     // mutable memory.
     fn check_mutbl(&self,
                    req_mutbl: ast::mutability,
-                   cmt: cmt) -> bckres<preserve_condition> {
+                   cmt: cmt) -> bckres<PreserveCondition> {
         debug!("check_mutbl(req_mutbl=%?, cmt.mutbl=%?)",
                req_mutbl, cmt.mutbl);
 
         if req_mutbl == m_const || req_mutbl == cmt.mutbl {
             debug!("required is const or they are the same");
-            Ok(pc_ok)
+            Ok(PcOk)
         } else {
             let e = bckerr { cmt: cmt, code: err_mutbl(req_mutbl) };
             if req_mutbl == m_imm {
                 // if this is an @mut box, then it's generally OK to borrow as
                 // &imm; this will result in a write guard
                 if cmt.cat.is_mutable_box() {
-                    Ok(pc_ok)
+                    Ok(PcOk)
                 } else {
                     // you can treat mutable things as imm if you are pure
                     debug!("imm required, must be pure");
 
-                    Ok(pc_if_pure(e))
+                    Ok(PcIfPure(e))
                 }
             } else {
                 Err(e)
@@ -556,11 +556,6 @@ impl gather_loan_ctxt {
             match pat.node {
               ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
                 match bm {
-                  ast::bind_by_value | ast::bind_by_move => {
-                    // copying does not borrow anything, so no check
-                    // is required
-                    // as for move, check::_match ensures it's from an rvalue.
-                  }
                   ast::bind_by_ref(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
                     // remain valid for the scope of the match
@@ -582,9 +577,9 @@ impl gather_loan_ctxt {
                         self.guarantee_valid(cmt, mutbl, scope_r);
                     }
                   }
-                  ast::bind_infer => {
-                    // Nothing to do here; this is either a copy or a move;
-                    // thus either way there is nothing to check. Yay!
+                  ast::bind_by_copy | ast::bind_infer => {
+                    // Nothing to do here; neither copies nor moves induce
+                    // borrows.
                   }
                 }
               }

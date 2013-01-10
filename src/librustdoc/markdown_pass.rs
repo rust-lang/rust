@@ -291,12 +291,13 @@ pub fn header_text(doc: doc::ItemTag) -> ~str {
             fmt!("of `%s` for `%s`", ImplDoc.trait_types[0],
                  (&ImplDoc.self_ty).get())
         };
-        fmt!("%s %s", header_kind, desc)
+        return fmt!("%s %s", header_kind, desc);
       }
-      _ => {
-        header_text_(header_kind(doc), header_name(doc))
-      }
+      _ => {}
     }
+
+    header_text_(header_kind(copy doc),
+                 header_name(doc))
 }
 
 fn header_text_(kind: &str, name: &str) -> ~str {

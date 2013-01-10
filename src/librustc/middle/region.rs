@@ -290,15 +290,6 @@ pub fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                            cx.sess.intr()));
         new_cx.parent = Some(expr.id);
       }
-      ast::expr_fn(_, _, _, cap_clause) |
-      ast::expr_fn_block(_, _, cap_clause) => {
-        // although the capture items are not expressions per se, they
-        // do get "evaluated" in some sense as copies or moves of the
-        // relevant variables so we parent them like an expression
-        for (*cap_clause).each |cap_item| {
-            record_parent(new_cx, cap_item.id);
-        }
-      }
       ast::expr_while(cond, _) => {
         new_cx.root_exprs.insert(cond.id, ());
       }

@@ -24,12 +24,12 @@ fn main() {
             _x: x
         }
     }
-   
+
     let x = ~mut Some(foo(Port(@())));
 
-    do task::spawn |move x| { //~ ERROR not a sendable value
+    do task::spawn {
         let mut y = None;
-        *x <-> y;
+        *x <-> y; //~ ERROR not a sendable value
         log(error, y);
     }
 }

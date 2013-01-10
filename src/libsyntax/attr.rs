@@ -173,8 +173,8 @@ pub fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
  * Returns true if a list of meta items contains another meta item. The
  * comparison is performed structurally.
  */
-pub fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item)
-             -> bool {
+pub fn contains(haystack: &[@ast::meta_item],
+                needle: @ast::meta_item) -> bool {
     for haystack.each |item| {
         if eq(*item, needle) { return true; }
     }

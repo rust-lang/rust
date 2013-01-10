@@ -103,16 +103,18 @@ fn fold_const(
     let srv = fold.ctxt;
 
     doc::SimpleItemDoc {
-        sig: Some(do astsrv::exec(srv) |copy doc, ctxt| {
-            match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@ast::item {
-                node: ast::item_const(ty, _), _
-              }, _) => {
-                pprust::ty_to_str(ty, extract::interner())
-              }
-              _ => fail ~"fold_const: id not bound to a const item"
-            }
-        }),
+        sig: Some({
+            let doc = copy doc;
+            do astsrv::exec(srv) |ctxt| {
+                match ctxt.ast_map.get(doc.id()) {
+                    ast_map::node_item(@ast::item {
+                        node: ast::item_const(ty, _), _
+                    }, _) => {
+                        pprust::ty_to_str(ty, extract::interner())
+                    }
+                    _ => fail ~"fold_const: id not bound to a const item"
+                }
+            }}),
         .. doc
     }
 }
@@ -132,26 +134,29 @@ fn fold_enum(
 
     doc::EnumDoc {
         variants: do par::map(doc.variants) |variant| {
-            let variant = copy *variant;
-            let sig = do astsrv::exec(srv) |copy variant, ctxt| {
-                match ctxt.ast_map.get(doc_id) {
-                  ast_map::node_item(@ast::item {
-                    node: ast::item_enum(ref enum_definition, _), _
-                  }, _) => {
-                    let ast_variant =
-                        do vec::find(enum_definition.variants) |v| {
-                            to_str(v.node.name) == variant.name
-                        }.get();
+            let sig = {
+                let variant = copy *variant;
+                do astsrv::exec(srv) |copy variant, ctxt| {
+                    match ctxt.ast_map.get(doc_id) {
+                        ast_map::node_item(@ast::item {
+                            node: ast::item_enum(ref enum_definition, _), _
+                        }, _) => {
+                            let ast_variant =
+                                do vec::find(enum_definition.variants) |v| {
+                                to_str(v.node.name) == variant.name
+                            }.get();
 
-                    pprust::variant_to_str(ast_variant, extract::interner())
-                  }
-                  _ => fail ~"enum variant not bound to an enum item"
+                            pprust::variant_to_str(
+                                ast_variant, extract::interner())
+                        }
+                        _ => fail ~"enum variant not bound to an enum item"
+                    }
                 }
             };
 
             doc::VariantDoc {
                 sig: Some(sig),
-                .. variant
+                .. copy *variant
             }
         },
         .. doc
@@ -262,18 +267,22 @@ fn fold_impl(
 
     let srv = fold.ctxt;
 
-    let (trait_types, self_ty) = do astsrv::exec(srv) |copy doc, ctxt| {
-        match ctxt.ast_map.get(doc.id()) {
-          ast_map::node_item(@ast::item {
-            node: ast::item_impl(_, opt_trait_type, self_ty, _), _
-          }, _) => {
-            let trait_types = opt_trait_type.map_default(~[], |p| {
-                ~[pprust::path_to_str(p.path, extract::interner())]
-            });
-            (trait_types, Some(pprust::ty_to_str(self_ty,
-                                                 extract::interner())))
-          }
-          _ => fail ~"expected impl"
+    let (trait_types, self_ty) = {
+        let doc = copy doc;
+        do astsrv::exec(srv) |ctxt| {
+            match ctxt.ast_map.get(doc.id()) {
+                ast_map::node_item(@ast::item {
+                    node: ast::item_impl(_, opt_trait_type, self_ty, _), _
+                }, _) => {
+                    let trait_types = opt_trait_type.map_default(~[], |p| {
+                        ~[pprust::path_to_str(p.path, extract::interner())]
+                    });
+                    (trait_types,
+                     Some(pprust::ty_to_str(
+                         self_ty, extract::interner())))
+                }
+                _ => fail ~"expected impl"
+            }
         }
     };
 
@@ -318,20 +327,25 @@ fn fold_type(
     let srv = fold.ctxt;
 
     doc::SimpleItemDoc {
-        sig: do astsrv::exec(srv) |copy doc, ctxt| {
-            match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@ast::item {
-                ident: ident,
-                node: ast::item_ty(ty, ref params), _
-              }, _) => {
-                Some(fmt!(
-                    "type %s%s = %s",
-                    to_str(ident),
-                    pprust::typarams_to_str(*params, extract::interner()),
-                    pprust::ty_to_str(ty, extract::interner())
-                ))
-              }
-              _ => fail ~"expected type"
+        sig: {
+            let doc = copy doc;
+            do astsrv::exec(srv) |ctxt| {
+                match ctxt.ast_map.get(doc.id()) {
+                    ast_map::node_item(@ast::item {
+                        ident: ident,
+                        node: ast::item_ty(ty, ref params), _
+                    }, _) => {
+                        Some(fmt!(
+                            "type %s%s = %s",
+                            to_str(ident),
+                            pprust::typarams_to_str(*params,
+                                                    extract::interner()),
+                            pprust::ty_to_str(ty,
+                                              extract::interner())
+                        ))
+                    }
+                    _ => fail ~"expected type"
+                }
             }
         },
         .. doc
@@ -351,14 +365,17 @@ fn fold_struct(
     let srv = fold.ctxt;
 
     doc::StructDoc {
-        sig: do astsrv::exec(srv) |copy doc, ctxt| {
-            match ctxt.ast_map.get(doc.id()) {
-                ast_map::node_item(item, _) => {
-                    let item = strip_struct_extra_stuff(item);
-                    Some(pprust::item_to_str(item,
-                                             extract::interner()))
+        sig: {
+            let doc = copy doc;
+            do astsrv::exec(srv) |ctxt| {
+                match ctxt.ast_map.get(doc.id()) {
+                    ast_map::node_item(item, _) => {
+                        let item = strip_struct_extra_stuff(item);
+                        Some(pprust::item_to_str(item,
+                                                 extract::interner()))
+                    }
+                    _ => fail ~"not an item"
                 }
-                _ => fail ~"not an item"
             }
         },
         .. doc

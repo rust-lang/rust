@@ -337,9 +337,9 @@ pub struct field_pat {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum binding_mode {
-    bind_by_value,
-    bind_by_move,
+    bind_by_copy,
     bind_by_ref(mutability),
     bind_infer
 }
@@ -347,49 +347,15 @@ pub enum binding_mode {
 pub impl binding_mode : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
-          bind_by_value => 0u8.iter_bytes(lsb0, f),
-
-          bind_by_move => 1u8.iter_bytes(lsb0, f),
+          bind_by_copy => 0u8.iter_bytes(lsb0, f),
 
           bind_by_ref(ref m) =>
-          to_bytes::iter_bytes_2(&2u8, m, lsb0, f),
+          to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
 
           bind_infer =>
-          3u8.iter_bytes(lsb0, f),
+          2u8.iter_bytes(lsb0, f),
         }
     }
-}
-
-pub impl binding_mode : cmp::Eq {
-    pure fn eq(&self, other: &binding_mode) -> bool {
-        match (*self) {
-            bind_by_value => {
-                match (*other) {
-                    bind_by_value => true,
-                    _ => false
-                }
-            }
-            bind_by_move => {
-                match (*other) {
-                    bind_by_move => true,
-                    _ => false
-                }
-            }
-            bind_by_ref(e0a) => {
-                match (*other) {
-                    bind_by_ref(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            bind_infer => {
-                match (*other) {
-                    bind_infer => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &binding_mode) -> bool { !(*self).eq(other) }
 }
 
 #[auto_encode]
@@ -603,7 +569,7 @@ pub impl<T:cmp::Eq> inferable<T> : cmp::Eq {
 // "resolved" mode: the real modes.
 #[auto_encode]
 #[auto_decode]
-pub enum rmode { by_ref, by_val, by_move, by_copy }
+pub enum rmode { by_ref, by_val, by_copy }
 
 pub impl rmode : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
@@ -729,8 +695,8 @@ pub enum expr_ {
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
     expr_match(@expr, ~[arm]),
-    expr_fn(Proto, fn_decl, blk, capture_clause),
-    expr_fn_block(fn_decl, blk, capture_clause),
+    expr_fn(Proto, fn_decl, blk),
+    expr_fn_block(fn_decl, blk),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // easily type this (a function returning nil on the inside but bool on
     // the outside).
@@ -740,7 +706,6 @@ pub enum expr_ {
     expr_block(blk),
 
     expr_copy(@expr),
-    expr_unary_move(@expr),
     expr_assign(@expr, @expr),
     expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
@@ -769,20 +734,6 @@ pub enum expr_ {
     expr_paren(@expr)
 }
 
-#[auto_encode]
-#[auto_decode]
-pub struct capture_item_ {
-    id: int,
-    is_move: bool,
-    name: ident, // Currently, can only capture a local var.
-    span: span,
-}
-
-pub type capture_item = @capture_item_;
-
-pub type capture_clause = @~[capture_item];
-
-//
 // When the main rust parser encounters a syntax-extension invocation, it
 // parses the arguments to the invocation as a token-tree. This is a very
 // loose structure, such that all sorts of different AST-fragments can

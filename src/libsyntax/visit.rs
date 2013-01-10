@@ -32,8 +32,8 @@ pub enum vt<E> { mk_vt(visitor<E>), }
 pub enum fn_kind {
     fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
     fk_method(ident, ~[ty_param], @method),
-    fk_anon(Proto, capture_clause),  //< an anonymous function like fn@(...)
-    fk_fn_block(capture_clause),     //< a block {||...}
+    fk_anon(Proto),    //< an anonymous function like fn@(...)
+    fk_fn_block,       //< a block {||...}
     fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
@@ -457,12 +457,12 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(x, e, v);
         for (*arms).each |a| { (v.visit_arm)(*a, e, v); }
       }
-      expr_fn(proto, decl, ref body, cap_clause) => {
-        (v.visit_fn)(fk_anon(proto, cap_clause), decl, (*body),
+      expr_fn(proto, decl, ref body) => {
+        (v.visit_fn)(fk_anon(proto), decl, (*body),
                      ex.span, ex.id, e, v);
       }
-      expr_fn_block(decl, ref body, cap_clause) => {
-        (v.visit_fn)(fk_fn_block(cap_clause), decl, (*body),
+      expr_fn_block(decl, ref body) => {
+        (v.visit_fn)(fk_fn_block, decl, (*body),
                      ex.span, ex.id, e, v);
       }
       expr_block(ref b) => (v.visit_block)((*b), e, v),
@@ -471,7 +471,6 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(a, e, v);
       }
       expr_copy(a) => (v.visit_expr)(a, e, v),
-      expr_unary_move(a) => (v.visit_expr)(a, e, v),
       expr_swap(a, b) => { (v.visit_expr)(a, e, v); (v.visit_expr)(b, e, v); }
       expr_assign_op(_, a, b) => {
         (v.visit_expr)(b, e, v);

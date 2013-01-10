@@ -165,7 +165,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
     match e.node {
-      ast::expr_fn_block(ref decl, _, _) => {
+      ast::expr_fn_block(ref decl, _) => {
           for vec::each(decl.inputs) |input| {
               let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 

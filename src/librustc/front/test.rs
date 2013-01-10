@@ -46,7 +46,7 @@ pub fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains(/*bad*/copy crate.node.config,
+    let should_test = attr::contains(crate.node.config,
                                      attr::mk_word_item(~"test"));
 
     if should_test {
@@ -510,7 +510,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     let wrapper_expr = ast::expr  {
         id: cx.sess.next_node_id(),
         callee_id: cx.sess.next_node_id(),
-        node: ast::expr_fn(ast::ProtoBare, wrapper_decl, wrapper_body, @~[]),
+        node: ast::expr_fn(ast::ProtoBare, wrapper_decl, wrapper_body),
         span: span
     };
 

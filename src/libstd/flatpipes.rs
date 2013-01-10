@@ -788,13 +788,14 @@ mod test {
         // The main task will wait until the test is over to proceed
         let (finish_port, finish_chan) = pipes::stream();
 
-        let addr = ip::v4::parse_addr("127.0.0.1");
+        let addr0 = ip::v4::parse_addr("127.0.0.1");
 
         let begin_connect_chan = Cell(move begin_connect_chan);
         let accept_chan = Cell(move accept_chan);
 
         // The server task
-        do task::spawn |copy addr, move begin_connect_chan,
+        let addr = copy addr0;
+        do task::spawn |move begin_connect_chan,
                         move accept_chan| {
             let iotask = &uv::global_loop::get();
             let begin_connect_chan = begin_connect_chan.take();
@@ -821,7 +822,8 @@ mod test {
         }
 
         // Client task
-        do task::spawn |copy addr, move begin_connect_port,
+        let addr = copy addr0;
+        do task::spawn |move begin_connect_port,
                         move writer_chan| {
 
             // Wait for the server to start listening
