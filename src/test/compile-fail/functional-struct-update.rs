@@ -25,7 +25,7 @@ struct Foo {
 
 fn main() {
     let a = Foo { x: 1, y: Bar { x: 5 } };
-    let c = Foo { x: 4, .. a}; //~ ERROR copying a noncopyable value
+    let c = Foo { x: 4, .. a}; //~ ERROR cannot copy field `y` of base expression, which has a noncopyable type
     io::println(fmt!("%?", c));
 }
 

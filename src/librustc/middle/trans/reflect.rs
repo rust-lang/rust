@@ -232,7 +232,6 @@ pub impl reflector {
                   ast::expl(e) => match e {
                     ast::by_ref => 1u,
                     ast::by_val => 2u,
-                    ast::by_move => 4u,
                     ast::by_copy => 5u
                   }
                 };

@@ -275,6 +275,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'p' => {
         let did = parse_def(st, TypeParameter, conv);
+        debug!("parsed ty_param: did=%?", did);
         return ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       's' => {
@@ -422,7 +423,6 @@ fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
 
 fn parse_mode(st: @pstate) -> ast::mode {
     let m = ast::expl(match next(st) {
-        '-' => ast::by_move,
         '+' => ast::by_copy,
         '=' => ast::by_ref,
         '#' => ast::by_val,

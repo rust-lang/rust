@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use middle::resolve;
-use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
 
 use syntax::ast::*;
@@ -92,32 +91,5 @@ pub fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[node_id] {
     let mut found = ~[];
     pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;
-}
-
-pub fn arms_have_by_move_bindings(tcx: ty::ctxt, +arms: &[arm]) -> bool {
-    for arms.each |arm| {
-        for arm.pats.each |pat| {
-            let mut found = false;
-            do pat_bindings(tcx.def_map, *pat)
-                    |binding_mode, node_id, span, _path| {
-                match binding_mode {
-                    bind_by_move => found = true,
-                    bind_infer => {
-                        match tcx.value_modes.find(node_id) {
-                            Some(MoveValue) => found = true,
-                            Some(CopyValue) | Some(ReadValue) => {}
-                            None => {
-                                tcx.sess.span_bug(span, ~"pat binding not in \
-                                                          value mode map");
-                            }
-                        }
-                    }
-                    bind_by_ref(*) | bind_by_value => {}
-                }
-            }
-            if found { return true; }
-        }
-    }
-    return false;
 }
 

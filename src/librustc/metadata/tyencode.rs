@@ -342,7 +342,6 @@ pub fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
 
 pub fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
-      by_move => w.write_char('-'),
       by_copy => w.write_char('+'),
       by_ref => w.write_char('='),
       by_val => w.write_char('#')

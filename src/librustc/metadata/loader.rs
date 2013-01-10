@@ -165,7 +165,8 @@ pub fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
     }
 }
 
-fn crate_matches(crate_data: @~[u8], +metas: ~[@ast::meta_item],
+fn crate_matches(crate_data: @~[u8],
+                 metas: &[@ast::meta_item],
                  hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
@@ -177,7 +178,7 @@ fn crate_matches(crate_data: @~[u8], +metas: ~[@ast::meta_item],
 }
 
 pub fn metadata_matches(extern_metas: ~[@ast::meta_item],
-                        local_metas: ~[@ast::meta_item]) -> bool {
+                        local_metas: &[@ast::meta_item]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",
            vec::len(local_metas), vec::len(extern_metas));

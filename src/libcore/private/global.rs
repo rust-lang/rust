@@ -177,8 +177,10 @@ fn get_global_state() -> Exclusive<GlobalState> {
         let state = ~exclusive(state);
 
         // Convert it to an integer
-        let state_ptr: &Exclusive<GlobalState> = state;
-        let state_i: int = unsafe { transmute(state_ptr) };
+        let state_i: int = unsafe {
+            let state_ptr: &Exclusive<GlobalState> = state;
+            transmute(state_ptr)
+        };
 
         // Swap our structure into the global pointer
         let prev_i = unsafe { atomic_cxchg(&mut *global_ptr, 0, state_i) };

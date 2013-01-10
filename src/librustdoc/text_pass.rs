@@ -73,7 +73,7 @@ fn fold_item(
 }
 
 fn apply_to_sections(
-    op: NominalOp<Op>,
+    +op: NominalOp<Op>,
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| doc::Section {
@@ -115,7 +115,8 @@ fn apply_to_methods(
     op: NominalOp<Op>,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do par::map(docs) |doc, copy op| {
+    let op = copy op;
+    do par::map(docs) |doc| {
         doc::MethodDoc {
             brief: maybe_apply_op(copy op, &doc.brief),
             desc: maybe_apply_op(copy op, &doc.desc),

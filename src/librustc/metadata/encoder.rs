@@ -648,14 +648,22 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         /* Encode the dtor */
         do struct_def.dtor.iter |dtor| {
             index.push({val: dtor.node.id, pos: ebml_w.writer.tell()});
-          encode_info_for_ctor(ecx, ebml_w, dtor.node.id,
+          encode_info_for_ctor(ecx,
+                               ebml_w,
+                               dtor.node.id,
                                ecx.tcx.sess.ident_of(
                                    ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
-                               path, if tps.len() > 0u {
-                                   Some(ii_dtor(*dtor, item.ident, tps,
+                               path,
+                               if tps.len() > 0u {
+                                   Some(ii_dtor(copy *dtor,
+                                                item.ident,
+                                                copy tps,
                                                 local_def(item.id))) }
-                               else { None }, tps);
+                               else {
+                                   None
+                               },
+                               tps);
         }
 
         /* Index the class*/
@@ -869,27 +877,35 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                         syntax::parse::token::special_idents::invalid);
     visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, _cx, _v| { },
-        visit_item: |i, cx, v, copy ebml_w| {
-            visit::visit_item(i, cx, v);
-            match ecx.tcx.items.get(i.id) {
-              ast_map::node_item(_, pt) => {
-                encode_info_for_item(ecx, ebml_w, i, index, *pt);
-              }
-              _ => fail ~"bad item"
+        visit_item: {
+            let ebml_w = copy ebml_w;
+            |i, cx, v| {
+                visit::visit_item(i, cx, v);
+                match ecx.tcx.items.get(i.id) {
+                    ast_map::node_item(_, pt) => {
+                        encode_info_for_item(ecx, ebml_w, i,
+                                             index, *pt);
+                    }
+                    _ => fail ~"bad item"
+                }
             }
         },
-        visit_foreign_item: |ni, cx, v, copy ebml_w| {
-            visit::visit_foreign_item(ni, cx, v);
-            match ecx.tcx.items.get(ni.id) {
-              ast_map::node_foreign_item(_, abi, pt) => {
-                encode_info_for_foreign_item(ecx, ebml_w, ni,
-                                             index, /*bad*/copy *pt, abi);
-              }
-              // case for separate item and foreign-item tables
-              _ => fail ~"bad foreign item"
+        visit_foreign_item: {
+            let ebml_w = copy ebml_w;
+            |ni, cx, v| {
+                visit::visit_foreign_item(ni, cx, v);
+                match ecx.tcx.items.get(ni.id) {
+                    ast_map::node_foreign_item(_, abi, pt) => {
+                        encode_info_for_foreign_item(ecx, ebml_w, ni,
+                                                     index, /*bad*/copy *pt,
+                                                     abi);
+                    }
+                    // case for separate item and foreign-item tables
+                    _ => fail ~"bad foreign item"
+                }
             }
-        }
-        ,.. *visit::default_visitor()
+        },
+        ..*visit::default_visitor()
     }));
     ebml_w.end_tag();
     return /*bad*/copy *index;

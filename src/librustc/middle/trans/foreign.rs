@@ -69,7 +69,7 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
         ty::ty_fn(ref fn_ty) => {
             let llargtys = type_of_explicit_args(
                 ccx,
-                /*bad*/copy fn_ty.sig.inputs);
+                fn_ty.sig.inputs);
             let llretty = type_of::type_of(ccx, fn_ty.sig.output);
             (llargtys, llretty, fn_ty.sig.output)
         }
@@ -546,16 +546,17 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
                               onceness: ast::Many,
                               region: ty::re_bound(ty::br_anon(0)),
                               bounds: @~[]},
-                sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_val),
+                sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                            ty: star_u8}],
                             output: ty::mk_nil(bcx.tcx())}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
                                mode: ByRef, ty: fty, source: FromLvalue};
+            let arg_vals = ~[frameaddress_val];
             bcx = trans_call_inner(
                 bcx, None, fty, ty::mk_nil(bcx.tcx()),
                 |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(~[frameaddress_val]), Ignore, DontAutorefArg);
+                ArgVals(arg_vals), Ignore, DontAutorefArg);
         }
         ~"morestack_addr" => {
             // XXX This is a hack to grab the address of this particular

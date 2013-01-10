@@ -394,7 +394,7 @@ pub impl &mem_categorization_ctxt {
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_match(*) |
           ast::expr_lit(*) | ast::expr_break(*) | ast::expr_mac(*) |
           ast::expr_again(*) | ast::expr_rec(*) | ast::expr_struct(*) |
-          ast::expr_unary_move(*) | ast::expr_repeat(*) => {
+          ast::expr_repeat(*) => {
             return self.cat_rvalue(expr, expr_ty);
           }
         }
@@ -430,20 +430,16 @@ pub impl &mem_categorization_ctxt {
             // lp: loan path, must be none for aliasable things
             let m = if mutbl {m_mutbl} else {m_imm};
             let lp = match ty::resolved_mode(self.tcx, mode) {
-              ast::by_move | ast::by_copy => {
-                Some(@lp_arg(vid))
-              }
-              ast::by_ref => {
-                None
-              }
-              ast::by_val => {
-                // by-value is this hybrid mode where we have a
-                // pointer but we do not own it.  This is not
-                // considered loanable because, for example, a by-ref
-                // and and by-val argument might both actually contain
-                // the same unique ptr.
-                None
-              }
+                ast::by_copy => Some(@lp_arg(vid)),
+                ast::by_ref => None,
+                ast::by_val => {
+                    // by-value is this hybrid mode where we have a
+                    // pointer but we do not own it.  This is not
+                    // considered loanable because, for example, a by-ref
+                    // and and by-val argument might both actually contain
+                    // the same unique ptr.
+                    None
+                }
             };
             @cmt_ {
                 id:id,

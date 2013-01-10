@@ -203,7 +203,7 @@ pub fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
     let pat = @ast::pat {
         id: cx.next_id(),
         node: ast::pat_ident(
-            ast::bind_by_value,
+            ast::bind_by_copy,
             mk_raw_path(sp, ~[ident]),
             None),
         span: sp,
@@ -277,11 +277,8 @@ pub fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
 pub fn mk_pat(cx: ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
     @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
-pub fn mk_pat_ident(cx: ext_ctxt,
-                    span: span,
-                    ident: ast::ident)
-                 -> @ast::pat {
-    mk_pat_ident_with_binding_mode(cx, span, ident, ast::bind_by_value)
+pub fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
+    mk_pat_ident_with_binding_mode(cx, span, ident, ast::bind_by_copy)
 }
 pub fn mk_pat_ident_with_binding_mode(cx: ext_ctxt,
                                       span: span,

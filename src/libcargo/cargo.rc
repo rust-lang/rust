@@ -1965,19 +1965,17 @@ pub fn main() {
         c = configure(o);
     }
 
-    let c = &move c;
-
     match o.free[1] {
-        ~"init" => cmd_init(c),
-        ~"install" => cmd_install(c),
-        ~"uninstall" => cmd_uninstall(c),
-        ~"list" => cmd_list(c),
-        ~"search" => cmd_search(c),
-        ~"sources" => cmd_sources(c),
+        ~"init" => cmd_init(&c),
+        ~"install" => cmd_install(&c),
+        ~"uninstall" => cmd_uninstall(&c),
+        ~"list" => cmd_list(&c),
+        ~"search" => cmd_search(&c),
+        ~"sources" => cmd_sources(&c),
         _ => cmd_usage()
     }
 
-    dump_cache(c);
-    dump_sources(c);
+    dump_cache(&c);
+    dump_sources(&c);
 }
 

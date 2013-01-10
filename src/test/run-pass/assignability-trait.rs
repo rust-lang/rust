@@ -43,7 +43,7 @@ fn main() {
     // Call a method
     for x.iterate() |y| { assert x[*y] == *y; }
     // Call a parameterized function
-    assert length(x) == vec::len(x);
+    assert length(copy x) == vec::len(x);
     // Call a parameterized function, with type arguments that require
     // a borrow
     assert length::<int, &[int]>(x) == vec::len(x);

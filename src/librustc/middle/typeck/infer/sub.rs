@@ -106,25 +106,25 @@ pub impl Sub: Combine {
                a.inf_str(self.infcx), b.inf_str(self.infcx));
         if a == b { return Ok(a); }
         let _indenter = indenter();
-        match (ty::get(a).sty, ty::get(b).sty) {
-            (ty::ty_bot, _) => {
+        match (&ty::get(a).sty, &ty::get(b).sty) {
+            (&ty::ty_bot, _) => {
                 Ok(a)
             }
 
-            (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
+            (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
                 if_ok!(self.var_sub_var(a_id, b_id));
                 Ok(a)
             }
-            (ty::ty_infer(TyVar(a_id)), _) => {
+            (&ty::ty_infer(TyVar(a_id)), _) => {
                 if_ok!(self.var_sub_t(a_id, b));
                 Ok(a)
             }
-            (_, ty::ty_infer(TyVar(b_id))) => {
+            (_, &ty::ty_infer(TyVar(b_id))) => {
                 if_ok!(self.t_sub_var(a, b_id));
                 Ok(a)
             }
 
-            (_, ty::ty_bot) => {
+            (_, &ty::ty_bot) => {
                 Err(ty::terr_sorts(expected_found(&self, a, b)))
             }
 

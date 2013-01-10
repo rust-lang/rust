@@ -72,7 +72,7 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         ty::ty_fn(ref fn_ty) => {
             for vec::each(fn_ty.sig.inputs) |arg| {
                 match ty::resolved_mode(ccx.tcx, arg.mode) {
-                    by_val | by_move | by_copy => {
+                    by_val | by_copy => {
                         type_needs(cx, use_repr, arg.ty);
                     }
                     by_ref => {}
@@ -255,7 +255,7 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
       expr_rec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
       expr_binary(add, _, _) |
-      expr_copy(_) | expr_unary_move(_) | expr_repeat(*) => {
+      expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {
@@ -316,7 +316,7 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
               ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))
           ) |a| {
               match a.mode {
-                  expl(by_move) | expl(by_copy) | expl(by_val) => {
+                  expl(by_copy) | expl(by_val) => {
                       type_needs(cx, use_repr, a.ty);
                   }
                   _ => ()
@@ -330,7 +330,7 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
         for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
                                                e.callee_id)).each |a| {
           match a.mode {
-              expl(by_move) | expl(by_copy) | expl(by_val) => {
+              expl(by_copy) | expl(by_val) => {
                   type_needs(cx, use_repr, a.ty);
               }
               _ => ()

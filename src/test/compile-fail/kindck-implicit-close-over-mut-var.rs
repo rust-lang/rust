@@ -31,11 +31,14 @@ fn bar() {
 }
 
 fn car() {
-    // Here, i is mutable, but *explicitly* copied:
+    // Here, i is mutable, but *explicitly* shadowed copied:
     let mut i = 0;
     while i < 10 {
-        do task::spawn |copy i| {
-            user(i);
+        {
+            let i = i;
+            do task::spawn {
+                user(i);
+            }
         }
         i += 1;
     }

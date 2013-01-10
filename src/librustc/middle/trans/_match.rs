@@ -160,7 +160,6 @@ use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
 use middle::trans::glue;
-use middle::ty::{CopyValue, MoveValue, ReadValue};
 use util::common::indenter;
 
 use core::dvec::DVec;
@@ -1575,30 +1574,19 @@ pub fn trans_match_inner(scope_cx: block,
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
         let bindings_map = HashMap();
-        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, s, path| {
+        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);
             let llvariable_ty = type_of::type_of(bcx.ccx(), variable_ty);
 
             let llmatch, trmode;
             match bm {
-                ast::bind_by_value | ast::bind_by_move => {
-                    // in this case, the type of the variable will be T,
-                    // but we need to store a *T
-                    let is_move = (bm == ast::bind_by_move);
-                    llmatch = alloca(bcx, T_ptr(llvariable_ty));
-                    trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
-                }
-                ast::bind_infer => {
-                    // in this case also, the type of the variable will be T,
-                    // but we need to store a *T
-                    let is_move = match tcx.value_modes.find(p_id) {
-                        None => {
-                            tcx.sess.span_bug(s, ~"no value mode");
-                        }
-                        Some(MoveValue) => true,
-                        Some(CopyValue) | Some(ReadValue) => false
-                    };
+                ast::bind_by_copy | ast::bind_infer => {
+                    // in this case, the final type of the variable will be T,
+                    // but during matching we need to store a *T as explained
+                    // above
+                    let is_move =
+                        scope_cx.ccx().maps.moves_map.contains_key(p_id);
                     llmatch = alloca(bcx, T_ptr(llvariable_ty));
                     trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
                 }
@@ -1657,7 +1645,8 @@ pub fn trans_match_inner(scope_cx: block,
         arm_cxs.push(bcx);
     }
 
-    return controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
+    bcx = controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
+    return bcx;
 
     fn mk_fail(bcx: block, sp: span, +msg: ~str,
                finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {

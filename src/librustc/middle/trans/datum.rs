@@ -59,10 +59,6 @@
  *    is stored, it will be *copied* into its new home.  If the datum
  *    is moved, it will be zeroed out.
  *
- * 3. `FromLastUseLvalue`: The same as FromLvalue, except that it
- *    originates from the *last use* of an lvalue.  If the datum is
- *    stored, then, it will be moved (and zeroed out).
- *
  * # Storing, copying, and moving
  *
  * There are three kinds of methods for moving the value into a new
@@ -176,22 +172,21 @@ pub impl DatumMode: to_bytes::IterBytes {
 /// See `Datum Sources` section at the head of this module.
 pub enum DatumSource {
     FromRvalue,
-    FromLvalue,
-    FromLastUseLvalue,
+    FromLvalue
 }
 
 pub impl DatumSource {
     fn is_rvalue() -> bool {
         match self {
             FromRvalue => true,
-            FromLvalue | FromLastUseLvalue => false
+            FromLvalue => false
         }
     }
 
-    fn is_any_lvalue() -> bool {
+    fn is_lvalue() -> bool {
         match self {
             FromRvalue => false,
-            FromLvalue | FromLastUseLvalue => true
+            FromLvalue => true
         }
     }
 }
@@ -241,42 +236,39 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
 }
 
 pub impl Datum {
-    fn store_will_move() -> bool {
-        match self.source {
-            FromRvalue | FromLastUseLvalue => true,
-            FromLvalue => false
-        }
-    }
-
-    fn store_to(bcx: block, action: CopyAction, dst: ValueRef) -> block {
+    fn store_to(bcx: block, id: ast::node_id,
+                action: CopyAction, dst: ValueRef) -> block {
         /*!
          *
          * Stores this value into its final home.  This moves if
-         * possible, but copies otherwise. */
+         * `id` is located in the move table, but copies otherwise.
+         */
 
-        if self.store_will_move() {
+        if bcx.ccx().maps.moves_map.contains_key(id) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)
         }
     }
 
-    fn store_to_dest(bcx: block, dest: expr::Dest) -> block {
+    fn store_to_dest(bcx: block, id: ast::node_id,
+                     dest: expr::Dest) -> block {
         match dest {
             expr::Ignore => {
                 return bcx;
             }
             expr::SaveIn(addr) => {
-                return self.store_to(bcx, INIT, addr);
+                return self.store_to(bcx, id, INIT, addr);
             }
         }
     }
 
-    fn store_to_datum(bcx: block, action: CopyAction, datum: Datum) -> block {
+    fn store_to_datum(bcx: block, id: ast::node_id,
+                      action: CopyAction, datum: Datum) -> block {
         debug!("store_to_datum(self=%s, action=%?, datum=%s)",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert datum.mode.is_by_ref();
-        self.store_to(bcx, action, datum.val)
+        self.store_to(bcx, id, action, datum.val)
     }
 
     fn move_to_datum(bcx: block, action: CopyAction, datum: Datum) -> block {
@@ -413,7 +405,7 @@ pub impl Datum {
                 FromRvalue => {
                     revoke_clean(bcx, self.val);
                 }
-                FromLvalue | FromLastUseLvalue => {
+                FromLvalue => {
                     // Lvalues which potentially need to be dropped
                     // must be passed by ref, so that we can zero them
                     // out.
@@ -841,8 +833,9 @@ pub impl DatumBlock {
         self.datum.drop_val(self.bcx)
     }
 
-    fn store_to(action: CopyAction, dst: ValueRef) -> block {
-        self.datum.store_to(self.bcx, action, dst)
+    fn store_to(id: ast::node_id, action: CopyAction,
+                dst: ValueRef) -> block {
+        self.datum.store_to(self.bcx, id, action, dst)
     }
 
     fn copy_to(action: CopyAction, dst: ValueRef) -> block {

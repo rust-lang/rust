@@ -58,6 +58,7 @@ pub type maps = {
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
     write_guard_map: middle::borrowck::write_guard_map,
+    moves_map: middle::moves::MovesMap,
 };
 
 type decode_ctxt = @{
@@ -792,6 +793,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
                              ebml_w: writer::Encoder,
                              ii: ast::inlined_item) {
     do ebml_w.wr_tag(c::tag_table as uint) {
+        let ebml_w = copy ebml_w;
         ast_util::visit_ids_for_inlined_item(
             ii,
             fn@(id: ast::node_id, copy ebml_w) {
@@ -931,12 +933,9 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(&tcx.value_modes.find(id)) |vm| {
-        do ebml_w.tag(c::tag_table_value_mode) {
+    do option::iter(&maps.moves_map.find(id)) |_| {
+        do ebml_w.tag(c::tag_table_moves_map) {
             ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) {
-                (*vm).encode(&ebml_w)
-            }
         }
     }
 }
@@ -980,10 +979,24 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
         // context.  However, we do not bother, because region types
         // are not used during trans.
 
-        do self.read_opaque |doc| {
-            tydecode::parse_ty_data(
+        return do self.read_opaque |doc| {
+
+            let ty = tydecode::parse_ty_data(
                 doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
-                |s, a| self.convert_def_id(xcx, s, a))
+                |s, a| self.convert_def_id(xcx, s, a));
+
+            debug!("read_ty(%s) = %s",
+                   type_string(doc), ty_to_str(xcx.dcx.tcx, ty));
+
+            ty
+        };
+
+        fn type_string(doc: ebml::Doc) -> ~str {
+            let mut str = ~"";
+            for uint::range(doc.start, doc.end) |i| {
+                str::push_char(&mut str, doc.data[i] as char);
+            }
+            str
         }
     }
 
@@ -1034,10 +1047,12 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
          * to refer to the new, cloned copy of the type parameter.
          */
 
-        match source {
+        let r = match source {
             NominalType | TypeWithId => xcx.tr_def_id(did),
             TypeParameter => xcx.tr_intern_def_id(did)
-        }
+        };
+        debug!("convert_def_id(source=%?, did=%?)=%?", source, did, r);
+        return r;
     }
 }
 
@@ -1057,6 +1072,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             dcx.maps.mutbl_map.insert(id, ());
         } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
             dcx.tcx.legacy_boxed_traits.insert(id, ());
+        } else if tag == (c::tag_table_moves_map as uint) {
+            dcx.maps.moves_map.insert(id, ());
         } else {
             let val_doc = entry_doc[c::tag_table_val as uint];
             let val_dsr = &reader::Decoder(val_doc);
@@ -1065,6 +1082,8 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.tcx.def_map.insert(id, def);
             } else if tag == (c::tag_table_node_type as uint) {
                 let ty = val_dsr.read_ty(xcx);
+                debug!("inserting ty for node %?: %s",
+                       id, ty_to_str(dcx.tcx, ty));
                 (*dcx.tcx.node_types).insert(id as uint, ty);
             } else if tag == (c::tag_table_node_type_subst as uint) {
                 let tys = val_dsr.read_tys(xcx);
@@ -1098,9 +1117,6 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
                 adj.tr(xcx);
                 dcx.tcx.adjustments.insert(id, adj);
-            } else if tag == (c::tag_table_value_mode as uint) {
-                let vm: ty::ValueMode = Decodable::decode(val_dsr);
-                dcx.tcx.value_modes.insert(id, vm);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));
