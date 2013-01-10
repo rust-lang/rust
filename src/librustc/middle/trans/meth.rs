@@ -780,7 +780,8 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 
     let has_tps = (*ty::lookup_item_type(ccx.tcx, impl_id).bounds).len() > 0u;
     make_vtable(ccx, vec::map(*ty::trait_methods(tcx, trt_id), |im| {
-        let fty = ty::subst_tps(tcx, substs, None, ty::mk_fn(tcx, im.fty));
+        let fty = ty::subst_tps(tcx, substs, None,
+                                ty::mk_fn(tcx, copy im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    tcx.sess.str_of(im.ident));

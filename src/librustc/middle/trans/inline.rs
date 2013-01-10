@@ -43,7 +43,8 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
         match csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
             |a,b,c,d| {
-                astencode::decode_inlined_item(a, b, ccx.maps, c, d)
+                astencode::decode_inlined_item(a, b, ccx.maps,
+                                               /*bad*/ copy c, d)
             }) {
 
           csearch::not_found => {

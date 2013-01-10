@@ -1309,7 +1309,7 @@ fn node_vtables(bcx: block, id: ast::node_id) -> Option<typeck::vtable_res> {
 fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     -> typeck::vtable_res
 {
-    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, *d))
+    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, copy *d))
 }
 
 // Apply the typaram substitutions in the fn_ctxt to a vtable. This should

@@ -366,7 +366,8 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
         bcx, None, fty, rty,
         |bcx| {
             let callee =
-                trans_fn_ref_with_vtables_to_callee(bcx, did, 0, type_params,
+                trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
+                                                    copy type_params,
                                                     None);
 
             let new_llval;
