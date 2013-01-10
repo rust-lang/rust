@@ -603,7 +603,7 @@ pub mod types {
                 use libc::types::common::c99::{int32_t, int64_t, uint32_t};
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t,
-                                                     mode_t, uid_t};
+                                                     mode_t, off_t, uid_t};
 
                 pub type nlink_t = u16;
                 pub type blksize_t = i64;
