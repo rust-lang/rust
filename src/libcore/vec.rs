@@ -563,7 +563,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        // XXX: Should be rusti::uninit() - we don't need this zeroed
+        // FIXME #4204: Should be rusti::uninit() - we don't need this zeroed
         let mut val = rusti::init();
         val <-> *valptr;
         raw::set_len(v, ln - 1u);
@@ -636,7 +636,7 @@ pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                // XXX Should be rusti::uninit() - don't need to zero
+                // FIXME #4204 Should be rusti::uninit() - don't need to zero
                 let mut x = rusti::init();
                 x <-> *ptr::mut_offset(p, i);
                 push(v, x);
@@ -653,7 +653,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                // XXX Should be rusti::uninit() - don't need to zero
+                // FIXME #4204 Should be rusti::uninit() - don't need to zero
                 let mut dropped = rusti::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
@@ -678,7 +678,7 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
             // last_written < next_to_read < ln
             if *ptr::mut_offset(p, next_to_read) ==
                 *ptr::mut_offset(p, last_written) {
-                // XXX Should be rusti::uninit() - don't need to zero
+                // FIXME #4204 Should be rusti::uninit() - don't need to zero
                 let mut dropped = rusti::init();
                 dropped <-> *ptr::mut_offset(p, next_to_read);
             } else {

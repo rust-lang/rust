@@ -134,7 +134,7 @@ pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     }
 }
 
-// XXX: Temorary until rt::rt_fail_ goes away
+// FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     unsafe {
         gc::cleanup_stack_for_failure();

@@ -592,7 +592,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             }
 
             // Run the box annihilator.
-            // XXX: Crashy.
+            // FIXME #4428: Crashy.
             // unsafe { cleanup::annihilate(); }
         };
 

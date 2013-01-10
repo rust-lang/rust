@@ -202,7 +202,7 @@ pub type Packet<T: Owned> = {
 
 #[doc(hidden)]
 pub trait HasBuffer {
-    // XXX This should not have a trailing underscore
+    // FIXME #4421: This should not have a trailing underscore
     fn set_buffer_(b: *libc::c_void);
 }
 
