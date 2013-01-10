@@ -19,7 +19,13 @@ use cmp;
 use libc;
 use num;
 
-pub use cmath::c_double_utils::*;
+pub use cmath::c_double_utils::{acos, asin, atan, atan2, cbrt, ceil};
+pub use cmath::c_double_utils::{copysign, cos, cosh, erf, erfc, exp, expm1};
+pub use cmath::c_double_utils::{exp2, abs, abs_sub, mul_add, fmax, fmin};
+pub use cmath::c_double_utils::{nextafter, frexp, hypot, ldexp, lgamma};
+pub use cmath::c_double_utils::{ln, log_radix, ln1p, log10, log2, ilog_radix};
+pub use cmath::c_double_utils::{modf, pow, round, sin, sinh, sqrt, tan};
+pub use cmath::c_double_utils::{tanh, tgamma, trunc, j0, j1, jn, y0, y1, yn};
 pub use cmath::c_double_targ_consts::*;
 
 // FIXME (#1433): obtain these in a different way
@@ -113,10 +119,14 @@ pub pure fn is_infinite(x: f64) -> bool {
     return x == infinity || x == neg_infinity;
 }
 
-/// Returns true if `x`is a finite number
+/// Returns true if `x` is a finite number
 pub pure fn is_finite(x: f64) -> bool {
     return !(is_NaN(x) || is_infinite(x));
 }
+
+/// Returns `x` rounded down
+#[inline(always)]
+pub pure fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
@@ -204,6 +214,11 @@ impl f64: num::Zero {
 
 impl f64: num::One {
     static pure fn one() -> f64 { 1.0 }
+}
+
+#[abi="rust-intrinsic"]
+pub extern {
+    fn floorf64(val: f64) -> f64;
 }
 
 //
