@@ -83,8 +83,7 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
         let (setup1_po, setup1_ch) = pipes::stream();
         let (setup2_po, setup2_ch) = pipes::stream();
 
-        // XXX: Ugly type inference hints
-        let setup1_po: pipes::Port<oldcomm::Chan<T>> = setup1_po;
+        // FIXME #4422: Ugly type inference hint
         let setup2_po: pipes::Port<Msg> = setup2_po;
 
         do task_fn().spawn |move f, move setup1_ch, move setup2_po| {

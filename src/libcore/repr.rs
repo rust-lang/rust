@@ -60,7 +60,8 @@ impl Writer : EscapedCharWriter {
             '"' => self.write_str("\\\""),
             '\x20'..'\x7e' => self.write_char(ch),
             _ => {
-                // XXX: This is inefficient because it requires a malloc.
+                // FIXME #4423: This is inefficient because it requires a
+                // malloc.
                 self.write_str(char::escape_unicode(ch))
             }
         }
@@ -96,7 +97,7 @@ impl i32 : Repr {
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
 impl i64 : Repr {
-    // XXX: This can lose precision.
+    // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
 
@@ -113,20 +114,20 @@ impl u32 : Repr {
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
 impl u64 : Repr {
-    // XXX: This can lose precision.
+    // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
 
 impl float : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl f32 : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423 This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl f64 : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 
