@@ -503,7 +503,7 @@ impl BytesReader: Reader {
         let count = uint::min(len, self.bytes.len() - self.pos);
 
         let view = vec::view(self.bytes, self.pos, self.bytes.len());
-        vec::bytes::memcpy(bytes, view, count);
+        vec::bytes::copy_memory(bytes, view, count);
 
         self.pos += count;
 
@@ -950,7 +950,7 @@ impl BytesWriter: Writer {
 
             {
                 let view = vec::mut_view(bytes, self.pos, count);
-                vec::bytes::memcpy(view, v, v_len);
+                vec::bytes::copy_memory(view, v, v_len);
             }
 
             self.pos += v_len;
