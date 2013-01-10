@@ -413,7 +413,9 @@ pub fn partition<T>(v: ~[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut lefts  = ~[];
     let mut rights = ~[];
 
-    do v.consume |_, elt| {
+    // FIXME (#4355 maybe): using v.consume here crashes
+    // do v.consume |_, elt| {
+    do consume(v) |_, elt| {
         if f(&elt) {
             lefts.push(elt);
         } else {
@@ -855,7 +857,9 @@ pub pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
  */
 pub fn filter<T>(v: ~[T], f: fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
-    do v.consume |_, elem| {
+    // FIXME (#4355 maybe): using v.consume here crashes
+    // do v.consume |_, elem| {
+    do consume(v) |_, elem| {
         if f(&elem) { result.push(elem); }
     }
     result
@@ -3186,10 +3190,11 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        assert (~[]).partition(|x: &int| *x < 3) == (~[], ~[]);
-        assert (~[1, 2, 3]).partition(|x: &int| *x < 4) == (~[1, 2, 3], ~[]);
-        assert (~[1, 2, 3]).partition(|x: &int| *x < 2) == (~[1], ~[2, 3]);
-        assert (~[1, 2, 3]).partition(|x: &int| *x < 0) == (~[], ~[1, 2, 3]);
+        // FIXME (#4355 maybe): using v.partition here crashes
+        assert partition(~[], |x: &int| *x < 3) == (~[], ~[]);
+        assert partition(~[1, 2, 3], |x: &int| *x < 4) == (~[1, 2, 3], ~[]);
+        assert partition(~[1, 2, 3], |x: &int| *x < 2) == (~[1], ~[2, 3]);
+        assert partition(~[1, 2, 3], |x: &int| *x < 0) == (~[], ~[1, 2, 3]);
     }
 
     #[test]
