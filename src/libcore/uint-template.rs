@@ -69,34 +69,53 @@ pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
-/// Iterate over the range [`start`,`start`+`step`..`stop`)
-pub pure fn range_step(start: T, stop: T, step: T, it: fn(T) -> bool) {
+/**
+ * Iterate over the range [`start`,`start`+`step`..`stop`)
+ *
+ * Note that `uint` requires separate `range_step` functions for each
+ * direction.
+ *
+ */
+pub pure fn range_step_up(start: T, stop: T, step: T, it: fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
-        fail ~"range_step called with step == 0";
-    } else if step > 0 { // ascending
-        while i < stop {
-            if !it(i) { break }
-            i += step;
-        }
-    } else { // descending
-        while i > stop {
-            if !it(i) { break }
-            i += step;
-        }
+        fail ~"range_step_up called with step == 0";
+    }
+    while i < stop {
+        if !it(i) { break }
+        i += step;
+    }
+}
+
+#[inline(always)]
+/**
+ * Iterate over the range [`start`,`start`-`step`..`stop`)
+ *
+ * Note that `uint` requires separate `range_step` functions for each
+ * direction.
+ *
+ */
+pub pure fn range_step_down(start: T, stop: T, step: T, it: fn(T) -> bool) {
+    let mut i = start;
+    if step == 0 {
+        fail ~"range_step_down called with step == 0";
+    }
+    while i > stop {
+        if !it(i) { break }
+        i -= step;
     }
 }
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
 pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
-    range_step(lo, hi, 1 as T, it);
+    range_step_up(lo, hi, 1 as T, it);
 }
 
 #[inline(always)]
 /// Iterate over the range [`hi`..`lo`)
 pub pure fn range_rev(hi: T, lo: T, it: fn(T) -> bool) {
-    range_step(hi, lo, -1 as T, it);
+    range_step_down(hi, lo, 1 as T, it);
 }
 
 /// Computes the bitwise complement
@@ -350,4 +369,52 @@ pub fn test_times() {
     let mut accum = 0;
     for ten.times { accum += 1; }
     assert (accum == 10);
+}
+use io;
+#[test]
+pub fn test_ranges() {
+    let mut l = ~[];
+
+    for range(0,3) |i| {
+        l.push(i);
+    }
+    for range_rev(13,10) |i| {
+        l.push(i);
+    }
+    for range_step_up(20,26,2) |i| {
+        l.push(i);
+    }
+    for range_step_down(36,30,2) |i| {
+        l.push(i);
+    }
+
+    assert l == ~[0,1,2,
+                  13,12,11,
+                  20,22,24,
+                  36,34,32];
+
+    // None of the `fail`s should execute.
+    for range(0,0) |_i| {
+        fail ~"unreachable";
+    }
+    for range_rev(0,0) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step_up(10,0,1) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step_down(0,10,1) |_i| {
+        fail ~"unreachable";
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_range_step_up_zero_step() {
+    for range_step_up(0,10,0) |_i| {}
+}
+#[test]
+#[should_fail]
+fn test_range_step_down_zero_step() {
+    for range_step_down(0,10,0) |_i| {}
 }
