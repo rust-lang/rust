@@ -619,14 +619,14 @@ rust_task::record_stack_limit() {
     record_sp_limit(stk->data + LIMIT_OFFSET + RED_ZONE_SIZE);
 }
 
-inline rust_task* rust_get_current_task() {
+inline rust_task* rust_try_get_current_task() {
     uintptr_t sp_limit = get_sp_limit();
 
     // FIXME (#1226) - Because of a hack in upcall_call_shim_on_c_stack this
     // value is sometimes inconveniently set to 0, so we can't use this
     // method of retreiving the task pointer and need to fall back to TLS.
     if (sp_limit == 0)
-        return rust_sched_loop::get_task_tls();
+        return rust_sched_loop::try_get_task_tls();
 
     // The stack pointer boundary is stored in a quickly-accessible location
     // in the TCB. From that we can calculate the address of the stack segment
@@ -640,6 +640,12 @@ inline rust_task* rust_get_current_task() {
     ::check_stack_canary(stk);
     assert(stk->task != NULL && "task pointer not in stack structure");
     return stk->task;
+}
+
+inline rust_task* rust_get_current_task() {
+    rust_task* task = rust_try_get_current_task();
+    assert(task != NULL && "no current task");
+    return task;
 }
 
 //
