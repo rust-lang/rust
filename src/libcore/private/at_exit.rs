@@ -1,0 +1,86 @@
+use sys;
+use cast;
+use ptr;
+use task;
+use uint;
+use vec;
+use rand;
+use libc::{c_void, size_t};
+
+/**
+Register a function to be run during runtime shutdown.
+
+After all non-weak tasks have exited, registered exit functions will
+execute, in random order, on the primary scheduler. Each function runs
+in its own unsupervised task.
+*/
+pub fn at_exit(f: ~fn()) unsafe {
+    let runner: &fn(*ExitFunctions) = exit_runner;
+    let runner_pair: sys::Closure = cast::transmute(runner);
+    let runner_ptr = runner_pair.code;
+    let runner_ptr = cast::transmute(runner_ptr);
+    rustrt::rust_register_exit_function(runner_ptr, ~f);
+}
+
+// NB: The double pointer indirection here is because ~fn() is a fat
+// pointer and due to FFI problems I am more comfortable making the
+// interface use a normal pointer
+extern mod rustrt {
+    fn rust_register_exit_function(runner: *c_void, f: ~~fn());
+}
+
+struct ExitFunctions {
+    // The number of exit functions
+    count: size_t,
+    // The buffer of exit functions
+    start: *~~fn()
+}
+
+fn exit_runner(exit_fns: *ExitFunctions) unsafe {
+    let exit_fns = &*exit_fns;
+    let count = (*exit_fns).count;
+    let start = (*exit_fns).start;
+
+    // NB: from_buf memcpys from the source, which will
+    // give us ownership of the array of functions
+    let mut exit_fns_vec = vec::from_buf(start, count as uint);
+    // Let's not make any promises about execution order
+    rand::Rng().shuffle_mut(exit_fns_vec);
+
+    debug!("running %u exit functions", exit_fns_vec.len());
+
+    while exit_fns_vec.is_not_empty() {
+        match exit_fns_vec.pop() {
+            ~f => {
+                task::task().supervised().spawn(f);
+            }
+        }
+    }
+}
+
+#[abi = "rust-intrinsic"]
+pub extern mod rusti {
+    fn move_val_init<T>(dst: &mut T, -src: T);
+    fn init<T>() -> T;
+}
+
+#[test]
+fn test_at_exit() {
+    let i = 10;
+    do at_exit {
+        debug!("at_exit1");
+        assert i == 10;
+    }
+}
+
+#[test]
+fn test_at_exit_many() {
+    let i = 10;
+    for uint::range(20, 100) |j| {
+        do at_exit {
+            debug!("at_exit2");
+            assert i == 10;
+            assert j > i;
+        }
+    }
+}

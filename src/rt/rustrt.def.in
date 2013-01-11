@@ -210,3 +210,4 @@ linenoiseHistorySave
 linenoiseHistoryLoad
 rust_raw_thread_start
 rust_raw_thread_join_delete
+rust_register_exit_function
