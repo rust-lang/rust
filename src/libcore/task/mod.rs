@@ -957,59 +957,61 @@ extern mod testrt {
 
 #[test]
 fn test_spawn_sched_blocking() {
+    unsafe {
 
-    // Testing that a task in one scheduler can block in foreign code
-    // without affecting other schedulers
-    for iter::repeat(20u) {
+        // Testing that a task in one scheduler can block in foreign code
+        // without affecting other schedulers
+        for iter::repeat(20u) {
 
-        let start_po = oldcomm::Port();
-        let start_ch = oldcomm::Chan(&start_po);
-        let fin_po = oldcomm::Port();
-        let fin_ch = oldcomm::Chan(&fin_po);
+            let start_po = oldcomm::Port();
+            let start_ch = oldcomm::Chan(&start_po);
+            let fin_po = oldcomm::Port();
+            let fin_ch = oldcomm::Chan(&fin_po);
 
-        let lock = testrt::rust_dbg_lock_create();
+            let lock = testrt::rust_dbg_lock_create();
 
-        do spawn_sched(SingleThreaded) {
-            testrt::rust_dbg_lock_lock(lock);
+            do spawn_sched(SingleThreaded) {
+                testrt::rust_dbg_lock_lock(lock);
 
-            oldcomm::send(start_ch, ());
+                oldcomm::send(start_ch, ());
 
-            // Block the scheduler thread
-            testrt::rust_dbg_lock_wait(lock);
-            testrt::rust_dbg_lock_unlock(lock);
+                // Block the scheduler thread
+                testrt::rust_dbg_lock_wait(lock);
+                testrt::rust_dbg_lock_unlock(lock);
 
-            oldcomm::send(fin_ch, ());
-        };
+                oldcomm::send(fin_ch, ());
+            };
 
-        // Wait until the other task has its lock
-        oldcomm::recv(start_po);
+            // Wait until the other task has its lock
+            oldcomm::recv(start_po);
 
-        fn pingpong(po: oldcomm::Port<int>, ch: oldcomm::Chan<int>) {
-            let mut val = 20;
-            while val > 0 {
-                val = oldcomm::recv(po);
-                oldcomm::send(ch, val - 1);
+            fn pingpong(po: oldcomm::Port<int>, ch: oldcomm::Chan<int>) {
+                let mut val = 20;
+                while val > 0 {
+                    val = oldcomm::recv(po);
+                    oldcomm::send(ch, val - 1);
+                }
             }
+
+            let setup_po = oldcomm::Port();
+            let setup_ch = oldcomm::Chan(&setup_po);
+            let parent_po = oldcomm::Port();
+            let parent_ch = oldcomm::Chan(&parent_po);
+            do spawn {
+                let child_po = oldcomm::Port();
+                oldcomm::send(setup_ch, oldcomm::Chan(&child_po));
+                pingpong(child_po, parent_ch);
+            };
+
+            let child_ch = oldcomm::recv(setup_po);
+            oldcomm::send(child_ch, 20);
+            pingpong(parent_po, child_ch);
+            testrt::rust_dbg_lock_lock(lock);
+            testrt::rust_dbg_lock_signal(lock);
+            testrt::rust_dbg_lock_unlock(lock);
+            oldcomm::recv(fin_po);
+            testrt::rust_dbg_lock_destroy(lock);
         }
-
-        let setup_po = oldcomm::Port();
-        let setup_ch = oldcomm::Chan(&setup_po);
-        let parent_po = oldcomm::Port();
-        let parent_ch = oldcomm::Chan(&parent_po);
-        do spawn {
-            let child_po = oldcomm::Port();
-            oldcomm::send(setup_ch, oldcomm::Chan(&child_po));
-            pingpong(child_po, parent_ch);
-        };
-
-        let child_ch = oldcomm::recv(setup_po);
-        oldcomm::send(child_ch, 20);
-        pingpong(parent_po, child_ch);
-        testrt::rust_dbg_lock_lock(lock);
-        testrt::rust_dbg_lock_signal(lock);
-        testrt::rust_dbg_lock_unlock(lock);
-        oldcomm::recv(fin_po);
-        testrt::rust_dbg_lock_destroy(lock);
     }
 }
 

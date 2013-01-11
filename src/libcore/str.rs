@@ -2674,9 +2674,11 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        assert ~"" == map(~"", |c| libc::tolower(c as c_char) as char);
-        assert ~"ymca" == map(~"YMCA",
-                             |c| libc::tolower(c as c_char) as char);
+        unsafe {
+            assert ~"" == map(~"", |c| libc::tolower(c as c_char) as char);
+            assert ~"ymca" == map(~"YMCA",
+                                 |c| libc::tolower(c as c_char) as char);
+        }
     }
 
     #[test]
@@ -3192,9 +3194,11 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert ~"" == map(~"", |c| libc::toupper(c as c_char) as char);
-        assert ~"YMCA" == map(~"ymca",
-                              |c| libc::toupper(c as c_char) as char);
+        unsafe {
+            assert ~"" == map(~"", |c| libc::toupper(c as c_char) as char);
+            assert ~"YMCA" == map(~"ymca",
+                                  |c| libc::toupper(c as c_char) as char);
+        }
     }
 
     #[test]
