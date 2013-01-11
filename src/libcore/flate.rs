@@ -25,15 +25,15 @@ use rand;
 use vec;
 
 extern mod rustrt {
-    fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
-                                  src_buf_len: size_t,
-                                  pout_len: *size_t,
-                                  flags: c_int) -> *c_void;
+    unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
+                                         src_buf_len: size_t,
+                                         pout_len: *size_t,
+                                         flags: c_int) -> *c_void;
 
-    fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
-                                    src_buf_len: size_t,
-                                    pout_len: *size_t,
-                                    flags: c_int) -> *c_void;
+    unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
+                                           src_buf_len: size_t,
+                                           pout_len: *size_t,
+                                           flags: c_int) -> *c_void;
 }
 
 const lz_none : c_int = 0x0;   // Huffman-coding only.

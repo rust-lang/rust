@@ -39,7 +39,7 @@ use core::vec;
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_sched_threads() -> size_t;
+    unsafe fn rust_sched_threads() -> size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -335,9 +335,11 @@ const sched_overcommit : uint = 1u;
 const sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
-    let threads = rustrt::rust_sched_threads() as uint;
-    if threads == 1u { 1u }
-    else { threads * sched_overcommit }
+    unsafe {
+        let threads = rustrt::rust_sched_threads() as uint;
+        if threads == 1u { 1u }
+        else { threads * sched_overcommit }
+    }
 }
 
 #[allow(non_implicitly_copyable_typarams)]

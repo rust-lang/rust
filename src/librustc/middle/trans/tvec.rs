@@ -256,13 +256,20 @@ fn trans_lit_str(bcx: block,
     match dest {
         Ignore => bcx,
         SaveIn(lldest) => {
-            let bytes = lit_str.len() + 1; // count null-terminator too
-            let llbytes = C_uint(bcx.ccx(), bytes);
-            let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *lit_str);
-            let llcstr = llvm::LLVMConstPointerCast(llcstr, T_ptr(T_i8()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
-            bcx
+            unsafe {
+                let bytes = lit_str.len() + 1; // count null-terminator too
+                let llbytes = C_uint(bcx.ccx(), bytes);
+                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *lit_str);
+                let llcstr = llvm::LLVMConstPointerCast(llcstr,
+                                                        T_ptr(T_i8()));
+                Store(bcx,
+                      llcstr,
+                      GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
+                Store(bcx,
+                      llbytes,
+                      GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
+                bcx
+            }
         }
     }
 }

@@ -26,16 +26,17 @@ pub type rust_task = c_void;
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+    unsafe fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t)
+                                       -> *c_char;
 
     #[rust_stack]
-    fn rust_upcall_exchange_free(ptr: *c_char);
+    unsafe fn rust_upcall_exchange_free(ptr: *c_char);
 
     #[rust_stack]
-    fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+    unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
 
     #[rust_stack]
-    fn rust_upcall_free(ptr: *c_char);
+    unsafe fn rust_upcall_free(ptr: *c_char);
 }
 
 #[rt(fail_)]
@@ -46,8 +47,8 @@ pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
 
 #[rt(fail_bounds_check)]
 #[lang="fail_bounds_check"]
-pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
-                        index: size_t, len: size_t) {
+pub unsafe fn rt_fail_bounds_check(file: *c_char, line: size_t,
+                                   index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
     do str::as_buf(msg) |p, _len| {
@@ -57,7 +58,7 @@ pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
 
 #[rt(exchange_malloc)]
 #[lang="exchange_malloc"]
-pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_exchange_malloc(td, size);
 }
 
@@ -66,13 +67,13 @@ pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // problem occurs, call exit instead.
 #[rt(exchange_free)]
 #[lang="exchange_free"]
-pub fn rt_exchange_free(ptr: *c_char) {
+pub unsafe fn rt_exchange_free(ptr: *c_char) {
     rustrt::rust_upcall_exchange_free(ptr);
 }
 
 #[rt(malloc)]
 #[lang="malloc"]
-pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_malloc(td, size);
 }
 
@@ -81,7 +82,7 @@ pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // problem occurs, call exit instead.
 #[rt(free)]
 #[lang="free"]
-pub fn rt_free(ptr: *c_char) {
+pub unsafe fn rt_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
 }
 

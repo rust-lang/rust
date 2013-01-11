@@ -118,14 +118,16 @@ fn writeclose(fd: c_int, s: Option<~str>) {
 }
 
 fn readclose(fd: c_int) -> ~str {
-    // Copied from run::program_output
-    let file = os::fdopen(fd);
-    let reader = io::FILE_reader(file, false);
-    let mut buf = ~"";
-    while !reader.eof() {
-        let bytes = reader.read_bytes(4096u);
-        str::push_str(&mut buf, str::from_bytes(bytes));
+    unsafe {
+        // Copied from run::program_output
+        let file = os::fdopen(fd);
+        let reader = io::FILE_reader(file, false);
+        let mut buf = ~"";
+        while !reader.eof() {
+            let bytes = reader.read_bytes(4096u);
+            str::push_str(&mut buf, str::from_bytes(bytes));
+        }
+        os::fclose(file);
+        return buf;
     }
-    os::fclose(file);
-    return buf;
 }

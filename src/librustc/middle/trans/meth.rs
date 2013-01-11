@@ -755,16 +755,18 @@ fn get_vtable(ccx: @crate_ctxt, +origin: typeck::vtable_origin) -> ValueRef {
 }
 
 fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
-    let _icx = ccx.insn_ctxt("impl::make_vtable");
-    let tbl = C_struct(ptrs);
-    let vt_gvar =
-            str::as_c_str(ccx.sess.str_of((ccx.names)(~"vtable")), |buf| {
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
-    });
-    llvm::LLVMSetInitializer(vt_gvar, tbl);
-    llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
-    lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
-    vt_gvar
+    unsafe {
+        let _icx = ccx.insn_ctxt("impl::make_vtable");
+        let tbl = C_struct(ptrs);
+        let vt_gvar =
+                str::as_c_str(ccx.sess.str_of((ccx.names)(~"vtable")), |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
+        });
+        llvm::LLVMSetInitializer(vt_gvar, tbl);
+        llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
+        lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
+        vt_gvar
+    }
 }
 
 fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],

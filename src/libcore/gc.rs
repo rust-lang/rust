@@ -61,12 +61,14 @@ struct StackSegment {
 extern mod rustrt {
     #[legacy_exports];
     #[rust_stack]
-    fn rust_call_tydesc_glue(root: *Word, tydesc: *Word, field: size_t);
+    unsafe fn rust_call_tydesc_glue(root: *Word,
+                                    tydesc: *Word,
+                                    field: size_t);
 
     #[rust_stack]
-    fn rust_gc_metadata() -> *Word;
+    unsafe fn rust_gc_metadata() -> *Word;
 
-    fn rust_get_stack_segment() -> *StackSegment;
+    unsafe fn rust_get_stack_segment() -> *StackSegment;
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {

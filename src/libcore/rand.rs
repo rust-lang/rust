@@ -28,11 +28,11 @@ enum rctx {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn rand_seed() -> ~[u8];
-    fn rand_new() -> *rctx;
-    fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
-    fn rand_next(c: *rctx) -> u32;
-    fn rand_free(c: *rctx);
+    unsafe fn rand_seed() -> ~[u8];
+    unsafe fn rand_new() -> *rctx;
+    unsafe fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
+    unsafe fn rand_next(c: *rctx) -> u32;
+    unsafe fn rand_free(c: *rctx);
 }
 
 /// A random number generator
@@ -265,7 +265,11 @@ impl Rng {
 
 struct RandRes {
     c: *rctx,
-    drop { rustrt::rand_free(self.c); }
+    drop {
+        unsafe {
+            rustrt::rand_free(self.c);
+        }
+    }
 }
 
 fn RandRes(c: *rctx) -> RandRes {
@@ -275,17 +279,25 @@ fn RandRes(c: *rctx) -> RandRes {
 }
 
 impl @RandRes: Rng {
-    fn next() -> u32 { return rustrt::rand_next((*self).c); }
+    fn next() -> u32 {
+        unsafe {
+            return rustrt::rand_next((*self).c);
+        }
+    }
 }
 
 /// Create a new random seed for seeded_rng
 pub fn seed() -> ~[u8] {
-    rustrt::rand_seed()
+    unsafe {
+        rustrt::rand_seed()
+    }
 }
 
 /// Create a random number generator with a system specified seed
 pub fn Rng() -> Rng {
-    @RandRes(rustrt::rand_new()) as Rng
+    unsafe {
+        @RandRes(rustrt::rand_new()) as Rng
+    }
 }
 
 /**
@@ -295,7 +307,9 @@ pub fn Rng() -> Rng {
  * length.
  */
 pub fn seeded_rng(seed: &~[u8]) -> Rng {
-    @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
+    unsafe {
+        @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
+    }
 }
 
 type XorShiftState = {
@@ -343,11 +357,11 @@ pub fn task_rng() -> Rng {
     }
     match r {
         None => {
-            let rng = @RandRes(rustrt::rand_new());
             unsafe {
+                let rng = @RandRes(rustrt::rand_new());
                 task::local_data::local_data_set(tls_rng_state, rng);
+                rng as Rng
             }
-            rng as Rng
         }
         Some(rng) => rng as Rng
     }

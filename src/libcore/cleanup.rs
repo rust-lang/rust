@@ -160,6 +160,6 @@ pub unsafe fn annihilate() {
 extern mod rustrt {
     #[legacy_exports];
     #[rust_stack]
-    /*priv*/ fn rust_get_task() -> *c_void;
+    /*priv*/ unsafe fn rust_get_task() -> *c_void;
 }
 

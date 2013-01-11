@@ -27,7 +27,7 @@ use core::task;
 use core::vec;
 
 extern mod rustrt {
-    fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
+    unsafe fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
 /**

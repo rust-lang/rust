@@ -30,9 +30,9 @@ use vec;
 
 #[abi = "cdecl"]
 pub extern mod rustrt {
-    fn vec_reserve_shared(++t: *sys::TypeDesc,
-                          ++v: **raw::VecRepr,
-                          ++n: libc::size_t);
+    unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
+                                 ++v: **raw::VecRepr,
+                                 ++n: libc::size_t);
 }
 
 #[abi = "rust-intrinsic"]

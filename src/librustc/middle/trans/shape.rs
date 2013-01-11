@@ -38,26 +38,31 @@ type ctxt = {mut next_tag_id: u16, pad: u16, pad2: u32};
 
 fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
    ValueRef {
-    let llglobal = do str::as_c_str(name) |buf| {
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
-    };
-    llvm::LLVMSetInitializer(llglobal, llval);
-    llvm::LLVMSetGlobalConstant(llglobal, True);
+    unsafe {
+        let llglobal = do str::as_c_str(name) |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+        };
+        llvm::LLVMSetInitializer(llglobal, llval);
+        llvm::LLVMSetGlobalConstant(llglobal, True);
 
-    if internal {
-        ::lib::llvm::SetLinkage(llglobal, ::lib::llvm::InternalLinkage);
+        if internal {
+            ::lib::llvm::SetLinkage(llglobal,
+                                    ::lib::llvm::InternalLinkage);
+        }
+
+        return llglobal;
     }
-
-    return llglobal;
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
-    let llshapetablesty = trans::common::T_named_struct(~"shapes");
-    let _llshapetables = str::as_c_str(~"shapes", |buf| {
-        llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
-    });
+    unsafe {
+        let llshapetablesty = trans::common::T_named_struct(~"shapes");
+        let _llshapetables = str::as_c_str(~"shapes", |buf| {
+            llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
+        });
 
-    return {mut next_tag_id: 0u16, pad: 0u16, pad2: 0u32};
+        return {mut next_tag_id: 0u16, pad: 0u16, pad2: 0u32};
+    }
 }
 
 /*

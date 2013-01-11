@@ -409,12 +409,24 @@ pub pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
 pub pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
 pub pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
-pub pure fn abs(x: float) -> float { f64::abs(x as f64) as float }
-pub pure fn sqrt(x: float) -> float { f64::sqrt(x as f64) as float }
-pub pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
-pub pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
-pub pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
-pub pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
+pub pure fn abs(x: float) -> float {
+    unsafe { f64::abs(x as f64) as float }
+}
+pub pure fn sqrt(x: float) -> float {
+    unsafe { f64::sqrt(x as f64) as float }
+}
+pub pure fn atan(x: float) -> float {
+    unsafe { f64::atan(x as f64) as float }
+}
+pub pure fn sin(x: float) -> float {
+    unsafe { f64::sin(x as f64) as float }
+}
+pub pure fn cos(x: float) -> float {
+    unsafe { f64::cos(x as f64) as float }
+}
+pub pure fn tan(x: float) -> float {
+    unsafe { f64::tan(x as f64) as float }
+}
 
 #[cfg(notest)]
 impl float : Eq {

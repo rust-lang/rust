@@ -138,9 +138,13 @@ fn log_fn_time(ccx: @crate_ctxt, +name: ~str, start: time::Timespec,
 fn decl_fn(llmod: ModuleRef, name: ~str, cc: lib::llvm::CallConv,
            llty: TypeRef) -> ValueRef {
     let llfn: ValueRef = str::as_c_str(name, |buf| {
-        llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
+        unsafe {
+            llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
+        }
     });
-    lib::llvm::SetFunctionCallConv(llfn, cc);
+    unsafe {
+        lib::llvm::SetFunctionCallConv(llfn, cc);
+    }
     return llfn;
 }
 
@@ -172,11 +176,15 @@ fn get_extern_fn(externs: HashMap<~str, ValueRef>,
 
 fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
                     +name: ~str, ty: TypeRef) -> ValueRef {
-    // XXX: Bad copy.
-    if externs.contains_key(copy name) { return externs.get(name); }
-    let c = str::as_c_str(name, |buf| llvm::LLVMAddGlobal(llmod, ty, buf));
-    externs.insert(name, c);
-    return c;
+    unsafe {
+        // XXX: Bad copy.
+        if externs.contains_key(copy name) { return externs.get(name); }
+        let c = str::as_c_str(name, |buf| {
+            llvm::LLVMAddGlobal(llmod, ty, buf)
+        });
+        externs.insert(name, c);
+        return c;
+    }
 }
 
 fn get_simple_extern_fn(cx: block,
@@ -314,12 +322,14 @@ fn malloc_raw_dyn(bcx: block,
 * wrong address space and thus be the wrong type.
 */
 fn non_gc_box_cast(bcx: block, val: ValueRef) -> ValueRef {
-    debug!("non_gc_box_cast");
-    add_comment(bcx, ~"non_gc_box_cast");
-    assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) == gc_box_addrspace
-           || bcx.unreachable);
-    let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
-    PointerCast(bcx, val, non_gc_t)
+    unsafe {
+        debug!("non_gc_box_cast");
+        add_comment(bcx, ~"non_gc_box_cast");
+        assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
+                gc_box_addrspace || bcx.unreachable);
+        let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
+        PointerCast(bcx, val, non_gc_t)
+    }
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
@@ -373,25 +383,36 @@ fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
 }
 
 fn set_no_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoInlineAttribute as c_ulonglong,
-                              0u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::NoInlineAttribute as c_ulonglong,
+                                  0u as c_ulonglong);
+    }
 }
 
 fn set_no_unwind(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::NoUnwindAttribute as c_ulonglong,
-                              0u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::NoUnwindAttribute as c_ulonglong,
+                                  0u as c_ulonglong);
+    }
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 fn set_uwtable(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::UWTableAttribute as c_ulonglong,
-                              0u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::UWTableAttribute as c_ulonglong,
+                                  0u as c_ulonglong);
+    }
 }
 
 fn set_inline_hint(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute
-                              as c_ulonglong, 0u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f, lib::llvm::InlineHintAttribute
+                                  as c_ulonglong, 0u as c_ulonglong);
+    }
 }
 
 fn set_inline_hint_if_appr(attrs: ~[ast::attribute],
@@ -405,12 +426,16 @@ fn set_inline_hint_if_appr(attrs: ~[ast::attribute],
 }
 
 fn set_always_inline(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute
-                              as c_ulonglong, 0u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f, lib::llvm::AlwaysInlineAttribute
+                                  as c_ulonglong, 0u as c_ulonglong);
+    }
 }
 
 fn set_custom_stack_growth_fn(f: ValueRef) {
-    llvm::LLVMAddFunctionAttr(f, 0u as c_ulonglong, 1u as c_ulonglong);
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f, 0u as c_ulonglong, 1u as c_ulonglong);
+    }
 }
 
 fn set_glue_inlining(f: ValueRef, t: ty::t) {
@@ -456,7 +481,11 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
 // Structural comparison: a rather involved form of glue.
 fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: ~str) {
     if cx.sess.opts.save_temps {
-        let _: () = str::as_c_str(s, |buf| llvm::LLVMSetValueName(v, buf));
+        let _: () = str::as_c_str(s, |buf| {
+            unsafe {
+                llvm::LLVMSetValueName(v, buf)
+            }
+        });
     }
 }
 
@@ -670,8 +699,11 @@ fn cast_shift_expr_rhs(cx: block, op: ast::binop,
 
 fn cast_shift_const_rhs(op: ast::binop,
                         lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op, lhs, rhs,
-                   llvm::LLVMConstTrunc, llvm::LLVMConstZExt)
+    unsafe {
+        cast_shift_rhs(op, lhs, rhs,
+                       |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
+                       |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
+    }
 }
 
 fn cast_shift_rhs(op: ast::binop,
@@ -680,22 +712,24 @@ fn cast_shift_rhs(op: ast::binop,
                   zext: fn(ValueRef, TypeRef) -> ValueRef
                  ) -> ValueRef {
     // Shifts may have any size int on the rhs
-    if ast_util::is_shift_binop(op) {
-        let rhs_llty = val_ty(rhs);
-        let lhs_llty = val_ty(lhs);
-        let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty);
-        let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty);
-        if lhs_sz < rhs_sz {
-            trunc(rhs, lhs_llty)
-        } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If shifting by negative
-            // values becomes not undefined then this is wrong.
-            zext(rhs, lhs_llty)
+    unsafe {
+        if ast_util::is_shift_binop(op) {
+            let rhs_llty = val_ty(rhs);
+            let lhs_llty = val_ty(lhs);
+            let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty);
+            let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty);
+            if lhs_sz < rhs_sz {
+                trunc(rhs, lhs_llty)
+            } else if lhs_sz > rhs_sz {
+                // FIXME (#1877: If shifting by negative
+                // values becomes not undefined then this is wrong.
+                zext(rhs, lhs_llty)
+            } else {
+                rhs
+            }
         } else {
             rhs
         }
-    } else {
-        rhs
     }
 }
 
@@ -746,21 +780,23 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
-    let _icx = ccx.insn_ctxt("lookup_discriminant");
-    match ccx.discrims.find(vid) {
-      None => {
-        // It's an external discriminant that we haven't seen yet.
-        assert (vid.crate != ast::local_crate);
-        let sym = csearch::get_symbol(ccx.sess.cstore, vid);
-        let gvar = str::as_c_str(sym, |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
-        });
-        lib::llvm::SetLinkage(gvar, lib::llvm::ExternalLinkage);
-        llvm::LLVMSetGlobalConstant(gvar, True);
-        ccx.discrims.insert(vid, gvar);
-        return gvar;
-      }
-      Some(llval) => return llval,
+    unsafe {
+        let _icx = ccx.insn_ctxt("lookup_discriminant");
+        match ccx.discrims.find(vid) {
+            None => {
+                // It's an external discriminant that we haven't seen yet.
+                assert (vid.crate != ast::local_crate);
+                let sym = csearch::get_symbol(ccx.sess.cstore, vid);
+                let gvar = str::as_c_str(sym, |buf| {
+                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                });
+                lib::llvm::SetLinkage(gvar, lib::llvm::ExternalLinkage);
+                llvm::LLVMSetGlobalConstant(gvar, True);
+                ccx.discrims.insert(vid, gvar);
+                return gvar;
+            }
+            Some(llval) => return llval,
+        }
     }
 }
 
@@ -1094,15 +1130,24 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
         (cx.ccx.names)(name)
-    } else { special_idents::invalid };
-    let llbb: BasicBlockRef = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
-        llvm::LLVMAppendBasicBlock(cx.llfn, buf)
-    });
-    let bcx = mk_block(llbb, parent, move kind, is_lpad, opt_node_info, cx);
-    do option::iter(&parent) |cx| {
-        if cx.unreachable { Unreachable(bcx); }
+    } else {
+        special_idents::invalid
     };
-    return bcx;
+    unsafe {
+        let llbb: BasicBlockRef = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
+            llvm::LLVMAppendBasicBlock(cx.llfn, buf)
+        });
+        let bcx = mk_block(llbb,
+                           parent,
+                           move kind,
+                           is_lpad,
+                           opt_node_info,
+                           cx);
+        do option::iter(&parent) |cx| {
+            if cx.unreachable { Unreachable(bcx); }
+        };
+        return bcx;
+    }
 }
 
 fn simple_block_scope() -> block_kind {
@@ -1317,7 +1362,9 @@ fn alloc_local(cx: block, local: @ast::local) -> block {
     if cx.sess().opts.debuginfo {
         do option::iter(&simple_name) |name| {
             str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
-                llvm::LLVMSetValueName(val, buf)
+                unsafe {
+                    llvm::LLVMSetValueName(val, buf)
+                }
             });
         }
     }
@@ -1424,7 +1471,11 @@ fn alloca_zeroed(cx: block, t: TypeRef) -> ValueRef {
 
 fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
-    if cx.unreachable { return llvm::LLVMGetUndef(t); }
+    if cx.unreachable {
+        unsafe {
+            return llvm::LLVMGetUndef(t);
+        }
+    }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
     let p = Alloca(initcx, t);
     if zero { memzero(initcx, p, t); }
@@ -1433,7 +1484,11 @@ fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
 
 fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
-    if cx.unreachable { return llvm::LLVMGetUndef(t); }
+    if cx.unreachable {
+        unsafe {
+            return llvm::LLVMGetUndef(t);
+        }
+    }
     return ArrayAlloca(
         base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), t, v);
 }
@@ -1441,10 +1496,12 @@ fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
 // Creates the standard set of basic blocks for a function
 fn mk_standard_basic_blocks(llfn: ValueRef) ->
    {sa: BasicBlockRef, rt: BasicBlockRef} {
-    {sa: str::as_c_str(~"static_allocas",
-                       |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
-     rt: str::as_c_str(~"return",
-                       |buf| llvm::LLVMAppendBasicBlock(llfn, buf))}
+    unsafe {
+        {sa: str::as_c_str(~"static_allocas",
+                           |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
+         rt: str::as_c_str(~"return",
+                           |buf| llvm::LLVMAppendBasicBlock(llfn, buf))}
+    }
 }
 
 
@@ -1464,8 +1521,8 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
     let llbbs = mk_standard_basic_blocks(llfndecl);
     return @fn_ctxt_ {
           llfn: llfndecl,
-          llenv: llvm::LLVMGetParam(llfndecl, 1u as c_uint),
-          llretptr: llvm::LLVMGetParam(llfndecl, 0u as c_uint),
+          llenv: unsafe { llvm::LLVMGetParam(llfndecl, 1u as c_uint) },
+          llretptr: unsafe { llvm::LLVMGetParam(llfndecl, 0u as c_uint) },
           mut llstaticallocas: llbbs.sa,
           mut llloadenv: None,
           mut llreturn: llbbs.rt,
@@ -1532,8 +1589,10 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
     // Return an array containing the ValueRefs that we get from
     // llvm::LLVMGetParam for each argument.
     vec::from_fn(args.len(), |i| {
-        let arg_n = first_real_arg + i;
-        llvm::LLVMGetParam(cx.llfn, arg_n as c_uint)
+        unsafe {
+            let arg_n = first_real_arg + i;
+            llvm::LLVMGetParam(cx.llfn, arg_n as c_uint)
+        }
     })
 }
 
@@ -1664,7 +1723,9 @@ fn trans_closure(ccx: @crate_ctxt,
     // Set GC for function.
     if ccx.sess.opts.gc {
         do str::as_c_str("generic") |strategy| {
-            llvm::LLVMSetGC(fcx.llfn, strategy);
+            unsafe {
+                llvm::LLVMSetGC(fcx.llfn, strategy);
+            }
         }
         ccx.uses_gc = true;
     }
@@ -2085,8 +2146,8 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
         let lltop = bcx.llbb;
 
         // Call main.
-        let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);
-        let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
+        let lloutputarg = unsafe { llvm::LLVMGetParam(llfdecl, 0 as c_uint) };
+        let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
         let mut args = ~[lloutputarg, llenvarg];
         Call(bcx, main_llfn, args);
 
@@ -2103,22 +2164,34 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
         let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);
         let llfn = decl_cdecl_fn(ccx.llmod, main_name(), llfty);
         let llbb = str::as_c_str(~"top", |buf| {
-            llvm::LLVMAppendBasicBlock(llfn, buf)
+            unsafe {
+                llvm::LLVMAppendBasicBlock(llfn, buf)
+            }
         });
         let bld = ccx.builder.B;
-        llvm::LLVMPositionBuilderAtEnd(bld, llbb);
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bld, llbb);
+        }
         let crate_map = ccx.crate_map;
         let start_ty = T_fn(~[val_ty(rust_main), ccx.int_type, ccx.int_type,
                              val_ty(crate_map)], ccx.int_type);
         let start = decl_cdecl_fn(ccx.llmod, ~"rust_start", start_ty);
 
-        let args = ~[rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map];
+        let args = unsafe {
+            ~[
+                rust_main,
+                llvm::LLVMGetParam(llfn, 0 as c_uint),
+                llvm::LLVMGetParam(llfn, 1 as c_uint),
+                crate_map
+            ]
+        };
         let result = unsafe {
             llvm::LLVMBuildCall(bld, start, vec::raw::to_ptr(args),
                                 args.len() as c_uint, noname())
         };
-        llvm::LLVMBuildRet(bld, result);
+        unsafe {
+            llvm::LLVMBuildRet(bld, result);
+        }
     }
 }
 
@@ -2199,7 +2272,9 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
                 let g = str::as_c_str(s, |buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
+                    unsafe {
+                        llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
+                    }
                 });
                 ccx.item_symbols.insert(i.id, s);
                 g
@@ -2246,7 +2321,11 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     let typ = ty::node_id_to_type(ccx.tcx, ni.id);
                     let ident = ccx.sess.parse_sess.interner.get(ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
-                        llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
+                        unsafe {
+                            llvm::LLVMAddGlobal(ccx.llmod,
+                                                type_of(ccx, typ),
+                                                buf)
+                        }
                     };
                     g
                 }
@@ -2262,9 +2341,13 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let class_ty = ty::lookup_item_type(tcx, parent_id).ty;
             // This code shouldn't be reached if the class is generic
             assert !ty::type_has_params(class_ty);
-            let lldty = T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(tcx))),
-                    T_ptr(type_of(ccx, class_ty))],
-                                   llvm::LLVMVoidType());
+            let lldty = unsafe {
+                T_fn(~[
+                    T_ptr(type_of(ccx, ty::mk_nil(tcx))),
+                    T_ptr(type_of(ccx, class_ty))
+                ],
+                llvm::LLVMVoidType())
+            };
             let s = get_dtor_symbol(ccx, /*bad*/copy *pt, dt.node.id, None);
 
             /* Make the declaration for the dtor */
@@ -2357,10 +2440,14 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
             // XXX: Bad copy.
             note_unique_llvm_symbol(ccx, copy s);
             let discrim_gvar = str::as_c_str(s, |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                unsafe {
+                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                }
             });
-            llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, disr_val));
-            llvm::LLVMSetGlobalConstant(discrim_gvar, True);
+            unsafe {
+                llvm::LLVMSetInitializer(discrim_gvar, C_int(ccx, disr_val));
+                llvm::LLVMSetGlobalConstant(discrim_gvar, True);
+            }
             ccx.discrims.insert(
                 local_def(variant.node.id), discrim_gvar);
             ccx.discrim_symbols.insert(variant.node.id, s);
@@ -2386,7 +2473,9 @@ fn vp2i(cx: block, v: ValueRef) -> ValueRef {
 }
 
 fn p2i(ccx: @crate_ctxt, v: ValueRef) -> ValueRef {
-    return llvm::LLVMConstPtrToInt(v, ccx.int_type);
+    unsafe {
+        return llvm::LLVMConstPtrToInt(v, ccx.int_type);
+    }
 }
 
 fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
@@ -2602,20 +2691,28 @@ fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
 
     let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
     let gc_metadata = do str::as_c_str(gc_metadata_name) |buf| {
-        llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+        unsafe {
+            llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+        }
     };
-    llvm::LLVMSetGlobalConstant(gc_metadata, True);
-    lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
-    ccx.module_data.insert(~"_gc_module_metadata", gc_metadata);
+    unsafe {
+        llvm::LLVMSetGlobalConstant(gc_metadata, True);
+        lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
+        ccx.module_data.insert(~"_gc_module_metadata", gc_metadata);
+    }
 }
 
 fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
     let maptype = T_array(elttype, ccx.module_data.size() + 1u);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
-        llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
+        unsafe {
+            llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
+        }
     });
-    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
+    unsafe {
+        lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
+    }
     let mut elts: ~[ValueRef] = ~[];
     for ccx.module_data.each |key, val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
@@ -2624,7 +2721,9 @@ fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     }
     let term = C_struct(~[C_int(ccx, 0), C_int(ccx, 0)]);
     elts.push(term);
-    llvm::LLVMSetInitializer(map, C_array(elttype, elts));
+    unsafe {
+        llvm::LLVMSetInitializer(map, C_array(elttype, elts));
+    }
     return map;
 }
 
@@ -2643,7 +2742,9 @@ fn decl_crate_map(sess: session::Session, mapmeta: link_meta,
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
     let map = str::as_c_str(sym_name, |buf| {
-        llvm::LLVMAddGlobal(llmod, maptype, buf)
+        unsafe {
+            llvm::LLVMAddGlobal(llmod, maptype, buf)
+        }
     });
     lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
     return map;
@@ -2659,7 +2760,9 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
             ~"_" + cstore::get_crate_vers(cstore, i) +
             ~"_" + cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+            unsafe {
+                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+            }
         });
         subcrates.push(p2i(ccx, cr));
         i += 1;
@@ -2678,12 +2781,14 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
                                              annihilate_fn_type);
     }
 
-    llvm::LLVMSetInitializer(map, C_struct(
-        ~[C_i32(1),
-          lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
-                                                T_ptr(T_i8())),
-          p2i(ccx, create_module_map(ccx)),
-          C_array(ccx.int_type, subcrates)]));
+    unsafe {
+        llvm::LLVMSetInitializer(map, C_struct(
+            ~[C_i32(1),
+              lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
+                                                    T_ptr(T_i8())),
+              p2i(ccx, create_module_map(ccx)),
+              C_array(ccx.int_type, subcrates)]));
+    }
 }
 
 fn crate_ctxt_to_encode_parms(cx: @crate_ctxt) -> encoder::encode_parms {
@@ -2710,21 +2815,25 @@ fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
     let llconst = C_struct(~[llmeta]);
     let mut llglobal = str::as_c_str(~"rust_metadata", |buf| {
-        llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
+        unsafe {
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
+        }
     });
-    llvm::LLVMSetInitializer(llglobal, llconst);
-    str::as_c_str(cx.sess.targ_cfg.target_strs.meta_sect_name, |buf| {
-        llvm::LLVMSetSection(llglobal, buf)
-    });
-    lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
+    unsafe {
+        llvm::LLVMSetInitializer(llglobal, llconst);
+        str::as_c_str(cx.sess.targ_cfg.target_strs.meta_sect_name, |buf| {
+            llvm::LLVMSetSection(llglobal, buf)
+        });
+        lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
-    let t_ptr_i8 = T_ptr(T_i8());
-    llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
-    let llvm_used = str::as_c_str(~"llvm.used", |buf| {
-        llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
-    });
-    lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
-    llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, ~[llglobal]));
+        let t_ptr_i8 = T_ptr(T_i8());
+        llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
+        let llvm_used = str::as_c_str(~"llvm.used", |buf| {
+            llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
+        });
+        lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
+        llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, ~[llglobal]));
+    }
 }
 
 // Writes the current ABI version into the crate.
@@ -2757,140 +2866,142 @@ fn trans_crate(sess: session::Session,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name + ~".rc";
 
-    let llmod = str::as_c_str(llmod_id, |buf| {
-        llvm::LLVMModuleCreateWithNameInContext
-            (buf, llvm::LLVMGetGlobalContext())
-    });
-    let data_layout = /*bad*/copy sess.targ_cfg.target_strs.data_layout;
-    let targ_triple = /*bad*/copy sess.targ_cfg.target_strs.target_triple;
-    let _: () =
-        str::as_c_str(data_layout,
-                    |buf| llvm::LLVMSetDataLayout(llmod, buf));
-    let _: () =
-        str::as_c_str(targ_triple,
-                    |buf| llvm::LLVMSetTarget(llmod, buf));
-    let targ_cfg = sess.targ_cfg;
-    let td = mk_target_data(
-        /*bad*/copy sess.targ_cfg.target_strs.data_layout);
-    let tn = mk_type_names();
-    let intrinsics = declare_intrinsics(llmod);
-    if sess.opts.extra_debuginfo {
-        declare_dbg_intrinsics(llmod, intrinsics);
-    }
-    let int_type = T_int(targ_cfg);
-    let float_type = T_float(targ_cfg);
-    let task_type = T_task(targ_cfg);
-    let taskptr_type = T_ptr(task_type);
-    lib::llvm::associate_type(tn, ~"taskptr", taskptr_type);
-    let tydesc_type = T_tydesc(targ_cfg);
-    lib::llvm::associate_type(tn, ~"tydesc", tydesc_type);
-    let crate_map = decl_crate_map(sess, link_meta, llmod);
-    let dbg_cx = if sess.opts.debuginfo {
-        Some(debuginfo::mk_ctxt(copy llmod_id, sess.parse_sess.interner))
-    } else {
-        None
-    };
-
-    let ccx = @crate_ctxt {
-          sess: sess,
-          llmod: llmod,
-          td: td,
-          tn: tn,
-          externs: HashMap(),
-          intrinsics: intrinsics,
-          item_vals: HashMap(),
-          exp_map2: emap2,
-          reachable: reachable,
-          item_symbols: HashMap(),
-          mut main_fn: None::<ValueRef>,
-          link_meta: copy link_meta,    // XXX: Bad copy.
-          enum_sizes: ty::new_ty_hash(),
-          discrims: HashMap(),
-          discrim_symbols: HashMap(),
-          tydescs: ty::new_ty_hash(),
-          mut finished_tydescs: false,
-          external: HashMap(),
-          monomorphized: HashMap(),
-          monomorphizing: HashMap(),
-          type_use_cache: HashMap(),
-          vtables: map::HashMap(),
-          const_cstr_cache: HashMap(),
-          const_globals: HashMap(),
-          const_values: HashMap(),
-          module_data: HashMap(),
-          lltypes: ty::new_ty_hash(),
-          names: new_namegen(sess.parse_sess.interner),
-          next_addrspace: new_addrspace_gen(),
-          symbol_hasher: symbol_hasher,
-          type_hashcodes: ty::new_ty_hash(),
-          type_short_names: ty::new_ty_hash(),
-          all_llvm_symbols: HashMap(),
-          tcx: tcx,
-          maps: maps,
-          stats:
-              {mut n_static_tydescs: 0u,
-               mut n_glues_created: 0u,
-               mut n_null_glues: 0u,
-               mut n_real_glues: 0u,
-               mut n_fns: 0u,
-               mut n_monos: 0u,
-               mut n_inlines: 0u,
-               mut n_closures: 0u,
-               llvm_insn_ctxt: @mut ~[],
-               llvm_insns: HashMap(),
-               fn_times: @mut ~[]},
-          upcalls: upcall::declare_upcalls(targ_cfg, llmod),
-          tydesc_type: tydesc_type,
-          int_type: int_type,
-          float_type: float_type,
-          task_type: task_type,
-          opaque_vec_type: T_opaque_vec(targ_cfg),
-          builder: BuilderRef_res(llvm::LLVMCreateBuilder()),
-          shape_cx: mk_ctxt(llmod),
-          crate_map: crate_map,
-          mut uses_gc: false,
-          dbg_cx: dbg_cx,
-          mut do_not_commit_warning_issued: false
-    };
-
-    {
-        let _icx = ccx.insn_ctxt("data");
-        trans_constants(ccx, crate);
-    }
-
-    {
-        let _icx = ccx.insn_ctxt("text");
-        trans_mod(ccx, crate.node.module);
-    }
-
-    decl_gc_metadata(ccx, llmod_id);
-    fill_crate_map(ccx, crate_map);
-    glue::emit_tydescs(ccx);
-    write_abi_version(ccx);
-
-    // Translate the metadata.
-    write_metadata(ccx, crate);
-    if ccx.sess.trans_stats() {
-        io::println(~"--- trans stats ---");
-        io::println(fmt!("n_static_tydescs: %u",
-                         ccx.stats.n_static_tydescs));
-        io::println(fmt!("n_glues_created: %u",
-                         ccx.stats.n_glues_created));
-        io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
-        io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
-
-        io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
-        io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
-        io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
-        io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
-    }
-
-    if ccx.sess.count_llvm_insns() {
-        for ccx.stats.llvm_insns.each |k, v| {
-            io::println(fmt!("%-7u %s", v, k));
+    unsafe {
+        let llmod = str::as_c_str(llmod_id, |buf| {
+            llvm::LLVMModuleCreateWithNameInContext
+                (buf, llvm::LLVMGetGlobalContext())
+        });
+        let data_layout = /*bad*/copy sess.targ_cfg.target_strs.data_layout;
+        let targ_triple = /*bad*/copy sess.targ_cfg.target_strs.target_triple;
+        let _: () =
+            str::as_c_str(data_layout,
+                        |buf| llvm::LLVMSetDataLayout(llmod, buf));
+        let _: () =
+            str::as_c_str(targ_triple,
+                        |buf| llvm::LLVMSetTarget(llmod, buf));
+        let targ_cfg = sess.targ_cfg;
+        let td = mk_target_data(
+            /*bad*/copy sess.targ_cfg.target_strs.data_layout);
+        let tn = mk_type_names();
+        let intrinsics = declare_intrinsics(llmod);
+        if sess.opts.extra_debuginfo {
+            declare_dbg_intrinsics(llmod, intrinsics);
         }
+        let int_type = T_int(targ_cfg);
+        let float_type = T_float(targ_cfg);
+        let task_type = T_task(targ_cfg);
+        let taskptr_type = T_ptr(task_type);
+        lib::llvm::associate_type(tn, ~"taskptr", taskptr_type);
+        let tydesc_type = T_tydesc(targ_cfg);
+        lib::llvm::associate_type(tn, ~"tydesc", tydesc_type);
+        let crate_map = decl_crate_map(sess, link_meta, llmod);
+        let dbg_cx = if sess.opts.debuginfo {
+            Some(debuginfo::mk_ctxt(copy llmod_id, sess.parse_sess.interner))
+        } else {
+            None
+        };
+
+        let ccx = @crate_ctxt {
+              sess: sess,
+              llmod: llmod,
+              td: td,
+              tn: tn,
+              externs: HashMap(),
+              intrinsics: intrinsics,
+              item_vals: HashMap(),
+              exp_map2: emap2,
+              reachable: reachable,
+              item_symbols: HashMap(),
+              mut main_fn: None::<ValueRef>,
+              link_meta: copy link_meta,    // XXX: Bad copy.
+              enum_sizes: ty::new_ty_hash(),
+              discrims: HashMap(),
+              discrim_symbols: HashMap(),
+              tydescs: ty::new_ty_hash(),
+              mut finished_tydescs: false,
+              external: HashMap(),
+              monomorphized: HashMap(),
+              monomorphizing: HashMap(),
+              type_use_cache: HashMap(),
+              vtables: map::HashMap(),
+              const_cstr_cache: HashMap(),
+              const_globals: HashMap(),
+              const_values: HashMap(),
+              module_data: HashMap(),
+              lltypes: ty::new_ty_hash(),
+              names: new_namegen(sess.parse_sess.interner),
+              next_addrspace: new_addrspace_gen(),
+              symbol_hasher: symbol_hasher,
+              type_hashcodes: ty::new_ty_hash(),
+              type_short_names: ty::new_ty_hash(),
+              all_llvm_symbols: HashMap(),
+              tcx: tcx,
+              maps: maps,
+              stats:
+                  {mut n_static_tydescs: 0u,
+                   mut n_glues_created: 0u,
+                   mut n_null_glues: 0u,
+                   mut n_real_glues: 0u,
+                   mut n_fns: 0u,
+                   mut n_monos: 0u,
+                   mut n_inlines: 0u,
+                   mut n_closures: 0u,
+                   llvm_insn_ctxt: @mut ~[],
+                   llvm_insns: HashMap(),
+                   fn_times: @mut ~[]},
+              upcalls: upcall::declare_upcalls(targ_cfg, llmod),
+              tydesc_type: tydesc_type,
+              int_type: int_type,
+              float_type: float_type,
+              task_type: task_type,
+              opaque_vec_type: T_opaque_vec(targ_cfg),
+              builder: BuilderRef_res(unsafe { llvm::LLVMCreateBuilder() }),
+              shape_cx: mk_ctxt(llmod),
+              crate_map: crate_map,
+              mut uses_gc: false,
+              dbg_cx: dbg_cx,
+              mut do_not_commit_warning_issued: false
+        };
+
+        {
+            let _icx = ccx.insn_ctxt("data");
+            trans_constants(ccx, crate);
+        }
+
+        {
+            let _icx = ccx.insn_ctxt("text");
+            trans_mod(ccx, crate.node.module);
+        }
+
+        decl_gc_metadata(ccx, llmod_id);
+        fill_crate_map(ccx, crate_map);
+        glue::emit_tydescs(ccx);
+        write_abi_version(ccx);
+
+        // Translate the metadata.
+        write_metadata(ccx, crate);
+        if ccx.sess.trans_stats() {
+            io::println(~"--- trans stats ---");
+            io::println(fmt!("n_static_tydescs: %u",
+                             ccx.stats.n_static_tydescs));
+            io::println(fmt!("n_glues_created: %u",
+                             ccx.stats.n_glues_created));
+            io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
+            io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
+
+            io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
+            io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
+            io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
+            io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+        }
+
+        if ccx.sess.count_llvm_insns() {
+            for ccx.stats.llvm_insns.each |k, v| {
+                io::println(fmt!("%-7u %s", v, k));
+            }
+        }
+        return (llmod, link_meta);
     }
-    return (llmod, link_meta);
 }
 //
 // Local Variables:

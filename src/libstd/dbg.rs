@@ -18,33 +18,47 @@ use core::sys;
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
-    fn debug_tydesc(td: *sys::TypeDesc);
-    fn debug_opaque(td: *sys::TypeDesc, x: *());
-    fn debug_box(td: *sys::TypeDesc, x: *());
-    fn debug_tag(td: *sys::TypeDesc, x: *());
-    fn debug_fn(td: *sys::TypeDesc, x: *());
-    fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
-    fn rust_dbg_breakpoint();
+    unsafe fn debug_tydesc(td: *sys::TypeDesc);
+    unsafe fn debug_opaque(td: *sys::TypeDesc, x: *());
+    unsafe fn debug_box(td: *sys::TypeDesc, x: *());
+    unsafe fn debug_tag(td: *sys::TypeDesc, x: *());
+    unsafe fn debug_fn(td: *sys::TypeDesc, x: *());
+    unsafe fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
+    unsafe fn rust_dbg_breakpoint();
 }
 
 pub fn debug_tydesc<T>() {
-    rustrt::debug_tydesc(sys::get_type_desc::<T>());
+    unsafe {
+        rustrt::debug_tydesc(sys::get_type_desc::<T>());
+    }
 }
 
 pub fn debug_opaque<T>(x: T) {
-    rustrt::debug_opaque(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
+    unsafe {
+        rustrt::debug_opaque(sys::get_type_desc::<T>(),
+                             ptr::addr_of(&x) as *());
+    }
 }
 
 pub fn debug_box<T>(x: @T) {
-    rustrt::debug_box(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
+    unsafe {
+        rustrt::debug_box(sys::get_type_desc::<T>(),
+                          ptr::addr_of(&x) as *());
+    }
 }
 
 pub fn debug_tag<T>(x: T) {
-    rustrt::debug_tag(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
+    unsafe {
+        rustrt::debug_tag(sys::get_type_desc::<T>(),
+                          ptr::addr_of(&x) as *());
+    }
 }
 
 pub fn debug_fn<T>(x: T) {
-    rustrt::debug_fn(sys::get_type_desc::<T>(), ptr::addr_of(&x) as *());
+    unsafe {
+        rustrt::debug_fn(sys::get_type_desc::<T>(),
+                         ptr::addr_of(&x) as *());
+    }
 }
 
 pub unsafe fn ptr_cast<T, U>(x: @T) -> @U {
@@ -55,7 +69,9 @@ pub unsafe fn ptr_cast<T, U>(x: @T) -> @U {
 
 /// Triggers a debugger breakpoint
 pub fn breakpoint() {
-    rustrt::rust_dbg_breakpoint();
+    unsafe {
+        rustrt::rust_dbg_breakpoint();
+    }
 }
 
 #[test]

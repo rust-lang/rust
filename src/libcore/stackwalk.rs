@@ -85,16 +85,20 @@ fn test_simple_deep() {
 }
 
 fn breakpoint() {
-    rustrt::rust_dbg_breakpoint()
+    unsafe {
+        rustrt::rust_dbg_breakpoint()
+    }
 }
 
 fn frame_address(f: fn(++x: *u8)) {
-    rusti::frame_address(f)
+    unsafe {
+        rusti::frame_address(f)
+    }
 }
 
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_dbg_breakpoint();
+    unsafe fn rust_dbg_breakpoint();
 }
 
 #[abi = "rust-intrinsic"]

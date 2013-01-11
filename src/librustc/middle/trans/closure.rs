@@ -339,7 +339,9 @@ fn load_environment(fcx: fn_ctxt,
             let ll =
                 str::as_c_str(~"load_env",
                               |buf|
-                              llvm::LLVMAppendBasicBlock(fcx.llfn, buf));
+                              unsafe {
+                                llvm::LLVMAppendBasicBlock(fcx.llfn, buf)
+                              });
             fcx.llloadenv = Some(ll);
             ll
         }
