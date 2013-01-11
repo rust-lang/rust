@@ -108,8 +108,7 @@ fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
 }
 
 fn append_configuration(+cfg: ast::crate_cfg, +name: ~str) -> ast::crate_cfg {
-    // XXX: Bad copy.
-    if attr::contains_name(copy cfg, copy name) {
+    if attr::contains_name(cfg, name) {
         return cfg;
     } else {
         return vec::append_one(cfg, attr::mk_word_item(name));

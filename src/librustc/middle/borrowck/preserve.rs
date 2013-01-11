@@ -106,6 +106,9 @@ priv impl &preserve_ctxt {
             let scope_region = if self.root_ub == 0 {
                 ty::re_static
             } else {
+                // Maybe if we pass in the parent instead here,
+                // we can prevent the "scope not found" error
+                debug!("scope_region thing: %? ", cmt.id);
                 ty::re_scope(self.tcx().region_map.get(cmt.id))
             };
 

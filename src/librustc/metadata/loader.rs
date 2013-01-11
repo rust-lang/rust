@@ -77,7 +77,7 @@ fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
 }
 
 fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
-    attr::require_unique_names(cx.diag, /*bad*/copy cx.metas);
+    attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 

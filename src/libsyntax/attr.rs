@@ -70,7 +70,7 @@ export require_unique_names;
 
 /* Constructors */
 
-fn mk_name_value_item_str(name: ~str, +value: ~str) ->
+fn mk_name_value_item_str(name: ~str, value: ~str) ->
     @ast::meta_item {
     let value_lit = dummy_spanned(ast::lit_str(@value));
     return mk_name_value_item(name, value_lit);
@@ -193,14 +193,15 @@ fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
 }
 
 /// Search a list of meta items and return only those with a specific name
-fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
+fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
    ~[@ast::meta_item] {
-    let filter = fn@(m: &@ast::meta_item) -> Option<@ast::meta_item> {
-        if get_meta_item_name(*m) == name {
-            option::Some(*m)
-        } else { option::None }
-    };
-    return vec::filter_map(metas, filter);
+    let mut rs = ~[];
+    for metas.each |mi| {
+        if name == get_meta_item_name(*mi) {
+            rs.push(*mi)
+        }
+    }
+    rs
 }
 
 /**
@@ -237,7 +238,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains_name(metas: ~[@ast::meta_item], name: ~str) -> bool {
+fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     return vec::len(matches) > 0u;
 }
@@ -323,7 +324,7 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
  * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
-fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
+fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do find_attrs_by_name(attrs, ~"link").flat_map |attr| {
         match attr.node.value.node {
             ast::meta_list(_, items) => /* FIXME (#2543) */ copy items,
@@ -389,7 +390,7 @@ fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
 
 
 fn require_unique_names(diagnostic: span_handler,
-                        metas: ~[@ast::meta_item]) {
+                        metas: &[@ast::meta_item]) {
     let map = map::HashMap();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);

@@ -2530,7 +2530,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     }
 }
 
-fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
+fn trans_constants(ccx: @crate_ctxt, crate: &ast::crate) {
     visit::visit_crate(
         *crate, (),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -2808,7 +2808,8 @@ fn decl_crate_map(sess: session::Session, mapmeta: link_meta,
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
     let mapname = if sess.building_library {
-        mapmeta.name + ~"_" + mapmeta.vers + ~"_" + mapmeta.extras_hash
+        mapmeta.name.to_owned() + ~"_" + mapmeta.vers.to_owned() + ~"_"
+            + mapmeta.extras_hash.to_owned()
     } else { ~"toplevel" };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
@@ -2881,7 +2882,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt) -> encoder::encode_parms {
     };
 }
 
-fn write_metadata(cx: @crate_ctxt, crate: @ast::crate) {
+fn write_metadata(cx: @crate_ctxt, crate: &ast::crate) {
     if !cx.sess.building_library { return; }
     let encode_parms = crate_ctxt_to_encode_parms(cx);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
@@ -2919,12 +2920,11 @@ fn trans_crate(sess: session::Session,
                tcx: ty::ctxt,
                output: &Path,
                emap2: resolve::ExportMap2,
-               maps: astencode::maps)
-            -> (ModuleRef, link_meta) {
+               maps: astencode::maps) -> (ModuleRef, link_meta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =
-        link::build_link_meta(sess, *crate, output, symbol_hasher);
+        link::build_link_meta(sess, crate, output, symbol_hasher);
     let reachable = reachable::find_reachable(crate.node.module, emap2, tcx,
                                               maps.method_map);
 
@@ -2936,7 +2936,7 @@ fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.name + ~".rc";
+    let llmod_id = link_meta.name.to_owned() + ~".rc";
 
     unsafe {
         let llmod = str::as_c_str(llmod_id, |buf| {
@@ -2985,7 +2985,7 @@ fn trans_crate(sess: session::Session,
               reachable: reachable,
               item_symbols: HashMap(),
               mut main_fn: None::<ValueRef>,
-              link_meta: copy link_meta,    // XXX: Bad copy.
+              link_meta: link_meta,
               enum_sizes: ty::new_ty_hash(),
               discrims: HashMap(),
               discrim_symbols: HashMap(),
