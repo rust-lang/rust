@@ -160,6 +160,7 @@ pub unsafe fn annihilate() {
 extern mod rustrt {
     #[legacy_exports];
     #[rust_stack]
-    /*priv*/ unsafe fn rust_get_task() -> *c_void;
+    // FIXME (#4386): Unable to make following method private.
+    /* priv */ unsafe fn rust_get_task() -> *c_void;
 }
 
