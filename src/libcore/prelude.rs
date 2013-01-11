@@ -4,7 +4,7 @@
 
 pub use kinds::{Const, Copy, Owned, Durable};
 pub use ops::{Drop};
-pub use ops::{Add, Sub, Mul, Div, Modulo, Neg};
+pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
