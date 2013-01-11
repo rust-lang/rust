@@ -59,7 +59,7 @@ use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
 use syntax::ast_util::has_legacy_export_attr;
-use syntax::attr::{attr_metas, contains_name};
+use syntax::attr::{attr_metas, contains_name, attrs_contains_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{pat_to_str, path_to_str};
@@ -857,6 +857,9 @@ fn Resolver(session: Session, lang_items: LanguageItems,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
+        attr_main_fn: None,
+        main_fns: ~[],
+
         def_map: HashMap(),
         export_map2: HashMap(),
         trait_map: @HashMap(),
@@ -916,6 +919,11 @@ struct Resolver {
     // The four namespaces.
     namespaces: ~[Namespace],
 
+    // The function that has attribute named 'main'
+    mut attr_main_fn: Option<(node_id, span)>,
+    // The functions named 'main'
+    mut main_fns: ~[Option<(node_id, span)>],
+
     def_map: DefMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
@@ -937,6 +945,7 @@ impl Resolver {
         self.resolve_crate();
         self.session.abort_if_errors();
 
+        self.check_duplicate_main();
         self.check_for_unused_imports_if_necessary();
     }
 
@@ -3923,15 +3932,22 @@ impl Resolver {
             item_fn(ref fn_decl, _, ref ty_params, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
-                //
-                // For speed, we put the string comparison last in this chain
-                // of conditionals.
+                if !self.session.building_library {
+                    if self.attr_main_fn.is_none() &&
+                           item.ident == special_idents::main {
 
-                if !self.session.building_library &&
-                    is_none(&self.session.main_fn) &&
-                    item.ident == special_idents::main {
+                        self.main_fns.push(Some((item.id, item.span)));
+                    }
 
-                    self.session.main_fn = Some((item.id, item.span));
+                    if attrs_contains_name(item.attrs, ~"main") {
+                        if self.attr_main_fn.is_none() {
+                            self.attr_main_fn = Some((item.id, item.span));
+                        } else {
+                            self.session.span_err(
+                                    item.span,
+                                    ~"multiple 'main' functions");
+                        }
+                    }
                 }
 
                 self.resolve_function(OpaqueFunctionRibKind,
@@ -5351,6 +5367,30 @@ impl Resolver {
     fn record_def(node_id: node_id, def: def) {
         debug!("(recording def) recording %? for %?", def, node_id);
         self.def_map.insert(node_id, def);
+    }
+
+    //
+    // main function checking
+    //
+    // be sure that there is only one main function
+    //
+    fn check_duplicate_main() {
+        if self.attr_main_fn.is_none() {
+            if self.main_fns.len() >= 1u {
+                let mut i = 1u;
+                while i < self.main_fns.len() {
+                    let (_, dup_main_span) =
+                            option::unwrap(self.main_fns[i]);
+                    self.session.span_err(
+                        dup_main_span,
+                        ~"multiple 'main' functions");
+                    i += 1;
+                }
+                self.session.main_fn = self.main_fns[0];
+            }
+        } else {
+            self.session.main_fn = self.attr_main_fn;
+        }
     }
 
     //
