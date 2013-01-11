@@ -1483,15 +1483,19 @@ fn trans_overloaded_op(bcx: block,
 fn int_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
             llsrc: ValueRef, signed: bool) -> ValueRef {
     let _icx = bcx.insn_ctxt("int_cast");
-    let srcsz = llvm::LLVMGetIntTypeWidth(llsrctype);
-    let dstsz = llvm::LLVMGetIntTypeWidth(lldsttype);
-    return if dstsz == srcsz {
-        BitCast(bcx, llsrc, lldsttype)
-    } else if srcsz > dstsz {
-        TruncOrBitCast(bcx, llsrc, lldsttype)
-    } else if signed {
-        SExtOrBitCast(bcx, llsrc, lldsttype)
-    } else { ZExtOrBitCast(bcx, llsrc, lldsttype) };
+    unsafe {
+        let srcsz = llvm::LLVMGetIntTypeWidth(llsrctype);
+        let dstsz = llvm::LLVMGetIntTypeWidth(lldsttype);
+        return if dstsz == srcsz {
+            BitCast(bcx, llsrc, lldsttype)
+        } else if srcsz > dstsz {
+            TruncOrBitCast(bcx, llsrc, lldsttype)
+        } else if signed {
+            SExtOrBitCast(bcx, llsrc, lldsttype)
+        } else {
+            ZExtOrBitCast(bcx, llsrc, lldsttype)
+        };
+    }
 }
 
 fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,

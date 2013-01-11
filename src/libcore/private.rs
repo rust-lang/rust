@@ -30,18 +30,17 @@ use uint;
 
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_task_weaken(ch: rust_port_id);
-    fn rust_task_unweaken(ch: rust_port_id);
+    unsafe fn rust_task_weaken(ch: rust_port_id);
+    unsafe fn rust_task_unweaken(ch: rust_port_id);
 
-    fn rust_create_little_lock() -> rust_little_lock;
-    fn rust_destroy_little_lock(lock: rust_little_lock);
-    fn rust_lock_little_lock(lock: rust_little_lock);
-    fn rust_unlock_little_lock(lock: rust_little_lock);
+    unsafe fn rust_create_little_lock() -> rust_little_lock;
+    unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
+    unsafe fn rust_lock_little_lock(lock: rust_little_lock);
+    unsafe fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-
     fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     fn atomic_xadd(dst: &mut int, src: int) -> int;
     fn atomic_xsub(dst: &mut int, src: int) -> int;
@@ -490,12 +489,18 @@ type rust_little_lock = *libc::c_void;
 
 struct LittleLock {
     l: rust_little_lock,
-    drop { rustrt::rust_destroy_little_lock(self.l); }
+    drop {
+        unsafe {
+            rustrt::rust_destroy_little_lock(self.l);
+        }
+    }
 }
 
 fn LittleLock() -> LittleLock {
-    LittleLock {
-        l: rustrt::rust_create_little_lock()
+    unsafe {
+        LittleLock {
+            l: rustrt::rust_create_little_lock()
+        }
     }
 }
 
@@ -504,7 +509,11 @@ impl LittleLock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
         struct Unlock {
             l: rust_little_lock,
-            drop { rustrt::rust_unlock_little_lock(self.l); }
+            drop {
+                unsafe {
+                    rustrt::rust_unlock_little_lock(self.l);
+                }
+            }
         }
 
         fn Unlock(l: rust_little_lock) -> Unlock {

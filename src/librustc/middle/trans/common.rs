@@ -137,7 +137,11 @@ type stats =
 
 struct BuilderRef_res {
     B: BuilderRef,
-    drop { llvm::LLVMDisposeBuilder(self.B); }
+    drop {
+        unsafe {
+            llvm::LLVMDisposeBuilder(self.B);
+        }
+    }
 }
 
 fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
@@ -613,7 +617,11 @@ fn ty_str(tn: type_names, t: TypeRef) -> ~str {
     return lib::llvm::type_to_str(tn, t);
 }
 
-fn val_ty(v: ValueRef) -> TypeRef { return llvm::LLVMTypeOf(v); }
+fn val_ty(v: ValueRef) -> TypeRef {
+    unsafe {
+        return llvm::LLVMTypeOf(v);
+    }
+}
 
 fn val_str(tn: type_names, v: ValueRef) -> ~str {
     return ty_str(tn, val_ty(v));
@@ -621,12 +629,15 @@ fn val_str(tn: type_names, v: ValueRef) -> ~str {
 
 // Returns the nth element of the given LLVM structure type.
 fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
-    let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
-    assert (n < elt_count);
-    let mut elt_tys = vec::from_elem(elt_count, T_nil());
-    llvm::LLVMGetStructElementTypes(llstructty,
-                                    ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
-    return llvm::LLVMGetElementType(elt_tys[n]);
+    unsafe {
+        let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
+        assert (n < elt_count);
+        let mut elt_tys = vec::from_elem(elt_count, T_nil());
+        llvm::LLVMGetStructElementTypes(
+            llstructty,
+            ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
+        return llvm::LLVMGetElementType(elt_tys[n]);
+    }
 }
 
 fn in_scope_cx(cx: block, f: fn(scope_info)) {
@@ -722,30 +733,34 @@ fn T_void() -> TypeRef {
     // of 10 nil values will have 10-bit size -- but it doesn't seem like we
     // have any other options until it's fixed upstream.
 
-    return llvm::LLVMVoidType();
+    unsafe {
+        return llvm::LLVMVoidType();
+    }
 }
 
 fn T_nil() -> TypeRef {
     // NB: See above in T_void().
 
-    return llvm::LLVMInt1Type();
+    unsafe {
+        return llvm::LLVMInt1Type();
+    }
 }
 
-fn T_metadata() -> TypeRef { return llvm::LLVMMetadataType(); }
+fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
 
-fn T_i1() -> TypeRef { return llvm::LLVMInt1Type(); }
+fn T_i1() -> TypeRef { unsafe { return llvm::LLVMInt1Type(); } }
 
-fn T_i8() -> TypeRef { return llvm::LLVMInt8Type(); }
+fn T_i8() -> TypeRef { unsafe { return llvm::LLVMInt8Type(); } }
 
-fn T_i16() -> TypeRef { return llvm::LLVMInt16Type(); }
+fn T_i16() -> TypeRef { unsafe { return llvm::LLVMInt16Type(); } }
 
-fn T_i32() -> TypeRef { return llvm::LLVMInt32Type(); }
+fn T_i32() -> TypeRef { unsafe { return llvm::LLVMInt32Type(); } }
 
-fn T_i64() -> TypeRef { return llvm::LLVMInt64Type(); }
+fn T_i64() -> TypeRef { unsafe { return llvm::LLVMInt64Type(); } }
 
-fn T_f32() -> TypeRef { return llvm::LLVMFloatType(); }
+fn T_f32() -> TypeRef { unsafe { return llvm::LLVMFloatType(); } }
 
-fn T_f64() -> TypeRef { return llvm::LLVMDoubleType(); }
+fn T_f64() -> TypeRef { unsafe { return llvm::LLVMDoubleType(); } }
 
 fn T_bool() -> TypeRef { return T_i1(); }
 
@@ -811,25 +826,39 @@ fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
 }
 
 fn T_ptr(t: TypeRef) -> TypeRef {
-    return llvm::LLVMPointerType(t, default_addrspace);
+    unsafe {
+        return llvm::LLVMPointerType(t, default_addrspace);
+    }
 }
 
 fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
-    return llvm::LLVMPointerType(t, addrspace);
+    unsafe {
+        return llvm::LLVMPointerType(t, addrspace);
+    }
 }
 
 fn T_struct(elts: ~[TypeRef]) -> TypeRef unsafe {
-    return llvm::LLVMStructType(to_ptr(elts), elts.len() as c_uint, False);
+    unsafe {
+        return llvm::LLVMStructType(to_ptr(elts),
+                                    elts.len() as c_uint,
+                                    False);
+    }
 }
 
 fn T_named_struct(name: ~str) -> TypeRef {
-    let c = llvm::LLVMGetGlobalContext();
-    return str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
+    unsafe {
+        let c = llvm::LLVMGetGlobalContext();
+        return str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
+    }
 }
 
 fn set_struct_body(t: TypeRef, elts: ~[TypeRef]) unsafe {
-    llvm::LLVMStructSetBody(t, to_ptr(elts),
-                            elts.len() as c_uint, False);
+    unsafe {
+        llvm::LLVMStructSetBody(t,
+                                to_ptr(elts),
+                                elts.len() as c_uint,
+                                False);
+    }
 }
 
 fn T_empty_struct() -> TypeRef { return T_struct(~[]); }
@@ -865,14 +894,16 @@ fn T_task(targ_cfg: @session::config) -> TypeRef {
 fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
-    let mut tydesc_elts: ~[TypeRef] =
-        vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
-                                 T_nil());
-    llvm::LLVMGetStructElementTypes(
-        cx.tydesc_type,
-        ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
-    let t = llvm::LLVMGetElementType(tydesc_elts[field]);
-    return t;
+    unsafe {
+        let mut tydesc_elts: ~[TypeRef] =
+            vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
+                                     T_nil());
+        llvm::LLVMGetStructElementTypes(
+            cx.tydesc_type,
+            ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
+        let t = llvm::LLVMGetElementType(tydesc_elts[field]);
+        return t;
+    }
 }
 
 fn T_generic_glue_fn(cx: @crate_ctxt) -> TypeRef {
@@ -904,7 +935,9 @@ fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
 }
 
 fn T_array(t: TypeRef, n: uint) -> TypeRef {
-    return llvm::LLVMArrayType(t, n as c_uint);
+    unsafe {
+        return llvm::LLVMArrayType(t, n as c_uint);
+    }
 }
 
 // Interior vector.
@@ -947,7 +980,9 @@ fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
 }
 
 fn T_box_ptr(t: TypeRef) -> TypeRef {
-    return llvm::LLVMPointerType(t, gc_box_addrspace);
+    unsafe {
+        return llvm::LLVMPointerType(t, gc_box_addrspace);
+    }
 }
 
 fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
@@ -963,7 +998,9 @@ fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
 }
 
 fn T_unique_ptr(t: TypeRef) -> TypeRef {
-    return llvm::LLVMPointerType(t, gc_box_addrspace);
+    unsafe {
+        return llvm::LLVMPointerType(t, gc_box_addrspace);
+    }
 }
 
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
@@ -1042,14 +1079,22 @@ fn T_opaque_chan_ptr() -> TypeRef { return T_ptr(T_i8()); }
 
 
 // LLVM constant constructors.
-fn C_null(t: TypeRef) -> ValueRef { return llvm::LLVMConstNull(t); }
+fn C_null(t: TypeRef) -> ValueRef {
+    unsafe {
+        return llvm::LLVMConstNull(t);
+    }
+}
 
 fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
-    return llvm::LLVMConstInt(t, u, sign_extend);
+    unsafe {
+        return llvm::LLVMConstInt(t, u, sign_extend);
+    }
 }
 
 fn C_floating(s: ~str, t: TypeRef) -> ValueRef {
-    return str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
+    unsafe {
+        return str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
+    }
 }
 
 fn C_nil() -> ValueRef {
@@ -1084,92 +1129,115 @@ fn C_u8(i: uint) -> ValueRef { return C_integral(T_i8(), i as u64, False); }
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
-    match cx.const_cstr_cache.find(s) {
-      Some(llval) => return llval,
-      None => ()
+    unsafe {
+        match cx.const_cstr_cache.find(s) {
+          Some(llval) => return llval,
+          None => ()
+        }
+
+        let sc = do str::as_c_str(s) |buf| {
+            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+        };
+        let g =
+            str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
+                        |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
+        llvm::LLVMSetInitializer(g, sc);
+        llvm::LLVMSetGlobalConstant(g, True);
+        lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+
+        cx.const_cstr_cache.insert(s, g);
+
+        return g;
     }
-
-    let sc = do str::as_c_str(s) |buf| {
-        llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
-    };
-    let g =
-        str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
-                    |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
-    llvm::LLVMSetInitializer(g, sc);
-    llvm::LLVMSetGlobalConstant(g, True);
-    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
-
-    cx.const_cstr_cache.insert(s, g);
-
-    return g;
 }
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 fn C_estr_slice(cx: @crate_ctxt, +s: ~str) -> ValueRef {
-    let len = str::len(s);
-    let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
-    C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
+    unsafe {
+        let len = str::len(s);
+        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
+        C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
+    }
 }
 
 // Returns a Plain Old LLVM String:
 fn C_postr(s: ~str) -> ValueRef {
-    return do str::as_c_str(s) |buf| {
-        llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
-    };
+    unsafe {
+        return do str::as_c_str(s) |buf| {
+            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+        };
+    }
 }
 
 fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
-    let mut i = 0u;
-    let mut elts: ~[ValueRef] = ~[];
-    while i < size { elts.push(C_u8(0u)); i += 1u; }
-    return llvm::LLVMConstArray(T_i8(), vec::raw::to_ptr(elts),
-                             elts.len() as c_uint);
+    unsafe {
+        let mut i = 0u;
+        let mut elts: ~[ValueRef] = ~[];
+        while i < size { elts.push(C_u8(0u)); i += 1u; }
+        return llvm::LLVMConstArray(T_i8(),
+                                    vec::raw::to_ptr(elts),
+                                    elts.len() as c_uint);
+    }
 }
 
 fn C_struct(elts: &[ValueRef]) -> ValueRef {
-    do vec::as_imm_buf(elts) |ptr, len| {
-        llvm::LLVMConstStruct(ptr, len as c_uint, False)
+    unsafe {
+        do vec::as_imm_buf(elts) |ptr, len| {
+            llvm::LLVMConstStruct(ptr, len as c_uint, False)
+        }
     }
 }
 
 fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
-    do vec::as_imm_buf(elts) |ptr, len| {
-        llvm::LLVMConstNamedStruct(T, ptr, len as c_uint)
+    unsafe {
+        do vec::as_imm_buf(elts) |ptr, len| {
+            llvm::LLVMConstNamedStruct(T, ptr, len as c_uint)
+        }
     }
 }
 
 fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
-    return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
-                             elts.len() as c_uint);
+    unsafe {
+        return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
+                                 elts.len() as c_uint);
+    }
 }
 
 fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
-    return llvm::LLVMConstString(
-        cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
-        bytes.len() as c_uint, True);
+    unsafe {
+        return llvm::LLVMConstString(
+            cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+            bytes.len() as c_uint, True);
+    }
 }
 
 fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
-    return llvm::LLVMConstString(
-        cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
-        bytes.len() as c_uint, False);
+    unsafe {
+        return llvm::LLVMConstString(
+            cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
+            bytes.len() as c_uint, False);
+    }
 }
 
 fn C_shape(ccx: @crate_ctxt, +bytes: ~[u8]) -> ValueRef {
-    let llshape = C_bytes_plus_null(bytes);
-    let name = fmt!("shape%u", (ccx.names)(~"shape").repr);
-    let llglobal = str::as_c_str(name, |buf| {
-        llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
-    });
-    llvm::LLVMSetInitializer(llglobal, llshape);
-    llvm::LLVMSetGlobalConstant(llglobal, True);
-    lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
-    return llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
+    unsafe {
+        let llshape = C_bytes_plus_null(bytes);
+        let name = fmt!("shape%u", (ccx.names)(~"shape").repr);
+        let llglobal = str::as_c_str(name, |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
+        });
+        llvm::LLVMSetInitializer(llglobal, llshape);
+        llvm::LLVMSetGlobalConstant(llglobal, True);
+        lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
+        return llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
+    }
 }
 
 fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
-    llvm::LLVMGetParam(fndecl, param as c_uint)
+    unsafe {
+        llvm::LLVMGetParam(fndecl, param as c_uint)
+    }
 }
 
 // Used to identify cached monomorphized functions and vtables

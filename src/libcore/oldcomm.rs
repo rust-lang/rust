@@ -90,7 +90,9 @@ pub enum Chan<T: Owned> {
 
 /// Constructs a port
 pub fn Port<T: Owned>() -> Port<T> {
-    Port_(@PortPtr(rustrt::new_port(sys::size_of::<T>() as size_t)))
+    unsafe {
+        Port_(@PortPtr(rustrt::new_port(sys::size_of::<T>() as size_t)))
+    }
 }
 
 impl<T: Owned> Port<T> {
@@ -159,11 +161,13 @@ fn as_raw_port<T: Owned, U>(ch: Chan<T>, f: fn(*rust_port) -> U) -> U {
 
     struct PortRef {
         p: *rust_port,
-       drop {
-         if !ptr::is_null(self.p) {
-           rustrt::rust_port_drop(self.p);
-         }
-       }
+        drop {
+            unsafe {
+                if !ptr::is_null(self.p) {
+                    rustrt::rust_port_drop(self.p);
+                }
+            }
+        }
     }
 
     fn PortRef(p: *rust_port) -> PortRef {
@@ -172,15 +176,17 @@ fn as_raw_port<T: Owned, U>(ch: Chan<T>, f: fn(*rust_port) -> U) -> U {
         }
     }
 
-    let p = PortRef(rustrt::rust_port_take(*ch));
+    unsafe {
+        let p = PortRef(rustrt::rust_port_take(*ch));
 
-    if ptr::is_null(p.p) {
-        fail ~"unable to locate port for channel"
-    } else if rustrt::get_task_id() != rustrt::rust_port_task(p.p) {
-        fail ~"unable to access unowned port"
+        if ptr::is_null(p.p) {
+            fail ~"unable to locate port for channel"
+        } else if rustrt::get_task_id() != rustrt::rust_port_task(p.p) {
+            fail ~"unable to access unowned port"
+        }
+
+        f(p.p)
     }
-
-    f(p.p)
 }
 
 /**
@@ -188,7 +194,9 @@ fn as_raw_port<T: Owned, U>(ch: Chan<T>, f: fn(*rust_port) -> U) -> U {
  * construct it.
  */
 pub fn Chan<T: Owned>(p: &Port<T>) -> Chan<T> {
-    Chan_(rustrt::get_port_id((**p).po))
+    unsafe {
+        Chan_(rustrt::get_port_id((**p).po))
+    }
 }
 
 /**
@@ -196,14 +204,16 @@ pub fn Chan<T: Owned>(p: &Port<T>) -> Chan<T> {
  * whereupon the caller loses access to it.
  */
 pub fn send<T: Owned>(ch: Chan<T>, data: T) {
-    let Chan_(p) = ch;
-    let data_ptr = ptr::addr_of(&data) as *();
-    let res = rustrt::rust_port_id_send(p, data_ptr);
-    if res != 0 unsafe {
-        // Data sent successfully
-        cast::forget(move data);
+    unsafe {
+        let Chan_(p) = ch;
+        let data_ptr = ptr::addr_of(&data) as *();
+        let res = rustrt::rust_port_id_send(p, data_ptr);
+        if res != 0 unsafe {
+            // Data sent successfully
+            cast::forget(move data);
+        }
+        task::yield();
     }
-    task::yield();
 }
 
 /**
@@ -226,61 +236,67 @@ fn peek_chan<T: Owned>(ch: Chan<T>) -> bool {
 
 /// Receive on a raw port pointer
 fn recv_<T: Owned>(p: *rust_port) -> T {
-    let yield = 0;
-    let yieldp = ptr::addr_of(&yield);
-    let mut res;
-    res = rusti::init::<T>();
-    rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
+    unsafe {
+        let yield = 0;
+        let yieldp = ptr::addr_of(&yield);
+        let mut res;
+        res = rusti::init::<T>();
+        rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
-    if yield != 0 {
-        // Data isn't available yet, so res has not been initialized.
-        task::yield();
-    } else {
-        // In the absence of compiler-generated preemption points
-        // this is a good place to yield
-        task::yield();
+        if yield != 0 {
+            // Data isn't available yet, so res has not been initialized.
+            task::yield();
+        } else {
+            // In the absence of compiler-generated preemption points
+            // this is a good place to yield
+            task::yield();
+        }
+        move res
     }
-    move res
 }
 
 fn peek_(p: *rust_port) -> bool {
-    // Yield here before we check to see if someone sent us a message
-    // FIXME #524, if the compiler generates yields, we don't need this
-    task::yield();
-    rustrt::rust_port_size(p) != 0 as libc::size_t
+    unsafe {
+        // Yield here before we check to see if someone sent us a message
+        // FIXME #524, if the compiler generates yields, we don't need this
+        task::yield();
+        rustrt::rust_port_size(p) != 0 as libc::size_t
+    }
 }
 
 /// Receive on one of two ports
 pub fn select2<A: Owned, B: Owned>(p_a: Port<A>, p_b: Port<B>)
     -> Either<A, B> {
-    let ports = ~[(**p_a).po, (**p_b).po];
-    let yield = 0, yieldp = ptr::addr_of(&yield);
+    unsafe {
+        let ports = ~[(**p_a).po, (**p_b).po];
+        let yield = 0, yieldp = ptr::addr_of(&yield);
 
-    let mut resport: *rust_port;
-    resport = rusti::init::<*rust_port>();
-    do vec::as_imm_buf(ports) |ports, n_ports| {
-        rustrt::rust_port_select(ptr::addr_of(&resport), ports,
-                                 n_ports as size_t, yieldp);
-    }
+        let mut resport: *rust_port;
+        resport = rusti::init::<*rust_port>();
+        do vec::as_imm_buf(ports) |ports, n_ports| {
+            rustrt::rust_port_select(ptr::addr_of(&resport), ports,
+                                     n_ports as size_t, yieldp);
+        }
 
-    if yield != 0 {
-        // Wait for data
-        task::yield();
-    } else {
-        // As in recv, this is a good place to yield anyway until
-        // the compiler generates yield calls
-        task::yield();
-    }
+        if yield != 0 {
+            // Wait for data
+            task::yield();
+        } else {
+            // As in recv, this is a good place to yield anyway until
+            // the compiler generates yield calls
+            task::yield();
+        }
 
-    // Now we know the port we're supposed to receive from
-    assert resport != ptr::null();
+        // Now we know the port we're supposed to receive from
+        assert resport != ptr::null();
 
-    if resport == (**p_a).po {
-        either::Left(recv(p_a))
-    } else if resport == (**p_b).po {
-        either::Right(recv(p_b))
-    } else {
-        fail ~"unexpected result from rust_port_select";
+        if resport == (**p_a).po {
+            either::Left(recv(p_a))
+        } else if resport == (**p_b).po {
+            either::Right(recv(p_b))
+        } else {
+            fail ~"unexpected result from rust_port_select";
+        }
     }
 }
 
@@ -295,24 +311,25 @@ type port_id = int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn rust_port_id_send(target_port: port_id, data: *()) -> libc::uintptr_t;
+    unsafe fn rust_port_id_send(target_port: port_id, data: *())
+                             -> libc::uintptr_t;
 
-    fn new_port(unit_sz: libc::size_t) -> *rust_port;
-    fn del_port(po: *rust_port);
-    fn rust_port_begin_detach(po: *rust_port,
+    unsafe fn new_port(unit_sz: libc::size_t) -> *rust_port;
+    unsafe fn del_port(po: *rust_port);
+    unsafe fn rust_port_begin_detach(po: *rust_port,
                               yield: *libc::uintptr_t);
-    fn rust_port_end_detach(po: *rust_port);
-    fn get_port_id(po: *rust_port) -> port_id;
-    fn rust_port_size(po: *rust_port) -> libc::size_t;
-    fn port_recv(dptr: *uint, po: *rust_port,
+    unsafe fn rust_port_end_detach(po: *rust_port);
+    unsafe fn get_port_id(po: *rust_port) -> port_id;
+    unsafe fn rust_port_size(po: *rust_port) -> libc::size_t;
+    unsafe fn port_recv(dptr: *uint, po: *rust_port,
                  yield: *libc::uintptr_t);
-    fn rust_port_select(dptr: **rust_port, ports: **rust_port,
+    unsafe fn rust_port_select(dptr: **rust_port, ports: **rust_port,
                         n_ports: libc::size_t,
                         yield: *libc::uintptr_t);
-    fn rust_port_take(port_id: port_id) -> *rust_port;
-    fn rust_port_drop(p: *rust_port);
-    fn rust_port_task(p: *rust_port) -> libc::uintptr_t;
-    fn get_task_id() -> libc::uintptr_t;
+    unsafe fn rust_port_take(port_id: port_id) -> *rust_port;
+    unsafe fn rust_port_drop(p: *rust_port);
+    unsafe fn rust_port_task(p: *rust_port) -> libc::uintptr_t;
+    unsafe fn get_task_id() -> libc::uintptr_t;
 }
 
 #[abi = "rust-intrinsic"]

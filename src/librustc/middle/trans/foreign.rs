@@ -92,56 +92,62 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
-        let n = llvm::LLVMCountStructElementTypes(ty);
-        let mut elts = vec::from_elem(n as uint, ptr::null());
-        llvm::LLVMGetStructElementTypes(ty,
-                                        ptr::to_mut_unsafe_ptr(&mut elts[0]));
-        return elts;
+        unsafe {
+            let n = llvm::LLVMCountStructElementTypes(ty);
+            let mut elts = vec::from_elem(n as uint, ptr::null());
+            llvm::LLVMGetStructElementTypes(ty,
+                ptr::to_mut_unsafe_ptr(&mut elts[0]));
+            return elts;
+        }
     }
 
     fn ty_align(ty: TypeRef) -> uint {
-        return match llvm::LLVMGetTypeKind(ty) {
-            Integer => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
-            }
-            Pointer => 8,
-            Float => 4,
-            Double => 8,
-            Struct => {
-              do vec::foldl(0, struct_tys(ty)) |a, t| {
-                  uint::max(a, ty_align(*t))
-              }
-            }
-            Array => {
-                let elt = llvm::LLVMGetElementType(ty);
-                ty_align(elt)
-            }
-            _ => fail ~"ty_size: unhandled type"
-        };
+        unsafe {
+            return match llvm::LLVMGetTypeKind(ty) {
+                Integer => {
+                    ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
+                }
+                Pointer => 8,
+                Float => 4,
+                Double => 8,
+                Struct => {
+                  do vec::foldl(0, struct_tys(ty)) |a, t| {
+                      uint::max(a, ty_align(*t))
+                  }
+                }
+                Array => {
+                    let elt = llvm::LLVMGetElementType(ty);
+                    ty_align(elt)
+                }
+                _ => fail ~"ty_size: unhandled type"
+            };
+        }
     }
 
     fn ty_size(ty: TypeRef) -> uint {
-        return match llvm::LLVMGetTypeKind(ty) {
-            Integer => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
-            }
-            Pointer => 8,
-            Float => 4,
-            Double => 8,
-            Struct => {
-              let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                  align(s, *t) + ty_size(*t)
-              };
-              align(size, ty)
-            }
-            Array => {
-              let len = llvm::LLVMGetArrayLength(ty) as uint;
-              let elt = llvm::LLVMGetElementType(ty);
-              let eltsz = ty_size(elt);
-              len * eltsz
-            }
-            _ => fail ~"ty_size: unhandled type"
-        };
+        unsafe {
+            return match llvm::LLVMGetTypeKind(ty) {
+                Integer => {
+                    ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
+                }
+                Pointer => 8,
+                Float => 4,
+                Double => 8,
+                Struct => {
+                  let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
+                      align(s, *t) + ty_size(*t)
+                  };
+                  align(size, ty)
+                }
+                Array => {
+                  let len = llvm::LLVMGetArrayLength(ty) as uint;
+                  let elt = llvm::LLVMGetElementType(ty);
+                  let eltsz = ty_size(elt);
+                  len * eltsz
+                }
+                _ => fail ~"ty_size: unhandled type"
+            };
+        }
     }
 
     fn all_mem(cls: &[mut x86_64_reg_class]) {
@@ -193,94 +199,98 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn classify(ty: TypeRef,
                 cls: &[mut x86_64_reg_class], ix: uint,
                 off: uint) {
-        let t_align = ty_align(ty);
-        let t_size = ty_size(ty);
+        unsafe {
+            let t_align = ty_align(ty);
+            let t_size = ty_size(ty);
 
-        let misalign = off % t_align;
-        if misalign != 0u {
-            let mut i = off / 8u;
-            let e = (off + t_size + 7u) / 8u;
-            while i < e {
-                unify(cls, ix + i, memory_class);
-                i += 1u;
-            }
-            return;
-        }
-
-        match llvm::LLVMGetTypeKind(ty) as int {
-            8 /* integer */ |
-            12 /* pointer */ => {
-                unify(cls, ix + off / 8u, integer_class);
-            }
-            2 /* float */ => {
-                if off % 8u == 4u {
-                    unify(cls, ix + off / 8u, sse_fv_class);
-                } else {
-                    unify(cls, ix + off / 8u, sse_fs_class);
-                }
-            }
-            3 /* double */ => {
-                unify(cls, ix + off / 8u, sse_ds_class);
-            }
-            10 /* struct */ => {
-                classify_struct(struct_tys(ty), cls, ix, off);
-            }
-            11 /* array */ => {
-                let elt = llvm::LLVMGetElementType(ty);
-                let eltsz = ty_size(elt);
-                let len = llvm::LLVMGetArrayLength(ty) as uint;
-                let mut i = 0u;
-                while i < len {
-                    classify(elt, cls, ix, off + i * eltsz);
+            let misalign = off % t_align;
+            if misalign != 0u {
+                let mut i = off / 8u;
+                let e = (off + t_size + 7u) / 8u;
+                while i < e {
+                    unify(cls, ix + i, memory_class);
                     i += 1u;
                 }
+                return;
             }
-            _ => fail ~"classify: unhandled type"
+
+            match llvm::LLVMGetTypeKind(ty) as int {
+                8 /* integer */ |
+                12 /* pointer */ => {
+                    unify(cls, ix + off / 8u, integer_class);
+                }
+                2 /* float */ => {
+                    if off % 8u == 4u {
+                        unify(cls, ix + off / 8u, sse_fv_class);
+                    } else {
+                        unify(cls, ix + off / 8u, sse_fs_class);
+                    }
+                }
+                3 /* double */ => {
+                    unify(cls, ix + off / 8u, sse_ds_class);
+                }
+                10 /* struct */ => {
+                    classify_struct(struct_tys(ty), cls, ix, off);
+                }
+                11 /* array */ => {
+                    let elt = llvm::LLVMGetElementType(ty);
+                    let eltsz = ty_size(elt);
+                    let len = llvm::LLVMGetArrayLength(ty) as uint;
+                    let mut i = 0u;
+                    while i < len {
+                        classify(elt, cls, ix, off + i * eltsz);
+                        i += 1u;
+                    }
+                }
+                _ => fail ~"classify: unhandled type"
+            }
         }
     }
 
     fn fixup(ty: TypeRef, cls: &[mut x86_64_reg_class]) {
-        let mut i = 0u;
-        let llty = llvm::LLVMGetTypeKind(ty) as int;
-        let e = vec::len(cls);
-        if vec::len(cls) > 2u &&
-           (llty == 10 /* struct */ ||
-            llty == 11 /* array */) {
-            if is_sse(cls[i]) {
-                i += 1u;
+        unsafe {
+            let mut i = 0u;
+            let llty = llvm::LLVMGetTypeKind(ty) as int;
+            let e = vec::len(cls);
+            if vec::len(cls) > 2u &&
+               (llty == 10 /* struct */ ||
+                llty == 11 /* array */) {
+                if is_sse(cls[i]) {
+                    i += 1u;
+                    while i < e {
+                        if cls[i] != sseup_class {
+                            all_mem(cls);
+                            return;
+                        }
+                        i += 1u;
+                    }
+                } else {
+                    all_mem(cls);
+                    return
+                }
+            } else {
                 while i < e {
-                    if cls[i] != sseup_class {
+                    if cls[i] == memory_class {
                         all_mem(cls);
                         return;
                     }
-                    i += 1u;
-                }
-            } else {
-                all_mem(cls);
-                return
-            }
-        } else {
-            while i < e {
-                if cls[i] == memory_class {
-                    all_mem(cls);
-                    return;
-                }
-                if cls[i] == x87up_class {
-                    // for darwin
-                    // cls[i] = sse_ds_class;
-                    all_mem(cls);
-                    return;
-                }
-                if cls[i] == sseup_class {
-                    cls[i] = sse_int_class;
-                } else if is_sse(cls[i]) {
-                    i += 1;
-                    while cls[i] == sseup_class { i += 1u; }
-                } else if cls[i] == x87_class {
-                    i += 1;
-                    while cls[i] == x87up_class { i += 1u; }
-                } else {
-                    i += 1;
+                    if cls[i] == x87up_class {
+                        // for darwin
+                        // cls[i] = sse_ds_class;
+                        all_mem(cls);
+                        return;
+                    }
+                    if cls[i] == sseup_class {
+                        cls[i] = sse_int_class;
+                    } else if is_sse(cls[i]) {
+                        i += 1;
+                        while cls[i] == sseup_class { i += 1u; }
+                    } else if cls[i] == x87_class {
+                        i += 1;
+                        while cls[i] == x87up_class { i += 1u; }
+                    } else {
+                        i += 1;
+                    }
                 }
             }
         }
@@ -309,33 +319,35 @@ fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {
         return len;
     }
 
-    let mut tys = ~[];
-    let mut i = 0u;
-    let e = vec::len(cls);
-    while i < e {
-        match cls[i] {
-            integer_class => {
-                tys.push(T_i64());
+    unsafe {
+        let mut tys = ~[];
+        let mut i = 0u;
+        let e = vec::len(cls);
+        while i < e {
+            match cls[i] {
+                integer_class => {
+                    tys.push(T_i64());
+                }
+                sse_fv_class => {
+                    let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
+                    let vec_ty = llvm::LLVMVectorType(T_f32(),
+                                                      vec_len as c_uint);
+                    tys.push(vec_ty);
+                    i += vec_len;
+                    loop;
+                }
+                sse_fs_class => {
+                    tys.push(T_f32());
+                }
+                sse_ds_class => {
+                    tys.push(T_f64());
+                }
+                _ => fail ~"llregtype: unhandled class"
             }
-            sse_fv_class => {
-                let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
-                let vec_ty = llvm::LLVMVectorType(T_f32(),
-                                                  vec_len as c_uint);
-                tys.push(vec_ty);
-                i += vec_len;
-                loop;
-            }
-            sse_fs_class => {
-                tys.push(T_f32());
-            }
-            sse_ds_class => {
-                tys.push(T_f64());
-            }
-            _ => fail ~"llregtype: unhandled class"
+            i += 1u;
         }
-        i += 1u;
+        return T_struct(tys);
     }
-    return T_struct(tys);
 }
 
 type x86_64_llty = {
@@ -354,13 +366,15 @@ fn x86_64_tys(atys: &[TypeRef],
               rty: TypeRef,
               ret_def: bool) -> x86_64_tys {
     fn is_reg_ty(ty: TypeRef) -> bool {
-        return match llvm::LLVMGetTypeKind(ty) as int {
-            8 /* integer */ |
-            12 /* pointer */ |
-            2 /* float */ |
-            3 /* double */ => true,
-            _ => false
-        };
+        unsafe {
+            return match llvm::LLVMGetTypeKind(ty) as int {
+                8 /* integer */ |
+                12 /* pointer */ |
+                2 /* float */ |
+                3 /* double */ => true,
+                _ => false
+            };
+        }
     }
 
     fn is_pass_byval(cls: &[x86_64_reg_class]) -> bool {
@@ -431,8 +445,10 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     for vec::eachi(tys.attrs) |i, a| {
         match *a {
             option::Some(attr) => {
-                let llarg = get_param(llfn, i);
-                llvm::LLVMAddAttribute(llarg, attr as c_uint);
+                unsafe {
+                    let llarg = get_param(llfn, i);
+                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
+                }
             }
             _ => ()
         }
@@ -664,9 +680,11 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                   for vec::eachi((*x86_64).attrs) |i, a| {
                         match *a {
                             Some(attr) => {
-                                llvm::LLVMAddInstrAttribute(
-                                    llretval, (i + 1u) as c_uint,
-                                              attr as c_uint);
+                                unsafe {
+                                    llvm::LLVMAddInstrAttribute(
+                                        llretval, (i + 1u) as c_uint,
+                                                  attr as c_uint);
+                                }
                             }
                             _ => ()
                         }

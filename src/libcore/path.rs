@@ -243,21 +243,25 @@ mod stat {
 
 impl Path {
     fn stat(&self) -> Option<libc::stat> {
-         do str::as_c_str(self.to_str()) |buf| {
-            let mut st = stat::arch::default_stat();
-            let r = libc::stat(buf, ptr::mut_addr_of(&st));
+        unsafe {
+             do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                let r = libc::stat(buf, ptr::mut_addr_of(&st));
 
-            if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(move st) } else { None }
+            }
         }
     }
 
     #[cfg(unix)]
     fn lstat(&self) -> Option<libc::stat> {
-         do str::as_c_str(self.to_str()) |buf| {
-            let mut st = stat::arch::default_stat();
-            let r = libc::lstat(buf, ptr::mut_addr_of(&st));
+        unsafe {
+            do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                let r = libc::lstat(buf, ptr::mut_addr_of(&st));
 
-            if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(move st) } else { None }
+            }
         }
     }
 

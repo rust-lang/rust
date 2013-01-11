@@ -542,7 +542,9 @@ fn build_session_options(+binary: ~str,
         debugging_opts |= this_bit;
     }
     if debugging_opts & session::debug_llvm != 0 {
-        llvm::LLVMSetDebug(1);
+        unsafe {
+            llvm::LLVMSetDebug(1);
+        }
     }
 
     let jit = opt_present(matches, ~"jit");

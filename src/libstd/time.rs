@@ -23,16 +23,16 @@ use core::str;
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports]
-    fn get_time(sec: &mut i64, nsec: &mut i32);
+    unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
 
-    fn precise_time_ns(ns: &mut u64);
+    unsafe fn precise_time_ns(ns: &mut u64);
 
-    fn rust_tzset();
+    unsafe fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    fn rust_timegm(&&tm: Tm, sec: &mut i64);
-    fn rust_mktime(&&tm: Tm, sec: &mut i64);
+    unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
+    unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
@@ -58,10 +58,12 @@ impl Timespec : Eq {
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
 pub fn get_time() -> Timespec {
-    let mut sec = 0i64;
-    let mut nsec = 0i32;
-    rustrt::get_time(&mut sec, &mut nsec);
-    return Timespec::new(sec, nsec);
+    unsafe {
+        let mut sec = 0i64;
+        let mut nsec = 0i32;
+        rustrt::get_time(&mut sec, &mut nsec);
+        return Timespec::new(sec, nsec);
+    }
 }
 
 
@@ -70,9 +72,11 @@ pub fn get_time() -> Timespec {
  * in nanoseconds since an unspecified epoch.
  */
 pub fn precise_time_ns() -> u64 {
-    let mut ns = 0u64;
-    rustrt::precise_time_ns(&mut ns);
-    ns
+    unsafe {
+        let mut ns = 0u64;
+        rustrt::precise_time_ns(&mut ns);
+        ns
+    }
 }
 
 
@@ -85,7 +89,9 @@ pub fn precise_time_s() -> float {
 }
 
 pub fn tzset() {
-    rustrt::rust_tzset();
+    unsafe {
+        rustrt::rust_tzset();
+    }
 }
 
 #[auto_encode]
@@ -142,10 +148,12 @@ pub pure fn empty_tm() -> Tm {
 
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
-    let mut Timespec { sec, nsec } = clock;
-    let mut tm = empty_tm();
-    rustrt::rust_gmtime(sec, nsec, tm);
-    move tm
+    unsafe {
+        let mut Timespec { sec, nsec } = clock;
+        let mut tm = empty_tm();
+        rustrt::rust_gmtime(sec, nsec, tm);
+        move tm
+    }
 }
 
 /// Returns the current time in UTC
@@ -155,10 +163,12 @@ pub fn now_utc() -> Tm {
 
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
-    let mut Timespec { sec, nsec } = clock;
-    let mut tm = empty_tm();
-    rustrt::rust_localtime(sec, nsec, tm);
-    move tm
+    unsafe {
+        let mut Timespec { sec, nsec } = clock;
+        let mut tm = empty_tm();
+        rustrt::rust_localtime(sec, nsec, tm);
+        move tm
+    }
 }
 
 /// Returns the current time in the local timezone
@@ -183,13 +193,15 @@ pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
 impl Tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> Timespec {
-        let mut sec = 0i64;
-        if self.tm_gmtoff == 0_i32 {
-            rustrt::rust_timegm(self, &mut sec);
-        } else {
-            rustrt::rust_mktime(self, &mut sec);
+        unsafe {
+            let mut sec = 0i64;
+            if self.tm_gmtoff == 0_i32 {
+                rustrt::rust_timegm(self, &mut sec);
+            } else {
+                rustrt::rust_mktime(self, &mut sec);
+            }
+            Timespec::new(sec, self.tm_nsec)
         }
-        Timespec::new(sec, self.tm_nsec)
     }
 
     /// Convert time to the local timezone

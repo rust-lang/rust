@@ -40,9 +40,9 @@ pub type fd_t = c_int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn rust_get_stdin() -> *libc::FILE;
-    fn rust_get_stdout() -> *libc::FILE;
-    fn rust_get_stderr() -> *libc::FILE;
+    unsafe fn rust_get_stdin() -> *libc::FILE;
+    unsafe fn rust_get_stdout() -> *libc::FILE;
+    unsafe fn rust_get_stderr() -> *libc::FILE;
 }
 
 // Reading
@@ -420,22 +420,39 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 
 impl *libc::FILE: Reader {
     fn read(&self, bytes: &[mut u8], len: uint) -> uint {
-        do vec::as_mut_buf(bytes) |buf_p, buf_len| {
-            assert buf_len >= len;
+        unsafe {
+            do vec::as_mut_buf(bytes) |buf_p, buf_len| {
+                assert buf_len >= len;
 
-            let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
-                                    len as size_t, *self);
+                let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
+                                        len as size_t, *self);
 
-            count as uint
+                count as uint
+            }
         }
     }
-    fn read_byte(&self) -> int { return libc::fgetc(*self) as int; }
-    fn eof(&self) -> bool { return libc::feof(*self) != 0 as c_int; }
-    fn seek(&self, offset: int, whence: SeekStyle) {
-        assert libc::fseek(*self, offset as c_long, convert_whence(whence))
-            == 0 as c_int;
+    fn read_byte(&self) -> int {
+        unsafe {
+            libc::fgetc(*self) as int
+        }
     }
-    fn tell(&self) -> uint { return libc::ftell(*self) as uint; }
+    fn eof(&self) -> bool {
+        unsafe {
+            return libc::feof(*self) != 0 as c_int;
+        }
+    }
+    fn seek(&self, offset: int, whence: SeekStyle) {
+        unsafe {
+            assert libc::fseek(*self,
+                               offset as c_long,
+                               convert_whence(whence)) == 0 as c_int;
+        }
+    }
+    fn tell(&self) -> uint {
+        unsafe {
+            return libc::ftell(*self) as uint;
+        }
+    }
 }
 
 // A forwarding impl of reader that also holds on to a resource for the
@@ -455,7 +472,11 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
 
 pub struct FILERes {
     f: *libc::FILE,
-    drop { libc::fclose(self.f); }
+    drop {
+        unsafe {
+            libc::fclose(self.f);
+        }
+    }
 }
 
 pub fn FILERes(f: *libc::FILE) -> FILERes {
@@ -476,18 +497,24 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
-pub fn stdin() -> Reader { rustrt::rust_get_stdin() as Reader }
+pub fn stdin() -> Reader {
+    unsafe {
+        rustrt::rust_get_stdin() as Reader
+    }
+}
 
 pub fn file_reader(path: &Path) -> Result<Reader, ~str> {
-    let f = os::as_c_charp(path.to_str(), |pathbuf| {
-        os::as_c_charp("r", |modebuf|
-            libc::fopen(pathbuf, modebuf)
-        )
-    });
-    return if f as uint == 0u { result::Err(~"error opening "
-                                            + path.to_str()) }
-    else {
-        result::Ok(FILE_reader(f, true))
+    unsafe {
+        let f = os::as_c_charp(path.to_str(), |pathbuf| {
+            os::as_c_charp("r", |modebuf|
+                libc::fopen(pathbuf, modebuf)
+            )
+        });
+        return if f as uint == 0u { result::Err(~"error opening "
+                                                + path.to_str()) }
+        else {
+            result::Ok(FILE_reader(f, true))
+        }
     }
 }
 
@@ -570,25 +597,43 @@ impl<T: Writer, C> {base: T, cleanup: C}: Writer {
 
 impl *libc::FILE: Writer {
     fn write(&self, v: &[const u8]) {
-        do vec::as_const_buf(v) |vbuf, len| {
-            let nout = libc::fwrite(vbuf as *c_void, 1, len as size_t, *self);
-            if nout != len as size_t {
-                error!("error writing buffer");
-                log(error, os::last_os_error());
-                fail;
+        unsafe {
+            do vec::as_const_buf(v) |vbuf, len| {
+                let nout = libc::fwrite(vbuf as *c_void,
+                                        1,
+                                        len as size_t,
+                                        *self);
+                if nout != len as size_t {
+                    error!("error writing buffer");
+                    log(error, os::last_os_error());
+                    fail;
+                }
             }
         }
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
-        assert libc::fseek(*self, offset as c_long, convert_whence(whence))
-            == 0 as c_int;
+        unsafe {
+            assert libc::fseek(*self,
+                               offset as c_long,
+                               convert_whence(whence)) == 0 as c_int;
+        }
     }
-    fn tell(&self) -> uint { libc::ftell(*self) as uint }
-    fn flush(&self) -> int { libc::fflush(*self) as int }
+    fn tell(&self) -> uint {
+        unsafe {
+            libc::ftell(*self) as uint
+        }
+    }
+    fn flush(&self) -> int {
+        unsafe {
+            libc::fflush(*self) as int
+        }
+    }
     fn get_type(&self) -> WriterType {
-        let fd = libc::fileno(*self);
-        if libc::isatty(fd) == 0 { File   }
-        else                     { Screen }
+        unsafe {
+            let fd = libc::fileno(*self);
+            if libc::isatty(fd) == 0 { File   }
+            else                     { Screen }
+        }
     }
 }
 
@@ -602,17 +647,19 @@ pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
 
 impl fd_t: Writer {
     fn write(&self, v: &[const u8]) {
-        let mut count = 0u;
-        do vec::as_const_buf(v) |vbuf, len| {
-            while count < len {
-                let vb = ptr::const_offset(vbuf, count) as *c_void;
-                let nout = libc::write(*self, vb, len as size_t);
-                if nout < 0 as ssize_t {
-                    error!("error writing buffer");
-                    log(error, os::last_os_error());
-                    fail;
+        unsafe {
+            let mut count = 0u;
+            do vec::as_const_buf(v) |vbuf, len| {
+                while count < len {
+                    let vb = ptr::const_offset(vbuf, count) as *c_void;
+                    let nout = libc::write(*self, vb, len as size_t);
+                    if nout < 0 as ssize_t {
+                        error!("error writing buffer");
+                        log(error, os::last_os_error());
+                        fail;
+                    }
+                    count += nout as uint;
                 }
-                count += nout as uint;
             }
         }
     }
@@ -626,13 +673,19 @@ impl fd_t: Writer {
     }
     fn flush(&self) -> int { 0 }
     fn get_type(&self) -> WriterType {
-        if libc::isatty(*self) == 0 { File } else { Screen }
+        unsafe {
+            if libc::isatty(*self) == 0 { File } else { Screen }
+        }
     }
 }
 
 pub struct FdRes {
     fd: fd_t,
-    drop { libc::close(self.fd); }
+    drop {
+        unsafe {
+            libc::close(self.fd);
+        }
+    }
 }
 
 pub fn FdRes(fd: fd_t) -> FdRes {
@@ -668,9 +721,11 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
           NoFlag => ()
         }
     }
-    let fd = do os::as_c_charp(path.to_str()) |pathbuf| {
-        libc::open(pathbuf, fflags,
-                   (S_IRUSR | S_IWUSR) as c_int)
+    let fd = unsafe {
+        do os::as_c_charp(path.to_str()) |pathbuf| {
+            libc::open(pathbuf, fflags,
+                       (S_IRUSR | S_IWUSR) as c_int)
+        }
     };
     if fd < (0 as c_int) {
         result::Err(fmt!("error opening %s: %s", path.to_str(),
@@ -913,14 +968,16 @@ pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<Writer, ~str> {
 
 // FIXME: fileflags // #2004
 pub fn buffered_file_writer(path: &Path) -> Result<Writer, ~str> {
-    let f = do os::as_c_charp(path.to_str()) |pathbuf| {
-        do os::as_c_charp("w") |modebuf| {
-            libc::fopen(pathbuf, modebuf)
-        }
-    };
-    return if f as uint == 0u { result::Err(~"error opening "
-                                            + path.to_str()) }
-    else { result::Ok(FILE_writer(f, true)) }
+    unsafe {
+        let f = do os::as_c_charp(path.to_str()) |pathbuf| {
+            do os::as_c_charp("w") |modebuf| {
+                libc::fopen(pathbuf, modebuf)
+            }
+        };
+        return if f as uint == 0u { result::Err(~"error opening "
+                                                + path.to_str()) }
+        else { result::Ok(FILE_writer(f, true)) }
+    }
 }
 
 // FIXME (#2004) it would be great if this could be a const
@@ -1081,12 +1138,16 @@ pub mod fsync {
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: fn(v: Res<*libc::FILE>)) {
-        blk(move Res({
-            val: file.f, opt_level: opt_level,
-            fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
-                return os::fsync_fd(libc::fileno(file), l) as int;
-            }
-        }));
+        unsafe {
+            blk(move Res({
+                val: file.f, opt_level: opt_level,
+                fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
+                    unsafe {
+                        return os::fsync_fd(libc::fileno(file), l) as int;
+                    }
+                }
+            }));
+        }
     }
 
     // fsync fd after executing blk

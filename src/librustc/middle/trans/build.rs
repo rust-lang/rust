@@ -25,9 +25,11 @@ use std::map::HashMap;
 use syntax::codemap;
 
 fn B(cx: block) -> BuilderRef {
-    let b = cx.fcx.ccx.builder.B;
-    llvm::LLVMPositionBuilderAtEnd(b, cx.llbb);
-    return b;
+    unsafe {
+        let b = cx.fcx.ccx.builder.B;
+        llvm::LLVMPositionBuilderAtEnd(b, cx.llbb);
+        return b;
+    }
 }
 
 fn count_insn(cx: block, category: &str) {
@@ -82,19 +84,23 @@ fn count_insn(cx: block, category: &str) {
 // further instructions to the block should simply be ignored.
 
 fn RetVoid(cx: block) {
-    if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "retvoid");
-    llvm::LLVMBuildRetVoid(B(cx));
+    unsafe {
+        if cx.unreachable { return; }
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "retvoid");
+        llvm::LLVMBuildRetVoid(B(cx));
+    }
 }
 
 fn Ret(cx: block, V: ValueRef) {
-    if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "ret");
-    llvm::LLVMBuildRet(B(cx), V);
+    unsafe {
+        if cx.unreachable { return; }
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "ret");
+        llvm::LLVMBuildRet(B(cx), V);
+    }
 }
 
 fn AggregateRet(cx: block, RetVals: ~[ValueRef]) {
@@ -108,41 +114,51 @@ fn AggregateRet(cx: block, RetVals: ~[ValueRef]) {
 }
 
 fn Br(cx: block, Dest: BasicBlockRef) {
-    if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "br");
-    llvm::LLVMBuildBr(B(cx), Dest);
+    unsafe {
+        if cx.unreachable { return; }
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "br");
+        llvm::LLVMBuildBr(B(cx), Dest);
+    }
 }
 
 fn CondBr(cx: block, If: ValueRef, Then: BasicBlockRef,
           Else: BasicBlockRef) {
-    if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "condbr");
-    llvm::LLVMBuildCondBr(B(cx), If, Then, Else);
+    unsafe {
+        if cx.unreachable { return; }
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "condbr");
+        llvm::LLVMBuildCondBr(B(cx), If, Then, Else);
+    }
 }
 
 fn Switch(cx: block, V: ValueRef, Else: BasicBlockRef, NumCases: uint)
     -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    assert !cx.terminated;
-    cx.terminated = true;
-    return llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases as c_uint);
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        assert !cx.terminated;
+        cx.terminated = true;
+        return llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases as c_uint);
+    }
 }
 
 fn AddCase(S: ValueRef, OnVal: ValueRef, Dest: BasicBlockRef) {
-    if llvm::LLVMIsUndef(S) == lib::llvm::True { return; }
-    llvm::LLVMAddCase(S, OnVal, Dest);
+    unsafe {
+        if llvm::LLVMIsUndef(S) == lib::llvm::True { return; }
+        llvm::LLVMAddCase(S, OnVal, Dest);
+    }
 }
 
 fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
-    if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "indirectbr");
-    llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests as c_uint);
+    unsafe {
+        if cx.unreachable { return; }
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "indirectbr");
+        llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests as c_uint);
+    }
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -184,263 +200,342 @@ fn FastInvoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
 }
 
 fn Unreachable(cx: block) {
-    if cx.unreachable { return; }
-    cx.unreachable = true;
-    if !cx.terminated {
-        count_insn(cx, "unreachable");
-        llvm::LLVMBuildUnreachable(B(cx));
+    unsafe {
+        if cx.unreachable { return; }
+        cx.unreachable = true;
+        if !cx.terminated {
+            count_insn(cx, "unreachable");
+            llvm::LLVMBuildUnreachable(B(cx));
+        }
     }
 }
 
 fn _Undef(val: ValueRef) -> ValueRef {
-    return llvm::LLVMGetUndef(val_ty(val));
+    unsafe {
+        return llvm::LLVMGetUndef(val_ty(val));
+    }
 }
 
 /* Arithmetic */
 fn Add(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "add");
-    return llvm::LLVMBuildAdd(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "add");
+        return llvm::LLVMBuildAdd(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NSWAdd(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nswadd");
-    return llvm::LLVMBuildNSWAdd(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nswadd");
+        return llvm::LLVMBuildNSWAdd(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NUWAdd(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nuwadd");
-    return llvm::LLVMBuildNUWAdd(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nuwadd");
+        return llvm::LLVMBuildNUWAdd(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn FAdd(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "fadd");
-    return llvm::LLVMBuildFAdd(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "fadd");
+        return llvm::LLVMBuildFAdd(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Sub(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "sub");
-    return llvm::LLVMBuildSub(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "sub");
+        return llvm::LLVMBuildSub(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NSWSub(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nwsub");
-    return llvm::LLVMBuildNSWSub(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nwsub");
+        return llvm::LLVMBuildNSWSub(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NUWSub(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nuwsub");
-    return llvm::LLVMBuildNUWSub(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nuwsub");
+        return llvm::LLVMBuildNUWSub(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn FSub(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "sub");
-    return llvm::LLVMBuildFSub(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "sub");
+        return llvm::LLVMBuildFSub(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Mul(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "mul");
-    return llvm::LLVMBuildMul(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "mul");
+        return llvm::LLVMBuildMul(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NSWMul(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nswmul");
-    return llvm::LLVMBuildNSWMul(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nswmul");
+        return llvm::LLVMBuildNSWMul(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn NUWMul(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "nuwmul");
-    return llvm::LLVMBuildNUWMul(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "nuwmul");
+        return llvm::LLVMBuildNUWMul(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn FMul(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "fmul");
-    return llvm::LLVMBuildFMul(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "fmul");
+        return llvm::LLVMBuildFMul(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn UDiv(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "udiv");
-    return llvm::LLVMBuildUDiv(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "udiv");
+        return llvm::LLVMBuildUDiv(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn SDiv(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "sdiv");
-    return llvm::LLVMBuildSDiv(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "sdiv");
+        return llvm::LLVMBuildSDiv(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn ExactSDiv(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "extractsdiv");
-    return llvm::LLVMBuildExactSDiv(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "extractsdiv");
+        return llvm::LLVMBuildExactSDiv(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn FDiv(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "fdiv");
-    return llvm::LLVMBuildFDiv(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "fdiv");
+        return llvm::LLVMBuildFDiv(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn URem(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "urem");
-    return llvm::LLVMBuildURem(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "urem");
+        return llvm::LLVMBuildURem(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn SRem(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "srem");
-    return llvm::LLVMBuildSRem(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "srem");
+        return llvm::LLVMBuildSRem(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn FRem(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "frem");
-    return llvm::LLVMBuildFRem(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "frem");
+        return llvm::LLVMBuildFRem(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Shl(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "shl");
-    return llvm::LLVMBuildShl(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "shl");
+        return llvm::LLVMBuildShl(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn LShr(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "lshr");
-    return llvm::LLVMBuildLShr(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "lshr");
+        return llvm::LLVMBuildLShr(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn AShr(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "ashr");
-    return llvm::LLVMBuildAShr(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "ashr");
+        return llvm::LLVMBuildAShr(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn And(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "and");
-    return llvm::LLVMBuildAnd(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "and");
+        return llvm::LLVMBuildAnd(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Or(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "or");
-    return llvm::LLVMBuildOr(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "or");
+        return llvm::LLVMBuildOr(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Xor(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "xor");
-    return llvm::LLVMBuildXor(B(cx), LHS, RHS, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "xor");
+        return llvm::LLVMBuildXor(B(cx), LHS, RHS, noname());
+    }
 }
 
-fn BinOp(cx: block, Op: Opcode, LHS: ValueRef, RHS: ValueRef) ->
-   ValueRef {
-    if cx.unreachable { return _Undef(LHS); }
-    count_insn(cx, "binop");
-    return llvm::LLVMBuildBinOp(B(cx), Op, LHS, RHS, noname());
+fn BinOp(cx: block, Op: Opcode, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
+    unsafe {
+        if cx.unreachable { return _Undef(LHS); }
+        count_insn(cx, "binop");
+        return llvm::LLVMBuildBinOp(B(cx), Op, LHS, RHS, noname());
+    }
 }
 
 fn Neg(cx: block, V: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    count_insn(cx, "neg");
-    return llvm::LLVMBuildNeg(B(cx), V, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        count_insn(cx, "neg");
+        return llvm::LLVMBuildNeg(B(cx), V, noname());
+    }
 }
 
 fn NSWNeg(cx: block, V: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    count_insn(cx, "nswneg");
-    return llvm::LLVMBuildNSWNeg(B(cx), V, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        count_insn(cx, "nswneg");
+        return llvm::LLVMBuildNSWNeg(B(cx), V, noname());
+    }
 }
 
 fn NUWNeg(cx: block, V: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    count_insn(cx, "nuwneg");
-    return llvm::LLVMBuildNUWNeg(B(cx), V, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        count_insn(cx, "nuwneg");
+        return llvm::LLVMBuildNUWNeg(B(cx), V, noname());
+    }
 }
 fn FNeg(cx: block, V: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    count_insn(cx, "fneg");
-    return llvm::LLVMBuildFNeg(B(cx), V, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        count_insn(cx, "fneg");
+        return llvm::LLVMBuildFNeg(B(cx), V, noname());
+    }
 }
 
 fn Not(cx: block, V: ValueRef) -> ValueRef {
-    if cx.unreachable { return _Undef(V); }
-    count_insn(cx, "not");
-    return llvm::LLVMBuildNot(B(cx), V, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(V); }
+        count_insn(cx, "not");
+        return llvm::LLVMBuildNot(B(cx), V, noname());
+    }
 }
 
 /* Memory */
 fn Malloc(cx: block, Ty: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
-    count_insn(cx, "malloc");
-    return llvm::LLVMBuildMalloc(B(cx), Ty, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
+        count_insn(cx, "malloc");
+        return llvm::LLVMBuildMalloc(B(cx), Ty, noname());
+    }
 }
 
 fn ArrayMalloc(cx: block, Ty: TypeRef, Val: ValueRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
-    count_insn(cx, "arraymalloc");
-    return llvm::LLVMBuildArrayMalloc(B(cx), Ty, Val, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
+        count_insn(cx, "arraymalloc");
+        return llvm::LLVMBuildArrayMalloc(B(cx), Ty, Val, noname());
+    }
 }
 
 fn Alloca(cx: block, Ty: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(Ty)); }
-    count_insn(cx, "alloca");
-    return llvm::LLVMBuildAlloca(B(cx), Ty, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(Ty)); }
+        count_insn(cx, "alloca");
+        return llvm::LLVMBuildAlloca(B(cx), Ty, noname());
+    }
 }
 
 fn ArrayAlloca(cx: block, Ty: TypeRef, Val: ValueRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(Ty)); }
-    count_insn(cx, "arrayalloca");
-    return llvm::LLVMBuildArrayAlloca(B(cx), Ty, Val, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(Ty)); }
+        count_insn(cx, "arrayalloca");
+        return llvm::LLVMBuildArrayAlloca(B(cx), Ty, Val, noname());
+    }
 }
 
 fn Free(cx: block, PointerVal: ValueRef) {
-    if cx.unreachable { return; }
-    count_insn(cx, "free");
-    llvm::LLVMBuildFree(B(cx), PointerVal);
+    unsafe {
+        if cx.unreachable { return; }
+        count_insn(cx, "free");
+        llvm::LLVMBuildFree(B(cx), PointerVal);
+    }
 }
 
 fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.ccx;
-    if cx.unreachable {
-        let ty = val_ty(PointerVal);
-        let eltty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Array {
-            llvm::LLVMGetElementType(ty) } else { ccx.int_type };
-        return llvm::LLVMGetUndef(eltty);
+    unsafe {
+        let ccx = cx.fcx.ccx;
+        if cx.unreachable {
+            let ty = val_ty(PointerVal);
+            let eltty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Array {
+                llvm::LLVMGetElementType(ty) } else { ccx.int_type };
+            return llvm::LLVMGetUndef(eltty);
+        }
+        count_insn(cx, "load");
+        return llvm::LLVMBuildLoad(B(cx), PointerVal, noname());
     }
-    count_insn(cx, "load");
-    return llvm::LLVMBuildLoad(B(cx), PointerVal, noname());
 }
 
 fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
-    if cx.unreachable { return; }
-    debug!("Store %s -> %s",
-           val_str(cx.ccx().tn, Val),
-           val_str(cx.ccx().tn, Ptr));
-    count_insn(cx, "store");
-    llvm::LLVMBuildStore(B(cx), Val, Ptr);
+    unsafe {
+        if cx.unreachable { return; }
+        debug!("Store %s -> %s",
+               val_str(cx.ccx().tn, Val),
+               val_str(cx.ccx().tn, Ptr));
+        count_insn(cx, "store");
+        llvm::LLVMBuildStore(B(cx), Val, Ptr);
+    }
 }
 
 fn GEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-    count_insn(cx, "gep");
-    return llvm::LLVMBuildGEP(B(cx), Pointer, vec::raw::to_ptr(Indices),
-                               Indices.len() as c_uint, noname());
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
+        count_insn(cx, "gep");
+        return llvm::LLVMBuildGEP(B(cx), Pointer, vec::raw::to_ptr(Indices),
+                                   Indices.len() as c_uint, noname());
     }
 }
 
@@ -456,182 +551,234 @@ fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
 
 fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
    ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
-        count_insn(cx, "inboundsgep");
-    return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::raw::to_ptr(Indices),
-                                       Indices.len() as c_uint,
-                                       noname());
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
+        unsafe {
+            count_insn(cx, "inboundsgep");
+        return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
+                                           vec::raw::to_ptr(Indices),
+                                           Indices.len() as c_uint,
+                                           noname());
+        }
     }
 }
 
 fn StructGEP(cx: block, Pointer: ValueRef, Idx: uint) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
-    count_insn(cx, "structgep");
-    return llvm::LLVMBuildStructGEP(B(cx), Pointer, Idx as c_uint, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
+        count_insn(cx, "structgep");
+        return llvm::LLVMBuildStructGEP(B(cx),
+                                        Pointer,
+                                        Idx as c_uint,
+                                        noname());
+    }
 }
 
 fn GlobalString(cx: block, _Str: *libc::c_char) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
-    count_insn(cx, "globalstring");
-    return llvm::LLVMBuildGlobalString(B(cx), _Str, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
+        count_insn(cx, "globalstring");
+        return llvm::LLVMBuildGlobalString(B(cx), _Str, noname());
+    }
 }
 
 fn GlobalStringPtr(cx: block, _Str: *libc::c_char) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
-    count_insn(cx, "globalstringptr");
-    return llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_i8())); }
+        count_insn(cx, "globalstringptr");
+        return llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, noname());
+    }
 }
 
 /* Casts */
 fn Trunc(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "trunc");
-    return llvm::LLVMBuildTrunc(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "trunc");
+        return llvm::LLVMBuildTrunc(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn ZExt(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "zext");
-    return llvm::LLVMBuildZExt(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "zext");
+        return llvm::LLVMBuildZExt(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn SExt(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "sext");
-    return llvm::LLVMBuildSExt(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "sext");
+        return llvm::LLVMBuildSExt(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn FPToUI(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "fptoui");
-    return llvm::LLVMBuildFPToUI(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "fptoui");
+        return llvm::LLVMBuildFPToUI(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn FPToSI(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "fptosi");
-    return llvm::LLVMBuildFPToSI(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "fptosi");
+        return llvm::LLVMBuildFPToSI(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn UIToFP(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "uitofp");
-    return llvm::LLVMBuildUIToFP(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "uitofp");
+        return llvm::LLVMBuildUIToFP(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn SIToFP(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "sitofp");
-    return llvm::LLVMBuildSIToFP(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "sitofp");
+        return llvm::LLVMBuildSIToFP(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn FPTrunc(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "fptrunc");
-    return llvm::LLVMBuildFPTrunc(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "fptrunc");
+        return llvm::LLVMBuildFPTrunc(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn FPExt(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "fpext");
-    return llvm::LLVMBuildFPExt(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "fpext");
+        return llvm::LLVMBuildFPExt(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn PtrToInt(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "ptrtoint");
-    return llvm::LLVMBuildPtrToInt(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "ptrtoint");
+        return llvm::LLVMBuildPtrToInt(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn IntToPtr(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "inttoptr");
-    return llvm::LLVMBuildIntToPtr(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "inttoptr");
+        return llvm::LLVMBuildIntToPtr(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn BitCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "bitcast");
-    return llvm::LLVMBuildBitCast(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "bitcast");
+        return llvm::LLVMBuildBitCast(B(cx), Val, DestTy, noname());
+    }
 }
 
-fn ZExtOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) ->
-   ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "zextorbitcast");
-    return llvm::LLVMBuildZExtOrBitCast(B(cx), Val, DestTy, noname());
+fn ZExtOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "zextorbitcast");
+        return llvm::LLVMBuildZExtOrBitCast(B(cx), Val, DestTy, noname());
+    }
 }
 
-fn SExtOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) ->
-   ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "sextorbitcast");
-    return llvm::LLVMBuildSExtOrBitCast(B(cx), Val, DestTy, noname());
+fn SExtOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "sextorbitcast");
+        return llvm::LLVMBuildSExtOrBitCast(B(cx), Val, DestTy, noname());
+    }
 }
 
-fn TruncOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) ->
-   ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "truncorbitcast");
-    return llvm::LLVMBuildTruncOrBitCast(B(cx), Val, DestTy, noname());
+fn TruncOrBitCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "truncorbitcast");
+        return llvm::LLVMBuildTruncOrBitCast(B(cx), Val, DestTy, noname());
+    }
 }
 
-fn Cast(cx: block, Op: Opcode, Val: ValueRef, DestTy: TypeRef,
-        _Name: *u8) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "cast");
-    return llvm::LLVMBuildCast(B(cx), Op, Val, DestTy, noname());
+fn Cast(cx: block, Op: Opcode, Val: ValueRef, DestTy: TypeRef, _: *u8)
+     -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "cast");
+        return llvm::LLVMBuildCast(B(cx), Op, Val, DestTy, noname());
+    }
 }
 
 fn PointerCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "pointercast");
-    return llvm::LLVMBuildPointerCast(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "pointercast");
+        return llvm::LLVMBuildPointerCast(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn IntCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "intcast");
-    return llvm::LLVMBuildIntCast(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "intcast");
+        return llvm::LLVMBuildIntCast(B(cx), Val, DestTy, noname());
+    }
 }
 
 fn FPCast(cx: block, Val: ValueRef, DestTy: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
-    count_insn(cx, "fpcast");
-    return llvm::LLVMBuildFPCast(B(cx), Val, DestTy, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(DestTy); }
+        count_insn(cx, "fpcast");
+        return llvm::LLVMBuildFPCast(B(cx), Val, DestTy, noname());
+    }
 }
 
 
 /* Comparisons */
 fn ICmp(cx: block, Op: IntPredicate, LHS: ValueRef, RHS: ValueRef)
-    -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
-    count_insn(cx, "icmp");
-    return llvm::LLVMBuildICmp(B(cx), Op as c_uint, LHS, RHS, noname());
+     -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
+        count_insn(cx, "icmp");
+        return llvm::LLVMBuildICmp(B(cx), Op as c_uint, LHS, RHS, noname());
+    }
 }
 
 fn FCmp(cx: block, Op: RealPredicate, LHS: ValueRef, RHS: ValueRef)
-    -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
-    count_insn(cx, "fcmp");
-    return llvm::LLVMBuildFCmp(B(cx), Op as c_uint, LHS, RHS, noname());
+     -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
+        count_insn(cx, "fcmp");
+        return llvm::LLVMBuildFCmp(B(cx), Op as c_uint, LHS, RHS, noname());
+    }
 }
 
 /* Miscellaneous instructions */
 fn EmptyPhi(cx: block, Ty: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-    count_insn(cx, "emptyphi");
-    return llvm::LLVMBuildPhi(B(cx), Ty, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
+        count_insn(cx, "emptyphi");
+        return llvm::LLVMBuildPhi(B(cx), Ty, noname());
+    }
 }
 
 fn Phi(cx: block, Ty: TypeRef, vals: ~[ValueRef], bbs: ~[BasicBlockRef])
-   -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-    assert vals.len() == bbs.len();
-    let phi = EmptyPhi(cx, Ty);
+    -> ValueRef {
     unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
+        assert vals.len() == bbs.len();
+        let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
                               vec::raw::to_ptr(bbs),
@@ -641,8 +788,8 @@ fn Phi(cx: block, Ty: TypeRef, vals: ~[ValueRef], bbs: ~[BasicBlockRef])
 }
 
 fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
-    if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
     unsafe {
+        if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
         let valptr = cast::reinterpret_cast(&ptr::addr_of(&val));
         let bbptr = cast::reinterpret_cast(&ptr::addr_of(&bb));
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
@@ -650,12 +797,14 @@ fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
 }
 
 fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.ccx;
-    let ty = val_ty(Fn);
-    let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
-        llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
-        count_insn(cx, ~"");
-    return llvm::LLVMGetUndef(retty);
+    unsafe {
+        let ccx = cx.fcx.ccx;
+        let ty = val_ty(Fn);
+        let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
+            llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
+            count_insn(cx, ~"");
+        return llvm::LLVMGetUndef(retty);
+    }
 }
 
 fn add_span_comment(bcx: block, sp: span, text: ~str) {
@@ -669,18 +818,21 @@ fn add_span_comment(bcx: block, sp: span, text: ~str) {
 }
 
 fn add_comment(bcx: block, text: ~str) {
-    let ccx = bcx.ccx();
-    if !ccx.sess.no_asm_comments() {
-        let sanitized = str::replace(text, ~"$", ~"");
-        let comment_text = ~"# " + str::replace(sanitized, ~"\n", ~"\n\t# ");
-        let asm = str::as_c_str(comment_text, |c| {
-            str::as_c_str(~"", |e| {
-                count_insn(bcx, ~"inlineasm");
-                llvm::LLVMConstInlineAsm(T_fn(~[], T_void()), c, e,
-                                         False, False)
-            })
-        });
-        Call(bcx, asm, ~[]);
+    unsafe {
+        let ccx = bcx.ccx();
+        if !ccx.sess.no_asm_comments() {
+            let sanitized = str::replace(text, ~"$", ~"");
+            let comment_text = ~"# " +
+                str::replace(sanitized, ~"\n", ~"\n\t# ");
+            let asm = str::as_c_str(comment_text, |c| {
+                str::as_c_str(~"", |e| {
+                    count_insn(bcx, ~"inlineasm");
+                    llvm::LLVMConstInlineAsm(T_fn(~[], T_void()), c, e,
+                                             False, False)
+                })
+            });
+            Call(bcx, asm, ~[]);
+        }
     }
 }
 
@@ -724,120 +876,152 @@ fn CallWithConv(cx: block, Fn: ValueRef, Args: ~[ValueRef],
 
 fn Select(cx: block, If: ValueRef, Then: ValueRef, Else: ValueRef) ->
    ValueRef {
-    if cx.unreachable { return _Undef(Then); }
-    count_insn(cx, "select");
-    return llvm::LLVMBuildSelect(B(cx), If, Then, Else, noname());
+    unsafe {
+        if cx.unreachable { return _Undef(Then); }
+        count_insn(cx, "select");
+        return llvm::LLVMBuildSelect(B(cx), If, Then, Else, noname());
+    }
 }
 
 fn VAArg(cx: block, list: ValueRef, Ty: TypeRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-    count_insn(cx, "vaarg");
-    return llvm::LLVMBuildVAArg(B(cx), list, Ty, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
+        count_insn(cx, "vaarg");
+        return llvm::LLVMBuildVAArg(B(cx), list, Ty, noname());
+    }
 }
 
 fn ExtractElement(cx: block, VecVal: ValueRef, Index: ValueRef) ->
    ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
-    count_insn(cx, "extractelement");
-    return llvm::LLVMBuildExtractElement(B(cx), VecVal, Index, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
+        count_insn(cx, "extractelement");
+        return llvm::LLVMBuildExtractElement(B(cx), VecVal, Index, noname());
+    }
 }
 
 fn InsertElement(cx: block, VecVal: ValueRef, EltVal: ValueRef,
                  Index: ValueRef) {
-    if cx.unreachable { return; }
-    count_insn(cx, "insertelement");
-    llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname());
+    unsafe {
+        if cx.unreachable { return; }
+        count_insn(cx, "insertelement");
+        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname());
+    }
 }
 
 fn ShuffleVector(cx: block, V1: ValueRef, V2: ValueRef,
                  Mask: ValueRef) {
-    if cx.unreachable { return; }
-    count_insn(cx, "shufflevector");
-    llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname());
+    unsafe {
+        if cx.unreachable { return; }
+        count_insn(cx, "shufflevector");
+        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname());
+    }
 }
 
 fn ExtractValue(cx: block, AggVal: ValueRef, Index: uint) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
-    count_insn(cx, "extractvalue");
-    return llvm::LLVMBuildExtractValue(
-        B(cx), AggVal, Index as c_uint, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
+        count_insn(cx, "extractvalue");
+        return llvm::LLVMBuildExtractValue(
+            B(cx), AggVal, Index as c_uint, noname());
+    }
 }
 
 fn InsertValue(cx: block, AggVal: ValueRef, EltVal: ValueRef,
                Index: uint) {
-    if cx.unreachable { return; }
-    count_insn(cx, "insertvalue");
-    llvm::LLVMBuildInsertValue(B(cx), AggVal, EltVal, Index as c_uint,
-                               noname());
+    unsafe {
+        if cx.unreachable { return; }
+        count_insn(cx, "insertvalue");
+        llvm::LLVMBuildInsertValue(B(cx), AggVal, EltVal, Index as c_uint,
+                                   noname());
+    }
 }
 
 fn IsNull(cx: block, Val: ValueRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
-    count_insn(cx, "isnull");
-    return llvm::LLVMBuildIsNull(B(cx), Val, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
+        count_insn(cx, "isnull");
+        return llvm::LLVMBuildIsNull(B(cx), Val, noname());
+    }
 }
 
 fn IsNotNull(cx: block, Val: ValueRef) -> ValueRef {
-    if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
-    count_insn(cx, "isnotnull");
-    return llvm::LLVMBuildIsNotNull(B(cx), Val, noname());
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(T_i1()); }
+        count_insn(cx, "isnotnull");
+        return llvm::LLVMBuildIsNotNull(B(cx), Val, noname());
+    }
 }
 
 fn PtrDiff(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
-    let ccx = cx.fcx.ccx;
-    if cx.unreachable { return llvm::LLVMGetUndef(ccx.int_type); }
-    count_insn(cx, "ptrdiff");
-    return llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, noname());
+    unsafe {
+        let ccx = cx.fcx.ccx;
+        if cx.unreachable { return llvm::LLVMGetUndef(ccx.int_type); }
+        count_insn(cx, "ptrdiff");
+        return llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, noname());
+    }
 }
 
 fn Trap(cx: block) {
-    if cx.unreachable { return; }
-    let b = B(cx);
-    let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
-    let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
-    let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-    let T: ValueRef = str::as_c_str(~"llvm.trap", |buf| {
-        llvm::LLVMGetNamedFunction(M, buf)
-    });
-    assert (T as int != 0);
-    let Args: ~[ValueRef] = ~[];
     unsafe {
-        count_insn(cx, "trap");
-        llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args),
-                            Args.len() as c_uint, noname());
+        if cx.unreachable { return; }
+        let b = B(cx);
+        let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
+        let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
+        let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
+        let T: ValueRef = str::as_c_str(~"llvm.trap", |buf| {
+            llvm::LLVMGetNamedFunction(M, buf)
+        });
+        assert (T as int != 0);
+        let Args: ~[ValueRef] = ~[];
+        unsafe {
+            count_insn(cx, "trap");
+            llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args),
+                                Args.len() as c_uint, noname());
+        }
     }
 }
 
 fn LandingPad(cx: block, Ty: TypeRef, PersFn: ValueRef,
               NumClauses: uint) -> ValueRef {
-    assert !cx.terminated && !cx.unreachable;
-    count_insn(cx, "landingpad");
-    return llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn,
-                                  NumClauses as c_uint, noname());
+    unsafe {
+        assert !cx.terminated && !cx.unreachable;
+        count_insn(cx, "landingpad");
+        return llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn,
+                                      NumClauses as c_uint, noname());
+    }
 }
 
 fn SetCleanup(cx: block, LandingPad: ValueRef) {
-    count_insn(cx, "setcleanup");
-    llvm::LLVMSetCleanup(LandingPad, lib::llvm::True);
+    unsafe {
+        count_insn(cx, "setcleanup");
+        llvm::LLVMSetCleanup(LandingPad, lib::llvm::True);
+    }
 }
 
 fn Resume(cx: block, Exn: ValueRef) -> ValueRef {
-    assert (!cx.terminated);
-    cx.terminated = true;
-    count_insn(cx, "resume");
-    return llvm::LLVMBuildResume(B(cx), Exn);
+    unsafe {
+        assert (!cx.terminated);
+        cx.terminated = true;
+        count_insn(cx, "resume");
+        return llvm::LLVMBuildResume(B(cx), Exn);
+    }
 }
 
 // Atomic Operations
 fn AtomicCmpXchg(cx: block, dst: ValueRef,
                  cmp: ValueRef, src: ValueRef,
                  order: AtomicOrdering) -> ValueRef {
-    llvm::LLVMBuildAtomicCmpXchg(B(cx), dst, cmp, src, order)
+    unsafe {
+        llvm::LLVMBuildAtomicCmpXchg(B(cx), dst, cmp, src, order)
+    }
 }
 fn AtomicRMW(cx: block, op: AtomicBinOp,
              dst: ValueRef, src: ValueRef,
              order: AtomicOrdering) -> ValueRef {
-    llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order)
+    unsafe {
+        llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order)
+    }
 }
 
 //

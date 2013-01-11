@@ -26,16 +26,22 @@ use vec;
 #[abi = "cdecl"]
 extern mod libc_ {
     #[rust_stack]
-    fn memcpy(dest: *mut c_void, src: *const c_void,
-              n: libc::size_t) -> *c_void;
+    unsafe fn memcpy(dest: *mut c_void,
+                     src: *const c_void,
+                     n: libc::size_t)
+                  -> *c_void;
 
     #[rust_stack]
-    fn memmove(dest: *mut c_void, src: *const c_void,
-               n: libc::size_t) -> *c_void;
+    unsafe fn memmove(dest: *mut c_void,
+                      src: *const c_void,
+                      n: libc::size_t)
+                   -> *c_void;
 
     #[rust_stack]
-    fn memset(dest: *mut c_void, c: libc::c_int,
-              len: libc::size_t) -> *c_void;
+    unsafe fn memset(dest: *mut c_void,
+                     c: libc::c_int,
+                     len: libc::size_t)
+                  -> *c_void;
 }
 
 #[abi = "rust-intrinsic"]

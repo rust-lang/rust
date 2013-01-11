@@ -186,12 +186,15 @@ fn trans_log(log_ex: @ast::expr,
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, ~"loglevel");
-        let global = str::as_c_str(s, |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
-        });
-        llvm::LLVMSetGlobalConstant(global, False);
-        llvm::LLVMSetInitializer(global, C_null(T_i32()));
-        lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
+        let global;
+        unsafe {
+            global = str::as_c_str(s, |buf| {
+                llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+            });
+            llvm::LLVMSetGlobalConstant(global, False);
+            llvm::LLVMSetInitializer(global, C_null(T_i32()));
+            lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
+        }
         ccx.module_data.insert(modname, global);
         global
     };

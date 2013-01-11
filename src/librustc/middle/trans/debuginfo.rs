@@ -69,7 +69,9 @@ const DW_ATE_unsigned_char: int = 0x08;
 
 fn llstr(s: ~str) -> ValueRef {
     str::as_c_str(s, |sbuf| {
-        llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
+        unsafe {
+            llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
+        }
     })
 }
 fn lltag(lltag: int) -> ValueRef {
@@ -85,8 +87,10 @@ fn lli1(bval: bool) -> ValueRef {
     C_bool(bval)
 }
 fn llmdnode(elems: ~[ValueRef]) -> ValueRef unsafe {
-    llvm::LLVMMDNode(vec::raw::to_ptr(elems),
-                     vec::len(elems) as libc::c_uint)
+    unsafe {
+        llvm::LLVMMDNode(vec::raw::to_ptr(elems),
+                         vec::len(elems) as libc::c_uint)
+    }
 }
 fn llunused() -> ValueRef {
     lli32(0x0)
@@ -97,7 +101,9 @@ fn llnull() -> ValueRef unsafe {
 
 fn add_named_metadata(cx: @crate_ctxt, name: ~str, val: ValueRef) {
     str::as_c_str(name, |sbuf| {
-        llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
+        unsafe {
+            llvm::LLVMAddNamedMetadataOperand(cx.llmod, sbuf, val)
+        }
     })
 }
 
@@ -744,7 +750,9 @@ fn update_source_pos(cx: block, s: span) {
                      blockmd.node,
                      llnull()];
     let dbgscope = llmdnode(scopedata);
-    llvm::LLVMSetCurrentDebugLocation(trans::build::B(cx), dbgscope);
+    unsafe {
+        llvm::LLVMSetCurrentDebugLocation(trans::build::B(cx), dbgscope);
+    }
 }
 
 fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {

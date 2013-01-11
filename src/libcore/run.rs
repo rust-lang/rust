@@ -29,10 +29,10 @@ use vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn rust_run_program(argv: **libc::c_char, envp: *c_void,
-                        dir: *libc::c_char,
-                        in_fd: c_int, out_fd: c_int, err_fd: c_int)
-        -> pid_t;
+    unsafe fn rust_run_program(argv: **libc::c_char, envp: *c_void,
+                               dir: *libc::c_char,
+                               in_fd: c_int, out_fd: c_int, err_fd: c_int)
+                            -> pid_t;
 }
 
 /// A value representing a child process
@@ -84,12 +84,14 @@ pub fn spawn_process(prog: &str, args: &[~str],
                  env: &Option<~[(~str,~str)]>,
                  dir: &Option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
-   -> pid_t {
-    do with_argv(prog, args) |argv| {
-        do with_envp(env) |envp| {
-            do with_dirp(dir) |dirp| {
-                rustrt::rust_run_program(argv, envp, dirp,
-                                         in_fd, out_fd, err_fd)
+              -> pid_t {
+    unsafe {
+        do with_argv(prog, args) |argv| {
+            do with_envp(env) |envp| {
+                do with_dirp(dir) |dirp| {
+                    rustrt::rust_run_program(argv, envp, dirp,
+                                             in_fd, out_fd, err_fd)
+                }
             }
         }
     }
@@ -202,69 +204,83 @@ pub fn run_program(prog: &str, args: &[~str]) -> int {
  * A class with a <program> field
  */
 pub fn start_program(prog: &str, args: &[~str]) -> Program {
-    let pipe_input = os::pipe();
-    let pipe_output = os::pipe();
-    let pipe_err = os::pipe();
-    let pid =
-        spawn_process(prog, args, &None, &None,
-                      pipe_input.in, pipe_output.out,
-                      pipe_err.out);
+    unsafe {
+        let pipe_input = os::pipe();
+        let pipe_output = os::pipe();
+        let pipe_err = os::pipe();
+        let pid =
+            spawn_process(prog, args, &None, &None,
+                          pipe_input.in, pipe_output.out,
+                          pipe_err.out);
 
-    if pid == -1 as pid_t { fail; }
-    libc::close(pipe_input.in);
-    libc::close(pipe_output.out);
-    libc::close(pipe_err.out);
-
-    type ProgRepr = {pid: pid_t,
-                     mut in_fd: c_int,
-                     out_file: *libc::FILE,
-                     err_file: *libc::FILE,
-                     mut finished: bool};
-
-    fn close_repr_input(r: &ProgRepr) {
-        let invalid_fd = -1i32;
-        if r.in_fd != invalid_fd {
-            libc::close(r.in_fd);
-            r.in_fd = invalid_fd;
+        unsafe {
+            if pid == -1 as pid_t { fail; }
+            libc::close(pipe_input.in);
+            libc::close(pipe_output.out);
+            libc::close(pipe_err.out);
         }
-    }
-    fn finish_repr(r: &ProgRepr) -> int {
-        if r.finished { return 0; }
-        r.finished = true;
-        close_repr_input(r);
-        return waitpid(r.pid);
-    }
-    fn destroy_repr(r: &ProgRepr) {
-        finish_repr(r);
-       libc::fclose(r.out_file);
-       libc::fclose(r.err_file);
-    }
-    struct ProgRes {
-        r: ProgRepr,
-        drop { destroy_repr(&self.r); }
-    }
 
-    fn ProgRes(r: ProgRepr) -> ProgRes {
-        ProgRes {
-            r: move r
+        type ProgRepr = {pid: pid_t,
+                         mut in_fd: c_int,
+                         out_file: *libc::FILE,
+                         err_file: *libc::FILE,
+                         mut finished: bool};
+
+        fn close_repr_input(r: &ProgRepr) {
+            let invalid_fd = -1i32;
+            if r.in_fd != invalid_fd {
+                unsafe {
+                    libc::close(r.in_fd);
+                }
+                r.in_fd = invalid_fd;
+            }
         }
-    }
+        fn finish_repr(r: &ProgRepr) -> int {
+            if r.finished { return 0; }
+            r.finished = true;
+            close_repr_input(r);
+            return waitpid(r.pid);
+        }
+        fn destroy_repr(r: &ProgRepr) {
+            unsafe {
+                finish_repr(r);
+                libc::fclose(r.out_file);
+                libc::fclose(r.err_file);
+            }
+        }
+        struct ProgRes {
+            r: ProgRepr,
+            drop { destroy_repr(&self.r); }
+        }
 
-    impl ProgRes: Program {
-        fn get_id() -> pid_t { return self.r.pid; }
-        fn input() -> io::Writer { io::fd_writer(self.r.in_fd, false) }
-        fn output() -> io::Reader { io::FILE_reader(self.r.out_file, false) }
-        fn err() -> io::Reader { io::FILE_reader(self.r.err_file, false) }
-        fn close_input() { close_repr_input(&self.r); }
-        fn finish() -> int { finish_repr(&self.r) }
-        fn destroy() { destroy_repr(&self.r); }
+        fn ProgRes(r: ProgRepr) -> ProgRes {
+            ProgRes {
+                r: move r
+            }
+        }
+
+        impl ProgRes: Program {
+            fn get_id() -> pid_t { return self.r.pid; }
+            fn input() -> io::Writer {
+                io::fd_writer(self.r.in_fd, false)
+            }
+            fn output() -> io::Reader {
+                io::FILE_reader(self.r.out_file, false)
+            }
+            fn err() -> io::Reader {
+                io::FILE_reader(self.r.err_file, false)
+            }
+            fn close_input() { close_repr_input(&self.r); }
+            fn finish() -> int { finish_repr(&self.r) }
+            fn destroy() { destroy_repr(&self.r); }
+        }
+        let repr = {pid: pid,
+                    mut in_fd: pipe_input.out,
+                    out_file: os::fdopen(pipe_output.in),
+                    err_file: os::fdopen(pipe_err.in),
+                    mut finished: false};
+        return ProgRes(move repr) as Program;
     }
-    let repr = {pid: pid,
-                mut in_fd: pipe_input.out,
-                out_file: os::fdopen(pipe_output.in),
-                err_file: os::fdopen(pipe_err.in),
-                mut finished: false};
-    return ProgRes(move repr) as Program;
 }
 
 fn read_all(rd: io::Reader) -> ~str {
@@ -294,60 +310,61 @@ fn read_all(rd: io::Reader) -> ~str {
  */
 pub fn program_output(prog: &str, args: &[~str]) ->
    {status: int, out: ~str, err: ~str} {
+    unsafe {
+        let pipe_in = os::pipe();
+        let pipe_out = os::pipe();
+        let pipe_err = os::pipe();
+        let pid = spawn_process(prog, args, &None, &None,
+                                pipe_in.in, pipe_out.out, pipe_err.out);
 
-    let pipe_in = os::pipe();
-    let pipe_out = os::pipe();
-    let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, &None, &None,
-                            pipe_in.in, pipe_out.out, pipe_err.out);
+        os::close(pipe_in.in);
+        os::close(pipe_out.out);
+        os::close(pipe_err.out);
+        if pid == -1i32 {
+            os::close(pipe_in.out);
+            os::close(pipe_out.in);
+            os::close(pipe_err.in);
+            fail;
+        }
 
-    os::close(pipe_in.in);
-    os::close(pipe_out.out);
-    os::close(pipe_err.out);
-    if pid == -1i32 {
         os::close(pipe_in.out);
-        os::close(pipe_out.in);
-        os::close(pipe_err.in);
-        fail;
-    }
 
-    os::close(pipe_in.out);
-
-    // Spawn two entire schedulers to read both stdout and sterr
-    // in parallel so we don't deadlock while blocking on one
-    // or the other. FIXME (#2625): Surely there's a much more
-    // clever way to do this.
-    let p = oldcomm::Port();
-    let ch = oldcomm::Chan(&p);
-    do task::spawn_sched(task::SingleThreaded) {
-        let errput = readclose(pipe_err.in);
-        oldcomm::send(ch, (2, move errput));
-    };
-    do task::spawn_sched(task::SingleThreaded) {
-        let output = readclose(pipe_out.in);
-        oldcomm::send(ch, (1, move output));
-    };
-    let status = run::waitpid(pid);
-    let mut errs = ~"";
-    let mut outs = ~"";
-    let mut count = 2;
-    while count > 0 {
-        let stream = oldcomm::recv(p);
-        match stream {
-            (1, copy s) => {
-                outs = move s;
-            }
-            (2, copy s) => {
-                errs = move s;
-            }
-            (n, _) => {
-                fail(fmt!("program_output received an unexpected file \
-                           number: %u", n));
-            }
+        // Spawn two entire schedulers to read both stdout and sterr
+        // in parallel so we don't deadlock while blocking on one
+        // or the other. FIXME (#2625): Surely there's a much more
+        // clever way to do this.
+        let p = oldcomm::Port();
+        let ch = oldcomm::Chan(&p);
+        do task::spawn_sched(task::SingleThreaded) {
+            let errput = readclose(pipe_err.in);
+            oldcomm::send(ch, (2, move errput));
         };
-        count -= 1;
-    };
-    return {status: status, out: move outs, err: move errs};
+        do task::spawn_sched(task::SingleThreaded) {
+            let output = readclose(pipe_out.in);
+            oldcomm::send(ch, (1, move output));
+        };
+        let status = run::waitpid(pid);
+        let mut errs = ~"";
+        let mut outs = ~"";
+        let mut count = 2;
+        while count > 0 {
+            let stream = oldcomm::recv(p);
+            match stream {
+                (1, copy s) => {
+                    outs = move s;
+                }
+                (2, copy s) => {
+                    errs = move s;
+                }
+                (n, _) => {
+                    fail(fmt!("program_output received an unexpected file \
+                               number: %u", n));
+                }
+            };
+            count -= 1;
+        };
+        return {status: status, out: move outs, err: move errs};
+    }
 }
 
 pub fn writeclose(fd: c_int, s: ~str) {
@@ -361,17 +378,19 @@ pub fn writeclose(fd: c_int, s: ~str) {
 }
 
 pub fn readclose(fd: c_int) -> ~str {
-    let file = os::fdopen(fd);
-    let reader = io::FILE_reader(file, false);
-    let buf = io::with_bytes_writer(|writer| {
-        let mut bytes = [mut 0, ..4096];
-        while !reader.eof() {
-            let nread = reader.read(bytes, bytes.len());
-            writer.write(bytes.view(0, nread));
-        }
-    });
-    os::fclose(file);
-    str::from_bytes(buf)
+    unsafe {
+        let file = os::fdopen(fd);
+        let reader = io::FILE_reader(file, false);
+        let buf = io::with_bytes_writer(|writer| {
+            let mut bytes = [mut 0, ..4096];
+            while !reader.eof() {
+                let nread = reader.read(bytes, bytes.len());
+                writer.write(bytes.view(0, nread));
+            }
+        });
+        os::fclose(file);
+        str::from_bytes(buf)
+    }
 }
 
 /// Waits for a process to exit and returns the exit code

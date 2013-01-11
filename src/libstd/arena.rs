@@ -57,7 +57,9 @@ extern mod rusti {
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
+    unsafe fn rust_call_tydesc_glue(root: *u8,
+                                    tydesc: *TypeDesc,
+                                    field: size_t);
 }
 // This probably belongs somewhere else. Needs to be kept in sync with
 // changes to glue...

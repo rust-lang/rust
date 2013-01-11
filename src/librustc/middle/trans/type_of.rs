@@ -50,17 +50,19 @@ fn type_of_explicit_args(ccx: @crate_ctxt, inputs: ~[ty::arg]) -> ~[TypeRef] {
 
 fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
               output: ty::t) -> TypeRef {
-    let mut atys: ~[TypeRef] = ~[];
+    unsafe {
+        let mut atys: ~[TypeRef] = ~[];
 
-    // Arg 0: Output pointer.
-    atys.push(T_ptr(type_of(cx, output)));
+        // Arg 0: Output pointer.
+        atys.push(T_ptr(type_of(cx, output)));
 
-    // Arg 1: Environment
-    atys.push(T_opaque_box_ptr(cx));
+        // Arg 1: Environment
+        atys.push(T_opaque_box_ptr(cx));
 
-    // ... then explicit args.
-    atys.push_all(type_of_explicit_args(cx, inputs));
-    return T_fn(atys, llvm::LLVMVoidType());
+        // ... then explicit args.
+        atys.push_all(type_of_explicit_args(cx, inputs));
+        return T_fn(atys, llvm::LLVMVoidType());
+    }
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -279,9 +281,11 @@ fn llvm_type_name(cx: @crate_ctxt,
 }
 
 fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
-    T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
-           T_ptr(type_of(ccx, self_ty))],            // self arg
-         llvm::LLVMVoidType())
+    unsafe {
+        T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
+               T_ptr(type_of(ccx, self_ty))],            // self arg
+             llvm::LLVMVoidType())
+    }
 }
 
 fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {

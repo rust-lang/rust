@@ -440,25 +440,27 @@ fn trans_call_inner(
             Some(flag)
         } else { None };
 
-        let (llfn, llenv) = match callee.data {
-            Fn(d) => {
-                (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
-            }
-            Method(d) => {
-                // Weird but true: we pass self in the *environment* slot!
-                let llself = PointerCast(bcx, d.llself,
-                                         T_opaque_box_ptr(ccx));
-                (d.llfn, llself)
-            }
-            Closure(d) => {
-                // Closures are represented as (llfn, llclosure) pair:
-                // load the requisite values out.
-                let pair = d.to_ref_llval(bcx);
-                let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
-                let llfn = Load(bcx, llfn);
-                let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-                let llenv = Load(bcx, llenv);
-                (llfn, llenv)
+        let (llfn, llenv) = unsafe {
+            match callee.data {
+                Fn(d) => {
+                    (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
+                }
+                Method(d) => {
+                    // Weird but true: we pass self in the *environment* slot!
+                    let llself = PointerCast(bcx, d.llself,
+                                             T_opaque_box_ptr(ccx));
+                    (d.llfn, llself)
+                }
+                Closure(d) => {
+                    // Closures are represented as (llfn, llclosure) pair:
+                    // load the requisite values out.
+                    let pair = d.to_ref_llval(bcx);
+                    let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
+                    let llfn = Load(bcx, llfn);
+                    let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
+                    let llenv = Load(bcx, llenv);
+                    (llfn, llenv)
+                }
             }
         };
 
@@ -493,8 +495,10 @@ fn trans_call_inner(
         bcx = base::invoke(bcx, llfn, llargs);
         match dest { // drop the value if it is not being saved.
             expr::Ignore => {
-                if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                    bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                unsafe {
+                    if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
+                        bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                    }
                 }
             }
             expr::SaveIn(_) => { }
@@ -545,7 +549,9 @@ fn trans_args(cx: block,
         expr::SaveIn(dst) => dst,
         expr::Ignore => {
             if ty::type_is_nil(retty) {
-                llvm::LLVMGetUndef(T_ptr(T_nil()))
+                unsafe {
+                    llvm::LLVMGetUndef(T_ptr(T_nil()))
+                }
             } else {
                 alloc_ty(bcx, retty)
             }
@@ -662,7 +668,9 @@ fn trans_arg_expr(bcx: block,
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
         let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
-        val = llvm::LLVMGetUndef(llformal_ty);
+        unsafe {
+            val = llvm::LLVMGetUndef(llformal_ty);
+        }
     } else {
         // FIXME(#3548) use the adjustments table
         match autoref_arg {

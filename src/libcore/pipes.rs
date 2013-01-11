@@ -173,7 +173,11 @@ impl PacketHeader {
 
     unsafe fn unblock() {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
-        if !old_task.is_null() { rustrt::rust_task_deref(old_task) }
+        if !old_task.is_null() {
+            unsafe {
+                rustrt::rust_task_deref(old_task)
+            }
+        }
         match swap_state_acq(&mut self.state, Empty) {
           Empty | Blocked => (),
           Terminated => self.state = Terminated,
@@ -300,27 +304,30 @@ type rust_task = libc::c_void;
 #[doc(hidden)]
 extern mod rustrt {
     #[rust_stack]
-    fn rust_get_task() -> *rust_task;
+    unsafe fn rust_get_task() -> *rust_task;
     #[rust_stack]
-    fn rust_task_ref(task: *rust_task);
-    fn rust_task_deref(task: *rust_task);
+    unsafe fn rust_task_ref(task: *rust_task);
+    unsafe fn rust_task_deref(task: *rust_task);
 
     #[rust_stack]
-    fn task_clear_event_reject(task: *rust_task);
+    unsafe fn task_clear_event_reject(task: *rust_task);
 
-    fn task_wait_event(this: *rust_task, killed: &mut *libc::c_void) -> bool;
-    pure fn task_signal_event(target: *rust_task, event: *libc::c_void);
+    unsafe fn task_wait_event(this: *rust_task, killed: &mut *libc::c_void)
+                        -> bool;
+    unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
 }
 
 #[doc(hidden)]
 fn wait_event(this: *rust_task) -> *libc::c_void {
-    let mut event = ptr::null();
+    unsafe {
+        let mut event = ptr::null();
 
-    let killed = rustrt::task_wait_event(this, &mut event);
-    if killed && !task::failing() {
-        fail ~"killed"
+        let killed = rustrt::task_wait_event(this, &mut event);
+        if killed && !task::failing() {
+            fail ~"killed"
+        }
+        event
     }
-    event
 }
 
 #[doc(hidden)]
@@ -397,9 +404,12 @@ pub fn send<T: Owned, Tbuffer: Owned>(p: SendPacketBuffered<T, Tbuffer>,
             debug!("waking up task for %?", p_);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
-                rustrt::task_signal_event(
-                    old_task, ptr::addr_of(&(p.header)) as *libc::c_void);
-                rustrt::rust_task_deref(old_task);
+                unsafe {
+                    rustrt::task_signal_event(
+                        old_task,
+                        ptr::addr_of(&(p.header)) as *libc::c_void);
+                    rustrt::rust_task_deref(old_task);
+                }
             }
 
             // The receiver will eventually clean this up.
@@ -445,7 +455,9 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
                 let old_task = swap_task(&mut self.p.blocked_task,
                                          ptr::null());
                 if !old_task.is_null() {
-                    rustrt::rust_task_deref(old_task);
+                    unsafe {
+                        rustrt::rust_task_deref(old_task);
+                    }
                 }
             }
         }
@@ -466,9 +478,11 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     }
 
     // regular path
-    let this = rustrt::rust_get_task();
-    rustrt::task_clear_event_reject(this);
-    rustrt::rust_task_ref(this);
+    let this = unsafe { rustrt::rust_get_task() };
+    unsafe {
+        rustrt::task_clear_event_reject(this);
+        rustrt::rust_task_ref(this);
+    };
     debug!("blocked = %x this = %x", p.header.blocked_task as uint,
            this as uint);
     let old_task = swap_task(&mut p.header.blocked_task, this);
@@ -479,7 +493,10 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     let mut first = true;
     let mut count = SPIN_COUNT;
     loop {
-        rustrt::task_clear_event_reject(this);
+        unsafe {
+            rustrt::task_clear_event_reject(this);
+        }
+
         let old_state = swap_state_acq(&mut p.header.state,
                                        Blocked);
         match old_state {
@@ -507,7 +524,9 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
             payload <-> p.payload;
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
-                rustrt::rust_task_deref(old_task);
+                unsafe {
+                    rustrt::rust_task_deref(old_task);
+                }
             }
             p.header.state = Empty;
             return Some(option::unwrap(move payload))
@@ -519,7 +538,9 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
 
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
-                rustrt::rust_task_deref(old_task);
+                unsafe {
+                    rustrt::rust_task_deref(old_task);
+                }
             }
             return None;
           }
@@ -554,10 +575,12 @@ fn sender_terminate<T: Owned>(p: *Packet<T>) {
         // wake up the target
         let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
         if !old_task.is_null() {
-            rustrt::task_signal_event(
-                old_task,
-                ptr::addr_of(&(p.header)) as *libc::c_void);
-            rustrt::rust_task_deref(old_task);
+            unsafe {
+                rustrt::task_signal_event(
+                    old_task,
+                    ptr::addr_of(&(p.header)) as *libc::c_void);
+                rustrt::rust_task_deref(old_task);
+            }
         }
         // The receiver will eventually clean up.
       }
@@ -583,8 +606,10 @@ fn receiver_terminate<T: Owned>(p: *Packet<T>) {
       Blocked => {
         let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
         if !old_task.is_null() {
-            rustrt::rust_task_deref(old_task);
-            assert old_task == rustrt::rust_get_task();
+            unsafe {
+                rustrt::rust_task_deref(old_task);
+                assert old_task == rustrt::rust_get_task();
+            }
         }
       }
       Terminated | Full => {
@@ -605,9 +630,12 @@ closed by the sender or has a message waiting to be received.
 
 */
 fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
-    let this = rustrt::rust_get_task();
+    let this = unsafe { rustrt::rust_get_task() };
 
-    rustrt::task_clear_event_reject(this);
+    unsafe {
+        rustrt::task_clear_event_reject(this);
+    }
+
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
     for pkts.eachi |i, p| unsafe {

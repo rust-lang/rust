@@ -1395,8 +1395,10 @@ fn compile_submatch(bcx: block,
               switch => {
                   match trans_opt(bcx, opt) {
                       single_result(r) => {
+                        unsafe {
                           llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
                           bcx = r.bcx;
+                        }
                       }
                       _ => {
                           bcx.sess().bug(

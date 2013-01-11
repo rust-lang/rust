@@ -53,7 +53,7 @@ extern mod rusti {
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
+    unsafe fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
 }
 
 /// Compares contents of two pointers using the default method.
