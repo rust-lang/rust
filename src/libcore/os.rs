@@ -316,17 +316,21 @@ pub fn fdopen(fd: c_int) -> *FILE {
 
 #[cfg(windows)]
 pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
-    use libc::funcs::extra::msvcrt::*;
-    return commit(fd);
+    unsafe {
+        use libc::funcs::extra::msvcrt::*;
+        return commit(fd);
+    }
 }
 
 #[cfg(target_os = "linux")]
 pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
-    use libc::funcs::posix01::unistd::*;
-    match level {
-      io::fsync::FSync
-      | io::fsync::FullFSync => return fsync(fd),
-      io::fsync::FDataSync => return fdatasync(fd)
+    unsafe {
+        use libc::funcs::posix01::unistd::*;
+        match level {
+          io::fsync::FSync
+          | io::fsync::FullFSync => return fsync(fd),
+          io::fsync::FDataSync => return fdatasync(fd)
+        }
     }
 }
 
