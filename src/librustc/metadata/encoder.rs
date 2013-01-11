@@ -881,7 +881,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt,
 }
 
 fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                         crate: @crate) -> ~[entry<int>] {
+                         crate: &crate) -> ~[entry<int>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
     index.push({val: crate_node_id, pos: ebml_w.writer.tell()});
@@ -1021,20 +1021,20 @@ fn encode_attributes(ebml_w: writer::Encoder, attrs: ~[attribute]) {
 // metadata that Rust cares about for linking crates. This attribute requires
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
-fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
+fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
 
     fn synthesize_link_attr(ecx: @encode_ctxt, +items: ~[@meta_item]) ->
        attribute {
 
-        assert (ecx.link_meta.name != ~"");
-        assert (ecx.link_meta.vers != ~"");
+        assert ecx.link_meta.name.is_not_empty();
+        assert ecx.link_meta.vers.is_not_empty();
 
         let name_item =
             attr::mk_name_value_item_str(~"name",
-                                         /*bad*/copy ecx.link_meta.name);
+                                         ecx.link_meta.name.to_owned());
         let vers_item =
             attr::mk_name_value_item_str(~"vers",
-                                         /*bad*/copy ecx.link_meta.vers);
+                                         ecx.link_meta.vers.to_owned());
 
         let other_items =
             {
@@ -1156,7 +1156,7 @@ fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     ebml_w.end_tag();
 }
 
-fn encode_hash(ebml_w: writer::Encoder, hash: ~str) {
+fn encode_hash(ebml_w: writer::Encoder, hash: &str) {
     ebml_w.start_tag(tag_crate_hash);
     ebml_w.writer.write(str::to_bytes(hash));
     ebml_w.end_tag();
@@ -1169,7 +1169,7 @@ const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
                                             0x74, //'t' as u8,
                                             0, 0, 0, 1 ];
 
-fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
+fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     let wr = @io::BytesWriter();
     let stats =
         {mut inline_bytes: 0,
@@ -1197,7 +1197,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     let ebml_w = writer::Encoder(wr as io::Writer);
 
-    encode_hash(ebml_w, /*bad*/copy ecx.link_meta.extras_hash);
+    encode_hash(ebml_w, ecx.link_meta.extras_hash);
 
     let mut i = wr.pos;
     let crate_attrs = synthesize_crate_attrs(ecx, crate);

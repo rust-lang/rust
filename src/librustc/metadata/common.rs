@@ -152,5 +152,5 @@ const tag_lang_items_item: uint = 0x73;
 const tag_lang_items_item_id: uint = 0x74;
 const tag_lang_items_item_node_id: uint = 0x75;
 
-type link_meta = {name: ~str, vers: ~str, extras_hash: ~str};
+type link_meta = {name: @str, vers: @str, extras_hash: @str};
 

@@ -2284,10 +2284,10 @@ fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
       ty_enum(did, ref substs) => {
         let mut lowest = kind_top();
         let variants = enum_variants(cx, did);
-        if vec::len(*variants) == 0u {
+        if variants.is_empty() {
             lowest = kind_owned_only() | kind_durable();
         } else {
-            for vec::each(*variants) |variant| {
+            for variants.each |variant| {
                 for variant.args.each |aty| {
                     // Perform any type parameter substitutions.
                     let arg_ty = subst(cx, substs, *aty);
