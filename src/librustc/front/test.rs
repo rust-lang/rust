@@ -25,6 +25,7 @@ use syntax::codemap::span;
 use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::attr::attrs_contains_name;
 
 export modify_for_testing;
 
@@ -88,13 +89,11 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // Remove any defined main function from the AST so it doesn't clash with
     // the one we're going to add. Only if compiling an executable.
 
-    // FIXME (#2403): This is sloppy. Instead we should have some mechanism to
-    // indicate to the translation pass which function we want to be main.
     fn nomain(cx: test_ctxt, item: @ast::item) -> Option<@ast::item> {
         match item.node {
           ast::item_fn(*) => {
-            if item.ident == cx.sess.ident_of(~"main")
-                && !cx.sess.building_library {
+            if attrs_contains_name(item.attrs, ~"main")
+                    && !cx.sess.building_library {
                 option::None
             } else { option::Some(item) }
           }
@@ -498,7 +497,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
     let item: ast::item =
         {ident: cx.sess.ident_of(~"main"),
-         attrs: ~[],
+         attrs: ~[attr::mk_attr(attr::mk_word_item(~"main"))],
          id: cx.sess.next_node_id(),
          node: item_,
          vis: ast::public,
