@@ -151,7 +151,7 @@ export re_bound, re_free, re_scope, re_static, re_infer;
 export ReVar, ReSkolemized;
 export br_self, br_anon, br_named, br_cap_avoid, br_fresh;
 export get, type_has_params, type_needs_infer, type_has_regions;
-export type_is_region_ptr;
+export type_contains_err, type_is_region_ptr;
 export type_id;
 export tbox_has_flag;
 export ty_var_id;
@@ -475,6 +475,7 @@ enum tbox_flag {
     has_self = 2,
     needs_infer = 4,
     has_regions = 8,
+    has_ty_err = 16,
 
     // a meta-flag: subst may be required if the type has parameters, a self
     // type, or references bound regions
@@ -508,6 +509,7 @@ pure fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
 pure fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
 pure fn type_needs_infer(t: t) -> bool { tbox_has_flag(get(t), needs_infer) }
 pure fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
+pure fn type_contains_err(t: t) -> bool { tbox_has_flag(get(t), has_ty_err) }
 pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pure fn type_id(t: t) -> uint { get(t).id }
 
@@ -1059,7 +1061,8 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
       &ty_nil | &ty_bot | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
       &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
-      &ty_opaque_box | &ty_err => (),
+      &ty_opaque_box => (),
+      &ty_err => flags |= has_ty_err as uint,
       &ty_param(_) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self => flags |= has_self as uint,
