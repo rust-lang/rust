@@ -329,7 +329,7 @@ pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
 pub mod flatteners {
     use ebml;
     use flatpipes::{ByteChan, BytePort, Flattener, Unflattener};
-    use flatpipes::util::BufReader;
+    use io_util::BufReader;
     use json;
     use serialize::{Encoder, Decoder, Encodable, Decodable};
 
@@ -340,7 +340,8 @@ pub mod flatteners {
     use core::sys::size_of;
     use core::vec;
 
-    // XXX: Is copy/send equivalent to pod?
+
+    // FIXME #4074: Copy + Owned != POD
     pub struct PodUnflattener<T: Copy Owned> {
         bogus: ()
     }
@@ -625,78 +626,18 @@ pub mod bytepipes {
 
 }
 
-// XXX: This belongs elsewhere
-mod util {
-    use core::io::{Reader, BytesReader};
-    use core::io;
-    use core::prelude::*;
-
-    pub struct BufReader {
-        buf: ~[u8],
-        mut pos: uint
-    }
-
-    pub impl BufReader {
-        static pub fn new(v: ~[u8]) -> BufReader {
-            BufReader {
-                buf: move v,
-                pos: 0
-            }
-        }
-
-        priv fn as_bytes_reader<A>(f: &fn(&BytesReader) -> A) -> A {
-            // Recreating the BytesReader state every call since
-            // I can't get the borrowing to work correctly
-            let bytes_reader = BytesReader {
-                bytes: ::core::util::id::<&[u8]>(self.buf),
-                pos: self.pos
-            };
-
-            let res = f(&bytes_reader);
-
-            // XXX: This isn't correct if f fails
-            self.pos = bytes_reader.pos;
-
-            return move res;
-        }
-    }
-
-    impl BufReader: Reader {
-        fn read(&self, bytes: &[mut u8], len: uint) -> uint {
-            self.as_bytes_reader(|r| r.read(bytes, len) )
-        }
-        fn read_byte(&self) -> int {
-            self.as_bytes_reader(|r| r.read_byte() )
-        }
-        fn eof(&self) -> bool {
-            self.as_bytes_reader(|r| r.eof() )
-        }
-        fn seek(&self, offset: int, whence: io::SeekStyle) {
-            self.as_bytes_reader(|r| r.seek(offset, whence) )
-        }
-        fn tell(&self) -> uint {
-            self.as_bytes_reader(|r| r.tell() )
-        }
-    }
-
-}
-
 #[cfg(test)]
 mod test {
     use core::prelude::*;
 
-    // XXX: json::Decoder doesn't work because of problems related to
-    // its interior pointers
-    //use DefaultEncoder = json::Encoder;
-    //use DefaultDecoder = json::Decoder;
-    use DefaultEncoder = ebml::writer::Encoder;
-    use DefaultDecoder = ebml::reader::Decoder;
+    use DefaultEncoder = json::Encoder;
+    use DefaultDecoder = json::Decoder;
 
     use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
     use flatpipes::pod;
     use flatpipes::serial;
-    use flatpipes::util::BufReader;
+    use io_util::BufReader;
     use flatpipes::{BytePort, FlatChan, FlatPort};
     use net::ip;
     use net::tcp::TcpSocketBuf;
@@ -787,7 +728,7 @@ mod test {
         }
     }
 
-    // XXX: Networking doesn't work on x86
+    // FIXME #2064: Networking doesn't work on x86
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_pod_tcp_stream() {
@@ -934,7 +875,7 @@ mod test {
         use flatpipes::{BytePort, FlatPort};
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
-        use flatpipes::util::BufReader;
+        use io_util::BufReader;
 
         use core::io;
         use core::pipes;

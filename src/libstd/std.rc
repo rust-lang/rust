@@ -57,6 +57,7 @@ pub mod uv_global_loop;
 pub mod c_vec;
 pub mod timer;
 pub mod cell;
+pub mod io_util;
 
 // Concurrency
 
