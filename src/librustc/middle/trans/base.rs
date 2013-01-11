@@ -2153,11 +2153,19 @@ fn register_fn_fuller(ccx: @crate_ctxt,
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
-    let is_main = is_main_name(path) && (!ccx.sess.building_library ||
+    let is_main = is_main_fn(&ccx.sess, node_id) &&
+                     (!ccx.sess.building_library ||
                       (ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
     if is_main { create_main_wrapper(ccx, sp, llfn); }
     llfn
+}
+
+fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
+    match sess.main_fn {
+        Some((main_id, _)) => node_id == main_id,
+        None => false
+    }
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
