@@ -562,7 +562,12 @@ Structs are quite similar to C structs and are even laid out the same way in
 memory (so you can read from a Rust struct in C, and vice-versa). Use the dot
 operator to access struct fields, as in `mypoint.x`.
 
-Fields that you want to mutate must be explicitly marked `mut`.
+Inherited mutability means that any field of a struct may be mutable, if the
+struct is in a mutable slot (or a field of a struct in a mutable slot, and
+so forth).
+
+A struct that is not mutable due to inherited mutability may declare some
+of its fields nevertheless mutable, using the `mut` keyword.
 
 ~~~~
 struct Stack {
@@ -572,7 +577,8 @@ struct Stack {
 ~~~~
 
 With a value of such a type, you can do `mystack.head += 1`. If `mut` were
-omitted from the type, such an assignment would result in a type error.
+omitted from the type, such an assignment to a struct without inherited
+mutability would result in a type error.
 
 `match` patterns destructure structs. The basic syntax is
 `Name { fieldname: pattern, ... }`:
