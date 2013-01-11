@@ -77,6 +77,7 @@ Jesse Ruderman <jruderman@gmail.com>
 Jim Blandy <jimb@red-bean.com>
 Jimmy Lu <jimmy.lu.2011@gmail.com>
 Joe Pletcher <joepletcher@gmail.com>
+John Clements <clements@racket-lang.org>
 Jon Morton <jonanin@gmail.com>
 Jonathan Sternberg <jonathansternberg@gmail.com>
 Josh Matthews <josh@joshmatthews.net>
