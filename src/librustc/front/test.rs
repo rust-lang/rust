@@ -297,7 +297,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
 
 fn is_std(cx: test_ctxt) -> bool {
     let is_std = {
-        let items = attr::find_linkage_metas(/*bad*/copy cx.crate.node.attrs);
+        let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
           Some(~"std") => true,
           _ => false

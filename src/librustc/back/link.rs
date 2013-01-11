@@ -457,32 +457,32 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
+fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
-        {name: Option<~str>,
-         vers: Option<~str>,
+        {name: Option<@str>,
+         vers: Option<@str>,
          cmh_items: ~[@ast::meta_item]};
 
-    fn provided_link_metas(sess: Session, c: ast::crate) ->
+    fn provided_link_metas(sess: Session, c: &ast::crate) ->
        provided_metas {
-        let mut name: Option<~str> = None;
-        let mut vers: Option<~str> = None;
-        let mut cmh_items: ~[@ast::meta_item] = ~[];
-        let linkage_metas =
-            attr::find_linkage_metas(/*bad*/copy c.node.attrs);
-        // XXX: Bad copy.
-        attr::require_unique_names(sess.diagnostic(), copy linkage_metas);
+        let mut name = None;
+        let mut vers = None;
+        let mut cmh_items = ~[];
+        let linkage_metas = attr::find_linkage_metas(c.node.attrs);
+        attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
             if attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(ref v) => { name = Some((/*bad*/copy *v)); }
+                  // Changing attr would avoid the need for the copy
+                  // here
+                  Some(v) => { name = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
             } else if attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(ref v) => { vers = Some((/*bad*/copy *v)); }
+                  Some(v) => { vers = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
@@ -492,9 +492,8 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
-                              _crate: ast::crate,
-                              metas: provided_metas,
-                              dep_hashes: ~[~str]) -> ~str {
+                              -cmh_items: ~[@ast::meta_item],
+                              dep_hashes: ~[~str]) -> @str {
         fn len_and_str(s: ~str) -> ~str {
             return fmt!("%u_%s", str::len(s), s);
         }
@@ -503,7 +502,7 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
             return len_and_str(pprust::lit_to_str(@l));
         }
 
-        let cmh_items = attr::sort_meta_items(/*bad*/copy metas.cmh_items);
+        let cmh_items = attr::sort_meta_items(cmh_items);
 
         symbol_hasher.reset();
         for cmh_items.each |m| {
@@ -526,52 +525,53 @@ fn build_link_meta(sess: Session, c: ast::crate, output: &Path,
             symbol_hasher.write_str(len_and_str(*dh));
         }
 
-        return truncated_hash_result(symbol_hasher);
+    // tjc: allocation is unfortunate; need to change core::hash
+        return truncated_hash_result(symbol_hasher).to_managed();
     }
 
-    fn warn_missing(sess: Session, name: ~str, default: ~str) {
+    fn warn_missing(sess: Session, name: &str, default: &str) {
         if !sess.building_library { return; }
         sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
                        name, default));
     }
 
-    fn crate_meta_name(sess: Session, _crate: ast::crate,
-                       output: &Path, metas: provided_metas) -> ~str {
-        return match metas.name {
-              Some(ref v) => (/*bad*/copy *v),
+    fn crate_meta_name(sess: Session, output: &Path, -opt_name: Option<@str>)
+        -> @str {
+        return match opt_name {
+              Some(v) => v,
               None => {
-                let name = match output.filestem() {
-                  None => sess.fatal(fmt!("output file name `%s` doesn't\
+                // to_managed could go away if there was a version of
+                // filestem that returned an @str
+                let name = session::expect(sess,
+                                  output.filestem(),
+                                  || fmt!("output file name `%s` doesn't\
                                            appear to have a stem",
-                                          output.to_str())),
-                  Some(ref s) => (/*bad*/copy *s)
-                };
-                // XXX: Bad copy.
-                warn_missing(sess, ~"name", copy name);
+                                          output.to_str())).to_managed();
+                warn_missing(sess, ~"name", name);
                 name
               }
             };
     }
 
-    fn crate_meta_vers(sess: Session, _crate: ast::crate,
-                       metas: provided_metas) -> ~str {
-        return match metas.vers {
-              Some(ref v) => (/*bad*/copy *v),
+    fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
+        return match opt_vers {
+              Some(v) => v,
               None => {
-                let vers = ~"0.0";
-                // Bad copy.
-                warn_missing(sess, ~"vers", copy vers);
+                let vers = @"0.0";
+                warn_missing(sess, ~"vers", vers);
                 vers
               }
             };
     }
 
-    let provided_metas = provided_link_metas(sess, c);
-    let name = crate_meta_name(sess, c, output, provided_metas);
-    let vers = crate_meta_vers(sess, c, provided_metas);
+    let {name: opt_name, vers: opt_vers,
+         cmh_items: cmh_items} = provided_link_metas(sess, c);
+    let name = crate_meta_name(sess, output, move opt_name);
+    let vers = crate_meta_vers(sess, move opt_vers);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
-        crate_meta_extras_hash(symbol_hasher, c, provided_metas, dep_hashes);
+        crate_meta_extras_hash(symbol_hasher, move cmh_items,
+                               dep_hashes);
 
     return {name: name, vers: vers, extras_hash: extras_hash};
 }
@@ -583,7 +583,7 @@ fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str unsafe {
 
 // This calculates STH for a symbol, as defined above
 fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
-               link_meta: link_meta) -> ~str {
+               link_meta: link_meta) -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -593,20 +593,20 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     symbol_hasher.write_str(link_meta.extras_hash);
     symbol_hasher.write_str(~"-");
     symbol_hasher.write_str(encoder::encoded_ty(tcx, t));
-    let hash = truncated_hash_result(symbol_hasher);
+    let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
-
-    return ~"_" + hash;
+    str::unshift_char(&mut hash, '_');
+    // tjc: allocation is unfortunate; need to change core::hash
+    hash.to_managed()
 }
 
-fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
+fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(t) {
-      Some(ref h) => return (/*bad*/copy *h),
+      Some(h) => h,
       None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
-        // XXX: Bad copy. Prefer `@str`?
-        ccx.type_hashcodes.insert(t, copy hash);
-        return hash;
+        ccx.type_hashcodes.insert(t, hash);
+        hash
       }
     }
 }
@@ -664,30 +664,30 @@ fn mangle(sess: Session, ss: path) -> ~str {
 
 fn exported_name(sess: Session,
                  +path: path,
-                 +hash: ~str,
-                 +vers: ~str) -> ~str {
+                 hash: &str,
+                 vers: &str) -> ~str {
     return mangle(sess,
-                  vec::append_one(
-                      vec::append_one(path, path_name(sess.ident_of(hash))),
-                      path_name(sess.ident_of(vers))));
+            vec::append_one(
+            vec::append_one(path, path_name(sess.ident_of(hash.to_owned()))),
+            path_name(sess.ident_of(vers.to_owned()))));
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
-                         /*bad*/copy ccx.link_meta.vers);
+                         ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
                                      t: ty::t,
-                                     +name: ~str) -> ~str {
+                                     name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(name)),
-                    path_name(ccx.sess.ident_of(s)),
-                    path_name(ccx.sess.ident_of(hash))]);
+        ~[path_name(ccx.sess.ident_of(name.to_owned())),
+          path_name(ccx.sess.ident_of(s)),
+          path_name(ccx.sess.ident_of(hash.to_owned()))]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
@@ -706,7 +706,7 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
 }
 
 
-fn output_dll_filename(os: session::os, lm: &link_meta) -> ~str {
+fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
     let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
@@ -736,7 +736,7 @@ fn link_binary(sess: Session,
     }
 
     let output = if sess.building_library {
-        let long_libname = output_dll_filename(sess.targ_cfg.os, &lm);
+        let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
         debug!("out_filename: %s", out_filename.to_str());

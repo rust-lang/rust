@@ -191,8 +191,7 @@ fn visit_item(e: env, i: @ast::item) {
 
 fn metas_with(+ident: ~str, +key: ~str, +metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
-    // XXX: Bad copies.
-    let name_items = attr::find_meta_items_by_name(copy metas, copy key);
+    let name_items = attr::find_meta_items_by_name(metas, key);
     if name_items.is_empty() {
         vec::append_one(metas, attr::mk_name_value_item_str(key, ident))
     } else {

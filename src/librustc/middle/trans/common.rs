@@ -200,7 +200,7 @@ struct crate_ctxt {
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
-     type_hashcodes: HashMap<ty::t, ~str>,
+     type_hashcodes: HashMap<ty::t, @str>,
      type_short_names: HashMap<ty::t, ~str>,
      all_llvm_symbols: Set<~str>,
      tcx: ty::ctxt,

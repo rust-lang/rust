@@ -173,7 +173,7 @@ fn trans_log(log_ex: @ast::expr,
     }
 
     let modpath = vec::append(
-        ~[path_mod(ccx.sess.ident_of(/*bad*/copy ccx.link_meta.name))],
+        ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name.to_owned()))],
         bcx.fcx.path.filtered(|e|
             match *e { path_mod(_) => true, _ => false }
         ));
