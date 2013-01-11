@@ -106,27 +106,29 @@ pub mod win32 {
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
-        let mut n = tmpbuf_sz as DWORD;
-        let mut res = None;
-        let mut done = false;
-        while !done {
-            let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
-            do vec::as_mut_buf(buf) |b, _sz| {
-                let k : DWORD = f(b, tmpbuf_sz as DWORD);
-                if k == (0 as DWORD) {
-                    done = true;
-                } else if (k == n &&
-                           libc::GetLastError() ==
-                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
-                    n *= (2 as DWORD);
-                } else {
-                    let sub = vec::slice(buf, 0u, k as uint);
-                    res = option::Some(str::from_utf16(sub));
-                    done = true;
+        unsafe {
+            let mut n = tmpbuf_sz as DWORD;
+            let mut res = None;
+            let mut done = false;
+            while !done {
+                let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
+                do vec::as_mut_buf(buf) |b, _sz| {
+                    let k : DWORD = f(b, tmpbuf_sz as DWORD);
+                    if k == (0 as DWORD) {
+                        done = true;
+                    } else if (k == n &&
+                               libc::GetLastError() ==
+                               libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
+                        n *= (2 as DWORD);
+                    } else {
+                        let sub = vec::slice(buf, 0u, k as uint);
+                        res = option::Some(str::from_utf16(sub));
+                        done = true;
+                    }
                 }
             }
+            return res;
         }
-        return res;
     }
 
     pub fn as_utf16_p<T>(s: &str, f: fn(*u16) -> T) -> T {
