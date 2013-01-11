@@ -14,6 +14,15 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use int;
+use prelude::*;
+use str;
+use task;
+use u32;
+use uint;
+use util;
+use vec;
+
 #[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 
@@ -354,6 +363,10 @@ pub fn random() -> uint {
 
 #[cfg(test)]
 pub mod tests {
+    use debug;
+    use option::{None, Option, Some};
+    use rand;
+
     #[test]
     pub fn rng_seeded() {
         let seed = rand::seed();

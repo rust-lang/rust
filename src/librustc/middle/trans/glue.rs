@@ -12,22 +12,37 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
+use core::prelude::*;
+
 use lib::llvm::{ValueRef, TypeRef};
 use middle::trans::base::*;
+use middle::trans::callee;
+use middle::trans::closure;
 use middle::trans::common::*;
 use middle::trans::build::*;
+use middle::trans::reflect;
+use middle::trans::tvec;
 use middle::trans::type_of::type_of;
+use middle::trans::uniq;
+
+use core::io;
+use core::str;
 
 fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
-    callee::trans_rtcall(cx, ~"free", ~[PointerCast(cx, v, T_ptr(T_i8()))],
-                         expr::Ignore)
+    callee::trans_rtcall_or_lang_call(
+        cx,
+        cx.tcx().lang_items.free_fn(),
+        ~[PointerCast(cx, v, T_ptr(T_i8()))],
+        expr::Ignore)
 }
 
 fn trans_unique_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_unique_free");
-    callee::trans_rtcall(
-        cx, ~"exchange_free", ~[PointerCast(cx, v, T_ptr(T_i8()))],
+    callee::trans_rtcall_or_lang_call(
+        cx,
+        cx.tcx().lang_items.exchange_free_fn(),
+        ~[PointerCast(cx, v, T_ptr(T_i8()))],
         expr::Ignore)
 }
 
@@ -434,7 +449,7 @@ fn trans_struct_drop(bcx: block,
 
         // Find and call the actual destructor
         let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                     class_did, substs.tps);
+                                     class_did, /*bad*/copy substs.tps);
 
         // The second argument is the "self" argument for drop
         let params = lib::llvm::fn_ty_param_tys(
@@ -643,7 +658,8 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     } else {
         mangle_internal_name_by_seq(ccx, ~"tydesc")
     };
-    note_unique_llvm_symbol(ccx, name);
+    // XXX: Bad copy.
+    note_unique_llvm_symbol(ccx, copy name);
     log(debug, fmt!("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
     let gvar = str::as_c_str(name, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
@@ -665,7 +681,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
 type glue_helper = fn@(block, ValueRef, ty::t);
 
 fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
-                        name: ~str) -> ValueRef {
+                        +name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
     let mut fn_nm;
@@ -676,7 +692,8 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
         fn_nm = mangle_internal_name_by_seq(ccx, (~"glue_" + name));
     }
     debug!("%s is for type %s", fn_nm, ty_to_str(ccx.tcx, t));
-    note_unique_llvm_symbol(ccx, fn_nm);
+    // XXX: Bad copy.
+    note_unique_llvm_symbol(ccx, copy fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
     return llfn;

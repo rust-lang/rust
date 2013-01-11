@@ -15,10 +15,19 @@
 
 //! json serialization
 
-use core::cmp::{Eq, Ord};
-use io::{WriterUtil, ReaderUtil};
-use send_map::linear;
+use serialize;
 use sort::Sort;
+
+use core::char;
+use core::cmp::{Eq, Ord};
+use core::float;
+use core::io::{WriterUtil, ReaderUtil};
+use core::io;
+use core::prelude::*;
+use core::send_map::linear;
+use core::str;
+use core::to_str;
+use core::vec;
 
 /// Represents a json value
 pub enum Json {
@@ -1185,6 +1194,13 @@ impl Error: to_str::ToStr {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
+    use json::*;
+
+    use core::result;
+    use core::send_map::linear;
+
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~linear::LinearMap();
 

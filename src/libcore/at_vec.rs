@@ -15,13 +15,20 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
+use kinds::Copy;
+use iter;
+use libc;
+use option::Option;
 use ptr::addr_of;
+use sys;
+use uint;
+use vec;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
 #[abi = "cdecl"]
-extern mod rustrt {
+pub extern mod rustrt {
     #[legacy_exports];
     fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                  ++v: **vec::raw::VecRepr,
@@ -29,7 +36,7 @@ extern mod rustrt {
 }
 
 #[abi = "rust-intrinsic"]
-extern mod rusti {
+pub extern mod rusti {
     #[legacy_exports];
     fn move_val_init<T>(dst: &mut T, -src: T);
 }
@@ -95,7 +102,7 @@ pub pure fn build<A>(builder: &fn(push: pure fn(v: A))) -> @[A] {
 #[inline(always)]
 pub pure fn build_sized_opt<A>(size: Option<uint>,
                                builder: &fn(push: pure fn(v: A))) -> @[A] {
-    build_sized(size.get_default(4), builder)
+    build_sized(size.get_or_default(4), builder)
 }
 
 // Appending
@@ -145,6 +152,10 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
 
 #[cfg(notest)]
 pub mod traits {
+    use at_vec::append;
+    use kinds::Copy;
+    use ops::Add;
+
     pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
@@ -157,6 +168,15 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
+    use at_vec::{capacity, rusti, rustrt};
+    use cast::transmute;
+    use libc;
+    use ptr::addr_of;
+    use ptr;
+    use sys;
+    use uint;
+    use vec;
+
     pub type VecRepr = vec::raw::VecRepr;
     pub type SliceRepr = vec::raw::SliceRepr;
 

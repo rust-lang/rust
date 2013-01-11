@@ -2,7 +2,9 @@
 //! A priority queue implemented with a binary heap
 
 use core::cmp::Ord;
-use ptr::addr_of;
+use core::prelude::*;
+use core::ptr::addr_of;
+use core::vec;
 
 #[abi = "rust-intrinsic"]
 extern "C" mod rusti {

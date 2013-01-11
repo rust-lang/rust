@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
 use middle::trans::common::*;
+use middle::trans::common;
+use middle::trans::inline;
+use middle::trans::monomorphize;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;
@@ -36,7 +43,8 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
         match csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
             |a,b,c,d| {
-                astencode::decode_inlined_item(a, b, ccx.maps, c, d)
+                astencode::decode_inlined_item(a, b, ccx.maps,
+                                               /*bad*/ copy c, d)
             }) {
 
           csearch::not_found => {

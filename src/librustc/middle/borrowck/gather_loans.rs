@@ -16,11 +16,28 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use middle::mem_categorization::{mem_categorization_ctxt, opt_deref_kind};
-use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
-use middle::ty::{ty_region};
+use core::prelude::*;
 
+use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
+use middle::borrowck::{Loan, bckres, borrowck_ctxt, err_mutbl, req_maps};
+use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
+use middle::mem_categorization::{mem_categorization_ctxt};
+use middle::mem_categorization::{opt_deref_kind};
+use middle::pat_util;
+use middle::ty::{ty_region};
+use middle::ty;
+use util::common::indenter;
+use util::ppaux::{expr_repr, region_to_str};
+
+use core::dvec;
 use core::send_map::linear::LinearMap;
+use core::vec;
+use std::map::HashMap;
+use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast;
+use syntax::codemap::span;
+use syntax::print::pprust;
+use syntax::visit;
 
 export gather_loans;
 
@@ -65,9 +82,9 @@ fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
                                   mut item_ub: 0,
                                   mut root_ub: 0,
                                   mut ignore_adjustments: LinearMap()});
-    let v = visit::mk_vt(@{visit_expr: req_loans_in_expr,
-                           visit_fn: req_loans_in_fn,
-                           .. *visit::default_visitor()});
+    let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
+                                          visit_fn: req_loans_in_fn,
+                                          .. *visit::default_visitor()});
     visit::visit_crate(*crate, glcx, v);
     return glcx.req_maps;
 }
@@ -115,7 +132,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     }
 
     // Special checks for various kinds of expressions:
-    match ex.node {
+    match /*bad*/copy ex.node {
       ast::expr_addr_of(mutbl, base) => {
         let base_cmt = self.bccx.cat_expr(base);
 
@@ -498,7 +515,7 @@ impl gather_loan_ctxt {
                   discr_cmt: cmt,
                   root_pat: @ast::pat,
                   arm_id: ast::node_id,
-                  alt_id: ast::node_id) {
+                  match_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
               ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
@@ -506,11 +523,11 @@ impl gather_loan_ctxt {
                   ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check
                     // is required
-                    // as for move, check::alt ensures it's from an rvalue.
+                    // as for move, check::_match ensures it's from an rvalue.
                   }
                   ast::bind_by_ref(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
-                    // remain valid for the scope of the alt
+                    // remain valid for the scope of the match
 
                     // find the region of the resulting pointer (note that
                     // the type of such a pattern will *always* be a
@@ -523,7 +540,7 @@ impl gather_loan_ctxt {
                     // of the function of this node in method preserve():
                     let arm_scope = ty::re_scope(arm_id);
                     if self.bccx.is_subregion_of(scope_r, arm_scope) {
-                        let cmt_discr = self.bccx.cat_discr(cmt, alt_id);
+                        let cmt_discr = self.bccx.cat_discr(cmt, match_id);
                         self.guarantee_valid(cmt_discr, mutbl, scope_r);
                     } else {
                         self.guarantee_valid(cmt, mutbl, scope_r);

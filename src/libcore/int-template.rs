@@ -14,9 +14,17 @@
 
 use T = self::inst::T;
 
+use char;
 use cmp::{Eq, Ord};
+use cmp;
 use from_str::FromStr;
+use iter;
+use num;
 use num::Num::from_int;
+use prelude::*;
+use str;
+use uint;
+use vec;
 
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);

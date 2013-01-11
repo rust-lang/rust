@@ -14,7 +14,7 @@ pub use self::inst::pow;
 
 mod inst {
     pub type T = int;
-    pub const bits: uint = uint::bits;
+    pub const bits: uint = ::uint::bits;
 
     /// Returns `base` raised to the power of `exponent`
     pub pure fn pow(base: int, exponent: uint) -> int {
@@ -50,8 +50,8 @@ mod inst {
 
     #[test]
     fn test_overflows() {
-        assert (max_value > 0);
-        assert (min_value <= 0);
-        assert (min_value + max_value + 1 == 0);
+        assert (::int::max_value > 0);
+        assert (::int::min_value <= 0);
+        assert (::int::min_value + ::int::max_value + 1 == 0);
     }
 }

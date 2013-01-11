@@ -18,6 +18,9 @@ The iteration traits and common implementation
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use kinds::Copy;
+use option::{None, Option, Some};
+use vec;
 
 /// A function used to initialize the elements of a sequence
 pub type InitOp<T> = &fn(uint) -> T;
@@ -266,7 +269,7 @@ pub pure fn build_sized_opt<A,B: Buildable<A>>(
     size: Option<uint>,
     builder: fn(push: pure fn(A))) -> B {
 
-    Buildable::build_sized(size.get_default(4), builder)
+    Buildable::build_sized(size.get_or_default(4), builder)
 }
 
 // Functions that combine iteration and building

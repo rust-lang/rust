@@ -10,19 +10,27 @@
 
 // The Rust abstract syntax tree.
 
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use ast;
 use codemap::{span, FileName};
-use parse::token;
+
+use core::cast;
+use core::cmp;
+use core::option::{None, Option, Some};
+use core::ptr;
+use core::task;
+use core::to_bytes;
+use core::to_str::ToStr;
+use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 #[auto_encode]
 #[auto_decode]
-type spanned<T> = {node: T, span: span};
-
+struct spanned<T> { node: T, span: span }
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
+    () => (cast::transmute::<(uint, uint),
+            &fn(+v: @@::parse::token::ident_interner)>(
         (-3 as uint, 0u)))
 )
 
@@ -102,7 +110,10 @@ const crate_node_id: node_id = 0;
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
-enum ty_param_bound = @Ty;
+enum ty_param_bound {
+    TraitTyParamBound(@Ty),
+    RegionTyParamBound
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -408,18 +419,12 @@ impl mutability : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum Proto {
     ProtoBare,     // bare functions (deprecated)
     ProtoUniq,     // ~fn
     ProtoBox,      // @fn
     ProtoBorrowed, // &fn
-}
-
-impl Proto : cmp::Eq {
-    pure fn eq(&self, other: &Proto) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Proto) -> bool { !(*self).eq(other) }
 }
 
 impl Proto : to_bytes::IterBytes {
@@ -761,10 +766,10 @@ type capture_clause = @~[capture_item];
 #[auto_decode]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 enum token_tree {
-    tt_tok(span, token::Token),
+    tt_tok(span, ::parse::token::Token),
     tt_delim(~[token_tree]),
     // These only make sense for right-hand-sides of MBE macros
-    tt_seq(span, ~[token_tree], Option<token::Token>, bool),
+    tt_seq(span, ~[token_tree], Option<::parse::token::Token>, bool),
     tt_nonterminal(span, ident)
 }
 
@@ -826,10 +831,10 @@ type matcher = spanned<matcher_>;
 #[auto_decode]
 enum matcher_ {
     // match one token
-    match_tok(token::Token),
+    match_tok(::parse::token::Token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], Option<token::Token>, bool, uint, uint),
+    match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     match_nonterminal(ident, ident, uint)
 }
@@ -1061,20 +1066,24 @@ enum region_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 enum Onceness {
     Once,
     Many
 }
 
-impl Onceness : cmp::Eq {
-    pure fn eq(&self, other: &Onceness) -> bool {
-        match ((*self), *other) {
-            (Once, Once) | (Many, Many) => true,
-            _ => false
+impl Onceness : ToStr {
+    pure fn to_str() -> ~str {
+        match self {
+            ast::Once => ~"once",
+            ast::Many => ~"many"
         }
     }
-    pure fn ne(&self, other: &Onceness) -> bool {
-        !(*self).eq(other)
+}
+
+impl Onceness : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f);
     }
 }
 
@@ -1142,11 +1151,22 @@ type fn_decl =
 
 #[auto_encode]
 #[auto_decode]
-enum purity {
+pub enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
     impure_fn, // declared with "fn"
     extern_fn, // declared with "extern fn"
+}
+
+impl purity : ToStr {
+    pure fn to_str() -> ~str {
+        match self {
+            impure_fn => ~"impure",
+            unsafe_fn => ~"unsafe",
+            pure_fn => ~"pure",
+            extern_fn => ~"extern"
+        }
+    }
 }
 
 impl purity : to_bytes::IterBytes {

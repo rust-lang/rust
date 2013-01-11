@@ -226,13 +226,19 @@ Borrowck results in two maps.
 
 #[legacy_exports];
 
+use core::prelude::*;
+
+use middle::liveness;
 use middle::mem_categorization::*;
-use middle::ty::to_str;
+use middle::region;
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, note_and_explain_region};
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
 
+use core::cmp;
 use core::dvec::DVec;
+use core::io;
 use core::result::{Result, Ok, Err};
 use std::list::{List, Cons, Nil};
 use std::list;
@@ -253,9 +259,6 @@ pub mod gather_loans;
 pub mod loan;
 #[legacy_exports]
 pub mod preserve;
-
-export check_crate, root_map, mutbl_map;
-export check_loans, gather_loans, loan, preserve;
 
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
@@ -333,7 +336,7 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-type mutbl_map = std::map::HashMap<ast::node_id, ()>;
+type mutbl_map = HashMap<ast::node_id, ()>;
 
 // Errors that can occur"]
 enum bckerr_code {
@@ -405,7 +408,7 @@ impl bckerr : cmp::Eq {
 type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
-struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
+pub struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -413,7 +416,7 @@ struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
 ///   for the duration of that block/expr
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
-type req_maps = {
+pub type req_maps = {
     req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
 };
@@ -489,8 +492,8 @@ impl borrowck_ctxt {
         cat_variant(self.tcx, self.method_map, arg, enum_did, cmt)
     }
 
-    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, alt_id),.. *cmt};
+    fn cat_discr(cmt: cmt, match_id: ast::node_id) -> cmt {
+        return @{cat:cat_discr(cmt, match_id),.. *cmt};
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
@@ -514,11 +517,11 @@ impl borrowck_ctxt {
         self.note_and_explain_bckerr(err);
     }
 
-    fn span_err(s: span, m: ~str) {
+    fn span_err(s: span, +m: ~str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(s: span, m: ~str) {
+    fn span_note(s: span, +m: ~str) {
         self.tcx.sess.span_note(s, m);
     }
 

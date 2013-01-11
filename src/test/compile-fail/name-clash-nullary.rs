@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern:declaration of `None` shadows
-use option::*;
+use core::option::*;
 
 fn main() {
   let None: int = 42;

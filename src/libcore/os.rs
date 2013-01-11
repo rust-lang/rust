@@ -30,14 +30,25 @@
  * to write OS-ignorant code by default.
  */
 
-use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
-           mode_t, pid_t, FILE};
-pub use libc::{close, fclose};
-
+use cast;
+use either;
+use io;
+use libc;
+use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
+use libc::{mode_t, pid_t, FILE};
+use option;
 use option::{Some, None};
-
-pub use os::consts::*;
+use prelude::*;
+use private;
+use ptr;
+use str;
+use task;
 use task::TaskBuilder;
+use uint;
+use vec;
+
+pub use libc::{close, fclose};
+pub use os::consts::*;
 
 // FIXME: move these to str perhaps? #2620
 
@@ -53,8 +64,7 @@ extern mod rustrt {
     fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-
-const tmpbuf_sz : uint = 1000u;
+pub const tmpbuf_sz : uint = 1000u;
 
 pub fn getcwd() -> Path {
     Path(rustrt::rust_getcwd())
@@ -78,6 +88,12 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
 
 #[cfg(windows)]
 pub mod win32 {
+    use libc;
+    use vec;
+    use str;
+    use option::{None, Option};
+    use option;
+    use os::tmpbuf_sz;
     use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
@@ -127,6 +143,13 @@ pub fn env() -> ~[(~str,~str)] {
 
 mod global_env {
     //! Internal module for serializing access to getenv/setenv
+    use either;
+    use libc;
+    use oldcomm;
+    use option::Option;
+    use private;
+    use str;
+    use task;
 
     extern mod rustrt {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
@@ -142,7 +165,7 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     oldcomm::Chan(&po)));
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -150,8 +173,8 @@ mod global_env {
         let env_ch = get_global_env_chan();
         let po = oldcomm::Port();
         oldcomm::send(env_ch, MsgSetEnv(str::from_slice(n),
-                                     str::from_slice(v),
-                                     oldcomm::Chan(&po)));
+                                        str::from_slice(v),
+                                        oldcomm::Chan(&po)));
         oldcomm::recv(po)
     }
 
@@ -195,6 +218,14 @@ mod global_env {
     }
 
     mod impl_ {
+        use cast;
+        use libc;
+        use option::Option;
+        use option;
+        use ptr;
+        use str;
+        use vec;
+
         extern mod rustrt {
             fn rust_env_pairs() -> ~[~str];
         }
@@ -224,7 +255,7 @@ mod global_env {
 
         #[cfg(windows)]
         pub fn getenv(n: &str) -> Option<~str> {
-            use os::win32::*;
+            use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
             do as_utf16_p(n) |u| {
                 do fill_utf16_buf_and_decode() |buf, sz| {
                     libc::GetEnvironmentVariableW(u, buf, sz)
@@ -245,7 +276,7 @@ mod global_env {
 
         #[cfg(windows)]
         pub fn setenv(n: &str, v: &str) {
-            use os::win32::*;
+            use os::win32::as_utf16_p;
             do as_utf16_p(n) |nbuf| {
                 do as_utf16_p(v) |vbuf| {
                     libc::SetEnvironmentVariableW(nbuf, vbuf);
@@ -355,13 +386,8 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return pre() + str::from_slice(base) + dll_suffix();
-
-    #[cfg(unix)]
-    fn pre() -> ~str { ~"lib" }
-
-    #[cfg(windows)]
-    fn pre() -> ~str { ~"" }
+    return str::from_slice(DLL_PREFIX) + str::from_slice(base) +
+           str::from_slice(DLL_SUFFIX)
 }
 
 
@@ -403,7 +429,7 @@ pub fn self_exe_path() -> Option<Path> {
 
     #[cfg(windows)]
     fn load_self() -> Option<~str> {
-        use os::win32::*;
+        use os::win32::fill_utf16_buf_and_decode;
         do fill_utf16_buf_and_decode() |buf, sz| {
             libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
         }
@@ -483,14 +509,14 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(getenv_nonempty("TMPDIR"),
+        option::get_or_default(getenv_nonempty("TMPDIR"),
                             Path("/tmp"))
     }
 
     #[cfg(windows)]
     #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
-        option::get_default(
+        option::get_or_default(
                     option::or(getenv_nonempty("TMP"),
                     option::or(getenv_nonempty("TEMP"),
                     option::or(getenv_nonempty("USERPROFILE"),
@@ -566,7 +592,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 
     #[cfg(windows)]
     fn mkdir(p: &Path, _mode: c_int) -> bool {
-        use os::win32::*;
+        use os::win32::as_utf16_p;
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
             libc::CreateDirectoryW(buf, unsafe {
@@ -594,7 +620,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
     #[cfg(windows)]
     fn star(p: &Path) -> Path { p.push("*") }
 
-    do rustrt::rust_list_files2(star(p).to_str()).filter |filename| {
+    do rustrt::rust_list_files2(star(p).to_str()).filtered |filename| {
         *filename != ~"." && *filename != ~".."
     }
 }
@@ -614,7 +640,7 @@ pub fn remove_dir(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn rmdir(p: &Path) -> bool {
-        use os::win32::*;
+        use os::win32::as_utf16_p;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::RemoveDirectoryW(buf) != (0 as libc::BOOL)
         };
@@ -633,7 +659,7 @@ pub fn change_dir(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
-        use os::win32::*;
+        use os::win32::as_utf16_p;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
         };
@@ -653,7 +679,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
 
     #[cfg(windows)]
     fn do_copy_file(from: &Path, to: &Path) -> bool {
-        use os::win32::*;
+        use os::win32::as_utf16_p;
         return do as_utf16_p(from.to_str()) |fromp| {
             do as_utf16_p(to.to_str()) |top| {
                 libc::CopyFileW(fromp, top, (0 as libc::BOOL)) !=
@@ -713,7 +739,7 @@ pub fn remove_file(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn unlink(p: &Path) -> bool {
-        use os::win32::*;
+        use os::win32::as_utf16_p;
         return do as_utf16_p(p.to_str()) |buf| {
             libc::DeleteFileW(buf) != (0 as libc::BOOL)
         };
@@ -758,7 +784,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as c_int,
                             *_NSGetArgv() as **c_char);
@@ -768,7 +794,7 @@ fn real_args() -> ~[~str] {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     unsafe {
         let argc = rustrt::rust_get_argc();
         let argv = rustrt::rust_get_argv();
@@ -777,7 +803,7 @@ fn real_args() -> ~[~str] {
 }
 
 #[cfg(windows)]
-fn real_args() -> ~[~str] {
+pub fn real_args() -> ~[~str] {
     let mut nArgs: c_int = 0;
     let lpArgCount = ptr::to_mut_unsafe_ptr(&mut nArgs);
     let lpCmdLine = GetCommandLineW();
@@ -851,56 +877,104 @@ extern {
     pub fn _NSGetArgv() -> ***c_char;
 }
 
-#[cfg(unix)]
-pub fn family() -> ~str { ~"unix" }
+pub mod consts {
 
-#[cfg(windows)]
-pub fn family() -> ~str { ~"windows" }
+    #[cfg(unix)]
+    use os::consts::unix::*;
 
-#[cfg(target_os = "macos")]
-mod consts {
-    pub fn sysname() -> ~str { ~"macos" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".dylib" }
+    #[cfg(windows)]
+    use os::consts::windows::*;
+
+    pub mod unix {
+        pub const FAMILY: &str = "unix";
+    }
+
+    pub mod windows {
+        pub const FAMILY: &str = "windows";
+    }
+
+
+    #[cfg(target_os = "macos")]
+    use os::consts::macos::*;
+
+    #[cfg(target_os = "freebsd")]
+    use os::consts::freebsd::*;
+
+    #[cfg(target_os = "linux")]
+    use os::consts::linux::*;
+
+    #[cfg(target_os = "win32")]
+    use os::consts::win32::*;
+
+    pub mod macos {
+        pub const SYSNAME: &str = "macos";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".dylib";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod freebsd {
+        pub const SYSNAME: &str = "freebsd";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod linux {
+        pub const SYSNAME: &str = "linux";
+        pub const DLL_PREFIX: &str = "lib";
+        pub const DLL_SUFFIX: &str = ".so";
+        pub const EXE_SUFFIX: &str = "";
+    }
+
+    pub mod win32 {
+        pub const SYSNAME: &str = "win32";
+        pub const DLL_PREFIX: &str = "";
+        pub const DLL_SUFFIX: &str = ".dll";
+        pub const EXE_SUFFIX: &str = ".exe";
+    }
+
+
+    #[cfg(target_arch = "x86")]
+    use os::consts::x86::*;
+
+    #[cfg(target_arch = "x86_64")]
+    use os::consts::x86_64::*;
+
+    #[cfg(target_arch = "arm")]
+    use os::consts::arm::*;
+
+    pub mod x86 {
+        pub const ARCH: &str = "x86";
+    }
+    pub mod x86_64 {
+        pub const ARCH: &str = "x86_64";
+    }
+    pub mod arm {
+        pub const ARCH: &str = "arm";
+    }
 }
-
-#[cfg(target_os = "freebsd")]
-mod consts {
-    pub fn sysname() -> ~str { ~"freebsd" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "linux")]
-mod consts {
-    pub fn sysname() -> ~str { ~"linux" }
-    pub fn exe_suffix() -> ~str { ~"" }
-    pub fn dll_suffix() -> ~str { ~".so" }
-}
-
-#[cfg(target_os = "win32")]
-mod consts {
-    pub fn sysname() -> ~str { ~"win32" }
-    pub fn exe_suffix() -> ~str { ~".exe" }
-    pub fn dll_suffix() -> ~str { ~".dll" }
-}
-
-#[cfg(target_arch = "x86")]
-pub fn arch() -> ~str { ~"x86" }
-
-#[cfg(target_arch = "x86_64")]
-pub fn arch() -> ~str { ~"x86_64" }
-
-#[cfg(target_arch = "arm")]
-pub fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use debug;
+    use libc::{c_int, c_void, size_t};
+    use libc;
+    use option::{None, Option, Some};
+    use option;
+    use os::{as_c_charp, env, getcwd, getenv, make_absolute, real_args};
+    use os::{remove_file, setenv};
+    use os;
+    use path::Path;
+    use rand;
+    use run;
+    use str;
+    use vec;
 
     #[test]
     pub fn last_os_error() {
-        log(debug, last_os_error());
+        log(debug, os::last_os_error());
     }
 
     #[test]

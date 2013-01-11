@@ -111,11 +111,21 @@ lvalues are *never* stored by value.
 
 */
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
+use middle::resolve;
 use middle::trans::base::*;
 use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
+use middle::trans::callee;
+use middle::trans::closure;
 use middle::trans::common::*;
+use middle::trans::consts;
+use middle::trans::controlflow;
 use middle::trans::datum::*;
+use middle::trans::machine;
+use middle::trans::meth;
+use middle::trans::tvec;
 use middle::ty::MoveValue;
 use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
@@ -123,6 +133,8 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use syntax::print::pprust::{expr_to_str};
+use syntax::ast;
+use syntax::ast::spanned;
 
 // The primary two functions for translating expressions:
 export trans_to_datum, trans_into;
@@ -506,7 +518,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
 
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
-    match expr.node {
+    // XXX: This copy is really bad.
+    match /*bad*/copy expr.node {
         ast::expr_paren(e) => {
             return trans_rvalue_dps_unadjusted(bcx, e, dest);
         }
@@ -518,7 +531,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return controlflow::trans_if(bcx, cond, (*thn), els, dest);
         }
         ast::expr_match(discr, ref arms) => {
-            return alt::trans_alt(bcx, expr, discr, (*arms), dest);
+            return _match::trans_match(bcx, expr, discr, /*bad*/copy *arms,
+                                       dest);
         }
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, (*blk).info(),
@@ -533,7 +547,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_tup(args) => {
             return trans_tup(bcx, args, dest);
         }
-        ast::expr_lit(@{node: ast::lit_str(s), _}) => {
+        ast::expr_lit(@ast::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::expr_vstore(contents, ast::expr_vstore_slice) |
@@ -546,13 +560,14 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::expr_fn(proto, decl, ref body, cap_clause) => {
+        // XXX: Bad copy.
+        ast::expr_fn(proto, copy decl, ref body, cap_clause) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
-            return closure::trans_expr_fn(bcx, proto, decl, *body, expr.id,
-                                          cap_clause, None, dest);
+            return closure::trans_expr_fn(bcx, proto, decl, /*bad*/copy *body,
+                                          expr.id, cap_clause, None, dest);
         }
-        ast::expr_fn_block(decl, ref body, cap_clause) => {
+        ast::expr_fn_block(ref decl, ref body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
             match ty::get(expr_ty).sty {
                 ty::ty_fn(ref fn_ty) => {
@@ -560,7 +575,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                            expr_to_str(expr, tcx.sess.intr()),
                            ty_to_str(tcx, expr_ty));
                     return closure::trans_expr_fn(
-                        bcx, fn_ty.meta.proto, decl, *body, expr.id,
+                        bcx, fn_ty.meta.proto, /*bad*/copy *decl,
+                        /*bad*/copy *body, expr.id,
                         cap_clause, None, dest);
                 }
                 _ => {
@@ -573,10 +589,16 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             match ty::get(expr_ty(bcx, expr)).sty {
                 ty::ty_fn(ref fn_ty) => {
                     match blk.node {
-                        ast::expr_fn_block(decl, ref body, cap) => {
+                        ast::expr_fn_block(copy decl, ref body, cap) => {
                             return closure::trans_expr_fn(
-                                bcx, fn_ty.meta.proto, decl, *body, blk.id,
-                                cap, Some(None), dest);
+                                bcx,
+                                fn_ty.meta.proto,
+                                decl,
+                                /*bad*/copy *body,
+                                blk.id,
+                                cap,
+                                Some(None),
+                                dest);
                         }
                         _ => {
                             bcx.sess().impossible_case(

@@ -17,8 +17,10 @@ Higher level communication abstractions.
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 
-use pipes::{GenericChan, GenericSmartChan, GenericPort,
-            Chan, Port, Selectable, Peekable};
+use core::pipes::{GenericChan, GenericSmartChan, GenericPort};
+use core::pipes::{Chan, Port, Selectable, Peekable};
+use core::pipes;
+use core::prelude::*;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T: Owned, U: Owned> {
@@ -79,6 +81,8 @@ pub fn DuplexStream<T: Owned, U: Owned>()
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+    use comm::DuplexStream;
+
     #[test]
     fn DuplexStream1() {
         let (left, right) = DuplexStream();

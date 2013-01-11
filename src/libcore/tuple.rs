@@ -15,6 +15,8 @@
 //! Operations on tuples
 
 use cmp::{Eq, Ord};
+use kinds::Copy;
+use vec;
 
 pub trait CopyableTuple<T, U> {
     pure fn first() -> T;

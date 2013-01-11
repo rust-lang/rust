@@ -75,21 +75,25 @@
 #[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
+use core::prelude::*;
 use core::result::{Err, Ok};
+use core::result;
 use core::option;
 use core::option::{Some, None};
+use core::str;
+use core::vec;
 
 #[deriving_eq]
-enum Name {
+pub enum Name {
     Long(~str),
     Short(char),
 }
 
 #[deriving_eq]
-enum HasArg { Yes, No, Maybe, }
+pub enum HasArg { Yes, No, Maybe, }
 
 #[deriving_eq]
-enum Occur { Req, Optional, Multi, }
+pub enum Occur { Req, Optional, Multi, }
 
 /// A description of a possible option
 #[deriving_eq]
@@ -450,6 +454,12 @@ enum FailType {
  *  groups of short and long option names, together.
  */
 pub mod groups {
+    use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
+    use getopts::{Result, Short, Yes};
+
+    use core::prelude::*;
+    use core::str;
+    use core::vec;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
@@ -562,7 +572,7 @@ pub mod groups {
     /*
      * Parse command line args with the provided long format options
      */
-    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> Result {
+    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> ::getopts::Result {
         ::getopts::getopts(args, vec::flat_map(opts, long_to_short))
     }
 
@@ -626,9 +636,14 @@ pub mod groups {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+    use core::prelude::*;
+
     use opt = getopts;
-    use result::{Err, Ok};
     use getopts::groups::OptGroup;
+    use getopts::*;
+
+    use core::result::{Err, Ok};
+    use core::result;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {

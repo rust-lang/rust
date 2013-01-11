@@ -8,13 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map;
-use std::map::HashMap;
-use metadata::cstore;
+use core::prelude::*;
+
 use driver::session;
+use metadata::cstore;
 use metadata::filesearch;
 
+use core::os;
+use core::uint;
+use core::util;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+
+export get_absolute_rpath;
+export get_install_prefix_rpath;
+export get_relative_to;
 export get_rpath_flags;
+export get_rpath_relative_to_output;
+export minimize_rpaths;
+export rpaths_to_flags;
 
 pure fn not_win32(os: session::os) -> bool {
   match os {
@@ -40,7 +53,7 @@ fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
     // where rustrt is and we know every rust program needs it
     let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
-    let target_triple = sess.opts.target_triple;
+    let target_triple = /*bad*/copy sess.opts.target_triple;
     let rpaths = get_rpaths(os, &sysroot, output, libs, target_triple);
     rpaths_to_flags(rpaths)
 }
@@ -109,14 +122,17 @@ fn get_rpaths_relative_to_output(os: session::os,
 
 fn get_rpath_relative_to_output(os: session::os,
                                 output: &Path,
-                                lib: &Path) -> Path {
+                                lib: &Path)
+                             -> Path {
+    use core::os;
+
     assert not_win32(os);
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
         session::os_linux | session::os_freebsd => "$ORIGIN",
         session::os_macos => "@executable_path",
-        session::os_win32 => core::util::unreachable()
+        session::os_win32 => util::unreachable()
     };
 
     Path(prefix).push_rel(&get_relative_to(&os::make_absolute(output),
@@ -131,8 +147,8 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let abs2 = abs2.normalize();
     debug!("finding relative path from %s to %s",
            abs1.to_str(), abs2.to_str());
-    let split1 = abs1.components;
-    let split2 = abs2.components;
+    let split1 = /*bad*/copy abs1.components;
+    let split2 = /*bad*/copy abs2.components;
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
     assert len1 > 0;
@@ -182,7 +198,7 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     for rpaths.each |rpath| {
         let s = rpath.to_str();
         if !set.contains_key(s) {
-            minimized.push(*rpath);
+            minimized.push(/*bad*/copy *rpath);
             set.insert(s, ());
         }
     }
@@ -192,6 +208,17 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 #[cfg(unix)]
 mod test {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
+    use back::rpath::{get_relative_to, get_rpath_relative_to_output};
+    use back::rpath::{minimize_rpaths, rpaths_to_flags};
+    use driver::session;
+
+    use core::os;
+    use core::str;
+
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(~[Path("path1"),

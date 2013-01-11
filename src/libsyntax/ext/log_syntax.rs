@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast;
+use codemap;
 use ext::base::*;
-use io::WriterUtil;
+use ext::base;
+use print;
+
+use core::io::WriterUtil;
+use core::option;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, tt: ~[ast::token_tree])
     -> base::mac_result {

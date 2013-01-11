@@ -10,22 +10,32 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
+use core::prelude::*;
+
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use extract::to_str;
+use extract;
 use fold::Fold;
+use fold;
+use pass::Pass;
+
+use core::vec;
+use std::map::HashMap;
+use std::par;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;
-use std::map::HashMap;
-use extract::to_str;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"tystr",
         f: run
     }
 }
 
-fn run(
+pub fn run(
     srv: astsrv::Srv,
     +doc: doc::Doc
 ) -> doc::Doc {
@@ -398,9 +408,13 @@ fn should_not_serialize_struct_attrs() {
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
-    fn mk_doc(source: ~str) -> doc::Doc {
+pub mod test {
+    use astsrv;
+    use doc;
+    use extract;
+    use tystr_pass::run;
+
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

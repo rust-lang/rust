@@ -37,6 +37,13 @@
  */
 #[forbid(deprecated_mode)];
 
+use core::libc;
+use core::oldcomm;
+use core::option;
+use core::prelude::*;
+use core::ptr;
+use core::task;
+
 /**
  * The type representing a foreign chunk of memory
  *
@@ -146,7 +153,12 @@ pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
 
 #[cfg(test)]
 mod tests {
-    use libc::*;
+    use core::prelude::*;
+
+    use c_vec::*;
+
+    use core::libc::*;
+    use core::libc;
 
     fn malloc(n: size_t) -> CVec<u8> {
         let mem = libc::malloc(n);

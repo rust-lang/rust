@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Type decoding
 
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -83,13 +90,6 @@ fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                   conv: conv_did) -> ty::arg {
     let st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_arg(st, conv)
-}
-
-fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
-    match peek(st) {
-      '!' => { next(st); (ast::noreturn, ty::mk_bot(st.tcx)) }
-      _ => (ast::return_val, parse_ty(st, conv))
-    }
 }
 
 fn parse_path(st: @pstate) -> @ast::path {
@@ -432,14 +432,13 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
         inputs.push({mode: mode, ty: parse_ty(st, conv)});
     }
     st.pos += 1u; // eat the ']'
-    let (ret_style, ret_ty) = parse_ret_ty(st, conv);
+    let ret_ty = parse_ty(st, conv);
     return FnTyBase {
         meta: FnMeta {purity: purity,
                       proto: proto,
                       onceness: onceness,
                       bounds: bounds,
-                      region: region,
-                      ret_style: ret_style},
+                      region: region},
         sig: FnSig {inputs: inputs,
                     output: ret_ty}
     };

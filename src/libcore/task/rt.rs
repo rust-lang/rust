@@ -16,6 +16,8 @@ The task interface to the runtime
 
 #[doc(hidden)]; // FIXME #3538
 
+use libc;
+
 #[allow(non_camel_case_types)] // runtime type
 pub type sched_id = int;
 #[allow(non_camel_case_types)] // runtime type

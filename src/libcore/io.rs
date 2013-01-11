@@ -21,12 +21,22 @@ use result::Result;
 
 use cmp::Eq;
 use dvec::DVec;
+use int;
+use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use libc::consts::os::extra::*;
+use option;
+use os;
+use prelude::*;
+use ptr;
+use result;
+use str;
+use uint;
+use vec;
 
 #[allow(non_camel_case_types)] // not sure what to do about this
-type fd_t = c_int;
+pub type fd_t = c_int;
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -443,12 +453,12 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
     fn tell(&self) -> uint { self.base.tell() }
 }
 
-struct FILERes {
+pub struct FILERes {
     f: *libc::FILE,
     drop { libc::fclose(self.f); }
 }
 
-fn FILERes(f: *libc::FILE) -> FILERes {
+pub fn FILERes(f: *libc::FILE) -> FILERes {
     FILERes {
         f: f
     }
@@ -620,12 +630,12 @@ impl fd_t: Writer {
     }
 }
 
-struct FdRes {
+pub struct FdRes {
     fd: fd_t,
     drop { libc::close(self.fd); }
 }
 
-fn FdRes(fd: fd_t) -> FdRes {
+pub fn FdRes(fd: fd_t) -> FdRes {
     FdRes {
         fd: fd
     }
@@ -1019,6 +1029,12 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
+    use io::{FILERes, FdRes, fd_t};
+    use kinds::Copy;
+    use libc;
+    use option::Option;
+    use option;
+    use os;
 
     pub enum Level {
         // whatever fsync does on that platform
@@ -1101,6 +1117,15 @@ pub mod fsync {
 
 #[cfg(test)]
 mod tests {
+    use debug;
+    use i32;
+    use io::{BytesWriter, SeekCur, SeekEnd, SeekSet};
+    use io;
+    use path::Path;
+    use result;
+    use str;
+    use u64;
+    use vec;
 
     #[test]
     fn test_simple() {

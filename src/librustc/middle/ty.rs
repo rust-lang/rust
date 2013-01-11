@@ -10,31 +10,52 @@
 
 #[warn(deprecated_pattern)];
 
-use core::dvec::DVec;
-use std::{map, smallintmap};
-use result::Result;
-use std::map::HashMap;
+use core::prelude::*;
+
 use driver::session;
-use session::Session;
-use syntax::{ast, ast_map};
-use syntax::ast_util;
-use syntax::ast_util::{is_local, local_def};
-use syntax::codemap::span;
 use metadata::csearch;
-use util::ppaux::{region_to_str, explain_region, vstore_to_str,
-                  note_and_explain_region, bound_region_to_str};
-use middle::lint;
+use metadata;
+use middle::const_eval;
+use middle::freevars;
 use middle::lint::{get_lint_level, allow};
-use syntax::ast::*;
-use syntax::print::pprust::*;
-use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+use middle::lint;
 use middle::resolve::{Impl, MethodInfo};
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+use middle;
+use session::Session;
+use util::ppaux::{note_and_explain_region, bound_region_to_str};
+use util::ppaux::{region_to_str, explain_region, vstore_to_str};
+use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+
+use core::cast;
+use core::cmp;
+use core::dvec::DVec;
+use core::dvec;
+use core::ops;
+use core::option;
+use core::ptr::to_unsafe_ptr;
+use core::result::Result;
+use core::result;
+use core::to_bytes;
+use core::uint;
+use core::vec;
+use std::map::HashMap;
+use std::{map, smallintmap};
+use syntax::ast::*;
+use syntax::ast_util::{is_local, local_def};
+use syntax::ast_util;
+use syntax::codemap::span;
+use syntax::print::pprust;
+use syntax::{ast, ast_map};
+use syntax;
 
 export ProvidedMethodSource;
 export ProvidedMethodInfo;
 export ProvidedMethodsMap;
 export InstantiatedTraitRef;
-export TyVid, IntVid, FloatVid, FnVid, RegionVid, vid;
+export TyVid, IntVid, FloatVid, FnVid, RegionVid, Vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -53,7 +74,7 @@ export expr_ty_params_and_ty;
 export expr_is_lval, expr_kind;
 export ExprKind, LvalueExpr, RvalueDatumExpr, RvalueDpsExpr, RvalueStmtExpr;
 export field_ty;
-export fold_ty, fold_sty_to_ty, fold_region, fold_regions;
+export fold_ty, fold_sty_to_ty, fold_region, fold_regions, fold_sig;
 export apply_op_on_t_to_ty_fn;
 export fold_regions_and_ty, walk_regions_and_ty;
 export field;
@@ -97,7 +118,8 @@ export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, FnTy, FnTyBase, FnMeta, FnSig, mk_fn;
-export ty_fn_proto, ty_fn_purity, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
+export ty_fn_proto, ty_fn_purity, ty_fn_ret, tys_in_fn_sig;
+export replace_fn_return_type;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export mk_f32, mk_f64;
@@ -118,7 +140,8 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var, mk_float_var;
+export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var;
+export mk_float_var;
 export InferTy, TyVar, IntVar, FloatVar;
 export ValueMode, ReadValue, CopyValue, MoveValue;
 export ty_self, mk_self, type_has_self;
@@ -126,7 +149,7 @@ export ty_struct;
 export Region, bound_region, encl_region;
 export re_bound, re_free, re_scope, re_static, re_infer;
 export ReVar, ReSkolemized;
-export br_self, br_anon, br_named, br_cap_avoid;
+export br_self, br_anon, br_named, br_cap_avoid, br_fresh;
 export get, type_has_params, type_needs_infer, type_has_regions;
 export type_is_region_ptr;
 export type_id;
@@ -144,10 +167,11 @@ export kind_is_durable;
 export meta_kind, kind_lteq, type_kind, type_kind_ext;
 export operators;
 export type_err, terr_vstore_kind;
-export terr_mismatch, terr_onceness_mismatch;
+export terr_integer_as_char, terr_mismatch, terr_onceness_mismatch;
 export type_err_to_str, note_and_explain_type_err;
 export expected_found;
 export type_needs_drop;
+export type_is_char;
 export type_is_empty;
 export type_is_integral;
 export type_is_numeric;
@@ -199,9 +223,7 @@ export terr_regions_not_same, terr_regions_no_overlap;
 export terr_regions_insufficiently_polymorphic;
 export terr_regions_overly_polymorphic;
 export terr_proto_mismatch;
-export terr_ret_style_mismatch;
 export terr_fn, terr_trait;
-export purity_to_str;
 export onceness_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
@@ -285,18 +307,22 @@ impl creader_cache_key : to_bytes::IterBytes {
     }
 }
 
-type intern_key = {sty: sty, o_def_id: Option<ast::def_id>};
+type intern_key = {sty: *sty, o_def_id: Option<ast::def_id>};
 
 impl intern_key : cmp::Eq {
     pure fn eq(&self, other: &intern_key) -> bool {
-        (*self).sty == (*other).sty && (*self).o_def_id == (*other).o_def_id
+        unsafe {
+            *self.sty == *other.sty && self.o_def_id == other.o_def_id
+        }
     }
     pure fn ne(&self, other: &intern_key) -> bool { !(*self).eq(other) }
 }
 
 impl intern_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
+        unsafe {
+            to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
+        }
     }
 }
 
@@ -493,15 +519,14 @@ pure fn type_id(t: t) -> uint { get(t).id }
  * - `onceness` indicates whether the function can be called one time or many
  *   times.
  * - `region` is the region bound on the function's upvars (often &static).
- * - `bounds` is the parameter bounds on the function's upvars.
- * - `ret_style` indicates whether the function returns a value or fails. */
+ * - `bounds` is the parameter bounds on the function's upvars. */
+#[deriving_eq]
 struct FnMeta {
     purity: ast::purity,
     proto: ast::Proto,
     onceness: ast::Onceness,
     region: Region,
-    bounds: @~[param_bound],
-    ret_style: ret_style
+    bounds: @~[param_bound]
 }
 
 /**
@@ -510,6 +535,7 @@ struct FnMeta {
  *
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
+#[deriving_eq]
 struct FnSig {
     inputs: ~[arg],
     output: t
@@ -520,9 +546,16 @@ struct FnSig {
  * type signature.  This particular type is parameterized
  * by the meta information because, in some cases, the
  * meta information is inferred. */
+#[deriving_eq]
 struct FnTyBase<M: cmp::Eq> {
-    meta: M,
-    sig: FnSig
+    meta: M,        // Either FnMeta or FnVid
+    sig: FnSig      // Types of arguments/return type
+}
+
+impl<M: to_bytes::IterBytes> FnTyBase<M> : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.meta, &self.sig, lsb0, f)
+    }
 }
 
 type FnTy = FnTyBase<FnMeta>;
@@ -584,6 +617,9 @@ enum bound_region {
 
     /// Named region parameters for functions (a in &a/T)
     br_named(ast::ident),
+
+    /// Fresh bound identifiers created during GLB computations.
+    br_fresh(uint),
 
     /**
      * Handles capture-avoiding substitution in a rather subtle case.  If you
@@ -647,7 +683,7 @@ enum sty {
     ty_param(param_ty), // type parameter
     ty_self, // special, implicit `self` type parameter
 
-    ty_infer(InferTy), // soething used only during inference/typeck
+    ty_infer(InferTy), // something used only during inference/typeck
     ty_err, // Also only used during inference/typeck, to represent
             // the type of an erroneous expression (helps cut down
             // on non-useful type error messages)
@@ -671,7 +707,6 @@ struct expected_found<T> {
 // Data structures used in type unification
 enum type_err {
     terr_mismatch,
-    terr_ret_style_mismatch(expected_found<ast::ret_style>),
     terr_purity_mismatch(expected_found<purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_mutability,
@@ -696,6 +731,7 @@ enum type_err {
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
     terr_self_substs,
+    terr_integer_as_char,
     terr_no_integral_type,
     terr_no_floating_point_type,
 }
@@ -716,6 +752,7 @@ enum FnVid = uint;
 #[auto_decode]
 enum RegionVid = uint;
 
+#[deriving_eq]
 enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -727,7 +764,7 @@ impl InferTy : to_bytes::IterBytes {
         match *self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
-          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f)
+          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f),
         }
     }
 }
@@ -778,61 +815,64 @@ impl param_bound : to_bytes::IterBytes {
     }
 }
 
-trait vid {
+trait Vid {
     pure fn to_uint() -> uint;
-    pure fn to_str() -> ~str;
 }
 
-impl TyVid: vid {
+impl TyVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl TyVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-impl IntVid: vid {
+impl IntVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl IntVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-impl FloatVid: vid {
+impl FloatVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl FloatVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-impl FnVid: vid {
+impl FnVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl FnVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<F%u>", self.to_uint()) }
 }
 
-impl RegionVid: vid {
+impl RegionVid: Vid {
     pure fn to_uint() -> uint { *self }
+}
+
+impl RegionVid: ToStr {
     pure fn to_str() -> ~str { fmt!("%?", self) }
 }
 
-impl InferTy {
-    pure fn to_hash() -> uint {
-        match self {
-            TyVar(v) => v.to_uint() << 1,
-            IntVar(v) => (v.to_uint() << 1) + 1,
-            FloatVar(v) => (v.to_uint() << 1) + 2
-        }
-    }
-
+impl FnSig : ToStr {
     pure fn to_str() -> ~str {
-        match self {
-            TyVar(v) => v.to_str(),
-            IntVar(v) => v.to_str(),
-            FloatVar(v) => v.to_str()
-        }
+        // grr, without tcx not much we can do.
+        return ~"(...)";
     }
 }
 
-trait purity_to_str {
-    pure fn to_str() -> ~str;
-}
-
-impl purity: purity_to_str {
+impl InferTy: ToStr {
     pure fn to_str() -> ~str {
-        purity_to_str(self)
+        match self {
+            TyVar(ref v) => v.to_str(),
+            IntVar(ref v) => v.to_str(),
+            FloatVar(ref v) => v.to_str()
+        }
     }
 }
 
@@ -988,11 +1028,12 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
-    let key = {sty: st, o_def_id: o_def_id};
+    let key = {sty: to_unsafe_ptr(&st), o_def_id: o_def_id};
     match cx.interner.find(key) {
       Some(t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
     }
+
     let mut flags = 0u;
     fn rflags(r: Region) -> uint {
         (has_regions as uint) | {
@@ -1008,42 +1049,46 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         substs.self_r.iter(|r| f |= rflags(*r));
         return f;
     }
-    match st {
-      ty_estr(vstore_slice(r)) => {
+    match &st {
+      &ty_estr(vstore_slice(r)) => {
         flags |= rflags(r);
       }
-      ty_evec(mt, vstore_slice(r)) => {
+      &ty_evec(ref mt, vstore_slice(r)) => {
         flags |= rflags(r);
         flags |= get(mt.ty).flags;
       }
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box | ty_err => (),
-      ty_param(_) => flags |= has_params as uint,
-      ty_infer(_) => flags |= needs_infer as uint,
-      ty_self => flags |= has_self as uint,
-      ty_enum(_, ref substs) | ty_struct(_, ref substs)
-      | ty_trait(_, ref substs, _) => {
+      &ty_nil | &ty_bot | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
+      &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
+      &ty_opaque_box | &ty_err => (),
+      &ty_param(_) => flags |= has_params as uint,
+      &ty_infer(_) => flags |= needs_infer as uint,
+      &ty_self => flags |= has_self as uint,
+      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
+      &ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
       }
-      ty_box(m) | ty_uniq(m) | ty_evec(m, _) |
-      ty_ptr(m) | ty_unboxed_vec(m) => {
+      &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
+      &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
-      ty_rptr(r, m) => {
+      &ty_rptr(r, ref m) => {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
-      ty_tup(ts) => for ts.each |tt| { flags |= get(*tt).flags; },
-      ty_fn(ref f) => {
+      &ty_rec(ref flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
+      &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
+      &ty_fn(ref f) => {
         flags |= rflags(f.meta.region);
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.sig.output).flags;
       }
     }
-    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
-    cx.interner.insert(key, t);
+
+    let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+
+    let key = {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
+    cx.interner.insert(move key, t);
+
     cx.next_id += 1u;
     unsafe { cast::reinterpret_cast(&t) }
 }
@@ -1142,9 +1187,9 @@ fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec({ty: ty, mutbl: ast::m_imm}))
 }
 
-fn mk_rec(cx: ctxt, fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
+fn mk_rec(cx: ctxt, +fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
-fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
+fn mk_tup(cx: ctxt, +ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
 // take a copy because we want to own the various vectors inside
 fn mk_fn(cx: ctxt, +fty: FnTy) -> t { mk_t(cx, ty_fn(fty)) }
@@ -1166,7 +1211,7 @@ fn mk_int_var(cx: ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
 
 fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
 
-fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
+fn mk_infer(cx: ctxt, +it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
@@ -1183,7 +1228,7 @@ fn mk_opaque_closure_ptr(cx: ctxt, proto: ast::Proto) -> t {
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
 fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, get(base).sty, Some(def_id))
+    mk_t_with_id(cx, /*bad*/copy get(base).sty, Some(def_id))
 }
 
 // Converts s to its machine type equivalent
@@ -1192,7 +1237,7 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
       ty_int(ast::ty_i) => ty_int(cfg.int_type),
       ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
       ty_float(ast::ty_f) => ty_float(cfg.float_type),
-      ref s => (*s)
+      ref s => (/*bad*/copy *s)
     }
 }
 
@@ -1256,7 +1301,7 @@ fn walk_ty(ty: t, f: fn(t)) {
 
 fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { return; }
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
@@ -1285,6 +1330,17 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
     mk_t(tcx, fold_sty(sty, foldop))
 }
 
+fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
+    let args = do sig.inputs.map |arg| {
+        { mode: arg.mode, ty: fldop(arg.ty) }
+    };
+
+    FnSig {
+        inputs: move args,
+        output: fldop(sig.output)
+    }
+}
+
 fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
         {self_r: substs.self_r,
@@ -1292,7 +1348,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
          tps: substs.tps.map(|t| fldop(*t))}
     }
 
-    match *sty {
+    match /*bad*/copy *sty {
         ty_box(tm) => {
             ty_box({ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
@@ -1327,15 +1383,8 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             ty_tup(new_ts)
         }
         ty_fn(ref f) => {
-            let new_args = f.sig.inputs.map(|a| {
-                let new_ty = fldop(a.ty);
-                {mode: a.mode, ty: new_ty}
-            });
-            let new_output = fldop(f.sig.output);
-            ty_fn(FnTyBase {
-                meta: f.meta,
-                sig: FnSig {inputs: new_args, output: new_output}
-            })
+            let sig = fold_sig(&f.sig, fldop);
+            ty_fn(FnTyBase {meta: f.meta, sig: sig})
         }
         ty_rptr(r, tm) => {
             ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1346,7 +1395,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
         ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self => {
-            *sty
+            /*bad*/copy *sty
         }
     }
 }
@@ -1382,8 +1431,8 @@ fn fold_regions_and_ty(
     fn fold_substs(
         substs: &substs,
         fldr: fn(r: Region) -> Region,
-        fldt: fn(t: t) -> t) -> substs {
-
+        fldt: fn(t: t) -> t) -> substs
+    {
         {self_r: substs.self_r.map(|r| fldr(*r)),
          self_ty: substs.self_ty.map(|t| fldt(*t)),
          tps: substs.tps.map(|t| fldt(*t))}
@@ -1415,18 +1464,9 @@ fn fold_regions_and_ty(
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
       ty_fn(ref f) => {
-          let new_region = fldr(f.meta.region);
-          let new_args = vec::map(f.sig.inputs, |a| {
-              let new_ty = fldfnt(a.ty);
-              {mode: a.mode, ty: new_ty}
-          });
-          let new_output = fldfnt(f.sig.output);
-          ty::mk_fn(cx, FnTyBase {
-              meta: FnMeta {region: new_region,
-                            ..f.meta},
-              sig: FnSig {inputs: new_args,
-                          output: new_output}
-          })
+          ty::mk_fn(cx, FnTyBase {meta: FnMeta {region: fldr(f.meta.region),
+                                                ..f.meta},
+                                  sig: fold_sig(&f.sig, fldfnt)})
       }
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
@@ -1446,7 +1486,7 @@ fn apply_op_on_t_to_ty_fn(
     f: &FnTy,
     t_op: fn(t) -> t) -> FnTy
 {
-    let t0 = ty::mk_fn(cx, *f);
+    let t0 = ty::mk_fn(cx, /*bad*/copy *f);
     let t1 = t_op(t0);
     match ty::get(t1).sty {
         ty::ty_fn(copy f) => {
@@ -1463,10 +1503,11 @@ fn apply_op_on_t_to_ty_fn(
 fn fold_regions(
     cx: ctxt,
     ty: t,
-    fldr: fn(r: Region, in_fn: bool) -> Region) -> t {
-
+    fldr: fn(r: Region, in_fn: bool) -> Region) -> t
+{
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
                fldr: fn(Region, bool) -> Region) -> t {
+        debug!("do_fold(ty=%s, in_fn=%b)", ty_to_str(cx, ty), in_fn);
         if !type_has_regions(ty) { return ty; }
         fold_regions_and_ty(
             cx, ty,
@@ -1542,17 +1583,18 @@ fn substs_is_noop(substs: &substs) -> bool {
 fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default(~"none", |r| region_to_str(cx, *r)),
-         substs.self_ty.map_default(~"none", |t| ty_to_str(cx, *t)),
+         substs.self_ty.map_default(~"none",
+                                    |t| ::util::ppaux::ty_to_str(cx, *t)),
          tys_to_str(cx, substs.tps))
 }
 
 fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
     match *pb {
         bound_copy => ~"copy",
-        bound_durable => ~"durable",
+        bound_durable => ~"&static",
         bound_owned => ~"owned",
         bound_const => ~"const",
-        bound_trait(t) => ty_to_str(cx, t)
+        bound_trait(t) => ::util::ppaux::ty_to_str(cx, t)
     }
 }
 
@@ -1566,11 +1608,11 @@ fn subst(cx: ctxt,
 
     debug!("subst(substs=%s, typ=%s)",
            substs_to_str(cx, substs),
-           ty_to_str(cx, typ));
+           ::util::ppaux::ty_to_str(cx, typ));
 
     if substs_is_noop(substs) { return typ; }
     let r = do_subst(cx, substs, typ);
-    debug!("  r = %s", ty_to_str(cx, r));
+    debug!("  r = %s", ::util::ppaux::ty_to_str(cx, r));
     return r;
 
     fn do_subst(cx: ctxt,
@@ -1585,10 +1627,18 @@ fn subst(cx: ctxt,
             fold_regions_and_ty(
                 cx, typ,
                 |r| match r {
-                    re_bound(br_self) => substs.self_r.expect(
-                        fmt!("ty::subst: \
-                      Reference to self region when given substs with no \
-                      self region, ty = %s", ty_to_str(cx, typ))),
+                    re_bound(br_self) => {
+                        match substs.self_r {
+                            None => {
+                                cx.sess.bug(
+                                    fmt!("ty::subst: \
+                                  Reference to self region when given substs \
+                                  with no self region, ty = %s",
+                                  ::util::ppaux::ty_to_str(cx, typ)))
+                            }
+                            Some(self_r) => self_r
+                        }
+                    }
                     _ => r
                 },
                 |t| do_subst(cx, substs, t),
@@ -1662,7 +1712,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 }
 
 fn get_element_type(ty: t, i: uint) -> t {
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
       _ => fail ~"get_element_type called on invalid type"
@@ -1755,7 +1805,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     }
 
     let mut accum = false;
-    let result = match get(ty).sty {
+    let result = match /*bad*/copy get(ty).sty {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) |
@@ -2115,7 +2165,7 @@ fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
     // Insert a default in case we loop back on self recursively.
     cx.kind_cache.insert(ty, kind_top());
 
-    let mut result = match get(ty).sty {
+    let mut result = match /*bad*/copy get(ty).sty {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) => {
@@ -2287,7 +2337,7 @@ fn type_implicitly_moves(cx: ctxt, ty: t) -> bool {
 /// gives a rough estimate of how much space it takes to represent
 /// an instance of `ty`.  Used for the mode transition.
 fn type_size(cx: ctxt, ty: t) -> uint {
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
       ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
@@ -2351,8 +2401,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     fn type_requires(cx: ctxt, seen: @mut ~[def_id],
                      r_ty: t, ty: t) -> bool {
         debug!("type_requires(%s, %s)?",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty));
 
         let r = {
             get(r_ty).sty == get(ty).sty ||
@@ -2360,8 +2410,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         };
 
         debug!("type_requires(%s, %s)? %b",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty),
                r);
         return r;
     }
@@ -2369,10 +2419,10 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
                         r_ty: t, ty: t) -> bool {
         debug!("subtypes_require(%s, %s)?",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty));
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty));
 
-        let r = match get(ty).sty {
+        let r = match /*bad*/copy get(ty).sty {
           ty_nil |
           ty_bot |
           ty_bool |
@@ -2447,8 +2497,8 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         };
 
         debug!("subtypes_require(%s, %s)? %b",
-               ty_to_str(cx, r_ty),
-               ty_to_str(cx, ty),
+               ::util::ppaux::ty_to_str(cx, r_ty),
+               ::util::ppaux::ty_to_str(cx, ty),
                r);
 
         return r;
@@ -2461,9 +2511,10 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
    bool {
     let sty = &get(ty).sty;
-    debug!("type_structurally_contains: %s", ty_to_str(cx, ty));
+    debug!("type_structurally_contains: %s",
+           ::util::ppaux::ty_to_str(cx, ty));
     if test(sty) { return true; }
-    match *sty {
+    match /*bad*/copy *sty {
       ty_enum(did, ref substs) => {
         for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
@@ -2520,6 +2571,13 @@ fn type_is_integral(ty: t) -> bool {
     }
 }
 
+fn type_is_char(ty: t) -> bool {
+    match get(ty).sty {
+        ty_int(ty_char) => true,
+        _ => false
+    }
+}
+
 fn type_is_fp(ty: t) -> bool {
     match get(ty).sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
@@ -2542,7 +2600,7 @@ fn type_is_signed(ty: t) -> bool {
 // that the cycle collector might care about.
 fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let mut result = true;
-    match get(ty).sty {
+    match /*bad*/copy get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) => result = true,
@@ -2555,7 +2613,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
         for vec::each(*variants) |variant| {
-            let tup_ty = mk_tup(cx, variant.args);
+            let tup_ty = mk_tup(cx, /*bad*/copy variant.args);
 
             // Perform any type parameter substitutions.
             let tup_ty = subst(cx, substs, tup_ty);
@@ -2701,7 +2759,10 @@ impl bound_region : to_bytes::IterBytes {
           to_bytes::iter_bytes_2(&2u8, ident, lsb0, f),
 
           ty::br_cap_avoid(ref id, ref br) =>
-          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f)
+          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f),
+
+          ty::br_fresh(ref x) =>
+          to_bytes::iter_bytes_2(&4u8, x, lsb0, f)
         }
     }
 }
@@ -2774,9 +2835,9 @@ impl FnMeta : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_5(&self.purity,
                                &self.proto,
+                               &self.onceness,
                                &self.region,
                                &self.bounds,
-                               &self.ret_style,
                                lsb0, f);
     }
 }
@@ -2826,10 +2887,7 @@ impl sty : to_bytes::IterBytes {
           to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
 
           ty_fn(ref ft) =>
-          to_bytes::iter_bytes_3(&12u8,
-                                 &ft.meta,
-                                 &ft.sig,
-                                 lsb0, f),
+          to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
 
           ty_self => 13u8.iter_bytes(lsb0, f),
 
@@ -2896,7 +2954,7 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 // Type accessors for substructures of types
 fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {
-      ty_fn(ref f) => f.sig.inputs,
+      ty_fn(ref f) => /*bad*/copy f.sig.inputs,
       _ => fail ~"ty_fn_args() called on non-fn type"
     }
 }
@@ -2917,15 +2975,8 @@ fn ty_fn_purity(fty: t) -> ast::purity {
 
 pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
-      ty_fn(ref f) => f.sig.output,
-      _ => fail ~"ty_fn_ret() called on non-fn type"
-    }
-}
-
-fn ty_fn_ret_style(fty: t) -> ast::ret_style {
-    match get(fty).sty {
-      ty_fn(ref f) => f.meta.ret_style,
-      _ => fail ~"ty_fn_ret_style() called on non-fn type"
+        ty_fn(ref f) => f.sig.output,
+        _ => fail ~"ty_fn_ret() called on non-fn type"
     }
 }
 
@@ -2943,9 +2994,30 @@ fn ty_region(ty: t) -> Region {
     }
 }
 
+fn replace_fn_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
+    /*!
+     *
+     * Returns a new function type based on `fn_type` but returning a value of
+     * type `ret_type` instead. */
+
+    match ty::get(fn_type).sty {
+        ty::ty_fn(ref fty) => {
+            ty::mk_fn(tcx, FnTyBase {
+                meta: fty.meta,
+                sig: FnSig {output: ret_type, ..copy fty.sig}
+            })
+        }
+        _ => {
+            tcx.sess.bug(fmt!(
+                "replace_fn_ret() invoked with non-fn-type: %s",
+                ty_to_str(tcx, fn_type)));
+        }
+    }
+}
+
 // Returns a vec of all the input and output types of fty.
-fn tys_in_fn_ty(fty: &FnTy) -> ~[t] {
-    vec::append_one(fty.sig.inputs.map(|a| a.ty), fty.sig.output)
+fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
+    vec::append_one(sig.inputs.map(|a| a.ty), sig.output)
 }
 
 // Just checks whether it's a fn that returns bool,
@@ -3007,8 +3079,8 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // trait itself.  This ought to be harmonized.
             let trt_bounds =
                 ty::lookup_item_type(tcx, trt_id).bounds;
-            let mth = ty::trait_methods(tcx, trt_id)[n_mth];
-            @(vec::append(*trt_bounds, *mth.tps))
+            let mth = /*bad*/copy ty::trait_methods(tcx, trt_id)[n_mth];
+            @(vec::append(/*bad*/copy *trt_bounds, *mth.tps))
           }
         }
     }
@@ -3103,7 +3175,7 @@ fn expr_kind(tcx: ctxt,
         ast::expr_copy(*) |
         ast::expr_unary_move(*) |
         ast::expr_repeat(*) |
-        ast::expr_lit(@{node: lit_str(_), _}) |
+        ast::expr_lit(@ast::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
         ast::expr_vstore(_, ast::expr_vstore_fixed(_)) |
@@ -3205,7 +3277,7 @@ fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
 }
 
 fn get_fields(rec_ty:t) -> ~[field] {
-    match get(rec_ty).sty {
+    match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
       _ => fail ~"get_fields: not a record type"
@@ -3260,8 +3332,8 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
             tcx.sess.span_fatal
                 (sp, ~"type inference failed because I \
                      could not find a type\n that's both of the form "
-                 + ty_to_str(tcx, mk_var(tcx, vid)) +
-                 ~" and of the form " + ty_to_str(tcx, rt) +
+                 + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
+                 ~" and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
                  ~" - such a type would have to be infinitely large.");
     }
 }
@@ -3343,7 +3415,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_estr(_) |
       ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
-        ty_to_str(cx, t)
+        ::util::ppaux::ty_to_str(cx, t)
       }
 
       ty_enum(id, _) => fmt!("enum %s", item_path_str(cx, id)),
@@ -3388,31 +3460,18 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
 
     match *err {
         terr_mismatch => ~"types differ",
-        terr_ret_style_mismatch(values) => {
-            fn to_str(s: ast::ret_style) -> ~str {
-                match s {
-                    ast::noreturn => ~"non-returning",
-                    ast::return_val => ~"return-by-value"
-                }
-            }
-            fmt!("expected %s function, found %s function",
-                 to_str(values.expected),
-                 to_str(values.expected))
-        }
         terr_purity_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
-                 purity_to_str(values.expected),
-                 purity_to_str(values.found))
+                 values.expected.to_str(), values.found.to_str())
         }
         terr_onceness_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
-                 onceness_to_str(values.expected),
-                 onceness_to_str(values.found))
+                 values.expected.to_str(), values.found.to_str())
         }
         terr_proto_mismatch(values) => {
             fmt!("expected %s closure, found %s closure",
-                 proto_ty_to_str(cx, values.expected),
-                 proto_ty_to_str(cx, values.found))
+                 proto_ty_to_str(cx, values.expected, false),
+                 proto_ty_to_str(cx, values.found, false))
         }
         terr_mutability => ~"values differ in mutability",
         terr_box_mutability => ~"boxed values differ in mutability",
@@ -3446,7 +3505,8 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_arg_count => ~"incorrect number of function parameters",
         terr_mode_mismatch(values) => {
             fmt!("expected argument mode %s, but found %s",
-                 mode_to_str(values.expected), mode_to_str(values.found))
+                 pprust::mode_to_str(values.expected),
+                 pprust::mode_to_str(values.found))
         }
         terr_regions_does_not_outlive(*) => {
             fmt!("lifetime mismatch")
@@ -3488,6 +3548,10 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_no_integral_type => {
             ~"couldn't determine an appropriate integral type for integer \
               literal"
+        }
+        terr_integer_as_char => {
+            ~"integer literals can't be inferred to char type \
+              (try an explicit cast)"
         }
         terr_no_floating_point_type => {
             ~"couldn't determine an appropriate floating point type for \
@@ -3546,7 +3610,7 @@ fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
-                match ast_util::split_trait_methods((*ms)) {
+                match ast_util::split_trait_methods((/*bad*/copy *ms)) {
                    (_, p) => p.map(|method| method.ident)
                 },
             _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
@@ -3576,7 +3640,7 @@ fn trait_supertraits(cx: ctxt, id: ast::def_id) -> @~[InstantiatedTraitRef] {
             ty_trait(def_id, ref substs, _) => {
                 result.push(InstantiatedTraitRef {
                     def_id: def_id,
-                    tpt: { substs: (*substs), ty: *trait_type }
+                    tpt: { substs: (/*bad*/copy *substs), ty: *trait_type }
                 });
             }
             _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
@@ -3614,7 +3678,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
         match ty::get(ty).sty {
             ty::ty_trait(_, _, trait_vstore) if vstore == trait_vstore => ty,
             ty::ty_trait(did, ref substs, _) => {
-                mk_trait(cx, did, (*substs), vstore)
+                mk_trait(cx, did, (/*bad*/copy *substs), vstore)
             }
             _ => cx.sess.bug(~"impl_traits: not a trait")
         }
@@ -3694,7 +3758,7 @@ fn substd_enum_variants(cx: ctxt,
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
         @VariantInfo_{args: substd_args, ctor_ty: substd_ctor_ty,
-                      ..**variant_info}
+                      ../*bad*/copy **variant_info}
     }
 }
 
@@ -3766,19 +3830,22 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                 ast_map::path_name(item.ident)
               }
             };
-            vec::append_one(*path, item_elt)
+            vec::append_one(/*bad*/copy *path, item_elt)
           }
 
           ast_map::node_foreign_item(nitem, _, path) => {
-            vec::append_one(*path, ast_map::path_name(nitem.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(nitem.ident))
           }
 
           ast_map::node_method(method, _, path) => {
-            vec::append_one(*path, ast_map::path_name(method.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(method.ident))
           }
           ast_map::node_trait_method(trait_method, _, path) => {
             let method = ast_util::trait_method_to_ty_method(*trait_method);
-            vec::append_one(*path, ast_map::path_name(method.ident))
+            vec::append_one(/*bad*/copy *path,
+                            ast_map::path_name(method.ident))
           }
 
           ast_map::node_variant(ref variant, _, path) => {
@@ -3787,12 +3854,12 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_dtor(_, _, _, path) => {
-            vec::append_one(*path, ast_map::path_name(
+            vec::append_one(/*bad*/copy *path, ast_map::path_name(
                 syntax::parse::token::special_idents::literally_dtor))
           }
 
           ast_map::node_struct_ctor(_, item, path) => {
-            vec::append_one(*path, ast_map::path_name(item.ident))
+            vec::append_one(/*bad*/copy *path, ast_map::path_name(item.ident))
           }
 
           ast_map::node_stmt(*) | ast_map::node_expr(*) |
@@ -3834,14 +3901,14 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {
-            let variants = (*enum_definition).variants;
+            let variants = /*bad*/copy (*enum_definition).variants;
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 match variant.node.kind {
-                    ast::tuple_variant_kind(args) => {
+                    ast::tuple_variant_kind(ref args) => {
                         let ctor_ty = node_id_to_type(cx, variant.node.id);
                         let arg_tys = {
-                            if vec::len(args) > 0u {
+                            if args.len() > 0u {
                                 ty_fn_args(ctor_ty).map(|a| a.ty)
                             } else {
                                 ~[]
@@ -3943,7 +4010,7 @@ fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
-               struct_field_tys(struct_def.fields)
+               struct_field_tys(/*bad*/copy struct_def.fields)
             }
             _ => cx.sess.bug(~"struct ID bound to non-struct")
          }
@@ -3951,7 +4018,7 @@ fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
        Some(ast_map::node_variant(ref variant, _, _)) => {
           match (*variant).node.kind {
             ast::struct_variant_kind(struct_def) => {
-              struct_field_tys(struct_def.fields)
+              struct_field_tys(/*bad*/copy struct_def.fields)
             }
             _ => {
               cx.sess.bug(~"struct ID bound to enum variant that isn't \
@@ -4160,7 +4227,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                     region: ty::re_static,
                     ..fn_ty.meta
                 },
-                sig: fn_ty.sig
+                sig: /*bad*/copy fn_ty.sig
             })
         }
 
@@ -4171,7 +4238,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                     mk_enum(cx, did,
                      {self_r: Some(ty::re_static),
                       self_ty: None,
-                      tps: (*r).tps}),
+                      tps: /*bad*/copy (*r).tps}),
                 None =>
                     t
             },
@@ -4182,7 +4249,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                 // Ditto.
                 mk_struct(cx, did, {self_r: Some(ty::re_static),
                                     self_ty: None,
-                                    tps: (*r).tps}),
+                                    tps: /*bad*/copy (*r).tps}),
               None =>
                 t
             },
@@ -4348,31 +4415,6 @@ impl vstore : cmp::Eq {
     pure fn ne(&self, other: &vstore) -> bool { !(*self).eq(other) }
 }
 
-impl FnMeta : cmp::Eq {
-    pure fn eq(&self, other: &FnMeta) -> bool {
-        (*self).purity == (*other).purity &&
-        (*self).proto == (*other).proto &&
-        (*self).bounds == (*other).bounds &&
-        (*self).ret_style == (*other).ret_style
-    }
-    pure fn ne(&self, other: &FnMeta) -> bool { !(*self).eq(other) }
-}
-
-impl FnSig : cmp::Eq {
-    pure fn eq(&self, other: &FnSig) -> bool {
-        (*self).inputs == (*other).inputs &&
-        (*self).output == (*other).output
-    }
-    pure fn ne(&self, other: &FnSig) -> bool { !(*self).eq(other) }
-}
-
-impl<M: cmp::Eq> FnTyBase<M> : cmp::Eq {
-    pure fn eq(&self, other: &FnTyBase<M>) -> bool {
-        (*self).meta == (*other).meta && (*self).sig == (*other).sig
-    }
-    pure fn ne(&self, other: &FnTyBase<M>) -> bool { !(*self).eq(other) }
-}
-
 impl TyVid : cmp::Eq {
     pure fn eq(&self, other: &TyVid) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &TyVid) -> bool { *(*self) != *(*other) }
@@ -4463,6 +4505,12 @@ impl bound_region : cmp::Eq {
                     _ => false
                 }
             }
+            br_fresh(e0a) => {
+                match (*other) {
+                    br_fresh(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
         }
     }
     pure fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
@@ -4477,16 +4525,9 @@ impl substs : cmp::Eq {
     pure fn ne(&self, other: &substs) -> bool { !(*self).eq(other) }
 }
 
-impl InferTy : cmp::Eq {
-    pure fn eq(&self, other: &InferTy) -> bool {
-        (*self).to_hash() == (*other).to_hash()
-    }
-    pure fn ne(&self, other: &InferTy) -> bool { !(*self).eq(other) }
-}
-
 impl sty : cmp::Eq {
     pure fn eq(&self, other: &sty) -> bool {
-        match (*self) {
+        match (/*bad*/copy *self) {
             ty_nil => {
                 match (*other) {
                     ty_nil => true,
@@ -4566,7 +4607,7 @@ impl sty : cmp::Eq {
                 }
             }
             ty_rec(e0a) => {
-                match (*other) {
+                match (/*bad*/copy *other) {
                     ty_rec(e0b) => e0a == e0b,
                     _ => false
                 }
@@ -4591,14 +4632,14 @@ impl sty : cmp::Eq {
                 }
             }
             ty_tup(e0a) => {
-                match (*other) {
+                match (/*bad*/copy *other) {
                     ty_tup(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            ty_infer(e0a) => {
+            ty_infer(ref e0a) => {
                 match (*other) {
-                    ty_infer(e0b) => e0a == e0b,
+                    ty_infer(ref e0b) => *e0a == *e0b,
                     _ => false
                 }
             }

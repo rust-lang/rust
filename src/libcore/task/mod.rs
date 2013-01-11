@@ -38,11 +38,23 @@
  * ~~~
  */
 
+use cast;
+use cmp;
 use cmp::Eq;
+use iter;
+use libc;
+use oldcomm;
+use option;
 use result::Result;
 use pipes::{stream, Chan, Port};
+use pipes;
+use prelude::*;
+use ptr;
+use result;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::{task_id, rust_task};
+use task;
+use util;
 use util::replace;
 
 mod local_data_priv;
@@ -51,14 +63,9 @@ pub mod rt;
 pub mod spawn;
 
 /// A handle to a task
+#[deriving_eq]
 pub enum Task {
     TaskHandle(task_id)
-}
-
-// XXX: deriving
-impl Task : cmp::Eq {
-    pure fn eq(&self, other: &Task) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &Task) -> bool { !(*self).eq(other) }
 }
 
 /**

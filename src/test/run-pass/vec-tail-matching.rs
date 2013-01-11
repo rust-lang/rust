@@ -17,19 +17,19 @@ fn main() {
 
             match tail {
                 [Foo { _ }, _, Foo { _ }, ..tail] => {
-                    core::util::unreachable();
+                    ::core::util::unreachable();
                 }
                 [Foo { string: a }, Foo { string: b }] => {
                     assert a == ~"bar";
                     assert b == ~"baz";
                 }
                 _ => {
-                    core::util::unreachable();
+                    ::core::util::unreachable();
                 }
             }
         }
         _ => {
-            core::util::unreachable();
+            ::core::util::unreachable();
         }
     }
 }

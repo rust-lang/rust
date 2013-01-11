@@ -17,17 +17,29 @@
 
 #[forbid(deprecated_mode)];
 
+use getopts;
+use sort;
+use term;
+
 use core::cmp::Eq;
-use either::Either;
-use result::{Ok, Err};
-use io::WriterUtil;
-use libc::size_t;
-use task::TaskBuilder;
+use core::either::Either;
+use core::either;
+use core::io::WriterUtil;
+use core::io;
+use core::libc::size_t;
+use core::oldcomm;
+use core::option;
+use core::prelude::*;
+use core::result;
+use core::str;
+use core::task::TaskBuilder;
+use core::task;
+use core::vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_sched_threads() -> libc::size_t;
+    fn rust_sched_threads() -> size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -44,12 +56,12 @@ pub type TestFn = fn~();
 
 // The definition of a single test. A test runner will run a list of
 // these.
-pub type TestDesc = {
+pub struct TestDesc {
     name: TestName,
     testfn: TestFn,
     ignore: bool,
     should_fail: bool
-};
+}
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
@@ -68,7 +80,7 @@ pub type TestOpts = {filter: Option<~str>, run_ignored: bool,
 type OptRes = Either<TestOpts, ~str>;
 
 // Parses command line arguments into test options
-fn parse_opts(args: &[~str]) -> OptRes {
+pub fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = vec::tail(args);
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
@@ -230,14 +242,14 @@ fn print_failures(st: ConsoleTestState) {
 #[test]
 fn should_sort_failures_before_printing_them() {
     let s = do io::with_str_writer |wr| {
-        let test_a = {
+        let test_a = TestDesc {
             name: ~"a",
             testfn: fn~() { },
             ignore: false,
             should_fail: false
         };
 
-        let test_b = {
+        let test_b = TestDesc {
             name: ~"b",
             testfn: fn~() { },
             ignore: false,
@@ -272,9 +284,9 @@ enum TestEvent {
 
 type MonitorMsg = (TestDesc, TestResult);
 
-fn run_tests(opts: &TestOpts, tests: &[TestDesc],
+fn run_tests(opts: &TestOpts,
+             tests: &[TestDesc],
              callback: fn@(e: TestEvent)) {
-
     let mut filtered_tests = filter_tests(opts, tests);
     callback(TeFiltered(copy filtered_tests));
 
@@ -329,8 +341,9 @@ fn get_concurrency() -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn filter_tests(opts: &TestOpts,
-                tests: &[TestDesc]) -> ~[TestDesc] {
+pub fn filter_tests(opts: &TestOpts,
+                    tests: &[TestDesc])
+                 -> ~[TestDesc] {
     let mut filtered = vec::slice(tests, 0, tests.len());
 
     // Remove tests that don't match the test filter
@@ -359,10 +372,11 @@ fn filter_tests(opts: &TestOpts,
     } else {
         fn filter(test: &TestDesc) -> Option<TestDesc> {
             if test.ignore {
-                return option::Some({name: test.name,
-                                  testfn: copy test.testfn,
-                                  ignore: false,
-                                  should_fail: test.should_fail});
+                return option::Some(TestDesc {
+                    name: test.name,
+                    testfn: copy test.testfn,
+                    ignore: false,
+                    should_fail: test.should_fail});
             } else { return option::None; }
         };
 
@@ -382,7 +396,7 @@ fn filter_tests(opts: &TestOpts,
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
 
-fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
+pub fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
     if test.ignore {
         oldcomm::send(monitor_ch, (copy test, TrIgnored));
         return;
@@ -414,10 +428,18 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 mod tests {
     #[legacy_exports];
 
+    use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc};
+    use test::{run_test};
+
+    use core::either;
+    use core::oldcomm;
+    use core::option;
+    use core::vec;
+
     #[test]
     fn do_not_run_ignored_tests() {
         fn f() { fail; }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: true,
@@ -433,7 +455,7 @@ mod tests {
     #[test]
     fn ignored_tests_result_in_ignored() {
         fn f() { }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: true,
@@ -450,7 +472,7 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_should_fail() {
         fn f() { fail; }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: false,
@@ -466,7 +488,7 @@ mod tests {
     #[test]
     fn test_should_fail_but_succeeds() {
         fn f() { }
-        let desc = {
+        let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
             ignore: false,
@@ -507,10 +529,10 @@ mod tests {
         let opts = {filter: option::None, run_ignored: true,
             logfile: option::None};
         let tests =
-            ~[{name: ~"1", testfn: fn~() { },
-               ignore: true, should_fail: false},
-             {name: ~"2", testfn: fn~() { },
-              ignore: false, should_fail: false}];
+            ~[TestDesc {name: ~"1", testfn: fn~() { },
+                        ignore: true, should_fail: false},
+              TestDesc {name: ~"2", testfn: fn~() { },
+                        ignore: false, should_fail: false}];
         let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1u);
@@ -535,8 +557,9 @@ mod tests {
             let testfn = fn~() { };
             let mut tests = ~[];
             for vec::each(names) |name| {
-                let test = {name: *name, testfn: copy testfn, ignore: false,
-                            should_fail: false};
+                let test = TestDesc {
+                    name: *name, testfn: copy testfn, ignore: false,
+                    should_fail: false};
                 tests.push(move test);
             }
             move tests

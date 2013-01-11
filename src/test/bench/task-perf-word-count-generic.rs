@@ -22,22 +22,20 @@
 
 extern mod std;
 
-use option = option;
-use option::Some;
-use option::None;
+use core::option;
 use std::map;
 use std::map::HashMap;
-use hash::Hash;
-use io::{ReaderUtil, WriterUtil};
+use core::hash::Hash;
+use core::io::{ReaderUtil, WriterUtil};
 
 use std::time;
 
-use oldcomm::Chan;
-use oldcomm::Port;
-use oldcomm::recv;
-use oldcomm::send;
-use cmp::Eq;
-use to_bytes::IterBytes;
+use core::oldcomm::Chan;
+use core::oldcomm::Port;
+use core::oldcomm::recv;
+use core::oldcomm::send;
+use core::cmp::Eq;
+use core::to_bytes::IterBytes;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
@@ -47,9 +45,9 @@ trait word_reader {
     fn read_word() -> Option<~str>;
 }
 
-// These used to be in task, but they disappeard.
-type joinable_task = Port<()>;
-fn spawn_joinable(+f: fn~()) -> joinable_task {
+// These used to be in task, but they disappeared.
+pub type joinable_task = Port<()>;
+pub fn spawn_joinable(+f: fn~()) -> joinable_task {
     let p = Port();
     let c = Chan(&p);
     do task::spawn() |move f| {
@@ -59,7 +57,7 @@ fn spawn_joinable(+f: fn~()) -> joinable_task {
     p
 }
 
-fn join(t: joinable_task) {
+pub fn join(t: joinable_task) {
     t.recv()
 }
 
@@ -92,11 +90,11 @@ fn reduce(word: &~str, get: map_reduce::getter<int>) {
     io::println(fmt!("%s\t%?", *word, count));
 }
 
-struct box<T> {
+pub struct box<T> {
     mut contents: Option<T>,
 }
 
-impl<T> box<T> {
+pub impl<T> box<T> {
     fn swap(f: fn(+v: T) -> T) {
         let mut tmp = None;
         self.contents <-> tmp;
@@ -110,30 +108,28 @@ impl<T> box<T> {
     }
 }
 
-fn box<T>(+x: T) -> box<T> {
+pub fn box<T>(+x: T) -> box<T> {
     box {
         contents: Some(move x)
     }
 }
 
 mod map_reduce {
-    #[legacy_exports];
-    export putter;
-    export getter;
-    export mapper;
-    export reducer;
-    export map_reduce;
+    use core::oldcomm::*;
 
-    type putter<K: Owned, V: Owned> = fn(&K, V);
+    use std::map::HashMap;
+    use std::map;
 
-    type mapper<K1: Owned, K2: Owned, V: Owned> = fn~(K1, putter<K2, V>);
+    pub type putter<K: Owned, V: Owned> = fn(&K, V);
 
-    type getter<V: Owned> = fn() -> Option<V>;
+    pub type mapper<K1: Owned, K2: Owned, V: Owned> = fn~(K1, putter<K2, V>);
 
-    type reducer<K: Copy Owned, V: Copy Owned> = fn~(&K, getter<V>);
+    pub type getter<V: Owned> = fn() -> Option<V>;
+
+    pub type reducer<K: Copy Owned, V: Copy Owned> = fn~(&K, getter<V>);
 
     enum ctrl_proto<K: Copy Owned, V: Copy Owned> {
-        find_reducer(K, Chan<Chan<reduce_proto<V>>>),
+        find_reducer(K, Chan<Chan<::map_reduce::reduce_proto<V>>>),
         mapper_done
     }
 
@@ -145,26 +141,32 @@ mod map_reduce {
         }
 
         reducer_response: recv<K: Copy Owned, V: Copy Owned> {
-            reducer(Chan<reduce_proto<V>>) -> open<K, V>
+            reducer(::core::oldcomm::Chan<::map_reduce::reduce_proto<V>>)
+                -> open<K, V>
         }
     )
 
-    enum reduce_proto<V: Copy Owned> { emit_val(V), done, addref, release }
+    pub enum reduce_proto<V: Copy Owned> {
+        emit_val(V),
+        done,
+        addref,
+        release
+    }
 
     fn start_mappers<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned,
                      V: Copy Owned>(
         map: &mapper<K1, K2, V>,
         ctrls: &mut ~[ctrl_proto::server::open<K2, V>],
         inputs: &~[K1])
-        -> ~[joinable_task]
+        -> ~[::joinable_task]
     {
         let mut tasks = ~[];
         for inputs.each |i| {
             let (ctrl, ctrl_server) = ctrl_proto::init();
-            let ctrl = box(move ctrl);
+            let ctrl = ::box(move ctrl);
             let i = copy *i;
             let m = copy *map;
-            tasks.push(spawn_joinable(|move ctrl, move i| map_task(copy m, &ctrl, i)));
+            tasks.push(::spawn_joinable(|move ctrl, move i| map_task(copy m, &ctrl, i)));
             ctrls.push(move ctrl_server);
         }
         move tasks
@@ -172,16 +174,16 @@ mod map_reduce {
 
     fn map_task<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned, V: Copy Owned>(
         map: mapper<K1, K2, V>,
-        ctrl: &box<ctrl_proto::client::open<K2, V>>,
+        ctrl: &::box<ctrl_proto::client::open<K2, V>>,
         input: K1)
     {
         // log(error, "map_task " + input);
-        let intermediates: HashMap<K2, Chan<reduce_proto<V>>>
+        let intermediates: HashMap<K2, Chan<::map_reduce::reduce_proto<V>>>
             = map::HashMap();
 
         do map(input) |key: &K2, val| {
             let mut c = None;
-            let found: Option<Chan<reduce_proto<V>>>
+            let found: Option<Chan<::map_reduce::reduce_proto<V>>>
                 = intermediates.find(*key);
             match found {
               Some(_c) => { c = Some(_c); }
@@ -202,7 +204,8 @@ mod map_reduce {
             send(c.get(), emit_val(val));
         }
 
-        fn finish<K: Copy Owned, V: Copy Owned>(_k: K, v: Chan<reduce_proto<V>>)
+        fn finish<K: Copy Owned, V: Copy Owned>(
+            _k: K, v: Chan<::map_reduce::reduce_proto<V>>)
         {
             send(v, release);
         }
@@ -213,7 +216,7 @@ mod map_reduce {
     fn reduce_task<K: Copy Owned, V: Copy Owned>(
         reduce: ~reducer<K, V>, 
         key: K,
-        out: Chan<Chan<reduce_proto<V>>>)
+        out: Chan<Chan<::map_reduce::reduce_proto<V>>>)
     {
         let p = Port();
 
@@ -222,7 +225,7 @@ mod map_reduce {
         let mut ref_count = 0;
         let mut is_done = false;
 
-        fn get<V: Copy Owned>(p: Port<reduce_proto<V>>,
+        fn get<V: Copy Owned>(p: Port<::map_reduce::reduce_proto<V>>,
                              ref_count: &mut int, is_done: &mut bool)
            -> Option<V> {
             while !*is_done || *ref_count > 0 {
@@ -245,7 +248,7 @@ mod map_reduce {
         (*reduce)(&key, || get(p, &mut ref_count, &mut is_done) );
     }
 
-    fn map_reduce<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned, V: Copy Owned>(
+    pub fn map_reduce<K1: Copy Owned, K2: Hash IterBytes Eq Const Copy Owned, V: Copy Owned>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
         inputs: ~[K1])
@@ -281,7 +284,7 @@ mod map_reduce {
                     let p = Port();
                     let ch = Chan(&p);
                     let r = copy reduce, kk = k;
-                    tasks.push(spawn_joinable(|move r|
+                    tasks.push(::spawn_joinable(|move r|
                         reduce_task(~copy r, kk, ch)
                     ));
                     c = recv(p);
@@ -297,7 +300,7 @@ mod map_reduce {
 
         for reducers.each_value |v| { send(v, done) }
 
-        for tasks.each |t| { join(*t); }
+        for tasks.each |t| { ::join(*t); }
     }
 }
 
@@ -313,8 +316,8 @@ fn main() {
 
     let readers: ~[fn~() -> word_reader]  = if argv.len() >= 2 {
         vec::view(argv, 1u, argv.len()).map(|f| {
-            let f = *f;
-            fn~() -> word_reader { file_word_reader(f) }
+            let f = copy *f;
+            fn~() -> word_reader { file_word_reader(copy f) }
         })
     }
     else {

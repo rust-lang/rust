@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use io;
+use os;
 use os::getenv;
 
+use common;
 use common::config;
 
 fn make_new_path(path: ~str) -> ~str {
@@ -17,10 +22,10 @@ fn make_new_path(path: ~str) -> ~str {
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
     match getenv(lib_path_env_var()) {
-      option::Some(curr) => {
+      Some(curr) => {
         fmt!("%s%s%s", path, path_div(), curr)
       }
-      option::None => path
+      None => path
     }
 }
 

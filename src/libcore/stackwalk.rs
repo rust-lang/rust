@@ -13,7 +13,8 @@
 #[legacy_modes]; // tjc: remove after snapshot
 
 // NB: transitionary, de-mode-ing.
-// XXX: Can't forbid this because frame_address needs a deprecated mode.
+// FIXME #4425: Can't forbid this because frame_address needs a deprecated
+// mode.
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
@@ -99,5 +100,5 @@ extern mod rustrt {
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn frame_address(f: fn(++x: *u8));
+    fn frame_address(f: &once fn(++x: *u8));
 }

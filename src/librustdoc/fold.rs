@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use astsrv;
+use doc;
+use extract;
+use parse;
+use pass::Pass;
+
+use core::vec;
+use std::par;
+
 pub struct Fold<T> {
     ctxt: T,
     fold_doc: FoldDoc<T>,

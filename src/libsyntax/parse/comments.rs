@@ -8,11 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::ReaderUtil;
+use core::prelude::*;
+
+use ast;
+use codemap::{BytePos, CharPos, CodeMap, FileMap};
+use diagnostic;
+use parse::lexer::{is_whitespace, get_str_from, reader};
+use parse::lexer::{string_reader, bump, is_eof, nextch};
+use parse::lexer;
+use parse::token;
+use parse;
 use util::interner;
-use parse::lexer::{string_reader, bump, is_eof, nextch,
-                   is_whitespace, get_str_from, reader};
-use codemap::{FileMap, CharPos};
+
+use core::cmp;
+use core::io::ReaderUtil;
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 
 export cmnt;
 export lit;
@@ -72,7 +85,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     // drop leftmost columns that contain only values in chars
     fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
 
-        let mut i = max.get_default(uint::max_value);
+        let mut i = max.get_or_default(uint::max_value);
         for lines.each |line| {
             if line.trim().is_empty() {
                 loop;

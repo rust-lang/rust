@@ -10,17 +10,25 @@
 
 //! A general sorting pass
 
+use core::prelude::*;
+
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use extract;
 use fold::Fold;
-use std::sort;
+use fold;
+use pass::Pass;
 use util::NominalOp;
+
+use std::sort;
 
 pub type ItemLtEqOp = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
 type ItemLtEq = NominalOp<ItemLtEqOp>;
 
 pub fn mk_pass(name: ~str, +lteq: ItemLtEqOp) -> Pass {
-    {
+    Pass {
         name: name,
         f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, NominalOp { op: copy lteq })

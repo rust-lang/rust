@@ -164,7 +164,7 @@ pub use libc::funcs::posix88::unistd::{getpid, isatty, lseek, pipe, read};
 pub use libc::funcs::posix88::unistd::{rmdir, unlink, write};
 
 
-mod types {
+pub mod types {
 
     // Types tend to vary *per architecture* so we pull their definitions out
     // into this module.
@@ -230,6 +230,8 @@ mod types {
                 pub type uintptr_t = uint;
             }
             pub mod posix88 {
+                use prelude::*;
+
                 pub type off_t = i32;
                 pub type dev_t = u64;
                 pub type ino_t = u32;
@@ -241,6 +243,12 @@ mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
+                use libc::types::os::arch::c95::{c_int, c_short, c_long,
+                                                 time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
@@ -310,6 +318,11 @@ mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                use libc::types::os::arch::c95::{c_int, c_long, time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
                 pub type nlink_t = u64;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
@@ -387,6 +400,12 @@ mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                use libc::types::common::c99::{uint8_t, uint32_t, int32_t};
+                use libc::types::os::arch::c95::{c_long, time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
                 pub type nlink_t = u16;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
@@ -429,6 +448,11 @@ mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
+                use libc::types::os::arch::c95::{c_int, c_short};
+                use libc::types::os::arch::extra::{int64, time64_t};
+                use libc::types::os::arch::posix88::{dev_t, ino_t};
+                use libc::types::os::arch::posix88::mode_t;
+
                 // Note: this is the struct called stat64 in win32. Not stat,
                 // nor stati64.
                 pub struct stat {
@@ -439,7 +463,7 @@ mod types {
                     st_uid: c_short,
                     st_gid: c_short,
                     st_rdev: dev_t,
-                    st_size: int64_t,
+                    st_size: int64,
                     st_atime: time64_t,
                     st_mtime: time64_t,
                     st_ctime: time64_t,
@@ -489,6 +513,12 @@ mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                use libc::types::common::c95::c_void;
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
+                use libc::types::os::arch::c95::{c_long, c_ulong};
+                use libc::types::os::arch::c95::{wchar_t};
+                use libc::types::os::arch::c99::{c_ulonglong};
+
                 pub type BOOL = c_int;
                 pub type BYTE = u8;
                 pub type CCHAR = c_char;
@@ -520,6 +550,7 @@ mod types {
                 pub type WORD = u16;
 
                 pub type time64_t = i64;
+                pub type int64 = i64;
             }
         }
     }
@@ -528,33 +559,6 @@ mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                pub type nlink_t = u16;
-                pub type blksize_t = i64;
-                pub type blkcnt_t = i32;
-                pub struct stat {
-                    st_dev: dev_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_ino: ino_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: dev_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_birthtime: time_t,
-                    st_birthtime_nsec: c_long,
-                    st_size: off_t,
-                    st_blocks: blkcnt_t,
-                    st_blksize: blksize_t,
-                    st_flags: uint32_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_qspare: [int64_t * 2],
-                }
             }
         }
 
@@ -596,6 +600,39 @@ mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
+                use libc::types::common::c99::{int32_t, int64_t, uint32_t};
+                use libc::types::os::arch::c95::{c_long, time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t,
+                                                     mode_t, off_t, uid_t};
+
+                pub type nlink_t = u16;
+                pub type blksize_t = i64;
+                pub type blkcnt_t = i32;
+
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_ino: ino_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    st_size: off_t,
+                    st_blocks: blkcnt_t,
+                    st_blksize: blksize_t,
+                    st_flags: uint32_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_qspare: [int64_t * 2],
+                }
             }
             pub mod posix08 {
             }
@@ -643,6 +680,40 @@ mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
+                use libc::types::common::c99::{int32_t, int64_t};
+                use libc::types::common::c99::{uint32_t};
+                use libc::types::os::arch::c95::{c_long, time_t};
+                use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t, uid_t};
+
+                pub type nlink_t = u16;
+                pub type blksize_t = i64;
+                pub type blkcnt_t = i32;
+
+                pub struct stat {
+                    st_dev: dev_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_ino: ino_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    st_size: off_t,
+                    st_blocks: blkcnt_t,
+                    st_blksize: blksize_t,
+                    st_flags: uint32_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_qspare: [int64_t * 2],
+                }
             }
             pub mod posix08 {
             }
@@ -934,6 +1005,11 @@ pub mod funcs {
     // or anything. The same is not true of POSIX.
 
     pub mod c95 {
+        use libc::types::common::c95::{FILE, c_void, fpos_t};
+        use libc::types::common::posix88::dirent_t;
+        use libc::types::os::arch::c95::{c_char, c_double, c_int, c_long};
+        use libc::types::os::arch::c95::{c_uint, c_ulong, c_void, size_t};
+
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod ctype {
@@ -1061,6 +1137,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stat_ {
+            use libc::types::os::common::posix01::stat;
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_chmod"]
             fn chmod(path: *c_char, mode: c_int) -> c_int;
 
@@ -1077,6 +1156,9 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stdio {
+            use libc::types::common::c95::FILE;
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_popen"]
             fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
@@ -1093,6 +1175,8 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod fcntl {
+            use libc::types::os::arch::c95::{c_int, c_char};
+
             #[link_name = "_open"]
             fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
 
@@ -1109,6 +1193,11 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod unistd {
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::{c_int, c_uint, c_char,
+                                             c_long, size_t};
+            use libc::types::os::arch::c99::intptr_t;
+
             #[link_name = "_access"]
             fn access(path: *c_char, amode: c_int) -> c_int;
 
@@ -1174,6 +1263,14 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix88 {
+        use libc::types::common::c95::{FILE, c_void};
+        use libc::types::common::posix88::{DIR, dirent_t};
+        use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
+        use libc::types::os::arch::c95::{size_t};
+        use libc::types::os::arch::posix01::stat;
+        use libc::types::os::arch::posix88::{gid_t, mode_t, off_t, pid_t};
+        use libc::types::os::arch::posix88::{ssize_t, uid_t};
+
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stat_ {
@@ -1282,6 +1379,10 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix01 {
+        use libc::types::os::arch::c95::{c_char, c_int, size_t};
+        use libc::types::os::arch::posix01::stat;
+        use libc::types::os::arch::posix88::{pid_t, ssize_t};
+
         #[nolink]
         #[abi = "cdecl"]
         pub extern mod stat_ {
@@ -1309,6 +1410,8 @@ pub mod funcs {
                       overwrite: c_int) -> c_int;
             fn unsetenv(name: *c_char) -> c_int;
             fn putenv(string: *c_char) -> c_int;
+
+            fn symlink(path1: *c_char, path2: *c_char) -> c_int;
         }
 
         #[nolink]
@@ -1347,6 +1450,9 @@ pub mod funcs {
     #[nolink]
     #[abi = "cdecl"]
     pub extern mod bsd44 {
+        use libc::types::common::c95::{c_void};
+        use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+
         fn sysctl(name: *c_int, namelen: c_uint,
                   oldp: *mut c_void, oldlenp: *mut size_t,
                   newp: *c_void, newlen: size_t) -> c_int;
@@ -1365,11 +1471,12 @@ pub mod funcs {
     pub mod bsd44 {
     }
 
-
     #[cfg(target_os = "macos")]
     #[nolink]
     #[abi = "cdecl"]
     pub extern mod extra {
+        use libc::types::os::arch::c95::{c_char, c_int};
+
         fn _NSGetExecutablePath(buf: *mut c_char,
                                 bufsize: *mut u32) -> c_int;
     }
@@ -1385,6 +1492,10 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     pub mod extra {
+        use libc::types::os::arch::c95::c_int;
+        use libc::types::os::arch::extra::{DWORD, HMODULE, LPCWSTR, LPWSTR};
+        use libc::types::os::arch::extra::{BOOL, LPSECURITY_ATTRIBUTES};
+
         #[abi = "stdcall"]
         pub extern mod kernel32 {
             fn GetEnvironmentVariableW(n: LPCWSTR,

@@ -10,6 +10,11 @@
 
 //! Escapes text sequences
 
+use pass::Pass;
+use text_pass;
+
+use core::str;
+
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"escape", escape)
 }

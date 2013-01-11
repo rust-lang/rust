@@ -15,8 +15,18 @@
 
 #[doc(hidden)];
 
-use task::TaskBuilder;
-use task::atomically;
+use cast;
+use iter;
+use libc;
+use oldcomm;
+use option;
+use pipes;
+use prelude::*;
+use ptr;
+use result;
+use task;
+use task::{TaskBuilder, atomically};
+use uint;
 
 extern mod rustrt {
     #[legacy_exports];
@@ -73,8 +83,7 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
         let (setup1_po, setup1_ch) = pipes::stream();
         let (setup2_po, setup2_ch) = pipes::stream();
 
-        // XXX: Ugly type inference hints
-        let setup1_po: pipes::Port<oldcomm::Chan<T>> = setup1_po;
+        // FIXME #4422: Ugly type inference hint
         let setup2_po: pipes::Port<Msg> = setup2_po;
 
         do task_fn().spawn |move f, move setup1_ch, move setup2_po| {
@@ -571,6 +580,15 @@ pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
 
 #[cfg(test)]
 pub mod tests {
+    use core::option::{None, Some};
+
+    use option;
+    use pipes;
+    use private::{exclusive, unwrap_exclusive};
+    use result;
+    use task;
+    use uint;
+
     #[test]
     pub fn exclusive_arc() {
         let mut futures = ~[];

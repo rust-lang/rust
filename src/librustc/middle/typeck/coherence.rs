@@ -14,20 +14,27 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+use core::prelude::*;
+
+use driver;
 use metadata::csearch::{ProvidedTraitMethodInfo, each_path, get_impl_traits};
 use metadata::csearch::{get_impls_for_mod};
+use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
 use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
 use middle::ty::{t, ty_bool, ty_bot, ty_box, ty_enum, ty_err, ty_estr};
-use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil, ty_ptr};
-use middle::ty::{ty_rec, ty_rptr, ty_struct, ty_trait, ty_tup, ty_uint};
-use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box, ty_uniq};
+use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil};
+use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
+use middle::ty::{ty_rec, ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
+use middle::ty::{ty_type, ty_uint, ty_uniq};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
-use middle::typeck::infer::{infer_ctxt, can_mk_subty};
+use middle::ty;
+use middle::typeck::crate_ctxt;
+use middle::typeck::infer::{InferCtxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
 use syntax::ast::{crate, def_id, def_mod, def_ty};
@@ -35,20 +42,27 @@ use syntax::ast::{item, item_struct, item_const, item_enum, item_fn};
 use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
 use syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
 use syntax::ast::{trait_ref};
+use syntax::ast;
 use syntax::ast_map::node_item;
-use syntax::ast_util::{def_id_of_def, dummy_sp};
+use syntax::ast_map;
+use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::parse;
 use syntax::visit::{default_simple_visitor, default_visitor};
 use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
+use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
 use core::dvec::DVec;
 use core::result::Ok;
-use std::map::HashMap;
+use core::send_map;
 use core::uint::range;
+use core::uint;
 use core::vec::{len, push};
+use core::vec;
+use std::map::HashMap;
 
 struct UniversalQuantificationResult {
     monotype: t,
@@ -56,7 +70,7 @@ struct UniversalQuantificationResult {
     bounds: @~[param_bounds]
 }
 
-fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
+fn get_base_type(inference_context: @InferCtxt, span: span, original_type: t)
               -> Option<t> {
 
     let resolved_type;
@@ -103,7 +117,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
 }
 
 // Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id(inference_context: infer_ctxt,
+fn get_base_type_def_id(inference_context: @InferCtxt,
                         span: span,
                         original_type: t)
                      -> Option<def_id> {
@@ -168,7 +182,7 @@ fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
 
 struct CoherenceChecker {
     crate_context: @crate_ctxt,
-    inference_context: infer_ctxt,
+    inference_context: @InferCtxt,
 
     // A mapping from implementations to the corresponding base type
     // definition ID.
@@ -186,7 +200,7 @@ impl CoherenceChecker {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        visit_crate(*crate, (), mk_simple_visitor(@{
+        visit_crate(*crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 debug!("(checking coherence) item '%s'",
                        self.crate_context.tcx.sess.str_of(item.ident));
@@ -307,7 +321,7 @@ impl CoherenceChecker {
         for self.each_provided_trait_method(trait_did) |trait_method| {
             // Synthesize an ID.
             let tcx = self.crate_context.tcx;
-            let new_id = syntax::parse::next_node_id(tcx.sess.parse_sess);
+            let new_id = parse::next_node_id(tcx.sess.parse_sess);
             let new_did = local_def(new_id);
 
             // XXX: Perform substitutions.
@@ -501,10 +515,13 @@ impl CoherenceChecker {
             self_ty: None,
             tps: type_parameters
         };
-
         let monotype = subst(self.crate_context.tcx,
                              &substitutions,
                              polytype.ty);
+
+        // Get our type parameters back.
+        let { self_r: _, self_ty: _, tps: type_parameters } = substitutions;
+
         UniversalQuantificationResult {
             monotype: monotype,
             type_variables: move type_parameters,
@@ -572,9 +589,9 @@ impl CoherenceChecker {
 
     // Privileged scope checking
     fn check_privileged_scopes(crate: @crate) {
-        visit_crate(*crate, (), mk_vt(@{
+        visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
-                match item.node {
+                match /*bad*/copy item.node {
                     item_mod(module_) => {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
@@ -708,7 +725,7 @@ impl CoherenceChecker {
             }
         }
 
-        match item.node {
+        match /*bad*/copy item.node {
             item_impl(_, trait_refs, _, ast_methods) => {
                 let mut methods = ~[];
                 for ast_methods.each |ast_method| {
@@ -883,7 +900,7 @@ impl CoherenceChecker {
 
             // Create a new def ID for this provided method.
             let parse_sess = &self.crate_context.tcx.sess.parse_sess;
-            let new_did = local_def(syntax::parse::next_node_id(*parse_sess));
+            let new_did = local_def(parse::next_node_id(*parse_sess));
 
             let provided_method_info =
                 @ProvidedMethodInfo {
@@ -947,7 +964,7 @@ impl CoherenceChecker {
     fn populate_destructor_table() {
         let coherence_info = &self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
-        let drop_trait = tcx.lang_items.drop_trait.get();
+        let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(drop_trait);
 
         let impls;

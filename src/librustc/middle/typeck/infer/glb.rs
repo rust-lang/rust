@@ -8,18 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use middle::ty::RegionVid;
+use middle::ty;
 use middle::typeck::infer::combine::*;
+use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
-use middle::typeck::infer::to_str::ToStr;
+use middle::typeck::infer::lub::Lub;
+use middle::typeck::infer::sub::Sub;
+use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::isr_alist;
+use syntax::ast::{Many, Once, extern_fn, impure_fn, m_const, m_imm, m_mutbl};
+use syntax::ast::{noreturn, pure_fn, ret_style, return_val, unsafe_fn};
+use util::ppaux::mt_to_str;
 
-use syntax::ast::{Many, Once};
+use std::list;
 
-enum Glb = combine_fields;  // "greatest lower bound" (common subtype)
+enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
-impl Glb: combine {
-    fn infcx() -> infer_ctxt { self.infcx }
+impl Glb: Combine {
+    fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"glb" }
     fn a_is_expected() -> bool { self.a_is_expected }
+    fn span() -> span { self.span }
 
     fn sub() -> Sub { Sub(*self) }
     fn lub() -> Lub { Lub(*self) }
@@ -82,10 +94,6 @@ impl Glb: combine {
         Lub(*self).tys(a, b)
     }
 
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
-        if p1 == p2 {Ok(p1)} else {Ok(ast::ProtoBare)}
-    }
-
     fn purities(a: purity, b: purity) -> cres<purity> {
         match (a, b) {
           (pure_fn, _) | (_, pure_fn) => Ok(pure_fn),
@@ -102,23 +110,11 @@ impl Glb: combine {
         }
     }
 
-    fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        match (r1, r2) {
-          (ast::return_val, ast::return_val) => {
-            Ok(ast::return_val)
-          }
-          (ast::noreturn, _) |
-          (_, ast::noreturn) => {
-            Ok(ast::noreturn)
-          }
-        }
-    }
-
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
-               a.to_str(self.infcx),
-               b.to_str(self.infcx));
+               a.inf_str(self.infcx),
+               b.inf_str(self.infcx));
 
         do indent {
             self.infcx.region_vars.glb_regions(self.span, a, b)
@@ -130,7 +126,7 @@ impl Glb: combine {
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        lattice_tys(&self, a, b)
+        super_lattice_tys(&self, a, b)
     }
 
     // Traits please (FIXME: #2794):
@@ -152,16 +148,135 @@ impl Glb: combine {
         super_args(&self, a, b)
     }
 
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        // Note: this is a subtle algorithm.  For a full explanation,
+        // please see the large comment in `region_inference.rs`.
+
+        debug!("%s.fn_sigs(%?, %?)",
+               self.tag(), a.inf_str(self.infcx), b.inf_str(self.infcx));
+        let _indenter = indenter();
+
+        // Take a snapshot.  We'll never roll this back, but in later
+        // phases we do want to be able to examine "all bindings that
+        // were created as part of this type comparison", and making a
+        // snapshot is a convenient way to do that.
+        let snapshot = self.infcx.region_vars.start_snapshot();
+
+        // Instantiate each bound region with a fresh region variable.
+        let (a_with_fresh, a_isr) =
+            self.infcx.replace_bound_regions_with_fresh_regions(
+                self.span, a);
+        let a_vars = var_ids(&self, a_isr);
+        let (b_with_fresh, b_isr) =
+            self.infcx.replace_bound_regions_with_fresh_regions(
+                self.span, b);
+        let b_vars = var_ids(&self, b_isr);
+
+        // Collect constraints.
+        let sig0 = if_ok!(super_fn_sigs(&self, &a_with_fresh, &b_with_fresh));
+        debug!("sig0 = %s", sig0.inf_str(self.infcx));
+
+        // Generalize the regions appearing in fn_ty0 if possible
+        let new_vars =
+            self.infcx.region_vars.vars_created_since_snapshot(snapshot);
+        let sig1 =
+            self.infcx.fold_regions_in_sig(
+                &sig0,
+                |r, _in_fn| generalize_region(&self, snapshot,
+                                              new_vars, a_isr, a_vars, b_vars,
+                                              r));
+        debug!("sig1 = %s", sig1.inf_str(self.infcx));
+        return Ok(move sig1);
+
+        fn generalize_region(self: &Glb,
+                             snapshot: uint,
+                             new_vars: &[RegionVid],
+                             a_isr: isr_alist,
+                             a_vars: &[RegionVid],
+                             b_vars: &[RegionVid],
+                             r0: ty::Region) -> ty::Region {
+            if !is_var_in_set(new_vars, r0) {
+                return r0;
+            }
+
+            let tainted = self.infcx.region_vars.tainted(snapshot, r0);
+
+            let mut a_r = None, b_r = None, only_new_vars = true;
+            for tainted.each |r| {
+                if is_var_in_set(a_vars, *r) {
+                    if a_r.is_some() {
+                        return fresh_bound_variable(self);
+                    } else {
+                        a_r = Some(*r);
+                    }
+                } else if is_var_in_set(b_vars, *r) {
+                    if b_r.is_some() {
+                        return fresh_bound_variable(self);
+                    } else {
+                        b_r = Some(*r);
+                    }
+                } else if !is_var_in_set(new_vars, *r) {
+                    only_new_vars = false;
+                }
+            }
+
+                // NB---I do not believe this algorithm computes
+                // (necessarily) the GLB.  As written it can
+                // spuriously fail.  In particular, if there is a case
+                // like: fn(fn(&a)) and fn(fn(&b)), where a and b are
+                // free, it will return fn(&c) where c = GLB(a,b).  If
+                // however this GLB is not defined, then the result is
+                // an error, even though something like
+                // "fn<X>(fn(&X))" where X is bound would be a
+                // subtype of both of those.
+                //
+                // The problem is that if we were to return a bound
+                // variable, we'd be computing a lower-bound, but not
+                // necessarily the *greatest* lower-bound.
+
+            if a_r.is_some() && b_r.is_some() && only_new_vars {
+                // Related to exactly one bound variable from each fn:
+                return rev_lookup(self, a_isr, a_r.get());
+            } else if a_r.is_none() && b_r.is_none() {
+                // Not related to bound variables from either fn:
+                return r0;
+            } else {
+                // Other:
+                return fresh_bound_variable(self);
+            }
+        }
+
+        fn rev_lookup(self: &Glb,
+                      a_isr: isr_alist,
+                      r: ty::Region) -> ty::Region
+        {
+            for list::each(a_isr) |pair| {
+                let (a_br, a_r) = *pair;
+                if a_r == r {
+                    return ty::re_bound(a_br);
+                }
+            }
+
+            self.infcx.tcx.sess.span_bug(
+                self.span,
+                fmt!("could not find original bound region for %?", r));
+        }
+
+        fn fresh_bound_variable(self: &Glb) -> ty::Region {
+            self.infcx.region_vars.new_bound()
+        }
+    }
+
+    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+        super_protos(&self, p1, p2)
+    }
+
     fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
         super_fns(&self, a, b)
     }
 
     fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
         super_fn_metas(&self, a, b)
-    }
-
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        super_fn_sigs(&self, a, b)
     }
 
     fn substs(did: ast::def_id,

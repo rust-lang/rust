@@ -50,8 +50,11 @@ independently:
 
 #[legacy_exports];
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::pat_util::{pat_id_map, PatIdMap};
+use middle::resolve;
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
 use middle::ty;
@@ -62,6 +65,8 @@ use util::ppaux;
 
 use core::dvec::DVec;
 use core::result::Result;
+use core::result;
+use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
 use std::map::HashMap;
@@ -96,6 +101,12 @@ export infer;
 export collect;
 export coherence;
 export deriving;
+export crate_ctxt;
+export write_ty_to_tcx, write_substs_to_tcx;
+export no_params;
+export isr_alist;
+export require_same_types;
+export lookup_def_ccx, lookup_def_tcx;
 
 #[legacy_exports]
 #[path = "check/mod.rs"]
@@ -213,16 +224,17 @@ impl vtable_origin {
 
 type vtable_map = HashMap<ast::node_id, vtable_res>;
 
-type crate_ctxt_ = {// A mapping from method call sites to traits that have
-                    // that method.
-                    trait_map: resolve::TraitMap,
-                    method_map: method_map,
-                    vtable_map: vtable_map,
-                    coherence_info: @coherence::CoherenceInfo,
-                    tcx: ty::ctxt};
+struct crate_ctxt__ {
+    // A mapping from method call sites to traits that have that method.
+    trait_map: resolve::TraitMap,
+    method_map: method_map,
+    vtable_map: vtable_map,
+    coherence_info: @coherence::CoherenceInfo,
+    tcx: ty::ctxt
+}
 
-enum crate_ctxt {
-    crate_ctxt_(crate_ctxt_)
+pub enum crate_ctxt {
+    crate_ctxt_(crate_ctxt__)
 }
 
 // Functions that write types into the node type table
@@ -259,7 +271,7 @@ fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 
 fn require_same_types(
     tcx: ty::ctxt,
-    maybe_infcx: Option<infer::infer_ctxt>,
+    maybe_infcx: Option<@infer::InferCtxt>,
     t1_is_expected: bool,
     span: span,
     t1: ty::t,
@@ -343,7 +355,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
             match tcx.items.find(main_id) {
                 Some(ast_map::node_item(it,_)) => {
                     match it.node {
-                        ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
+                        ast::item_fn(_, _, ref ps, _)
+                        if vec::is_not_empty(*ps) => {
                             tcx.sess.span_err(
                                 main_span,
                                 ~"main function is not allowed \
@@ -389,12 +402,13 @@ fn check_crate(tcx: ty::ctxt,
                crate: @ast::crate)
     -> (method_map, vtable_map) {
 
-    let ccx = @crate_ctxt_({trait_map: trait_map,
-                            method_map: std::map::HashMap(),
-                            vtable_map: std::map::HashMap(),
-                            coherence_info: @coherence::CoherenceInfo(),
-                            tcx: tcx
-                           });
+    let ccx = @crate_ctxt_(crate_ctxt__ {
+        trait_map: trait_map,
+        method_map: map::HashMap(),
+        vtable_map: map::HashMap(),
+        coherence_info: @coherence::CoherenceInfo(),
+        tcx: tcx
+    });
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
 

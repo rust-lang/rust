@@ -15,6 +15,10 @@
 #[forbid(deprecated_pattern)];
 
 use cast::transmute;
+use io;
+use libc;
+use repr;
+use vec;
 
 #[nolink]
 extern mod rustrt {

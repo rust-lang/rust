@@ -14,10 +14,10 @@ define DEF_SNAP_FOR_STAGE_H
 
 ifdef CFG_INSTALL_SNAP
 snap-stage$(1)-H-$(2): $$(HSREQ$(1)_H_$(2))
-	$(S)src/etc/make-snapshot.py stage$(1) $(2) install
+	$(CFG_PYTHON) $(S)src/etc/make-snapshot.py stage$(1) $(2) install
 else
 snap-stage$(1)-H-$(2): $$(HSREQ$(1)_H_$(2))
-	$(S)src/etc/make-snapshot.py stage$(1) $(2)
+	$(CFG_PYTHON) $(S)src/etc/make-snapshot.py stage$(1) $(2)
 endif
 
 endef

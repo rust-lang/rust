@@ -90,7 +90,16 @@ bounded and unbounded protocols allows for less code duplication.
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use either::{Either, Left, Right};
+use kinds::Owned;
+use libc;
+use option;
 use option::unwrap;
+use pipes;
+use ptr;
+use prelude::*;
+use private;
+use task;
+use vec;
 
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
@@ -193,7 +202,7 @@ pub type Packet<T: Owned> = {
 
 #[doc(hidden)]
 pub trait HasBuffer {
-    // XXX This should not have a trailing underscore
+    // FIXME #4421: This should not have a trailing underscore
     fn set_buffer_(b: *libc::c_void);
 }
 
@@ -1231,6 +1240,8 @@ pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
 }
 
 pub mod rt {
+    use option::{None, Option, Some};
+
     // These are used to hide the option constructors from the
     // compiler because their names are changing
     pub fn make_some<T>(val: T) -> Option<T> { Some(move val) }
@@ -1239,6 +1250,10 @@ pub mod rt {
 
 #[cfg(test)]
 pub mod test {
+    use either::{Either, Left, Right};
+    use pipes::{Chan, Port, oneshot, recv_one, stream};
+    use pipes;
+
     #[test]
     pub fn test_select2() {
         let (p1, c1) = pipes::stream();
