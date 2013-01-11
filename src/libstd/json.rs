@@ -926,22 +926,20 @@ pub impl Decoder: serialize::Decoder {
 
 impl Json : Eq {
     pure fn eq(&self, other: &Json) -> bool {
-        // XXX: This is ugly because matching on references is broken, and
-        // we can't match on dereferenced tuples without a copy.
-        match (*self) {
-            Number(f0) =>
-                match *other { Number(f1) => f0 == f1, _ => false },
-            String(ref s0) =>
-                match *other { String(ref s1) => s0 == s1, _ => false },
-            Boolean(b0) =>
-                match *other { Boolean(b1) => b0 == b1, _ => false },
-            Null =>
-                match *other { Null => true, _ => false },
-            List(ref v0) =>
-                match *other { List(ref v1) => v0 == v1, _ => false },
-            Object(ref d0) => {
-                match *other {
-                    Object(ref d1) => {
+        match (self) {
+            &Number(f0) =>
+                match other { &Number(f1) => f0 == f1, _ => false },
+            &String(ref s0) =>
+                match other { &String(ref s1) => s0 == s1, _ => false },
+            &Boolean(b0) =>
+                match other { &Boolean(b1) => b0 == b1, _ => false },
+            &Null =>
+                match other { &Null => true, _ => false },
+            &List(ref v0) =>
+                match other { &List(ref v1) => v0 == v1, _ => false },
+            &Object(ref d0) => {
+                match other {
+                    &Object(ref d1) => {
                         if d0.len() == d1.len() {
                             let mut equal = true;
                             for d0.each |k, v0| {
@@ -960,7 +958,7 @@ impl Json : Eq {
             }
         }
     }
-    pure fn ne(&self, other: &Json) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &Json) -> bool { !self.eq(other) }
 }
 
 /// Test if two json values are less than one another
@@ -1007,7 +1005,7 @@ impl Json : Ord {
                             let mut d0_flat = ~[];
                             let mut d1_flat = ~[];
 
-                            // XXX: this is horribly inefficient...
+                            // FIXME #4430: this is horribly inefficient...
                             for d0.each |k, v| {
                                  d0_flat.push((@copy *k, @copy *v));
                             }
