@@ -36,6 +36,8 @@ rust_kernel::rust_kernel(rust_env *env) :
     non_weak_tasks(0),
     global_loop_chan(0),
     global_env_chan(0),
+    at_exit_runner(NULL),
+    at_exit_started(false),
     env(env)
 
 {
@@ -427,6 +429,7 @@ rust_kernel::begin_shutdown() {
         }
     }
 
+    run_exit_functions();
     allow_scheduler_exit();
     end_weak_tasks();
 }
@@ -444,6 +447,47 @@ rust_kernel::send_to_port(rust_port_id chan, void *sptr) {
         KLOG_("didn't get the port");
         return false;
     }
+}
+
+void
+rust_kernel::register_exit_function(spawn_fn runner, fn_env_pair *f) {
+    scoped_lock with(at_exit_lock);
+
+    assert(!at_exit_started && "registering at_exit function after exit");
+
+    if (at_exit_runner) {
+        assert(runner == at_exit_runner
+               && "there can be only one at_exit_runner");
+    }
+
+    at_exit_runner = runner;
+    at_exit_fns.push_back(f);
+}
+
+void
+rust_kernel::run_exit_functions() {
+    rust_task *task;
+
+    {
+        scoped_lock with(at_exit_lock);
+
+        assert(!at_exit_started && "running exit functions twice?");
+
+        at_exit_started = true;
+
+        if (at_exit_runner == NULL) {
+            return;
+        }
+
+        rust_scheduler *sched = get_scheduler_by_id(main_sched_id());
+        assert(sched);
+        task = sched->create_task(NULL, "at_exit");
+
+        final_exit_fns.count = at_exit_fns.size();
+        final_exit_fns.start = at_exit_fns.data();
+    }
+
+    task->start(at_exit_runner, NULL, &final_exit_fns);
 }
 
 //

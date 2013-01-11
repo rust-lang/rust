@@ -28,6 +28,9 @@ use task;
 use task::{TaskBuilder, atomically};
 use uint;
 
+#[path = "private/at_exit.rs"]
+pub mod at_exit;
+
 extern mod rustrt {
     #[legacy_exports];
     unsafe fn rust_task_weaken(ch: rust_port_id);

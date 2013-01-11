@@ -50,6 +50,7 @@
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
+#include "rust_type.h"
 #include "util/hash_map.h"
 
 class rust_scheduler;
@@ -65,6 +66,13 @@ typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
+
+// This is defined as a struct only because we need a single pointer to pass
+// to the Rust function that runs the at_exit functions
+struct exit_functions {
+    size_t count;
+    fn_env_pair **start;
+};
 
 class rust_kernel {
     memory_region _region;
@@ -126,6 +134,14 @@ class rust_kernel {
     // Used to serialize access to getenv/setenv
     uintptr_t global_env_chan;
 
+    lock_and_signal at_exit_lock;
+    spawn_fn at_exit_runner;
+    bool at_exit_started;
+    std::vector<fn_env_pair*> at_exit_fns;
+    exit_functions final_exit_fns;
+
+    void run_exit_functions();
+
 public:
     struct rust_env *env;
 
@@ -175,6 +191,8 @@ public:
 
     uintptr_t* get_global_loop() { return &global_loop_chan; }
     uintptr_t* get_global_env_chan() { return &global_env_chan; }
+
+    void register_exit_function(spawn_fn runner, fn_env_pair *f);
 };
 
 template <typename T> struct kernel_owned {
