@@ -161,12 +161,14 @@ mod tests {
     use core::libc;
 
     fn malloc(n: size_t) -> CVec<u8> {
-        let mem = libc::malloc(n);
+        unsafe {
+            let mem = libc::malloc(n);
 
-        assert mem as int != 0;
+            assert mem as int != 0;
 
-        return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
-                                     ||free(mem)) };
+            return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
+                                         || unsafe { free(mem) }) };
+        }
     }
 
     #[test]
