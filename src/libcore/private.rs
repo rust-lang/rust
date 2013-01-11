@@ -37,6 +37,9 @@ extern mod rustrt {
     fn rust_destroy_little_lock(lock: rust_little_lock);
     fn rust_lock_little_lock(lock: rust_little_lock);
     fn rust_unlock_little_lock(lock: rust_little_lock);
+
+    fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
+    fn rust_raw_thread_join_delete(thread: *raw_thread);
 }
 
 #[abi = "rust-intrinsic"]
@@ -45,6 +48,43 @@ extern mod rusti {
     fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     fn atomic_xadd(dst: &mut int, src: int) -> int;
     fn atomic_xsub(dst: &mut int, src: int) -> int;
+}
+
+#[allow(non_camel_case_types)] // runtime type
+type raw_thread = libc::c_void;
+
+/**
+Start a new thread outside of the current runtime context and wait for it to terminate.
+
+The executing thread has no access to a task pointer and will be using a normal large stack.
+*/
+pub unsafe fn run_in_bare_thread(f: ~fn()) {
+    let (port, chan) = pipes::stream();
+    // XXX Unfortunate that this creates an extra scheduler but it's necessary
+    // since rust_raw_thread_join_delete is blocking
+    do task::spawn_sched(task::SingleThreaded) {
+        let closure: &fn() = || {
+            f()
+        };
+        let thread = rustrt::rust_raw_thread_start(closure);
+        rustrt::rust_raw_thread_join_delete(thread);
+        chan.send(());
+    }
+    port.recv();
+}
+
+#[test]
+fn test_run_in_bare_thread() unsafe {
+    extern {
+        #[rust_stack]
+        fn printf(s: *libc::c_char);
+    }
+
+    do run_in_bare_thread {
+        do str::as_c_str("running Rust in a bare thread") |s| {
+            printf(s);
+        }
+    }
 }
 
 #[allow(non_camel_case_types)] // runtime type

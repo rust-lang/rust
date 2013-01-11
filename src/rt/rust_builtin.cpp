@@ -15,6 +15,7 @@
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "sync/timer.h"
+#include "sync/rust_thread.h"
 #include "rust_abi.h"
 #include "rust_port.h"
 
@@ -971,6 +972,36 @@ rust_log_str(uint32_t level, const char *str, size_t size) {
     rust_task *task = rust_get_current_task();
     task->sched_loop->get_log().log(task, level, "%.*s", (int)size, str);
 }
+
+extern "C" CDECL void      record_sp_limit(void *limit);
+
+class raw_thread: public rust_thread {
+public:
+    fn_env_pair *fn;
+
+    raw_thread(fn_env_pair *fn) : fn(fn) { }
+
+    virtual void run() {
+        record_sp_limit(0);
+        fn->f(NULL, fn->env, NULL);
+    }
+};
+
+extern "C" raw_thread*
+rust_raw_thread_start(fn_env_pair *fn) {
+    assert(fn);
+    raw_thread *thread = new raw_thread(fn);
+    thread->start();
+    return thread;
+}
+
+extern "C" void
+rust_raw_thread_join_delete(raw_thread *thread) {
+    assert(thread);
+    thread->join();
+    delete thread;
+}
+
 
 //
 // Local Variables:
