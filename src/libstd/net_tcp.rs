@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! High-level interface to libuv's TCP functionality
-// XXX Need FFI fixes
+// FIXME #4425: Need FFI fixes
 #[allow(deprecated_mode)];
 
 use future;
@@ -1546,8 +1546,6 @@ pub mod test {
         }
     }
     pub fn impl_gl_tcp_ipv4_server_client_reader_writer() {
-        /*
-         XXX: Causes an ICE.
 
         let iotask = uv::global_loop::get();
         let server_ip = ~"127.0.0.1";
@@ -1555,14 +1553,14 @@ pub mod test {
         let expected_req = ~"ping";
         let expected_resp = ~"pong";
 
-        let server_result_po = core::comm::port::<~str>();
-        let server_result_ch = core::comm::chan(server_result_po);
+        let server_result_po = oldcomm::Port::<~str>();
+        let server_result_ch = oldcomm::Chan(&server_result_po);
 
-        let cont_po = core::comm::port::<()>();
-        let cont_ch = core::comm::chan(cont_po);
+        let cont_po = oldcomm::Port::<()>();
+        let cont_ch = oldcomm::Chan(&cont_po);
         // server
         do task::spawn_sched(task::ManualThreads(1u)) {
-            let actual_req = do comm::listen |server_ch| {
+            let actual_req = do oldcomm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
                     server_port,
@@ -1573,29 +1571,28 @@ pub mod test {
             };
             server_result_ch.send(actual_req);
         };
-        core::comm::recv(cont_po);
+        oldcomm::recv(cont_po);
         // client
         let server_addr = ip::v4::parse_addr(server_ip);
         let conn_result = connect(server_addr, server_port, iotask);
-        if result::is_err(conn_result) {
+        if result::is_err(&conn_result) {
             assert false;
         }
         let sock_buf = @socket_buf(result::unwrap(conn_result));
         buf_write(sock_buf, expected_req);
 
         // so contrived!
-        let actual_resp = do str::as_bytes(expected_resp) |resp_buf| {
-            buf_read(sock_buf, vec::len(resp_buf))
+        let actual_resp = do str::as_bytes(&expected_resp) |resp_buf| {
+            buf_read(sock_buf, resp_buf.len())
         };
 
-        let actual_req = core::comm::recv(server_result_po);
+        let actual_req = oldcomm::recv(server_result_po);
         log(debug, fmt!("REQ: expected: '%s' actual: '%s'",
                        expected_req, actual_req));
         log(debug, fmt!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp));
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
-        */
     }
 
     pub fn impl_tcp_socket_impl_reader_handles_eof() {
