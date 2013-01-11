@@ -364,10 +364,9 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     debug!("encoding %s", ast_util::path_name_i(path,
                                                 cx.sess.parse_sess.interner));
 
-    // XXX: Bad copy of `path`.
     let name_lit: ast::lit =
         nospan(ast::lit_str(@ast_util::path_name_i(
-            copy path, cx.sess.parse_sess.interner)));
+            path, cx.sess.parse_sess.interner)));
     let name_expr_inner: @ast::expr =
         @{id: cx.sess.next_node_id(),
           callee_id: cx.sess.next_node_id(),
