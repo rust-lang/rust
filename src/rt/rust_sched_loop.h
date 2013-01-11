@@ -135,6 +135,7 @@ public:
     void place_task_in_tls(rust_task *task);
 
     static rust_task *get_task_tls();
+    static rust_task *try_get_task_tls();
 
     // Called by each task when they are ready to be destroyed
     void release_task(rust_task *task);
@@ -154,7 +155,7 @@ rust_sched_loop::get_log() {
     return _log;
 }
 
-inline rust_task* rust_sched_loop::get_task_tls()
+inline rust_task* rust_sched_loop::try_get_task_tls()
 {
     if (!tls_initialized)
         return NULL;
@@ -165,6 +166,12 @@ inline rust_task* rust_sched_loop::get_task_tls()
     rust_task *task = reinterpret_cast<rust_task *>
         (pthread_getspecific(task_key));
 #endif
+    return task;
+}
+
+inline rust_task* rust_sched_loop::get_task_tls()
+{
+    rust_task *task = try_get_task_tls();
     assert(task && "Couldn't get the task from TLS!");
     return task;
 }
