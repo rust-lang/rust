@@ -1322,7 +1322,12 @@ mod tests {
     fn of_string2() {
         let buf = @ mut ~"1234567890";
         let mut i = 0;
-        while i < 10 { *buf = *buf + *buf; i+=1;}
+        while i < 10 {
+            let a = *buf;
+            let b = *buf;
+            *buf = a + b;
+            i+=1;
+        }
         let sample = @*buf;
         let r      = of_str(sample);
         assert char_len(r) == str::char_len(*sample);
@@ -1353,7 +1358,12 @@ mod tests {
     fn iter1() {
         let buf = @ mut ~"1234567890";
         let mut i = 0;
-        while i < 10 { *buf = *buf + *buf; i+=1;}
+        while i < 10 {
+            let a = *buf;
+            let b = *buf;
+            *buf = a + b;
+            i+=1;
+        }
         let sample = @*buf;
         let r      = of_str(sample);
 
@@ -1374,7 +1384,12 @@ mod tests {
         let init = @~"1234567890";
         let buf  = @mut * init;
         let mut i = 0;
-        while i < 8 { *buf = *buf + *buf; i+=1;}
+        while i < 8 {
+            let a = *buf;
+            let b = *buf;
+            *buf = a + b;
+            i+=1;
+        }
         let sample = @*buf;
         let r1     = of_str(sample);
         let mut r2 = of_str(init);

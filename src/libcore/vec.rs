@@ -472,7 +472,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
     assert capacity(v) >= ln;
     // Pretend like we have the original length so we can use
     // the vector copy_memory to overwrite the hole we just made
-    raw::set_len(v, ln);
+    raw::set_len(&mut *v, ln);
 
     // Memcopy the head element (the one we want) to the location we just
     // popped. For the moment it unsafely exists at both the head and last
@@ -487,7 +487,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
     raw::copy_memory(init_slice, tail_slice, next_ln);
 
     // Set the new length. Now the vector is back to normal
-    raw::set_len(v, next_ln);
+    raw::set_len(&mut *v, next_ln);
 
     // Swap out the element we want from the end
     let vp = raw::to_mut_ptr(*v);
@@ -592,7 +592,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
 #[inline(always)]
 pub fn push<T>(v: &mut ~[T], initval: T) {
     unsafe {
-        let repr: **raw::VecRepr = ::cast::transmute(copy v);
+        let repr: **raw::VecRepr = ::cast::transmute(&mut *v);
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, initval);
@@ -616,30 +616,30 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
 
 #[inline(never)]
 fn push_slow<T>(v: &mut ~[T], initval: T) {
-    reserve_at_least(v, v.len() + 1u);
+    reserve_at_least(&mut *v, v.len() + 1u);
     unsafe { push_fast(v, initval) }
 }
 
 #[inline(always)]
 pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
-    reserve(v, v.len() + rhs.len());
+    reserve(&mut *v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
-        push(v, unsafe { raw::get(rhs, i) })
+        push(&mut *v, unsafe { raw::get(rhs, i) })
     }
 }
 
 #[inline(always)]
 pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
     let mut rhs = rhs; // FIXME(#3488)
-    reserve(v, v.len() + rhs.len());
+    reserve(&mut *v, v.len() + rhs.len());
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
                 // FIXME #4204 Should be rusti::uninit() - don't need to zero
                 let mut x = rusti::init();
                 x <-> *ptr::mut_offset(p, i);
-                push(v, x);
+                push(&mut *v, x);
             }
         }
         raw::set_len(&mut rhs, 0);
@@ -657,7 +657,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
                 let mut dropped = rusti::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
-            raw::set_len(v, newlen);
+            raw::set_len(&mut *v, newlen);
         }
     }
 }
@@ -731,7 +731,7 @@ pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
  * * initval - The value for the new elements
  */
 pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
-    reserve_at_least(v, v.len() + n);
+    reserve_at_least(&mut *v, v.len() + n);
     let mut i: uint = 0u;
 
     while i < n {
@@ -754,7 +754,7 @@ pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
  *             value
  */
 pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
-    reserve_at_least(v, v.len() + n);
+    reserve_at_least(&mut *v, v.len() + n);
     let mut i: uint = 0u;
     while i < n {
         v.push(op(i));
@@ -772,7 +772,7 @@ pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
  */
 pub fn grow_set<T: Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
     let l = v.len();
-    if index >= l { grow(v, index - l + 1u, initval); }
+    if index >= l { grow(&mut *v, index - l + 1u, initval); }
     v[index] = val;
 }
 

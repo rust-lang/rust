@@ -2720,9 +2720,9 @@ fn check_enum_variants(ccx: @crate_ctxt,
                              sp,
                              /*bad*/copy vs,
                              id,
-                             disr_vals,
-                             disr_val,
-                             variants);
+                             &mut *disr_vals,
+                             &mut *disr_val,
+                             &mut *variants);
                 }
             }
 

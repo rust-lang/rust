@@ -187,7 +187,7 @@ fn each_ancestor(list:        &mut AncestorList,
                 forward_blk:     fn(TaskGroupInner) -> bool,
                 last_generation: uint) -> bool {
         // Need to swap the list out to use it, to appease borrowck.
-        let tmp_list = util::replace(list, AncestorList(None));
+        let tmp_list = util::replace(&mut *list, AncestorList(None));
         let (coalesce_this, early_break) =
             iterate(&tmp_list, bail_opt, forward_blk, last_generation);
         // What should our next ancestor end up being?
@@ -289,7 +289,7 @@ fn each_ancestor(list:        &mut AncestorList,
         fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
                              blk: fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
-            let tmp_arc = option::swap_unwrap(parent_group);
+            let tmp_arc = option::swap_unwrap(&mut *parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group = move Some(move tmp_arc);
             move result
@@ -363,7 +363,7 @@ fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
 
 fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
                            is_member: bool) -> bool {
-    let newstate = util::replace(state, None);
+    let newstate = util::replace(&mut *state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
         let group = option::unwrap(move newstate);
@@ -379,7 +379,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
                        is_member: bool) {
-    let newstate = util::replace(state, None);
+    let newstate = util::replace(&mut *state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
         let group = option::unwrap(move newstate);

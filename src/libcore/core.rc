@@ -95,8 +95,8 @@ pub mod at_vec;
 pub mod str;
 
 pub mod ptr;
-pub mod managed;
 pub mod owned;
+pub mod managed;
 
 
 /* Core language traits */

@@ -2206,8 +2206,15 @@ fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
       ty_rptr(re_static, mt) =>
       kind_safe_for_default_mode() | mutable_type_kind(cx, mt),
 
-      // General region pointers are copyable but NOT owned nor sendable
-      ty_rptr(_, _) => kind_safe_for_default_mode(),
+      ty_rptr(_, mt) => {
+        if mt.mutbl == ast::m_mutbl {
+            // Mutable region pointers are noncopyable
+            kind_noncopyable()
+        } else {
+            // General region pointers are copyable but NOT owned nor sendable
+            kind_safe_for_default_mode()
+        }
+      }
 
       // Unique boxes and vecs have the kind of their contained type,
       // but unique boxes can't be implicitly copyable.

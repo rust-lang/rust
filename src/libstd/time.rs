@@ -402,22 +402,22 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid year")
           },
           'c' => {
-            parse_type(s, pos, 'a', tm)
+            parse_type(s, pos, 'a', &mut *tm)
                 .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'b', tm))
+                .chain(|pos| parse_type(s, pos, 'b', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'e', tm))
+                .chain(|pos| parse_type(s, pos, 'e', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'T', tm))
+                .chain(|pos| parse_type(s, pos, 'T', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'Y', tm))
+                .chain(|pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           'D' | 'x' => {
-            parse_type(s, pos, 'm', tm)
+            parse_type(s, pos, 'm', &mut *tm)
                 .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'd', tm))
+                .chain(|pos| parse_type(s, pos, 'd', &mut *tm))
                 .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'y', tm))
+                .chain(|pos| parse_type(s, pos, 'y', &mut *tm))
           }
           'd' => match match_digits(s, pos, 2u, false) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
@@ -428,11 +428,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid day of the month")
           },
           'F' => {
-            parse_type(s, pos, 'Y', tm)
+            parse_type(s, pos, 'Y', &mut *tm)
                 .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'm', tm))
+                .chain(|pos| parse_type(s, pos, 'm', &mut *tm))
                 .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'd', tm))
+                .chain(|pos| parse_type(s, pos, 'd', &mut *tm))
           }
           'H' => {
             // FIXME (#2350): range check.
@@ -513,18 +513,18 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid hour")
           },
           'R' => {
-            parse_type(s, pos, 'H', tm)
+            parse_type(s, pos, 'H', &mut *tm)
                 .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
+                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
           }
           'r' => {
-            parse_type(s, pos, 'I', tm)
+            parse_type(s, pos, 'I', &mut *tm)
                 .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
+                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', tm))
+                .chain(|pos| parse_type(s, pos, 'S', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'p', tm))
+                .chain(|pos| parse_type(s, pos, 'p', &mut *tm))
           }
           'S' => {
             // FIXME (#2350): range check.
@@ -539,11 +539,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           //'s' {}
           'T' | 'X' => {
-            parse_type(s, pos, 'H', tm)
+            parse_type(s, pos, 'H', &mut *tm)
                 .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', tm))
+                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
                 .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', tm))
+                .chain(|pos| parse_type(s, pos, 'S', &mut *tm))
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
@@ -558,11 +558,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'v' => {
-            parse_type(s, pos, 'e', tm)
+            parse_type(s, pos, 'e', &mut *tm)
                 .chain(|pos|  parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'b', tm))
+                .chain(|pos| parse_type(s, pos, 'b', &mut *tm))
                 .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'Y', tm))
+                .chain(|pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           //'W' {}
           'w' => {

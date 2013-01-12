@@ -40,6 +40,7 @@ use lib;
 use metadata::common::link_meta;
 use metadata::{csearch, cstore, decoder, encoder};
 use middle::astencode;
+use middle::borrowck::RootInfo;
 use middle::pat_util::*;
 use middle::resolve;
 use middle::trans::_match;
@@ -963,15 +964,28 @@ fn get_landing_pad(bcx: block) -> BasicBlockRef {
 // block, so an SSA value that is valid in the inner block may not be valid in
 // the outer block.  In fact, the inner block may not even execute.  Rather
 // than generate the full SSA form, we just use an alloca'd value.
-fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
-                    root_loc: ValueRef, ty: ty::t) {
+fn add_root_cleanup(bcx: block,
+                    root_info: RootInfo,
+                    root_loc: ValueRef,
+                    ty: ty::t) {
 
-    debug!("add_root_cleanup(bcx=%s, scope_id=%d, root_loc=%s, ty=%s)",
-           bcx.to_str(), scope_id, val_str(bcx.ccx().tn, root_loc),
+    debug!("add_root_cleanup(bcx=%s, \
+                             scope=%d, \
+                             freezes=%?, \
+                             root_loc=%s, \
+                             ty=%s)",
+           bcx.to_str(),
+           root_info.scope,
+           root_info.freezes,
+           val_str(bcx.ccx().tn, root_loc),
            ppaux::ty_to_str(bcx.ccx().tcx, ty));
 
-    let bcx_scope = find_bcx_for_scope(bcx, scope_id);
-    add_clean_temp_mem(bcx_scope, root_loc, ty);
+    let bcx_scope = find_bcx_for_scope(bcx, root_info.scope);
+    if root_info.freezes {
+        add_clean_frozen_root(bcx_scope, root_loc, ty);
+    } else {
+        add_clean_temp_mem(bcx_scope, root_loc, ty);
+    }
 
     fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
         let mut bcx_sid = bcx;
@@ -1262,7 +1276,8 @@ fn trans_block_cleanups_(bcx: block,
 // In the last argument, Some(block) mean jump to this block, and none means
 // this is a landing pad and leaving should be accomplished with a resume
 // instruction.
-fn cleanup_and_leave(bcx: block, upto: Option<BasicBlockRef>,
+fn cleanup_and_leave(bcx: block,
+                     upto: Option<BasicBlockRef>,
                      leave: Option<BasicBlockRef>) {
     let _icx = bcx.insn_ctxt("cleanup_and_leave");
     let mut cur = bcx, bcx = bcx;
@@ -1992,7 +2007,7 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                                degen,
                                path,
                                vi,
-                               i);
+                               &mut *i);
             }
         }
     }
