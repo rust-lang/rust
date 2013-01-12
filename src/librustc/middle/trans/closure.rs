@@ -394,15 +394,17 @@ fn trans_expr_fn(bcx: block,
      * - `proto`
      * - `decl`
      * - `body`
-     * - `outer_id`: The id of the closure expression with the correct type.
-     *   This is usually the same as as `user_id`, but in the case of a `for` loop,
-     *   the `outer_id` will have the return type of boolean, and the `user_id` will
-     *   have the return type of `nil`.
-     * - `user_id`: The id of the closure as the user expressed it.  Generally
-         the same as `outer_id`
+     * - `outer_id`: The id of the closure expression with the correct
+     *   type.  This is usually the same as as `user_id`, but in the
+     *   case of a `for` loop, the `outer_id` will have the return
+     *   type of boolean, and the `user_id` will have the return type
+     *   of `nil`.
+     * - `user_id`: The id of the closure as the user expressed it.
+         Generally the same as `outer_id`
      * - `cap_clause`: information about captured variables, if any.
      * - `is_loop_body`: `Some()` if this is part of a `for` loop.
-     * - `dest`: where to write the closure value, which must be a (fn ptr, env) pair
+     * - `dest`: where to write the closure value, which must be a
+         (fn ptr, env) pair
      */
 
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
