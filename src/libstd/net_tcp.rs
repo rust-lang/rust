@@ -1319,7 +1319,7 @@ pub mod test {
             }
             // Strange failure on Windows. --pcwalton
             #[test]
-            #[ignore(cfg(target_os = "windows"))]
+            #[ignore(cfg(target_os = "win32"))]
             fn test_gl_tcp_ipv4_server_client_reader_writer() {
                 impl_gl_tcp_ipv4_server_client_reader_writer();
             }
@@ -1360,7 +1360,7 @@ pub mod test {
             }
             #[test]
             #[ignore(cfg(target_os = "linux"))]
-            #[ignore(cfg(target_os = "windows"))]
+            #[ignore(cfg(target_os = "win32"))]
             fn test_gl_tcp_ipv4_server_client_reader_writer() {
                 impl_gl_tcp_ipv4_server_client_reader_writer();
             }
