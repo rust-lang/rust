@@ -449,9 +449,9 @@ struct RWlockInner {
  * unwinds.
  */
 struct RWlock {
-    /* priv */ order_lock:  Semaphore,
-    /* priv */ access_lock: Sem<~[mut Waitqueue]>,
-    /* priv */ state:       Exclusive<RWlockInner>
+    priv order_lock:  Semaphore,
+    priv access_lock: Sem<~[mut Waitqueue]>,
+    priv state:       Exclusive<RWlockInner>
 }
 
 /// Create a new rwlock, with one associated condvar.
@@ -683,7 +683,7 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWlockWriteMode { /* priv */ lock: &RWlock }
+pub struct RWlockWriteMode { priv lock: &RWlock }
 impl RWlockWriteMode : Drop { fn finalize(&self) {} }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &RWlock }
