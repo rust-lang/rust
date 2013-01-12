@@ -48,6 +48,11 @@ pub trait Neg<Result> {
     pure fn neg(&self) -> Result;
 }
 
+#[lang="not"]
+pub trait Not<Result> {
+    pure fn not(&self) -> Result;
+}
+
 #[lang="bitand"]
 pub trait BitAnd<RHS,Result> {
     pure fn bitand(&self, rhs: &RHS) -> Result;
@@ -77,4 +82,3 @@ pub trait Shr<RHS,Result> {
 pub trait Index<Index,Result> {
     pure fn index(&self, index: Index) -> Result;
 }
-
