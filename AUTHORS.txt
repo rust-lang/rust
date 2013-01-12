@@ -138,5 +138,6 @@ Tycho Sci <tychosci@gmail.com>
 Viktor Dahl <pazaconyoman@gmail.com>
 Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
+William Ting <william.h.ting@gmail.com>
 Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
 Zack Corr <zackcorr95@gmail.com>
