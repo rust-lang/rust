@@ -69,7 +69,7 @@ fn find_rust_files(files: &mut ~[Path], path: &Path) {
         && !contains(path.to_str(), ~"compile-fail")
         && !contains(path.to_str(), ~"build") {
         for os::list_dir_path(path).each |p| {
-            find_rust_files(files, *p);
+            find_rust_files(&mut *files, *p);
         }
     }
 }

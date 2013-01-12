@@ -3466,12 +3466,12 @@ impl Resolver {
         for module_.children.each_ref |ident, namebindings| {
             debug!("(computing exports) maybe export '%s'",
                    self.session.str_of(*ident));
-            self.add_exports_of_namebindings(exports2,
+            self.add_exports_of_namebindings(&mut *exports2,
                                              *ident,
                                              *namebindings,
                                              TypeNS,
                                              false);
-            self.add_exports_of_namebindings(exports2,
+            self.add_exports_of_namebindings(&mut *exports2,
                                              *ident,
                                              *namebindings,
                                              ValueNS,
@@ -3489,7 +3489,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
                                self.session.str_of(*ident));
-                        self.add_exports_of_namebindings(exports2,
+                        self.add_exports_of_namebindings(&mut *exports2,
                                                          *ident,
                                                          target.bindings,
                                                          *ns,

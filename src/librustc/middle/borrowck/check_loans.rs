@@ -21,8 +21,8 @@ use core::prelude::*;
 
 use middle::borrowck::{Loan, bckerr, borrowck_ctxt, cmt, inherent_mutability};
 use middle::borrowck::{req_maps, save_and_restore};
-use middle::mem_categorization::{cat_arg, cat_binding, cat_deref, cat_local};
-use middle::mem_categorization::{cat_rvalue, cat_special};
+use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
+use middle::mem_categorization::{cat_local, cat_rvalue, cat_special, gc_ptr};
 use middle::mem_categorization::{loan_path, lp_arg, lp_comp, lp_deref};
 use middle::mem_categorization::{lp_local};
 use middle::ty::{CopyValue, MoveValue, ReadValue};
@@ -54,6 +54,7 @@ enum check_loan_ctxt = @{
 };
 
 // if we are enforcing purity, why are we doing so?
+#[deriving_eq]
 enum purity_cause {
     // enforcing purity because fn was declared pure:
     pc_pure_fn,
@@ -62,26 +63,6 @@ enum purity_cause {
     // validity of some alias; `bckerr` describes the
     // reason we needed to enforce purity.
     pc_cmt(bckerr)
-}
-
-impl purity_cause : cmp::Eq {
-    pure fn eq(&self, other: &purity_cause) -> bool {
-        match (*self) {
-            pc_pure_fn => {
-                match (*other) {
-                    pc_pure_fn => true,
-                    _ => false
-                }
-            }
-            pc_cmt(ref e0a) => {
-                match (*other) {
-                    pc_cmt(ref e0b) => (*e0a) == (*e0b),
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &purity_cause) -> bool { !(*self).eq(other) }
 }
 
 fn check_loans(bccx: borrowck_ctxt,
@@ -100,16 +81,10 @@ fn check_loans(bccx: borrowck_ctxt,
     visit::visit_crate(*crate, clcx, vt);
 }
 
+#[deriving_eq]
 enum assignment_type {
     at_straight_up,
     at_swap
-}
-
-impl assignment_type : cmp::Eq {
-    pure fn eq(&self, other: &assignment_type) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &assignment_type) -> bool { !(*self).eq(other) }
 }
 
 impl assignment_type {
@@ -410,6 +385,29 @@ impl check_loan_ctxt {
         }
 
         self.bccx.add_to_mutbl_map(cmt);
+
+        // Check for and insert write guards as necessary.
+        self.add_write_guards_if_necessary(cmt);
+    }
+
+    fn add_write_guards_if_necessary(cmt: cmt) {
+        match cmt.cat {
+            cat_deref(base, deref_count, ptr_kind) => {
+                self.add_write_guards_if_necessary(base);
+
+                match ptr_kind {
+                    gc_ptr(ast::m_mutbl) => {
+                        let key = { id: base.id, derefs: deref_count };
+                        self.bccx.write_guard_map.insert(key, ());
+                    }
+                    _ => {}
+                }
+            }
+            cat_comp(base, _) => {
+                self.add_write_guards_if_necessary(base);
+            }
+            _ => {}
+        }
     }
 
     fn check_for_loan_conflicting_with_assignment(

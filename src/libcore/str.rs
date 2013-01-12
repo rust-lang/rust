@@ -80,7 +80,7 @@ pub fn push_char(s: &mut ~str, ch: char) {
         else { 6u };
         let len = len(*s);
         let new_len = len + nb;
-        reserve_at_least(s, new_len);
+        reserve_at_least(&mut *s, new_len);
         let off = len;
         do as_buf(*s) |buf, _len| {
             let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
@@ -164,7 +164,7 @@ pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
     unsafe {
         let llen = lhs.len();
         let rlen = rhs.len();
-        reserve(lhs, llen + rlen);
+        reserve(&mut *lhs, llen + rlen);
         do as_buf(*lhs) |lbuf, _llen| {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
@@ -181,7 +181,7 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
     unsafe {
         let llen = lhs.len();
         let rlen = rhs.len();
-        reserve_at_least(lhs, llen + rlen);
+        reserve_at_least(&mut *lhs, llen + rlen);
         do as_buf(*lhs) |lbuf, _llen| {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
@@ -2056,18 +2056,18 @@ pub mod raw {
 
     /// Appends a byte to a string. (Not UTF-8 safe).
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
-        reserve_at_least(s, s.len() + 1);
+        reserve_at_least(&mut *s, s.len() + 1);
         do as_buf(*s) |buf, len| {
             let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
             *ptr::mut_offset(buf, len) = b;
         }
-        set_len(s, s.len() + 1);
+        set_len(&mut *s, s.len() + 1);
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
-        reserve_at_least(s, s.len() + bytes.len());
-        for vec::each(bytes) |byte| { push_byte(s, *byte); }
+        reserve_at_least(&mut *s, s.len() + bytes.len());
+        for vec::each(bytes) |byte| { push_byte(&mut *s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -2090,7 +2090,7 @@ pub mod raw {
 
     /// Sets the length of the string and adds the null terminator
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
-        let v: **vec::raw::VecRepr = cast::transmute(copy v);
+        let v: **vec::raw::VecRepr = cast::transmute(v);
         let repr: *vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
         let null = ptr::mut_offset(ptr::mut_addr_of(&((*repr).unboxed.data)),

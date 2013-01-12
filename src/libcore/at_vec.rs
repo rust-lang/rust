@@ -216,7 +216,7 @@ pub mod raw {
     }
 
     pub unsafe fn push_slow<T>(v: &mut @[const T], initval: T) {
-        reserve_at_least(v, v.len() + 1u);
+        reserve_at_least(&mut *v, v.len() + 1u);
         push_fast(v, move initval);
     }
 
@@ -234,7 +234,7 @@ pub mod raw {
     pub unsafe fn reserve<T>(v: &mut @[const T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
-            let ptr: **VecRepr = transmute(copy v);
+            let ptr: **VecRepr = transmute(v);
             rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
                                               ptr, n as libc::size_t);
         }

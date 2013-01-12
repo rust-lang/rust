@@ -74,7 +74,7 @@ fn add_u16(dest: &mut ~[u8], val: u16) {
 }
 
 fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
-    add_u16(dest, vec::len(src) as u16);
+    add_u16(&mut *dest, vec::len(src) as u16);
     *dest += src;
 }
 

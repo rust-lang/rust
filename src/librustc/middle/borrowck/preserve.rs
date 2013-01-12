@@ -15,13 +15,14 @@
 
 use core::prelude::*;
 
-use middle::borrowck::{bckerr, bckerr_code, bckres, borrowck_ctxt, cmt};
-use middle::borrowck::{err_mut_uniq, err_mut_variant, err_out_of_root_scope};
-use middle::borrowck::{err_out_of_scope, err_root_not_permitted};
+use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, borrowck_ctxt};
+use middle::borrowck::{cmt, err_mut_uniq, err_mut_variant};
+use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
+use middle::borrowck::{err_root_not_permitted};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_discr, cat_local, cat_special};
 use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
-use middle::mem_categorization::{comp_variant, region_ptr};
+use middle::mem_categorization::{comp_variant, gc_ptr, region_ptr};
 use middle::ty;
 use util::common::indenter;
 
@@ -180,14 +181,16 @@ priv impl &preserve_ctxt {
             // Unsafe pointers are the user's problem
             Ok(pc_ok)
           }
-          cat_deref(base, derefs, gc_ptr) => {
+          cat_deref(base, derefs, gc_ptr(*)) => {
             // GC'd pointers of type @MT: if this pointer lives in
             // immutable, stable memory, then everything is fine.  But
             // otherwise we have no guarantee the pointer will stay
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
             debug!("base.mutbl = %?", self.bccx.mut_to_str(base.mutbl));
-            if base.mutbl == m_imm {
+            if cmt.cat.derefs_through_mutable_box() {
+                self.attempt_root(cmt, base, derefs)
+            } else if base.mutbl == m_imm {
                 let non_rooting_ctxt =
                     preserve_ctxt({root_managed_data: false,.. **self});
                 match (&non_rooting_ctxt).preserve(base) {
@@ -326,8 +329,10 @@ priv impl &preserve_ctxt {
     /// value live for longer than the current fn or else potentially
     /// require that an statically unbounded number of values be
     /// rooted (if a loop exists).
-    fn attempt_root(cmt: cmt, base: cmt,
-                    derefs: uint) -> bckres<preserve_condition> {
+    fn attempt_root(cmt: cmt,
+                    base: cmt,
+                    derefs: uint)
+                 -> bckres<preserve_condition> {
         if !self.root_managed_data {
             // normally, there is a root_ub; the only time that this
             // is none is when a boxed value is stored in an immutable
@@ -352,21 +357,26 @@ priv impl &preserve_ctxt {
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
                 debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
-                self.bccx.root_map.insert(rk, scope_id);
+                // We freeze if and only if this is a *mutable* @ box that
+                // we're borrowing into a pointer.
+                self.bccx.root_map.insert(rk, RootInfo {
+                    scope: scope_id,
+                    freezes: cmt.cat.derefs_through_mutable_box()
+                });
                 return Ok(pc_ok);
             } else {
                 debug!("Unable to root");
                 return Err({cmt:cmt,
-                         code:err_out_of_root_scope(root_region,
-                                                    self.scope_region)});
+                            code:err_out_of_root_scope(root_region,
+                                                       self.scope_region)});
             }
           }
 
           // we won't be able to root long enough
           _ => {
               return Err({cmt:cmt,
-                       code:err_out_of_root_scope(root_region,
-                                                  self.scope_region)});
+                          code:err_out_of_root_scope(root_region,
+                                                     self.scope_region)});
           }
 
         }

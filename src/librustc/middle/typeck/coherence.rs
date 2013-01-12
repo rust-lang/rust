@@ -721,7 +721,7 @@ impl CoherenceChecker {
                 debug!(
                     "(creating impl) adding provided method `%s` to impl",
                     sess.str_of(provided_method.method_info.ident));
-                vec::push(all_methods, provided_method.method_info);
+                vec::push(&mut *all_methods, provided_method.method_info);
             }
         }
 

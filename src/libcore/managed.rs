@@ -14,7 +14,9 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast::transmute;
 use cmp::{Eq, Ord};
+use managed::raw::BoxRepr;
 use prelude::*;
 use ptr;
 

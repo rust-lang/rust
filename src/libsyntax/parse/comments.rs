@@ -160,7 +160,7 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
                                            comments: &mut ~[cmnt]) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) {
         if rdr.col == CharPos(0u) && rdr.curr == '\n' {
-            push_blank_line_comment(rdr, comments);
+            push_blank_line_comment(rdr, &mut *comments);
         }
         bump(rdr);
     }

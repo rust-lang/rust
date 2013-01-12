@@ -430,9 +430,9 @@ impl<T: Const Owned> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
         match *self {
-            RWWriteMode((data, ref token, _)) => {
+            RWWriteMode((ref data, ref token, _)) => {
                 do token.write {
-                    blk(data)
+                    blk(&mut **data)
                 }
             }
         }
@@ -440,12 +440,14 @@ impl<T: Const Owned> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode with a condvar.
     fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         match *self {
-            RWWriteMode((data, ref token, ref poison)) => {
+            RWWriteMode((ref data, ref token, ref poison)) => {
                 do token.write_cond |cond| {
                     let cvar = Condvar {
-                        is_mutex: false, failed: poison.failed,
-                        cond: cond };
-                    blk(data, &cvar)
+                        is_mutex: false,
+                        failed: &mut *poison.failed,
+                        cond: cond
+                    };
+                    blk(&mut **data, &cvar)
                 }
             }
         }
