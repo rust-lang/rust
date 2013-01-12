@@ -50,36 +50,37 @@ pub enum LangItem {
     DivTraitLangItem,           // 8
     ModuloTraitLangItem,        // 9
     NegTraitLangItem,           // 10
-    BitXorTraitLangItem,        // 11
-    BitAndTraitLangItem,        // 12
-    BitOrTraitLangItem,         // 13
-    ShlTraitLangItem,           // 14
-    ShrTraitLangItem,           // 15
-    IndexTraitLangItem,         // 16
+    NotTraitLangItem,           // 11
+    BitXorTraitLangItem,        // 12
+    BitAndTraitLangItem,        // 13
+    BitOrTraitLangItem,         // 14
+    ShlTraitLangItem,           // 15
+    ShrTraitLangItem,           // 16
+    IndexTraitLangItem,         // 17
 
-    EqTraitLangItem,            // 17
-    OrdTraitLangItem,           // 18
+    EqTraitLangItem,            // 18
+    OrdTraitLangItem,           // 19
 
-    StrEqFnLangItem,            // 19
-    UniqStrEqFnLangItem,        // 20
-    AnnihilateFnLangItem,       // 21
-    LogTypeFnLangItem,          // 22
-    FailFnLangItem,             // 23
-    FailBoundsCheckFnLangItem,  // 24
-    ExchangeMallocFnLangItem,   // 25
-    ExchangeFreeFnLangItem,     // 26
-    MallocFnLangItem,           // 27
-    FreeFnLangItem,             // 28
+    StrEqFnLangItem,            // 20
+    UniqStrEqFnLangItem,        // 21
+    AnnihilateFnLangItem,       // 22
+    LogTypeFnLangItem,          // 23
+    FailFnLangItem,             // 24
+    FailBoundsCheckFnLangItem,  // 25
+    ExchangeMallocFnLangItem,   // 26
+    ExchangeFreeFnLangItem,     // 27
+    MallocFnLangItem,           // 28
+    FreeFnLangItem,             // 29
 }
 
 struct LanguageItems {
-    items: [ Option<def_id> * 29 ]
+    items: [ Option<def_id> * 30 ]
 }
 
 impl LanguageItems {
     static pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..29 ]
+            items: [ None, ..30 ]
         }
     }
 
@@ -106,25 +107,26 @@ impl LanguageItems {
             8  => "div",
             9  => "modulo",
             10 => "neg",
-            11 => "bitxor",
-            12 => "bitand",
-            13 => "bitor",
-            14 => "shl",
-            15 => "shr",
-            16 => "index",
-            17 => "eq",
-            18 => "ord",
+            11 => "not",
+            12 => "bitxor",
+            13 => "bitand",
+            14 => "bitor",
+            15 => "shl",
+            16 => "shr",
+            17 => "index",
+            18 => "eq",
+            19 => "ord",
 
-            19 => "str_eq",
-            20 => "uniq_str_eq",
-            21 => "annihilate",
-            22 => "log_type",
-            23 => "fail_",
-            24 => "fail_bounds_check",
-            25 => "exchange_malloc",
-            26 => "exchange_free",
-            27 => "malloc",
-            28 => "free",
+            20 => "str_eq",
+            21 => "uniq_str_eq",
+            22 => "annihilate",
+            23 => "log_type",
+            24 => "fail_",
+            25 => "fail_bounds_check",
+            26 => "exchange_malloc",
+            27 => "exchange_free",
+            28 => "malloc",
+            29 => "free",
 
             _ => "???"
         }
@@ -166,6 +168,9 @@ impl LanguageItems {
     }
     pub fn neg_trait(&const self) -> def_id {
         self.items[NegTraitLangItem as uint].get()
+    }
+    pub fn not_trait(&const self) -> def_id {
+        self.items[NotTraitLangItem as uint].get()
     }
     pub fn bitxor_trait(&const self) -> def_id {
         self.items[BitXorTraitLangItem as uint].get()
@@ -244,6 +249,7 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(~"div", DivTraitLangItem as uint);
     item_refs.insert(~"modulo", ModuloTraitLangItem as uint);
     item_refs.insert(~"neg", NegTraitLangItem as uint);
+    item_refs.insert(~"not", NotTraitLangItem as uint);
     item_refs.insert(~"bitxor", BitXorTraitLangItem as uint);
     item_refs.insert(~"bitand", BitAndTraitLangItem as uint);
     item_refs.insert(~"bitor", BitOrTraitLangItem as uint);
