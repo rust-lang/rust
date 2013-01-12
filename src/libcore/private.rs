@@ -53,9 +53,12 @@ extern mod rusti {
 type raw_thread = libc::c_void;
 
 /**
-Start a new thread outside of the current runtime context and wait for it to terminate.
 
-The executing thread has no access to a task pointer and will be using a normal large stack.
+Start a new thread outside of the current runtime context and wait
+for it to terminate.
+
+The executing thread has no access to a task pointer and will be using
+a normal large stack.
 */
 pub unsafe fn run_in_bare_thread(f: ~fn()) {
     let (port, chan) = pipes::stream();
