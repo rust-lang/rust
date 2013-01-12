@@ -45,6 +45,8 @@ call_upcall_on_c_stack(rust_task *task, void *args, void *fn_ptr) {
     task->call_on_c_stack(args, fn_ptr);
 }
 
+typedef void (*CDECL stack_switch_shim)(void*);
+
 /**********************************************************************
  * Switches to the C-stack and invokes |fn_ptr|, passing |args| as argument.
  * This is used by the C compiler to call foreign functions and by other
@@ -54,13 +56,20 @@ call_upcall_on_c_stack(rust_task *task, void *args, void *fn_ptr) {
  */
 extern "C" CDECL void
 upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = rust_try_get_current_task();
 
-    try {
-        task->call_on_c_stack(args, fn_ptr);
-    } catch (...) {
-        // Logging here is not reliable
-        assert(false && "Foreign code threw an exception");
+    if (task) {
+        // We're running in task context, do a stack switch
+        try {
+            task->call_on_c_stack(args, fn_ptr);
+        } catch (...) {
+            // Logging here is not reliable
+            assert(false && "Foreign code threw an exception");
+        }
+    } else {
+        // There's no task. Call the function and hope for the best
+        stack_switch_shim f = (stack_switch_shim)fn_ptr;
+        f(args);
     }
 }
 
@@ -70,15 +79,22 @@ upcall_call_shim_on_c_stack(void *args, void *fn_ptr) {
  */
 extern "C" CDECL void
 upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = rust_try_get_current_task();
 
-    try {
-        task->call_on_rust_stack(args, fn_ptr);
-    } catch (...) {
-        // We can't count on being able to unwind through arbitrary
-        // code. Our best option is to just fail hard.
-        // Logging here is not reliable
-        assert(false && "Rust task failed after reentering the Rust stack");
+    if (task) {
+        try {
+            task->call_on_rust_stack(args, fn_ptr);
+        } catch (...) {
+            // We can't count on being able to unwind through arbitrary
+            // code. Our best option is to just fail hard.
+            // Logging here is not reliable
+            assert(false
+                   && "Rust task failed after reentering the Rust stack");
+        }
+    } else {
+        // There's no task. Call the function and hope for the best
+        stack_switch_shim f = (stack_switch_shim)fn_ptr;
+        f(args);
     }
 }
 
