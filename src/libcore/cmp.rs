@@ -30,7 +30,10 @@ and `Eq` to overload the `==` and `!=` operators.
 *
 * Eventually this may be simplified to only require
 * an `eq` method, with the other generated from
-* a default implementation.
+* a default implementation. However it should
+* remain possible to implement `ne` separately, for
+* compatibility with floating-point NaN semantics
+* (cf. IEEE 754-2008 section 5.11).
 */
 #[lang="eq"]
 pub trait Eq {
@@ -43,7 +46,10 @@ pub trait Eq {
 *
 * Eventually this may be simplified to only require
 * an `le` method, with the others generated from
-* default implementations.
+* default implementations. However it should remain
+* possible to implement the others separately, for
+* compatibility with floating-point NaN semantics
+* (cf. IEEE 754-2008 section 5.11).
 */
 #[lang="ord"]
 pub trait Ord {
@@ -59,8 +65,8 @@ pub pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
 }
 
 #[inline(always)]
-pub pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
-    (*v1).lt(v2) || (*v1).eq(v2)
+pub pure fn le<T: Ord>(v1: &T, v2: &T) -> bool {
+    (*v1).le(v2)
 }
 
 #[inline(always)]
