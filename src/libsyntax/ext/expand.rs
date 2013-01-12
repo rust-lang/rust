@@ -307,7 +307,7 @@ fn core_macros() -> ~str {
 
                 pub const cond : ::core::condition::Condition<$in,$out> =
                     ::core::condition::Condition {
-                    name: stringify!(c),
+                    name: stringify!($c),
                     key: key
                 };
             }
