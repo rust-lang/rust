@@ -454,10 +454,16 @@ impl gather_loan_ctxt {
             let e = {cmt: cmt,
                      code: err_mutbl(req_mutbl)};
             if req_mutbl == m_imm {
-                // you can treat mutable things as imm if you are pure
-                debug!("imm required, must be pure");
+                // if this is an @mut box, then it's generally OK to borrow as
+                // &imm; this will result in a write guard
+                if cmt.cat.is_mutable_box() {
+                    Ok(pc_ok)
+                } else {
+                    // you can treat mutable things as imm if you are pure
+                    debug!("imm required, must be pure");
 
-                Ok(pc_if_pure(e))
+                    Ok(pc_if_pure(e))
+                }
             } else {
                 Err(e)
             }

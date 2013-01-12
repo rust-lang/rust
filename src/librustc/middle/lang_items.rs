@@ -71,16 +71,19 @@ pub enum LangItem {
     ExchangeFreeFnLangItem,     // 27
     MallocFnLangItem,           // 28
     FreeFnLangItem,             // 29
+    BorrowAsImmFnLangItem,      // 30
+    ReturnToMutFnLangItem,      // 31
+    CheckNotBorrowedFnLangItem, // 32
 }
 
 struct LanguageItems {
-    items: [ Option<def_id> * 30 ]
+    items: [ Option<def_id> * 33 ]
 }
 
 impl LanguageItems {
     static pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..30 ]
+            items: [ None, ..33 ]
         }
     }
 
@@ -127,6 +130,9 @@ impl LanguageItems {
             27 => "exchange_free",
             28 => "malloc",
             29 => "free",
+            30 => "borrow_as_imm",
+            31 => "return_to_mut",
+            32 => "check_not_borrowed",
 
             _ => "???"
         }
@@ -228,6 +234,15 @@ impl LanguageItems {
     pub fn free_fn(&const self) -> def_id {
         self.items[FreeFnLangItem as uint].get()
     }
+    pub fn borrow_as_imm_fn(&const self) -> def_id {
+        self.items[BorrowAsImmFnLangItem as uint].get()
+    }
+    pub fn return_to_mut_fn(&const self) -> def_id {
+        self.items[ReturnToMutFnLangItem as uint].get()
+    }
+    pub fn check_not_borrowed_fn(&const self) -> def_id {
+        self.items[CheckNotBorrowedFnLangItem as uint].get()
+    }
 }
 
 fn LanguageItemCollector(crate: @crate,
@@ -270,6 +285,10 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(~"exchange_free", ExchangeFreeFnLangItem as uint);
     item_refs.insert(~"malloc", MallocFnLangItem as uint);
     item_refs.insert(~"free", FreeFnLangItem as uint);
+    item_refs.insert(~"borrow_as_imm", BorrowAsImmFnLangItem as uint);
+    item_refs.insert(~"return_to_mut", ReturnToMutFnLangItem as uint);
+    item_refs.insert(~"check_not_borrowed",
+                     CheckNotBorrowedFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,

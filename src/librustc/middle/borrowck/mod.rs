@@ -263,13 +263,15 @@ pub mod preserve;
 fn check_crate(tcx: ty::ctxt,
                method_map: typeck::method_map,
                last_use_map: liveness::last_use_map,
-               crate: @ast::crate) -> (root_map, mutbl_map) {
+               crate: @ast::crate)
+            -> (root_map, mutbl_map, write_guard_map) {
 
     let bccx = borrowck_ctxt_(@{tcx: tcx,
                                 method_map: method_map,
                                 last_use_map: last_use_map,
                                 root_map: root_map(),
                                 mutbl_map: HashMap(),
+                                write_guard_map: HashMap(),
                                 mut loaned_paths_same: 0,
                                 mut loaned_paths_imm: 0,
                                 mut stable_paths: 0,
@@ -293,7 +295,7 @@ fn check_crate(tcx: ty::ctxt,
                          make_stat(bccx, bccx.req_pure_paths)));
     }
 
-    return (bccx.root_map, bccx.mutbl_map);
+    return (bccx.root_map, bccx.mutbl_map, bccx.write_guard_map);
 
     fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
         let stat_f = stat as float;
@@ -310,6 +312,7 @@ type borrowck_ctxt_ = {tcx: ty::ctxt,
                        last_use_map: liveness::last_use_map,
                        root_map: root_map,
                        mutbl_map: mutbl_map,
+                       write_guard_map: write_guard_map,
 
                        // Statistics:
                        mut loaned_paths_same: uint,
@@ -322,10 +325,17 @@ enum borrowck_ctxt {
     borrowck_ctxt_(@borrowck_ctxt_)
 }
 
+struct RootInfo {
+    scope: ast::node_id,
+    // This will be true if we need to freeze this box at runtime. This will
+    // result in a call to `borrow_as_imm()` and `return_to_mut()`.
+    freezes: bool   // True if we need to freeze this box at runtime.
+}
+
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-type root_map = HashMap<root_map_key, ast::node_id>;
+type root_map = HashMap<root_map_key, RootInfo>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -337,6 +347,10 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
 type mutbl_map = HashMap<ast::node_id, ()>;
+
+// A set containing IDs of expressions of gc'd type that need to have a write
+// guard.
+type write_guard_map = HashMap<root_map_key, ()>;
 
 // Errors that can occur"]
 enum bckerr_code {
@@ -447,14 +461,6 @@ impl root_map_key : to_bytes::IterBytes {
 
 fn root_map() -> root_map {
     return HashMap();
-
-    pure fn root_map_key_eq(k1: &root_map_key, k2: &root_map_key) -> bool {
-        k1.id == k2.id && k1.derefs == k2.derefs
-    }
-
-    pure fn root_map_key_hash(k: &root_map_key) -> uint {
-        (k.id << 4) as uint | k.derefs
-    }
 }
 
 // ___________________________________________________________________________

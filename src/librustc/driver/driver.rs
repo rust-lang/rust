@@ -292,7 +292,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
             time(time_passes, ~"liveness checking", ||
                  middle::liveness::check_crate(ty_cx, method_map, crate));
 
-        let (root_map, mutbl_map) =
+        let (root_map, mutbl_map, write_guard_map) =
             time(time_passes, ~"borrow checking", ||
                  middle::borrowck::check_crate(ty_cx, method_map,
                                                last_use_map, crate));
@@ -309,7 +309,8 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                     root_map: root_map,
                     last_use_map: last_use_map,
                     method_map: method_map,
-                    vtable_map: vtable_map};
+                    vtable_map: vtable_map,
+                    write_guard_map: write_guard_map};
 
         time(time_passes, ~"translation", ||
              trans::base::trans_crate(sess, crate, ty_cx,

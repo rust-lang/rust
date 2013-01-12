@@ -62,6 +62,7 @@ use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust;
 
+#[deriving_eq]
 enum categorization {
     cat_rvalue,                     // result of eval'ing some misc expr
     cat_special(special_kind),      //
@@ -74,111 +75,18 @@ enum categorization {
     cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
 }
 
-impl categorization : cmp::Eq {
-    pure fn eq(&self, other: &categorization) -> bool {
-        match (*self) {
-            cat_rvalue => {
-                match (*other) {
-                    cat_rvalue => true,
-                    _ => false
-                }
-            }
-            cat_special(e0a) => {
-                match (*other) {
-                    cat_special(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_local(e0a) => {
-                match (*other) {
-                    cat_local(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_binding(e0a) => {
-                match (*other) {
-                    cat_binding(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_arg(e0a) => {
-                match (*other) {
-                    cat_arg(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_stack_upvar(e0a) => {
-                match (*other) {
-                    cat_stack_upvar(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            cat_deref(e0a, e1a, e2a) => {
-                match (*other) {
-                    cat_deref(e0b, e1b, e2b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
-            cat_comp(e0a, e1a) => {
-                match (*other) {
-                    cat_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            cat_discr(e0a, e1a) => {
-                match (*other) {
-                    cat_discr(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &categorization) -> bool { !(*self).eq(other) }
-}
-
 // different kinds of pointers:
+#[deriving_eq]
 pub enum ptr_kind {
     uniq_ptr,
-    gc_ptr,
+    gc_ptr(ast::mutability),
     region_ptr(ty::Region),
     unsafe_ptr
 }
 
-impl ptr_kind : cmp::Eq {
-    pure fn eq(&self, other: &ptr_kind) -> bool {
-        match (*self) {
-            uniq_ptr => {
-                match (*other) {
-                    uniq_ptr => true,
-                    _ => false
-                }
-            }
-            gc_ptr => {
-                match (*other) {
-                    gc_ptr => true,
-                    _ => false
-                }
-            }
-            region_ptr(e0a) => {
-                match (*other) {
-                    region_ptr(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            unsafe_ptr => {
-                match (*other) {
-                    unsafe_ptr => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &ptr_kind) -> bool { !(*self).eq(other) }
-}
-
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
+#[deriving_eq]
 pub enum comp_kind {
     comp_tuple,                  // elt in a tuple
     comp_anon_field,             // anonymous field (in e.g.
@@ -190,58 +98,14 @@ pub enum comp_kind {
                ast::mutability)  // mutability of vec content
 }
 
-impl comp_kind : cmp::Eq {
-    pure fn eq(&self, other: &comp_kind) -> bool {
-        match (*self) {
-            comp_tuple => {
-                match (*other) {
-                    comp_tuple => true,
-                    _ => false
-                }
-            }
-            comp_anon_field => {
-                match (*other) {
-                    comp_anon_field => true,
-                    _ => false
-                }
-            }
-            comp_variant(e0a) => {
-                match (*other) {
-                    comp_variant(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            comp_field(e0a, e1a) => {
-                match (*other) {
-                    comp_field(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            comp_index(e0a, e1a) => {
-                match (*other) {
-                    comp_index(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &comp_kind) -> bool { !(*self).eq(other) }
-}
-
 // different kinds of expressions we might evaluate
+#[deriving_eq]
 enum special_kind {
     sk_method,
     sk_static_item,
     sk_self,
     sk_implicit_self,   // old by-reference `self`
     sk_heap_upvar
-}
-
-impl special_kind : cmp::Eq {
-    pure fn eq(&self, other: &special_kind) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &special_kind) -> bool { !(*self).eq(other) }
 }
 
 // a complete categorization of a value indicating where it originated
@@ -339,14 +203,17 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(region_ptr((*f).meta.region)))
       }
 
-      ty::ty_box(*) |
-      ty::ty_evec(_, ty::vstore_box) |
+      ty::ty_box(mt) |
+      ty::ty_evec(mt, ty::vstore_box) => {
+        Some(deref_ptr(gc_ptr(mt.mutbl)))
+      }
+
       ty::ty_estr(ty::vstore_box) => {
-        Some(deref_ptr(gc_ptr))
+        Some(deref_ptr(gc_ptr(ast::m_imm)))
       }
 
       ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBox => {
-        Some(deref_ptr(gc_ptr))
+        Some(deref_ptr(gc_ptr(ast::m_imm)))
       }
 
       ty::ty_ptr(*) => {
@@ -764,7 +631,7 @@ impl &mem_categorization_ctxt {
                     // not loanable.
                     match ptr {
                         uniq_ptr => {Some(@lp_deref(*l, ptr))}
-                        gc_ptr | region_ptr(_) | unsafe_ptr => {None}
+                        gc_ptr(*) | region_ptr(_) | unsafe_ptr => {None}
                     }
                 };
 
@@ -774,7 +641,7 @@ impl &mem_categorization_ctxt {
                     uniq_ptr => {
                         self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                     }
-                    gc_ptr | region_ptr(_) | unsafe_ptr => {
+                    gc_ptr(*) | region_ptr(_) | unsafe_ptr => {
                         mt.mutbl
                     }
                 };
@@ -820,7 +687,7 @@ impl &mem_categorization_ctxt {
               uniq_ptr => {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
-              gc_ptr | region_ptr(_) | unsafe_ptr => {
+              gc_ptr(_) | region_ptr(_) | unsafe_ptr => {
                 mt.mutbl
               }
             };
@@ -1027,7 +894,7 @@ impl &mem_categorization_ctxt {
     fn ptr_sigil(ptr: ptr_kind) -> ~str {
         match ptr {
           uniq_ptr => ~"~",
-          gc_ptr => ~"@",
+          gc_ptr(_) => ~"@",
           region_ptr(_) => ~"&",
           unsafe_ptr => ~"*"
         }
@@ -1160,3 +1027,34 @@ fn field_mutbl(tcx: ty::ctxt,
 
     return None;
 }
+
+impl categorization {
+    fn derefs_through_mutable_box(&const self) -> bool {
+        match *self {
+            cat_deref(_, _, gc_ptr(ast::m_mutbl)) => {
+                true
+            }
+            cat_deref(subcmt, _, _) |
+            cat_comp(subcmt, _) |
+            cat_discr(subcmt, _) |
+            cat_stack_upvar(subcmt) => {
+                subcmt.cat.derefs_through_mutable_box()
+            }
+            cat_rvalue |
+            cat_special(*) |
+            cat_local(*) |
+            cat_binding(*) |
+            cat_arg(*) => {
+                false
+            }
+        }
+    }
+
+    fn is_mutable_box(&const self) -> bool {
+        match *self {
+            cat_deref(_, _, gc_ptr(ast::m_mutbl)) => true,
+            _ => false
+        }
+    }
+}
+

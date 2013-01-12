@@ -909,14 +909,14 @@ fn root_pats_as_necessary(bcx: block, m: &[@Match],
 
         match bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
             None => (),
-            Some(scope_id) => {
+            Some(root_info) => {
                 // Note: the scope_id will always be the id of the match.  See
                 // the extended comment in rustc::middle::borrowck::preserve()
                 // for details (look for the case covering cat_discr).
 
                 let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
                                    mode: ByRef, source: FromLvalue};
-                datum.root(bcx, scope_id);
+                datum.root(bcx, root_info);
                 return; // if we kept going, we'd only re-root the same value
             }
         }

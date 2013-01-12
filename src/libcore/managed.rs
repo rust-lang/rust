@@ -14,9 +14,12 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast::transmute;
 use cmp::{Eq, Ord};
+use managed::raw::BoxRepr;
 use prelude::*;
 use ptr;
+use rt::rt_fail_borrowed;
 
 pub mod raw {
     use intrinsic::TyDesc;
@@ -35,10 +38,38 @@ pub mod raw {
 
 }
 
+#[cfg(target_word_size = "32")]
+const FROZEN_BIT: uint = 0x80000000;
+#[cfg(target_word_size = "64")]
+const FROZEN_BIT: uint = 0x8000000000000000;
+
 #[inline(always)]
 pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
     unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
+}
+
+#[lang="borrow_as_imm"]
+#[inline(always)]
+pub unsafe fn borrow_as_imm(a: *u8) {
+    let a: *mut BoxRepr = transmute(a);
+    (*a).header.ref_count |= FROZEN_BIT;
+}
+
+#[lang="return_to_mut"]
+#[inline(always)]
+pub unsafe fn return_to_mut(a: *u8) {
+    let a: *mut BoxRepr = transmute(a);
+    (*a).header.ref_count &= !FROZEN_BIT;
+}
+
+#[lang="check_not_borrowed"]
+#[inline(always)]
+pub unsafe fn check_not_borrowed(a: *u8) {
+    let a: *mut BoxRepr = transmute(a);
+    if ((*a).header.ref_count & FROZEN_BIT) != 0 {
+        rt_fail_borrowed();
+    }
 }
 
 #[cfg(notest)]

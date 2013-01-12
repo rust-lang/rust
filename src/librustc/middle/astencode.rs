@@ -60,6 +60,7 @@ type maps = {
     last_use_map: middle::liveness::last_use_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
+    write_guard_map: middle::borrowck::write_guard_map,
 };
 
 type decode_ctxt = @{
