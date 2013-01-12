@@ -746,9 +746,6 @@ $(3)/test/$$(FT_DRIVER)-$(2).out: \
 	--logfile tmp/$$(FT_DRIVER)-$(2).log
 
 check-fast-T-$(2)-H-$(3):     			\
-	check-stage2-T-$(2)-H-$(3)-rustc	\
-	check-stage2-T-$(2)-H-$(3)-core		\
-	check-stage2-T-$(2)-H-$(3)-std		\
 	$(3)/test/$$(FT_DRIVER)-$(2).out
 
 endef
