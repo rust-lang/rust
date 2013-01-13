@@ -371,7 +371,7 @@ fn fold_struct(
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     let node = match item.node {
         ast::item_struct(def, tys) => {
-            let def = @{
+            let def = @ast::struct_def {
                 dtor: None, // Remove the drop { } block
                 .. *def
             };

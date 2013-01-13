@@ -3798,7 +3798,9 @@ fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
     if is_local(struct_id) {
        match cx.items.find(struct_id.node) {
            Some(ast_map::node_item(@ast::item {
-               node: ast::item_struct(@{ dtor: Some(ref dtor), _ }, _),
+               node: ast::item_struct(@ast::struct_def { dtor: Some(ref dtor),
+                                                         _ },
+                                      _),
                _
            }, _)) =>
                LegacyDtor(local_def((*dtor).node.id)),
