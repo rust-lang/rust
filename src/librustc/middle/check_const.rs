@@ -138,11 +138,12 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
           expr_call(callee, _, false) => {
             match def_map.find(callee.id) {
                 Some(def_struct(*)) => {}    // OK.
+                Some(def_variant(*)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,
                         ~"function calls in constants are limited to \
-                          structure constructors");
+                          struct and enum constructors");
                 }
             }
           }

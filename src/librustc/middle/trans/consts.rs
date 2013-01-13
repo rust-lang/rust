@@ -414,42 +414,10 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     // variant or we wouldn't have gotten here -- the constant
                     // checker forbids paths that don't map to C-like enum
                     // variants.
-                    let ety = ty::expr_ty(cx.tcx, e);
-                    let llty = type_of::type_of(cx, ety);
-
-                    // Can't use `discrims` from the crate context here
-                    // because those discriminants have an extra level of
-                    // indirection, and there's no LLVM constant load
-                    // instruction.
-                    let mut lldiscrim_opt = None;
-                    for ty::enum_variants(cx.tcx, enum_did).each
-                            |variant_info| {
-                        if variant_info.id == variant_did {
-                            lldiscrim_opt = Some(C_int(cx,
-                                variant_info.disr_val));
-                            break;
-                        }
-                    }
-
-                    let lldiscrim;
-                    match lldiscrim_opt {
-                        None => {
-                            cx.tcx.sess.span_bug(e.span,
-                                ~"didn't find discriminant?!");
-                        }
-                        Some(found_lldiscrim) => {
-                            lldiscrim = found_lldiscrim;
-                        }
-                    }
-                    let fields = if ty::enum_is_univariant(cx.tcx, enum_did) {
-                        ~[lldiscrim]
-                    } else {
-                        let llstructtys =
-                            lib::llvm::struct_element_types(llty);
-                        ~[lldiscrim, C_null(llstructtys[1])]
-                    };
-
-                    C_named_struct(llty, fields)
+                    let lldiscrim = base::get_discrim_val(cx, e.span,
+                                                          enum_did,
+                                                          variant_did);
+                    C_struct(~[lldiscrim])
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
@@ -475,6 +443,24 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                         C_named_struct(llty, ~[ llstructbody ])
                     }
                 }
+            Some(ast::def_variant(tid, vid)) => {
+                let ety = ty::expr_ty(cx.tcx, e);
+                let degen = ty::enum_is_univariant(cx.tcx, tid);
+                let size = shape::static_size_of_enum(cx, ety);
+
+                let discrim = base::get_discrim_val(cx, e.span, tid, vid);
+                let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
+
+                let fields = if !degen {
+                    ~[discrim, c_args]
+                } else if size == 0 {
+                    ~[discrim]
+                } else {
+                    ~[c_args]
+                };
+
+                C_struct(fields)
+            }
                 _ => cx.sess.span_bug(e.span, ~"expected a struct def")
             }
           }
@@ -485,12 +471,13 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
+fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
     unsafe {
         let _icx = ccx.insn_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
-        let v = const_expr(ccx, e);
-        ccx.const_values.insert(id, v);
+        // At this point, get_item_val has already translated the
+        // constant's initializer to determine its LLVM type.
+        let v = ccx.const_values.get(id);
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
     }

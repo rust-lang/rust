@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar,
-    Baz,
-    Boo,
-}
+enum E { V, VV(int) }
+const C: E = V;
 
-const X: Foo = Bar;
+fn f(a: &E) {
+    match *a {
+        V => {}
+        VV(*) => fail
+    }
+}
 
 fn main() {
-    match X {
-        Bar => {}
-        Baz | Boo => fail
-    }
-    match Y {
-        Baz => {}
-        Bar | Boo => fail
-    }
+    f(&C)
 }
-
-const Y: Foo = Baz;
