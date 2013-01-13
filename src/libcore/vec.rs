@@ -471,7 +471,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
     // We still should have room to work where what last element was
     assert capacity(v) >= ln;
     // Pretend like we have the original length so we can use
-    // the vector memcpy to overwrite the hole we just made
+    // the vector copy_memory to overwrite the hole we just made
     raw::set_len(v, ln);
 
     // Memcopy the head element (the one we want) to the location we just
@@ -479,12 +479,12 @@ pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
     // positions
     let first_slice = view(*v, 0, 1);
     let last_slice = mut_view(*v, next_ln, ln);
-    raw::memcpy(last_slice, first_slice, 1);
+    raw::copy_memory(last_slice, first_slice, 1);
 
     // Memcopy everything to the left one element
     let init_slice = mut_view(*v, 0, next_ln);
     let tail_slice = view(*v, 1, ln);
-    raw::memcpy(init_slice, tail_slice, next_ln);
+    raw::copy_memory(init_slice, tail_slice, next_ln);
 
     // Set the new length. Now the vector is back to normal
     raw::set_len(v, next_ln);
@@ -2075,7 +2075,7 @@ pub mod raw {
     pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
         set_len(&mut dst, elts);
-        as_mut_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
+        as_mut_buf(dst, |p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
         dst
     }
 
@@ -2085,13 +2085,13 @@ pub mod raw {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub unsafe fn memcpy<T>(dst: &[mut T], src: &[const T], count: uint) {
+    pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T], count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
 
         do as_mut_buf(dst) |p_dst, _len_dst| {
             do as_const_buf(src) |p_src, _len_src| {
-                ptr::memcpy(p_dst, p_src, count)
+                ptr::copy_memory(p_dst, p_src, count)
             }
         }
     }
@@ -2102,13 +2102,13 @@ pub mod raw {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub unsafe fn memmove<T>(dst: &[mut T], src: &[const T], count: uint) {
+    pub unsafe fn copy_overlapping_memory<T>(dst: &[mut T], src: &[const T], count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
 
         do as_mut_buf(dst) |p_dst, _len_dst| {
             do as_const_buf(src) |p_src, _len_src| {
-                ptr::memmove(p_dst, p_src, count)
+                ptr::copy_overlapping_memory(p_dst, p_src, count)
             }
         }
     }
@@ -2167,9 +2167,9 @@ pub mod bytes {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may not overlap.
       */
-    pub fn memcpy(dst: &[mut u8], src: &[const u8], count: uint) {
-        // Bound checks are done at vec::raw::memcpy.
-        unsafe { vec::raw::memcpy(dst, src, count) }
+    pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
+        // Bound checks are done at vec::raw::copy_memory.
+        unsafe { vec::raw::copy_memory(dst, src, count) }
     }
 
     /**
@@ -2178,9 +2178,9 @@ pub mod bytes {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub fn memmove(dst: &[mut u8], src: &[const u8], count: uint) {
-        // Bound checks are done at vec::raw::memmove.
-        unsafe { vec::raw::memmove(dst, src, count) }
+    pub fn copy_overlapping_memory(dst: &[mut u8], src: &[const u8], count: uint) {
+        // Bound checks are done at vec::raw::copy_overlapping_memory.
+        unsafe { vec::raw::copy_overlapping_memory(dst, src, count) }
     }
 }
 
@@ -3896,10 +3896,10 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_memcpy_oob() unsafe {
+    fn test_copy_memory_oob() unsafe {
         let a = [mut 1, 2, 3, 4];
         let b = [1, 2, 3, 4, 5];
-        raw::memcpy(a, b, 5);
+        raw::copy_memory(a, b, 5);
     }
 
 }

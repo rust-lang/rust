@@ -169,7 +169,7 @@ pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
                 let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::memcpy(dst, rbuf, rlen);
+                ptr::copy_memory(dst, rbuf, rlen);
             }
         }
         raw::set_len(lhs, llen + rlen);
@@ -186,7 +186,7 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
                 let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::memcpy(dst, rbuf, rlen);
+                ptr::copy_memory(dst, rbuf, rlen);
             }
         }
         raw::set_len(lhs, llen + rlen);
@@ -1967,7 +1967,7 @@ pub mod raw {
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
         vec::as_mut_buf(v, |vbuf, _len| {
-            ptr::memcpy(vbuf, buf as *u8, len)
+            ptr::copy_memory(vbuf, buf as *u8, len)
         });
         vec::raw::set_len(&mut v, len);
         v.push(0u8);
@@ -2024,7 +2024,7 @@ pub mod raw {
                 do vec::as_imm_buf(v) |vbuf, _vlen| {
                     let vbuf = ::cast::transmute_mut_unsafe(vbuf);
                     let src = ptr::offset(sbuf, begin);
-                    ptr::memcpy(vbuf, src, end - begin);
+                    ptr::copy_memory(vbuf, src, end - begin);
                 }
                 vec::raw::set_len(&mut v, end - begin);
                 v.push(0u8);
