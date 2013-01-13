@@ -13,6 +13,7 @@
 
 use core::prelude::*;
 
+use ast;
 use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
 use ast::{enum_variant_kind, expr, expr_match, ident, item, item_};
 use ast::{item_enum, item_impl, item_struct, m_imm, meta_item, method};
@@ -218,7 +219,7 @@ fn create_derived_impl(cx: ext_ctxt,
     let impl_ty_params = dvec::unwrap(move impl_ty_params);
 
     // Create the reference to the trait.
-    let trait_path = {
+    let trait_path = ast::path {
         span: span,
         global: true,
         idents: trait_path.map(|x| *x),

@@ -244,11 +244,19 @@ fn nospan<T: Copy>(t: T) -> ast::spanned<T> {
 }
 
 fn path_node(+ids: ~[ast::ident]) -> @ast::path {
-    @{span: dummy_sp(), global: false, idents: ids, rp: None, types: ~[]}
+    @ast::path { span: dummy_sp(),
+                 global: false,
+                 idents: ids,
+                 rp: None,
+                 types: ~[] }
 }
 
 fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
-    @{span: dummy_sp(), global: true, idents: ids, rp: None, types: ~[]}
+    @ast::path { span: dummy_sp(),
+                 global: true,
+                 idents: ids,
+                 rp: None,
+                 types: ~[] }
 }
 
 fn mk_std(cx: test_ctxt) -> @ast::view_item {

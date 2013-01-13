@@ -294,8 +294,11 @@ fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
 }
 
 fn ident_to_path(s: span, +i: ident) -> @path {
-    @{span: s, global: false, idents: ~[i],
-      rp: None, types: ~[]}
+    @ast::path { span: s,
+                 global: false,
+                 idents: ~[i],
+                 rp: None,
+                 types: ~[] }
 }
 
 fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {

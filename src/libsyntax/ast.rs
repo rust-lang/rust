@@ -79,11 +79,13 @@ type fn_ident = Option<ident>;
 
 #[auto_encode]
 #[auto_decode]
-type path = {span: span,
-             global: bool,
-             idents: ~[ident],
-             rp: Option<@region>,
-             types: ~[@Ty]};
+struct path {
+    span: span,
+    global: bool,
+    idents: ~[ident],
+    rp: Option<@region>,
+    types: ~[@Ty],
+}
 
 type crate_num = int;
 
