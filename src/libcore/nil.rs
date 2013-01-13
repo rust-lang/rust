@@ -22,15 +22,21 @@ use cmp::{Eq, Ord};
 
 #[cfg(notest)]
 impl () : Eq {
+    #[inline(always)]
     pure fn eq(&self, _other: &()) -> bool { true }
+    #[inline(always)]
     pure fn ne(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(notest)]
 impl () : Ord {
+    #[inline(always)]
     pure fn lt(&self, _other: &()) -> bool { false }
+    #[inline(always)]
     pure fn le(&self, _other: &()) -> bool { true }
+    #[inline(always)]
     pure fn ge(&self, _other: &()) -> bool { true }
+    #[inline(always)]
     pure fn gt(&self, _other: &()) -> bool { false }
 }
 
