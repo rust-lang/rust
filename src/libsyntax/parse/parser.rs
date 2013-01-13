@@ -3123,12 +3123,12 @@ impl Parser {
         let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
-        return @{ident: t.ident,
-                 attrs: attrs,
-                 node: foreign_item_fn(decl, purity, t.tps),
-                 id: self.get_id(),
-                 span: mk_sp(lo, hi),
-                 vis: vis};
+        @ast::foreign_item { ident: t.ident,
+                             attrs: attrs,
+                             node: foreign_item_fn(decl, purity, t.tps),
+                             id: self.get_id(),
+                             span: mk_sp(lo, hi),
+                             vis: vis }
     }
 
     fn parse_item_foreign_const(vis: ast::visibility,
@@ -3140,12 +3140,12 @@ impl Parser {
         let ty = self.parse_ty(false);
         let hi = self.span.hi;
         self.expect(token::SEMI);
-        return @{ident: ident,
-                 attrs: attrs,
-                 node: foreign_item_const(move ty),
-                 id: self.get_id(),
-                 span: mk_sp(lo, hi),
-                 vis: vis};
+        @ast::foreign_item { ident: ident,
+                             attrs: attrs,
+                             node: foreign_item_const(ty),
+                             id: self.get_id(),
+                             span: mk_sp(lo, hi),
+                             vis: vis }
     }
 
     fn parse_fn_purity() -> purity {

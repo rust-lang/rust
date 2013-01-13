@@ -107,7 +107,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
-      ast_map::node_foreign_item(i@@{node: foreign_item_fn(*), _},
+      ast_map::node_foreign_item(i@@foreign_item { node: foreign_item_fn(*),
+                                                   _ },
                                  abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
             let flags = match cx.ccx.sess.str_of(i.ident) {

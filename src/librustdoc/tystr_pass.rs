@@ -72,7 +72,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             ident: ident,
             node: ast::item_fn(decl, _, tys, _), _
           }, _) |
-          ast_map::node_foreign_item(@{
+          ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,
             node: ast::foreign_item_fn(decl, _, tys), _
           }, _, _) => {

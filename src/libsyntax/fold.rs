@@ -178,25 +178,29 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
     let fold_arg = |x| fold_arg_(x, fld);
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    return @{ident: fld.fold_ident(ni.ident),
-          attrs: vec::map(ni.attrs, |x| fold_attribute(*x)),
-          node:
-              match ni.node {
+    @ast::foreign_item {
+        ident: fld.fold_ident(ni.ident),
+        attrs: vec::map(ni.attrs, |x| fold_attribute(*x)),
+        node:
+            match ni.node {
                 foreign_item_fn(fdec, purity, typms) => {
-                  foreign_item_fn(
-                      {inputs: vec::map(fdec.inputs, |a| fold_arg(*a)),
-                       output: fld.fold_ty(fdec.output),
-                       cf: fdec.cf},
-                      purity,
-                      fold_ty_params(typms, fld))
+                    foreign_item_fn(
+                        {
+                            inputs: fdec.inputs.map(|a| fold_arg(*a)),
+                            output: fld.fold_ty(fdec.output),
+                            cf: fdec.cf,
+                        },
+                        purity,
+                        fold_ty_params(typms, fld))
                 }
                 foreign_item_const(t) => {
-                  foreign_item_const(fld.fold_ty(t))
+                    foreign_item_const(fld.fold_ty(t))
                 }
-              },
-          id: fld.new_id(ni.id),
-          span: fld.new_span(ni.span),
-          vis: ni.vis};
+            },
+        id: fld.new_id(ni.id),
+        span: fld.new_span(ni.span),
+        vis: ni.vis,
+    }
 }
 
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
