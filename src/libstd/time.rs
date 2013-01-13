@@ -320,6 +320,16 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         Some((value, pos))
     }
 
+    fn match_digits_in_range(ss: &str, pos: uint, digits: uint, ws: bool, min: i32, max: i32)
+      -> Option<(i32, uint)> {
+        match match_digits(ss, pos, digits, ws) {
+          Some((val, pos)) if val >= min && val <= max => {
+            Some((val, pos))
+          }
+          _ => None
+        }
+    }
+
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
         let range = str::char_range_at(s, pos);
 
@@ -393,7 +403,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err(~"Invalid month")
           },
-          'C' => match match_digits(s, pos, 2u, false) {
+          'C' => match match_digits_in_range(s, pos, 2u, false, 0_i32, 99_i32) {
             Some(item) => {
                 let (v, pos) = item;
                   tm.tm_year += (v * 100_i32) - 1900_i32;
@@ -419,11 +429,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .chain(|pos| parse_char(s, pos, '/'))
                 .chain(|pos| parse_type(s, pos, 'y', tm))
           }
-          'd' => match match_digits(s, pos, 2u, false) {
+          'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32, 31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
             None => Err(~"Invalid day of the month")
           },
-          'e' => match match_digits(s, pos, 2u, true) {
+          'e' => match match_digits_in_range(s, pos, 2u, true, 1_i32, 31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
             None => Err(~"Invalid day of the month")
           },
@@ -435,15 +445,13 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .chain(|pos| parse_type(s, pos, 'd', tm))
           }
           'H' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 23_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
               None => Err(~"Invalid hour")
             }
           }
           'I' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 1_i32, 12_i32) {
               Some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
@@ -453,8 +461,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'j' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 3u, false) {
+            match match_digits_in_range(s, pos, 3u, false, 1_i32, 366_i32) {
               Some(item) => {
                 let (v, pos) = item;
                 tm.tm_yday = v - 1_i32;
@@ -464,15 +471,13 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'k' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, true) {
+            match match_digits_in_range(s, pos, 2u, true, 0_i32, 23_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
               None => Err(~"Invalid hour")
             }
           }
           'l' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, true) {
+            match match_digits_in_range(s, pos, 2u, true, 1_i32, 12_i32) {
               Some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
@@ -482,15 +487,13 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'M' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 59_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_min = v; Ok(pos) }
               None => Err(~"Invalid minute")
             }
           }
           'm' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 1_i32, 12_i32) {
               Some(item) => {
                 let (v, pos) = item;
                 tm.tm_mon = v - 1_i32;
@@ -527,8 +530,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .chain(|pos| parse_type(s, pos, 'p', tm))
           }
           'S' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 60_i32) {
               Some(item) => {
                 let (v, pos) = item;
                 tm.tm_sec = v;
@@ -547,8 +549,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 1u, false) {
+            match match_digits_in_range(s, pos, 1u, false, 1_i32, 7_i32) {
               Some(item) => {
                 let (v, pos) = item;
                 tm.tm_wday = v-1_i32;
@@ -566,8 +567,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           //'W' {}
           'w' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 1u, false) {
+            match match_digits_in_range(s, pos, 1u, false, 0_i32, 6_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
               None => Err(~"Invalid day of week")
             }
@@ -575,7 +575,6 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           //'X' {}
           //'x' {}
           'Y' => {
-            // FIXME (#2350): range check.
             match match_digits(s, pos, 4u, false) {
               Some(item) => {
                 let (v, pos) = item;
@@ -586,8 +585,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'y' => {
-            // FIXME (#2350): range check.
-            match match_digits(s, pos, 2u, false) {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 99_i32) {
               Some(item) => {
                 let (v, pos) = item;
                 tm.tm_year = v;
