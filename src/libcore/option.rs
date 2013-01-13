@@ -114,7 +114,7 @@ pub pure fn map_consume<T, U>(opt: Option<T>,
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
      */
-    if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
+    match opt { None => None, Some(v) => Some(f(v)) }
 }
 
 pub pure fn chain<T, U>(opt: Option<T>,
