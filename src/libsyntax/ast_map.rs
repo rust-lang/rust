@@ -185,8 +185,12 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     match fk {
         visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
             let dt = @spanned {
-                node: {id: id, attrs: (*attrs), self_id: self_id,
-                     body: /* FIXME (#2543) */ copy body},
+                node: ast::struct_dtor_ {
+                    id: id,
+                    attrs: (*attrs),
+                    self_id: self_id,
+                    body: /* FIXME (#2543) */ copy body,
+                },
                 span: sp,
             };
             cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
