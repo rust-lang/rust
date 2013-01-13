@@ -264,6 +264,13 @@ impl<T> Option<T> {
     #[inline(always)]
     pure fn map<U>(&self, f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
 
+    /// As `map`, but consumes the option and gives `f` ownership to avoid
+    /// copying.
+    #[inline(always)]
+    pure fn map_consume<U>(self, f: fn(v: T) -> U) -> Option<U> {
+        map_consume(self, f)
+    }
+
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
     pure fn map_default<U>(&self, def: U, f: fn(x: &T) -> U) -> U {
@@ -300,6 +307,17 @@ impl<T> Option<T> {
      */
     #[inline(always)]
     pure fn unwrap(self) -> T { unwrap(self) }
+
+    /**
+     * The option dance. Moves a value out of an option type and returns it,
+     * replacing the original with `None`.
+     *
+     * # Failure
+     *
+     * Fails if the value equals `None`.
+     */
+    #[inline(always)]
+    fn swap_unwrap(&mut self) -> T { swap_unwrap(self) }
 
     /**
      * Gets the value out of an option, printing a specified message on
