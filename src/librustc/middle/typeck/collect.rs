@@ -282,7 +282,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(id);
     match tcx.items.get(id) {
-      ast_map::node_item(@{
+      ast_map::node_item(@ast::item {
                 node: ast::item_trait(ref params, _, ref ms),
                 _
             }, _) => {

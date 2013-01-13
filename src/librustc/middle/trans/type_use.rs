@@ -94,7 +94,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                                      fn_id_loc))
     };
     match map_node {
-      ast_map::node_item(@{node: item_fn(_, _, _, ref body), _}, _) |
+      ast_map::node_item(@ast::item { node: item_fn(_, _, _, ref body),
+                                      _ }, _) |
       ast_map::node_method(@{body: ref body, _}, _, _) => {
         handle_body(cx, (*body));
       }

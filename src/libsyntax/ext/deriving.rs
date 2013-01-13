@@ -111,7 +111,7 @@ fn expand_deriving(cx: ext_ctxt,
 }
 
 fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
-    @{
+    @ast::item {
         ident: clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),

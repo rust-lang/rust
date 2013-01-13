@@ -206,12 +206,12 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    return Some(@{ident: fld.fold_ident(i.ident),
-               attrs: vec::map(i.attrs, |e| fold_attribute(*e)),
-               id: fld.new_id(i.id),
-               node: fld.fold_item_underscore(i.node),
-               vis: i.vis,
-               span: fld.new_span(i.span)});
+    Some(@ast::item { ident: fld.fold_ident(i.ident),
+                      attrs: i.attrs.map(|e| fold_attribute(*e)),
+                      id: fld.new_id(i.id),
+                      node: fld.fold_item_underscore(i.node),
+                      vis: i.vis,
+                      span: fld.new_span(i.span) })
 }
 
 fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)

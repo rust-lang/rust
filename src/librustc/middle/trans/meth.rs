@@ -327,7 +327,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms),
                 _
             }, _) => {
@@ -344,7 +344,7 @@ fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
                                name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {
               let did = method_from_methods(/*bad*/copy *ms, name);

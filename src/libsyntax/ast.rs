@@ -1517,9 +1517,14 @@ type struct_def = {
  */
 #[auto_encode]
 #[auto_decode]
-type item = {ident: ident, attrs: ~[attribute],
-             id: node_id, node: item_,
-             vis: visibility, span: span};
+struct item {
+    ident: ident,
+    attrs: ~[attribute],
+    id: node_id,
+    node: item_,
+    vis: visibility,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]

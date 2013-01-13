@@ -229,12 +229,12 @@ impl ext_ctxt: ext_ctxt_ast_builder {
             is_sugared_doc: false
         });
 
-        @{ident: name,
-         attrs: ~[non_camel_case_attribute],
-         id: self.next_id(),
-         node: node,
-         vis: ast::public,
-         span: span}
+        @ast::item { ident: name,
+                     attrs: ~[non_camel_case_attribute],
+                     id: self.next_id(),
+                     node: node,
+                     vis: ast::public,
+                     span: span }
     }
 
     fn item_fn_poly(name: ident,
