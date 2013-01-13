@@ -802,8 +802,11 @@ impl Parser {
                 break;
             }
         }
-        @{span: mk_sp(lo, self.last_span.hi), global: global,
-          idents: ids, rp: None, types: ~[]}
+        @ast::path { span: mk_sp(lo, self.last_span.hi),
+                     global: global,
+                     idents: ids,
+                     rp: None,
+                     types: ~[] }
     }
 
     fn parse_value_path() -> @path {
@@ -849,9 +852,10 @@ impl Parser {
             }
         };
 
-        return @{span: mk_sp(lo, tps.span.hi),
-              rp: rp,
-              types: tps.node,.. *path};
+        @ast::path { span: mk_sp(lo, tps.span.hi),
+                     rp: rp,
+                     types: tps.node,
+                     .. *path }
     }
 
     fn parse_mutability() -> mutability {
@@ -2730,18 +2734,27 @@ impl Parser {
                          typarams: ~[ty_param]) -> @path {
         let s = self.last_span;
 
-        @{span: s, global: false, idents: ~[i],
-          rp: None,
-          types: vec::map(typarams, |tp| {
-              @{id: self.get_id(),
-                node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
-                span: s}})
+        @ast::path {
+             span: s,
+             global: false,
+             idents: ~[i],
+             rp: None,
+             types: do typarams.map |tp| {
+                @{
+                    id: self.get_id(),
+                    node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
+                    span: s
+                }
+            }
          }
     }
 
     fn ident_to_path(i: ident) -> @path {
-        @{span: self.last_span, global: false, idents: ~[i],
-          rp: None, types: ~[]}
+        @ast::path { span: self.last_span,
+                     global: false,
+                     idents: ~[i],
+                     rp: None,
+                     types: ~[] }
     }
 
     fn parse_trait_ref() -> @trait_ref {
@@ -3661,8 +3674,11 @@ impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                         idents: path, rp: None, types: ~[]};
+            let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                    global: false,
+                                    idents: path,
+                                    rp: None,
+                                    types: ~[] };
             return @spanned(lo, self.span.hi,
                          view_path_simple(first_ident, path, namespace,
                                           self.get_id()));
@@ -3686,9 +3702,11 @@ impl Parser {
                         token::LBRACE, token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident());
-                    let path = @{span: mk_sp(lo, self.span.hi),
-                                 global: false, idents: path,
-                                 rp: None, types: ~[]};
+                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                            global: false,
+                                            idents: path,
+                                            rp: None,
+                                            types: ~[] };
                     return @spanned(lo, self.span.hi,
                                  view_path_list(path, idents, self.get_id()));
                   }
@@ -3696,9 +3714,11 @@ impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = @{span: mk_sp(lo, self.span.hi),
-                                 global: false, idents: path,
-                                 rp: None, types: ~[]};
+                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                            global: false,
+                                            idents: path,
+                                            rp: None,
+                                            types: ~[] };
                     return @spanned(lo, self.span.hi,
                                  view_path_glob(path, self.get_id()));
                   }
@@ -3710,8 +3730,11 @@ impl Parser {
           _ => ()
         }
         let last = path[vec::len(path) - 1u];
-        let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                     idents: path, rp: None, types: ~[]};
+        let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                global: false,
+                                idents: path,
+                                rp: None,
+                                types: ~[] };
         return @spanned(lo, self.span.hi,
                      view_path_simple(last, path, namespace, self.get_id()));
     }

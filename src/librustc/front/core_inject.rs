@@ -76,7 +76,7 @@ fn inject_libcore_ref(sess: Session,
         fold_mod: |module, fld| {
             let n2 = sess.next_node_id();
 
-            let prelude_path = @{
+            let prelude_path = @ast::path {
                 span: dummy_sp(),
                 global: false,
                 idents: ~[
