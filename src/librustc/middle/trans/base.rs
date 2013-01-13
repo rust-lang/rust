@@ -779,6 +779,30 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     };
 }
 
+fn get_discrim_val(cx: @crate_ctxt, span: span, enum_did: ast::def_id,
+                   variant_did: ast::def_id) -> ValueRef {
+    // Can't use `discrims` from the crate context here because
+    // those discriminants have an extra level of indirection,
+    // and there's no LLVM constant load instruction.
+    let mut lldiscrim_opt = None;
+    for ty::enum_variants(cx.tcx, enum_did).each |variant_info| {
+        if variant_info.id == variant_did {
+            lldiscrim_opt = Some(C_int(cx,
+                                       variant_info.disr_val));
+            break;
+        }
+    }
+
+    match lldiscrim_opt {
+        None => {
+            cx.tcx.sess.span_bug(span, ~"didn't find discriminant?!");
+        }
+        Some(found_lldiscrim) => {
+            found_lldiscrim
+        }
+    }
+}
+
 fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("lookup_discriminant");
@@ -2284,16 +2308,21 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
             match i.node {
-              ast::item_const(_, _) => {
+              ast::item_const(_, expr) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
-                let g = str::as_c_str(s, |buf| {
-                    unsafe {
-                        llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
-                    }
-                });
-                ccx.item_symbols.insert(i.id, s);
-                g
+                // We need the translated value here, because for enums the
+                // LLVM type is not fully determined by the Rust type.
+                let v = consts::const_expr(ccx, expr);
+                ccx.const_values.insert(id, v);
+                unsafe {
+                    let llty = llvm::LLVMTypeOf(v);
+                    let g = str::as_c_str(s, |buf| {
+                        llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
+                    });
+                    ccx.item_symbols.insert(i.id, s);
+                    g
+                }
               }
               ast::item_fn(_, purity, _, _) => {
                 let llfn = if purity != ast::extern_fn {

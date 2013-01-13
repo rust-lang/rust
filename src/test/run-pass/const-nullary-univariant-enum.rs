@@ -16,4 +16,7 @@ const X: Foo = Bar;
 
 fn main() {
     assert((X as uint) == 0xDEADBEE);
+    assert((Y as uint) == 0xDEADBEE);
 }
+
+const Y: Foo = Bar;
