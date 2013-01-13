@@ -216,9 +216,9 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
 
 fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
                        -> @struct_field {
-    @spanned { node: { kind: copy sf.node.kind,
-                       id: sf.node.id,
-                       ty: fld.fold_ty(sf.node.ty) },
+    @spanned { node: ast::struct_field_ { kind: copy sf.node.kind,
+                                          id: sf.node.id,
+                                          ty: fld.fold_ty(sf.node.ty) },
                span: sf.span }
 }
 
@@ -293,9 +293,9 @@ fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
 }
 
 fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
-    @spanned { node: { kind: copy f.node.kind,
-                       id: fld.new_id(f.node.id),
-                       ty: fld.fold_ty(f.node.ty) },
+    @spanned { node: ast::struct_field_ { kind: copy f.node.kind,
+                                          id: fld.new_id(f.node.id),
+                                          ty: fld.fold_ty(f.node.ty) },
                span: fld.new_span(f.span) }
 }
 
@@ -693,10 +693,14 @@ impl ast_fold_fns: ast_fold {
         return (self.fold_item)(i, self as ast_fold);
     }
     fn fold_struct_field(&&sf: @struct_field) -> @struct_field {
-        @spanned { node: { kind: copy sf.node.kind,
-                           id: sf.node.id,
-                           ty: (self as ast_fold).fold_ty(sf.node.ty) },
-                   span: (self.new_span)(sf.span) }
+        @spanned {
+            node: ast::struct_field_ {
+                kind: copy sf.node.kind,
+                id: sf.node.id,
+                ty: (self as ast_fold).fold_ty(sf.node.ty),
+            },
+            span: (self.new_span)(sf.span),
+        }
     }
     fn fold_item_underscore(i: item_) ->
        item_ {
