@@ -273,7 +273,8 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                             ty_params: ~[ty_param]) {
     let mut disr_val = 0;
     let mut i = 0;
-    let vi = ty::enum_variants(ecx.tcx, {crate: local_crate, node: id});
+    let vi = ty::enum_variants(ecx.tcx,
+                               ast::def_id { crate: local_crate, node: id });
     for variants.each |variant| {
         index.push({val: variant.node.id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
