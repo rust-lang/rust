@@ -277,6 +277,13 @@ impl<T> Option<T> {
         map_default(self, move def, f)
     }
 
+    /// As `map_default`, but consumes the option and gives `f`
+    /// ownership to avoid copying.
+    #[inline(always)]
+    pure fn map_consume_default<U>(self, def: U, f: fn(v: T) -> U) -> U {
+        match self { None => def, Some(v) => f(v) }
+    }
+
     /// Performs an operation on the contained value by reference
     #[inline(always)]
     pure fn iter(&self, f: fn(x: &T)) { iter(self, f) }
