@@ -817,7 +817,7 @@ fn Resolver(session: Session, lang_items: LanguageItems,
 
     (*graph_root).define_module(Public,
                                 NoParentLink,
-                                Some({ crate: 0, node: 0 }),
+                                Some(def_id { crate: 0, node: 0 }),
                                 NormalModuleKind,
                                 has_legacy_export_attr(crate.node.attrs),
                                 crate.span);
@@ -1148,7 +1148,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(new_parent, ident);
-                let def_id = { crate: 0, node: item.id };
+                let def_id = def_id { crate: 0, node: item.id };
                 (*name_bindings).define_module(privacy,
                                                parent_link,
                                                Some(def_id),
@@ -1172,7 +1172,7 @@ impl Resolver {
 
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
-                        let def_id = { crate: 0, node: item.id };
+                        let def_id = def_id { crate: 0, node: item.id };
                         (*name_bindings).define_module(privacy,
                                                        parent_link,
                                                        Some(def_id),
@@ -1609,7 +1609,7 @@ impl Resolver {
                             self.add_child(name, parent, ForbidDuplicateTypes,
                                            view_item.span);
 
-                        let def_id = { crate: crate_id, node: 0 };
+                        let def_id = def_id { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(new_parent), name);
 

@@ -93,7 +93,10 @@ type node_id = int;
 
 #[auto_encode]
 #[auto_decode]
-type def_id = {crate: crate_num, node: node_id};
+struct def_id {
+    crate: crate_num,
+    node: node_id,
+}
 
 impl def_id : cmp::Eq {
     pure fn eq(&self, other: &def_id) -> bool {

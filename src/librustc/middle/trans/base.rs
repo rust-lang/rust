@@ -2498,8 +2498,9 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     let _icx = ccx.insn_ctxt("trans_constant");
     match it.node {
       ast::item_enum(ref enum_definition, _) => {
-        let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
-                                             node: it.id});
+        let vi = ty::enum_variants(ccx.tcx,
+                                   ast::def_id { crate: ast::local_crate,
+                                                 node: it.id });
         let mut i = 0;
         let path = item_path(ccx, it);
         for vec::each((*enum_definition).variants) |variant| {
