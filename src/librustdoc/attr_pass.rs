@@ -167,7 +167,7 @@ fn fold_enum(
             let variant = *variant;
             let desc = do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get(doc_id) {
-                  ast_map::node_item(@{
+                  ast_map::node_item(@ast::item {
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant = option::get(
@@ -226,7 +226,7 @@ fn merge_method_attrs(
     // Create an assoc list from method name to attributes
     let attrs: ~[(~str, Option<~str>)] = do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(item_id) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             vec::map(methods, |method| {
@@ -240,7 +240,7 @@ fn merge_method_attrs(
                 }
             })
           }
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
             vec::map(methods, |method| {

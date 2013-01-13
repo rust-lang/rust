@@ -121,8 +121,10 @@ fn expand_auto_encode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -185,8 +187,10 @@ fn expand_auto_decode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -444,7 +448,7 @@ fn mk_impl(
         tps.map(|tp| cx.ty_path(span, ~[tp.ident], ~[]))
     );
 
-    @{
+    @ast::item {
         // This is a new-style impl declaration.
         // XXX: clownshoes
         ident: parse::token::special_idents::clownshoes_extensions,
