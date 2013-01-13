@@ -827,7 +827,7 @@ impl TcpSocketBuf: io::Reader {
         let mut data = ~[];
         self.data.buf <-> data;
 
-        vec::bytes::memcpy(buf, vec::view(data, 0, data.len()), count);
+        vec::bytes::copy_memory(buf, vec::view(data, 0, data.len()), count);
 
         self.data.buf.push_all(vec::view(data, count, data.len()));
 

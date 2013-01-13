@@ -122,7 +122,7 @@ pub pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * and destination may not overlap.
  */
 #[inline(always)]
-pub unsafe fn memcpy<T>(dst: *mut T, src: *const T, count: uint) {
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memcpy(dst as *mut c_void, src as *c_void, n as size_t);
 }
@@ -134,13 +134,13 @@ pub unsafe fn memcpy<T>(dst: *mut T, src: *const T, count: uint) {
  * and destination may overlap.
  */
 #[inline(always)]
-pub unsafe fn memmove<T>(dst: *mut T, src: *const T, count: uint) {
+pub unsafe fn copy_overlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memmove(dst as *mut c_void, src as *c_void, n as size_t);
 }
 
 #[inline(always)]
-pub unsafe fn memset<T>(dst: *mut T, c: int, count: uint) {
+pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
 }
@@ -326,13 +326,13 @@ pub fn test() {
         let mut v0 = ~[32000u16, 32001u16, 32002u16];
         let mut v1 = ~[0u16, 0u16, 0u16];
 
-        ptr::memcpy(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 1u),
+        ptr::copy_memory(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 1u),
                     ptr::offset(vec::raw::to_ptr(v0), 1u), 1u);
         assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::memcpy(vec::raw::to_mut_ptr(v1),
+        ptr::copy_memory(vec::raw::to_mut_ptr(v1),
                     ptr::offset(vec::raw::to_ptr(v0), 2u), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::memcpy(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 2u),
+        ptr::copy_memory(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 2u),
                     vec::raw::to_ptr(v0), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
     }
