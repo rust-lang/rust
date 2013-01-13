@@ -118,7 +118,7 @@ pub pure fn map_consume<T, U>(opt: Option<T>,
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
      */
-    if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
+    match opt { None => None, Some(v) => Some(f(v)) }
 }
 
 #[inline(always)]
@@ -278,10 +278,40 @@ impl<T> Option<T> {
     #[inline(always)]
     pure fn map<U>(&self, f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
 
+    /// As `map`, but consumes the option and gives `f` ownership to avoid
+    /// copying.
+    #[inline(always)]
+    pure fn map_consume<U>(self, f: fn(v: T) -> U) -> Option<U> {
+        map_consume(self, f)
+    }
+
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
     pure fn map_default<U>(&self, def: U, f: fn(x: &T) -> U) -> U {
         map_default(self, move def, f)
+    }
+
+    /// As `map_default`, but consumes the option and gives `f`
+    /// ownership to avoid copying.
+    #[inline(always)]
+    pure fn map_consume_default<U>(self, def: U, f: fn(v: T) -> U) -> U {
+        match self { None => def, Some(v) => f(v) }
+    }
+
+    /// Apply a function to the contained value or do nothing
+    fn mutate(&mut self, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        }
+    }
+
+    /// Apply a function to the contained value or set it to a default
+    fn mutate_default(&mut self, def: T, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        } else {
+            *self = Some(def);
+        }
     }
 
     /// Performs an operation on the contained value by reference
@@ -314,6 +344,17 @@ impl<T> Option<T> {
      */
     #[inline(always)]
     pure fn unwrap(self) -> T { unwrap(self) }
+
+    /**
+     * The option dance. Moves a value out of an option type and returns it,
+     * replacing the original with `None`.
+     *
+     * # Failure
+     *
+     * Fails if the value equals `None`.
+     */
+    #[inline(always)]
+    fn swap_unwrap(&mut self) -> T { swap_unwrap(self) }
 
     /**
      * Gets the value out of an option, printing a specified message on
