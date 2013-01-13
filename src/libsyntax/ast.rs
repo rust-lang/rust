@@ -1457,11 +1457,11 @@ impl visibility : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type struct_field_ = {
+struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
-    ty: @Ty
-};
+    ty: @Ty,
+}
 
 type struct_field = spanned<struct_field_>;
 

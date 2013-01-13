@@ -2150,11 +2150,11 @@ impl Parser {
         let name = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return @spanned(lo, self.last_span.hi, {
+        @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
             ty: ty
-        });
+        })
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
@@ -2816,7 +2816,7 @@ impl Parser {
                                                  seq_sep_trailing_allowed
                                                     (token::COMMA)) |p| {
                 let lo = p.span.lo;
-                let struct_field_ = {
+                let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: self.get_id(),
                     ty: p.parse_ty(false)
@@ -2893,7 +2893,9 @@ impl Parser {
             self.parse_method();
             // bogus value
             @spanned(self.span.lo, self.span.hi,
-                     { kind: unnamed_field, id: self.get_id(),
+                     ast::struct_field_ {
+                       kind: unnamed_field,
+                       id: self.get_id(),
                        ty: @{id: self.get_id(),
                              node: ty_nil,
                              span: copy self.span} })
