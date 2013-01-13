@@ -1008,14 +1008,19 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
         let region_param = tcx.region_paramd_items.find(did.node);
         match tcx.items.find(did.node) {
-          Some(ast_map::node_item(@{node: ast::item_impl(ref ts, _, st, _),
-                                  _}, _)) => {
+          Some(ast_map::node_item(@ast::item {
+                  node: ast::item_impl(ref ts, _, st, _),
+                  _
+              }, _)) => {
             {n_tps: ts.len(),
              region_param: region_param,
              raw_ty: vcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
           }
-          Some(ast_map::node_item(@{node: ast::item_struct(_, ref ts),
-                                    id: class_id, _},_)) => {
+          Some(ast_map::node_item(@ast::item {
+                  node: ast::item_struct(_, ref ts),
+                  id: class_id,
+                  _
+              },_)) => {
               /* If the impl is a class, the self ty is just the class ty
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
@@ -1768,7 +1773,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             region_parameterized =
                 tcx.region_paramd_items.find(class_id.node);
             match tcx.items.find(class_id.node) {
-                Some(ast_map::node_item(@{
+                Some(ast_map::node_item(@ast::item {
                         node: ast::item_struct(_, ref type_parameters),
                         _
                     }, _)) => {
@@ -1851,7 +1856,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             region_parameterized =
                 tcx.region_paramd_items.find(enum_id.node);
             match tcx.items.find(enum_id.node) {
-                Some(ast_map::node_item(@{
+                Some(ast_map::node_item(@ast::item {
                         node: ast::item_enum(_, ref type_parameters),
                         _
                     }, _)) => {

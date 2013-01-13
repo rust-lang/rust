@@ -167,7 +167,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     });
 
     let lldecl = match map_node {
-      ast_map::node_item(i@@{
+      ast_map::node_item(i@@ast::item {
                 // XXX: Bad copy.
                 node: ast::item_fn(copy decl, _, _, ref body),
                 _

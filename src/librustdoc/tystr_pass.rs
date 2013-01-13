@@ -68,7 +68,7 @@ fn fold_fn(
 fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(fn_id) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             ident: ident,
             node: ast::item_fn(decl, _, tys, _), _
           }, _) |
@@ -104,7 +104,7 @@ fn fold_const(
     {
         sig: Some(do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@{
+              ast_map::node_item(@ast::item {
                 node: ast::item_const(ty, _), _
               }, _) => {
                 pprust::ty_to_str(ty, extract::interner())
@@ -134,7 +134,7 @@ fn fold_enum(
             let variant = *variant;
             let sig = do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get(doc_id) {
-                  ast_map::node_item(@{
+                  ast_map::node_item(@ast::item {
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant =
@@ -193,7 +193,7 @@ fn get_method_sig(
 ) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(item_id) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             match vec::find(methods, |method| {
@@ -225,7 +225,7 @@ fn get_method_sig(
                 _ => fail ~"method not found"
             }
           }
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
             match vec::find(methods, |method| {
@@ -263,7 +263,7 @@ fn fold_impl(
 
     let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(doc.id()) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_impl(_, opt_trait_type, self_ty, _), _
           }, _) => {
             let trait_types = opt_trait_type.map_default(~[], |p| {
@@ -319,7 +319,7 @@ fn fold_type(
     {
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@{
+              ast_map::node_item(@ast::item {
                 ident: ident,
                 node: ast::item_ty(ty, params), _
               }, _) => {
@@ -380,7 +380,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
         _ => fail ~"not a struct"
     };
 
-    @{
+    @ast::item {
         attrs: ~[], // Remove the attributes
         node: node,
         .. *item

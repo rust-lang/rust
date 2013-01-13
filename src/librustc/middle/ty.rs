@@ -3609,7 +3609,7 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
         match cx.items.find(id.node) {
-            Some(ast_map::node_item(@{
+            Some(ast_map::node_item(@ast::item {
                         node: item_trait(_, _, ref ms),
                         _
                     }, _)) =>
@@ -3690,7 +3690,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(id.node) {
-           Some(ast_map::node_item(@{
+           Some(ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
@@ -3797,7 +3797,7 @@ fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
 
     if is_local(struct_id) {
        match cx.items.find(struct_id.node) {
-           Some(ast_map::node_item(@{
+           Some(ast_map::node_item(@ast::item {
                node: ast::item_struct(@{ dtor: Some(ref dtor), _ }, _),
                _
            }, _)) =>
@@ -3900,7 +3900,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         match cx.items.get(id.node) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
                 }, _) => {

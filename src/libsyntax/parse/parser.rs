@@ -2621,12 +2621,12 @@ impl Parser {
     fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
                +node: item_, vis: visibility,
                +attrs: ~[attribute]) -> @item {
-        return @{ident: ident,
-              attrs: attrs,
-              id: self.get_id(),
-              node: node,
-              vis: vis,
-              span: mk_sp(lo, hi)};
+        @ast::item { ident: ident,
+                     attrs: attrs,
+                     id: self.get_id(),
+                     node: node,
+                     vis: vis,
+                     span: mk_sp(lo, hi) }
     }
 
     fn parse_item_fn(purity: purity) -> item_info {

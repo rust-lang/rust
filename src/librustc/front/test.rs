@@ -225,13 +225,14 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
         attr::mk_attr(attr::mk_word_item(~"!resolve_unexported"));
-    let item: ast::item =
-        {ident: cx.sess.ident_of(~"__test"),
-         attrs: ~[resolve_unexported_attr],
-         id: cx.sess.next_node_id(),
-         node: item_,
-         vis: ast::public,
-         span: dummy_sp()};
+    let item = ast::item {
+        ident: cx.sess.ident_of(~"__test"),
+        attrs: ~[resolve_unexported_attr],
+        id: cx.sess.next_node_id(),
+        node: item_,
+        vis: ast::public,
+        span: dummy_sp(),
+    };
 
     debug!("Synthetic test module:\n%s\n",
            pprust::item_to_str(@copy item, cx.sess.intr()));
@@ -293,13 +294,14 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     let body = nospan(body_);
 
     let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-    let item: ast::item =
-        {ident: cx.sess.ident_of(~"tests"),
-         attrs: ~[],
-         id: cx.sess.next_node_id(),
-         node: item_,
-         vis: ast::public,
-         span: dummy_sp()};
+    let item = ast::item {
+        ident: cx.sess.ident_of(~"tests"),
+        attrs: ~[],
+        id: cx.sess.next_node_id(),
+        node: item_,
+        vis: ast::public,
+        span: dummy_sp(),
+    };
     return @item;
 }
 
@@ -503,13 +505,14 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let body = ast::spanned { node: body_, span: dummy_sp() };
 
     let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-    let item: ast::item =
-        {ident: cx.sess.ident_of(~"main"),
-         attrs: ~[attr::mk_attr(attr::mk_word_item(~"main"))],
-         id: cx.sess.next_node_id(),
-         node: item_,
-         vis: ast::public,
-         span: dummy_sp()};
+    let item = ast::item {
+        ident: cx.sess.ident_of(~"main"),
+        attrs: ~[attr::mk_attr(attr::mk_word_item(~"main"))],
+        id: cx.sess.next_node_id(),
+        node: item_,
+        vis: ast::public,
+        span: dummy_sp(),
+    };
     return @item;
 }
 
