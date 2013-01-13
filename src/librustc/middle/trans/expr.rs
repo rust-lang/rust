@@ -801,7 +801,11 @@ fn trans_def_lvalue(bcx: block,
         ast::def_const(did) => {
             let const_ty = expr_ty(bcx, ref_expr);
             let val = if did.crate == ast::local_crate {
-                base::get_item_val(ccx, did.node)
+                // The LLVM global has the type of its initializer,
+                // which may not be equal to the enum's type for
+                // non-C-like enums.
+                PointerCast(bcx, base::get_item_val(ccx, did.node),
+                            T_ptr(type_of(bcx.ccx(), const_ty)))
             } else {
                 base::trans_external_path(ccx, did, const_ty)
             };
