@@ -195,6 +195,7 @@ pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
  * * num - The float value
  * * digits - The number of significant digits
  */
+#[inline(always)]
 pub pure fn to_str_exact(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, true)
 }
@@ -215,6 +216,7 @@ pub fn test_to_str_exact_do_decimal() {
  * * num - The float value
  * * digits - The number of significant digits
  */
+#[inline(always)]
 pub pure fn to_str(num: float, digits: uint) -> ~str {
     to_str_common(num, digits, false)
 }
@@ -400,30 +402,44 @@ pub pure fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
+#[inline(always)]
 pub pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
+#[inline(always)]
 pub pure fn is_negative(x: float) -> bool { f64::is_negative(x as f64) }
+#[inline(always)]
 pub pure fn is_nonpositive(x: float) -> bool { f64::is_nonpositive(x as f64) }
+#[inline(always)]
 pub pure fn is_nonnegative(x: float) -> bool { f64::is_nonnegative(x as f64) }
+#[inline(always)]
 pub pure fn is_zero(x: float) -> bool { f64::is_zero(x as f64) }
+#[inline(always)]
 pub pure fn is_infinite(x: float) -> bool { f64::is_infinite(x as f64) }
+#[inline(always)]
 pub pure fn is_finite(x: float) -> bool { f64::is_finite(x as f64) }
+#[inline(always)]
 pub pure fn is_NaN(x: float) -> bool { f64::is_NaN(x as f64) }
 
+#[inline(always)]
 pub pure fn abs(x: float) -> float {
     unsafe { f64::abs(x as f64) as float }
 }
+#[inline(always)]
 pub pure fn sqrt(x: float) -> float {
     unsafe { f64::sqrt(x as f64) as float }
 }
+#[inline(always)]
 pub pure fn atan(x: float) -> float {
     unsafe { f64::atan(x as f64) as float }
 }
+#[inline(always)]
 pub pure fn sin(x: float) -> float {
     unsafe { f64::sin(x as f64) as float }
 }
+#[inline(always)]
 pub pure fn cos(x: float) -> float {
     unsafe { f64::cos(x as f64) as float }
 }
+#[inline(always)]
 pub pure fn tan(x: float) -> float {
     unsafe { f64::tan(x as f64) as float }
 }
@@ -463,10 +479,12 @@ impl float: num::Num {
 }
 
 impl float: num::Zero {
+    #[inline(always)]
     static pure fn zero() -> float { 0.0 }
 }
 
 impl float: num::One {
+    #[inline(always)]
     static pure fn one() -> float { 1.0 }
 }
 

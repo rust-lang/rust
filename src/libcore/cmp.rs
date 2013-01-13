@@ -53,26 +53,32 @@ pub trait Ord {
     pure fn gt(&self, other: &self) -> bool;
 }
 
+#[inline(always)]
 pub pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2)
 }
 
+#[inline(always)]
 pub pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2) || (*v1).eq(v2)
 }
 
+#[inline(always)]
 pub pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
     (*v1).eq(v2)
 }
 
+#[inline(always)]
 pub pure fn ne<T: Eq>(v1: &T, v2: &T) -> bool {
     (*v1).ne(v2)
 }
 
+#[inline(always)]
 pub pure fn ge<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).ge(v2)
 }
 
+#[inline(always)]
 pub pure fn gt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }

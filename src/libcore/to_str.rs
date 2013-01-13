@@ -25,67 +25,87 @@ use vec;
 pub trait ToStr { pub pure fn to_str() -> ~str; }
 
 impl int: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::int::str(self) }
 }
 impl i8: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::i8::str(self) }
 }
 impl i16: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::i16::str(self) }
 }
 impl i32: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::i32::str(self) }
 }
 impl i64: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::i64::str(self) }
 }
 impl uint: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::uint::str(self) }
 }
 impl u8: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::u8::str(self) }
 }
 impl u16: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::u16::str(self) }
 }
 impl u32: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::u32::str(self) }
 }
 impl u64: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::u64::str(self) }
 }
 impl float: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::float::to_str(self, 4u) }
 }
 impl f32: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::float::to_str(self as float, 4u) }
 }
 impl f64: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::float::to_str(self as float, 4u) }
 }
 impl bool: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::bool::to_str(self) }
 }
 impl (): ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ~"()" }
 }
 impl ~str: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { copy self }
 }
 impl &str: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::str::from_slice(self) }
 }
 impl @str: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ::str::from_slice(self) }
 }
 
 impl<A: ToStr Copy, B: ToStr Copy> (A, B): ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str {
         let (a, b) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~")"
     }
 }
 impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str {
         let (a, b, c) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~", " + c.to_str() + ~")"
@@ -93,6 +113,7 @@ impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
 }
 
 impl<A: ToStr> ~[A]: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str unsafe {
         // Bleh -- not really unsafe
         // push_str and push_char
@@ -108,9 +129,11 @@ impl<A: ToStr> ~[A]: ToStr {
 }
 
 impl<A: ToStr> @A: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ~"@" + (*self).to_str() }
 }
 impl<A: ToStr> ~A: ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { ~"~" + (*self).to_str() }
 }
 

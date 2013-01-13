@@ -14,6 +14,7 @@ mod inst {
     #[allow(non_camel_case_types)]
     pub type IMPL_T<A> = Option<A>;
 
+    #[inline(always)]
     pub pure fn EACH<A>(self: &IMPL_T<A>, f: fn(v: &A) -> bool) {
         match *self {
             None => (),
@@ -21,6 +22,7 @@ mod inst {
         }
     }
 
+    #[inline(always)]
     pub pure fn SIZE_HINT<A>(self: &IMPL_T<A>) -> Option<uint> {
         match *self {
             None => Some(0),
