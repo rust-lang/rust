@@ -2458,7 +2458,7 @@ impl Parser {
     fn parse_ty_param() -> ty_param {
         let ident = self.parse_ident();
         let bounds = self.parse_optional_ty_param_bounds();
-        return {ident: ident, id: self.get_id(), bounds: bounds};
+        ast::ty_param { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
     fn parse_ty_params() -> ~[ty_param] {

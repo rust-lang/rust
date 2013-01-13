@@ -251,7 +251,7 @@ priv impl ext_ctxt {
             span: span,
         });
 
-        {
+        ast::ty_param {
             ident: ident,
             id: self.next_id(),
             bounds: @vec::append(~[bound], *bounds)
@@ -425,7 +425,7 @@ fn mk_impl(
                 span: span,
             });
 
-            {
+            ast::ty_param {
                 ident: tp.ident,
                 id: cx.next_id(),
                 bounds: @vec::append(~[t_bound], *tp.bounds)
