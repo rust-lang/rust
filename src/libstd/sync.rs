@@ -360,7 +360,7 @@ impl &Sem<~[mut Waitqueue]> {
 struct Semaphore { priv sem: Sem<()> }
 
 /// Create a new semaphore with the specified count.
-fn semaphore(count: int) -> Semaphore {
+pub fn semaphore(count: int) -> Semaphore {
     Semaphore { sem: new_sem(count, ()) }
 }
 
