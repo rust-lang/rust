@@ -30,6 +30,8 @@ use uint;
 
 #[path = "private/at_exit.rs"]
 pub mod at_exit;
+#[path = "private/global.rs"]
+pub mod global;
 
 extern mod rustrt {
     #[legacy_exports];
@@ -520,6 +522,12 @@ pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
         cast::forget(move ptr);
     }
     ArcDestruct((*rc).data)
+}
+
+impl<T: Owned> SharedMutableState<T>: Clone {
+    fn clone(&self) -> SharedMutableState<T> unsafe {
+        clone_shared_mutable_state(self)
+    }
 }
 
 /****************************************************************************/
