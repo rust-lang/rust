@@ -281,7 +281,7 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                                             .. dtor.node},
                   span: dtor.span }
     };
-    return @{
+    return @ast::struct_def {
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         dtor: dtor,
         ctor_id: option::map(&struct_def.ctor_id, |cid| fld.new_id(*cid))
@@ -582,7 +582,7 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                                                     .. dtor.node},
                           .. *dtor }
             };
-            kind = struct_variant_kind(@{
+            kind = struct_variant_kind(@ast::struct_def {
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
                 dtor: dtor,

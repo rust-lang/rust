@@ -2844,7 +2844,7 @@ impl Parser {
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
-         item_struct(@{
+         item_struct(@ast::struct_def {
              fields: fields,
              dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
@@ -3340,7 +3340,7 @@ impl Parser {
                       span: d_s }
         };
 
-        return @{
+        return @ast::struct_def {
             fields: fields,
             dtor: actual_dtor,
             ctor_id: None
