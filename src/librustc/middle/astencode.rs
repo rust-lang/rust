@@ -288,10 +288,12 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       }
       ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
-        ast::ii_dtor(ast::spanned { node: { body: dtor_body,
-                                            .. /*bad*/copy (*dtor).node },
-                                    .. (/*bad*/copy *dtor) },
-                     nm, /*bad*/copy *tps, parent_id)
+        ast::ii_dtor(
+            ast::spanned {
+                node: ast::struct_dtor_ { body: dtor_body,
+                                          .. /*bad*/copy (*dtor).node },
+                .. (/*bad*/copy *dtor) },
+            nm, /*bad*/copy *tps, parent_id)
       }
     }
 }
@@ -327,12 +329,15 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
-        ast::ii_dtor(ast::spanned { node: { id: dtor_id,
-                                            attrs: dtor_attrs,
-                                            self_id: new_self,
-                                            body: dtor_body },
-                                    .. (/*bad*/copy *dtor)},
-          nm, new_params, new_parent)
+        ast::ii_dtor(
+            ast::spanned {
+                node: ast::struct_dtor_ { id: dtor_id,
+                                          attrs: dtor_attrs,
+                                          self_id: new_self,
+                                          body: dtor_body },
+                .. (/*bad*/copy *dtor)
+            },
+            nm, new_params, new_parent)
       }
      }
 }

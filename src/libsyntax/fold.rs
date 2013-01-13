@@ -276,8 +276,9 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
     let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
-        spanned { node: { body: dtor_body,
-                          id: dtor_id, .. dtor.node},
+        spanned { node: ast::struct_dtor_ { body: dtor_body,
+                                            id: dtor_id,
+                                            .. dtor.node},
                   span: dtor.span }
     };
     return @{
@@ -576,8 +577,9 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
             let dtor = do option::map(&struct_def.dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
-                spanned { node: { body: dtor_body,
-                                  id: dtor_id, .. dtor.node},
+                spanned { node: ast::struct_dtor_ { body: dtor_body,
+                                                    id: dtor_id,
+                                                    .. dtor.node},
                           .. *dtor }
             };
             kind = struct_variant_kind(@{
