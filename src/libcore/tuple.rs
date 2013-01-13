@@ -27,18 +27,21 @@ pub trait CopyableTuple<T, U> {
 impl<T: Copy, U: Copy> (T, U): CopyableTuple<T, U> {
 
     /// Return the first element of self
+    #[inline(always)]
     pure fn first() -> T {
         let (t, _) = self;
         return t;
     }
 
     /// Return the second element of self
+    #[inline(always)]
     pure fn second() -> U {
         let (_, u) = self;
         return u;
     }
 
     /// Return the results of swapping the two elements of self
+    #[inline(always)]
     pure fn swap() -> (U, T) {
         let (t, u) = self;
         return (u, t);
@@ -52,11 +55,13 @@ pub trait ImmutableTuple<T, U> {
 }
 
 impl<T, U> (T, U): ImmutableTuple<T, U> {
+    #[inline(always)]
     pure fn first_ref(&self) -> &self/T {
         match *self {
             (ref t, _) => t,
         }
     }
+    #[inline(always)]
     pure fn second_ref(&self) -> &self/U {
         match *self {
             (_, ref u) => u,
@@ -70,6 +75,7 @@ pub trait ExtendedTupleOps<A,B> {
 }
 
 impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
+    #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
             (ref a, ref b) => {
@@ -78,6 +84,7 @@ impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
         }
     }
 
+    #[inline(always)]
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
@@ -89,6 +96,7 @@ impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
 
 impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
+    #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
             (ref a, ref b) => {
@@ -97,6 +105,7 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
         }
     }
 
+    #[inline(always)]
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
@@ -108,6 +117,7 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
 #[cfg(notest)]
 impl<A: Eq, B: Eq> (A, B) : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => match other {
@@ -117,11 +127,13 @@ impl<A: Eq, B: Eq> (A, B) : Eq {
             }
         }
     }
+    #[inline(always)]
     pure fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(notest)]
 impl<A: Ord, B: Ord> (A, B) : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
             (ref self_a, ref self_b) => {
@@ -136,13 +148,17 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
             }
         }
     }
+    #[inline(always)]
     pure fn le(&self, other: &(A, B)) -> bool { !(*other).lt(&(*self)) }
+    #[inline(always)]
     pure fn ge(&self, other: &(A, B)) -> bool { !(*self).lt(other) }
+    #[inline(always)]
     pure fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
 }
 
 #[cfg(notest)]
 impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => match other {
@@ -153,11 +169,13 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
             }
         }
     }
+    #[inline(always)]
     pure fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
 }
 
 #[cfg(notest)]
 impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {
             (ref self_a, ref self_b, ref self_c) => {
@@ -174,8 +192,11 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
             }
         }
     }
+    #[inline(always)]
     pure fn le(&self, other: &(A, B, C)) -> bool { !(*other).lt(&(*self)) }
+    #[inline(always)]
     pure fn ge(&self, other: &(A, B, C)) -> bool { !(*self).lt(other) }
+    #[inline(always)]
     pure fn gt(&self, other: &(A, B, C)) -> bool { (*other).lt(&(*self))  }
 }
 

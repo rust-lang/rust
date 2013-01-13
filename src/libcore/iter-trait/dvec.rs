@@ -20,6 +20,7 @@ mod inst {
     *
     * Attempts to access this dvec during iteration will fail.
     */
+    #[inline(always)]
     pub pure fn EACH<A>(self: &IMPL_T<A>, f: fn(v: &A) -> bool) {
         unsafe {
             do self.swap |v| {
@@ -29,6 +30,7 @@ mod inst {
         }
     }
 
+    #[inline(always)]
     pub pure fn SIZE_HINT<A>(self: &IMPL_T<A>) -> Option<uint> {
         Some(self.len())
     }

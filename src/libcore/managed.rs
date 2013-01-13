@@ -35,6 +35,7 @@ pub mod raw {
 
 }
 
+#[inline(always)]
 pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
     unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
@@ -42,15 +43,21 @@ pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
 
 #[cfg(notest)]
 impl<T:Eq> @const T : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &@const T) -> bool { *(*self) == *(*other) }
+    #[inline(always)]
     pure fn ne(&self, other: &@const T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(notest)]
 impl<T:Ord> @const T : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &@const T) -> bool { *(*self) < *(*other) }
+    #[inline(always)]
     pure fn le(&self, other: &@const T) -> bool { *(*self) <= *(*other) }
+    #[inline(always)]
     pure fn ge(&self, other: &@const T) -> bool { *(*self) >= *(*other) }
+    #[inline(always)]
     pure fn gt(&self, other: &@const T) -> bool { *(*self) > *(*other) }
 }
 

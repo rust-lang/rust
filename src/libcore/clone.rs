@@ -16,5 +16,6 @@ pub trait Clone {
 }
 
 impl (): Clone {
+    #[inline(always)]
     fn clone(&self) -> () { () }
 }
