@@ -38,8 +38,8 @@ rust_kernel::rust_kernel(rust_env *env) :
     global_env_chan(0),
     at_exit_runner(NULL),
     at_exit_started(false),
-    env(env)
-
+    env(env),
+    global_data(0)
 {
     // Create the single threaded scheduler that will run on the platform's
     // main thread
