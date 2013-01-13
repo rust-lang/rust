@@ -1574,13 +1574,14 @@ type struct_dtor_ = {id: node_id,
 
 #[auto_encode]
 #[auto_decode]
-type foreign_item =
-    {ident: ident,
-     attrs: ~[attribute],
-     node: foreign_item_,
-     id: node_id,
-     span: span,
-     vis: visibility};
+struct foreign_item {
+    ident: ident,
+    attrs: ~[attribute],
+    node: foreign_item_,
+    id: node_id,
+    span: span,
+    vis: visibility,
+}
 
 #[auto_encode]
 #[auto_decode]
