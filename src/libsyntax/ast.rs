@@ -1502,7 +1502,7 @@ impl struct_field_kind : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type struct_def = {
+struct struct_def {
     fields: ~[@struct_field], /* fields */
     /* (not including ctor or dtor) */
     /* dtor is optional */
@@ -1510,7 +1510,7 @@ type struct_def = {
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
-};
+}
 
 /*
   FIXME (#3300): Should allow items to be anonymous. Right now

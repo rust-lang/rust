@@ -141,7 +141,7 @@ fn expand_auto_encode(
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
@@ -207,7 +207,7 @@ fn expand_auto_decode(
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
