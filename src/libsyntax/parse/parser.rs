@@ -2836,16 +2836,16 @@ impl Parser {
 
         let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            spanned { node: { id: self.get_id(),
-                              attrs: d_attrs,
-                              self_id: self.get_id(),
-                              body: d_body},
+            spanned { node: ast::struct_dtor_ { id: self.get_id(),
+                                                attrs: d_attrs,
+                                                self_id: self.get_id(),
+                                                body: d_body},
                        span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
          item_struct(@{
-             fields: move fields,
+             fields: fields,
              dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, ty_params),
@@ -3333,15 +3333,15 @@ impl Parser {
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            spanned { node: { id: self.get_id(),
-                              attrs: d_attrs,
-                              self_id: self.get_id(),
-                              body: d_body },
+            spanned { node: ast::struct_dtor_ { id: self.get_id(),
+                                                attrs: d_attrs,
+                                                self_id: self.get_id(),
+                                                body: d_body },
                       span: d_s }
         };
 
         return @{
-            fields: move fields,
+            fields: fields,
             dtor: actual_dtor,
             ctor_id: None
         };

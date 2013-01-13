@@ -1567,10 +1567,12 @@ type struct_dtor = spanned<struct_dtor_>;
 
 #[auto_encode]
 #[auto_decode]
-type struct_dtor_ = {id: node_id,
-                    attrs: ~[attribute],
-                    self_id: node_id,
-                    body: blk};
+struct struct_dtor_ {
+    id: node_id,
+    attrs: ~[attribute],
+    self_id: node_id,
+    body: blk,
+}
 
 #[auto_encode]
 #[auto_decode]
