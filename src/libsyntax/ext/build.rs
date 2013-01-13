@@ -313,6 +313,6 @@ fn mk_ty_param(cx: ext_ctxt,
                ident: ast::ident,
                bounds: @~[ast::ty_param_bound])
             -> ast::ty_param {
-    { ident: ident, id: cx.next_id(), bounds: bounds }
+    ast::ty_param { ident: ident, id: cx.next_id(), bounds: bounds }
 }
 

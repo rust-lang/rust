@@ -121,7 +121,11 @@ enum ty_param_bound {
 
 #[auto_encode]
 #[auto_decode]
-type ty_param = {ident: ident, id: node_id, bounds: @~[ty_param_bound]};
+struct ty_param {
+    ident: ident,
+    id: node_id,
+    bounds: @~[ty_param_bound]
+}
 
 #[auto_encode]
 #[auto_decode]

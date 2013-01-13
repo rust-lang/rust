@@ -148,13 +148,13 @@ fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
 }
 
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
-    {ident: /* FIXME (#2543) */ copy tp.ident,
-     id: fld.new_id(tp.id),
-     bounds: @vec::map(*tp.bounds, |x| fold_ty_param_bound(*x, fld) )}
+    ast::ty_param { ident: /* FIXME (#2543) */ copy tp.ident,
+                    id: fld.new_id(tp.id),
+                    bounds: @tp.bounds.map(|x| fold_ty_param_bound(*x, fld) )}
 }
 
 fn fold_ty_params(tps: ~[ty_param], fld: ast_fold) -> ~[ty_param] {
-    vec::map(tps, |x| fold_ty_param(*x, fld) )
+    tps.map(|x| fold_ty_param(*x, fld))
 }
 
 fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
