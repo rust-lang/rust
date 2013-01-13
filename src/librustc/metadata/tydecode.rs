@@ -101,9 +101,11 @@ fn parse_path(st: @pstate) -> @ast::path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @{span: ast_util::dummy_sp(),
-                      global: false, idents: idents,
-                      rp: None, types: ~[]};
+                return @ast::path { span: ast_util::dummy_sp(),
+                                    global: false,
+                                    idents: idents,
+                                    rp: None,
+                                    types: ~[] };
             } else { idents.push(parse_ident_(st, is_last)); }
           }
         }

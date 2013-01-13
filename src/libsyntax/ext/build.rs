@@ -53,20 +53,29 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
 fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
-    let p : @ast::path = @{span: sp, global: false, idents: idents,
-                           rp: None, types: ~[]};
+    let p = @ast::path { span: sp,
+                         global: false,
+                         idents: idents,
+                         rp: None,
+                         types: ~[] };
     return p;
 }
 fn mk_raw_path_(sp: span,
                 idents: ~[ast::ident],
                 +types: ~[@ast::Ty])
              -> @ast::path {
-    @{ span: sp, global: false, idents: idents, rp: None, types: move types }
+    @ast::path { span: sp,
+                 global: false,
+                 idents: idents,
+                 rp: None,
+                 types: move types }
 }
 fn mk_raw_path_global(sp: span, idents: ~[ast::ident]) -> @ast::path {
-    let p : @ast::path = @{span: sp, global: true, idents: idents,
-                           rp: None, types: ~[]};
-    return p;
+    @ast::path { span: sp,
+                 global: true,
+                 idents: idents,
+                 rp: None,
+                 types: ~[] }
 }
 fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) ->
     @ast::expr {

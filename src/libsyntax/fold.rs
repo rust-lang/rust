@@ -614,10 +614,11 @@ fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident {
 }
 
 fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
-    return {span: fld.new_span(p.span), global: p.global,
-         idents: vec::map(p.idents, |x| fld.fold_ident(*x)),
-         rp: p.rp,
-         types: vec::map(p.types, |x| fld.fold_ty(*x))};
+    ast::path { span: fld.new_span(p.span),
+                global: p.global,
+                idents: p.idents.map(|x| fld.fold_ident(*x)),
+                rp: p.rp,
+                types: p.types.map(|x| fld.fold_ty(*x)) }
 }
 
 fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {

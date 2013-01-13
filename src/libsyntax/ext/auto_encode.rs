@@ -264,21 +264,45 @@ priv impl ext_ctxt {
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
     }
 
     fn path_global(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: true, idents: strs, rp: None, types: ~[]}
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
     }
 
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::Ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: tps}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
     }
 
     fn path_tps_global(span: span, strs: ~[ast::ident],
                        tps: ~[@ast::Ty]) -> @ast::path {
-        @{span: span, global: true, idents: strs, rp: None, types: tps}
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -289,11 +313,9 @@ priv impl ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
-        let path = @{span: span, global: false, idents: ~[nm],
-                     rp: None, types: ~[]};
         @{id: self.next_id(),
           node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
-                               path,
+                               self.path(span, ~[nm]),
                                None),
           span: span}
     }
