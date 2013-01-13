@@ -177,7 +177,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param
     {
-        {ident: id, id: self.next_id(), bounds: @bounds}
+        ast::ty_param { ident: id, id: self.next_id(), bounds: @bounds }
     }
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
