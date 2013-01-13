@@ -284,6 +284,22 @@ impl<T> Option<T> {
         match self { None => def, Some(v) => f(v) }
     }
 
+    /// Apply a function to the contained value or do nothing
+    fn mutate(&mut self, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        }
+    }
+
+    /// Apply a function to the contained value or set it to a default
+    fn mutate_default(&mut self, def: T, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        } else {
+            *self = Some(def);
+        }
+    }
+
     /// Performs an operation on the contained value by reference
     #[inline(always)]
     pure fn iter(&self, f: fn(x: &T)) { iter(self, f) }
