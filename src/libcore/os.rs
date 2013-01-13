@@ -452,10 +452,19 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~str> {
         unsafe {
             use libc::funcs::posix01::unistd::readlink;
-            do fill_charp_buf() |buf, sz| {
+
+            let mut path_str = str::with_capacity(tmpbuf_sz);
+            let len = do str::as_c_str(path_str) |buf| {
+                let buf = buf as *mut c_char;
                 do as_c_charp("/proc/self/exe") |proc_self_buf| {
-                    readlink(proc_self_buf, buf, sz) != (-1 as ssize_t)
+                    readlink(proc_self_buf, buf, tmpbuf_sz as size_t)
                 }
+            };
+            if len == -1 {
+                None
+            } else {
+                str::raw::set_len(&mut path_str, len as uint);
+                Some(path_str)
             }
         }
     }
