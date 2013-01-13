@@ -928,7 +928,8 @@ impl CoherenceChecker {
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             self.add_impls_for_module(impls_seen,
                                       crate_store,
-                                      { crate: crate_number, node: 0 });
+                                      def_id { crate: crate_number,
+                                               node: 0 });
 
             for each_path(crate_store, crate_number) |path_entry| {
                 match path_entry.def_like {

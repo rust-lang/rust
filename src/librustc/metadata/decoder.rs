@@ -218,13 +218,15 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
 fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
         Option<ast::def_id> {
     let trait_did_opt = item_parent_item(d);
-    trait_did_opt.map(|trait_did| {crate: cnum, node: trait_did.node})
+    do trait_did_opt.map |trait_did| {
+        ast::def_id { crate: cnum, node: trait_did.node }
+    }
 }
 
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
     let trait_did = item_parent_item(d).expect(~"item without parent");
-    {crate: cnum, node: trait_did.node}
+    ast::def_id { crate: cnum, node: trait_did.node }
 }
 
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
@@ -313,7 +315,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: cmd) -> ~[ast::def_id] {
     let v = tag_items_data_item_variant;
     for reader::tagged_docs(item, v) |p| {
         let ext = reader::with_doc_data(p, |d| parse_def_id(d));
-        ids.push({crate: cdata.cnum, node: ext.node});
+        ids.push(ast::def_id { crate: cdata.cnum, node: ext.node });
     };
     return ids;
 }
@@ -384,7 +386,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
 fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);
-    let did = {crate: cnum, node: did_.node};
+    let did = ast::def_id { crate: cnum, node: did_.node };
     // We treat references to enums as references to types.
     return def_like_to_def(item_to_def_like(item, did, cnum));
 }
@@ -393,7 +395,8 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
 
     let item = lookup_item(id, cdata.data);
-    let t = item_type({crate: cdata.cnum, node: id}, item, tcx, cdata);
+    let t = item_type(ast::def_id { crate: cdata.cnum, node: id }, item, tcx,
+                      cdata);
     let tp_bounds = if family_has_type_params(item_family(item)) {
         item_ty_param_bounds(item, tcx, cdata)
     } else { @~[] };
@@ -640,8 +643,8 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let mut disr_val = 0;
     for variant_ids.each |did| {
         let item = find_item(did.node, items);
-        let ctor_ty = item_type({crate: cdata.cnum, node: id}, item,
-                                tcx, cdata);
+        let ctor_ty = item_type(ast::def_id { crate: cdata.cnum, node: id},
+                                item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
           ty::ty_fn(ref f) => (*f).sig.inputs.map(|a| a.ty),
@@ -1141,11 +1144,11 @@ fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
 // crate to the correct local crate number.
 fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     if did.crate == ast::local_crate {
-        return {crate: cdata.cnum, node: did.node};
+        return ast::def_id { crate: cdata.cnum, node: did.node };
     }
 
     match cdata.cnum_map.find(did.crate) {
-      option::Some(n) => return {crate: n, node: did.node},
+      option::Some(n) => ast::def_id { crate: n, node: did.node },
       option::None => fail ~"didn't find a crate in the cnum_map"
     }
 }

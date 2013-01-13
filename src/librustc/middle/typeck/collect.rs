@@ -73,8 +73,8 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
             match /*bad*/copy crate_item.node {
               ast::item_mod(m) => {
                 for m.items.each |intrinsic_item| {
-                    let def_id = { crate: ast::local_crate,
-                                  node: intrinsic_item.id };
+                    let def_id = ast::def_id { crate: ast::local_crate,
+                                               node: intrinsic_item.id };
                     let substs = {self_r: None, self_ty: None, tps: ~[]};
 
                     match intrinsic_item.node {
@@ -254,7 +254,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
         // build up a subst that shifts all of the parameters over
         // by one and substitute in a new type param for self
 
-        let dummy_defid = {crate: 0, node: 0};
+        let dummy_defid = ast::def_id {crate: 0, node: 0};
 
         let non_shifted_trait_tps = do vec::from_fn(trait_bounds.len()) |i| {
             ty::mk_param(ccx.tcx, i, dummy_defid)
@@ -458,7 +458,7 @@ fn compare_impl_method(tcx: ty::ctxt,
         let dummy_tps = do vec::from_fn((*trait_m.tps).len()) |i| {
             // hack: we don't know the def id of the impl tp, but it
             // is not important for unification
-            ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
+            ty::mk_param(tcx, i + impl_tps, ast::def_id {crate: 0, node: 0})
         };
         let trait_tps = trait_substs.tps.map(
             |t| replace_bound_self(tcx, *t, dummy_self_r));

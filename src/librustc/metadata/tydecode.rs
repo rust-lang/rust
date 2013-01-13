@@ -470,7 +470,7 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
        None => fail (fmt!("internal error: parse_def_id: id expected, but \
                                found %?", def_part))
     };
-    return {crate: crate_num, node: def_num};
+    ast::def_id { crate: crate_num, node: def_num }
 }
 
 fn parse_bounds_data(data: @~[u8], start: uint,
