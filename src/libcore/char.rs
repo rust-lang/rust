@@ -64,6 +64,7 @@ pub use is_XID_continue = unicode::derived_property::XID_Continue;
  * Indicates whether a character is in lower case, defined
  * in terms of the Unicode General Category 'Ll'
  */
+#[inline(always)]
 pub pure fn is_lowercase(c: char) -> bool {
     return unicode::general_category::Ll(c);
 }
@@ -72,6 +73,7 @@ pub pure fn is_lowercase(c: char) -> bool {
  * Indicates whether a character is in upper case, defined
  * in terms of the Unicode General Category 'Lu'.
  */
+#[inline(always)]
 pub pure fn is_uppercase(c: char) -> bool {
     return unicode::general_category::Lu(c);
 }
@@ -81,6 +83,7 @@ pub pure fn is_uppercase(c: char) -> bool {
  * terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
  * additional 'Cc'-category control codes in the range [0x09, 0x0d]
  */
+#[inline(always)]
 pub pure fn is_whitespace(c: char) -> bool {
     return ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
@@ -93,6 +96,7 @@ pub pure fn is_whitespace(c: char) -> bool {
  * defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
  * and the Derived Core Property 'Alphabetic'.
  */
+#[inline(always)]
 pub pure fn is_alphanumeric(c: char) -> bool {
     return unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
@@ -101,11 +105,13 @@ pub pure fn is_alphanumeric(c: char) -> bool {
 }
 
 /// Indicates whether the character is an ASCII character
+#[inline(always)]
 pub pure fn is_ascii(c: char) -> bool {
    c - ('\x7F' & c) == '\x00'
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
+#[inline(always)]
 pub pure fn is_digit(c: char) -> bool {
     return unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
@@ -122,6 +128,7 @@ pub pure fn is_digit(c: char) -> bool {
  * 'b' or 'B', 11, etc. Returns none if the char does not
  * refer to a digit in the given radix.
  */
+#[inline]
 pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
@@ -190,6 +197,7 @@ pub pure fn escape_default(c: char) -> ~str {
  *
  * -1 if a < b, 0 if a == b, +1 if a > b
  */
+#[inline(always)]
 pub pure fn cmp(a: char, b: char) -> int {
     return  if b > a { -1 }
     else if b < a { 1 }

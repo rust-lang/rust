@@ -32,25 +32,42 @@ pub const bytes : uint = (inst::bits / 8);
 pub const min_value: T = (-1 as T) << (bits - 1);
 pub const max_value: T = min_value - 1 as T;
 
+#[inline(always)]
 pub pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+#[inline(always)]
 pub pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
+#[inline(always)]
 pub pure fn add(x: T, y: T) -> T { x + y }
+#[inline(always)]
 pub pure fn sub(x: T, y: T) -> T { x - y }
+#[inline(always)]
 pub pure fn mul(x: T, y: T) -> T { x * y }
+#[inline(always)]
 pub pure fn div(x: T, y: T) -> T { x / y }
+#[inline(always)]
 pub pure fn rem(x: T, y: T) -> T { x % y }
 
+#[inline(always)]
 pub pure fn lt(x: T, y: T) -> bool { x < y }
+#[inline(always)]
 pub pure fn le(x: T, y: T) -> bool { x <= y }
+#[inline(always)]
 pub pure fn eq(x: T, y: T) -> bool { x == y }
+#[inline(always)]
 pub pure fn ne(x: T, y: T) -> bool { x != y }
+#[inline(always)]
 pub pure fn ge(x: T, y: T) -> bool { x >= y }
+#[inline(always)]
 pub pure fn gt(x: T, y: T) -> bool { x > y }
 
+#[inline(always)]
 pub pure fn is_positive(x: T) -> bool { x > 0 as T }
+#[inline(always)]
 pub pure fn is_negative(x: T) -> bool { x < 0 as T }
+#[inline(always)]
 pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
+#[inline(always)]
 pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
@@ -64,46 +81,64 @@ pub fn range(lo: T, hi: T, it: fn(T) -> bool) {
 }
 
 /// Computes the bitwise complement
+#[inline(always)]
 pub pure fn compl(i: T) -> T {
     -1 as T ^ i
 }
 
 /// Computes the absolute value
+#[inline(always)]
 pub pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
 #[cfg(notest)]
 impl T : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
+    #[inline(always)]
     pure fn le(&self, other: &T) -> bool { return (*self) <= (*other); }
+    #[inline(always)]
     pure fn ge(&self, other: &T) -> bool { return (*self) >= (*other); }
+    #[inline(always)]
     pure fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
 }
 
 #[cfg(notest)]
 impl T : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
+    #[inline(always)]
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
 impl T: num::Num {
+    #[inline(always)]
     pure fn add(&self, other: &T)    -> T { return *self + *other; }
+    #[inline(always)]
     pure fn sub(&self, other: &T)    -> T { return *self - *other; }
+    #[inline(always)]
     pure fn mul(&self, other: &T)    -> T { return *self * *other; }
+    #[inline(always)]
     pure fn div(&self, other: &T)    -> T { return *self / *other; }
+    #[inline(always)]
     pure fn modulo(&self, other: &T) -> T { return *self % *other; }
+    #[inline(always)]
     pure fn neg(&self)              -> T { return -*self;        }
 
+    #[inline(always)]
     pure fn to_int(&self)         -> int { return *self as int; }
+    #[inline(always)]
     static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 impl T: num::Zero {
+    #[inline(always)]
     static pure fn zero() -> T { 0 }
 }
 
 impl T: num::One {
+    #[inline(always)]
     static pure fn one() -> T { 1 }
 }
 
@@ -158,16 +193,19 @@ pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
+#[inline(always)]
 pub pure fn from_str(s: &str) -> Option<T>
 {
     parse_bytes(str::to_bytes(s), 10u)
 }
 
 impl T : FromStr {
+    #[inline(always)]
     static pure fn from_str(s: &str) -> Option<T> { from_str(s) }
 }
 
 /// Convert to a string in a given base
+#[inline(always)]
 pub pure fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
         do vec::as_imm_buf(slice) |p, len| {
@@ -176,6 +214,7 @@ pub pure fn to_str(n: T, radix: uint) -> ~str {
     }
 }
 
+#[inline(always)]
 pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
     if n < 0 as T {
         uint::to_str_bytes(true, -n as uint, radix, f)
@@ -185,6 +224,7 @@ pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string
+#[inline(always)]
 pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 #[test]

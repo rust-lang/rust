@@ -59,6 +59,7 @@ pub enum Option<T> {
     Some(T),
 }
 
+#[inline(always)]
 pub pure fn get<T: Copy>(opt: Option<T>) -> T {
     /*!
     Gets the value out of an option
@@ -81,6 +82,7 @@ pub pure fn get<T: Copy>(opt: Option<T>) -> T {
     }
 }
 
+#[inline(always)]
 pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     /*!
     Gets an immutable reference to the value inside an option.
@@ -102,12 +104,14 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
+#[inline(always)]
 pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
 }
 
+#[inline(always)]
 pub pure fn map_consume<T, U>(opt: Option<T>,
                               f: fn(v: T) -> U) -> Option<U> {
     /*!
@@ -117,6 +121,7 @@ pub pure fn map_consume<T, U>(opt: Option<T>,
     if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
 }
 
+#[inline(always)]
 pub pure fn chain<T, U>(opt: Option<T>,
                         f: fn(t: T) -> Option<U>) -> Option<U> {
     /*!
@@ -130,6 +135,7 @@ pub pure fn chain<T, U>(opt: Option<T>,
     }
 }
 
+#[inline(always)]
 pub pure fn chain_ref<T, U>(opt: &Option<T>,
                             f: fn(x: &T) -> Option<U>) -> Option<U> {
     /*!
@@ -140,6 +146,7 @@ pub pure fn chain_ref<T, U>(opt: &Option<T>,
     match *opt { Some(ref x) => f(x), None => None }
 }
 
+#[inline(always)]
 pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost some() value, or none if both are none.
@@ -160,30 +167,35 @@ pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
     }
 }
 
+#[inline(always)]
 pub pure fn is_none<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option equals `none`
 
     match *opt { None => true, Some(_) => false }
 }
 
+#[inline(always)]
 pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
 }
 
+#[inline(always)]
 pub pure fn get_or_zero<T: Copy Zero>(opt: Option<T>) -> T {
     //! Returns the contained value or zero (for this type)
 
     match opt { Some(copy x) => x, None => Zero::zero() }
 }
 
+#[inline(always)]
 pub pure fn get_or_default<T: Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(copy x) => x, None => def }
 }
 
+#[inline(always)]
 pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
                               f: fn(x: &T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
@@ -191,6 +203,7 @@ pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
     match *opt { None => move def, Some(ref t) => f(t) }
 }
 
+#[inline(always)]
 pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
@@ -234,6 +247,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
     unwrap(util::replace(opt, None))
 }
 
+#[inline(always)]
 pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     match move opt {

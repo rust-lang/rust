@@ -47,6 +47,7 @@ mod inst {
         }
     }
 
+    #[inline(always)]
     pub pure fn SIZE_HINT<A>(self: &IMPL_T<A>) -> Option<uint> {
         Some(self.len())
     }
