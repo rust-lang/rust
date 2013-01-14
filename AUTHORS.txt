@@ -87,6 +87,7 @@ Jyun-Yan You <jyyou@cs.nctu.edu.tw>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
+Kyeongwoon Lee <kyeongwoon.lee@samsung.com>
 Lennart Kudling <github@kudling.de>
 Lindsey Kuper <lindsey@composition.al>
 Luca Bruno <lucab@debian.org>
