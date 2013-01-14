@@ -895,9 +895,8 @@ pub fn retain<T>(v: &mut ~[T], f: pure fn(t: &T) -> bool) {
         }
     }
 
-    while deleted > 0 {
-        v.pop();
-        deleted -= 1;
+    if deleted > 0 {
+        v.truncate(len - deleted);
     }
 }
 
