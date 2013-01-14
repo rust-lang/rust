@@ -56,7 +56,7 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool, and `cargo`, the Rust package manager.
+API-documentation tool, and `rustpkg`, the Rust package manager and build system.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz

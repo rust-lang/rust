@@ -27,9 +27,9 @@ export pick;
 export pick_file;
 export search;
 export relative_target_lib_path;
-export get_cargo_sysroot;
-export get_cargo_root;
-export get_cargo_root_nearest;
+export get_rustpkg_sysroot;
+export get_rustpkg_root;
+export get_rustpkg_root_nearest;
 export libdir;
 
 type pick<T> = fn(path: &Path) -> Option<T>;
@@ -60,11 +60,11 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
             paths.push(
                 make_target_lib_path(&self.sysroot,
                                      self.target_triple));
-            match get_cargo_lib_path_nearest() {
+            match get_rustpkg_lib_path_nearest() {
               result::Ok(ref p) => paths.push((/*bad*/copy *p)),
               result::Err(_) => ()
             }
-            match get_cargo_lib_path() {
+            match get_rustpkg_lib_path() {
               result::Ok(ref p) => paths.push((/*bad*/copy *p)),
               result::Err(_) => ()
             }
@@ -130,52 +130,52 @@ fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     }
 }
 
-fn get_cargo_sysroot() -> Result<Path, ~str> {
-    result::Ok(get_or_default_sysroot().push_many([libdir(), ~"cargo"]))
+fn get_rustpkg_sysroot() -> Result<Path, ~str> {
+    result::Ok(get_or_default_sysroot().push_many([libdir(), ~"rustpkg"]))
 }
 
-fn get_cargo_root() -> Result<Path, ~str> {
-    match os::getenv(~"CARGO_ROOT") {
+fn get_rustpkg_root() -> Result<Path, ~str> {
+    match os::getenv(~"RUSTPKG_ROOT") {
         Some(ref _p) => result::Ok(Path((*_p))),
         None => match os::homedir() {
-          Some(ref _q) => result::Ok((*_q).push(".cargo")),
-          None => result::Err(~"no CARGO_ROOT or home directory")
+          Some(ref _q) => result::Ok((*_q).push(".rustpkg")),
+          None => result::Err(~"no RUSTPKG_ROOT or home directory")
         }
     }
 }
 
-fn get_cargo_root_nearest() -> Result<Path, ~str> {
-    do result::chain(get_cargo_root()) |p| {
+fn get_rustpkg_root_nearest() -> Result<Path, ~str> {
+    do result::chain(get_rustpkg_root()) |p| {
         let cwd = os::getcwd();
-        let cwd_cargo = cwd.push(".cargo");
-        let mut par_cargo = cwd.pop().push(".cargo");
-        let mut rslt = result::Ok(copy cwd_cargo);  // XXX: Bad copy.
+        let cwd_rustpkg = cwd.push(".rustpkg");
+        let mut par_rustpkg = cwd.pop().push(".rustpkg");
+        let mut rslt = result::Ok(copy cwd_rustpkg);  // XXX: Bad copy.
 
-        if !os::path_is_dir(&cwd_cargo) && cwd_cargo != p {
-            while par_cargo != p {
-                if os::path_is_dir(&par_cargo) {
-                    rslt = result::Ok(par_cargo);
+        if !os::path_is_dir(&cwd_rustpkg) && cwd_rustpkg != p {
+            while par_rustpkg != p {
+                if os::path_is_dir(&par_rustpkg) {
+                    rslt = result::Ok(par_rustpkg);
                     break;
                 }
-                if par_cargo.components.len() == 1 {
-                    // We just checked /.cargo, stop now.
+                if par_rustpkg.components.len() == 1 {
+                    // We just checked /.rustpkg, stop now.
                     break;
                 }
-                par_cargo = par_cargo.pop().pop().push(".cargo");
+                par_rustpkg = par_rustpkg.pop().pop().push(".rustpkg");
             }
         }
         rslt
     }
 }
 
-fn get_cargo_lib_path() -> Result<Path, ~str> {
-    do result::chain(get_cargo_root()) |p| {
+fn get_rustpkg_lib_path() -> Result<Path, ~str> {
+    do result::chain(get_rustpkg_root()) |p| {
         result::Ok(p.push(libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> Result<Path, ~str> {
-    do result::chain(get_cargo_root_nearest()) |p| {
+fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
+    do result::chain(get_rustpkg_root_nearest()) |p| {
         result::Ok(p.push(libdir()))
     }
 }

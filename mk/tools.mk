@@ -14,13 +14,13 @@
 FUZZER_LIB := $(S)src/libfuzzer/fuzzer.rc
 FUZZER_INPUTS := $(wildcard $(addprefix $(S)src/libfuzzer/, *.rs))
 
-# The test runner that runs the cfail/rfail/rpass and bench tests
+# The test runner that runs the cfail/rfail/rpass and bxench tests
 COMPILETEST_CRATE := $(S)src/compiletest/compiletest.rc
 COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*rs)
 
-# Cargo, the package manager
-CARGO_LIB := $(S)src/libcargo/cargo.rc
-CARGO_INPUTS := $(wildcard $(S)src/libcargo/*rs)
+# Rustpkg, the package manager and build system
+RUSTPKG_LIB := $(S)src/librustpkg/rustpkg.rc
+RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*rs)
 
 # Rustdoc, the documentation tool
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rc
@@ -57,8 +57,8 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X):			\
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO):		\
-		$$(CARGO_LIB) $$(CARGO_INPUTS)				\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG):		\
+		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		    \
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
@@ -66,11 +66,11 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO):		\
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
-$$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X):				\
+$$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X):				\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG)
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg cargo -o $$@ $$<
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustpkg -o $$@ $$<
 
 $$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC):		\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)			\
@@ -134,19 +134,19 @@ $$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
 	$$(Q)cp $$< $$@
 
 
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBCARGO):				\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCARGO)	\
+$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTPKG):				\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG)	\
 		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)		\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCARGO_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCARGO_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
-$$(HBIN$(2)_H_$(4))/cargo$$(X):					\
-		$$(TBIN$(1)_T_$(4)_H_$(3))/cargo$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBCARGO)	\
+$$(HBIN$(2)_H_$(4))/rustpkg$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTPKG)	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@

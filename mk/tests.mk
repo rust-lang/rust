@@ -244,7 +244,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty        \
     check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
     check-stage$(1)-T-$(2)-H-$(3)-rusti       \
-    check-stage$(1)-T-$(2)-H-$(3)-cargo       \
+    check-stage$(1)-T-$(2)-H-$(3)-rustpkg       \
     check-stage$(1)-T-$(2)-H-$(3)-doc       \
 
 check-stage$(1)-T-$(2)-H-$(3)-doc: \
@@ -310,8 +310,8 @@ check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
 check-stage$(1)-T-$(2)-H-$(3)-rusti:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy
 
-check-stage$(1)-T-$(2)-H-$(3)-cargo:				\
-	check-stage$(1)-T-$(2)-H-$(3)-cargo-dummy
+check-stage$(1)-T-$(2)-H-$(3)-rustpkg:				\
+	check-stage$(1)-T-$(2)-H-$(3)-rustpkg-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial: \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy
@@ -411,10 +411,10 @@ check-stage$(1)-T-$(2)-H-$(3)-rusti-dummy:		\
 	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rusti.log
 
 
-# Rules for the cargo test runner
+# Rules for the rustpkg test runner
 
-$(3)/test/cargotest.stage$(1)-$(2)$$(X):					\
-		$$(CARGO_LIB) $$(CARGO_INPUTS)		\
+$(3)/test/rustpkgtest.stage$(1)-$(2)$$(X):					\
+		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
 		$$(TSREQ$(1)_T_$(2)_H_$(3))					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB)  \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)   \
@@ -422,11 +422,11 @@ $(3)/test/cargotest.stage$(1)-$(2)$$(X):					\
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-check-stage$(1)-T-$(2)-H-$(3)-cargo-dummy:		\
-		$(3)/test/cargotest.stage$(1)-$(2)$$(X)
+check-stage$(1)-T-$(2)-H-$(3)-rustpkg-dummy:		\
+		$(3)/test/rustpkgtest.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
-	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-cargo.log
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-rustpkg.log
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
 
@@ -799,9 +799,9 @@ check-stage$(1)-H-$(2)-rustdoc:					\
 check-stage$(1)-H-$(2)-rusti:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rusti)
-check-stage$(1)-H-$(2)-cargo:					\
+check-stage$(1)-H-$(2)-rustpkg:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
-	 check-stage$(1)-T-$$(target)-H-$(2)-cargo)
+	 check-stage$(1)-T-$$(target)-H-$(2)-rustpkg)
 check-stage$(1)-H-$(2)-doc:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-doc)
@@ -895,9 +895,9 @@ check-stage$(1)-H-all-rustdoc: \
 check-stage$(1)-H-all-rusti: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rusti)
-check-stage$(1)-H-all-cargo: \
+check-stage$(1)-H-all-rustpkg: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
-	 check-stage$(1)-H-$$(target)-cargo)
+	 check-stage$(1)-H-$$(target)-rustpkg)
 check-stage$(1)-H-all-doc-tutorial: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-doc-tutorial)
@@ -930,7 +930,7 @@ check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
 check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
 check-stage$(1)-rusti: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rusti
-check-stage$(1)-cargo: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cargo
+check-stage$(1)-rustpkg: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustpkg
 check-stage$(1)-doc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc
 check-stage$(1)-doc-tutorial: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial
 check-stage$(1)-doc-tutorial-ffi: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-doc-tutorial-ffi
