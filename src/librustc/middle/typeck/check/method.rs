@@ -479,7 +479,9 @@ impl LookupContext {
 
         let tcx = self.tcx();
         let ms = ty::trait_methods(tcx, did);
-        let index = match vec::position(*ms, |m| m.ident == self.m_name) {
+        let index = match vec::position(*ms,
+                                        |m| (m.self_ty != ast::sty_static &&
+                                             m.ident == self.m_name)) {
             Some(i) => i,
             None => { return; } // no method with the right name
         };
@@ -528,7 +530,9 @@ impl LookupContext {
         let tcx = self.tcx();
         let methods = ty::trait_methods(tcx, did);  // XXX: Inherited methods.
         let index;
-        match vec::position(*methods, |m| m.ident == self.m_name) {
+        match vec::position(*methods,
+                            |m| (m.self_ty != ast::sty_static &&
+                                 m.ident == self.m_name)) {
             Some(i) => index = i,
             None => return
         }
@@ -572,7 +576,8 @@ impl LookupContext {
         let idx = {
             // FIXME #3453 can't use impl_info.methods.position
             match vec::position(impl_info.methods,
-                                |m| m.ident == self.m_name) {
+                                |m| (m.self_type != ast::sty_static &&
+                                     m.ident == self.m_name)) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
