@@ -112,6 +112,9 @@ fn pluralize(n: uint, +s: ~str) -> ~str {
     else { str::concat([s, ~"s"]) }
 }
 
+// A set of node IDs (used to keep track of which node IDs are for statements)
+type stmt_set = HashMap<ast::node_id, ()>;
+
 //
 // Local Variables:
 // mode: rust

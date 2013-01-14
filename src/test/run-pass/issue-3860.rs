@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 struct Foo { x: int }
 
 impl Foo {
@@ -19,11 +18,7 @@ impl Foo {
 
 fn main() {
     let mut x = @mut Foo { x: 3 };
-    x.stuff(); // error: internal compiler error: no enclosing scope with id 49
-    // storing the result removes the error, so replacing the above
-    // with the following, works:
-    // let _y = x.stuff()
-
-    // also making 'stuff()' not return anything fixes it
-    // I guess the "dangling &ptr" cuases issues?
+    // Neither of the next two lines should cause an error
+    let _ = x.stuff(); 
+    x.stuff();
 }

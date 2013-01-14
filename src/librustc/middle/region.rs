@@ -25,6 +25,7 @@ use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
+use util::common::stmt_set;
 
 use core::cmp;
 use core::dvec::DVec;
@@ -254,6 +255,7 @@ fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
       ast::stmt_decl(*) => {
         visit::visit_stmt(stmt, cx, visitor);
       }
+      // This code has to be kept consistent with trans::base::trans_stmt
       ast::stmt_expr(_, stmt_id) |
       ast::stmt_semi(_, stmt_id) => {
         record_parent(cx, stmt_id);
